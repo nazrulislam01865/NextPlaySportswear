@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        @apply bg-white font-sans text-brand-ink antialiased;
+    }
+
+    img {
+        @apply block max-w-full bg-slate-100;
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+        font: inherit;
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+
+    :focus-visible {
+        outline: 3px solid rgba(36, 103, 183, .4);
+        outline-offset: 3px;
+    }
+}
+
+@layer components {
+    .site-container {
+        width: min(1060px, calc(100% - 32px));
+        margin-inline: auto;
+    }
+
+    .btn {
+        @apply inline-flex items-center justify-center gap-2 rounded-[10px] px-[18px] py-[11px] text-sm font-extrabold leading-none transition hover:-translate-y-0.5;
+    }
+
+    .btn-red {
+        @apply bg-brand-red text-white shadow-[0_8px_18px_rgba(233,29,51,.22)] hover:bg-brand-redDark;
+    }
+
+    .btn-light {
+        @apply border border-slate-300 bg-slate-50 text-slate-900;
+    }
+
+    .btn-white {
+        @apply border border-slate-300 bg-white text-slate-900 shadow-sm;
+    }
+
+    .section-padding {
+        @apply py-[70px];
+    }
+
+    .section-alt {
+        @apply bg-[#f3f5f7];
+    }
+
+    .card-hover {
+        @apply transition hover:-translate-y-1 hover:shadow-soft;
+    }
+
+    .grid-3 {
+        @apply grid grid-cols-1 gap-[22px] md:grid-cols-2 lg:grid-cols-3;
+    }
+
+    .grid-4 {
+        @apply grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4;
+    }
+}
