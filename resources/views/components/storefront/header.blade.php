@@ -4,14 +4,12 @@
     aria-label="Site header"
 >
     <div class="site-container grid grid-cols-[auto_1fr_auto] items-center gap-4 py-4 lg:gap-6">
-        <a href="{{ route('home') }}" class="flex items-center gap-3 font-display text-xl font-bold uppercase leading-none tracking-tight text-brand-ink lg:text-2xl">
-            <span class="grid h-8 w-8 place-items-center rounded-lg border-[3px] border-brand-red text-brand-red">
-                □
+        <a href="{{ route('home') }}" class="flex items-center gap-3 whitespace-nowrap font-display text-xl font-bold uppercase leading-none tracking-tight text-brand-ink lg:text-2xl" aria-label="{{ config('storefront.name') }} home">
+            <span class="relative grid h-[34px] w-[34px] place-items-center rounded-[9px] border-[3px] border-brand-red text-brand-red">
+                ✓
+                <span class="absolute -top-2 h-1.5 w-3.5 rounded-t-lg border-2 border-b-0 border-current" aria-hidden="true"></span>
             </span>
-
-            <span>
-                NextPlay <span class="text-brand-red">Sportswear</span>
-            </span>
+            <span>NextPlay <span class="text-brand-red">Sportswear</span></span>
         </a>
 
         <form
@@ -27,8 +25,9 @@
                     <path d="m21 21-4.3-4.3"></path>
                 </svg>
             </span>
-
+            <label for="site-product-search" class="sr-only">Search products</label>
             <input
+                id="site-product-search"
                 type="search"
                 name="q"
                 value="{{ request('q') }}"
@@ -38,23 +37,16 @@
         </form>
 
         <div class="flex items-center justify-end gap-2">
-            <a href="{{ route('products.index') }}" class="btn btn-white hidden lg:inline-flex">
-                Shop Now
-            </a>
+            <a href="{{ route('products.index') }}" class="btn btn-white hidden lg:inline-flex">Shop Now</a>
+            <a href="{{ route('quote.request') }}" class="btn btn-red hidden lg:inline-flex">Request Quote</a>
 
-            <a href="{{ route('quote.request') }}" class="btn btn-red hidden lg:inline-flex">
-                Request Quote
-            </a>
-
-            @auth
-                <a href="{{ route('account.dashboard') }}" class="btn btn-white hidden xl:inline-flex">
-                    My Account
-                </a>
+            @if(auth('admin')->check())
+                <a href="{{ route('admin.dashboard') }}" class="btn btn-white hidden xl:inline-flex">Admin Dashboard</a>
+            @elseif(auth('web')->check())
+                <a href="{{ route('account.dashboard') }}" class="btn btn-white hidden xl:inline-flex">My Account</a>
             @else
-                <a href="{{ route('login') }}" class="btn btn-white hidden xl:inline-flex">
-                    Login
-                </a>
-            @endauth
+                <a href="{{ route('login') }}" class="btn btn-white hidden xl:inline-flex">Login</a>
+            @endif
 
             <a href="{{ route('cart.index') }}" class="btn btn-light relative">
                 Cart
@@ -76,44 +68,33 @@
     </div>
 
     <div class="border-t border-slate-200">
-        <nav
-            class="site-container hidden items-center justify-between gap-4 overflow-x-auto py-3 text-sm font-extrabold text-slate-600 lg:flex"
-            aria-label="Main navigation"
-        >
-            <x-storefront.nav-link href="{{ route('home') }}" :active="request()->routeIs('home')">Home</x-storefront.nav-link>
-            <x-storefront.nav-link href="{{ route('products.index') }}">Shop by Sport</x-storefront.nav-link>
-            <x-storefront.nav-link href="{{ route('products.index') }}">Team Uniforms</x-storefront.nav-link>
-            <x-storefront.nav-link href="{{ route('products.index') }}">Custom Jerseys</x-storefront.nav-link>
-            <x-storefront.nav-link href="{{ route('products.index') }}">Apparel</x-storefront.nav-link>
-            <x-storefront.nav-link href="{{ route('products.index') }}">Accessories</x-storefront.nav-link>
-            <x-storefront.nav-link href="{{ route('quote.request') }}">Bulk Quote</x-storefront.nav-link>
-            <x-storefront.nav-link href="{{ route('orders.track') }}">Track Order</x-storefront.nav-link>
+        <nav class="site-container hidden items-center gap-3 py-2 text-sm font-extrabold text-slate-600 lg:flex" aria-label="Main navigation">
+            @forelse(($storefrontMenus['header'] ?? collect()) as $item)
+                <x-storefront.menu.desktop-item :item="$item" />
+            @empty
+                <x-storefront.nav-link href="{{ route('home') }}" :active="request()->routeIs('home')">Home</x-storefront.nav-link>
+                <x-storefront.nav-link href="{{ route('categories.index') }}">Shop Categories</x-storefront.nav-link>
+                <x-storefront.nav-link href="{{ route('products.index') }}">All Products</x-storefront.nav-link>
+                <x-storefront.nav-link href="{{ route('quote.request') }}">Bulk Quote</x-storefront.nav-link>
+            @endforelse
         </nav>
-
-        <nav
-            x-cloak
-            x-show="open"
-            x-transition
-            class="site-container grid gap-1 py-3 text-sm font-extrabold text-slate-700 lg:hidden"
-            aria-label="Mobile navigation"
-        >
-            <a class="rounded-lg px-2 py-2 hover:bg-slate-100" href="{{ route('home') }}">Home</a>
-            <a class="rounded-lg px-2 py-2 hover:bg-slate-100" href="{{ route('products.index') }}">Shop by Sport</a>
-            <a class="rounded-lg px-2 py-2 hover:bg-slate-100" href="{{ route('products.index') }}">Team Uniforms</a>
-            <a class="rounded-lg px-2 py-2 hover:bg-slate-100" href="{{ route('products.index') }}">Custom Jerseys</a>
-            <a class="rounded-lg px-2 py-2 hover:bg-slate-100" href="{{ route('products.index') }}">Apparel</a>
-            <a class="rounded-lg px-2 py-2 hover:bg-slate-100" href="{{ route('quote.request') }}">Bulk Quote</a>
-            <a class="rounded-lg px-2 py-2 hover:bg-slate-100" href="{{ route('orders.track') }}">Track Order</a>
-            @auth
-                <a class="rounded-lg px-2 py-2 hover:bg-slate-100" href="{{ route('account.dashboard') }}">My Account</a>
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="w-full rounded-lg px-2 py-2 text-left hover:bg-slate-100">Logout</button>
-                </form>
-            @else
-                <a class="rounded-lg px-2 py-2 hover:bg-slate-100" href="{{ route('login') }}">Login</a>
-                <a class="rounded-lg px-2 py-2 hover:bg-slate-100" href="{{ route('register') }}">Create Account</a>
-            @endauth
+        <nav x-cloak x-show="open" x-transition @click.outside="open=false" class="site-container max-h-[calc(100vh-130px)] overflow-y-auto py-3 text-sm text-slate-700 lg:hidden" aria-label="Mobile navigation">
+            @forelse(($storefrontMenus['header'] ?? collect()) as $item)<x-storefront.menu.mobile-item :item="$item" />@empty<a class="block rounded-lg px-2 py-2" href="{{ route('categories.index') }}">Shop Categories</a><a class="block rounded-lg px-2 py-2" href="{{ route('products.index') }}">All Products</a>@endforelse
+            <div class="mt-3 border-t border-slate-200 pt-3">
+                <a class="block rounded-lg px-2 py-2" href="{{ route('orders.track') }}">Track Order</a>
+                <a class="block rounded-lg px-2 py-2" href="{{ route('faq') }}">Help Center</a>
+                <a class="block rounded-lg px-2 py-2" href="{{ route('contact') }}">Contact Us</a>
+                @if(auth('admin')->check())
+                    <a class="block rounded-lg px-2 py-2 font-bold text-brand-blue" href="{{ route('admin.dashboard') }}">Admin Dashboard</a>
+                    <form method="POST" action="{{ route('admin.logout') }}">@csrf<button class="w-full rounded-lg px-2 py-2 text-left">Admin Logout</button></form>
+                @elseif(auth('web')->check())
+                    <a class="block rounded-lg px-2 py-2" href="{{ route('account.dashboard') }}">My Account</a>
+                    <form method="POST" action="{{ route('logout') }}">@csrf<button class="w-full rounded-lg px-2 py-2 text-left">Logout</button></form>
+                @else
+                    <a class="block rounded-lg px-2 py-2" href="{{ route('login') }}">Login</a>
+                    <a class="block rounded-lg px-2 py-2" href="{{ route('register') }}">Create Account</a>
+                @endif
+            </div>
         </nav>
     </div>
 </header>

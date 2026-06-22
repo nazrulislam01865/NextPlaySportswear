@@ -12,4 +12,6 @@ return [
     'url' => env('APP_URL', 'https://example.com'),
 
     'logo' => env('STOREFRONT_LOGO', '/images/logo.png'),
+
+    'slider_cache_seconds' => (int) env('STOREFRONT_SLIDER_CACHE_SECONDS', 600),
 ];

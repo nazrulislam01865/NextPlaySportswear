@@ -81,6 +81,7 @@
     .logo-icon{width:34px;height:34px;border:3px solid var(--red);border-radius:9px;display:grid;place-items:center;color:var(--red);position:relative;flex:0 0 auto}.logo-icon:before{content:"";position:absolute;width:14px;height:6px;border:2px solid currentColor;border-bottom:0;top:-7px;border-radius:8px 8px 0 0}.logo span span{color:var(--red)}
     .search{position:relative;max-width:450px;width:100%;justify-self:center}.search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#64748b}.search input{width:100%;height:42px;border:1px solid #d6dde7;border-radius:11px;padding:0 16px 0 42px;color:#334155;background:#f8fafc}.search input::placeholder{color:#94a3b8}.head-actions{display:flex;gap:12px;align-items:center}.btn{border:0;border-radius:10px;padding:11px 18px;font-weight:800;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:.18s ease;line-height:1}.btn:hover{transform:translateY(-1px)}.btn-red{background:var(--red);color:#fff;box-shadow:0 8px 18px rgba(233,29,51,.22)}.btn-red:hover{background:var(--red-2)}.btn-white{background:#fff;color:#111827;border:1px solid #d6dde7;box-shadow:0 4px 10px rgba(15,23,42,.04)}.btn-navy{background:var(--navy);color:#fff}.btn-light{background:#f8fafc;color:#172033;border:1px solid #d6dde7}.menu-toggle{display:none;background:#fff;border:1px solid #d6dde7;border-radius:10px;width:42px;height:42px;align-items:center;justify-content:center;color:#172033}.menu-toggle span,.menu-toggle span:before,.menu-toggle span:after{width:18px;height:2px;background:currentColor;display:block;border-radius:10px;content:""}.menu-toggle span:before{transform:translateY(-6px)}.menu-toggle span:after{transform:translateY(4px)}
     .navrow{border-top:1px solid var(--line)}.nav{display:flex;align-items:center;justify-content:space-between;gap:14px;overflow-x:auto;scrollbar-width:none}.nav::-webkit-scrollbar{display:none}.nav a{font-weight:800;font-size:14px;color:#5b6574;white-space:nowrap;padding:13px 0}.nav a:hover,.nav a.active{color:var(--red)}
+    .home-nav-item{position:relative;flex:0 0 auto}.home-nav-item>a{display:flex;align-items:center;gap:5px}.home-nav-dropdown{position:absolute;left:0;top:calc(100% - 2px);z-index:50;display:none;min-width:650px;border:1px solid var(--line);border-radius:14px;background:#fff;padding:18px;box-shadow:var(--shadow)}.home-nav-item:hover .home-nav-dropdown,.home-nav-item:focus-within .home-nav-dropdown{display:block}.home-nav-view-all{display:block!important;border-bottom:1px solid var(--line);padding:0 0 12px!important;color:var(--red)!important}.home-nav-columns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;padding-top:14px}.home-nav-child>a{display:block;padding:3px 0!important;color:#172033!important}.home-nav-child>a:hover{color:var(--red)!important}.home-nav-sublist{margin-top:5px;border-left:1px solid #dbe2ea;padding-left:10px}.home-nav-sublist .home-nav-child>a{font-size:12px!important;font-weight:700!important;color:#64748b!important}
     .hero{background:#f2f4f7;border-bottom:1px solid #e6ebf1}.hero .container{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,520px);gap:58px;align-items:center;min-height:520px;padding:76px 0 70px}.eyebrow{display:inline-flex;gap:8px;align-items:center;color:var(--red);font-weight:900;font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px}.eyebrow:before{content:"";width:26px;height:3px;background:var(--red);border-radius:10px}.hero h1{font-family:var(--display);font-size:clamp(44px,6.1vw,68px);line-height:.95;letter-spacing:-.035em;text-transform:uppercase;margin:0 0 22px;color:#111827;max-width:620px}.hero p{font-size:19px;color:#627084;max-width:610px;margin:0 0 22px}.checklist{display:grid;gap:10px;margin:24px 0 30px;padding:0;list-style:none}.checklist li{display:flex;align-items:flex-start;gap:11px;color:#111827;font-weight:500}.tick{width:18px;height:18px;border:2px solid var(--red);border-radius:50%;margin-top:3px;position:relative;flex:0 0 auto}.tick:after{content:"";position:absolute;width:7px;height:4px;border-left:2px solid var(--red);border-bottom:2px solid var(--red);transform:rotate(-45deg);left:4px;top:4px}.hero-ctas{display:flex;gap:12px;flex-wrap:wrap}.trustline{margin-top:18px;color:#64748b;font-size:13px}.badges{display:flex;gap:14px;margin-top:28px;flex-wrap:wrap}.badge{display:flex;align-items:center;gap:9px;padding:11px 14px;background:#fff;border:1px solid #dbe2ea;border-radius:10px;box-shadow:0 5px 14px rgba(15,23,42,.06);font-weight:800;font-size:13px;color:#172033}.badge svg{color:var(--navy)}
     .hero-card{position:relative}.hero-frame{background:#fff;border-radius:16px;padding:18px;box-shadow:var(--shadow);min-height:344px;display:grid;place-items:center}.hero-frame img{width:100%;height:360px;object-fit:cover;border-radius:12px}.hero-stat{position:absolute;left:-24px;bottom:-18px;background:var(--navy);color:#fff;border-radius:12px;padding:18px 22px;box-shadow:0 18px 30px rgba(13,37,69,.22)}.hero-stat strong{font-family:var(--display);font-size:28px;line-height:.9;display:block;text-transform:uppercase}.hero-stat span{font-size:12px;font-weight:700;opacity:.9}
     section{padding:70px 0}.section-alt{background:#f3f5f7}.section-dark{background:var(--navy);color:#fff}.section-head{text-align:center;margin-bottom:34px}.section-head h2{font-family:var(--display);font-size:clamp(28px,4vw,42px);line-height:1.05;text-transform:uppercase;margin:0 0 10px;color:#111827}.section-head p{margin:0 auto;color:#64748b;max-width:650px}.section-dark .section-head h2,.section-dark .section-head p{color:#fff}.section-dark .section-head p{opacity:.82}.small-red{color:var(--red);font-weight:900;text-transform:uppercase;font-size:12px;letter-spacing:.08em}
@@ -94,8 +95,8 @@
     .final-cta{background:var(--navy);color:#fff;text-align:center;padding:66px 0}.final-cta h2{font-family:var(--display);font-size:42px;text-transform:uppercase;margin:0 0 10px}.final-cta p{opacity:.82;margin:0 auto 22px;max-width:620px}.contacts{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;font-size:13px;opacity:.9;margin-top:18px}.footer{background:#0c203c;color:#cbd5e1;padding:48px 0 28px}.footer-grid{display:grid;grid-template-columns:1.5fr repeat(4,1fr);gap:28px}.footer h3,.footer h4{color:#fff;margin:0 0 12px}.footer .logo{font-size:20px;color:#fff;margin-bottom:12px}.footer p,.footer li{font-size:13px;color:#cbd5e1}.footer ul{list-style:none;padding:0;margin:0;display:grid;gap:7px}.footer a:hover{color:#fff;text-decoration:underline}.foot-bottom{border-top:1px solid rgba(255,255,255,.12);margin-top:32px;padding-top:18px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:#94a3b8;font-size:12px}
 
     /* Full-width homepage slider added after the menubar */
-    .promo-slider{position:relative;overflow:hidden;background:var(--navy-2);border-bottom:1px solid #e6ebf1}.promo-track{position:relative;height:500px}.promo-slide{position:absolute;inset:0;opacity:0;visibility:hidden;transition:opacity .55s ease,visibility .55s ease}.promo-slide.active{opacity:1;visibility:visible}.promo-slide img{width:100%;height:100%;object-fit:cover}.promo-slide:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(13,37,69,.90),rgba(13,37,69,.65),rgba(13,37,69,.18))}.promo-content{position:absolute;z-index:2;left:50%;top:50%;transform:translate(-50%,-50%);width:min(var(--max),calc(100% - 32px));color:#fff}.promo-content span{display:inline-flex;margin-bottom:12px;color:#fff;background:rgba(233,29,51,.95);border-radius:999px;padding:7px 11px;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.promo-content h2{font-family:var(--display);font-size:clamp(38px,5.8vw,64px);line-height:.96;text-transform:uppercase;letter-spacing:-.035em;margin:0 0 15px;max-width:680px}.promo-content p{font-size:18px;max-width:590px;color:rgba(255,255,255,.86);margin:0 0 24px}.promo-actions{display:flex;gap:12px;flex-wrap:wrap}.promo-arrow{position:absolute;z-index:3;top:50%;transform:translateY(-50%);width:42px;height:42px;border:0;border-radius:999px;background:rgba(255,255,255,.92);color:var(--navy);font-size:26px;line-height:1;display:grid;place-items:center;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.15)}.promo-arrow:hover{background:#fff}.promo-prev{left:18px}.promo-next{right:18px}.promo-dots{position:absolute;z-index:3;left:0;right:0;bottom:18px;display:flex;justify-content:center;gap:8px}.promo-dot{width:10px;height:10px;border-radius:999px;border:0;background:rgba(255,255,255,.65);cursor:pointer;transition:.18s}.promo-dot.active{width:30px;background:var(--red)}
-    @media (max-width:980px){.head-main{grid-template-columns:auto 1fr auto}.search{display:none}.head-actions .btn-white,.head-actions .btn-red{display:none}.menu-toggle{display:flex}.navrow{display:none}.navrow.open{display:block}.navrow.open .nav{display:grid;grid-template-columns:1fr;padding:12px 0}.navrow.open .nav a{padding:10px 2px}.hero .container{grid-template-columns:1fr;gap:32px;padding:54px 0}.hero-card{max-width:620px}.grid-4{grid-template-columns:repeat(2,1fr)}.grid-3,.why-grid,.testimonial-grid,.use-grid{grid-template-columns:1fr 1fr}.grid-6{grid-template-columns:repeat(3,1fr)}.design{grid-template-columns:1fr}.bulk .container{grid-template-columns:1fr}.process{grid-template-columns:1fr 1fr 1fr}.process-step:after{display:none}.footer-grid{grid-template-columns:1fr 1fr}.gear-list{grid-template-columns:1fr 1fr}.option-grid{grid-template-columns:1fr 1fr}}
+    .promo-slider{position:relative;overflow:hidden;background:var(--navy-2);border-bottom:1px solid #e6ebf1}.promo-track{position:relative;height:500px}.promo-slide{position:absolute;inset:0;opacity:0;visibility:hidden;transition:opacity .55s ease,visibility .55s ease}.promo-slide.active{opacity:1;visibility:visible}.promo-slide img{width:100%;height:100%;object-fit:cover}.promo-overlay{position:absolute;inset:0}.promo-content{position:absolute;z-index:2;left:50%;top:50%;transform:translate(-50%,-50%);width:min(var(--max),calc(100% - 32px));color:#fff}.promo-copy{max-width:680px}.promo-copy.position-center{margin-inline:auto}.promo-copy.position-right{margin-left:auto}.promo-copy.align-center{text-align:center}.promo-copy.align-center p{margin-left:auto;margin-right:auto}.promo-copy.align-center .promo-actions{justify-content:center}.promo-copy.align-right{text-align:right}.promo-copy.align-right p{margin-left:auto}.promo-copy.align-right .promo-actions{justify-content:flex-end}.promo-copy.theme-dark{color:#111827}.promo-copy.theme-dark p{color:rgba(17,24,39,.84)}.promo-content .promo-eyebrow{display:inline-flex;margin-bottom:12px;color:#fff;background:rgba(233,29,51,.95);border-radius:999px;padding:7px 11px;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.promo-content h2{font-family:var(--display);font-size:clamp(38px,5.8vw,64px);line-height:.96;text-transform:uppercase;letter-spacing:-.035em;margin:0 0 15px;max-width:680px}.promo-content p{font-size:18px;max-width:590px;color:rgba(255,255,255,.86);margin:0 0 24px}.promo-actions{display:flex;gap:12px;flex-wrap:wrap}.promo-arrow{position:absolute;z-index:3;top:50%;transform:translateY(-50%);width:42px;height:42px;border:0;border-radius:999px;background:rgba(255,255,255,.92);color:var(--navy);font-size:26px;line-height:1;display:grid;place-items:center;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.15)}.promo-arrow:hover{background:#fff}.promo-prev{left:18px}.promo-next{right:18px}.promo-dots{position:absolute;z-index:3;left:0;right:0;bottom:18px;display:flex;justify-content:center;gap:8px}.promo-dot{width:10px;height:10px;border-radius:999px;border:0;background:rgba(255,255,255,.65);cursor:pointer;transition:.18s}.promo-dot.active{width:30px;background:var(--red)}
+    @media (max-width:980px){.head-main{grid-template-columns:auto 1fr auto}.search{display:none}.head-actions .btn-white,.head-actions .btn-red{display:none}.menu-toggle{display:flex}.navrow{display:none}.navrow.open{display:block}.navrow.open .nav{display:grid;grid-template-columns:1fr;padding:12px 0}.navrow.open .nav a{padding:10px 2px}.home-nav-item{width:100%}.home-nav-dropdown{position:static;display:block;min-width:0;border:0;border-left:2px solid #e5e7eb;border-radius:0;box-shadow:none;padding:0 0 8px 14px}.home-nav-columns{grid-template-columns:1fr;padding-top:0}.home-nav-view-all{padding:6px 0!important}.home-nav-sublist{margin-left:8px}.hero .container{grid-template-columns:1fr;gap:32px;padding:54px 0}.hero-card{max-width:620px}.grid-4{grid-template-columns:repeat(2,1fr)}.grid-3,.why-grid,.testimonial-grid,.use-grid{grid-template-columns:1fr 1fr}.grid-6{grid-template-columns:repeat(3,1fr)}.design{grid-template-columns:1fr}.bulk .container{grid-template-columns:1fr}.process{grid-template-columns:1fr 1fr 1fr}.process-step:after{display:none}.footer-grid{grid-template-columns:1fr 1fr}.gear-list{grid-template-columns:1fr 1fr}.option-grid{grid-template-columns:1fr 1fr}}
     @media (max-width:640px){body{font-size:14px}.container{width:min(100% - 24px,var(--max))}.topbar .container{display:block;text-align:center}.toplinks{justify-content:center;margin-top:6px}.head-main{padding:14px 0}.logo{font-size:20px}.logo-icon{width:30px;height:30px}.hero .container{padding:42px 0}.hero h1{font-size:42px}.hero p{font-size:16px}.hero-frame img{height:260px}.hero-stat{left:12px;bottom:-20px}.grid-3,.grid-4,.grid-6,.why-grid,.testimonial-grid,.use-grid,.gear-list{grid-template-columns:1fr}.image-card img,.product-card img{height:210px}.process{grid-template-columns:1fr}.bestfor,.option-grid{grid-template-columns:1fr}.hero-ctas .btn{width:100%}.design .mockup img{height:300px}.bulk h2,.text-block h2,.final-cta h2,.support-card h2{font-size:34px}.section-head h2{font-size:32px}.footer-grid{grid-template-columns:1fr}.contacts{display:grid}.toplinks a:first-child{display:none}}
 
     @media (max-width:640px){.promo-track{height:430px}.promo-content h2{font-size:38px}.promo-content p{font-size:15px}.promo-actions .btn{width:100%}.promo-arrow{width:36px;height:36px;font-size:22px}.promo-prev{left:10px}.promo-next{right:10px}}
@@ -113,10 +114,10 @@
   <!-- Header / Navigation -->
   <header class="header" aria-label="Site header">
     <div class="container head-main">
-      <a href="#" class="logo" aria-label="NextPlay Sportswear home"><span class="logo-icon" aria-hidden="true">□</span><span>NEXTPLAY <span>SPORTSWEAR</span></span></a>
+      <a href="{{ route('home') }}" class="logo" aria-label="NextPlay Sportswear home"><span class="logo-icon" aria-hidden="true">□</span><span>NEXTPLAY <span>SPORTSWEAR</span></span></a>
       <form class="search" method="GET" action="{{ route('products.index') }}" role="search" aria-label="Product search">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
-        <input type="search" placeholder="Search jerseys, uniforms, caps, bags..." aria-label="Search jerseys, uniforms, caps, bags" />
+        <input type="search" name="q" placeholder="Search jerseys, uniforms, caps, bags..." aria-label="Search jerseys, uniforms, caps, bags" />
       </form>
       <div class="head-actions">
         <a class="btn btn-white" href="#products">Shop Now</a>
@@ -126,56 +127,22 @@
     </div>
     <div class="navrow" id="mobileNav">
       <nav class="container nav" aria-label="Main navigation">
-        <a class="active" href="#">Home</a>
-        <a href="#sports">Shop by Sport</a>
-        <a href="#categories">Team Uniforms</a>
-        <a href="#jersey">Custom Jerseys</a>
-        <a href="#products">Apparel</a>
-        <a href="#gear">Accessories</a>
-        <a href="#bulk">Corporate & Events</a>
-        <a href="#process">How It Works</a>
-        <a href="#bulk">Bulk Quote</a>
+        <a class="active" href="{{ route('home') }}">Home</a>
+        @forelse($navigation as $item)
+          <x-storefront.home-menu-item :item="$item" />
+        @empty
+          <a href="{{ route('categories.index') }}">Shop Categories</a>
+          <a href="{{ route('products.index') }}">Products</a>
+          <a href="{{ route('quote.request') }}">Bulk Quote</a>
+        @endforelse
       </nav>
     </div>
   </header>
 
   <main>
 
-    <!-- Full Width Image Slider After Menubar -->
-    <section class="promo-slider" aria-label="Featured sportswear promotions">
-      <div class="promo-track" id="promoSlider">
-        <article class="promo-slide active">
-          <img loading="eager" src="https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=1600&q=80" alt="Custom jerseys and sportswear for team order">
-          <div class="promo-content">
-            <span>Custom jerseys USA</span>
-            <h2>Build Your Team Jersey with Name, Number, and Logo</h2>
-            <p>Choose colors, add player details, upload your artwork, and prepare your order for teams, schools, clubs, and fans.</p>
-            <div class="promo-actions"><a class="btn btn-red" href="#products">Shop Custom Jerseys</a><a class="btn btn-white" href="#bulk">Request Team Quote</a></div>
-          </div>
-        </article>
-        <article class="promo-slide">
-          <img loading="lazy" src="https://images.unsplash.com/photo-1551958219-acbc608c6377?auto=format&fit=crop&w=1600&q=80" alt="Custom team uniforms hanging in locker room">
-          <div class="promo-content">
-            <span>Team uniforms</span>
-            <h2>Uniform Sets for Schools, Leagues, and Clubs</h2>
-            <p>Order full team sets with size lists, player names, numbers, colors, and design support before production.</p>
-            <div class="promo-actions"><a class="btn btn-red" href="#categories">Shop Uniforms</a><a class="btn btn-white" href="#process">How It Works</a></div>
-          </div>
-        </article>
-        <article class="promo-slide">
-          <img loading="lazy" src="https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=1600&q=80" alt="Players on field for sports team event">
-          <div class="promo-content">
-            <span>Bulk orders</span>
-            <h2>Bulk Sportswear for Events, Businesses, and Teams</h2>
-            <p>Get pricing support for larger quantities, promotional products, caps, bags, hoodies, jerseys, and event apparel.</p>
-            <div class="promo-actions"><a class="btn btn-red" href="#bulk">Request Bulk Quote</a><a class="btn btn-white" href="#gear">View Team Gear</a></div>
-          </div>
-        </article>
-        <button class="promo-arrow promo-prev" type="button" aria-label="Previous slide">‹</button>
-        <button class="promo-arrow promo-next" type="button" aria-label="Next slide">›</button>
-        <div class="promo-dots" aria-label="Slider controls"><button class="promo-dot active" type="button" aria-label="Go to slide 1"></button><button class="promo-dot" type="button" aria-label="Go to slide 2"></button><button class="promo-dot" type="button" aria-label="Go to slide 3"></button></div>
-      </div>
-    </section>
+    <!-- Admin-managed reusable homepage slider -->
+    <x-storefront.homepage-slider :slides="$slides" />
 
     <!-- Full Width Hero Banner -->
     <section class="hero" aria-labelledby="hero-title">
@@ -213,14 +180,13 @@
     <!-- Quick Category Entry -->
     <section id="categories">
       <div class="container">
-        <div class="section-head"><span class="small-red">Find it fast</span><h2>What Are You Looking For?</h2><p>Start with a category and find the right product faster.</p></div>
+        <div class="section-head"><span class="small-red">Find it fast</span><h2>What Are You Looking For?</h2><p>Start with an admin-managed category and find the right product faster.</p></div>
         <div class="grid-3">
-          <article class="image-card"><img loading="lazy" src="https://images.unsplash.com/photo-1551958219-acbc608c6377?auto=format&fit=crop&w=700&q=80" alt="Custom team uniforms hanging in a locker room"><div class="card-body"><h3>Custom Team Uniforms</h3><p>Full team sets for game day, travel, practice, and league play.</p><a class="link-red" href="#products">Shop Now</a></div></article>
-          <article class="image-card"><img loading="lazy" src="https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=700&q=80" alt="Custom jerseys on display"><div class="card-body"><h3>Custom Jerseys</h3><p>Names, numbers, logos, colors, and player details.</p><a class="link-red" href="#jersey">Customize Yours</a></div></article>
-          <article class="image-card"><img loading="lazy" src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=700&q=80" alt="Sports hoodie on a clean background"><div class="card-body"><h3>Hoodies & Outerwear</h3><p>Warm team gear for players, coaches, fans, and staff.</p><a class="link-red" href="#products">Shop Now</a></div></article>
-          <article class="image-card"><img loading="lazy" src="https://images.unsplash.com/photo-1521369909029-2afed882baee?auto=format&fit=crop&w=700&q=80" alt="Custom cap with embroidered logo"><div class="card-body"><h3>Caps & Headwear</h3><p>Custom caps and hats for teams, events, and brand orders.</p><a class="link-red" href="#gear">Shop Now</a></div></article>
-          <article class="image-card"><img loading="lazy" src="https://images.unsplash.com/photo-1622560480654-d96214fdc887?auto=format&fit=crop&w=700&q=80" alt="Sports duffel bag for team travel"><div class="card-body"><h3>Sports Bags</h3><p>Team bags, gym bags, and travel-ready gear options.</p><a class="link-red" href="#gear">Shop Now</a></div></article>
-          <article class="image-card"><img loading="lazy" src="https://images.unsplash.com/photo-1526045612212-70caf35c14df?auto=format&fit=crop&w=700&q=80" alt="Promotional items and event apparel on a table"><div class="card-body"><h3>Promotional Products</h3><p>Branded apparel and giveaway items for schools and events.</p><a class="link-red" href="#bulk">Request Bulk Quote</a></div></article>
+          @forelse($categories as $category)
+            <article class="image-card"><img loading="lazy" src="{{ $category['image'] }}" alt="{{ $category['alt'] }}"><div class="card-body"><h3>{{ $category['title'] }}</h3><p>{{ $category['description'] }}</p><a class="link-red" href="{{ $category['url'] }}">{{ $category['link_label'] }}</a></div></article>
+          @empty
+            <article class="image-card"><div class="card-body"><h3>Categories are being prepared</h3><p>Publish featured categories from the admin catalog to display them here.</p><a class="link-red" href="{{ route('categories.index') }}">Browse Categories</a></div></article>
+          @endforelse
         </div>
       </div>
     </section>
@@ -318,16 +284,13 @@
     <!-- Featured Products -->
     <section id="products" class="section-alt">
       <div class="container">
-        <div class="section-head"><span class="small-red">Shop online</span><h2>Featured Products</h2><p>Popular picks for teams, players, fans, and event organizers.</p></div>
+        <div class="section-head"><span class="small-red">Shop online</span><h2>Featured Products</h2><p>Products marked as featured by the admin appear here automatically.</p></div>
         <div class="grid-4">
-          <article class="product-card"><img loading="lazy" src="https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=650&q=80" alt="Custom football jersey"><div class="product-info"><span class="tag red">Customizable</span><h3>Custom Football Jersey with Name & Number</h3><div class="price-row"><span class="price">From $39</span><span class="stars">★★★★★</span></div><a class="btn btn-light" href="{{ route('products.show', 'custom-football-jersey-name-number') }}">View Product</a></div></article>
-          <article class="product-card"><img loading="lazy" src="https://images.unsplash.com/photo-1533236897111-3e94666b2edf?auto=format&fit=crop&w=650&q=80" alt="Baseball uniform set"><div class="product-info"><span class="tag navy">Team Order</span><h3>Baseball Uniform Set for Teams</h3><div class="price-row"><span class="price">Request Quote</span><span class="stars">★★★★★</span></div><a class="btn btn-light" href="{{ route('products.show', 'baseball-uniform-set-for-teams') }}">View Product</a></div></article>
-          <article class="product-card"><img loading="lazy" src="https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=650&q=80" alt="Custom basketball jersey"><div class="product-info"><span class="tag red">Customizable</span><h3>Custom Basketball Jersey</h3><div class="price-row"><span class="price">From $34</span><span class="stars">★★★★★</span></div><a class="btn btn-light" href="{{ route('products.show', 'custom-basketball-jersey') }}">View Product</a></div></article>
-          <article class="product-card"><img loading="lazy" src="https://images.unsplash.com/photo-1553778263-73a83bab9b0c?auto=format&fit=crop&w=650&q=80" alt="Sublimated soccer kit"><div class="product-info"><span class="tag navy">Team Order</span><h3>Sublimated Soccer Kit</h3><div class="price-row"><span class="price">Request Quote</span><span class="stars">★★★★★</span></div><a class="btn btn-light" href="{{ route('products.show', 'sublimated-soccer-kit-for-teams') }}">View Product</a></div></article>
-          <article class="product-card"><img loading="lazy" src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=650&q=80" alt="Custom team hoodie"><div class="product-info"><span class="tag">Bulk Available</span><h3>Custom Team Hoodie</h3><div class="price-row"><span class="price">From $45</span><span class="stars">★★★★★</span></div><a class="btn btn-light" href="{{ route('products.show', 'custom-team-hoodie') }}">View Product</a></div></article>
-          <article class="product-card"><img loading="lazy" src="https://images.unsplash.com/photo-1521369909029-2afed882baee?auto=format&fit=crop&w=650&q=80" alt="Embroidered cap"><div class="product-info"><span class="tag red">Customizable</span><h3>Custom Embroidered Cap</h3><div class="price-row"><span class="price">From $18</span><span class="stars">★★★★★</span></div><a class="btn btn-light" href="{{ route('products.show', 'custom-embroidered-cap') }}">View Product</a></div></article>
-          <article class="product-card"><img loading="lazy" src="https://images.unsplash.com/photo-1622560480654-d96214fdc887?auto=format&fit=crop&w=650&q=80" alt="Sports duffel bag"><div class="product-info"><span class="tag">Bulk Available</span><h3>Personalized Sports Duffel Bag</h3><div class="price-row"><span class="price">From $32</span><span class="stars">★★★★★</span></div><a class="btn btn-light" href="{{ route('products.show', 'personalized-sports-duffel-bag') }}">View Product</a></div></article>
-          <article class="product-card"><img loading="lazy" src="https://images.unsplash.com/photo-1599058917212-d750089bc07e?auto=format&fit=crop&w=650&q=80" alt="Custom fan jersey"><div class="product-info"><span class="tag red">Customizable</span><h3>Custom Fan Jersey</h3><div class="price-row"><span class="price">From $36</span><span class="stars">★★★★★</span></div><a class="btn btn-light" href="{{ route('products.show', 'custom-fan-jersey') }}">View Product</a></div></article>
+          @forelse($featuredProducts as $product)
+            <article class="product-card"><img loading="lazy" src="{{ $product['image'] }}" alt="{{ $product['alt'] }}"><div class="product-info">@if($product['tag'])<span class="tag {{ $product['tag_color'] ?? '' }}">{{ $product['tag'] }}</span>@endif<h3>{{ $product['title'] }}</h3><div class="price-row"><span class="price">{{ $product['price'] }}</span><span class="stars">★★★★★</span></div><a class="btn btn-light" href="{{ $product['url'] }}">View Product</a></div></article>
+          @empty
+            <p>No active featured products are available yet.</p>
+          @endforelse
         </div>
       </div>
     </section>
@@ -337,12 +300,11 @@
       <div class="container">
         <div class="section-head"><span class="small-red">Popular gear</span><h2>Best-Selling Team Gear</h2></div>
         <div class="gear-list">
-          <article class="gear-card"><img loading="lazy" src="https://images.unsplash.com/photo-1551958219-acbc608c6377?auto=format&fit=crop&w=300&q=80" alt="Sports uniforms"><div><h3>Sports Uniforms</h3><p>Full sets for game day.</p><a class="link-red" href="#">Shop Now</a></div></article>
-          <article class="gear-card"><img loading="lazy" src="https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=300&q=80" alt="Performance shirts"><div><h3>Performance T-Shirts</h3><p>Practice and event wear.</p><a class="link-red" href="#">Shop Now</a></div></article>
-          <article class="gear-card"><img loading="lazy" src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=300&q=80" alt="Hoodie"><div><h3>Hoodies & Outerwear</h3><p>Warm gear for teams.</p><a class="link-red" href="#">Shop Now</a></div></article>
-          <article class="gear-card"><img loading="lazy" src="https://images.unsplash.com/photo-1599058917212-d750089bc07e?auto=format&fit=crop&w=300&q=80" alt="Fan jerseys"><div><h3>Fan Jerseys</h3><p>Personalized supporter gear.</p><a class="link-red" href="#">Customize Yours</a></div></article>
-          <article class="gear-card"><img loading="lazy" src="https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=300&q=80" alt="Drawstring bags"><div><h3>Drawstring Bags</h3><p>Simple event and team bags.</p><a class="link-red" href="#">Shop Now</a></div></article>
-          <article class="gear-card"><img loading="lazy" src="https://images.unsplash.com/photo-1521369909029-2afed882baee?auto=format&fit=crop&w=300&q=80" alt="Custom caps"><div><h3>Custom Caps</h3><p>Logo hats for every order.</p><a class="link-red" href="#">Customize Yours</a></div></article>
+          @forelse($categories as $category)
+            <article class="gear-card"><img loading="lazy" src="{{ $category['image'] }}" alt="{{ $category['alt'] }}"><div><h3>{{ $category['short_title'] }}</h3><p>{{ $category['description'] }}</p><a class="link-red" href="{{ $category['url'] }}">{{ $category['link_label'] }}</a></div></article>
+          @empty
+            <p>No featured catalog categories are available yet.</p>
+          @endforelse
         </div>
       </div>
     </section>
@@ -350,18 +312,13 @@
     <!-- Shop by Sport -->
     <section id="sports" class="section-alt">
       <div class="container">
-        <div class="section-head"><span class="small-red">Find your sport</span><h2>Shop by Sport</h2><p>Find uniforms and gear made for your sport.</p></div>
+        <div class="section-head"><span class="small-red">Find your sport</span><h2>Shop by Sport</h2><p>Active sport categories from the admin catalog appear here automatically.</p></div>
         <div class="grid-6">
-          <article class="sport-card"><img loading="lazy" src="https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=400&q=80" alt="Football"><h3>Football</h3><a class="link-red" href="#">Shop Football Gear</a></article>
-          <article class="sport-card"><img loading="lazy" src="https://images.unsplash.com/photo-1533236897111-3e94666b2edf?auto=format&fit=crop&w=400&q=80" alt="Baseball"><h3>Baseball</h3><a class="link-red" href="#">Shop Baseball Gear</a></article>
-          <article class="sport-card"><img loading="lazy" src="https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=400&q=80" alt="Basketball"><h3>Basketball</h3><a class="link-red" href="#">Shop Basketball Gear</a></article>
-          <article class="sport-card"><img loading="lazy" src="https://images.unsplash.com/photo-1553778263-73a83bab9b0c?auto=format&fit=crop&w=400&q=80" alt="Soccer"><h3>Soccer</h3><a class="link-red" href="#">Shop Soccer Gear</a></article>
-          <article class="sport-card"><img loading="lazy" src="https://images.unsplash.com/photo-1516731415730-0c607149933a?auto=format&fit=crop&w=400&q=80" alt="Softball"><h3>Softball</h3><a class="link-red" href="#">Shop Softball Gear</a></article>
-          <article class="sport-card"><img loading="lazy" src="https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&w=400&q=80" alt="Volleyball"><h3>Volleyball</h3><a class="link-red" href="#">Shop Volleyball Gear</a></article>
-          <article class="sport-card"><img loading="lazy" src="https://images.unsplash.com/photo-1515703407324-5f753afd8be8?auto=format&fit=crop&w=400&q=80" alt="Ice Hockey"><h3>Ice Hockey</h3><a class="link-red" href="#">Shop Ice Hockey Gear</a></article>
-          <article class="sport-card"><img loading="lazy" src="https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=400&q=80" alt="Track and field"><h3>Track & Field</h3><a class="link-red" href="#">Shop Track & Field Gear</a></article>
-          <article class="sport-card"><img loading="lazy" src="https://images.unsplash.com/photo-1526676037777-05a232554f77?auto=format&fit=crop&w=400&q=80" alt="Cheerleading"><h3>Cheerleading</h3><a class="link-red" href="#">Shop Cheerleading Gear</a></article>
-          <article class="sport-card"><img loading="lazy" src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=400&q=80" alt="Training and fitness"><h3>Training & Fitness</h3><a class="link-red" href="#">Shop Training & Fitness Gear</a></article>
+          @forelse($sports as $sport)
+            <article class="sport-card"><img loading="lazy" src="{{ $sport['image'] }}" alt="{{ $sport['alt'] }}"><h3>{{ $sport['title'] }}</h3><a class="link-red" href="{{ $sport['url'] }}">Shop {{ $sport['short_title'] }} Gear</a></article>
+          @empty
+            <p>No active sport categories are available yet.</p>
+          @endforelse
         </div>
       </div>
     </section>
@@ -474,10 +431,16 @@
           <a href="{{ route('home') }}" class="logo"><span class="logo-icon" aria-hidden="true">□</span><span>NEXTPLAY <span>SPORTSWEAR</span></span></a>
           <p>Custom sportswear, apparel, accessories, and promotional products for teams, schools, businesses, and events.</p>
         </div>
-        <div><h4>Shop</h4><ul><li><a href="#">Team Uniforms</a></li><li><a href="#">Custom Jerseys</a></li><li><a href="#">Hoodies</a></li><li><a href="#">Caps</a></li><li><a href="#">Bags</a></li><li><a href="#">Promotional Products</a></li></ul></div>
-        <div><h4>Sports</h4><ul><li><a href="#">Football</a></li><li><a href="#">Baseball</a></li><li><a href="#">Basketball</a></li><li><a href="#">Soccer</a></li><li><a href="#">Softball</a></li><li><a href="#">Volleyball</a></li></ul></div>
-        <div><h4>Support</h4><ul><li><a href="#">How to Order</a></li><li><a href="#">Bulk Quote</a></li><li><a href="#">Size Guide</a></li><li><a href="#">Artwork Guidelines</a></li><li><a href="#">Shipping Information</a></li><li><a href="#">Contact Us</a></li></ul></div>
-        <div><h4>Contact</h4><ul><li>Email: [Insert email]</li><li>WhatsApp: [Insert WhatsApp number]</li><li>Business Hours: Mon–Fri</li><li><a href="#">Facebook</a></li><li><a href="#">Instagram</a></li><li><a href="#">TikTok</a></li></ul></div>
+        @php($homeFooterColumns = [['title' => 'Shop', 'key' => 'footer_shop'], ['title' => 'Sports', 'key' => 'footer_sports'], ['title' => 'Support', 'key' => 'footer_support'], ['title' => 'Company', 'key' => 'footer_company']])
+        @foreach($homeFooterColumns as $column)
+          <div><h4>{{ $column['title'] }}</h4><ul>
+            @forelse(($storefrontMenus[$column['key']] ?? collect()) as $item)
+              <li><a href="{{ $item->resolvedUrl() }}" target="{{ $item->target }}" @if($item->target === '_blank') rel="noopener noreferrer" @endif>{{ $item->label }}</a></li>
+            @empty
+              <li><a href="{{ route('categories.index') }}">Browse Categories</a></li>
+            @endforelse
+          </ul></div>
+        @endforeach
       </div>
       <div class="foot-bottom"><span>© 2026 NextPlay Sportswear. All rights reserved.</span><span>Privacy Policy · Terms · Accessibility</span></div>
     </div>
@@ -519,7 +482,7 @@
         function goPrev(){ showSlide(current - 1); }
         function restart(){
           if(timer){ clearInterval(timer); }
-          timer = setInterval(goNext, 6000);
+          if(slides.length > 1){ timer = setInterval(goNext, 6000); }
         }
         if(next){ next.addEventListener('click', function(){ goNext(); restart(); }); }
         if(prev){ prev.addEventListener('click', function(){ goPrev(); restart(); }); }

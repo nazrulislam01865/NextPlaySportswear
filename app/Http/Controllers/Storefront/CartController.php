@@ -39,7 +39,17 @@ class CartController extends Controller
 
     public function store(AddCartItemRequest $request): RedirectResponse
     {
-        $this->cart->store($request->validated());
+        $payload = $request->validated();
+
+        if ($request->hasFile('artwork_file')) {
+            $payload['artwork_path'] = $request->file('artwork_file')->store(
+                'customer-artwork/'.hash('sha256', $request->session()->getId()),
+                'local'
+            );
+            $payload['artwork_original_name'] = $request->file('artwork_file')->getClientOriginalName();
+        }
+
+        $this->cart->store($payload);
 
         return redirect()
             ->route('cart.index')

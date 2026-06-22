@@ -1,183 +1,61 @@
-@php
-    $productSchema = [
-        '@context' => 'https://schema.org',
-        '@type' => 'Product',
-        'name' => $product['title'],
-        'image' => $product['gallery'],
-        'description' => $product['summary'],
-        'sku' => $product['sku'],
-        'brand' => [
-            '@type' => 'Brand',
-            'name' => config('storefront.name'),
-        ],
-        'aggregateRating' => [
-            '@type' => 'AggregateRating',
-            'ratingValue' => $product['rating'],
-            'reviewCount' => $product['reviews_count'],
-        ],
-        'offers' => [
-            '@type' => 'Offer',
-            'priceCurrency' => 'USD',
-            'price' => $product['base_price'],
-            'availability' => 'https://schema.org/InStock',
-            'url' => $product['url'],
-        ],
-    ];
-@endphp
-
-<x-layouts.storefront :seo="$seo">
-    <script type="application/ld+json">
-        @json($productSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
-    </script>
-
-    <section class="bg-slate-50 py-6">
-        <div class="site-container text-sm font-semibold text-slate-500">
-            <a href="{{ route('home') }}" class="hover:text-brand-red">Home</a>
-            <span class="mx-2">/</span>
-            <a href="{{ route('products.index') }}" class="hover:text-brand-red">Products</a>
-            <span class="mx-2">/</span>
-            <span class="text-brand-ink">{{ $product['short_title'] }}</span>
-        </div>
-    </section>
-
-    <section class="section-padding bg-white pt-8">
-        <div class="site-container grid gap-10 lg:grid-cols-[1fr_1fr]">
-            <x-storefront.product.gallery :product="$product" />
-
-            <div>
-                <div class="flex flex-wrap items-center gap-2">
-                    <span class="rounded-full bg-red-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-brand-red">{{ $product['tag'] }}</span>
-                    <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-brand-blue">{{ $product['sport'] }}</span>
-                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-600">SKU: {{ $product['sku'] }}</span>
-                </div>
-
-                <h1 class="mt-4 font-display text-5xl font-bold uppercase leading-tight tracking-tight text-brand-ink lg:text-6xl">{{ $product['title'] }}</h1>
-                <p class="mt-4 text-lg leading-8 text-slate-600">{{ $product['summary'] }}</p>
-
-                <div class="mt-5 flex flex-wrap items-center gap-4">
-                    <span class="font-display text-4xl font-bold text-brand-red">{{ $product['price'] }}</span>
-                    <span class="text-sm font-bold text-amber-500">{{ str_repeat('★', (int) $product['rating']) }}</span>
-                    <span class="text-sm font-semibold text-slate-500">{{ $product['reviews_count'] }} reviews</span>
-                </div>
-
-                <div class="mt-6 grid gap-3 sm:grid-cols-2">
-                    @foreach ($product['features'] as $feature)
-                        <div class="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-700">
-                            <span class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-green-100 text-xs text-green-700">✓</span>
-                            <span>{{ $feature }}</span>
-                        </div>
-                    @endforeach
-                </div>
-
-                <div class="mt-6">
-                    <x-storefront.product.detail-information :product="$product" />
-                </div>
-
-                <div class="mt-6 grid gap-3 sm:grid-cols-3">
-                    <form method="POST" action="{{ route('cart.items.store') }}" class="sm:col-span-1">
-                        @csrf
-                        <input type="hidden" name="product_slug" value="{{ $product['slug'] }}">
-                        <input type="hidden" name="quantity" value="1">
-                        <input type="hidden" name="design_option" value="Default Team Style">
-                        <input type="hidden" name="delivery_preference" value="Standard production">
-                        <input type="hidden" name="size_summary" value="Sizes can be confirmed during proof review">
-                        <input type="hidden" name="artwork_status" value="Artwork/logo can be sent now or later">
-                        <button type="submit" class="btn btn-red w-full">Add to Cart</button>
-                    </form>
-                    <a href="#customize" class="btn btn-white sm:col-span-1">Customize First</a>
-                    <a href="{{ route('quote.request') }}" class="btn btn-light sm:col-span-1">Request Bulk Quote</a>
-                </div>
+<x-layouts.storefront :seo="$seo" :structured-data="$structuredData">
+    @php
+        $heroConfig = [
+            'title' => $product['title'], 'currency' => $product['currency'] ?? 'USD',
+            'base_price' => $product['base_price'], 'minimum_quantity' => $product['minimum_quantity'] ?? 1,
+            'gallery' => $product['gallery'], 'option_groups' => [], 'size_groups' => [],
+            'artwork_methods' => [], 'production_speeds' => [], 'price_tiers' => $product['price_tiers'] ?? [],
+        ];
+    @endphp
+    <div x-data="{ imageOpen: false, image: null }" @open-product-image.window="image = $event.detail; imageOpen = true">
+        <nav class="border-b border-slate-200 bg-slate-50" aria-label="Breadcrumb">
+            <div class="site-container flex flex-wrap items-center gap-2 py-4 text-xs text-slate-500">
+                <a href="{{ route('home') }}">Home</a><span>/</span>
+                @if($product['category_slug'])<a href="{{ route('categories.show',$product['category_slug']) }}">{{ $product['category'] }}</a><span>/</span>@endif
+                @if($product['subcategory_slug'])<a href="{{ route('categories.show',$product['subcategory_slug']) }}">{{ $product['subcategory'] }}</a><span>/</span>@endif
+                <span class="font-bold text-brand-ink">{{ $product['title'] }}</span>
             </div>
-        </div>
-    </section>
+        </nav>
 
-    <section id="customize" class="section-padding bg-slate-50">
-        <div class="site-container grid gap-8 lg:grid-cols-[1fr_360px]">
-            <div class="grid gap-8">
-                <x-storefront.product.customizable-options :options="$product['customizable_options']" />
-                <x-storefront.product.size-quantity-selector :product="$product" />
-                <x-storefront.product.price-table :tiers="$product['price_tiers']" />
-                <x-storefront.product.size-chart :chart="$product['size_chart']" />
-            </div>
+        <section class="py-10 sm:py-14">
+            <div class="site-container grid gap-10 lg:grid-cols-[minmax(0,1.03fr)_minmax(390px,.97fr)] lg:items-start" x-data="productBuilder(@js($heroConfig))" x-init="init()">
+                <x-storefront.product.gallery :gallery="$product['gallery']" :badge="$product['tag'] ?: 'Product'" />
 
-            <aside class="grid h-fit gap-5 lg:sticky lg:top-32">
-                <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-card">
-                    <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">Order steps</p>
-                    <h2 class="mt-1 font-display text-3xl font-bold uppercase text-brand-ink">How to Customize</h2>
-                    <div class="mt-5 grid gap-3">
-                        @foreach ($product['option_steps'] as $step)
-                            <div class="flex gap-3 rounded-2xl bg-slate-50 p-3">
-                                <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-navy text-xs font-black text-white">{{ $loop->iteration }}</span>
-                                <div>
-                                    <h3 class="text-sm font-black text-brand-ink">{{ $step['title'] }}</h3>
-                                    <p class="mt-1 text-xs leading-5 text-slate-500">{{ $step['description'] }}</p>
-                                </div>
-                            </div>
-                        @endforeach
+                <article class="min-w-0">
+                    <div class="flex flex-wrap gap-2">
+                        @if($product['tag'])<span class="rounded-full bg-red-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.12em] text-brand-red">{{ $product['tag'] }}</span>@endif
+                        @if($product['category'])<span class="rounded-full bg-blue-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.12em] text-brand-blue">{{ $product['category'] }}</span>@endif
+                        @if($product['subcategory'])<span class="rounded-full bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.12em] text-slate-600">{{ $product['subcategory'] }}</span>@endif
+                        <span class="rounded-full bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.12em] text-slate-600">SKU: {{ $product['sku'] }}</span>
                     </div>
-                </div>
+                    <h1 class="mt-5 font-display text-5xl font-bold uppercase leading-[.98] tracking-tight text-brand-ink sm:text-6xl">{{ $product['title'] }}</h1>
+                    @if($product['reviews_count'] > 0)<div class="mt-4 flex items-center gap-2 text-sm"><span class="text-amber-500">★★★★★</span><strong>{{ number_format($product['rating'],1) }}</strong><span class="text-slate-400">{{ $product['reviews_count'] }} verified reviews</span></div>@endif
+                    <p class="mt-5 text-base leading-8 text-slate-600">{{ $product['summary'] }}</p>
+                    <div class="mt-6 flex flex-wrap items-end gap-3"><span class="text-sm font-bold text-slate-500">Starting at</span><strong class="text-4xl font-black tracking-tight text-brand-red">{{ $product['currency'] }} {{ number_format((float)collect($product['price_tiers'])->min('unit') ?: $product['base_price'],2) }}</strong><span class="pb-1 text-xs text-slate-500">per item at applicable quantity tier</span></div>
+                    @if($product['compare_at_price'])<p class="mt-2 text-sm text-slate-400 line-through">Compare at {{ $product['currency'] }} {{ number_format($product['compare_at_price'],2) }}</p>@endif
 
-                <div class="rounded-3xl border border-blue-100 bg-blue-50 p-5">
-                    <h3 class="text-lg font-black text-brand-navy">Digital Proof Support</h3>
-                    <p class="mt-2 text-sm leading-6 text-brand-blue">Artwork, roster, spelling, alignment, color, and placement can be reviewed before production. This is ready for the future order workflow.</p>
-                    <form method="POST" action="{{ route('cart.items.store') }}" class="mt-4">
-                        @csrf
-                        <input type="hidden" name="product_slug" value="{{ $product['slug'] }}">
-                        <input type="hidden" name="quantity" value="1">
-                        <input type="hidden" name="design_option" value="Modern Graphic">
-                        <input type="hidden" name="delivery_preference" value="Standard production">
-                        <input type="hidden" name="size_summary" value="Confirm size breakdown during proof review">
-                        <input type="hidden" name="artwork_status" value="Artwork/logo can be sent now or later">
-                        <button type="submit" class="btn btn-red w-full">Add Custom Order to Cart</button>
-                    </form>
-                    <a href="{{ route('quote.request') }}" class="btn btn-white mt-3 w-full">Send Order Details</a>
-                </div>
-            </aside>
+                    @if(!empty($product['features']))<div class="mt-7 grid gap-3 sm:grid-cols-2">@foreach($product['features'] as $feature)<div class="flex gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm font-bold leading-6 text-slate-700"><span class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-emerald-100 text-xs font-black text-emerald-700">✓</span><span>{{ $feature }}</span></div>@endforeach</div>@endif
+
+                    @if(!empty($product['detail_information']))<div class="mt-7 overflow-hidden rounded-2xl border border-slate-200"><div class="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-4"><strong>Product information</strong><span class="text-xs font-bold text-brand-blue">Admin controlled</span></div><dl class="grid sm:grid-cols-2">@foreach(array_slice($product['detail_information'],0,6,true) as $label=>$value)<div class="border-b border-slate-100 px-5 py-4 odd:sm:border-r"><dt class="text-[10px] font-black uppercase tracking-[.12em] text-slate-400">{{ $label }}</dt><dd class="mt-1 text-sm font-black">{{ $value }}</dd></div>@endforeach</dl></div>@endif
+
+                    <div class="mt-7 grid gap-3 sm:grid-cols-2"><a href="#configure-product" class="btn btn-red py-4">Start Customizing ↓</a><a href="{{ route('quote.request') }}" class="btn btn-white py-4">Request Bulk Quote</a></div>
+                    <div class="mt-4 flex flex-wrap justify-between gap-3 rounded-2xl bg-blue-50 p-4 text-xs font-bold text-brand-blue"><span>✓ Free artwork review</span><span>✓ Proof before production</span><span>✓ Secure checkout</span></div>
+                </article>
+            </div>
+        </section>
+
+        <x-storefront.product.price-table :table="$product['price_table']" />
+        <x-storefront.product.builder :product="$product" />
+        <x-storefront.product.details :product="$product" />
+
+        @if(!empty($relatedProducts))
+            <section class="section-padding bg-slate-50">
+                <div class="site-container"><div class="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">More products</p><h2 class="font-display text-4xl font-bold uppercase tracking-tight text-brand-ink">Related Products</h2></div><a href="{{ route('products.index') }}" class="btn btn-white">View All Products</a></div><div class="grid-4">@foreach($relatedProducts as $relatedProduct)<x-storefront.product-card :product="$relatedProduct" />@endforeach</div></div>
+            </section>
+        @endif
+
+        <div x-cloak x-show="imageOpen" x-transition.opacity class="fixed inset-0 z-[80] grid place-items-center bg-slate-950/80 p-4" @click.self="imageOpen=false" @keydown.escape.window="imageOpen=false">
+            <div class="relative max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-3xl bg-white"><button type="button" class="absolute right-4 top-4 z-10 grid h-11 w-11 place-items-center rounded-full bg-white text-2xl shadow-card" @click="imageOpen=false">×</button><img :src="image?.url" :alt="image?.alt" class="max-h-[92vh] w-full object-contain"></div>
         </div>
-    </section>
-
-    <section class="section-padding bg-white">
-        <div class="site-container grid gap-8 lg:grid-cols-[1fr_1fr]">
-            <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-card lg:p-6">
-                <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">Product description</p>
-                <h2 class="mt-1 font-display text-3xl font-bold uppercase tracking-tight text-brand-ink">Built for Custom Team Orders</h2>
-                <p class="mt-4 text-sm leading-7 text-slate-600">{{ $product['description'] }}</p>
-                <p class="mt-4 text-sm leading-7 text-slate-600">Customers can select a design option, send roster details, upload artwork, choose delivery preference, and request a proof before final production.</p>
-            </div>
-
-            <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-card lg:p-6">
-                <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">FAQ</p>
-                <h2 class="mt-1 font-display text-3xl font-bold uppercase tracking-tight text-brand-ink">Product Questions</h2>
-                <div class="mt-5 divide-y divide-slate-100">
-                    @foreach ($product['faqs'] as $faq)
-                        <details class="group py-4">
-                            <summary class="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-black text-brand-ink">
-                                {{ $faq['question'] }}
-                                <span class="text-brand-red group-open:rotate-45">+</span>
-                            </summary>
-                            <p class="mt-2 text-sm leading-6 text-slate-600">{{ $faq['answer'] }}</p>
-                        </details>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="section-padding bg-slate-50">
-        <div class="site-container">
-            <div class="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                    <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">More products</p>
-                    <h2 class="font-display text-4xl font-bold uppercase tracking-tight text-brand-ink">Related Products</h2>
-                </div>
-                <a href="{{ route('products.index') }}" class="btn btn-white">View All Products</a>
-            </div>
-
-            <div class="grid-4">
-                @foreach ($relatedProducts as $relatedProduct)
-                    <x-storefront.product-card :product="$relatedProduct" />
-                @endforeach
-            </div>
-        </div>
-    </section>
+    </div>
 </x-layouts.storefront>

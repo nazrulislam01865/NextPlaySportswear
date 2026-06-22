@@ -1,0 +1,1 @@
+<x-layouts.admin title="Create Catalog Attribute"><form method="POST" action="{{ route('admin.attributes.store') }}" enctype="multipart/form-data">@csrf @include('admin.attributes._form')</form></x-layouts.admin>

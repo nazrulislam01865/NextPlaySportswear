@@ -74,3 +74,86 @@
         @apply grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4;
     }
 }
+
+@layer components {
+    .admin-label {
+        @apply block text-sm font-black text-slate-700;
+    }
+
+    .admin-input {
+        @apply mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-brand-blue focus:ring-2 focus:ring-blue-100;
+    }
+
+    .admin-textarea {
+        @apply mt-2 min-h-[120px] w-full rounded-xl border border-slate-300 bg-white p-3 text-sm font-medium leading-6 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-brand-blue focus:ring-2 focus:ring-blue-100;
+    }
+
+    .admin-editor-button {
+        @apply min-h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-100;
+    }
+
+    .admin-rich-editor h2 {
+        @apply mb-3 mt-6 text-2xl font-black text-brand-ink first:mt-0;
+    }
+
+    .admin-rich-editor h3 {
+        @apply mb-2 mt-5 text-xl font-black text-brand-ink;
+    }
+
+    .admin-rich-editor p {
+        @apply my-3;
+    }
+
+    .admin-rich-editor ul {
+        @apply my-3 list-disc space-y-1 pl-6;
+    }
+
+    .admin-rich-editor ol {
+        @apply my-3 list-decimal space-y-1 pl-6;
+    }
+
+    .admin-rich-editor blockquote {
+        @apply my-4 border-l-4 border-brand-red bg-red-50 px-4 py-3 italic text-slate-700;
+    }
+
+    .admin-rich-editor a {
+        @apply font-bold text-brand-blue underline;
+    }
+
+    .product-rich-content h2 {
+        @apply mb-3 mt-7 font-display text-3xl font-bold uppercase tracking-tight text-brand-ink first:mt-0;
+    }
+
+    .product-rich-content h3 {
+        @apply mb-2 mt-6 text-xl font-black text-brand-ink;
+    }
+
+    .product-rich-content p {
+        @apply my-4 text-sm leading-7 text-slate-600;
+    }
+
+    .product-rich-content ul {
+        @apply my-4 list-disc space-y-2 pl-6 text-sm leading-7 text-slate-600;
+    }
+
+    .product-rich-content ol {
+        @apply my-4 list-decimal space-y-2 pl-6 text-sm leading-7 text-slate-600;
+    }
+
+    .product-rich-content blockquote {
+        @apply my-5 rounded-r-2xl border-l-4 border-brand-red bg-red-50 px-5 py-4 text-sm italic leading-7 text-slate-700;
+    }
+
+    .product-rich-content table {
+        @apply my-5 w-full border-collapse text-sm;
+    }
+
+    .product-rich-content th,
+    .product-rich-content td {
+        @apply border border-slate-200 p-3 text-left;
+    }
+
+    .product-rich-content th {
+        @apply bg-slate-50 font-black;
+    }
+}

@@ -28,15 +28,19 @@ class RegisteredUserController extends Controller
     {
         $data = $request->validated();
 
-        $user = User::create([
+        $user = new User();
+        $user->forceFill([
             'name' => trim(strip_tags($data['name'])),
             'email' => Str::lower($data['email']),
+            'role' => 'customer',
+            'is_active' => true,
             'password' => $data['password'],
-        ]);
+        ])->save();
 
         event(new Registered($user));
 
-        Auth::login($user);
+        Auth::guard('web')->login($user);
+        Auth::shouldUse('web');
         $request->session()->regenerate();
 
         return redirect()

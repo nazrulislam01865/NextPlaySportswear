@@ -24,15 +24,21 @@ class AuthenticatedSessionController extends Controller
 
     public function store(LoginRequest $request): RedirectResponse
     {
-        $credentials = $request->safe()->only(['email', 'password']);
-        $remember = (bool) $request->boolean('remember');
+        $data = $request->validated();
+        $credentials = [
+            'email' => $data['email'],
+            'password' => $data['password'],
+            'role' => 'customer',
+            'is_active' => true,
+        ];
 
-        if (! Auth::attempt($credentials, $remember)) {
+        if (! Auth::guard('web')->attempt($credentials, $request->boolean('remember'))) {
             return back()
-                ->withErrors(['email' => 'The email or password is incorrect.'])
+                ->withErrors(['email' => 'The email or password is incorrect, or this is not an active customer account.'])
                 ->onlyInput('email');
         }
 
+        Auth::shouldUse('web');
         $request->session()->regenerate();
 
         return redirect()
@@ -42,7 +48,7 @@ class AuthenticatedSessionController extends Controller
 
     public function destroy(Request $request): RedirectResponse
     {
-        Auth::logout();
+        Auth::guard('web')->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

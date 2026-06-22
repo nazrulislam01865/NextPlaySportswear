@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">Category image placeholder</title>
+  <desc id="desc">Neutral NextPlay category placeholder graphic.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="1" stop-color="#e2e8f0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#background)"/>
+  <circle cx="600" cy="340" r="140" fill="#0d2545" opacity=".08"/>
+  <path d="M472 418 548 330l68 68 54-54 108 118H422z" fill="#0d2545" opacity=".32"/>
+  <circle cx="690" cy="274" r="30" fill="#e91d33" opacity=".72"/>
+  <text x="600" y="590" text-anchor="middle" font-family="Arial, sans-serif" font-size="44" font-weight="700" fill="#0d2545">NEXTPLAY CATEGORY</text>
+</svg>

@@ -1,5 +1,6 @@
 @props([
     'seo' => [],
+    'structuredData' => [],
 ])
 
 @php
@@ -11,6 +12,8 @@
     $ogTitle = $seo['og_title'] ?? $title;
     $ogDescription = $seo['og_description'] ?? $description;
     $ogImage = $seo['og_image'] ?? asset('images/og-default.jpg');
+    $ogType = $seo['og_type'] ?? 'website';
+    $locale = str_replace('-', '_', app()->getLocale());
 
     $organizationSchema = [
         '@context' => 'https://schema.org',
@@ -24,6 +27,7 @@
                 'contactType' => 'customer support',
                 'email' => config('storefront.email'),
                 'areaServed' => 'US',
+                'availableLanguage' => ['English'],
             ],
         ],
     ];
@@ -39,6 +43,19 @@
             'query-input' => 'required name=search_term_string',
         ],
     ];
+
+    $pageSchema = [
+        '@context' => 'https://schema.org',
+        '@type' => $seo['schema_type'] ?? 'WebPage',
+        'name' => $title,
+        'description' => $description,
+        'url' => $canonical,
+        'isPartOf' => [
+            '@type' => 'WebSite',
+            'name' => $siteName,
+            'url' => config('storefront.url'),
+        ],
+    ];
 @endphp
 
 <!doctype html>
@@ -46,17 +63,22 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>{{ $title }}</title>
     <meta name="description" content="{{ $description }}">
     <meta name="robots" content="{{ $robots }}">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <link rel="canonical" href="{{ $canonical }}">
 
+    <meta property="og:site_name" content="{{ $siteName }}">
+    <meta property="og:locale" content="{{ $locale }}">
     <meta property="og:title" content="{{ $ogTitle }}">
     <meta property="og:description" content="{{ $ogDescription }}">
-    <meta property="og:type" content="website">
+    <meta property="og:type" content="{{ $ogType }}">
     <meta property="og:url" content="{{ $canonical }}">
     <meta property="og:image" content="{{ $ogImage }}">
+    <meta property="og:image:alt" content="{{ $seo['og_image_alt'] ?? $ogTitle }}">
 
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{{ $ogTitle }}">
@@ -77,6 +99,16 @@
     <script type="application/ld+json">
         @json($websiteSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
     </script>
+
+    <script type="application/ld+json">
+        @json($pageSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+    </script>
+
+    @foreach ($structuredData as $schema)
+        <script type="application/ld+json">
+            @json($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+        </script>
+    @endforeach
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>

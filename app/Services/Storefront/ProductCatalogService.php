@@ -2,13 +2,35 @@
 
 namespace App\Services\Storefront;
 
+use App\Models\Product;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class ProductCatalogService
 {
+    /** @var array<int, array<string, mixed>>|null */
+    private ?array $hydratedProducts = null;
+
     public function all(): array
     {
-        return collect($this->products())
+        if ($this->hydratedProducts !== null) {
+            return $this->hydratedProducts;
+        }
+
+        if (Schema::hasTable('products') && Product::query()->published()->exists()) {
+            return $this->hydratedProducts = Product::query()
+                ->published()
+                ->with(['category', 'subcategory', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'priceTiers', 'artworkMethods', 'productionSpeeds', 'faqs'])
+                ->orderBy('sort_order')
+                ->orderByDesc('is_featured')
+                ->orderByDesc('published_at')
+                ->get()
+                ->map(fn (Product $product): array => $this->fromModel($product))
+                ->values()
+                ->all();
+        }
+
+        return $this->hydratedProducts = collect($this->products())
             ->map(fn (array $product): array => $this->hydrateProduct($product))
             ->values()
             ->all();
@@ -35,6 +57,18 @@ class ProductCatalogService
 
     public function findBySlug(string $slug): ?array
     {
+        if (Schema::hasTable('products')) {
+            $query = Product::query()->with(['category', 'subcategory', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'priceTiers', 'artworkMethods', 'productionSpeeds', 'faqs']);
+
+            if (! auth()->user()?->isAdmin()) {
+                $query->published();
+            }
+
+            if ($product = $query->where('slug', $slug)->first()) {
+                return $this->fromModel($product);
+            }
+        }
+
         return collect($this->all())->firstWhere('slug', $slug);
     }
 
@@ -66,7 +100,183 @@ class ProductCatalogService
 
     public function featured(): array
     {
-        return collect($this->all())->take(8)->values()->all();
+        $featured = collect($this->all())->where('is_featured', true)->take(8)->values();
+
+        return ($featured->isNotEmpty() ? $featured : collect($this->all())->take(8))->values()->all();
+    }
+
+
+    private function normalizeColorHex(?string $color): ?string
+    {
+        $hex = strtoupper(ltrim(trim((string) $color), '#'));
+
+        if (preg_match('/^[0-9A-F]{3}$/', $hex) === 1) {
+            $hex = implode('', array_map(
+                static fn (string $character): string => $character.$character,
+                str_split($hex)
+            ));
+        }
+
+        return preg_match('/^[0-9A-F]{6}$/', $hex) === 1 ? '#'.$hex : null;
+    }
+
+    private function contrastColor(?string $color): string
+    {
+        $hex = $this->normalizeColorHex($color);
+
+        if ($hex === null) {
+            return '#0F172A';
+        }
+
+        $red = hexdec(substr($hex, 1, 2));
+        $green = hexdec(substr($hex, 3, 2));
+        $blue = hexdec(substr($hex, 5, 2));
+        $luminance = (($red * 299) + ($green * 587) + ($blue * 114)) / 1000;
+
+        return $luminance > 160 ? '#0F172A' : '#FFFFFF';
+    }
+
+    public function fromModel(Product $product): array
+    {
+        $gallery = $product->images->map(fn ($image) => [
+            'url' => $image->publicUrl(),
+            'alt' => $image->alt_text ?: $product->name,
+        ])->values()->all();
+
+        if ($gallery === []) {
+            $gallery[] = ['url' => asset('images/product-placeholder.svg'), 'alt' => $product->name];
+        }
+
+        $optionGroups = $product->optionGroups
+            ->where('is_active', true)
+            ->map(fn ($group) => [
+                'id' => $group->code,
+                'label' => $group->name,
+                'description' => $group->description,
+                'placeholder' => $group->placeholder,
+                'section' => $group->section,
+                'type' => $group->type,
+                'required' => $group->is_required,
+                'minimum_selections' => $group->minimum_selections,
+                'maximum_selections' => $group->maximum_selections,
+                'accepted_file_types' => $group->accepted_file_types,
+                'maximum_file_size_mb' => $group->maximum_file_size_mb,
+                'values' => $group->values->where('is_active', true)->map(fn ($value) => [
+                    'id' => $value->code,
+                    'label' => $value->label,
+                    'description' => $value->description,
+                    'color' => $this->normalizeColorHex($value->color_hex),
+                    'contrast' => $this->contrastColor($value->color_hex),
+                    'image' => $value->publicImageUrl(),
+                    'price_delta' => (float) $value->price_adjustment,
+                    'stock_quantity' => $value->stock_quantity,
+                    'default' => $value->is_default,
+                ])->values()->all(),
+            ])->values()->all();
+
+        $priceTiers = $product->priceTiers->map(fn ($tier) => [
+            'label' => $tier->label ?: $tier->minimum_quantity . ($tier->maximum_quantity ? '–'.$tier->maximum_quantity : '+'),
+            'min' => $tier->minimum_quantity,
+            'max' => $tier->maximum_quantity,
+            'unit' => (float) $tier->unit_price,
+            'compare_at' => $tier->compare_at_price ? (float) $tier->compare_at_price : null,
+            'savings_label' => $tier->savings_label,
+        ])->values()->all();
+
+        if ($priceTiers === []) {
+            $priceTiers[] = ['label' => $product->minimum_quantity.'+', 'min' => $product->minimum_quantity, 'max' => null, 'unit' => (float) $product->base_price, 'compare_at' => null, 'savings_label' => null];
+        }
+
+        $primaryCategory = $product->relationLoaded('categories')
+            ? ($product->categories->firstWhere('pivot.is_primary', true) ?? $product->categories->first())
+            : null;
+        $primaryCategory ??= $product->subcategory ?: $product->category;
+
+        return [
+            'id' => $product->id,
+            'slug' => $product->slug,
+            'title' => $product->name,
+            'short_title' => $product->name,
+            'summary' => $product->short_description ?: strip_tags((string) $product->description_html),
+            'description' => strip_tags((string) $product->description_html),
+            'description_html' => $product->description_html,
+            'price' => 'From $'.number_format((float) $priceTiers[0]['unit'], 2),
+            'base_price' => (float) $product->base_price,
+            'compare_at_price' => $product->compare_at_price ? (float) $product->compare_at_price : null,
+            'currency' => $product->currency,
+            'minimum_quantity' => $product->minimum_quantity,
+            'maximum_quantity' => $product->maximum_quantity,
+            'tag' => $product->badge_label ?: ($product->is_customizable ? 'Customizable' : null),
+            'tag_color' => $product->badge_color ?: 'red',
+            'sport' => $primaryCategory?->name ?: 'Custom Sportswear',
+            'category' => $primaryCategory?->name ?: 'Custom Sportswear',
+            'category_slug' => $primaryCategory?->slug,
+            'subcategory' => $product->subcategory?->name,
+            'subcategory_slug' => $product->subcategory?->slug,
+            'categories' => $product->relationLoaded('categories') ? $product->categories->map(fn ($category) => ['id' => $category->id, 'name' => $category->name, 'slug' => $category->slug, 'primary' => (bool) $category->pivot->is_primary])->values()->all() : [],
+            'attributes' => $product->relationLoaded('attributeValues') ? $product->attributeValues->groupBy('attribute.slug')->map(fn ($values) => $values->pluck('label')->values()->all())->all() : [],
+            'sku' => $product->sku,
+            'rating' => 0,
+            'reviews_count' => 0,
+            'image' => $gallery[0]['url'],
+            'alt' => $gallery[0]['alt'],
+            'gallery' => $gallery,
+            'tags' => $product->tags ?? [],
+            'features' => $product->features ?? [],
+            'detail_information' => $product->specifications ?? [],
+            'details' => $product->specifications ?? [],
+            'brand' => $product->brand ?: config('storefront.name'),
+            'product_type' => $product->product_type,
+            'is_featured' => $product->is_featured,
+            'is_customizable' => $product->is_customizable,
+            'track_inventory' => $product->track_inventory,
+            'stock_quantity' => $product->stock_quantity,
+            'allow_backorder' => $product->allow_backorder,
+            'option_groups' => $optionGroups,
+            'size_groups' => $product->sizeGroups->where('is_active', true)->map(fn ($group) => [
+                'id' => $group->code,
+                'label' => $group->name,
+                'sizes' => $group->sizes->where('is_active', true)->map(fn ($size) => [
+                    'code' => $size->code,
+                    'label' => $size->label,
+                    'price_delta' => (float) $size->price_adjustment,
+                ])->values()->all(),
+            ])->values()->all(),
+            'artwork_methods' => $product->artworkMethods->where('is_active', true)->map(fn ($method) => [
+                'id' => $method->code,
+                'label' => $method->name,
+                'icon' => $method->icon,
+                'description' => $method->description,
+                'price_delta' => (float) $method->price_adjustment,
+                'requires_upload' => $method->requires_upload,
+            ])->values()->all(),
+            'production_speeds' => $product->productionSpeeds->where('is_active', true)->map(fn ($speed) => [
+                'id' => $speed->code,
+                'label' => $speed->name,
+                'description' => $speed->description,
+                'price_delta' => (float) $speed->price_adjustment,
+                'minimum_days' => $speed->minimum_days,
+                'maximum_days' => $speed->maximum_days,
+            ])->values()->all(),
+            'price_tiers' => $priceTiers,
+            'price_table' => [
+                'headers' => $product->price_table_headers ?: ['Quantity', 'Unit Price', 'Savings'],
+                'rows' => $product->price_table_rows ?: collect($priceTiers)->map(fn ($tier) => [$tier['label'], '$'.number_format($tier['unit'], 2), $tier['savings_label'] ?: '—'])->all(),
+                'highlight_column' => $product->price_table_highlight_column,
+                'note' => $product->price_table_note,
+            ],
+            'faqs' => $product->faqs->where('is_active', true)->map(fn ($faq) => ['question' => $faq->question, 'answer' => $faq->answer])->values()->all(),
+            'meta_title' => $product->meta_title,
+            'meta_description' => $product->meta_description,
+            'meta_keywords' => $product->meta_keywords,
+            'canonical_url' => $product->canonical_url,
+            'og_title' => $product->og_title,
+            'og_description' => $product->og_description,
+            'og_image' => $product->og_image_url ?: $gallery[0]['url'],
+            'robots' => ($product->robots_index ? 'index' : 'noindex').', '.($product->robots_follow ? 'follow' : 'nofollow'),
+            'custom_schema' => $product->schema_json,
+            'url' => route('products.show', $product->slug),
+        ];
     }
 
     private function hydrateProduct(array $product): array
@@ -82,6 +292,41 @@ class ProductCatalogService
         $product['details'] = $product['details'] ?? $this->legacyDetails($product);
         $product['option_steps'] = $product['option_steps'] ?? $this->defaultOptionSteps();
         $product['faqs'] = $product['faqs'] ?? $this->defaultFaqs();
+        $product['is_featured'] = $product['is_featured'] ?? false;
+        $product['is_customizable'] = $product['is_customizable'] ?? true;
+        $product['currency'] = $product['currency'] ?? 'USD';
+        $product['minimum_quantity'] = $product['minimum_quantity'] ?? 1;
+        $product['maximum_quantity'] = $product['maximum_quantity'] ?? null;
+        $product['description_html'] = $product['description_html'] ?? '<p>'.e($product['description']).'</p>';
+        $product['option_groups'] = $product['option_groups'] ?? [];
+        $product['size_groups'] = $product['size_groups'] ?? collect($product['size_quantity_groups'])->map(fn ($group) => [
+            'id' => $group['key'],
+            'label' => $group['label'],
+            'sizes' => collect($group['sizes'])->map(fn ($size) => ['code' => Str::slug($size), 'label' => $size, 'price_delta' => 0])->all(),
+        ])->all();
+        $product['artwork_methods'] = $product['artwork_methods'] ?? [
+            ['id' => 'upload', 'label' => 'Upload Design', 'icon' => '⇧', 'description' => 'Upload artwork now.', 'price_delta' => 0, 'requires_upload' => true],
+            ['id' => 'design-later', 'label' => 'Design Later', 'icon' => '◷', 'description' => 'Send artwork after checkout.', 'price_delta' => 0, 'requires_upload' => false],
+            ['id' => 'design-help', 'label' => 'Free Design Help', 'icon' => '✦', 'description' => 'Request help from the art team.', 'price_delta' => 0, 'requires_upload' => false],
+            ['id' => 'blank', 'label' => 'Blank Product', 'icon' => '□', 'description' => 'No decoration.', 'price_delta' => 0, 'requires_upload' => false],
+        ];
+        $product['production_speeds'] = $product['production_speeds'] ?? [
+            ['id' => 'standard', 'label' => 'Standard Production', 'description' => 'Standard schedule', 'price_delta' => 0, 'minimum_days' => 14, 'maximum_days' => 18],
+        ];
+        $product['price_table'] = $product['price_table'] ?? [
+            'headers' => ['Quantity', 'Product Price', 'Shipping', 'Estimated Each', 'Order Total'],
+            'rows' => collect($product['price_tiers'])->map(fn ($tier) => [$tier['quantity'], $tier['product_price'], $tier['shipping'], $tier['estimated_each'], $tier['estimated_order_total']])->all(),
+            'highlight_column' => 3,
+            'note' => 'Final pricing is confirmed after customization and artwork review.',
+        ];
+        $product['robots'] = $product['robots'] ?? 'index, follow';
+        $product['meta_title'] = $product['meta_title'] ?? null;
+        $product['meta_description'] = $product['meta_description'] ?? null;
+        $product['canonical_url'] = $product['canonical_url'] ?? $product['url'];
+        $product['og_title'] = $product['og_title'] ?? null;
+        $product['og_description'] = $product['og_description'] ?? null;
+        $product['og_image'] = $product['og_image'] ?? $product['image'];
+        $product['gallery'] = collect($product['gallery'])->map(fn ($image) => is_array($image) ? $image : ['url' => $image, 'alt' => $product['alt']])->all();
 
         return $product;
     }

@@ -1,0 +1,1 @@
+<x-layouts.admin title="Edit Catalog Attribute"><form method="POST" action="{{ route('admin.attributes.update',$attribute) }}" enctype="multipart/form-data">@csrf @method('PUT') @include('admin.attributes._form')</form></x-layouts.admin>

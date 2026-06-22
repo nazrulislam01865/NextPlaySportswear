@@ -21,6 +21,8 @@ class AddCartItemRequest extends FormRequest
             'size_summary' => ['nullable', 'string', 'max:600'],
             'artwork_status' => ['nullable', 'string', 'max:120'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'configuration_json' => ['nullable', 'json', 'max:50000'],
+            'artwork_file' => ['nullable', 'file', 'mimes:pdf,svg,png,jpg,jpeg,webp', 'max:15360'],
         ];
     }
 }

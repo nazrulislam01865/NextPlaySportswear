@@ -7,6 +7,9 @@ use App\Http\Controllers\Storefront\Account\ProfileController;
 use App\Http\Controllers\Storefront\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Storefront\Auth\RegisteredUserController;
 use App\Http\Controllers\Storefront\CartController;
+use App\Http\Controllers\Storefront\ContactController;
+use App\Http\Controllers\Storefront\ContentPageController;
+use App\Http\Controllers\Storefront\CategoryController;
 use App\Http\Controllers\Storefront\Checkout\CheckoutController;
 use App\Http\Controllers\Storefront\HomeController;
 use App\Http\Controllers\Storefront\OrderController;
@@ -14,9 +17,76 @@ use App\Http\Controllers\Storefront\ProductController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
+Route::get('/sitemap.xml', \App\Http\Controllers\Storefront\SitemapController::class)->name('sitemap');
+
+Route::get('/about-us', [ContentPageController::class, 'about'])->name('about');
+Route::get('/contact-us', [ContactController::class, 'index'])->name('contact');
+Route::post('/contact-us', [ContactController::class, 'store'])
+    ->middleware('throttle:contact')
+    ->name('contact.store');
+Route::get('/help-center', [ContentPageController::class, 'faq'])->name('faq');
+Route::get('/how-to-order', [ContentPageController::class, 'howToOrder'])->name('how-to-order');
+Route::get('/size-guide', [ContentPageController::class, 'sizeGuide'])->name('size-guide');
+Route::get('/artwork-guidelines', [ContentPageController::class, 'artworkGuidelines'])->name('artwork-guidelines');
+Route::get('/customization-guide', [ContentPageController::class, 'customizationGuide'])->name('customization-guide');
+Route::get('/bulk-team-ordering', [ContentPageController::class, 'bulkOrdering'])->name('bulk-ordering');
+Route::get('/shipping-delivery', [ContentPageController::class, 'shipping'])->name('shipping');
+Route::get('/returns-refunds-exchanges', [ContentPageController::class, 'returns'])->name('returns');
+Route::get('/payment-information', [ContentPageController::class, 'payment'])->name('payment-information');
+Route::get('/privacy-policy', [ContentPageController::class, 'privacy'])->name('privacy');
+Route::get('/terms-conditions', [ContentPageController::class, 'terms'])->name('terms');
+Route::get('/cookie-policy', [ContentPageController::class, 'cookies'])->name('cookies');
+Route::get('/accessibility', [ContentPageController::class, 'accessibility'])->name('accessibility');
+
+Route::permanentRedirect('/about', '/about-us');
+Route::permanentRedirect('/contact', '/contact-us');
+Route::permanentRedirect('/faq', '/help-center');
+Route::permanentRedirect('/help', '/help-center');
+Route::permanentRedirect('/shipping', '/shipping-delivery');
+Route::permanentRedirect('/returns', '/returns-refunds-exchanges');
+Route::permanentRedirect('/privacy', '/privacy-policy');
+Route::permanentRedirect('/terms', '/terms-conditions');
+Route::permanentRedirect('/cookies', '/cookie-policy');
+Route::permanentRedirect('/accessibility-statement', '/accessibility');
 
 
-Route::middleware('guest')->group(function () {
+
+Route::prefix('admin')->name('admin.')->group(function () {
+    Route::get('/login', [\App\Http\Controllers\Admin\Auth\AdminSessionController::class, 'create'])->name('login');
+    Route::post('/login', [\App\Http\Controllers\Admin\Auth\AdminSessionController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('login.store');
+
+    Route::middleware(['auth:admin', 'admin'])->group(function () {
+        Route::get('/', \App\Http\Controllers\Admin\DashboardController::class)->name('dashboard');
+        Route::post('/logout', [\App\Http\Controllers\Admin\Auth\AdminSessionController::class, 'destroy'])->name('logout');
+
+        Route::patch('/homepage-slides/{homepageSlide}/toggle', [\App\Http\Controllers\Admin\HomepageSlideController::class, 'toggle'])->name('homepage-slides.toggle');
+        Route::resource('homepage-slides', \App\Http\Controllers\Admin\HomepageSlideController::class)->except('show');
+
+        Route::post('/products/{product}/duplicate', [\App\Http\Controllers\Admin\ProductController::class, 'duplicate'])->name('products.duplicate');
+        Route::resource('products', \App\Http\Controllers\Admin\ProductController::class);
+        Route::post('/categories/bulk', [\App\Http\Controllers\Admin\CategoryOperationsController::class, 'bulk'])->name('categories.bulk');
+        Route::post('/categories/{category}/duplicate', [\App\Http\Controllers\Admin\CategoryController::class, 'duplicate'])->name('categories.duplicate');
+        Route::get('/categories/export', [\App\Http\Controllers\Admin\CategoryOperationsController::class, 'export'])->name('categories.export');
+        Route::post('/categories/import', [\App\Http\Controllers\Admin\CategoryOperationsController::class, 'import'])
+            ->middleware('throttle:3,1')
+            ->name('categories.import');
+        Route::get('/categories-ordering', [\App\Http\Controllers\Admin\CategoryOperationsController::class, 'ordering'])->name('categories.ordering');
+        Route::put('/categories-ordering', [\App\Http\Controllers\Admin\CategoryOperationsController::class, 'updateOrdering'])->name('categories.ordering.update');
+        Route::get('/categories/{category}/products', [\App\Http\Controllers\Admin\CategoryProductController::class, 'index'])->name('categories.products.index');
+        Route::put('/categories/{category}/products', [\App\Http\Controllers\Admin\CategoryProductController::class, 'update'])->name('categories.products.update');
+        Route::resource('categories', \App\Http\Controllers\Admin\CategoryController::class)->except('show');
+        Route::resource('attributes', \App\Http\Controllers\Admin\AttributeController::class)->except('show');
+        Route::resource('menus', \App\Http\Controllers\Admin\MenuController::class)->except('show');
+
+        Route::get('/module/{module}', [\App\Http\Controllers\Admin\ModuleController::class, 'show'])
+            ->whereIn('module', ['orders', 'customers', 'inventory', 'discounts', 'reviews', 'content', 'reports', 'shipping', 'taxes', 'payments', 'settings'])
+            ->name('modules.show');
+    });
+});
+
+Route::middleware(['guest:web', 'not.admin'])->group(function () {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])
         ->middleware('throttle:5,1')
@@ -36,10 +106,10 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
-    ->middleware('auth')
+    ->middleware(['auth:web', 'customer'])
     ->name('logout');
 
-Route::middleware('auth')->prefix('account')->name('account.')->group(function () {
+Route::middleware(['not.admin', 'auth:web', 'customer'])->prefix('account')->name('account.')->group(function () {
     Route::get('/', [AccountController::class, 'index'])->name('dashboard');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])
@@ -65,6 +135,11 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
 
     Route::get('/{section}', [AccountController::class, 'section'])->name('section');
 });
+
+Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+Route::get('/category/{slug}', [CategoryController::class, 'show'])
+    ->where('slug', '[a-z0-9-]+')
+    ->name('categories.show');
 
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
 Route::get('/product/{slug}', [ProductController::class, 'show'])->name('products.show');

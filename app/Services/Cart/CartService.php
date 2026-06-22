@@ -68,15 +68,17 @@ class CartService
 
         abort_if($product === null, 404);
 
-        $quantity = $this->sanitizeQuantity((int) ($payload['quantity'] ?? 1));
-        $customization = $this->sanitizeCustomization($payload);
+        $customization = $this->sanitizeCustomization($payload, $product);
+        $configuredQuantity = (int) collect($customization['configuration']['quantities'] ?? [])->sum();
+        $quantity = $this->sanitizeQuantity($configuredQuantity > 0 ? $configuredQuantity : (int) ($payload['quantity'] ?? 1), $product);
+        $this->validateRequiredConfiguration($product, $customization);
         $key = $this->makeItemKey($product['slug'], $customization);
 
         $items = $this->items();
         $existingIndex = collect($items)->search(fn (array $item): bool => $item['key'] === $key);
 
         if ($existingIndex !== false) {
-            $items[$existingIndex]['quantity'] = $this->sanitizeQuantity($items[$existingIndex]['quantity'] + $quantity);
+            $items[$existingIndex]['quantity'] = $this->sanitizeQuantity($items[$existingIndex]['quantity'] + $quantity, $product);
             $items[$existingIndex]['updated_at'] = now()->toIso8601String();
         } else {
             $items[] = $this->repriceItem([
@@ -99,7 +101,8 @@ class CartService
         $items = collect($this->items())
             ->map(function (array $item) use ($key, $quantity): array {
                 if (hash_equals($item['key'], $key)) {
-                    $item['quantity'] = $this->sanitizeQuantity($quantity);
+                    $product = $this->products->findBySlug((string) $item['product_slug']);
+                    $item['quantity'] = $product ? $this->sanitizeQuantity($quantity, $product) : $quantity;
                     $item['updated_at'] = now()->toIso8601String();
                 }
 
@@ -153,10 +156,11 @@ class CartService
             return [];
         }
 
-        $quantity = $this->sanitizeQuantity((int) ($item['quantity'] ?? 1));
-        $customization = $this->sanitizeCustomization((array) ($item['customization'] ?? []));
-        $unitPrice = round((float) ($product['base_price'] ?? 0), 2);
-        $customizationUnitPrice = $this->customizationUnitPrice($customization);
+        $customization = $this->sanitizeCustomization((array) ($item['customization'] ?? []), $product);
+        $configuredQuantity = (int) collect($customization['configuration']['quantities'] ?? [])->sum();
+        $quantity = $this->sanitizeQuantity($configuredQuantity > 0 ? $configuredQuantity : (int) ($item['quantity'] ?? 1), $product);
+        $unitPrice = $this->unitPriceForQuantity($product, $quantity);
+        $customizationUnitPrice = $this->customizationUnitPrice($product, $customization, $quantity);
 
         return array_merge($item, [
             'key' => $item['key'] ?? $this->makeItemKey($product['slug'], $customization),
@@ -171,39 +175,191 @@ class CartService
         ]);
     }
 
-    private function sanitizeCustomization(array $payload): array
+    private function sanitizeCustomization(array $payload, array $product): array
     {
-        $designOption = Str::limit(trim((string) ($payload['design_option'] ?? 'Default Team Style')), 80, '');
+        $designOption = Str::limit(trim((string) ($payload['design_option'] ?? 'Configured product')), 80, '');
         $deliveryPreference = Str::limit(trim((string) ($payload['delivery_preference'] ?? 'Standard production')), 80, '');
-        $sizeSummary = Str::limit(trim((string) ($payload['size_summary'] ?? 'Sizes can be confirmed during proof review')), 600, '');
-        $artworkStatus = Str::limit(trim((string) ($payload['artwork_status'] ?? 'Artwork/logo can be sent now or later')), 120, '');
+        $sizeSummary = Str::limit(trim((string) ($payload['size_summary'] ?? 'Sizes selected in configuration')), 600, '');
+        $artworkStatus = Str::limit(trim((string) ($payload['artwork_status'] ?? 'Artwork can be sent now or later')), 120, '');
         $notes = Str::limit(trim((string) ($payload['notes'] ?? '')), 1000, '');
+        $configuration = $this->normalizeConfiguration($payload['configuration_json'] ?? ($payload['configuration'] ?? []), $product);
 
         return [
-            'design_option' => $designOption === '' ? 'Default Team Style' : $designOption,
+            'design_option' => $designOption === '' ? 'Configured product' : $designOption,
             'delivery_preference' => $deliveryPreference === '' ? 'Standard production' : $deliveryPreference,
-            'size_summary' => $sizeSummary === '' ? 'Sizes can be confirmed during proof review' : $sizeSummary,
-            'artwork_status' => $artworkStatus === '' ? 'Artwork/logo can be sent now or later' : $artworkStatus,
+            'size_summary' => $sizeSummary === '' ? 'Sizes selected in configuration' : $sizeSummary,
+            'artwork_status' => $artworkStatus === '' ? 'Artwork can be sent now or later' : $artworkStatus,
             'notes' => $notes,
+            'configuration' => $configuration,
+            'artwork_path' => isset($payload['artwork_path']) ? Str::limit((string) $payload['artwork_path'], 500, '') : null,
+            'artwork_original_name' => isset($payload['artwork_original_name']) ? Str::limit((string) $payload['artwork_original_name'], 255, '') : null,
         ];
     }
 
-    private function sanitizeQuantity(int $quantity): int
+    private function normalizeConfiguration(array|string $raw, array $product): array
     {
-        return min(max($quantity, 1), 999);
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            $raw = is_array($decoded) ? $decoded : [];
+        }
+
+        $groups = collect($product['option_groups'] ?? [])->keyBy('id');
+        $selections = [];
+        foreach ((array) ($raw['selections'] ?? []) as $groupId => $valueId) {
+            $group = $groups->get((string) $groupId);
+            if (! $group || ! in_array($group['type'], ['image', 'swatch', 'buttons', 'select'], true)) {
+                continue;
+            }
+            $allowed = collect($group['values'] ?? [])->pluck('id')->map(fn ($id) => (string) $id)->all();
+            if (in_array((string) $valueId, $allowed, true)) {
+                $selections[(string) $groupId] = (string) $valueId;
+            }
+        }
+
+        $multiSelections = [];
+        foreach ((array) ($raw['multi_selections'] ?? []) as $groupId => $valueIds) {
+            $group = $groups->get((string) $groupId);
+            if (! $group || $group['type'] !== 'checkbox') {
+                continue;
+            }
+            $allowed = collect($group['values'] ?? [])->pluck('id')->map(fn ($id) => (string) $id)->all();
+            $maximum = (int) ($group['maximum_selections'] ?? count($allowed));
+            $multiSelections[(string) $groupId] = collect((array) $valueIds)
+                ->map(fn ($id) => (string) $id)
+                ->filter(fn ($id) => in_array($id, $allowed, true))
+                ->unique()->take(max(1, $maximum))->values()->all();
+        }
+
+        $inputs = [];
+        foreach ((array) ($raw['inputs'] ?? []) as $groupId => $value) {
+            $group = $groups->get((string) $groupId);
+            if (! $group || in_array($group['type'], ['image', 'swatch', 'buttons', 'select', 'checkbox', 'file'], true)) {
+                continue;
+            }
+            $inputs[(string) $groupId] = Str::limit(trim((string) $value), $group['type'] === 'textarea' ? 2000 : 255, '');
+        }
+
+        $sizeLookup = collect($product['size_groups'] ?? [])->mapWithKeys(function (array $group): array {
+            return collect($group['sizes'] ?? [])->mapWithKeys(fn (array $size) => [
+                $group['id'].':'.$size['code'] => ['group' => $group['id'], 'size' => $size['code'], 'price_delta' => (float) ($size['price_delta'] ?? 0)],
+            ])->all();
+        });
+        $quantities = [];
+        foreach ((array) ($raw['quantities'] ?? []) as $key => $quantity) {
+            if (! $sizeLookup->has((string) $key)) {
+                continue;
+            }
+            $quantity = max(0, min(9999, (int) $quantity));
+            if ($quantity > 0) {
+                $quantities[(string) $key] = $quantity;
+            }
+        }
+
+        $artworkMethods = collect($product['artwork_methods'] ?? [])->pluck('id')->map(fn ($id) => (string) $id)->all();
+        $productionSpeeds = collect($product['production_speeds'] ?? [])->pluck('id')->map(fn ($id) => (string) $id)->all();
+
+        return [
+            'selections' => $selections,
+            'multi_selections' => $multiSelections,
+            'inputs' => $inputs,
+            'quantities' => $quantities,
+            'artwork_method' => in_array((string) ($raw['artwork_method'] ?? ''), $artworkMethods, true) ? (string) $raw['artwork_method'] : ($artworkMethods[0] ?? null),
+            'production_speed' => in_array((string) ($raw['production_speed'] ?? ''), $productionSpeeds, true) ? (string) $raw['production_speed'] : ($productionSpeeds[0] ?? null),
+        ];
+    }
+
+    private function validateRequiredConfiguration(array $product, array $customization): void
+    {
+        if (! ($product['is_customizable'] ?? false)) {
+            return;
+        }
+
+        $configuration = $customization['configuration'] ?? [];
+        foreach (($product['option_groups'] ?? []) as $group) {
+            if (! ($group['required'] ?? false)) {
+                continue;
+            }
+
+            $groupId = (string) $group['id'];
+            $valid = match ($group['type']) {
+                'checkbox' => count($configuration['multi_selections'][$groupId] ?? []) >= max(1, (int) ($group['minimum_selections'] ?? 1)),
+                'image', 'swatch', 'buttons', 'select' => filled($configuration['selections'][$groupId] ?? null),
+                'file' => filled($customization['artwork_path'] ?? null),
+                default => filled($configuration['inputs'][$groupId] ?? null),
+            };
+
+            abort_unless($valid, 422, 'A required product customization is missing: '.$group['label']);
+        }
+
+        $artwork = collect($product['artwork_methods'] ?? [])->firstWhere('id', $configuration['artwork_method'] ?? null);
+        if (($artwork['requires_upload'] ?? false) && ! filled($customization['artwork_path'] ?? null)) {
+            abort(422, 'The selected artwork method requires an uploaded file.');
+        }
+    }
+
+    private function sanitizeQuantity(int $quantity, array $product): int
+    {
+        $minimum = max(1, (int) ($product['minimum_quantity'] ?? 1));
+        $maximum = min(999, max($minimum, (int) ($product['maximum_quantity'] ?? 999)));
+
+        if (($product['track_inventory'] ?? false) && ! ($product['allow_backorder'] ?? false)) {
+            $maximum = min($maximum, max(0, (int) ($product['stock_quantity'] ?? 0)));
+        }
+
+        abort_if($maximum < $minimum, 422, 'This product is currently unavailable in the required minimum quantity.');
+
+        return min(max($quantity, $minimum), $maximum);
     }
 
     private function makeItemKey(string $slug, array $customization): string
     {
-        return sha1($slug . '|' . json_encode($customization, JSON_THROW_ON_ERROR));
+        return sha1($slug.'|'.json_encode($customization, JSON_THROW_ON_ERROR));
     }
 
-    private function customizationUnitPrice(array $customization): float
+    private function unitPriceForQuantity(array $product, int $quantity): float
     {
-        return match (Str::lower((string) ($customization['design_option'] ?? ''))) {
-            'modern graphic', 'modern-graphic' => 3.00,
-            default => 0.00,
-        };
+        $tier = collect($product['price_tiers'] ?? [])->first(function (array $tier) use ($quantity): bool {
+            return $quantity >= (int) ($tier['min'] ?? 1)
+                && (($tier['max'] ?? null) === null || $quantity <= (int) $tier['max']);
+        });
+
+        return round((float) ($tier['unit'] ?? $product['base_price'] ?? 0), 2);
+    }
+
+    private function customizationUnitPrice(array $product, array $customization, int $quantity): float
+    {
+        $configuration = $customization['configuration'] ?? [];
+        $groups = collect($product['option_groups'] ?? [])->keyBy('id');
+        $delta = 0.0;
+
+        foreach ((array) ($configuration['selections'] ?? []) as $groupId => $valueId) {
+            $value = collect($groups->get($groupId)['values'] ?? [])->firstWhere('id', $valueId);
+            $delta += (float) ($value['price_delta'] ?? 0);
+        }
+
+        foreach ((array) ($configuration['multi_selections'] ?? []) as $groupId => $valueIds) {
+            $values = collect($groups->get($groupId)['values'] ?? [])->keyBy('id');
+            foreach ((array) $valueIds as $valueId) {
+                $delta += (float) ($values->get($valueId)['price_delta'] ?? 0);
+            }
+        }
+
+        $artwork = collect($product['artwork_methods'] ?? [])->firstWhere('id', $configuration['artwork_method'] ?? null);
+        $speed = collect($product['production_speeds'] ?? [])->firstWhere('id', $configuration['production_speed'] ?? null);
+        $delta += (float) ($artwork['price_delta'] ?? 0) + (float) ($speed['price_delta'] ?? 0);
+
+        if ($quantity > 0) {
+            $sizeLookup = collect($product['size_groups'] ?? [])->flatMap(fn (array $group) => collect($group['sizes'] ?? [])->mapWithKeys(fn (array $size) => [
+                $group['id'].':'.$size['code'] => (float) ($size['price_delta'] ?? 0),
+            ]));
+            $weighted = 0.0;
+            foreach ((array) ($configuration['quantities'] ?? []) as $key => $count) {
+                $weighted += (float) ($sizeLookup->get($key, 0)) * (int) $count;
+            }
+            $delta += $weighted / $quantity;
+        }
+
+        return round($delta, 2);
     }
 
     private function calculateDiscount(float $merchandiseTotal, ?string $couponCode): float

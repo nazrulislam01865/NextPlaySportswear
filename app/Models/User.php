@@ -34,6 +34,17 @@ class User extends Authenticatable
         return $this->hasMany(CustomerPaymentMethod::class)->latest();
     }
 
+
+    public function isAdmin(): bool
+    {
+        return in_array($this->role, ['super_admin', 'admin', 'catalog_manager'], true) && $this->is_active;
+    }
+
+    public function isCustomer(): bool
+    {
+        return $this->role === 'customer' && $this->is_active;
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -45,6 +56,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'marketing_consent' => 'boolean',
+            'is_active' => 'boolean',
+            'last_login_at' => 'datetime',
         ];
     }
 }

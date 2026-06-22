@@ -1,8 +1,9 @@
 @props([
     'faqs' => [],
+    'initialOpen' => 0,
 ])
 
-<div class="mx-auto max-w-3xl" x-data="{ open: 0 }">
+<div class="mx-auto max-w-3xl" x-data="{ open: @js($initialOpen) }">
     @foreach($faqs as $index => $faq)
         <div class="mb-2 overflow-hidden rounded-xl border border-slate-200 bg-white">
             <button
