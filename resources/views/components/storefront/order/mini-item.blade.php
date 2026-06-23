@@ -1,11 +1,11 @@
 @props(['item'])
 
-<article class="flex gap-3 rounded-2xl border border-slate-200 bg-white p-3">
+<article class="grid grid-cols-[64px_minmax(0,1fr)] gap-3 rounded-2xl border border-slate-200 bg-white p-3 sm:grid-cols-[80px_minmax(0,1fr)_auto]">
     <img
         src="{{ $item['image'] }}"
         alt="{{ $item['alt'] }}"
         loading="lazy"
-        class="h-20 w-20 shrink-0 rounded-xl object-cover"
+        class="h-16 w-16 rounded-xl object-cover sm:h-20 sm:w-20"
     >
     <div class="min-w-0 flex-1">
         <h4 class="line-clamp-2 text-sm font-black text-brand-ink">{{ $item['title'] }}</h4>
@@ -16,5 +16,5 @@
             {{ $item['customization']['design_option'] }}
         </p>
     </div>
-    <strong class="whitespace-nowrap text-sm text-brand-ink">${{ number_format($item['line_total'], 2) }}</strong>
+    <strong class="col-span-2 text-right text-sm text-brand-ink sm:col-span-1 sm:whitespace-nowrap">${{ number_format($item['line_total'], 2) }}</strong>
 </article>

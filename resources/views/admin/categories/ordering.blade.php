@@ -32,7 +32,7 @@
         @endforeach
 
         <div id="category-order-inputs"></div>
-        <div class="sticky bottom-4 z-20 flex justify-end gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-soft backdrop-blur">
+        <div class="sticky bottom-3 z-20 flex flex-col gap-3 sm:bottom-4 sm:flex-row sm:flex-wrap sm:justify-end rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-soft backdrop-blur">
             <a href="{{ route('admin.categories.index') }}" class="btn btn-white">Cancel</a>
             <button class="btn btn-red">Save Category Order</button>
         </div>

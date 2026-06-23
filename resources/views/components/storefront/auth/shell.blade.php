@@ -28,7 +28,7 @@
         <div class="mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
                 <p class="text-xs font-black uppercase tracking-[.22em] text-brand-red">{{ $eyebrow }}</p>
-                <h1 class="mt-2 font-display text-4xl font-bold uppercase leading-none text-brand-ink sm:text-5xl">
+                <h1 class="mt-2 font-display text-3xl font-bold uppercase leading-tight text-brand-ink sm:text-5xl">
                     {{ $title }}
                 </h1>
                 <p class="mt-3 max-w-2xl text-base leading-7 text-slate-600">
@@ -41,8 +41,8 @@
             </a>
         </div>
 
-        <div class="grid overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-hero lg:grid-cols-[.92fr_1.08fr]">
-            <aside class="relative min-h-[430px] overflow-hidden bg-brand-dark p-8 text-white sm:p-10 lg:p-12">
+        <div class="grid min-w-0 overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-hero sm:rounded-[32px] lg:grid-cols-[.92fr_1.08fr]">
+            <aside class="relative overflow-hidden bg-brand-dark p-6 text-white sm:min-h-[430px] sm:p-10 lg:p-12">
                 <div class="absolute inset-0 opacity-35" aria-hidden="true">
                     <div class="absolute -right-24 top-8 h-56 w-56 rounded-full bg-brand-red blur-3xl"></div>
                     <div class="absolute -bottom-24 left-10 h-64 w-64 rounded-full bg-brand-blue blur-3xl"></div>
@@ -55,7 +55,7 @@
                             Team order ready
                         </div>
 
-                        <h2 class="font-display text-4xl font-bold uppercase leading-tight sm:text-5xl">
+                        <h2 class="font-display text-3xl font-bold uppercase leading-tight sm:text-5xl">
                             Custom gear, quotes, proofs, and checkout in one place.
                         </h2>
 
@@ -73,7 +73,7 @@
                         @endforeach
                     </div>
 
-                    <div class="grid grid-cols-3 gap-3 border-t border-white/10 pt-6 text-center">
+                    <div class="grid grid-cols-1 gap-3 border-t border-white/10 pt-6 text-center min-[380px]:grid-cols-3">
                         <div>
                             <p class="font-display text-3xl font-bold uppercase">24h</p>
                             <p class="mt-1 text-[11px] font-bold uppercase tracking-wide text-white/60">Proof help</p>

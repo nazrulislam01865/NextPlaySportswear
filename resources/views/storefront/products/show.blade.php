@@ -18,7 +18,7 @@
         </nav>
 
         <section class="py-10 sm:py-14">
-            <div class="site-container grid gap-10 lg:grid-cols-[minmax(0,1.03fr)_minmax(390px,.97fr)] lg:items-start" x-data="productBuilder(@js($heroConfig))" x-init="init()">
+            <div class="site-container grid min-w-0 gap-8 xl:grid-cols-[minmax(0,1.03fr)_minmax(390px,.97fr)] xl:items-start" x-data="productBuilder(@js($heroConfig))" x-init="init()">
                 <x-storefront.product.gallery :gallery="$product['gallery']" :badge="$product['tag'] ?: 'Product'" />
 
                 <article class="min-w-0">
@@ -28,10 +28,10 @@
                         @if($product['subcategory'])<span class="rounded-full bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.12em] text-slate-600">{{ $product['subcategory'] }}</span>@endif
                         <span class="rounded-full bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.12em] text-slate-600">SKU: {{ $product['sku'] }}</span>
                     </div>
-                    <h1 class="mt-5 font-display text-5xl font-bold uppercase leading-[.98] tracking-tight text-brand-ink sm:text-6xl">{{ $product['title'] }}</h1>
+                    <h1 class="mt-5 font-display text-4xl font-bold uppercase leading-[1.02] tracking-tight text-brand-ink sm:text-5xl lg:text-6xl">{{ $product['title'] }}</h1>
                     @if($product['reviews_count'] > 0)<div class="mt-4 flex items-center gap-2 text-sm"><span class="text-amber-500">★★★★★</span><strong>{{ number_format($product['rating'],1) }}</strong><span class="text-slate-400">{{ $product['reviews_count'] }} verified reviews</span></div>@endif
                     <p class="mt-5 text-base leading-8 text-slate-600">{{ $product['summary'] }}</p>
-                    <div class="mt-6 flex flex-wrap items-end gap-3"><span class="text-sm font-bold text-slate-500">Starting at</span><strong class="text-4xl font-black tracking-tight text-brand-red">{{ $product['currency'] }} {{ number_format((float)collect($product['price_tiers'])->min('unit') ?: $product['base_price'],2) }}</strong><span class="pb-1 text-xs text-slate-500">per item at applicable quantity tier</span></div>
+                    <div class="mt-6 flex min-w-0 flex-wrap items-end gap-3"><span class="text-sm font-bold text-slate-500">Starting at</span><strong class="text-3xl font-black tracking-tight text-brand-red sm:text-4xl">{{ $product['currency'] }} {{ number_format((float)collect($product['price_tiers'])->min('unit') ?: $product['base_price'],2) }}</strong><span class="pb-1 text-xs text-slate-500">per item at applicable quantity tier</span></div>
                     @if($product['compare_at_price'])<p class="mt-2 text-sm text-slate-400 line-through">Compare at {{ $product['currency'] }} {{ number_format($product['compare_at_price'],2) }}</p>@endif
 
                     @if(!empty($product['features']))<div class="mt-7 grid gap-3 sm:grid-cols-2">@foreach($product['features'] as $feature)<div class="flex gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm font-bold leading-6 text-slate-700"><span class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-emerald-100 text-xs font-black text-emerald-700">✓</span><span>{{ $feature }}</span></div>@endforeach</div>@endif
@@ -39,7 +39,7 @@
                     @if(!empty($product['detail_information']))<div class="mt-7 overflow-hidden rounded-2xl border border-slate-200"><div class="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-4"><strong>Product information</strong><span class="text-xs font-bold text-brand-blue">Admin controlled</span></div><dl class="grid sm:grid-cols-2">@foreach(array_slice($product['detail_information'],0,6,true) as $label=>$value)<div class="border-b border-slate-100 px-5 py-4 odd:sm:border-r"><dt class="text-[10px] font-black uppercase tracking-[.12em] text-slate-400">{{ $label }}</dt><dd class="mt-1 text-sm font-black">{{ $value }}</dd></div>@endforeach</dl></div>@endif
 
                     <div class="mt-7 grid gap-3 sm:grid-cols-2"><a href="#configure-product" class="btn btn-red py-4">Start Customizing ↓</a><a href="{{ route('quote.request') }}" class="btn btn-white py-4">Request Bulk Quote</a></div>
-                    <div class="mt-4 flex flex-wrap justify-between gap-3 rounded-2xl bg-blue-50 p-4 text-xs font-bold text-brand-blue"><span>✓ Free artwork review</span><span>✓ Proof before production</span><span>✓ Secure checkout</span></div>
+                    <div class="mt-4 grid gap-3 rounded-2xl sm:grid-cols-3 sm:text-center bg-blue-50 p-4 text-xs font-bold text-brand-blue"><span>✓ Free artwork review</span><span>✓ Proof before production</span><span>✓ Secure checkout</span></div>
                 </article>
             </div>
         </section>

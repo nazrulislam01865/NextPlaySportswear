@@ -19,7 +19,7 @@
                     <span class="text-white">Checkout</span>
                 </nav>
                 <p class="text-xs font-black uppercase tracking-[.22em] text-brand-red">Secure checkout</p>
-                <h1 class="mt-3 font-display text-5xl font-bold uppercase tracking-tight sm:text-6xl">{{ $title }}</h1>
+                <h1 class="mt-3 font-display text-4xl font-bold uppercase leading-tight tracking-tight sm:text-6xl">{{ $title }}</h1>
                 <p class="mt-4 max-w-3xl text-base leading-7 text-blue-100">{{ $description }}</p>
             </div>
 
@@ -49,8 +49,8 @@
                 </div>
             @endif
 
-            <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start">
-                <div>
+            <div class="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start xl:grid-cols-[minmax(0,1fr)_390px]">
+                <div class="min-w-0">
                     {{ $slot }}
                 </div>
 

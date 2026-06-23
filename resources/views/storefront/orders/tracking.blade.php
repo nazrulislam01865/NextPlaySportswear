@@ -20,7 +20,7 @@
                 <h2 class="text-2xl font-black text-brand-ink">Tracking Lookup</h2>
                 <p class="mt-2 text-sm font-semibold leading-6 text-slate-600">For privacy, guest tracking must verify the order number and email used at checkout.</p>
             </div>
-            <form method="POST" action="{{ route('orders.track.lookup') }}" class="grid gap-3 rounded-2xl bg-slate-50 p-4 sm:grid-cols-[1fr_1fr_auto] lg:min-w-[560px]">
+            <form method="POST" action="{{ route('orders.track.lookup') }}" class="grid min-w-0 gap-3 rounded-2xl bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto]">
                 @csrf
                 <label class="grid gap-1 text-sm font-black text-slate-700">
                     Order number

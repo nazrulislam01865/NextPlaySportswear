@@ -182,7 +182,7 @@
         </div>
     </x-admin.section-card>
 
-    <div class="sticky bottom-4 z-30 flex flex-wrap justify-end gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-soft backdrop-blur">
+    <div class="sticky bottom-3 z-30 flex flex-col gap-3 sm:bottom-4 sm:flex-row sm:flex-wrap sm:justify-end rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-soft backdrop-blur">
         <a href="{{ route('admin.homepage-slides.index') }}" class="btn btn-white">Cancel</a>
         <button type="submit" class="btn btn-red">{{ $isEdit ? 'Update Slide' : 'Create Slide' }}</button>
     </div>

@@ -24,7 +24,7 @@
         }
     }"
 >
-    <div class="grid bg-slate-200 sm:grid-cols-[170px_minmax(0,1fr)] lg:grid-cols-[190px_minmax(0,1fr)]">
+    <div class="grid min-w-0 bg-slate-200 sm:grid-cols-[150px_minmax(0,1fr)] lg:grid-cols-[190px_minmax(0,1fr)]">
         <div class="bg-fuchsia-600 px-5 py-5 text-white sm:py-6 lg:px-8">
             <span class="block text-xs font-black uppercase tracking-[.22em] text-fuchsia-100">Step</span>
             <span class="mt-1 block text-4xl font-black leading-none lg:text-5xl">{{ $selector['step'] ?? '07' }}</span>
@@ -33,10 +33,10 @@
         <div class="flex min-w-0 flex-col gap-4 px-5 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
             <div class="min-w-0">
                 <p class="text-xs font-black uppercase tracking-[.18em] text-slate-500">Team roster sizing</p>
-                <h2 class="mt-1 text-3xl font-black leading-tight text-brand-ink sm:text-4xl">{{ $selector['title'] ?? 'Choose Your Sizes' }}</h2>
+                <h2 class="mt-1 text-2xl font-black leading-tight text-brand-ink sm:text-4xl">{{ $selector['title'] ?? 'Choose Your Sizes' }}</h2>
             </div>
 
-            <div class="grid gap-3 sm:grid-cols-2 lg:min-w-[410px]">
+            <div class="grid w-full min-w-0 gap-3 sm:grid-cols-2 lg:w-auto lg:min-w-[380px]">
                 <button
                     type="button"
                     class="inline-flex min-h-[54px] items-center justify-center rounded-2xl border-2 border-brand-red bg-white px-5 text-center text-sm font-black text-brand-ink shadow-sm transition hover:-translate-y-0.5 hover:bg-red-50"
@@ -69,7 +69,7 @@
                     </summary>
 
                     <div class="px-4 pb-5">
-                        <div class="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(92px,1fr))]">
+                        <div class="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(78px,1fr))] sm:[grid-template-columns:repeat(auto-fit,minmax(92px,1fr))]">
                             @foreach ($group['sizes'] as $size)
                                 @php
                                     $fieldKey = $group['key'] . '-' . \Illuminate\Support\Str::slug($size);
@@ -108,17 +108,17 @@
     </div>
 
     <div
-        class="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4"
+        class="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-2 sm:p-4"
         x-cloak
         x-show="sizeChartOpen"
         x-transition.opacity
         @keydown.escape.window="sizeChartOpen = false"
     >
-        <div class="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-hero" @click.outside="sizeChartOpen = false">
-            <div class="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
+        <div class="max-h-[96dvh] w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-hero sm:max-h-[90vh] sm:rounded-3xl" @click.outside="sizeChartOpen = false">
+            <div class="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:px-5 sm:py-4">
                 <div>
                     <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">Size guide</p>
-                    <h3 class="text-2xl font-black text-brand-ink">{{ $chart['title'] ?? 'Size Chart' }}</h3>
+                    <h3 class="text-xl font-black text-brand-ink sm:text-2xl">{{ $chart['title'] ?? 'Size Chart' }}</h3>
                     @if (! empty($chart['note']))
                         <p class="mt-1 text-sm text-slate-500">{{ $chart['note'] }}</p>
                     @endif
@@ -126,12 +126,12 @@
                 <button type="button" class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-100 text-xl font-black text-brand-ink hover:bg-red-50 hover:text-brand-red" @click="sizeChartOpen = false">×</button>
             </div>
 
-            <div class="max-h-[72vh] overflow-y-auto p-5">
+            <div class="max-h-[78dvh] overflow-y-auto p-3 sm:max-h-[72vh] sm:p-5">
                 <div class="grid gap-5">
                     @foreach (($chart['groups'] ?? []) as $group)
                         <div class="overflow-hidden rounded-2xl border border-slate-200">
                             <div class="bg-brand-navy px-4 py-3 text-sm font-black text-white">{{ $group['label'] }}</div>
-                            <div class="overflow-x-auto">
+                            <div class="touch-scroll-x">
                                 <table class="min-w-full text-left text-sm">
                                     <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                                         <tr>

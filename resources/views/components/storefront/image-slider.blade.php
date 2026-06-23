@@ -20,7 +20,7 @@
         class="relative overflow-hidden bg-brand-dark"
         aria-label="Homepage promotional slider"
     >
-        <div class="relative h-[440px] sm:h-[500px] lg:h-[560px]">
+        <div class="relative h-[420px] sm:h-[500px] lg:h-[560px]">
             @foreach($slides as $index => $slide)
                 <article
                     x-cloak
@@ -43,7 +43,7 @@
                                 {{ $slide['eyebrow'] }}
                             </p>
 
-                            <h1 class="font-display text-4xl font-bold uppercase leading-[.95] tracking-tight sm:text-5xl lg:text-7xl">
+                            <h1 class="font-display text-3xl font-bold uppercase leading-tight tracking-tight sm:text-5xl lg:text-7xl">
                                 {{ $slide['title'] }}
                             </h1>
 
@@ -68,7 +68,7 @@
 
         <button
             type="button"
-            class="absolute left-4 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-brand-ink shadow hover:bg-white"
+            class="absolute left-2 top-1/2 hidden h-11 w-11 sm:grid sm:left-4 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-brand-ink shadow hover:bg-white"
             aria-label="Previous slide"
             @click="previous()"
         >
@@ -77,7 +77,7 @@
 
         <button
             type="button"
-            class="absolute right-4 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-brand-ink shadow hover:bg-white"
+            class="absolute right-2 top-1/2 hidden h-11 w-11 sm:grid sm:right-4 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-brand-ink shadow hover:bg-white"
             aria-label="Next slide"
             @click="next()"
         >

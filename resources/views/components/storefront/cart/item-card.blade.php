@@ -7,16 +7,16 @@
 
 <article class="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-card">
     <div class="grid gap-0 lg:grid-cols-[190px_1fr]">
-        <a href="{{ $product['url'] }}" class="group block h-full min-h-[190px] overflow-hidden bg-slate-100">
+        <a href="{{ $product['url'] }}" class="group block h-56 overflow-hidden bg-slate-100 sm:h-72 lg:h-full lg:min-h-[190px]">
             <img
                 src="{{ $product['image'] }}"
                 alt="{{ $product['alt'] ?? $product['title'] }}"
-                class="h-full min-h-[190px] w-full object-cover transition duration-300 group-hover:scale-105"
+                class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                 loading="lazy"
             >
         </a>
 
-        <div class="grid gap-5 p-5 lg:p-6">
+        <div class="grid min-w-0 gap-5 p-4 sm:p-5 lg:p-6">
             <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div>
                     <div class="flex flex-wrap items-center gap-2">
@@ -41,16 +41,16 @@
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <p class="text-xs font-black uppercase tracking-[.16em] text-brand-red">Customization</p>
                     <dl class="mt-3 grid gap-2 text-sm">
-                        <div class="flex gap-2">
-                            <dt class="w-24 shrink-0 font-black text-slate-700">Design</dt>
+                        <div class="flex flex-col gap-1 min-[420px]:flex-row min-[420px]:gap-2">
+                            <dt class="min-[420px]:w-24 min-[420px]:shrink-0 font-black text-slate-700">Design</dt>
                             <dd class="text-slate-600">{{ $customization['design_option'] }}</dd>
                         </div>
-                        <div class="flex gap-2">
-                            <dt class="w-24 shrink-0 font-black text-slate-700">Sizes</dt>
+                        <div class="flex flex-col gap-1 min-[420px]:flex-row min-[420px]:gap-2">
+                            <dt class="min-[420px]:w-24 min-[420px]:shrink-0 font-black text-slate-700">Sizes</dt>
                             <dd class="text-slate-600">{{ $customization['size_summary'] }}</dd>
                         </div>
-                        <div class="flex gap-2">
-                            <dt class="w-24 shrink-0 font-black text-slate-700">Artwork</dt>
+                        <div class="flex flex-col gap-1 min-[420px]:flex-row min-[420px]:gap-2">
+                            <dt class="min-[420px]:w-24 min-[420px]:shrink-0 font-black text-slate-700">Artwork</dt>
                             <dd class="text-slate-600">{{ $customization['artwork_status'] }}</dd>
                         </div>
                     </dl>
@@ -66,7 +66,7 @@
             </div>
 
             <div class="flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
-                <form method="POST" action="{{ route('cart.items.update', $item['key']) }}" class="flex items-center gap-3">
+                <form method="POST" action="{{ route('cart.items.update', $item['key']) }}" class="flex flex-wrap items-center gap-3">
                     @csrf
                     @method('PATCH')
                     <label for="quantity-{{ $item['key'] }}" class="text-sm font-black text-slate-700">Qty</label>
@@ -82,7 +82,7 @@
                     <button class="btn btn-light" type="submit">Update</button>
                 </form>
 
-                <div class="flex flex-wrap gap-2">
+                <div class="grid w-full grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:flex sm:w-auto sm:flex-wrap">
                     <a href="{{ $product['url'] }}#customize" class="btn btn-white">Edit Options</a>
                     <form method="POST" action="{{ route('cart.items.destroy', $item['key']) }}">
                         @csrf

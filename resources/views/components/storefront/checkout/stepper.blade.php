@@ -6,8 +6,8 @@
 @endphp
 
 <div class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 py-3 shadow-sm backdrop-blur">
-    <div class="site-container overflow-x-auto">
-        <div class="flex min-w-max items-center gap-2">
+    <div class="site-container touch-scroll-x hide-scrollbar">
+        <div class="flex min-w-max items-center gap-2 pr-3">
             @foreach ($steps as $index => $step)
                 @php
                     $isActive = $step['key'] === $currentStep;

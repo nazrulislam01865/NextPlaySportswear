@@ -2,7 +2,7 @@
     <section class="bg-gradient-to-br from-brand-navy via-brand-dark to-brand-blue py-16 text-white">
         <div class="site-container">
             <p class="text-xs font-black uppercase tracking-[.2em] text-red-100">NextPlay catalog</p>
-            <h1 class="mt-3 font-display text-5xl font-bold uppercase tracking-tight lg:text-6xl">Products</h1>
+            <h1 class="mt-3 font-display text-4xl font-bold uppercase leading-tight tracking-tight sm:text-5xl lg:text-6xl">Products</h1>
             <p class="mt-4 max-w-2xl text-base leading-7 text-blue-50">Browse custom jerseys, team uniforms, hoodies, caps, bags, and quote-ready sportswear products.</p>
 
             <form method="GET" action="{{ route('products.index') }}" class="mt-8 flex max-w-2xl flex-col gap-3 rounded-2xl bg-white p-2 shadow-hero sm:flex-row">

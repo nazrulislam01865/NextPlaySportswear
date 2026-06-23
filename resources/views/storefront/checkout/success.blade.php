@@ -4,7 +4,7 @@
             <div class="mx-auto max-w-3xl rounded-[32px] border border-slate-200 bg-white p-8 text-center shadow-card lg:p-12">
                 <div class="mx-auto grid h-20 w-20 place-items-center rounded-full bg-green-100 text-4xl text-green-700">✓</div>
                 <p class="mt-6 text-xs font-black uppercase tracking-[.22em] text-brand-red">Order received</p>
-                <h1 class="mt-3 font-display text-5xl font-bold uppercase text-brand-ink">Thank You</h1>
+                <h1 class="mt-3 font-display text-4xl font-bold uppercase leading-tight text-brand-ink sm:text-5xl">Thank You</h1>
 
                 @php($order = $state['placed_order'] ?? null)
                 @if (is_array($order))

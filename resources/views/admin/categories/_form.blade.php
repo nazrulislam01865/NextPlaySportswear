@@ -121,7 +121,7 @@
         <label class="admin-label mt-5">Custom schema JSON<textarea class="admin-textarea min-h-56 font-mono text-xs" name="schema_json_text">{{ old('schema_json_text',$category->schema_json ? json_encode($category->schema_json,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES) : '') }}</textarea></label>
     </x-admin.section-card>
 
-    <div class="sticky bottom-4 z-30 flex flex-wrap justify-end gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-soft backdrop-blur"><a href="{{ route('admin.categories.index') }}" class="btn btn-white">Cancel</a>@if($isEdit && $category->status==='active')<a href="{{ route('categories.show',$category->slug) }}" target="_blank" rel="noopener" class="btn btn-white">Preview Storefront</a>@endif<button class="btn btn-red">{{ $isEdit ? 'Update Category' : 'Create Category' }}</button></div>
+    <div class="sticky bottom-3 z-30 flex flex-col gap-3 sm:bottom-4 sm:flex-row sm:flex-wrap sm:justify-end rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-soft backdrop-blur"><a href="{{ route('admin.categories.index') }}" class="btn btn-white">Cancel</a>@if($isEdit && $category->status==='active')<a href="{{ route('categories.show',$category->slug) }}" target="_blank" rel="noopener" class="btn btn-white">Preview Storefront</a>@endif<button class="btn btn-red">{{ $isEdit ? 'Update Category' : 'Create Category' }}</button></div>
 </form>
 
 @once

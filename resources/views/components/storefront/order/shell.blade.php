@@ -28,7 +28,7 @@
                     <span class="ml-2 inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-amber-800">Demo preview</span>
                 @endif
 
-                <h1 class="mt-4 font-display text-5xl font-bold uppercase tracking-tight sm:text-6xl">{{ $title }}</h1>
+                <h1 class="mt-4 font-display text-4xl font-bold uppercase leading-tight tracking-tight sm:text-6xl">{{ $title }}</h1>
                 <p class="mt-4 max-w-3xl text-base leading-7 text-blue-100">{{ $description }}</p>
 
                 <div class="mt-7 flex flex-col gap-3 sm:flex-row">
@@ -58,8 +58,8 @@
                 </div>
             @endif
 
-            <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start">
-                <div>{{ $slot }}</div>
+            <div class="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start xl:grid-cols-[minmax(0,1fr)_390px]">
+                <div class="min-w-0">{{ $slot }}</div>
                 <x-storefront.order.summary-card :summary="$summary" />
             </div>
         </div>

@@ -23,7 +23,7 @@
 
         <div class="mt-10 max-w-3xl">
             <p class="text-xs font-black uppercase tracking-[.22em] text-red-200">{{ $category['eyebrow'] }}</p>
-            <h1 class="mt-3 font-display text-5xl font-bold uppercase leading-[.95] tracking-tight sm:text-6xl lg:text-7xl">
+            <h1 class="mt-3 font-display text-4xl font-bold uppercase leading-tight tracking-tight sm:text-6xl lg:text-7xl">
                 {{ $category['title'] }}
             </h1>
             <p class="mt-5 max-w-2xl text-base leading-7 text-blue-50 sm:text-lg">

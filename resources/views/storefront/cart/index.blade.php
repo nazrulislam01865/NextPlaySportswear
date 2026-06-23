@@ -12,14 +12,14 @@
             <div class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                     <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">Review your custom order</p>
-                    <h1 class="mt-2 font-display text-5xl font-bold uppercase tracking-tight text-brand-ink lg:text-6xl">Shopping Cart</h1>
+                    <h1 class="mt-2 font-display text-4xl font-bold uppercase leading-tight tracking-tight text-brand-ink sm:text-5xl lg:text-6xl">Shopping Cart</h1>
                     <p class="mt-3 max-w-3xl text-base leading-7 text-slate-600">Confirm product details, custom artwork notes, sizes, discounts, shipping estimate, and production support before checkout.</p>
                 </div>
 
-                <div class="grid grid-cols-3 overflow-hidden rounded-2xl border border-slate-200 bg-white text-center text-xs font-black uppercase tracking-wide text-slate-500 shadow-sm sm:min-w-[420px]">
-                    <div class="bg-brand-red px-4 py-3 text-white">1. Cart</div>
-                    <div class="px-4 py-3">2. Checkout</div>
-                    <div class="px-4 py-3">3. Proof</div>
+                <div class="grid w-full grid-cols-3 overflow-hidden rounded-2xl border border-slate-200 bg-white text-center text-[10px] font-black uppercase leading-tight tracking-wide text-slate-500 shadow-sm sm:w-auto sm:min-w-[420px] sm:text-xs">
+                    <div class="bg-brand-red px-2 py-3 text-white sm:px-4">1. Cart</div>
+                    <div class="px-2 py-3 sm:px-4">2. Checkout</div>
+                    <div class="px-2 py-3 sm:px-4">3. Proof</div>
                 </div>
             </div>
 
@@ -43,9 +43,9 @@
 
             @if ($cart['is_empty'])
                 <div class="grid gap-8 lg:grid-cols-[1fr_360px]">
-                    <div class="rounded-[28px] border border-slate-200 bg-slate-50 p-8 text-center shadow-card lg:p-12">
+                    <div class="rounded-[24px] border border-slate-200 bg-slate-50 p-5 text-center sm:rounded-[28px] sm:p-8 shadow-card lg:p-12">
                         <div class="mx-auto grid h-20 w-20 place-items-center rounded-full bg-white text-4xl shadow-sm">🛒</div>
-                        <h2 class="mt-6 font-display text-4xl font-bold uppercase text-brand-ink">Your cart is empty</h2>
+                        <h2 class="mt-6 font-display text-3xl font-bold uppercase leading-tight text-brand-ink sm:text-4xl">Your cart is empty</h2>
                         <p class="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-600">Browse custom jerseys, uniforms, caps, bags, and team apparel. You can also preview the designed cart layout with sample items.</p>
                         <div class="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
                             <a href="{{ route('products.index') }}" class="btn btn-red">Shop Products</a>

@@ -6,9 +6,9 @@
     'fullWidth' => false,
 ])
 
-<section class="bg-brand-red py-7 text-white">
+<section class="bg-brand-red py-6 text-white sm:py-7">
     <div class="site-container text-center">
-        <p class="font-display text-4xl font-black uppercase italic tracking-wide drop-shadow-lg md:text-5xl">
+        <p class="font-display text-3xl font-black uppercase italic leading-tight tracking-wide drop-shadow-lg sm:text-4xl md:text-5xl">
             {{ $title }}
         </p>
         <p class="mx-auto mt-2 max-w-2xl text-sm font-bold text-white/85 md:text-base">
@@ -18,7 +18,7 @@
 </section>
 
 <section class="bg-slate-50 py-8 md:py-12">
-    <div class="{{ $fullWidth ? 'mx-auto' : 'site-container' }}" @if($fullWidth) style="width:min(1180px, calc(100% - 32px)); margin-inline:auto;" @endif>
+    <div class="{{ $fullWidth ? 'mx-auto' : 'site-container' }}" @if($fullWidth) style="width:min(1180px, calc(100% - 24px)); margin-inline:auto;" @endif>
         @if (session('status'))
             <div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-extrabold text-emerald-800 shadow-sm">
                 {{ session('status') }}
@@ -34,8 +34,8 @@
         @if ($fullWidth)
             {{ $slot }}
         @else
-            <div class="grid gap-6 lg:grid-cols-[300px_1fr]">
-                <aside class="space-y-5">
+            <div class="grid min-w-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)]">
+                <aside class="min-w-0 space-y-5">
                     <div class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-card">
                         <div class="flex items-center gap-4">
                             <div class="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-brand-navy font-display text-2xl font-black text-white shadow-lg shadow-brand-navy/20">
