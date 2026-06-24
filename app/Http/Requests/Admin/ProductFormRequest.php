@@ -2,6 +2,10 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\JerseyCustomizationType;
+use App\Models\JerseyCustomizationOption;
+use App\Models\Product;
+use App\Support\ProductionTime;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -38,6 +42,7 @@ class ProductFormRequest extends FormRequest
             'badge_color' => ['nullable', 'string', 'max:30'],
             'short_description' => ['nullable', 'string', 'max:1500'],
             'description_html' => ['nullable', 'string', 'max:100000'],
+            'detail_information_html' => ['nullable', 'string', 'max:100000'],
             'base_price' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
             'compare_at_price' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'cost_price' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
@@ -86,11 +91,14 @@ class ProductFormRequest extends FormRequest
             'specifications.*.value' => ['nullable', 'string', 'max:1000'],
 
             'image_urls' => ['nullable', 'array', 'max:30'],
+            'image_urls.*.existing_id' => ['nullable', 'integer', 'min:1'],
             'image_urls.*.url' => ['nullable', 'url', 'max:2048'],
+            'image_urls.*.name' => ['nullable', 'string', 'max:255'],
             'image_urls.*.alt' => ['nullable', 'string', 'max:255'],
             'image_urls.*.is_primary' => ['nullable', 'boolean'],
             'images' => ['nullable', 'array', 'max:20'],
             'images.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:5120'],
+            'new_image_primary_index' => ['nullable', 'integer', 'min:0', 'max:19'],
 
             'price_tiers' => ['nullable', 'array', 'max:100'],
             'price_tiers.*.label' => ['nullable', 'string', 'max:120'],
@@ -118,6 +126,7 @@ class ProductFormRequest extends FormRequest
             'option_groups.*.code' => ['nullable', 'string', 'max:160', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', 'distinct'],
             'option_groups.*.section' => ['nullable', Rule::in(['product', 'decoration'])],
             'option_groups.*.type' => ['nullable', Rule::in(['image', 'swatch', 'buttons', 'select', 'checkbox', 'text', 'textarea', 'number', 'file', 'date'])],
+            'option_groups.*.jersey_customization_type' => ['nullable', Rule::in(array_keys(JerseyCustomizationType::options()))],
             'option_groups.*.display_mode' => ['nullable', Rule::in(['hidden', 'fixed', 'customer'])],
             'option_groups.*.fixed_value_code' => ['nullable', 'string', 'max:180'],
             'option_groups.*.fixed_text_value' => ['nullable', 'string', 'max:2000'],
@@ -135,6 +144,7 @@ class ProductFormRequest extends FormRequest
             'option_groups.*.values.*.label' => ['nullable', 'string', 'max:180'],
             'option_groups.*.values.*.code' => ['nullable', 'string', 'max:180', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
             'option_groups.*.values.*.existing_id' => ['nullable', 'integer', 'min:1'],
+            'option_groups.*.values.*.jersey_customization_option_id' => ['nullable', 'integer', 'distinct', 'exists:jersey_customization_options,id'],
             'option_groups.*.values.*.description' => ['nullable', 'string', 'max:2000'],
             'option_groups.*.values.*.color_hex' => ['nullable', 'regex:/^#[0-9A-F]{6}$/'],
             'option_groups.*.values.*.image_url' => ['nullable', 'url', 'max:2048'],
@@ -150,8 +160,11 @@ class ProductFormRequest extends FormRequest
 
             'size_groups' => ['nullable', 'array', 'max:50'],
             'size_groups.*.existing_id' => ['nullable', 'integer', 'min:1'],
+            'size_groups.*.size_option_group_id' => ['nullable', 'integer', 'distinct', 'exists:size_option_groups,id'],
             'size_groups.*.name' => ['nullable', 'string', 'max:120'],
             'size_groups.*.code' => ['nullable', 'string', 'max:120', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', 'distinct'],
+            'size_groups.*.description_html' => ['nullable', 'string', 'max:100000'],
+            'size_groups.*.chart_html' => ['nullable', 'string', 'max:100000'],
             'size_groups.*.sizes_text' => ['nullable', 'string', 'max:5000'],
             'size_groups.*.is_active' => ['nullable', 'boolean'],
             'size_groups.*.chart_enabled' => ['nullable', 'boolean'],
@@ -172,17 +185,15 @@ class ProductFormRequest extends FormRequest
             'artwork_methods.*.requires_upload' => ['nullable', 'boolean'],
             'artwork_methods.*.is_active' => ['nullable', 'boolean'],
 
-            'production_ranges' => ['nullable', 'array', 'max:50'],
-            'production_ranges.*.minimum_quantity' => ['nullable', 'integer', 'min:1', 'max:1000000'],
-            'production_ranges.*.maximum_quantity' => ['nullable', 'integer', 'max:1000000'],
-            'production_ranges.*.options' => ['nullable', 'array', 'max:3'],
-            'production_ranges.*.options.*.name' => ['required', 'string', 'max:160'],
-            'production_ranges.*.options.*.code' => ['nullable', 'string', 'max:160', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
-            'production_ranges.*.options.*.description' => ['nullable', 'string', 'max:2000'],
-            'production_ranges.*.options.*.price_adjustment' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
-            'production_ranges.*.options.*.minimum_days' => ['required', 'integer', 'min:0', 'max:3650'],
-            'production_ranges.*.options.*.maximum_days' => ['required', 'integer', 'min:0', 'gte:production_ranges.*.options.*.minimum_days', 'max:3650'],
-            'production_ranges.*.options.*.is_active' => ['nullable', 'boolean'],
+            'production_table_headers' => ['nullable', 'array', 'max:12'],
+            'production_table_headers.*' => ['required', 'string', 'max:160', 'distinct'],
+            'production_table_rows' => ['nullable', 'array', 'max:100'],
+            'production_table_rows.*.range' => ['required', 'string', 'max:50'],
+            'production_table_rows.*.cells' => ['nullable', 'array', 'max:12'],
+            'production_table_rows.*.cells.*.enabled' => ['nullable', 'boolean'],
+            'production_table_rows.*.cells.*.description' => ['nullable', 'string', 'max:2000'],
+            'production_table_rows.*.cells.*.price_adjustment' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'production_table_rows.*.cells.*.production_time' => ['nullable', 'string', 'max:60'],
 
             // Flattened by prepareForValidation for the existing persistence layer.
             'production_speeds' => ['nullable', 'array', 'max:150'],
@@ -227,6 +238,13 @@ class ProductFormRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $routeProduct = $this->route('product');
+        $sku = trim((string) $this->input('sku', ''));
+        if ($sku === '') {
+            $sku = $routeProduct?->sku ?: $this->generateSku((string) $this->input('name', 'Product'));
+        }
+        $this->merge(['sku' => $sku]);
+
         $assignments = collect($this->input('category_assignments', []))
             ->filter(fn ($id) => filter_var($id, FILTER_VALIDATE_INT) !== false)
             ->map(fn ($id) => (int) $id)->unique()->values();
@@ -250,9 +268,22 @@ class ProductFormRequest extends FormRequest
         $pricing = $this->normalizeVisiblePricing();
         $this->merge($pricing);
 
+        $submittedMasterOptionIds = collect($this->input('option_groups', []))
+            ->flatMap(static fn ($group) => collect(is_array($group) ? ($group['values'] ?? []) : [])
+                ->pluck('jersey_customization_option_id'))
+            ->filter()
+            ->map(static fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
+        $masterOptionLookup = JerseyCustomizationOption::query()
+            ->active()
+            ->whereIn('id', $submittedMasterOptionIds)
+            ->get()
+            ->keyBy('id');
+
         $usedGroupCodes = [];
         $optionGroups = collect($this->input('option_groups', []))
-            ->map(function ($group, int $groupIndex) use (&$usedGroupCodes): array {
+            ->map(function ($group, int $groupIndex) use (&$usedGroupCodes, $masterOptionLookup): array {
                 if (! is_array($group)) {
                     return [];
                 }
@@ -264,8 +295,24 @@ class ProductFormRequest extends FormRequest
                 while (in_array($groupCode, $usedGroupCodes, true)) {
                     $groupCode = $baseGroupCode.'-'.$suffix++;
                 }
+                $masterType = JerseyCustomizationType::tryFrom((string) ($group['jersey_customization_type'] ?? ''));
+                if ($masterType) {
+                    $group['name'] = $masterType->label();
+                    // Enum values use underscores for stable PHP/database identifiers,
+                    // while product option-group codes are URL-style slugs. Always
+                    // regenerate the hidden code here so an internal field can never
+                    // block an administrator from saving the product.
+                    $baseGroupCode = $masterType->productCode() ?: 'feature-'.($groupIndex + 1);
+                    $groupCode = $baseGroupCode;
+                    $suffix = 2;
+                    while (in_array($groupCode, $usedGroupCodes, true)) {
+                        $groupCode = $baseGroupCode.'-'.$suffix++;
+                    }
+                }
+
                 $usedGroupCodes[] = $groupCode;
                 $group['code'] = $groupCode;
+                $group['jersey_customization_type'] = $masterType?->value;
                 // The simplified product-feature editor only creates storefront-selectable
                 // features. The server enforces the same behavior rather than trusting a
                 // modified hidden form value.
@@ -281,11 +328,22 @@ class ProductFormRequest extends FormRequest
                     && ($group['display_mode'] ?? 'customer') !== 'hidden';
 
                 $group['values'] = collect($group['values'] ?? [])
-                    ->map(function ($value, int $valueIndex): array {
+                    ->map(function ($value, int $valueIndex) use ($masterOptionLookup): array {
                         if (! is_array($value)) {
                             return [];
                         }
-                        $value['code'] = Str::slug((string) ($value['code'] ?? $value['label'] ?? '')) ?: 'value-'.($valueIndex + 1);
+                        $masterOptionId = filter_var($value['jersey_customization_option_id'] ?? null, FILTER_VALIDATE_INT);
+                        $value['jersey_customization_option_id'] = $masterOptionId !== false ? $masterOptionId : null;
+                        $masterOption = $masterOptionId !== false ? $masterOptionLookup->get((int) $masterOptionId) : null;
+                        if ($masterOption) {
+                            $value['label'] = $masterOption->name;
+                            $value['code'] = $masterOption->slug;
+                            $value['description'] = $masterOption->description;
+                            $value['color_hex'] = $masterOption->color_hex;
+                            $value['image_url'] = null;
+                        } else {
+                            $value['code'] = Str::slug((string) ($value['code'] ?? $value['label'] ?? '')) ?: 'value-'.($valueIndex + 1);
+                        }
                         $hex = trim((string) ($value['color_hex'] ?? ''));
 
                         if ($hex !== '') {
@@ -339,49 +397,8 @@ class ProductFormRequest extends FormRequest
             })->values()->all();
         };
 
-        $submittedProductionRanges = collect($this->input('production_ranges', []))->values();
-        $legacyProductionSpeeds = collect($this->input('production_speeds', []))->values();
-        $productionSpeeds = collect($pricing['price_table_ranges'] ?? [])->values()
-            ->flatMap(function ($range, int $index) use ($submittedProductionRanges, $legacyProductionSpeeds): array {
-                $minimum = max(1, (int) data_get($range, 'minimum_quantity', 1));
-                $maximumRaw = data_get($range, 'maximum_quantity');
-                $maximum = filled($maximumRaw) ? (int) $maximumRaw : null;
-                $submittedRange = (array) $submittedProductionRanges->get($index, []);
-                $options = collect($submittedRange['options'] ?? []);
-
-                // Backward compatibility for a request submitted by the previous one-option editor.
-                if ($submittedProductionRanges->isEmpty() && $legacyProductionSpeeds->isNotEmpty()) {
-                    $options = $legacyProductionSpeeds->filter(function ($speed) use ($minimum, $maximum): bool {
-                        return (int) data_get($speed, 'minimum_quantity', 0) === $minimum
-                            && (filled(data_get($speed, 'maximum_quantity')) ? (int) data_get($speed, 'maximum_quantity') : null) === $maximum;
-                    });
-                }
-
-                return $options->take(3)
-                    ->filter(fn ($option) => is_array($option) && filled($option['name'] ?? null))
-                    ->map(function (array $option) use ($minimum, $maximum): array {
-                        $minimumDays = max(0, (int) ($option['minimum_days'] ?? 1));
-
-                        return [
-                            'name' => trim((string) $option['name']),
-                            'code' => $option['code'] ?? null,
-                            'description' => filled($option['description'] ?? null)
-                                ? trim((string) $option['description'])
-                                : null,
-                            'price_adjustment' => max(0, (float) ($option['price_adjustment'] ?? 0)),
-                            'minimum_quantity' => $minimum,
-                            'maximum_quantity' => $maximum,
-                            'minimum_days' => $minimumDays,
-                            'maximum_days' => max($minimumDays, (int) ($option['maximum_days'] ?? $minimumDays)),
-                            'is_active' => true,
-                        ];
-                    })
-                    ->values()
-                    ->all();
-            })
-            ->values()
-            ->all();
-        $productionSpeeds = $normalizeRowsWithCodes($productionSpeeds);
+        $production = $this->normalizeProductionTable();
+        $productionSpeeds = $normalizeRowsWithCodes($production['production_speeds']);
 
         $rosterFields = collect($this->input('jersey_roster_fields', []))
             ->map(function ($field, int $index): array {
@@ -398,6 +415,8 @@ class ProductFormRequest extends FormRequest
         $this->merge([
             'option_groups' => $optionGroups,
             'size_groups' => $normalizeRowsWithCodes((array) $this->input('size_groups', [])),
+            'production_table_headers' => $production['production_table_headers'],
+            'production_table_rows' => $production['production_table_rows'],
             'production_speeds' => $productionSpeeds,
             'shipping_methods' => $normalizeRowsWithCodes((array) $this->input('shipping_methods', [])),
             'jersey_roster_fields' => $rosterFields,
@@ -417,9 +436,58 @@ class ProductFormRequest extends FormRequest
         ]);
     }
 
+    private function generateSku(string $name): string
+    {
+        $stem = Str::upper(Str::substr((string) preg_replace('/[^a-z0-9]+/i', '', $name), 0, 12));
+        $stem = $stem !== '' ? $stem : 'PRODUCT';
+
+        do {
+            $candidate = 'NPS-'.$stem.'-'.Str::upper(Str::random(6));
+        } while (Product::query()->where('sku', $candidate)->exists());
+
+        return $candidate;
+    }
+
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            $groups = collect($this->input('option_groups', []))->values();
+            $masterIds = $groups
+                ->flatMap(static fn ($group) => collect($group['values'] ?? [])->pluck('jersey_customization_option_id'))
+                ->filter()
+                ->map(static fn ($id): int => (int) $id)
+                ->unique()
+                ->values();
+            $masterOptions = JerseyCustomizationOption::query()
+                ->whereIn('id', $masterIds)
+                ->get(['id', 'type', 'is_active'])
+                ->keyBy('id');
+
+            foreach ($groups as $groupIndex => $group) {
+                $masterType = JerseyCustomizationType::tryFrom((string) data_get($group, 'jersey_customization_type', ''));
+                $selectedIds = collect(data_get($group, 'values', []))
+                    ->pluck('jersey_customization_option_id')
+                    ->filter()
+                    ->map(static fn ($id): int => (int) $id)
+                    ->values();
+
+                if ($selectedIds->duplicates()->isNotEmpty()) {
+                    $validator->errors()->add("option_groups.{$groupIndex}.values", 'The same customization item cannot be selected more than once.');
+                }
+
+                foreach ($selectedIds as $valueIndex => $selectedId) {
+                    $masterOption = $masterOptions->get($selectedId);
+                    if (! $masterOption || ! $masterOption->is_active) {
+                        $validator->errors()->add("option_groups.{$groupIndex}.values.{$valueIndex}.jersey_customization_option_id", 'The selected customization item is unavailable.');
+                        continue;
+                    }
+
+                    if (! $masterType || $masterOption->type !== $masterType) {
+                        $validator->errors()->add("option_groups.{$groupIndex}.values.{$valueIndex}.jersey_customization_option_id", 'The selected customization item does not belong to this feature type.');
+                    }
+                }
+            }
+
             $ranges = collect($this->input('price_table_ranges', []))->values();
             $rows = collect($this->input('price_table_rows', []))->values();
             $tiers = collect($this->input('price_tiers', []))->values();
@@ -429,11 +497,16 @@ class ProductFormRequest extends FormRequest
             }
 
             $previousMaximum = null;
+            $previousMinimum = null;
             $previousWasOpenEnded = false;
             foreach ($ranges as $index => $range) {
                 $minimum = filter_var(data_get($range, 'minimum_quantity'), FILTER_VALIDATE_INT);
                 $maximumRaw = data_get($range, 'maximum_quantity');
                 $maximum = filled($maximumRaw) ? filter_var($maximumRaw, FILTER_VALIDATE_INT) : null;
+
+                if ($index > 0 && $minimum !== false && $previousMinimum !== null && $minimum <= $previousMinimum) {
+                    $validator->errors()->add("price_table_ranges.{$index}.minimum_quantity", 'Quantity starting values must increase from one row to the next.');
+                }
 
                 if ($index > 0 && $previousWasOpenEnded) {
                     $validator->errors()->add("price_table_ranges.{$index}.minimum_quantity", 'No row can follow an open-ended quantity row.');
@@ -452,9 +525,163 @@ class ProductFormRequest extends FormRequest
                 }
 
                 $previousMaximum = $maximum === false ? null : $maximum;
+                $previousMinimum = $minimum === false ? $previousMinimum : $minimum;
                 $previousWasOpenEnded = $maximum === null;
             }
+
+            $productionHeaders = collect($this->input('production_table_headers', []))->values();
+            $productionRows = collect($this->input('production_table_rows', []))->values();
+            $parsedProductionRanges = [];
+
+            foreach ($productionRows as $rowIndex => $row) {
+                $rangeText = trim((string) data_get($row, 'range', ''));
+                $parsed = $this->parseProductionRange($rangeText);
+                if ($parsed === null) {
+                    $validator->errors()->add("production_table_rows.{$rowIndex}.range", 'Enter a valid quantity range such as 1-40, 41+, or 25.');
+                    continue;
+                }
+
+                foreach ((array) data_get($row, 'cells', []) as $columnIndex => $cell) {
+                    if (! filter_var(data_get($cell, 'enabled', false), FILTER_VALIDATE_BOOL)) {
+                        continue;
+                    }
+
+                    if (! filled($productionHeaders->get($columnIndex))) {
+                        $validator->errors()->add("production_table_headers.{$columnIndex}", 'Enter a production option name for every enabled column.');
+                    }
+
+                    $productionTime = ProductionTime::parse(data_get($cell, 'production_time'));
+                    if ($productionTime === null) {
+                        $validator->errors()->add(
+                            "production_table_rows.{$rowIndex}.cells.{$columnIndex}.production_time",
+                            'Enter a valid production time such as 5 days or 5-15 days.'
+                        );
+                    }
+                }
+
+                foreach ($parsedProductionRanges as $previousIndex => $previous) {
+                    $currentMaximum = $parsed['maximum_quantity'] ?? PHP_INT_MAX;
+                    $previousMaximum = $previous['maximum_quantity'] ?? PHP_INT_MAX;
+                    if ($parsed['minimum_quantity'] <= $previousMaximum && $previous['minimum_quantity'] <= $currentMaximum) {
+                        $validator->errors()->add("production_table_rows.{$rowIndex}.range", 'Production quantity ranges cannot overlap another row.');
+                        break;
+                    }
+                }
+
+                $parsedProductionRanges[$rowIndex] = $parsed;
+            }
         });
+    }
+
+    /**
+     * Normalize the independent production table and flatten enabled cells into
+     * the existing product_production_speeds persistence model.
+     */
+    private function normalizeProductionTable(): array
+    {
+        $submittedHeaders = collect($this->input('production_table_headers', []))->values();
+        $headerIndexes = $submittedHeaders
+            ->map(fn ($header, int $index): array => ['index' => $index, 'label' => trim((string) $header)])
+            ->filter(fn (array $header): bool => $header['label'] !== '')
+            ->take(12)
+            ->values();
+        $headers = $headerIndexes->pluck('label')->all();
+        $rows = [];
+        $speeds = [];
+
+        foreach (collect($this->input('production_table_rows', []))->values()->take(100) as $rowIndex => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $rangeText = trim((string) ($row['range'] ?? ''));
+            $parsedRange = $this->parseProductionRange($rangeText);
+            $submittedCells = collect($row['cells'] ?? [])->values();
+            $cells = [];
+
+            foreach ($headerIndexes as $columnIndex => $header) {
+                $cell = (array) $submittedCells->get($header['index'], []);
+                $productionTime = ProductionTime::parse($cell['production_time'] ?? null);
+                if ($productionTime === null && (array_key_exists('minimum_days', $cell) || array_key_exists('maximum_days', $cell))) {
+                    $productionTime = ProductionTime::parse(ProductionTime::format(
+                        $cell['minimum_days'] ?? 0,
+                        $cell['maximum_days'] ?? ($cell['minimum_days'] ?? 0)
+                    ));
+                }
+                $minimumDays = $productionTime['minimum_days'] ?? 0;
+                $maximumDays = $productionTime['maximum_days'] ?? $minimumDays;
+                $enabled = filter_var($cell['enabled'] ?? false, FILTER_VALIDATE_BOOL);
+                $normalizedCell = [
+                    'enabled' => $enabled,
+                    'description' => filled($cell['description'] ?? null) ? trim((string) $cell['description']) : null,
+                    'price_adjustment' => max(0, round((float) ($cell['price_adjustment'] ?? 0), 2)),
+                    'production_time' => $productionTime['display'] ?? '',
+                    'minimum_days' => $minimumDays,
+                    'maximum_days' => $maximumDays,
+                ];
+                $cells[] = $normalizedCell;
+
+                if ($enabled && $parsedRange !== null) {
+                    $speeds[] = [
+                        'name' => $header['label'],
+                        'code' => null,
+                        'description' => $normalizedCell['description'],
+                        'price_adjustment' => $normalizedCell['price_adjustment'],
+                        'minimum_quantity' => $parsedRange['minimum_quantity'],
+                        'maximum_quantity' => $parsedRange['maximum_quantity'],
+                        'minimum_days' => $minimumDays,
+                        'maximum_days' => $maximumDays,
+                        'is_active' => true,
+                    ];
+                }
+            }
+
+            if ($rangeText !== '' || collect($cells)->contains(fn (array $cell): bool => $cell['enabled'])) {
+                $rows[] = ['range' => $rangeText, 'cells' => $cells];
+            }
+        }
+
+        return [
+            'production_table_headers' => $headers,
+            'production_table_rows' => $rows,
+            'production_speeds' => $speeds,
+        ];
+    }
+
+    /** @return array{minimum_quantity:int, maximum_quantity:?int}|null */
+    private function parseProductionRange(string $value): ?array
+    {
+        $value = trim(str_replace([',', '–', '—'], ['', '-', '-'], $value));
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/^(\d+)\s*(?:-|to)\s*(\d+)$/i', $value, $match) === 1) {
+            $minimum = (int) $match[1];
+            $maximum = (int) $match[2];
+
+            return $minimum >= 1 && $maximum >= $minimum
+                ? ['minimum_quantity' => $minimum, 'maximum_quantity' => $maximum]
+                : null;
+        }
+
+        if (preg_match('/^(\d+)\s*\+$/', $value, $match) === 1) {
+            $minimum = (int) $match[1];
+
+            return $minimum >= 1
+                ? ['minimum_quantity' => $minimum, 'maximum_quantity' => null]
+                : null;
+        }
+
+        if (preg_match('/^(\d+)$/', $value, $match) === 1) {
+            $quantity = (int) $match[1];
+
+            return $quantity >= 1
+                ? ['minimum_quantity' => $quantity, 'maximum_quantity' => $quantity]
+                : null;
+        }
+
+        return null;
     }
 
     private function normalizeVisiblePricing(): array
@@ -473,7 +700,7 @@ class ProductFormRequest extends FormRequest
 
         $highlightColumn = filter_var($this->input('price_table_highlight_column', 1), FILTER_VALIDATE_INT);
         $highlightColumn = $highlightColumn === false ? 1 : max(1, min($headers->count() - 1, $highlightColumn));
-        $ranges = collect($this->input('price_table_ranges', []))->values();
+        $ranges = $this->normalizeQuantityRanges($this->input('price_table_ranges', []));
         $rows = collect($this->input('price_table_rows', []))->values();
         $normalizedRows = [];
         $priceTiers = [];
@@ -535,6 +762,46 @@ class ProductFormRequest extends FormRequest
         ];
     }
 
+    /**
+     * Complete quantity ranges from their starting breakpoints.
+     *
+     * A row such as 1 followed by 5 becomes 1-4. When an uploaded explicit
+     * maximum leaves a gap or overlaps the next row, the next row's minimum
+     * remains the source of truth and the previous maximum is corrected to
+     * next minimum minus one. The final row may remain open-ended or retain an
+     * explicit final maximum from the spreadsheet.
+     */
+    private function normalizeQuantityRanges(mixed $submittedRanges): \Illuminate\Support\Collection
+    {
+        $ranges = collect(is_array($submittedRanges) ? $submittedRanges : [])
+            ->values()
+            ->map(function ($range): array {
+                $range = is_array($range) ? $range : [];
+                $minimum = filter_var(data_get($range, 'minimum_quantity'), FILTER_VALIDATE_INT);
+                $maximumRaw = data_get($range, 'maximum_quantity');
+                $maximum = filled($maximumRaw) ? filter_var($maximumRaw, FILTER_VALIDATE_INT) : null;
+
+                return [
+                    'minimum_quantity' => $minimum !== false ? $minimum : data_get($range, 'minimum_quantity'),
+                    'maximum_quantity' => $maximum === false ? $maximumRaw : $maximum,
+                ];
+            });
+
+        return $ranges->map(function (array $range, int $index) use ($ranges): array {
+            $minimum = filter_var($range['minimum_quantity'] ?? null, FILTER_VALIDATE_INT);
+
+            if ($index < $ranges->count() - 1) {
+                $nextMinimum = filter_var(data_get($ranges->get($index + 1), 'minimum_quantity'), FILTER_VALIDATE_INT);
+
+                if ($minimum !== false && $nextMinimum !== false && $nextMinimum > $minimum) {
+                    $range['maximum_quantity'] = $nextMinimum - 1;
+                }
+            }
+
+            return $range;
+        });
+    }
+
     private function resolveLivePriceColumn(array $headers, array $row, int $highlightColumn): ?int
     {
         if ($highlightColumn > 0 && $this->parseMoney($row[$highlightColumn] ?? null) !== null) {
@@ -589,6 +856,8 @@ class ProductFormRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'option_groups.*.code.regex' => 'This customization feature has an invalid internal identifier. Refresh the page and try saving again.',
+            'option_groups.*.code.distinct' => 'The same customization feature cannot be added more than once.',
             'option_groups.*.values.*.color_hex.regex' => 'Enter a valid HEX color such as #15345D or 15345D.',
             'option_groups.*.values.*.image_file.image' => 'Each option image must be a valid image file.',
             'option_groups.*.values.*.image_file.mimes' => 'Option images must be JPG, PNG, WebP, or AVIF files.',

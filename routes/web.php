@@ -78,6 +78,18 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::put('/categories/{category}/products', [\App\Http\Controllers\Admin\CategoryProductController::class, 'update'])->name('categories.products.update');
         Route::resource('categories', \App\Http\Controllers\Admin\CategoryController::class)->except('show');
         Route::resource('attributes', \App\Http\Controllers\Admin\AttributeController::class)->except('show');
+        Route::resource(
+            'jersey-customization-options',
+            \App\Http\Controllers\Admin\JerseyCustomizationOptionController::class
+        )->parameters([
+            'jersey-customization-options' => 'jerseyCustomizationOption',
+        ])->except('show');
+        Route::resource(
+            'size-option-groups',
+            \App\Http\Controllers\Admin\SizeOptionGroupController::class
+        )->parameters([
+            'size-option-groups' => 'sizeOptionGroup',
+        ])->except('show');
         Route::resource('menus', \App\Http\Controllers\Admin\MenuController::class)->except('show');
 
 

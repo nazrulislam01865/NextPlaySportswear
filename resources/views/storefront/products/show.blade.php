@@ -55,31 +55,33 @@
 
         <section class="py-8 sm:py-12 lg:py-14">
             <div
-                class="site-container grid min-w-0 gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(420px,.94fr)] lg:items-start xl:gap-14"
+                class="site-container min-w-0"
                 x-data="productBuilder(@js($heroConfig))"
                 x-init="init()"
             >
-                <x-storefront.product.gallery :gallery="$product['gallery']" :badge="$product['tag']" />
+                <div class="grid min-w-0 gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(420px,.94fr)] lg:items-start xl:gap-14">
+                    <x-storefront.product.gallery :gallery="$product['gallery']" :badge="$product['tag']" />
 
-                <article class="min-w-0 lg:pt-1">
-                    <h1 class="max-w-3xl text-3xl font-black leading-[1.16] tracking-[-.025em] text-slate-950 sm:text-4xl lg:text-[40px] xl:text-[44px]">
-                        {{ $product['title'] }}
-                    </h1>
+                    <article class="min-w-0 lg:pt-1">
+                        <h1 class="max-w-3xl text-3xl font-black leading-[1.16] tracking-[-.025em] text-slate-950 sm:text-4xl lg:text-[40px] xl:text-[44px]">
+                            {{ $product['title'] }}
+                        </h1>
 
-                    <div class="mt-5 h-1 w-10 bg-slate-200" aria-hidden="true"></div>
+                        <div class="mt-5 h-1 w-10 bg-slate-200" aria-hidden="true"></div>
 
-                    @if(filled($product['summary']))
-                        <p class="mt-5 max-w-3xl text-base leading-7 text-slate-700 sm:text-[17px] sm:leading-8">
-                            {{ $product['summary'] }}
-                        </p>
-                    @endif
+                        @if(filled($product['summary']))
+                            <p class="mt-5 max-w-3xl text-base leading-7 text-slate-700 sm:text-[17px] sm:leading-8">
+                                {{ $product['summary'] }}
+                            </p>
+                        @endif
 
-                    <x-storefront.product.detail-information :product="$product" />
+                        <x-storefront.product.detail-information :product="$product" />
+                    </article>
+                </div>
 
-                    <div class="mt-6">
-                        <x-storefront.product.price-table :table="$product['price_table']" embedded />
-                    </div>
-                </article>
+                <div class="mt-8 min-w-0 sm:mt-10 lg:mt-12">
+                    <x-storefront.product.price-table :table="$product['price_table']" embedded />
+                </div>
             </div>
         </section>
 

@@ -220,6 +220,7 @@ class ProductCatalogService
             'summary' => $product->short_description ?: strip_tags((string) $product->description_html),
             'description' => strip_tags((string) $product->description_html),
             'description_html' => $product->description_html,
+            'detail_information_html' => $product->detail_information_html,
             'price' => 'From $'.number_format((float) $priceTiers[0]['unit'], 2),
             'base_price' => (float) $product->base_price,
             'compare_at_price' => $product->compare_at_price ? (float) $product->compare_at_price : null,
@@ -263,6 +264,7 @@ class ProductCatalogService
             'size_groups' => $product->sizeGroups->where('is_active', true)->map(fn ($group) => [
                 'id' => $group->code,
                 'label' => $group->name,
+                'description_html' => $group->description_html,
                 'sizes' => $group->sizes->where('is_active', true)->map(fn ($size) => [
                     'code' => $size->code,
                     'label' => $size->label,
@@ -270,7 +272,8 @@ class ProductCatalogService
                     'price_delta' => 0.0,
                 ])->values()->all(),
                 'chart' => [
-                    'enabled' => (bool) $group->chart_enabled && ((! empty($group->chart_columns) && ! empty($group->chart_rows)) || filled($group->chartImageUrl())),
+                    'enabled' => (bool) $group->chart_enabled && (filled($group->chart_html) || filled($group->chartImageUrl()) || (! empty($group->chart_columns) && ! empty($group->chart_rows))),
+                    'html' => $group->chart_html,
                     'title' => $group->chart_title ?: $group->name.' Size Chart',
                     'note' => $group->chart_note,
                     'columns' => $group->chart_columns ?? [],
@@ -756,7 +759,6 @@ class ProductCatalogService
         }
 
         return [
-            'SKU' => $product['sku'] ?? 'NPS-CUS-001',
             'Product Type' => $type,
             'Fabric' => $this->defaultFabricFor($product),
             'Collection Tier' => 'Elite',
@@ -770,9 +772,7 @@ class ProductCatalogService
     private function legacyDetails(array $product): array
     {
         return [
-            'Brand' => $product['brand'] ?? config('storefront.name'),
             'Category' => $product['category'] ?? 'Custom Sportswear',
-            'SKU' => $product['sku'] ?? 'NPS-CUS-001',
             'Order Type' => 'Custom / bulk / quote-ready',
             'Proof' => 'Digital proof before production',
             'Artwork' => 'PNG, JPG, PDF, AI, or design notes',

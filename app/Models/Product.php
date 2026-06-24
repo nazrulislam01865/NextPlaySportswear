@@ -16,7 +16,7 @@ class Product extends Model
 
     protected $fillable = [
         'category_id', 'subcategory_id', 'name', 'slug', 'sku', 'status', 'product_type', 'product_profile', 'brand',
-        'badge_label', 'badge_color', 'short_description', 'description_html', 'features',
+        'badge_label', 'badge_color', 'short_description', 'description_html', 'detail_information_html', 'features',
         'specifications', 'base_price', 'compare_at_price', 'cost_price', 'currency',
         'minimum_quantity', 'maximum_quantity', 'is_featured', 'is_customizable', 'is_active',
         'track_inventory', 'stock_quantity', 'low_stock_threshold', 'allow_backorder', 'weight',
@@ -26,7 +26,7 @@ class Product extends Model
         'artwork_upload_description', 'artwork_upload_max_files', 'artwork_upload_max_file_size_mb',
         'artwork_upload_accepted_types', 'tax_class', 'tags',
         'price_table_headers', 'price_table_rows',
-        'price_table_highlight_column', 'price_table_note', 'meta_title', 'meta_description',
+        'price_table_highlight_column', 'price_table_note', 'production_table_headers', 'production_table_rows', 'meta_title', 'meta_description',
         'meta_keywords', 'canonical_url', 'og_title', 'og_description', 'og_image_url',
         'robots_index', 'robots_follow', 'schema_json', 'sort_order', 'published_at',
         'created_by', 'updated_by',
@@ -41,6 +41,8 @@ class Product extends Model
             'tags' => 'array',
             'price_table_headers' => 'array',
             'price_table_rows' => 'array',
+            'production_table_headers' => 'array',
+            'production_table_rows' => 'array',
             'schema_json' => 'array',
             'jersey_roster_fields' => 'array',
             'base_price' => 'decimal:2',

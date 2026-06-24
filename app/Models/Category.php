@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PublicMedia;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,7 +11,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
     'parent_id', 'name', 'menu_label', 'slug', 'display_type', 'category_type', 'page_template', 'status',
@@ -225,10 +225,6 @@ class Category extends Model
 
     private function mediaUrl(?string $path, ?string $url): ?string
     {
-        if (filled($path)) {
-            return Storage::disk('public')->url($path);
-        }
-
-        return filled($url) ? $url : null;
+        return PublicMedia::url($path, $url);
     }
 }

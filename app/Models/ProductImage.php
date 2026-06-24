@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
+use App\Support\PublicMedia;
 
 class ProductImage extends Model
 {
@@ -22,10 +22,10 @@ class ProductImage extends Model
 
     public function publicUrl(): string
     {
-        if ($this->url) {
-            return $this->url;
-        }
-
-        return $this->path ? Storage::disk('public')->url($this->path) : asset('images/product-placeholder.svg');
+        return PublicMedia::url(
+            $this->path,
+            $this->url,
+            '/images/product-placeholder.svg'
+        );
     }
 }

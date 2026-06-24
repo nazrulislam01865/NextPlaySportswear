@@ -1,8 +1,6 @@
 @php
     $isEdit = $slide->exists;
-    $currentImage = $slide->image_path
-        ? \Illuminate\Support\Facades\Storage::disk('public')->url($slide->image_path)
-        : ($slide->image_url ?: '');
+    $currentImage = \App\Support\PublicMedia::url($slide->image_path, $slide->image_url, '');
     $checked = static fn (string $field, bool $default = false): bool => old($field) !== null
         ? filter_var(old($field), FILTER_VALIDATE_BOOLEAN)
         : (bool) ($slide->{$field} ?? $default);

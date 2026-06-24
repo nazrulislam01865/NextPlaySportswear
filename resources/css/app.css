@@ -230,6 +230,19 @@
         @apply font-bold text-brand-blue underline;
     }
 
+    .admin-rich-editor table {
+        @apply my-4 w-full border-collapse text-sm;
+    }
+
+    .admin-rich-editor th,
+    .admin-rich-editor td {
+        @apply border border-slate-200 p-3 text-left;
+    }
+
+    .admin-rich-editor th {
+        @apply bg-slate-50 font-black text-brand-ink;
+    }
+
     .product-rich-content h2 {
         @apply mb-3 mt-7 font-display text-3xl font-bold uppercase tracking-tight text-brand-ink first:mt-0;
     }

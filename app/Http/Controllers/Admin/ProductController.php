@@ -2,14 +2,19 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\JerseyCustomizationType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ProductFormRequest;
 use App\Models\CatalogAttribute;
 use App\Models\Category;
+use App\Models\JerseyCustomizationOption;
 use App\Models\Product;
+use App\Models\SizeOptionGroup;
 use App\Services\Catalog\CategoryTreeService;
 use App\Services\Catalog\ProductOptionFilterSyncService;
 use App\Services\Security\SafeHtmlService;
+use App\Support\ProductionTime;
+use App\Support\PublicMedia;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -17,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
@@ -173,17 +179,70 @@ class ProductController extends Controller
 
     private function formView(string $view, Product $product): View
     {
+        $jerseyCustomizationOptions = JerseyCustomizationOption::query()
+            ->active()
+            ->with('images')
+            ->ordered()
+            ->get()
+            ->map(static fn (JerseyCustomizationOption $option): array => [
+                'id' => $option->id,
+                'type' => $option->type->value,
+                'type_label' => $option->type->label(),
+                'name' => $option->name,
+                'slug' => $option->slug,
+                'description' => $option->description,
+                'color_hex' => $option->color_hex,
+                'images' => $option->images
+                    ->map(static fn ($image): array => [
+                        'name' => $image->name,
+                        'url' => $image->publicUrl(),
+                        'is_primary' => (bool) $image->is_primary,
+                    ])
+                    ->filter(static fn (array $image): bool => filled($image['url']))
+                    ->values()
+                    ->all(),
+            ])
+            ->values()
+            ->all();
+
+        $sizeOptionGroups = SizeOptionGroup::query()
+            ->active()
+            ->with(['sizes' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order')])
+            ->ordered()
+            ->get()
+            ->map(static fn (SizeOptionGroup $group): array => [
+                'id' => $group->id,
+                'name' => $group->name,
+                'slug' => $group->slug,
+                'audience' => $group->audience->value,
+                'audience_label' => $group->audience->label(),
+                'description_html' => $group->description_html,
+                'sizes' => $group->sizes->pluck('label')->values()->all(),
+                'chart_enabled' => filled($group->chart_html) || filled($group->chartImageUrl()),
+                'chart_html' => $group->chart_html,
+                'chart_title' => $group->chart_title,
+                'chart_note' => $group->chart_note,
+                'chart_columns' => $group->chart_columns ?? [],
+                'chart_rows' => $group->chart_rows ?? [],
+                'chart_image_preview' => $group->chartImageUrl(),
+            ])
+            ->values()
+            ->all();
+
         return view($view, [
             'product' => $product,
             'categoryOptions' => $this->categoryTreeService->flatOptions(),
             'catalogAttributes' => CatalogAttribute::query()->active()->with(['values' => fn ($query) => $query->active()->orderBy('sort_order')])->ordered()->get(),
+            'jerseyCustomizationTypes' => JerseyCustomizationType::options(),
+            'jerseyCustomizationOptions' => $jerseyCustomizationOptions,
+            'sizeOptionGroups' => $sizeOptionGroups,
         ]);
     }
 
     private function relations(): array
     {
         return [
-            'category', 'subcategory', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes',
+            'category', 'subcategory', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'sizeGroups.masterGroup',
             'priceTiers', 'artworkMethods', 'productionSpeeds', 'shippingMethods', 'faqs',
         ];
     }
@@ -191,9 +250,6 @@ class ProductController extends Controller
     private function productPayload(ProductFormRequest $request, ?Product $product): array
     {
         $data = $request->validated();
-        $specifications = collect($data['specifications'] ?? [])
-            ->filter(fn ($row) => filled($row['name'] ?? null) && filled($row['value'] ?? null))
-            ->mapWithKeys(fn ($row) => [trim($row['name']) => trim($row['value'])])->all();
 
         $payload = Arr::only($data, [
             'category_id', 'subcategory_id', 'name', 'slug', 'sku', 'status', 'product_type', 'product_profile', 'brand',
@@ -205,7 +261,7 @@ class ProductController extends Controller
             'artwork_upload_required', 'artwork_upload_title', 'artwork_upload_description',
             'artwork_upload_max_files', 'artwork_upload_max_file_size_mb',
             'artwork_upload_accepted_types', 'tax_class', 'price_table_highlight_column',
-            'price_table_note', 'meta_title', 'meta_description', 'meta_keywords', 'canonical_url',
+            'price_table_note', 'production_table_headers', 'production_table_rows', 'meta_title', 'meta_description', 'meta_keywords', 'canonical_url',
             'og_title', 'og_description', 'og_image_url', 'robots_index', 'robots_follow',
             'sort_order', 'published_at',
         ]);
@@ -216,6 +272,7 @@ class ProductController extends Controller
         $payload['subcategory_id'] = $primaryCategory?->parent_id ? $primaryCategory->id : null;
 
         $payload['description_html'] = $this->safeHtml->sanitize($data['description_html'] ?? null);
+        $payload['detail_information_html'] = $this->safeHtml->sanitize($data['detail_information_html'] ?? null);
 
         // The storefront-aligned editor intentionally omits legacy fields that are
         // not rendered on the product page. Preserve their existing values during
@@ -226,7 +283,9 @@ class ProductController extends Controller
             $payload['features'] = [];
         }
 
-        $payload['specifications'] = $specifications;
+        if ($product === null) {
+            $payload['specifications'] = [];
+        }
 
         if ($request->exists('length') || $request->exists('width') || $request->exists('height')) {
             $payload['dimensions'] = array_filter([
@@ -263,6 +322,51 @@ class ProductController extends Controller
             $cells = collect($row)->take($headerCount ?: 20)->map(fn ($cell) => trim((string) $cell))->values()->all();
             return array_pad($cells, $headerCount, '');
         })->filter(fn ($row) => collect($row)->filter()->isNotEmpty())->values()->all();
+        $payload['production_table_headers'] = collect($data['production_table_headers'] ?? [])
+            ->map(fn ($value) => trim((string) $value))
+            ->filter()
+            ->take(12)
+            ->values()
+            ->all();
+        $productionColumnCount = count($payload['production_table_headers']);
+        $payload['production_table_rows'] = collect($data['production_table_rows'] ?? [])
+            ->map(function ($row) use ($productionColumnCount): array {
+                $row = is_array($row) ? $row : [];
+                $cells = collect($row['cells'] ?? [])->take($productionColumnCount)->map(function ($cell): array {
+                    $productionTime = ProductionTime::parse($cell['production_time'] ?? null);
+                    if ($productionTime === null && (array_key_exists('minimum_days', $cell) || array_key_exists('maximum_days', $cell))) {
+                        $productionTime = ProductionTime::parse(ProductionTime::format(
+                            $cell['minimum_days'] ?? 0,
+                            $cell['maximum_days'] ?? ($cell['minimum_days'] ?? 0)
+                        ));
+                    }
+
+                    return [
+                        'enabled' => (bool) ($cell['enabled'] ?? false),
+                        'description' => filled($cell['description'] ?? null) ? trim((string) $cell['description']) : null,
+                        'price_adjustment' => max(0, round((float) ($cell['price_adjustment'] ?? 0), 2)),
+                        'production_time' => $productionTime['display'] ?? '',
+                        'minimum_days' => $productionTime['minimum_days'] ?? 0,
+                        'maximum_days' => $productionTime['maximum_days'] ?? 0,
+                    ];
+                })->values()->all();
+
+                return [
+                    'range' => trim((string) ($row['range'] ?? '')),
+                    'cells' => array_pad($cells, $productionColumnCount, [
+                        'enabled' => false,
+                        'description' => null,
+                        'price_adjustment' => 0,
+                        'production_time' => '',
+                        'minimum_days' => 0,
+                        'maximum_days' => 0,
+                    ]),
+                ];
+            })
+            ->filter(fn (array $row): bool => $row['range'] !== '' || collect($row['cells'])->contains(fn (array $cell): bool => $cell['enabled']))
+            ->take(100)
+            ->values()
+            ->all();
         $payload['jersey_roster_fields'] = collect($data['jersey_roster_fields'] ?? [])
             ->filter(fn ($field) => (bool) ($field['enabled'] ?? false) && filled($field['key'] ?? null) && filled($field['label'] ?? null))
             ->map(fn ($field) => [
@@ -294,15 +398,32 @@ class ProductController extends Controller
         $this->syncImages($product, $request, $data);
 
         $existingOptionMedia = $product->optionGroups()
-            ->with('values:id,product_option_group_id,image_path,image_url,image_gallery')
+            ->with('values:id,product_option_group_id,jersey_customization_option_id,image_path,image_url,image_gallery')
             ->get()
             ->flatMap(fn ($group) => $group->values)
             ->mapWithKeys(fn ($value) => [(int) $value->id => [
+                'master_id' => $value->jersey_customization_option_id,
                 'path' => $value->image_path,
                 'url' => $value->image_url,
                 'gallery' => $value->image_gallery ?? [],
             ]])
             ->all();
+
+        $submittedMasterOptionIds = collect($data['option_groups'] ?? [])
+            ->flatMap(static fn ($group): array => collect($group['values'] ?? [])
+                ->pluck('jersey_customization_option_id')
+                ->filter()
+                ->map(static fn ($id): int => (int) $id)
+                ->all())
+            ->unique()
+            ->values();
+
+        $masterOptions = JerseyCustomizationOption::query()
+            ->active()
+            ->with('images')
+            ->whereIn('id', $submittedMasterOptionIds)
+            ->get()
+            ->keyBy('id');
 
         $product->optionGroups()->delete();
         $groupSortOrder = 0;
@@ -313,6 +434,7 @@ class ProductController extends Controller
                 'code' => trim((string) $groupData['code']),
                 'section' => $groupData['section'] ?? 'product',
                 'type' => $groupData['type'] ?? 'select',
+                'jersey_customization_type' => filled($groupData['jersey_customization_type'] ?? null) ? $groupData['jersey_customization_type'] : null,
                 'display_mode' => $groupData['display_mode'] ?? 'customer',
                 'fixed_value_code' => filled($groupData['fixed_value_code'] ?? null) ? trim((string) $groupData['fixed_value_code']) : null,
                 'fixed_text_value' => filled($groupData['fixed_text_value'] ?? null) ? trim((string) $groupData['fixed_text_value']) : null,
@@ -333,45 +455,88 @@ class ProductController extends Controller
             $valueSortOrder = 0;
 
             foreach (collect($groupData['values'] ?? [])->filter(fn ($value) => filled($value['label'] ?? null) && filled($value['code'] ?? null)) as $valueInputIndex => $valueData) {
+                $masterOptionId = (int) ($valueData['jersey_customization_option_id'] ?? 0);
+                $masterOption = $masterOptionId > 0 ? $masterOptions->get($masterOptionId) : null;
                 $existingId = (int) ($valueData['existing_id'] ?? 0);
-                $existing = $existingOptionMedia[$existingId] ?? ['path' => null, 'url' => null, 'gallery' => []];
-                $gallery = (bool) ($valueData['clear_images'] ?? false) ? [] : collect($existing['gallery'] ?? [])->filter(fn ($item) => is_array($item))->values()->all();
+                $existing = $existingOptionMedia[$existingId] ?? ['master_id' => null, 'path' => null, 'url' => null, 'gallery' => []];
 
-                if ($gallery === []) {
-                    if (filled($existing['path'] ?? null)) {
-                        $gallery[] = ['path' => $existing['path'], 'url' => null, 'alt' => $valueData['label']];
-                    } elseif (filled($existing['url'] ?? null)) {
-                        $gallery[] = ['path' => null, 'url' => $existing['url'], 'alt' => $valueData['label']];
+                if ($masterOption) {
+                    $label = $masterOption->name;
+                    $code = $masterOption->slug;
+                    $description = $masterOption->description;
+                    $colorHex = $masterOption->color_hex;
+
+                    if ((int) ($existing['master_id'] ?? 0) === (int) $masterOption->id && ! empty($existing['gallery'])) {
+                        $gallery = collect($existing['gallery'])->filter(fn ($item) => is_array($item))->values()->all();
+                    } else {
+                        $gallery = $masterOption->images
+                            ->map(function ($image) use ($product, $masterOption): array {
+                                $path = null;
+                                if (filled($image->image_path) && Storage::disk('public')->exists($image->image_path)) {
+                                    $extension = pathinfo($image->image_path, PATHINFO_EXTENSION);
+                                    $path = "products/{$product->id}/options/"
+                                        ."master-{$masterOption->id}-".Str::uuid()
+                                        .($extension !== '' ? ".{$extension}" : '');
+                                    Storage::disk('public')->copy($image->image_path, $path);
+                                }
+
+                                return [
+                                    'path' => $path,
+                                    'url' => $path ? null : $image->image_url,
+                                    'alt' => $image->name ?: $masterOption->name,
+                                ];
+                            })
+                            ->filter(fn (array $image): bool => filled($image['path']) || filled($image['url']))
+                            ->values()
+                            ->all();
                     }
-                }
+                } else {
+                    // Compatibility for products created before master-data assignment.
+                    $label = trim((string) $valueData['label']);
+                    $code = trim((string) $valueData['code']);
+                    $description = $valueData['description'] ?? null;
+                    $colorHex = $valueData['color_hex'] ?? null;
+                    $gallery = (bool) ($valueData['clear_images'] ?? false)
+                        ? []
+                        : collect($existing['gallery'] ?? [])->filter(fn ($item) => is_array($item))->values()->all();
 
-                $imageUrl = filled($valueData['image_url'] ?? null) ? trim((string) $valueData['image_url']) : null;
-                if ($imageUrl && ! collect($gallery)->contains(fn ($item) => ($item['url'] ?? null) === $imageUrl)) {
-                    $gallery[] = ['path' => null, 'url' => $imageUrl, 'alt' => $valueData['label']];
-                }
+                    if ($gallery === []) {
+                        if (filled($existing['path'] ?? null)) {
+                            $gallery[] = ['path' => $existing['path'], 'url' => null, 'alt' => $label];
+                        } elseif (filled($existing['url'] ?? null)) {
+                            $gallery[] = ['path' => null, 'url' => $existing['url'], 'alt' => $label];
+                        }
+                    }
 
-                $uploads = (array) $request->file("option_groups.{$groupInputIndex}.values.{$valueInputIndex}.image_files", []);
-                $legacyUpload = $request->file("option_groups.{$groupInputIndex}.values.{$valueInputIndex}.image_file");
-                if ($legacyUpload) {
-                    $uploads[] = $legacyUpload;
-                }
+                    $imageUrl = filled($valueData['image_url'] ?? null) ? trim((string) $valueData['image_url']) : null;
+                    if ($imageUrl && ! collect($gallery)->contains(fn ($item) => ($item['url'] ?? null) === $imageUrl)) {
+                        $gallery[] = ['path' => null, 'url' => $imageUrl, 'alt' => $label];
+                    }
 
-                foreach ($uploads as $uploadedImage) {
-                    $gallery[] = [
-                        'path' => $uploadedImage->store("products/{$product->id}/options", 'public'),
-                        'url' => null,
-                        'alt' => $valueData['label'],
-                    ];
+                    $uploads = (array) $request->file("option_groups.{$groupInputIndex}.values.{$valueInputIndex}.image_files", []);
+                    $legacyUpload = $request->file("option_groups.{$groupInputIndex}.values.{$valueInputIndex}.image_file");
+                    if ($legacyUpload) {
+                        $uploads[] = $legacyUpload;
+                    }
+
+                    foreach ($uploads as $uploadedImage) {
+                        $gallery[] = [
+                            'path' => $uploadedImage->store("products/{$product->id}/options", 'public'),
+                            'url' => null,
+                            'alt' => $label,
+                        ];
+                    }
                 }
 
                 $gallery = collect($gallery)->take(12)->values()->all();
                 $firstImage = $gallery[0] ?? [];
 
                 $group->values()->create([
-                    'label' => trim((string) $valueData['label']),
-                    'code' => trim((string) $valueData['code']),
-                    'description' => $valueData['description'] ?? null,
-                    'color_hex' => $valueData['color_hex'] ?? null,
+                    'jersey_customization_option_id' => $masterOption?->id,
+                    'label' => $label,
+                    'code' => $code,
+                    'description' => $description,
+                    'color_hex' => $colorHex,
                     'image_path' => $firstImage['path'] ?? null,
                     'image_url' => $firstImage['url'] ?? null,
                     'image_gallery' => $gallery,
@@ -390,6 +555,13 @@ class ProductController extends Controller
             collect($data['attribute_value_ids'] ?? [])->map(fn ($id) => (int) $id)->all()
         );
 
+        $submittedSizeGroups = collect($data['size_groups'] ?? [])->values();
+        $sizeMasters = SizeOptionGroup::query()
+            ->with(['sizes' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order')])
+            ->whereIn('id', $submittedSizeGroups->pluck('size_option_group_id')->filter()->map(fn ($id) => (int) $id)->unique())
+            ->get()
+            ->keyBy('id');
+
         $existingSizeMedia = $product->sizeGroups()
             ->get(['id', 'chart_image_path', 'chart_image_url'])
             ->mapWithKeys(fn ($group) => [(int) $group->id => [
@@ -399,7 +571,46 @@ class ProductController extends Controller
 
         $product->sizeGroups()->delete();
         $sizeSortOrder = 0;
-        foreach (collect($data['size_groups'] ?? [])->filter(fn ($group) => filled($group['name'] ?? null) && filled($group['code'] ?? null)) as $groupInputIndex => $groupData) {
+        foreach ($submittedSizeGroups as $groupInputIndex => $groupData) {
+            $masterId = (int) ($groupData['size_option_group_id'] ?? 0);
+            $master = $masterId > 0 ? $sizeMasters->get($masterId) : null;
+
+            if ($master) {
+                $group = $product->sizeGroups()->create([
+                    'size_option_group_id' => $master->id,
+                    'name' => $master->name,
+                    'code' => $master->slug,
+                    'description_html' => $master->description_html,
+                    'chart_enabled' => filled($master->chart_html) || filled($master->chartImageUrl()),
+                    'chart_html' => $master->chart_html,
+                    'chart_title' => $master->chart_title,
+                    'chart_note' => $master->chart_note,
+                    'chart_columns' => $master->chart_columns ?? [],
+                    'chart_rows' => $master->chart_rows ?? [],
+                    'chart_image_path' => null,
+                    'chart_image_url' => $master->chartImageUrl(),
+                    'is_active' => true,
+                    'sort_order' => $sizeSortOrder++,
+                ]);
+
+                foreach ($master->sizes as $sizeIndex => $size) {
+                    $group->sizes()->create([
+                        'label' => $size->label,
+                        'code' => $size->code,
+                        'sort_order' => $sizeIndex,
+                        'is_active' => true,
+                    ]);
+                }
+
+                continue;
+            }
+
+            // Backward compatibility for products that still contain a legacy
+            // product-specific size group created before master data was added.
+            if (! filled($groupData['name'] ?? null) || ! filled($groupData['code'] ?? null)) {
+                continue;
+            }
+
             $existingId = (int) ($groupData['existing_id'] ?? 0);
             $existingMedia = $existingSizeMedia[$existingId] ?? ['path' => null, 'url' => null];
             $chartImageUrl = filled($groupData['chart_image_url'] ?? null) ? trim((string) $groupData['chart_image_url']) : null;
@@ -420,8 +631,11 @@ class ProductController extends Controller
             $rows = $this->parseChartRows((string) ($groupData['chart_rows_text'] ?? ''), count($columns));
 
             $group = $product->sizeGroups()->create([
+                'size_option_group_id' => null,
                 'name' => trim((string) $groupData['name']),
                 'code' => trim((string) $groupData['code']),
+                'description_html' => $this->safeHtml->sanitize($groupData['description_html'] ?? null),
+                'chart_html' => $this->safeHtml->sanitize($groupData['chart_html'] ?? null),
                 'chart_enabled' => (bool) ($groupData['chart_enabled'] ?? false),
                 'chart_title' => $groupData['chart_title'] ?? null,
                 'chart_note' => $groupData['chart_note'] ?? null,
@@ -511,21 +725,119 @@ class ProductController extends Controller
 
     private function syncImages(Product $product, ProductFormRequest $request, array $data): void
     {
-        $product->images()->delete();
-        $primaryAssigned = false;
-        foreach (collect($data['image_urls'] ?? [])->filter(fn ($item) => filled($item['url'] ?? null))->values() as $index => $item) {
-            $primary = ! $primaryAssigned && ((bool) ($item['is_primary'] ?? false) || $index === 0);
-            $product->images()->create(['url' => $item['url'], 'alt_text' => $item['alt'] ?? $product->name, 'is_primary' => $primary, 'sort_order' => $index]);
-            $primaryAssigned = $primaryAssigned || $primary;
+        $existingImages = $product->images()->get()->keyBy('id');
+        $keptIds = [];
+        $orderedImageIds = [];
+
+        $urlRows = collect($data['image_urls'] ?? [])->values();
+        $uploadedImages = collect($request->file('images', []))->values();
+        $requestedUploadPrimary = filled($data['new_image_primary_index'] ?? null)
+            ? (int) $data['new_image_primary_index']
+            : null;
+        $uploadPrimaryIsValid = $requestedUploadPrimary !== null
+            && $uploadedImages->has($requestedUploadPrimary);
+        $requestedUrlPrimary = $urlRows->search(fn ($item) => (bool) ($item['is_primary'] ?? false));
+        $primaryImageId = null;
+
+        foreach ($urlRows as $index => $item) {
+            $existingId = (int) ($item['existing_id'] ?? 0);
+            $url = trim((string) ($item['url'] ?? ''));
+            $name = filled($item['name'] ?? null)
+                ? trim((string) $item['name'])
+                : (filled($item['alt'] ?? null) ? trim((string) $item['alt']) : $product->name);
+
+            $image = $existingId > 0 ? $existingImages->get($existingId) : null;
+
+            if ($existingId > 0 && ! $image) {
+                throw ValidationException::withMessages([
+                    "image_urls.{$index}.existing_id" => 'The selected product image does not belong to this product.',
+                ]);
+            }
+
+            if ($image) {
+                // A saved upload is preserved when the URL field stays blank.
+                // Entering a URL intentionally replaces the saved upload.
+                if ($url !== '') {
+                    $this->deletePublicImage($image->path);
+                    $image->path = null;
+                    $image->url = $url;
+                } elseif (! filled($image->path)) {
+                    $legacyStoredPath = PublicMedia::storedPathFromUrl($image->url);
+                    if ($legacyStoredPath && Storage::disk('public')->exists($legacyStoredPath)) {
+                        // Earlier versions converted uploaded images into absolute
+                        // /storage URLs during an edit. Repair that record in place.
+                        $image->path = $legacyStoredPath;
+                        $image->url = null;
+                    } else {
+                        // A genuine remote image whose URL was cleared is removed.
+                        continue;
+                    }
+                }
+
+                $image->alt_text = $name;
+                $image->is_primary = false;
+                $image->sort_order = count($orderedImageIds);
+                $image->save();
+            } else {
+                if ($url === '') {
+                    continue;
+                }
+
+                $image = $product->images()->create([
+                    'url' => $url,
+                    'alt_text' => $name,
+                    'is_primary' => false,
+                    'sort_order' => count($orderedImageIds),
+                ]);
+            }
+
+            $keptIds[] = $image->id;
+            $orderedImageIds[] = $image->id;
+
+            if (! $uploadPrimaryIsValid && $requestedUrlPrimary !== false && (int) $requestedUrlPrimary === $index) {
+                $primaryImageId = $image->id;
+            }
         }
 
-        foreach ($request->file('images', []) as $index => $image) {
-            $path = $image->store("products/{$product->id}", 'public');
-            $product->images()->create([
-                'path' => $path, 'alt_text' => $product->name, 'is_primary' => ! $primaryAssigned,
-                'sort_order' => count($data['image_urls'] ?? []) + $index,
+        foreach ($uploadedImages as $index => $uploadedImage) {
+            $path = $uploadedImage->store("products/{$product->id}", 'public');
+            $image = $product->images()->create([
+                'path' => $path,
+                'url' => null,
+                'alt_text' => pathinfo($uploadedImage->getClientOriginalName(), PATHINFO_FILENAME) ?: $product->name,
+                'is_primary' => false,
+                'sort_order' => count($orderedImageIds),
             ]);
-            $primaryAssigned = true;
+
+            $keptIds[] = $image->id;
+            $orderedImageIds[] = $image->id;
+
+            if ($uploadPrimaryIsValid && $requestedUploadPrimary === $index) {
+                $primaryImageId = $image->id;
+            }
+        }
+
+        $existingImages
+            ->reject(fn ($image) => in_array($image->id, $keptIds, true))
+            ->each(function ($image): void {
+                $this->deletePublicImage($image->path);
+                $image->delete();
+            });
+
+        if ($primaryImageId === null) {
+            $primaryImageId = $orderedImageIds[0] ?? null;
+        }
+
+        $product->images()->update(['is_primary' => false]);
+        if ($primaryImageId !== null) {
+            $product->images()->whereKey($primaryImageId)->update(['is_primary' => true]);
+        }
+    }
+
+    private function deletePublicImage(?string $path): void
+    {
+        if (filled($path) && Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
         }
     }
 

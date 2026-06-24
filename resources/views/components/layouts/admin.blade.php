@@ -46,6 +46,22 @@
                 <x-admin.sidebar-link :href="route('admin.menus.index')" :active="request()->routeIs('admin.menus.*')" icon="☷">Navigation Menus</x-admin.sidebar-link>
                 <x-admin.sidebar-link :href="route('admin.modules.show', 'inventory')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'inventory'" icon="▤">Inventory</x-admin.sidebar-link>
 
+                <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Master Data</p>
+                <x-admin.sidebar-group
+                    label="Master Data"
+                    icon="◈"
+                    :active="request()->routeIs('admin.jersey-customization-options.*') || request()->routeIs('admin.size-option-groups.*')"
+                >
+                    <x-admin.sidebar-sub-link
+                        :href="route('admin.jersey-customization-options.index')"
+                        :active="request()->routeIs('admin.jersey-customization-options.*')"
+                    >Jersey Customization Options</x-admin.sidebar-sub-link>
+                    <x-admin.sidebar-sub-link
+                        :href="route('admin.size-option-groups.index')"
+                        :active="request()->routeIs('admin.size-option-groups.*')"
+                    >Size Options</x-admin.sidebar-sub-link>
+                </x-admin.sidebar-group>
+
                 <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Commerce</p>
                 @if(auth()->user()->canManageOrders())
                     <x-admin.sidebar-link :href="route('admin.orders.index')" :active="request()->routeIs('admin.orders.*')" icon="▣">Orders</x-admin.sidebar-link>

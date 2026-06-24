@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Support\Facades\Storage;
+use App\Support\PublicMedia;
 
 class CatalogAttributeValue extends Model
 {
@@ -47,10 +47,6 @@ class CatalogAttributeValue extends Model
 
     public function publicImageUrl(): ?string
     {
-        if (filled($this->image_path)) {
-            return Storage::disk('public')->url($this->image_path);
-        }
-
-        return filled($this->image_url) ? $this->image_url : null;
+        return PublicMedia::url($this->image_path, $this->image_url);
     }
 }

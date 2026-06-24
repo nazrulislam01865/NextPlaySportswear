@@ -1,6 +1,7 @@
 @props(['product' => []])
 
 @php
+    $detailInformationHtml = trim((string) ($product['detail_information_html'] ?? ''));
     $detailInformation = collect($product['detail_information'] ?? [])
         ->filter(fn ($value, $label) => filled($label) && filled($value))
         ->take(8);
@@ -8,7 +9,6 @@
     if ($detailInformation->isEmpty()) {
         $detailInformation = collect([
             'Product Type' => $product['product_type'] ?? null,
-            'Brand' => $product['brand'] ?? null,
             'Minimum Order' => isset($product['minimum_quantity'])
                 ? number_format((int) $product['minimum_quantity']).' '.((int) $product['minimum_quantity'] === 1 ? 'Piece' : 'Pieces')
                 : null,
@@ -20,7 +20,9 @@
 @endphp
 
 <div class="mt-7">
-    @if($detailInformation->isNotEmpty())
+    @if($detailInformationHtml !== '')
+        <div class="product-rich-content overflow-hidden border-y border-slate-200 py-4">{!! $detailInformationHtml !!}</div>
+    @elseif($detailInformation->isNotEmpty())
         <div class="overflow-hidden border-y border-slate-200">
             <table class="w-full table-fixed border-collapse text-left">
                 <thead>
@@ -42,11 +44,6 @@
     @endif
 
     <div class="mt-5 divide-y divide-dotted divide-slate-300 border-y border-dotted border-slate-300 text-sm leading-6 text-slate-700 sm:text-[15px]">
-        <div class="py-3">
-            <span class="font-semibold text-slate-800">SKU:</span>
-            <span>{{ $product['sku'] ?? 'N/A' }}</span>
-        </div>
-
         <div class="py-3">
             <span class="font-semibold text-slate-800">Category:</span>
             @if($categories->isNotEmpty())
@@ -80,11 +77,5 @@
             </div>
         @endif
 
-        @if(filled($product['brand'] ?? null))
-            <div class="py-3">
-                <span class="font-semibold text-slate-800">Brand:</span>
-                <span>{{ $product['brand'] }}</span>
-            </div>
-        @endif
     </div>
 </div>

@@ -14,7 +14,7 @@
     <div class="grid gap-5 p-5 md:grid-cols-[1fr_auto] md:items-center">
         <div class="flex -space-x-3">
             @foreach($order->items->take(4) as $item)
-                <img src="{{ $item->image_url ?: asset('images/product-placeholder.svg') }}" alt="{{ $item->product_name }}" class="h-14 w-14 rounded-xl border-2 border-white object-cover" loading="lazy">
+                <img src="{{ \App\Support\PublicMedia::url(null, $item->image_url, '/images/product-placeholder.svg') }}" alt="{{ $item->product_name }}" class="h-14 w-14 rounded-xl border-2 border-white object-cover" loading="lazy">
             @endforeach
         </div>
         <div class="text-left md:text-right">

@@ -1,6 +1,7 @@
 import './bootstrap';
 
 import Alpine from 'alpinejs';
+import { readSheet } from 'read-excel-file/browser';
 
 window.Alpine = Alpine;
 
@@ -9,6 +10,25 @@ const slugify = (value = '') => String(value)
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+
+window.adminSizeOptionRows = (initial = []) => ({
+    rows: Array.isArray(initial) && initial.length
+        ? initial.map((row, index) => ({
+            client_key: row.client_key || `${Date.now()}-${index}-${Math.random().toString(36).slice(2)}`,
+            label: String(row.label || ''),
+            code: String(row.code || ''),
+        }))
+        : [{ client_key: `${Date.now()}-${Math.random().toString(36).slice(2)}`, label: '', code: '' }],
+    add() {
+        this.rows.push({ client_key: `${Date.now()}-${Math.random().toString(36).slice(2)}`, label: '', code: '' });
+    },
+    remove(index) {
+        if (this.rows.length > 1) this.rows.splice(index, 1);
+    },
+    normalize(row) {
+        if (!row.code) row.code = slugify(row.label);
+    },
+});
 
 window.adminProductForm = (initial = {}) => ({
     productName: initial.productName || '',
@@ -22,16 +42,41 @@ window.adminProductForm = (initial = {}) => ({
     subcategoryId: String(initial.subcategoryId || ''),
     subcategories: initial.subcategories || [],
     features: initial.features?.length ? initial.features : [''],
-    specifications: initial.specifications?.length ? initial.specifications : [{ name: '', value: '' }],
-    imageUrls: initial.imageUrls?.length ? initial.imageUrls : [{ url: '', alt: '', is_primary: true }],
+    imageUrls: initial.imageUrls?.length ? initial.imageUrls : [],
     newImagePreviews: [],
+    primaryImageSource: '',
     priceHeaders: initial.priceHeaders?.length ? initial.priceHeaders : ['Unit Price', 'Savings'],
+    priceHighlightColumn: Number(initial.priceHighlightColumn || 1),
+    priceImportBusy: false,
+    priceImportStatus: '',
+    priceImportError: '',
+    priceImportMappingOpen: false,
+    priceImportFileName: '',
+    priceImportMatrix: [],
+    priceImportHeaderRowIndex: 0,
+    priceImportHeaders: [],
+    priceImportPreviewRows: [],
+    priceImportQuantityMode: 'range',
+    priceImportQuantityColumn: '',
+    priceImportMinColumn: '',
+    priceImportMaxColumn: '',
+    priceImportIncludedColumns: [],
+    priceImportPrimaryPriceColumn: '',
+    priceImportMappingError: '',
     priceRows: initial.priceRows?.length ? initial.priceRows : [{ minimum_quantity: 1, maximum_quantity: '', cells: ['$0.00', '—'] }],
     optionGroups: initial.optionGroups?.length ? initial.optionGroups : [],
+    optionGroupErrors: initial.optionGroupErrors || {},
+    jerseyCustomizationTypes: initial.jerseyCustomizationTypes || {},
+    jerseyCustomizationOptions: initial.jerseyCustomizationOptions || [],
     newFeatureDialogOpen: false,
-    newFeatureName: '',
+    newFeatureType: '',
     newFeatureNameError: '',
-    sizeGroups: initial.sizeGroups?.length ? initial.sizeGroups : [{ existing_id: '', name: 'Adult Unisex', code: 'adult-unisex', sizes_text: 'XS, S, M, L, XL, 2XL, 3XL', chart_enabled: false, chart_title: 'Adult Unisex Size Chart', chart_note: '', chart_columns_text: 'Size, Chest, Length', chart_rows_text: '', chart_image_url: '', chart_image_preview: '', clear_chart_image: false, is_active: true }],
+    masterItemPickerOpen: false,
+    masterItemPickerGroupIndex: null,
+    sizeOptionGroups: initial.sizeOptionGroups || [],
+    sizeGroups: initial.sizeGroups?.length ? initial.sizeGroups : [],
+    sizeGroupPickerOpen: false,
+    sizeGroupPickerSearch: '',
     artworkUploadEnabled: Boolean(initial.artworkUploadEnabled),
     artworkUploadRequired: Boolean(initial.artworkUploadRequired),
     artworkUploadTitle: initial.artworkUploadTitle || 'Upload Custom Artwork',
@@ -39,12 +84,8 @@ window.adminProductForm = (initial = {}) => ({
     artworkUploadMaxFiles: Number(initial.artworkUploadMaxFiles || 5),
     artworkUploadMaxFileSizeMb: Number(initial.artworkUploadMaxFileSizeMb || 15),
     artworkUploadAcceptedTypes: initial.artworkUploadAcceptedTypes || 'pdf,svg,png,jpg,jpeg,webp',
-    productionRanges: initial.productionRanges?.length ? initial.productionRanges : [],
-    productionOptionDialogOpen: false,
-    productionOptionRangeIndex: null,
-    productionOptionEditingIndex: null,
-    productionOptionDialogError: '',
-    productionOptionDraft: { name: '', code: '', description: '', price_adjustment: 0, minimum_days: 1, maximum_days: 1 },
+    productionHeaders: initial.productionHeaders?.length ? initial.productionHeaders : ['Standard Production'],
+    productionRows: initial.productionRows?.length ? initial.productionRows : [{ range: '1+', cells: [] }],
     shippingMethods: initial.shippingMethods?.length ? initial.shippingMethods : [],
     rosterFields: initial.rosterFields?.length ? initial.rosterFields : [
         { key: 'name', label: 'Player name', type: 'text', max_length: 60, required: false, enabled: true },
@@ -56,9 +97,13 @@ window.adminProductForm = (initial = {}) => ({
 
     init() {
         this.normalizePriceRows();
-        this.syncProductionRangesWithPriceRows();
+        this.normalizeProductionTable();
         this.optionGroups.forEach(group => {
             group.client_key ||= this.clientKey();
+            group.jersey_customization_type ||= this.inferJerseyCustomizationType(group.name);
+            if (group.jersey_customization_type && this.jerseyCustomizationTypes[group.jersey_customization_type]) {
+                group.name = this.jerseyCustomizationTypes[group.jersey_customization_type];
+            }
             group.display_mode = 'customer';
             group.fixed_value_code ||= '';
             group.fixed_text_value ||= '';
@@ -70,6 +115,7 @@ window.adminProductForm = (initial = {}) => ({
             (group.values || []).forEach(value => {
                 value.client_key ||= this.clientKey();
                 value.existing_id ||= '';
+                value.jersey_customization_option_id ||= '';
                 value.image_url ||= '';
                 value.image_previews = Array.isArray(value.image_previews) ? value.image_previews : (value.image_preview ? [value.image_preview] : []);
                 value.image_error = false;
@@ -78,24 +124,76 @@ window.adminProductForm = (initial = {}) => ({
                 value.is_default = this.booleanValue(value.is_default, false);
                 value.is_active = this.booleanValue(value.is_active, true);
                 value.clear_images = this.booleanValue(value.clear_images, false);
+                const masterItem = this.masterItemById(value.jersey_customization_option_id);
+                if (masterItem) this.hydrateValueFromMaster(value, masterItem);
+                value.primary_image_url ||= value.image_previews?.[0] || value.image_url || '';
             });
         });
         this.sizeGroups.forEach(group => {
+            group.client_key ||= this.clientKey();
             group.existing_id ||= '';
-            group.chart_enabled = Boolean(group.chart_enabled);
-            group.chart_title ||= `${group.name || 'Product'} Size Chart`;
-            group.chart_note ||= '';
-            group.chart_columns_text ||= '';
-            group.chart_rows_text ||= '';
-            group.chart_image_url ||= '';
-            group.chart_image_preview ||= group.chart_image_url || '';
-            group.clear_chart_image = Boolean(group.clear_chart_image);
+            group.size_option_group_id ||= '';
+            const master = (this.sizeOptionGroups || []).find(item => Number(item.id) === Number(group.size_option_group_id || 0));
+            if (master) {
+                group.name = String(master.name || '');
+                group.code = String(master.slug || '');
+                group.audience_label = String(master.audience_label || '');
+                group.description_html = String(master.description_html || '');
+                group.sizes = Array.isArray(master.sizes) ? [...master.sizes] : [];
+                group.chart_enabled = Boolean(master.chart_enabled);
+                group.chart_html = String(master.chart_html || '');
+                group.chart_title = String(master.chart_title || '');
+                group.chart_note = String(master.chart_note || '');
+                group.chart_columns = Array.isArray(master.chart_columns) ? [...master.chart_columns] : [];
+                group.chart_rows = Array.isArray(master.chart_rows) ? master.chart_rows.map(row => [...row]) : [];
+                group.chart_image_url = '';
+                group.chart_image_preview = String(master.chart_image_preview || '');
+            } else {
+                group.sizes = Array.isArray(group.sizes) ? group.sizes : String(group.sizes_text || '').split(',').map(value => value.trim()).filter(Boolean);
+                group.chart_enabled = Boolean(group.chart_enabled);
+                group.chart_html ||= '';
+                group.chart_title ||= `${group.name || 'Product'} Size Chart`;
+                group.chart_note ||= '';
+                group.chart_columns = Array.isArray(group.chart_columns) ? group.chart_columns : [];
+                group.chart_rows = Array.isArray(group.chart_rows) ? group.chart_rows : [];
+                group.chart_image_url ||= '';
+                group.chart_image_preview ||= group.chart_image_url || '';
+                group.description_html ||= '';
+            }
         });
         this.shippingMethods.forEach(method => {
             method.charge_type ||= 'per_unit';
             method.is_default = Boolean(method.is_default);
             method.is_active = method.is_active !== false;
         });
+        this.imageUrls = (this.imageUrls || []).map(image => ({
+            client_key: image.client_key || this.clientKey(),
+            existing_id: image.existing_id || '',
+            url: String(image.url || ''),
+            preview: String(image.preview || ''),
+            name: String(image.name || image.alt || ''),
+            is_primary: this.booleanValue(image.is_primary, false),
+        }));
+        const primaryUrlIndex = this.imageUrls.findIndex(image => image.is_primary);
+        if (primaryUrlIndex >= 0) this.primaryImageSource = `url:${primaryUrlIndex}`;
+        else if (this.imageUrls.some(image => image.url || image.preview)) this.primaryImageSource = `url:${this.imageUrls.findIndex(image => image.url || image.preview)}`;
+        this.syncImagePrimaryFlags();
+
+        if (Object.keys(this.optionGroupErrors || {}).length > 0) {
+            this.$nextTick(() => {
+                document.querySelector('[data-option-group-error="true"]')?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                });
+            });
+        }
+    },
+    optionGroupErrorMessages(index) {
+        const messages = this.optionGroupErrors?.[String(index)] ?? this.optionGroupErrors?.[index] ?? [];
+        return Array.isArray(messages) ? messages.filter(Boolean) : (messages ? [String(messages)] : []);
+    },
+    optionGroupHasError(index) {
+        return this.optionGroupErrorMessages(index).length > 0;
     },
     booleanValue(value, fallback = false) {
         if (value === undefined || value === null || value === '') return fallback;
@@ -105,9 +203,46 @@ window.adminProductForm = (initial = {}) => ({
     touchSlug() { this.slugTouched = true; this.slug = slugify(this.slug); },
     visibleSubcategories() { return this.subcategories.filter(item => String(item.parent_id) === String(this.categoryId)); },
     addFeature() { this.features.push(''); },
-    addSpecification() { this.specifications.push({ name: '', value: '' }); },
-    addImageUrl() { this.imageUrls.push({ url: '', alt: '', is_primary: false }); },
-    setPrimaryImage(index) { this.imageUrls.forEach((item, itemIndex) => item.is_primary = itemIndex === index); },
+    addImageUrl() {
+        this.imageUrls.push({ client_key: this.clientKey(), existing_id: '', url: '', preview: '', name: '', is_primary: false });
+    },
+    setPrimaryImage(index) {
+        this.primaryImageSource = `url:${index}`;
+        this.syncImagePrimaryFlags();
+    },
+    setPrimaryUploadedImage(index) {
+        this.primaryImageSource = `upload:${index}`;
+        this.syncImagePrimaryFlags();
+    },
+    isNewImagePrimary(index) {
+        return this.primaryImageSource === `upload:${index}`;
+    },
+    newImagePrimaryIndex() {
+        if (!this.primaryImageSource.startsWith('upload:')) return '';
+        const index = Number(this.primaryImageSource.split(':')[1]);
+        return Number.isInteger(index) && index >= 0 && index < this.newImagePreviews.length ? index : '';
+    },
+    syncImagePrimaryFlags() {
+        const urlIndex = this.primaryImageSource.startsWith('url:')
+            ? Number(this.primaryImageSource.split(':')[1])
+            : -1;
+        this.imageUrls.forEach((item, itemIndex) => item.is_primary = itemIndex === urlIndex);
+    },
+    firstAvailableImageSource() {
+        if (this.newImagePreviews.length) return 'upload:0';
+        const urlIndex = this.imageUrls.findIndex(image => image.url || image.preview);
+        if (urlIndex >= 0) return `url:${urlIndex}`;
+        return '';
+    },
+    removeImageUrl(index) {
+        this.imageUrls.splice(index, 1);
+        if (this.primaryImageSource.startsWith('url:')) {
+            const selectedIndex = Number(this.primaryImageSource.split(':')[1]);
+            if (selectedIndex === index) this.primaryImageSource = this.firstAvailableImageSource();
+            else if (selectedIndex > index) this.primaryImageSource = `url:${selectedIndex - 1}`;
+        }
+        this.syncImagePrimaryFlags();
+    },
     previewProductImages(event) {
         this.newImagePreviews.forEach(image => URL.revokeObjectURL(image.url));
         const files = Array.from(event.target.files || []);
@@ -117,6 +252,8 @@ window.adminProductForm = (initial = {}) => ({
         if (invalid || files.length > 20) {
             event.target.value = '';
             this.newImagePreviews = [];
+            if (this.primaryImageSource.startsWith('upload:')) this.primaryImageSource = this.firstAvailableImageSource();
+            this.syncImagePrimaryFlags();
             window.alert('Choose up to 20 JPG, PNG, WebP, or AVIF images, each no larger than 5 MB.');
             return;
         }
@@ -130,14 +267,395 @@ window.adminProductForm = (initial = {}) => ({
                 ? `${(file.size / (1024 * 1024)).toFixed(2)} MB`
                 : `${Math.max(1, Math.round(file.size / 1024))} KB`,
         }));
+
+        if (this.primaryImageSource.startsWith('upload:') || !this.primaryImageSource) {
+            this.primaryImageSource = this.newImagePreviews.length ? 'upload:0' : this.firstAvailableImageSource();
+        }
+        this.syncImagePrimaryFlags();
     },
     removeProductImage(index) {
         const removed = this.newImagePreviews.splice(index, 1)[0];
         if (removed?.url) URL.revokeObjectURL(removed.url);
 
+        if (this.primaryImageSource.startsWith('upload:')) {
+            const selectedIndex = Number(this.primaryImageSource.split(':')[1]);
+            if (selectedIndex === index) this.primaryImageSource = this.firstAvailableImageSource();
+            else if (selectedIndex > index) this.primaryImageSource = `upload:${selectedIndex - 1}`;
+        }
+
         const transfer = new DataTransfer();
         this.newImagePreviews.forEach(image => transfer.items.add(image.file));
         if (this.$refs.productImageInput) this.$refs.productImageInput.files = transfer.files;
+        this.syncImagePrimaryFlags();
+    },
+    normalizeSpreadsheetHeader(value) {
+        return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    },
+    parseQuantityRange(value) {
+        const text = String(value || '').replace(/,/g, '').trim();
+        const numbers = [...text.matchAll(/\d+/g)].map(match => Number(match[0]));
+        if (!numbers.length || numbers[0] < 1) throw new Error(`Invalid quantity range: ${text || 'blank'}.`);
+        const openEnded = /\+|and\s+up|or\s+more|above|over|no\s+limit|unlimited/i.test(text);
+        return {
+            minimum_quantity: numbers[0],
+            // A single value is a quantity breakpoint, not a one-piece range.
+            // Its maximum is generated after all rows are sorted by using the
+            // next row's minimum quantity minus one.
+            maximum_quantity: openEnded ? '' : (numbers[1] ?? ''),
+        };
+    },
+    spreadsheetInteger(value, { allowBlank = false } = {}) {
+        const text = String(value ?? '').replace(/,/g, '').trim();
+        if (text === '' && allowBlank) return '';
+        if (/\+|and\s+up|or\s+more|above|over|no\s+limit|unlimited/i.test(text) && allowBlank) return '';
+        const match = text.match(/\d+/);
+        if (!match) return null;
+        const parsed = Number(match[0]);
+        return Number.isInteger(parsed) && parsed >= 1 ? parsed : null;
+    },
+    spreadsheetRows(matrix) {
+        return (matrix || [])
+            .map(row => Array.isArray(row) ? row.map(cell => String(cell ?? '').trim()) : [])
+            .filter(row => row.some(cell => cell !== ''));
+    },
+    detectSpreadsheetHeaderRow(rows) {
+        const limit = Math.min(rows.length - 1, 20);
+        let bestIndex = 0;
+        let bestScore = -Infinity;
+
+        for (let index = 0; index < limit; index += 1) {
+            const row = rows[index] || [];
+            const next = rows[index + 1] || [];
+            const nonEmpty = row.filter(cell => cell !== '').length;
+            if (nonEmpty < 2) continue;
+            const textCells = row.filter(cell => /[a-z]/i.test(cell)).length;
+            const numericCells = row.filter(cell => /^[$€£¥]?\s*[\d,.%+-]+$/.test(cell)).length;
+            const nextNonEmpty = next.filter(cell => cell !== '').length;
+            const score = (nonEmpty * 3) + (textCells * 2) - numericCells + (nextNonEmpty >= 2 ? 3 : 0);
+            if (score > bestScore) {
+                bestScore = score;
+                bestIndex = index;
+            }
+        }
+
+        return bestIndex;
+    },
+    uniqueSpreadsheetHeaders(rawHeaders, columnCount) {
+        const seen = new Map();
+        return Array.from({ length: columnCount }, (_, index) => {
+            const base = String(rawHeaders[index] || '').trim() || `Column ${index + 1}`;
+            const count = (seen.get(base.toLowerCase()) || 0) + 1;
+            seen.set(base.toLowerCase(), count);
+            return count === 1 ? base : `${base} (${count})`;
+        });
+    },
+    spreadsheetColumnLetter(index) {
+        let value = Number(index) + 1;
+        let output = '';
+        while (value > 0) {
+            value -= 1;
+            output = String.fromCharCode(65 + (value % 26)) + output;
+            value = Math.floor(value / 26);
+        }
+        return output;
+    },
+    priceImportColumnOptions() {
+        return this.priceImportHeaders.map((header, index) => ({
+            index: String(index),
+            label: `${header} · Column ${this.spreadsheetColumnLetter(index)}`,
+        }));
+    },
+    priceImportHeaderRowChoices() {
+        return Array.from({ length: Math.min(this.priceImportMatrix.length, 20) }, (_, index) => index);
+    },
+    priceImportSelectedColumnOptions() {
+        return this.priceImportColumnOptions().filter(column => this.priceImportIncludedColumns.includes(column.index));
+    },
+    isMappedQuantityColumn(index) {
+        const value = String(index);
+        if (this.priceImportQuantityMode === 'range') return value === String(this.priceImportQuantityColumn);
+        return value === String(this.priceImportMinColumn) || value === String(this.priceImportMaxColumn);
+    },
+    togglePriceImportColumn(index, checked) {
+        const value = String(index);
+        if (checked && !this.priceImportIncludedColumns.includes(value)) this.priceImportIncludedColumns.push(value);
+        if (!checked) this.priceImportIncludedColumns = this.priceImportIncludedColumns.filter(item => item !== value);
+        if (!this.priceImportIncludedColumns.includes(String(this.priceImportPrimaryPriceColumn))) {
+            this.priceImportPrimaryPriceColumn = this.priceImportIncludedColumns[0] || '';
+        }
+    },
+    refreshPriceImportQuantityMapping() {
+        this.priceImportIncludedColumns = this.priceImportIncludedColumns.filter(index => !this.isMappedQuantityColumn(index));
+        if (!this.priceImportIncludedColumns.includes(String(this.priceImportPrimaryPriceColumn))) {
+            this.priceImportPrimaryPriceColumn = this.priceImportIncludedColumns[0] || '';
+        }
+        this.priceImportMappingError = '';
+    },
+    inferRangeColumn(headers, dataRows) {
+        const normalized = headers.map(header => this.normalizeSpreadsheetHeader(header));
+        const aliases = ['quantity', 'qty', 'quantity range', 'qty range', 'pieces', 'piece range', 'order quantity', 'volume'];
+        const aliasIndex = normalized.findIndex(header => aliases.includes(header));
+        if (aliasIndex >= 0) return aliasIndex;
+
+        let bestIndex = -1;
+        let bestRatio = 0;
+        headers.forEach((_, index) => {
+            const samples = dataRows.slice(0, 12).map(row => row[index]).filter(value => String(value || '').trim() !== '');
+            if (!samples.length) return;
+            const matches = samples.filter(value => {
+                const text = String(value || '').trim();
+                return /\d/.test(text) && (/[-–—+]|\bto\b|and\s+up|or\s+more|above|over/i.test(text));
+            }).length;
+            const ratio = matches / samples.length;
+            if (ratio > bestRatio) {
+                bestRatio = ratio;
+                bestIndex = index;
+            }
+        });
+        return bestRatio >= 0.5 ? bestIndex : -1;
+    },
+    inferSplitQuantityColumns(headers) {
+        const normalized = headers.map(header => this.normalizeSpreadsheetHeader(header));
+        const minAliases = ['min qty', 'minimum qty', 'min quantity', 'minimum quantity', 'from qty', 'from quantity', 'minimum', 'from'];
+        const maxAliases = ['max qty', 'maximum qty', 'max quantity', 'maximum quantity', 'to qty', 'to quantity', 'maximum', 'to'];
+        return {
+            min: normalized.findIndex(header => minAliases.includes(header)),
+            max: normalized.findIndex(header => maxAliases.includes(header)),
+        };
+    },
+    inferPrimaryPriceColumn(headers, dataRows, candidateIndexes) {
+        const headerMatch = candidateIndexes.find(index => /unit|price|each|custom|blank|standard|base|amount|cost/i.test(headers[index]) && !/saving|discount|shipping|total|quantity|qty|percent/i.test(headers[index]));
+        if (headerMatch !== undefined) return headerMatch;
+
+        let bestIndex = candidateIndexes[0] ?? -1;
+        let bestRatio = -1;
+        candidateIndexes.forEach(index => {
+            const samples = dataRows.slice(0, 20).map(row => String(row[index] ?? '').trim()).filter(Boolean);
+            if (!samples.length) return;
+            const numeric = samples.filter(value => {
+                const clean = value.replace(/[$€£¥,%\s]/g, '').replace(/,/g, '');
+                return clean !== '' && Number.isFinite(Number(clean));
+            }).length;
+            const ratio = numeric / samples.length;
+            if (ratio > bestRatio) {
+                bestRatio = ratio;
+                bestIndex = index;
+            }
+        });
+        return bestIndex;
+    },
+    setupPriceImportMapping(headerRowIndex = 0) {
+        const index = Math.max(0, Math.min(Number(headerRowIndex) || 0, this.priceImportMatrix.length - 1));
+        this.priceImportHeaderRowIndex = index;
+
+        const dataRows = this.priceImportMatrix.slice(index + 1).filter(row => row.some(cell => cell !== ''));
+        const usedColumnCount = Math.max(
+            this.priceImportMatrix[index]?.length || 0,
+            ...dataRows.slice(0, 50).map(row => row.reduce((last, cell, cellIndex) => cell !== '' ? cellIndex + 1 : last, 0)),
+        );
+        if (usedColumnCount < 2) throw new Error('The selected header row must contain at least two columns.');
+
+        this.priceImportHeaders = this.uniqueSpreadsheetHeaders(this.priceImportMatrix[index] || [], usedColumnCount);
+        this.priceImportPreviewRows = dataRows.slice(0, 6).map(row => Array.from({ length: usedColumnCount }, (_, cellIndex) => String(row[cellIndex] ?? '')));
+
+        const split = this.inferSplitQuantityColumns(this.priceImportHeaders);
+        const range = this.inferRangeColumn(this.priceImportHeaders, dataRows);
+        if (split.min >= 0) {
+            this.priceImportQuantityMode = 'split';
+            this.priceImportMinColumn = String(split.min);
+            this.priceImportMaxColumn = split.max >= 0 ? String(split.max) : '';
+            this.priceImportQuantityColumn = '';
+        } else {
+            this.priceImportQuantityMode = 'range';
+            this.priceImportQuantityColumn = range >= 0 ? String(range) : '0';
+            this.priceImportMinColumn = '';
+            this.priceImportMaxColumn = '';
+        }
+
+        const quantityIndexes = new Set(
+            this.priceImportQuantityMode === 'split'
+                ? [this.priceImportMinColumn, this.priceImportMaxColumn].filter(value => value !== '')
+                : [this.priceImportQuantityColumn],
+        );
+        this.priceImportIncludedColumns = this.priceImportHeaders
+            .map((_, columnIndex) => String(columnIndex))
+            .filter(columnIndex => !quantityIndexes.has(columnIndex))
+            .filter(columnIndex => dataRows.some(row => String(row[Number(columnIndex)] ?? '').trim() !== ''));
+
+        const includedNumbers = this.priceImportIncludedColumns.map(Number);
+        const primary = this.inferPrimaryPriceColumn(this.priceImportHeaders, dataRows, includedNumbers);
+        this.priceImportPrimaryPriceColumn = primary >= 0 ? String(primary) : (this.priceImportIncludedColumns[0] || '');
+        this.priceImportMappingError = '';
+    },
+    preparePriceImportMapping(matrix, fileName) {
+        const rows = this.spreadsheetRows(matrix);
+        if (rows.length < 2) throw new Error('The spreadsheet must contain a header row and at least one data row.');
+        if (rows.length > 501) throw new Error('A maximum of 500 spreadsheet rows can be reviewed at once.');
+        this.priceImportMatrix = rows;
+        this.priceImportFileName = fileName;
+        this.setupPriceImportMapping(this.detectSpreadsheetHeaderRow(rows));
+        this.priceImportMappingOpen = true;
+    },
+    closePriceImportMapping() {
+        this.priceImportMappingOpen = false;
+        this.priceImportMappingError = '';
+    },
+    applyPriceImportMapping() {
+        this.priceImportMappingError = '';
+        try {
+            const dataRows = this.priceImportMatrix
+                .slice(Number(this.priceImportHeaderRowIndex) + 1)
+                .filter(row => row.some(cell => String(cell ?? '').trim() !== ''));
+            if (!dataRows.length) throw new Error('No data rows were found below the selected header row.');
+
+            let rangeColumn = null;
+            let minColumn = null;
+            let maxColumn = null;
+            if (this.priceImportQuantityMode === 'range') {
+                rangeColumn = Number(this.priceImportQuantityColumn);
+                if (!Number.isInteger(rangeColumn)) throw new Error('Choose the column that contains quantity ranges.');
+            } else {
+                minColumn = Number(this.priceImportMinColumn);
+                maxColumn = this.priceImportMaxColumn === '' ? null : Number(this.priceImportMaxColumn);
+                if (!Number.isInteger(minColumn)) throw new Error('Choose the minimum quantity column.');
+                if (maxColumn !== null && !Number.isInteger(maxColumn)) throw new Error('Choose a valid maximum quantity column.');
+                if (maxColumn !== null && maxColumn === minColumn) throw new Error('Minimum and maximum quantity must use different columns.');
+            }
+
+            const mappedQuantity = new Set(
+                this.priceImportQuantityMode === 'range'
+                    ? [String(rangeColumn)]
+                    : [String(minColumn), ...(maxColumn === null ? [] : [String(maxColumn)])],
+            );
+            const valueIndexes = this.priceImportIncludedColumns
+                .map(Number)
+                .filter(index => Number.isInteger(index) && !mappedQuantity.has(String(index)));
+            if (!valueIndexes.length) throw new Error('Select at least one storefront price-table column.');
+            if (valueIndexes.length > 19) throw new Error('A maximum of 19 storefront columns can be imported.');
+
+            const primaryIndex = Number(this.priceImportPrimaryPriceColumn);
+            if (!valueIndexes.includes(primaryIndex)) throw new Error('Choose a primary live price column from the selected storefront columns.');
+
+            const importedRows = [];
+            dataRows.forEach((row, sourceIndex) => {
+                const values = valueIndexes.map(index => String(row[index] ?? '').trim());
+                const quantityRaw = this.priceImportQuantityMode === 'range'
+                    ? String(row[rangeColumn] ?? '').trim()
+                    : String(row[minColumn] ?? '').trim();
+                if (quantityRaw === '' && values.every(value => value === '')) return;
+
+                let range;
+                if (this.priceImportQuantityMode === 'range') {
+                    range = this.parseQuantityRange(row[rangeColumn]);
+                } else {
+                    const minimum = this.spreadsheetInteger(row[minColumn]);
+                    const maximum = maxColumn === null ? '' : this.spreadsheetInteger(row[maxColumn], { allowBlank: true });
+                    if (!Number.isInteger(minimum)) throw new Error(`Spreadsheet row ${Number(this.priceImportHeaderRowIndex) + sourceIndex + 2} has an invalid minimum quantity.`);
+                    if (maximum !== '' && (!Number.isInteger(maximum) || maximum < minimum)) {
+                        throw new Error(`Spreadsheet row ${Number(this.priceImportHeaderRowIndex) + sourceIndex + 2} has an invalid maximum quantity.`);
+                    }
+                    range = { minimum_quantity: minimum, maximum_quantity: maximum };
+                }
+
+                if (values.every(value => value === '')) {
+                    throw new Error(`Spreadsheet row ${Number(this.priceImportHeaderRowIndex) + sourceIndex + 2} has a quantity but no selected storefront values.`);
+                }
+                importedRows.push({ ...range, cells: values });
+            });
+
+            if (!importedRows.length) throw new Error('No usable price rows were found using the selected mapping.');
+            if (importedRows.length > 200) throw new Error('A maximum of 200 price rows can be imported.');
+
+            importedRows.sort((a, b) => Number(a.minimum_quantity) - Number(b.minimum_quantity));
+            importedRows.forEach((row, index) => {
+                const minimum = Number(row.minimum_quantity);
+                if (!Number.isInteger(minimum) || minimum < 1) {
+                    throw new Error(`The imported quantity at row ${index + 1} is invalid.`);
+                }
+
+                if (index < importedRows.length - 1) {
+                    const nextMinimum = Number(importedRows[index + 1].minimum_quantity);
+                    if (!Number.isInteger(nextMinimum) || nextMinimum <= minimum) {
+                        throw new Error('Quantity starting values must be unique and increase from one row to the next.');
+                    }
+
+                    // Make every non-final range continuous. This also repairs
+                    // spreadsheets whose explicit maximum leaves a gap or
+                    // overlaps the following starting quantity.
+                    row.maximum_quantity = nextMinimum - 1;
+                } else if (row.maximum_quantity !== '') {
+                    const maximum = Number(row.maximum_quantity);
+                    if (!Number.isInteger(maximum) || maximum < minimum) {
+                        throw new Error(`The final quantity range beginning at ${minimum} has an invalid maximum quantity.`);
+                    }
+                }
+            });
+
+            this.priceHeaders = valueIndexes.map(index => this.priceImportHeaders[index]);
+            this.priceRows = importedRows;
+            this.priceHighlightColumn = valueIndexes.indexOf(primaryIndex) + 1;
+            this.normalizePriceRows();
+            this.priceImportStatus = `${this.priceRows.length} row${this.priceRows.length === 1 ? '' : 's'} and ${this.priceHeaders.length} column${this.priceHeaders.length === 1 ? '' : 's'} generated from ${this.priceImportFileName}. Quantity maximums were completed automatically from the next row's starting quantity.`;
+            this.priceImportError = '';
+            this.closePriceImportMapping();
+        } catch (error) {
+            this.priceImportMappingError = error instanceof Error ? error.message : 'The selected spreadsheet mapping could not be applied.';
+        }
+    },
+    parseCsvMatrix(text) {
+        const rows = [];
+        let row = [];
+        let cell = '';
+        let quoted = false;
+        const source = String(text || '').replace(/^\uFEFF/, '');
+
+        for (let index = 0; index < source.length; index += 1) {
+            const character = source[index];
+            if (quoted) {
+                if (character === '"' && source[index + 1] === '"') {
+                    cell += '"';
+                    index += 1;
+                } else if (character === '"') quoted = false;
+                else cell += character;
+                continue;
+            }
+            if (character === '"') quoted = true;
+            else if (character === ',') {
+                row.push(cell);
+                cell = '';
+            } else if (character === '\n') {
+                row.push(cell.replace(/\r$/, ''));
+                rows.push(row);
+                row = [];
+                cell = '';
+            } else cell += character;
+        }
+        row.push(cell.replace(/\r$/, ''));
+        if (row.some(value => value !== '') || rows.length === 0) rows.push(row);
+        return rows;
+    },
+    async importPriceTable(event) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        this.priceImportBusy = true;
+        this.priceImportStatus = '';
+        this.priceImportError = '';
+        this.priceImportMappingError = '';
+
+        try {
+            if (file.size > 5 * 1024 * 1024) throw new Error('The spreadsheet must not exceed 5 MB.');
+            const extension = String(file.name || '').split('.').pop().toLowerCase();
+            if (!['xlsx', 'csv'].includes(extension)) throw new Error('Upload an XLSX or CSV spreadsheet.');
+            const matrix = extension === 'csv'
+                ? this.parseCsvMatrix(await file.text())
+                : await readSheet(file);
+            this.preparePriceImportMapping(matrix, file.name);
+        } catch (error) {
+            this.priceImportError = error instanceof Error ? error.message : 'The price table could not be imported.';
+        } finally {
+            this.priceImportBusy = false;
+            event.target.value = '';
+        }
     },
     addPriceHeader() { this.priceHeaders.push('New Column'); this.normalizePriceRows(); },
     removePriceHeader(index) {
@@ -147,11 +665,11 @@ window.adminProductForm = (initial = {}) => ({
     },
     addPriceRow() {
         this.priceRows.push({ minimum_quantity: '', maximum_quantity: '', cells: this.priceHeaders.map(() => '') });
-        this.syncProductionRangesWithPriceRows();
+        this.recalculatePriceMaximums();
     },
     removePriceRow(index) {
         this.priceRows.splice(index, 1);
-        this.syncProductionRangesWithPriceRows();
+        this.recalculatePriceMaximums();
     },
     normalizePriceRows() {
         this.priceRows = this.priceRows.map(row => {
@@ -162,11 +680,42 @@ window.adminProductForm = (initial = {}) => ({
                 cells: this.priceHeaders.map((_, index) => sourceCells[index] ?? ''),
             };
         });
+        this.recalculatePriceMaximums();
+    },
+    recalculatePriceMaximums() {
+        this.priceRows.forEach((row, index) => {
+            const minimum = Number(row.minimum_quantity);
+            if (index < this.priceRows.length - 1) {
+                const nextMinimum = Number(this.priceRows[index + 1]?.minimum_quantity);
+                row.maximum_quantity = Number.isInteger(minimum)
+                    && minimum >= 1
+                    && Number.isInteger(nextMinimum)
+                    && nextMinimum > minimum
+                    ? nextMinimum - 1
+                    : '';
+                return;
+            }
+
+            // The final imported row may contain an explicit maximum. A blank
+            // final maximum remains open-ended and is displayed with a plus.
+            const maximum = Number(row.maximum_quantity);
+            if (row.maximum_quantity !== '' && (!Number.isInteger(maximum) || !Number.isInteger(minimum) || maximum < minimum)) {
+                row.maximum_quantity = '';
+            }
+        });
+    },
+    quantityRangeLabel(row) {
+        const minimum = Number(row?.minimum_quantity);
+        if (!Number.isInteger(minimum) || minimum < 1) return 'Enter the starting quantity';
+        const maximum = Number(row?.maximum_quantity);
+        return row.maximum_quantity === '' || !Number.isInteger(maximum)
+            ? `${minimum}+`
+            : `${minimum} – ${maximum}`;
     },
     optionValueTemplate(overrides = {}) {
         return {
-            existing_id: '', client_key: this.clientKey(), label: '', code: '', description: '',
-            color_hex: '', image_url: '', image_previews: [], image_error: false, clear_images: false,
+            existing_id: '', jersey_customization_option_id: '', client_key: this.clientKey(), label: '', code: '', description: '',
+            color_hex: '', image_url: '', image_previews: [], primary_image_url: '', image_error: false, clear_images: false,
             price_adjustment: 0, charge_type: 'per_unit', stock_quantity: '', is_default: false,
             is_active: true, ...overrides,
         };
@@ -188,38 +737,73 @@ window.adminProductForm = (initial = {}) => ({
 
         return candidate;
     },
+    inferJerseyCustomizationType(name) {
+        const plain = String(name || '').trim().toLowerCase();
+        const normalized = plain.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        const direct = Object.entries(this.jerseyCustomizationTypes)
+            .find(([type, label]) => type === normalized || String(label).trim().toLowerCase() === plain)?.[0];
+        if (direct) return direct;
+        if (/collar|neck/.test(plain)) return 'neck_and_collar';
+        if (/fabric|material/.test(plain)) return 'fabric';
+        if (/colou?r/.test(plain)) return 'color';
+        if (/sleeve|cuff/.test(plain)) return 'sleeves_and_cuffs';
+        if (/jersey\s*style|uniform\s*style|style/.test(plain)) return 'jersey_style';
+        return '';
+    },
+    masterItemById(id) {
+        const numericId = Number(id || 0);
+        return this.jerseyCustomizationOptions.find(item => Number(item.id) === numericId) || null;
+    },
+    masterItemPrimaryImage(item) {
+        if (!item) return '';
+        const images = Array.isArray(item.images) ? item.images : [];
+        return images.find(image => image.is_primary)?.url || images[0]?.url || '';
+    },
+    hydrateValueFromMaster(value, item) {
+        value.jersey_customization_option_id = Number(item.id);
+        value.label = String(item.name || '');
+        value.code = String(item.slug || slugify(item.name));
+        value.description = String(item.description || '');
+        value.color_hex = String(item.color_hex || '');
+        value.image_previews = (Array.isArray(item.images) ? item.images : []).map(image => image.url).filter(Boolean);
+        value.primary_image_url = this.masterItemPrimaryImage(item);
+        value.image_url = value.primary_image_url || '';
+        value.clear_images = false;
+        return value;
+    },
+    defaultInputStyleForFeature(type) {
+        if (type === 'color') return 'swatch';
+        const options = this.jerseyCustomizationOptions.filter(item => item.type === type);
+        return options.some(item => this.masterItemPrimaryImage(item)) ? 'image' : 'buttons';
+    },
     openNewFeatureDialog() {
-        this.newFeatureName = '';
+        this.newFeatureType = '';
         this.newFeatureNameError = '';
         this.newFeatureDialogOpen = true;
         this.$nextTick(() => this.$refs.newFeatureNameInput?.focus());
     },
     closeNewFeatureDialog() {
         this.newFeatureDialogOpen = false;
-        this.newFeatureName = '';
+        this.newFeatureType = '';
         this.newFeatureNameError = '';
     },
     confirmNewFeature() {
-        const name = String(this.newFeatureName || '').trim();
+        const type = String(this.newFeatureType || '');
+        const name = String(this.jerseyCustomizationTypes[type] || '');
 
-        if (!name) {
-            this.newFeatureNameError = 'Enter a feature name before continuing.';
+        if (!type || !name) {
+            this.newFeatureNameError = 'Choose a feature name before continuing.';
             this.$nextTick(() => this.$refs.newFeatureNameInput?.focus());
             return;
         }
 
-        if (name.length > 160) {
-            this.newFeatureNameError = 'Feature names cannot exceed 160 characters.';
-            return;
-        }
-
-        const duplicate = this.optionGroups.some(group => String(group.name || '').trim().toLowerCase() === name.toLowerCase());
+        const duplicate = this.optionGroups.some(group => String(group.jersey_customization_type || '') === type);
         if (duplicate) {
-            this.newFeatureNameError = 'A feature with this name already exists for this product.';
+            this.newFeatureNameError = 'This customization feature is already added to the product.';
             return;
         }
 
-        const group = this.addOptionGroup(name);
+        const group = this.addOptionGroup(type, name);
         this.closeNewFeatureDialog();
 
         this.$nextTick(() => {
@@ -227,16 +811,48 @@ window.adminProductForm = (initial = {}) => ({
             document.querySelector(selector)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         });
     },
-    addOptionGroup(name) {
+    addOptionGroup(type, name) {
         const group = {
-            client_key: this.clientKey(), name, code: this.uniqueOptionGroupCode(name), section: 'product', type: 'select', display_mode: 'customer',
+            client_key: this.clientKey(), name, code: this.uniqueOptionGroupCode(type || name), jersey_customization_type: type,
+            section: 'product', type: this.defaultInputStyleForFeature(type), display_mode: 'customer',
             fixed_value_code: '', fixed_text_value: '', show_in_summary: true, use_as_filter: false, catalog_attribute_id: '', description: '',
             placeholder: '', is_required: false, minimum_selections: '', maximum_selections: '', accepted_file_types: '', maximum_file_size_mb: 15,
-            is_active: true, values: [this.optionValueTemplate({ is_default: true })],
+            is_active: true, values: [],
         };
 
         this.optionGroups.push(group);
         return group;
+    },
+    activeMasterItemGroup() {
+        return Number.isInteger(this.masterItemPickerGroupIndex) ? this.optionGroups[this.masterItemPickerGroupIndex] || null : null;
+    },
+    openMasterItemPicker(groupIndex) {
+        if (!this.optionGroups[groupIndex]) return;
+        this.masterItemPickerGroupIndex = groupIndex;
+        this.masterItemPickerOpen = true;
+    },
+    closeMasterItemPicker() {
+        this.masterItemPickerOpen = false;
+        this.masterItemPickerGroupIndex = null;
+    },
+    availableMasterItems() {
+        const group = this.activeMasterItemGroup();
+        if (!group?.jersey_customization_type) return [];
+        return this.jerseyCustomizationOptions.filter(item => item.type === group.jersey_customization_type);
+    },
+    isMasterItemSelected(itemId) {
+        const group = this.activeMasterItemGroup();
+        return Boolean(group?.values?.some(value => Number(value.jersey_customization_option_id) === Number(itemId)));
+    },
+    selectMasterItem(item) {
+        const group = this.activeMasterItemGroup();
+        if (!group || !item || item.type !== group.jersey_customization_type || this.isMasterItemSelected(item.id)) return;
+        const value = this.optionValueTemplate({
+            jersey_customization_option_id: Number(item.id),
+            is_default: group.values.length === 0,
+        });
+        this.hydrateValueFromMaster(value, item);
+        group.values.push(value);
     },
     removeOptionGroup(index) {
         this.optionGroups.splice(index, 1);
@@ -315,152 +931,123 @@ window.adminProductForm = (initial = {}) => ({
         group.values.forEach((value, index) => value.is_default = index === valueIndex);
         group.fixed_value_code = group.values[valueIndex]?.code || '';
     },
-    addSizeGroup() {
-        this.sizeGroups.push({ existing_id: '', name: '', code: '', sizes_text: '', chart_enabled: false, chart_title: '', chart_note: '', chart_columns_text: 'Size, Chest, Length', chart_rows_text: '', chart_image_url: '', chart_image_preview: '', clear_chart_image: false, is_active: true });
-    },
-    previewSizeChartImage(event, group) {
-        const file = event.target.files?.[0];
-        if (!file) return;
-        const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
-        if (!allowed.includes(file.type) || file.size > 5 * 1024 * 1024) {
-            event.target.value = '';
-            window.alert('Choose a JPG, PNG, WebP, or AVIF image no larger than 5 MB.');
-            return;
-        }
-        group.chart_image_preview = URL.createObjectURL(file);
-        group.clear_chart_image = false;
-    },
-    clearSizeChartImage(group) { group.chart_image_preview = ''; group.chart_image_url = ''; group.clear_chart_image = true; },
-    productionQuantityLabel(range) {
-        const minimum = Math.max(1, Number(range?.minimum_quantity || 1));
-        const maximum = range?.maximum_quantity === '' || range?.maximum_quantity === null || range?.maximum_quantity === undefined
-            ? null
-            : Number(range.maximum_quantity);
-        return maximum ? `${minimum}–${maximum} pieces` : `${minimum}+ pieces`;
-    },
-    productionChargeLabel(option) {
-        const amount = Number(option?.price_adjustment || 0);
-        return amount > 0 ? `+$${amount.toFixed(2)} / piece` : 'Included';
-    },
-    uniqueProductionCode(name, rangeIndex, optionIndex = null) {
-        const range = this.productionRanges[rangeIndex] || { minimum_quantity: 1, maximum_quantity: '' };
-        const rangeSuffix = `${Number(range.minimum_quantity || 1)}-${range.maximum_quantity === '' || range.maximum_quantity === null || range.maximum_quantity === undefined ? 'plus' : Number(range.maximum_quantity)}`;
-        const base = `${slugify(name) || 'production'}-${rangeSuffix}`;
-        const used = new Set(this.productionRanges
-            .flatMap(item => item.options || [])
-            .filter(option => option !== this.productionRanges[rangeIndex]?.options?.[optionIndex])
-            .map(option => String(option.code || ''))
-            .filter(Boolean));
-        let code = base;
-        let suffix = 2;
-        while (used.has(code)) code = `${base}-${suffix++}`;
-        return code;
-    },
-    syncProductionRangesWithPriceRows() {
-        const existing = Array.isArray(this.productionRanges) ? this.productionRanges : [];
-        this.productionRanges = this.priceRows.map((row, index) => {
-            const minimum = Math.max(1, Number(row.minimum_quantity || 1));
-            const maximum = row.maximum_quantity === '' || row.maximum_quantity === null || row.maximum_quantity === undefined
-                ? ''
-                : Math.max(minimum, Number(row.maximum_quantity));
-            const exact = existing.find(range => Number(range.minimum_quantity || 0) === minimum
-                && String(range.maximum_quantity ?? '') === String(maximum));
-            const previous = exact || existing[index] || {};
-            const options = Array.isArray(previous.options) ? previous.options.slice(0, 3) : [];
-
-            return {
-                client_key: previous.client_key || this.clientKey(),
-                minimum_quantity: minimum,
-                maximum_quantity: maximum,
-                options: options.map(option => ({
-                    client_key: option.client_key || this.clientKey(),
-                    name: String(option.name || ''),
-                    code: String(option.code || ''),
-                    description: String(option.description || ''),
-                    price_adjustment: Number(option.price_adjustment || 0),
-                    minimum_days: Math.max(0, Number(option.minimum_days ?? 1)),
-                    maximum_days: Math.max(Number(option.minimum_days ?? 1), Number(option.maximum_days ?? option.minimum_days ?? 1)),
-                    is_active: true,
-                })),
-            };
-        });
-    },
-    openProductionOptionDialog(rangeIndex, optionIndex = null) {
-        const range = this.productionRanges[rangeIndex];
-        if (!range || (optionIndex === null && range.options.length >= 3)) return;
-
-        const option = optionIndex === null ? null : range.options[optionIndex];
-        this.productionOptionRangeIndex = rangeIndex;
-        this.productionOptionEditingIndex = optionIndex;
-        this.productionOptionDialogError = '';
-        this.productionOptionDraft = option ? {
-            name: String(option.name || ''),
-            code: String(option.code || ''),
-            description: String(option.description || ''),
-            price_adjustment: Number(option.price_adjustment || 0),
-            minimum_days: Math.max(0, Number(option.minimum_days ?? 1)),
-            maximum_days: Math.max(0, Number(option.maximum_days ?? option.minimum_days ?? 1)),
-        } : {
-            name: '',
-            code: '',
-            description: '',
-            price_adjustment: 0,
-            minimum_days: 1,
-            maximum_days: 1,
-        };
-        this.productionOptionDialogOpen = true;
+    openSizeGroupPicker() {
+        this.sizeGroupPickerSearch = '';
+        this.sizeGroupPickerOpen = true;
         document.documentElement.classList.add('overflow-hidden');
-        this.$nextTick(() => this.$root.querySelector('[x-model="productionOptionDraft.name"]')?.focus());
     },
-    closeProductionOptionDialog() {
-        this.productionOptionDialogOpen = false;
-        this.productionOptionRangeIndex = null;
-        this.productionOptionEditingIndex = null;
-        this.productionOptionDialogError = '';
+    closeSizeGroupPicker() {
+        this.sizeGroupPickerOpen = false;
         document.documentElement.classList.remove('overflow-hidden');
     },
-    saveProductionOption() {
-        const rangeIndex = this.productionOptionRangeIndex;
-        const range = this.productionRanges[rangeIndex];
-        if (!range) return this.closeProductionOptionDialog();
-
-        const name = String(this.productionOptionDraft.name || '').trim();
-        const minimumDays = Math.max(0, Number(this.productionOptionDraft.minimum_days || 0));
-        const maximumDays = Math.max(0, Number(this.productionOptionDraft.maximum_days || 0));
-        if (!name) {
-            this.productionOptionDialogError = 'Enter the production option name.';
-            return;
-        }
-        if (maximumDays < minimumDays) {
-            this.productionOptionDialogError = 'Maximum days cannot be less than minimum days.';
-            return;
-        }
-        if (this.productionOptionEditingIndex === null && range.options.length >= 3) {
-            this.productionOptionDialogError = 'A quantity range can contain a maximum of three production options.';
-            return;
-        }
-
-        const option = {
-            client_key: this.productionOptionEditingIndex === null
-                ? this.clientKey()
-                : (range.options[this.productionOptionEditingIndex]?.client_key || this.clientKey()),
-            name,
-            code: this.productionOptionDraft.code || this.uniqueProductionCode(name, rangeIndex, this.productionOptionEditingIndex),
-            description: String(this.productionOptionDraft.description || '').trim(),
-            price_adjustment: Math.max(0, Number(this.productionOptionDraft.price_adjustment || 0)),
-            minimum_days: minimumDays,
-            maximum_days: maximumDays,
-            is_active: true,
-        };
-
-        if (this.productionOptionEditingIndex === null) range.options.push(option);
-        else range.options.splice(this.productionOptionEditingIndex, 1, option);
-        this.closeProductionOptionDialog();
+    filteredSizeOptionGroups() {
+        const query = String(this.sizeGroupPickerSearch || '').trim().toLowerCase();
+        return (this.sizeOptionGroups || []).filter(group => !query
+            || String(group.name || '').toLowerCase().includes(query)
+            || String(group.audience_label || '').toLowerCase().includes(query)
+            || (group.sizes || []).some(size => String(size).toLowerCase().includes(query)));
     },
-    removeProductionOption(rangeIndex, optionIndex) {
-        const range = this.productionRanges[rangeIndex];
-        if (!range) return;
-        range.options.splice(optionIndex, 1);
+    isSizeGroupSelected(id) {
+        return this.sizeGroups.some(group => Number(group.size_option_group_id || 0) === Number(id));
+    },
+    selectSizeGroup(master) {
+        if (!master || this.isSizeGroupSelected(master.id)) return;
+        this.sizeGroups.push({
+            client_key: this.clientKey(),
+            existing_id: '',
+            size_option_group_id: Number(master.id),
+            name: String(master.name || ''),
+            code: String(master.slug || ''),
+            audience_label: String(master.audience_label || ''),
+            description_html: String(master.description_html || ''),
+            sizes: Array.isArray(master.sizes) ? [...master.sizes] : [],
+            chart_enabled: Boolean(master.chart_enabled),
+            chart_html: String(master.chart_html || ''),
+            chart_title: String(master.chart_title || ''),
+            chart_note: String(master.chart_note || ''),
+            chart_columns: Array.isArray(master.chart_columns) ? [...master.chart_columns] : [],
+            chart_rows: Array.isArray(master.chart_rows) ? master.chart_rows.map(row => [...row]) : [],
+            chart_image_url: '',
+            chart_image_preview: String(master.chart_image_preview || ''),
+            is_active: true,
+        });
+    },
+    productionCellTemplate(overrides = {}) {
+        return {
+            enabled: false,
+            description: '',
+            price_adjustment: 0,
+            production_time: '1 day',
+            minimum_days: 1,
+            maximum_days: 1,
+            ...overrides,
+        };
+    },
+    normalizeProductionTable() {
+        this.productionHeaders = (Array.isArray(this.productionHeaders) ? this.productionHeaders : [])
+            .map(header => String(header || ''));
+        if (!this.productionHeaders.length) this.productionHeaders = ['Standard Production'];
+
+        this.productionRows = (Array.isArray(this.productionRows) ? this.productionRows : [])
+            .map(row => {
+                const sourceCells = Array.isArray(row?.cells) ? row.cells : [];
+                return {
+                    client_key: row?.client_key || this.clientKey(),
+                    range: String(row?.range || ''),
+                    cells: this.productionHeaders.map((_, index) => this.productionCellTemplate({
+                        ...(sourceCells[index] || {}),
+                        enabled: this.booleanValue(sourceCells[index]?.enabled, false),
+                        price_adjustment: Math.max(0, Number(sourceCells[index]?.price_adjustment || 0)),
+                        production_time: String(
+                            sourceCells[index]?.production_time
+                            || this.formatProductionTime(
+                                sourceCells[index]?.minimum_days ?? 1,
+                                sourceCells[index]?.maximum_days ?? sourceCells[index]?.minimum_days ?? 1,
+                            )
+                        ),
+                        minimum_days: Math.max(0, Number(sourceCells[index]?.minimum_days ?? 1)),
+                        maximum_days: Math.max(
+                            Math.max(0, Number(sourceCells[index]?.minimum_days ?? 1)),
+                            Number(sourceCells[index]?.maximum_days ?? sourceCells[index]?.minimum_days ?? 1),
+                        ),
+                    })),
+                };
+            });
+        if (!this.productionRows.length) this.addProductionRow();
+    },
+    addProductionHeader() {
+        if (this.productionHeaders.length >= 12) return;
+        this.productionHeaders.push(`Production Option ${this.productionHeaders.length + 1}`);
+        this.productionRows.forEach(row => row.cells.push(this.productionCellTemplate()));
+    },
+    removeProductionHeader(index) {
+        if (this.productionHeaders.length <= 1) return;
+        this.productionHeaders.splice(index, 1);
+        this.productionRows.forEach(row => row.cells.splice(index, 1));
+    },
+    addProductionRow() {
+        if (this.productionRows.length >= 100) return;
+        this.productionRows.push({
+            client_key: this.clientKey(),
+            range: '',
+            cells: this.productionHeaders.map(() => this.productionCellTemplate()),
+        });
+    },
+    removeProductionRow(index) {
+        this.productionRows.splice(index, 1);
+    },
+    formatProductionTime(minimum, maximum) {
+        const min = Math.max(0, Number(minimum || 0));
+        const max = Math.max(min, Number(maximum ?? min));
+        return min === max ? `${min} ${min === 1 ? 'day' : 'days'}` : `${min}-${max} days`;
+    },
+    productionCellSummary(cell) {
+        if (!cell?.enabled) return 'Not offered';
+        const charge = Number(cell.price_adjustment || 0) > 0
+            ? `+$${Number(cell.price_adjustment).toFixed(2)} / piece`
+            : 'Included';
+        const time = String(cell.production_time || this.formatProductionTime(cell.minimum_days, cell.maximum_days)).trim();
+        return `${charge} · ${time}`;
     },
     addShippingMethod() { this.shippingMethods.push({ name: '', code: '', description: '', price_adjustment: 0, charge_type: 'per_unit', minimum_days: 1, maximum_days: 1, is_default: this.shippingMethods.length === 0, is_active: true }); },
     setDefaultShipping(index) { this.shippingMethods.forEach((method, methodIndex) => method.is_default = methodIndex === index); },
@@ -622,6 +1209,14 @@ window.productBuilder = (config = {}) => ({
     currentProductionSpeed() {
         const options = this.productionOptionsForQuantity();
         return options.find(option => option.id === this.productionSpeed) || options[0] || null;
+    },
+
+    productionTimeLabel(option) {
+        const minimum = Math.max(0, Number(option?.minimum_days || 0));
+        const maximum = Math.max(minimum, Number(option?.maximum_days ?? minimum));
+        return minimum === maximum
+            ? `${minimum} ${minimum === 1 ? 'working day' : 'working days'}`
+            : `${minimum}-${maximum} working days`;
     },
 
     tierPrice() {

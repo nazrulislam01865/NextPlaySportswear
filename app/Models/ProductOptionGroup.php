@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ProductOptionGroup extends Model
 {
     protected $fillable = [
-        'product_id', 'name', 'code', 'section', 'type', 'display_mode', 'fixed_value_code',
+        'product_id', 'name', 'code', 'section', 'type', 'jersey_customization_type', 'display_mode', 'fixed_value_code',
         'fixed_text_value', 'show_in_summary', 'use_as_filter', 'catalog_attribute_id', 'description', 'placeholder',
         'is_required', 'minimum_selections', 'maximum_selections', 'accepted_file_types',
         'maximum_file_size_mb', 'validation_rules', 'is_active', 'sort_order',

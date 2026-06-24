@@ -123,6 +123,9 @@
 
                             @foreach($product['size_groups'] as $group)
                                 <div x-show="activeSizeGroup === @js($group['id'])" x-cloak class="overflow-hidden rounded-2xl border border-slate-200">
+                                    @if(filled($group['description_html'] ?? null))
+                                        <div class="prose prose-sm max-w-none border-b border-slate-200 bg-slate-50 px-4 py-4 text-slate-600 sm:px-5">{!! $group['description_html'] !!}</div>
+                                    @endif
                                     @if(data_get($group, 'chart.enabled'))
                                         <div class="flex flex-col gap-3 border-b border-slate-200 bg-blue-50/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                                             <p class="text-xs font-bold leading-5 text-slate-600">Use the administrator-provided {{ $group['label'] }} measurements before selecting quantities.</p>
@@ -278,9 +281,7 @@
                                                     <strong class="text-sm text-brand-ink" x-text="option.label"></strong>
                                                     <small class="shrink-0 font-black text-brand-red" x-text="chargeLabel(option)"></small>
                                                 </span>
-                                                <small class="mt-2 block text-xs font-bold text-brand-blue">
-                                                    <span x-text="option.minimum_days || 0"></span>–<span x-text="option.maximum_days || option.minimum_days || 0"></span> working days
-                                                </small>
+                                                <small class="mt-2 block text-xs font-bold text-brand-blue" x-text="productionTimeLabel(option)"></small>
                                                 <small x-show="option.description" class="mt-2 block text-xs leading-5 text-slate-500" x-text="option.description"></small>
                                             </button>
                                         </template>
@@ -339,6 +340,7 @@
                     @foreach($sizeGroupsWithCharts as $group)
                         <div x-show="activeChartGroup === @js($group['id'])" x-cloak class="p-5 sm:p-7">
                             @if(data_get($group, 'chart.note'))<p class="mb-5 rounded-xl bg-blue-50 p-4 text-sm leading-6 text-slate-600">{{ data_get($group, 'chart.note') }}</p>@endif
+                            @if(data_get($group, 'chart.html'))<div class="product-rich-content touch-scroll-x">{!! data_get($group, 'chart.html') !!}</div>@endif
                             @if(data_get($group, 'chart.image'))<img src="{{ data_get($group, 'chart.image') }}" alt="{{ data_get($group, 'chart.title', $group['label'].' size chart') }}" class="mb-6 max-h-[520px] w-full rounded-2xl border border-slate-200 object-contain" loading="lazy" decoding="async">@endif
                             @if(!empty(data_get($group, 'chart.columns')) && !empty(data_get($group, 'chart.rows')))
                                 <div class="touch-scroll-x rounded-2xl border border-slate-200" tabindex="0">

@@ -4,12 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
+use App\Support\PublicMedia;
 
 class ProductOptionValue extends Model
 {
     protected $fillable = [
-        'product_option_group_id', 'label', 'code', 'description', 'color_hex', 'image_path',
+        'product_option_group_id', 'jersey_customization_option_id', 'label', 'code', 'description', 'color_hex', 'image_path',
         'image_url', 'image_gallery', 'price_adjustment', 'charge_type', 'stock_quantity',
         'is_default', 'is_active', 'sort_order',
     ];
@@ -29,6 +29,12 @@ class ProductOptionValue extends Model
         return $this->belongsTo(ProductOptionGroup::class, 'product_option_group_id');
     }
 
+
+    public function jerseyCustomizationOption(): BelongsTo
+    {
+        return $this->belongsTo(JerseyCustomizationOption::class, 'jersey_customization_option_id');
+    }
+
     public function publicImageUrl(): ?string
     {
         return $this->publicImages()[0]['url'] ?? null;
@@ -43,9 +49,10 @@ class ProductOptionValue extends Model
                     return null;
                 }
 
-                $url = filled($image['url'] ?? null)
-                    ? (string) $image['url']
-                    : (filled($image['path'] ?? null) ? Storage::disk('public')->url((string) $image['path']) : null);
+                $url = PublicMedia::url(
+                    filled($image['path'] ?? null) ? (string) $image['path'] : null,
+                    filled($image['url'] ?? null) ? (string) $image['url'] : null
+                );
 
                 return $url ? ['url' => $url, 'alt' => $image['alt'] ?? $this->label] : null;
             })
@@ -53,10 +60,9 @@ class ProductOptionValue extends Model
             ->values();
 
         if ($images->isEmpty()) {
-            if ($this->image_url) {
-                $images->push(['url' => $this->image_url, 'alt' => $this->label]);
-            } elseif ($this->image_path) {
-                $images->push(['url' => Storage::disk('public')->url($this->image_path), 'alt' => $this->label]);
+            $url = PublicMedia::url($this->image_path, $this->image_url);
+            if ($url) {
+                $images->push(['url' => $url, 'alt' => $this->label]);
             }
         }
 

@@ -5,12 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
+use App\Support\PublicMedia;
 
 class ProductSizeGroup extends Model
 {
     protected $fillable = [
-        'product_id', 'name', 'code', 'chart_enabled', 'chart_title', 'chart_note',
+        'product_id', 'size_option_group_id', 'name', 'code', 'description_html', 'chart_html', 'chart_enabled', 'chart_title', 'chart_note',
         'chart_columns', 'chart_rows', 'chart_image_path', 'chart_image_url', 'is_active', 'sort_order',
     ];
 
@@ -29,6 +29,11 @@ class ProductSizeGroup extends Model
         return $this->belongsTo(Product::class);
     }
 
+    public function masterGroup(): BelongsTo
+    {
+        return $this->belongsTo(SizeOptionGroup::class, 'size_option_group_id');
+    }
+
     public function sizes(): HasMany
     {
         return $this->hasMany(ProductSize::class)->orderBy('sort_order');
@@ -36,10 +41,6 @@ class ProductSizeGroup extends Model
 
     public function chartImageUrl(): ?string
     {
-        if ($this->chart_image_url) {
-            return $this->chart_image_url;
-        }
-
-        return $this->chart_image_path ? Storage::disk('public')->url($this->chart_image_path) : null;
+        return PublicMedia::url($this->chart_image_path, $this->chart_image_url);
     }
 }

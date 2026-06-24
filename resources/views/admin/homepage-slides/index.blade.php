@@ -16,7 +16,7 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse($slides as $slide)
-                        @php($image = $slide->image_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($slide->image_path) : $slide->image_url)
+                        @php($image = \App\Support\PublicMedia::url($slide->image_path, $slide->image_url))
                         <tr class="align-top">
                             <td class="px-5 py-4">
                                 <div class="flex min-w-[260px] items-center gap-4">

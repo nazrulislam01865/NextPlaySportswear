@@ -3,10 +3,10 @@
 namespace App\Services\Storefront;
 
 use App\Models\HomepageSlide;
+use App\Support\PublicMedia;
 use App\Support\PublicUrl;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\Storage;
 
 class HomepageSliderService
 {
@@ -104,10 +104,10 @@ class HomepageSliderService
     private function resolveImage(?string $path, ?string $url): ?string
     {
         if (filled($path)) {
-            return Storage::disk('public')->url($path);
+            return PublicMedia::url($path);
         }
 
-        return PublicUrl::isAllowed($url) ? trim((string) $url) : null;
+        return PublicUrl::isAllowed($url) ? PublicMedia::url(null, trim((string) $url)) : null;
     }
 
     private function safeUrl(?string $url): string

@@ -54,7 +54,7 @@
 
     <x-admin.section-card id="media" title="Category Media" description="For every placement, the admin can upload an image or use a remote image link. Uploaded files take priority and are stored securely on the public disk.">
         @foreach([
-            ['image','Fallback image',$category->image_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($category->image_path) : $category->image_url,'image_alt',$category->image_alt],
+            ['image','Fallback image',\App\Support\PublicMedia::url($category->image_path, $category->image_url),'image_alt',$category->image_alt],
             ['thumbnail','Square category thumbnail',$category->thumbnailUrl(),'thumbnail_alt',$category->thumbnail_alt],
             ['banner','Desktop hero banner',$category->bannerUrl(),'banner_alt',$category->banner_alt],
             ['mobile_banner','Mobile hero banner',$category->bannerUrl(true),'mobile_banner_alt',$category->mobile_banner_alt],

@@ -1,6 +1,6 @@
 @props(['item', 'compact' => false])
 <div class="grid min-w-0 grid-cols-[64px_minmax(0,1fr)] gap-3 rounded-2xl border border-slate-200 bg-white p-3 sm:grid-cols-[80px_minmax(0,1fr)] sm:gap-4 sm:p-4">
-    <img src="{{ $item->image_url ?: asset('images/product-placeholder.svg') }}" alt="{{ $item->product_name }}" class="h-16 w-16 rounded-xl object-cover sm:h-20 sm:w-20" loading="lazy">
+    <img src="{{ \App\Support\PublicMedia::url(null, $item->image_url, '/images/product-placeholder.svg') }}" alt="{{ $item->product_name }}" class="h-16 w-16 rounded-xl object-cover sm:h-20 sm:w-20" loading="lazy">
     <div class="min-w-0 flex-1">
         <div class="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
             <div>
