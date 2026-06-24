@@ -14,7 +14,7 @@ class CustomerAccountService
         return [
             'summary' => $this->summary($user),
             'stats' => $this->stats($user),
-            'cards' => $this->cards(),
+            'cards' => $this->cards($user),
             'quickSteps' => $this->quickSteps(),
         ];
     }
@@ -127,7 +127,10 @@ class CustomerAccountService
         return [
             ['label' => 'Dashboard', 'href' => route('account.dashboard'), 'route' => 'account.dashboard'],
             ['label' => 'Profile & Security', 'href' => route('account.profile.edit'), 'route' => 'account.profile.edit'],
-            ['label' => 'Orders', 'href' => route('account.section', ['section' => 'orders']), 'route' => 'account.section'],
+            ['label' => 'Order Center', 'href' => route('account.orders.dashboard'), 'route' => 'account.orders.dashboard'],
+            ['label' => 'Order History', 'href' => route('account.orders.index'), 'route' => 'account.orders.index'],
+            ['label' => 'Returns & Exchanges', 'href' => route('account.returns.index'), 'route' => 'account.returns.index'],
+            ['label' => 'Order Downloads', 'href' => route('account.downloads.index'), 'route' => 'account.downloads.index'],
             ['label' => 'Quotes', 'href' => route('account.section', ['section' => 'quotes']), 'route' => 'account.section'],
             ['label' => 'Saved Designs', 'href' => route('account.section', ['section' => 'saved-designs']), 'route' => 'account.section'],
             ['label' => 'Saved Addresses', 'href' => route('account.addresses.index'), 'route' => 'account.addresses.index'],
@@ -156,7 +159,7 @@ class CustomerAccountService
     private function stats(User $user): array
     {
         return [
-            ['label' => 'Open Orders', 'value' => '0', 'description' => 'Production and delivery updates'],
+            ['label' => 'Open Orders', 'value' => (string) $user->orders()->whereNotIn('status', ['completed', 'cancelled'])->count(), 'description' => 'Production and delivery updates'],
             ['label' => 'Saved Addresses', 'value' => (string) $user->customerAddresses()->count(), 'description' => 'Ready for faster checkout'],
             ['label' => 'Payment Methods', 'value' => (string) $user->customerPaymentMethods()->count(), 'description' => 'Tokenized only, never raw cards'],
         ];
@@ -165,16 +168,16 @@ class CustomerAccountService
     /**
      * @return array<int, array<string, string>>
      */
-    private function cards(): array
+    private function cards(?User $user = null): array
     {
         return [
             [
                 'key' => 'orders',
                 'title' => 'Order History',
                 'description' => 'View order status, proof updates, tracking, and invoices.',
-                'badge' => '0 open',
+                'badge' => $this->openOrderBadge($user),
                 'icon' => 'orders',
-                'href' => route('account.section', ['section' => 'orders']),
+                'href' => route('account.orders.index'),
             ],
             [
                 'key' => 'repeat-orders',
@@ -244,6 +247,17 @@ class CustomerAccountService
         ];
     }
 
+    private function openOrderBadge(?User $user): string
+    {
+        if (! $user) {
+            return 'Orders';
+        }
+
+        return $user->orders()
+            ->whereNotIn('status', ['completed', 'cancelled'])
+            ->count().' open';
+    }
+
     /**
      * @return array<int, string>
      */
@@ -263,8 +277,8 @@ class CustomerAccountService
     {
         return match ($section) {
             'orders' => [
-                'Connect this page to the orders table after checkout/order creation is implemented.',
-                'Show order number, payment status, production status, tracking, invoice, and reorder button.',
+                'Use Order Center to review payment, production, shipment, return, refund, invoice, and download activity.',
+                'Use Order Again to rebuild a cart from an earlier order while rechecking current pricing and availability.',
             ],
             'quotes' => [
                 'Connect this page with quote_requests after the quote workflow is implemented.',

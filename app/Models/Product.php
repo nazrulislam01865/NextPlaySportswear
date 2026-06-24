@@ -15,12 +15,17 @@ class Product extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'category_id', 'subcategory_id', 'name', 'slug', 'sku', 'status', 'product_type', 'brand',
+        'category_id', 'subcategory_id', 'name', 'slug', 'sku', 'status', 'product_type', 'product_profile', 'brand',
         'badge_label', 'badge_color', 'short_description', 'description_html', 'features',
         'specifications', 'base_price', 'compare_at_price', 'cost_price', 'currency',
         'minimum_quantity', 'maximum_quantity', 'is_featured', 'is_customizable', 'is_active',
         'track_inventory', 'stock_quantity', 'low_stock_threshold', 'allow_backorder', 'weight',
-        'dimensions', 'shipping_class', 'tax_class', 'tags', 'price_table_headers', 'price_table_rows',
+        'dimensions', 'shipping_class', 'shipping_methods_enabled', 'jersey_roster_enabled',
+        'jersey_roster_optional', 'jersey_roster_title', 'jersey_roster_fields',
+        'artwork_upload_enabled', 'artwork_upload_required', 'artwork_upload_title',
+        'artwork_upload_description', 'artwork_upload_max_files', 'artwork_upload_max_file_size_mb',
+        'artwork_upload_accepted_types', 'tax_class', 'tags',
+        'price_table_headers', 'price_table_rows',
         'price_table_highlight_column', 'price_table_note', 'meta_title', 'meta_description',
         'meta_keywords', 'canonical_url', 'og_title', 'og_description', 'og_image_url',
         'robots_index', 'robots_follow', 'schema_json', 'sort_order', 'published_at',
@@ -37,6 +42,7 @@ class Product extends Model
             'price_table_headers' => 'array',
             'price_table_rows' => 'array',
             'schema_json' => 'array',
+            'jersey_roster_fields' => 'array',
             'base_price' => 'decimal:2',
             'compare_at_price' => 'decimal:2',
             'cost_price' => 'decimal:2',
@@ -46,6 +52,13 @@ class Product extends Model
             'is_active' => 'boolean',
             'track_inventory' => 'boolean',
             'allow_backorder' => 'boolean',
+            'shipping_methods_enabled' => 'boolean',
+            'jersey_roster_enabled' => 'boolean',
+            'jersey_roster_optional' => 'boolean',
+            'artwork_upload_enabled' => 'boolean',
+            'artwork_upload_required' => 'boolean',
+            'artwork_upload_max_files' => 'integer',
+            'artwork_upload_max_file_size_mb' => 'integer',
             'robots_index' => 'boolean',
             'robots_follow' => 'boolean',
             'published_at' => 'datetime',
@@ -138,6 +151,11 @@ class Product extends Model
     public function productionSpeeds(): HasMany
     {
         return $this->hasMany(ProductProductionSpeed::class)->orderBy('sort_order');
+    }
+
+    public function shippingMethods(): HasMany
+    {
+        return $this->hasMany(ProductShippingMethod::class)->orderBy('sort_order');
     }
 
     public function faqs(): HasMany

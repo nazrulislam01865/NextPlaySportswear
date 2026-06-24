@@ -1,0 +1,8 @@
+<x-storefront.account.orders.page :seo="$seo" :account="$account" :navigation="$navigation" title="Order Again" :subtitle="'Reuse eligible products from '.$order->order_number.' while rechecking current price, availability, sizes, roster, artwork, and production timing.'" eyebrow="Repeat order">
+    <x-slot:actions><a class="btn btn-white" href="{{ route('account.orders.show',$order) }}">Order Details</a></x-slot:actions>
+    <form method="POST" action="{{ route('account.orders.reorder.store',$order) }}" class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-card md:p-7">@csrf
+        <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800"><b>Repeat orders are re-priced from the current catalog.</b> Prior customization is copied as a reference, but you must review sizes, names, numbers, artwork, inventory, and deadlines before placing the new order.</div>
+        <div class="mt-6 grid gap-4">@foreach($order->items as $item)<label class="grid gap-4 rounded-2xl border border-slate-200 p-4 sm:grid-cols-[auto_1fr_110px] sm:items-center"><input type="checkbox" name="items[{{ $loop->index }}][selected]" value="1" class="h-5 w-5 rounded border-slate-300" @checked($item->product_slug)><input type="hidden" name="items[{{ $loop->index }}][id]" value="{{ $item->id }}"><x-storefront.account.orders.item-row :item="$item" compact /><input class="admin-input mt-0" type="number" name="items[{{ $loop->index }}][quantity]" min="1" max="999" value="{{ $item->quantity }}" aria-label="Quantity for {{ $item->product_name }}"></label>@endforeach</div>
+        <button class="btn btn-red mt-6" type="submit">Add Selected Items to Cart</button>
+    </form>
+</x-storefront.account.orders.page>

@@ -80,6 +80,25 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('attributes', \App\Http\Controllers\Admin\AttributeController::class)->except('show');
         Route::resource('menus', \App\Http\Controllers\Admin\MenuController::class)->except('show');
 
+
+        Route::middleware('order.manager')->group(function (): void {
+            Route::get('/orders', [\App\Http\Controllers\Admin\OrderController::class, 'index'])->name('orders.index');
+            Route::get('/orders/{order}', [\App\Http\Controllers\Admin\OrderController::class, 'show'])->name('orders.show');
+            Route::patch('/orders/{order}', [\App\Http\Controllers\Admin\OrderController::class, 'update'])->middleware('throttle:20,1')->name('orders.update');
+            Route::post('/orders/{order}/shipments', [\App\Http\Controllers\Admin\OrderShipmentController::class, 'store'])->middleware('throttle:20,1')->name('orders.shipments.store');
+            Route::patch('/orders/{order}/shipments/{shipment}', [\App\Http\Controllers\Admin\OrderShipmentController::class, 'update'])->middleware('throttle:20,1')->name('orders.shipments.update');
+            Route::patch('/orders/{order}/requests/{changeRequest}', [\App\Http\Controllers\Admin\OrderChangeRequestController::class, 'update'])->middleware('throttle:20,1')->name('orders.requests.update');
+            Route::post('/orders/{order}/downloads', [\App\Http\Controllers\Admin\OrderDownloadController::class, 'store'])->middleware('throttle:10,1')->name('orders.downloads.store');
+            Route::delete('/orders/{order}/downloads/{download}', [\App\Http\Controllers\Admin\OrderDownloadController::class, 'destroy'])->name('orders.downloads.destroy');
+            Route::get('/returns', [\App\Http\Controllers\Admin\OrderReturnController::class, 'index'])->name('returns.index');
+            Route::get('/returns/{returnRequest}', [\App\Http\Controllers\Admin\OrderReturnController::class, 'show'])->name('returns.show');
+            Route::get(
+                '/returns/{returnRequest}/attachments/{attachment}',
+                [\App\Http\Controllers\Admin\OrderReturnController::class, 'downloadAttachment']
+            )->name('returns.attachments.download');
+            Route::patch('/returns/{returnRequest}', [\App\Http\Controllers\Admin\OrderReturnController::class, 'update'])->middleware('throttle:20,1')->name('returns.update');
+        });
+
         Route::get('/module/{module}', [\App\Http\Controllers\Admin\ModuleController::class, 'show'])
             ->whereIn('module', ['orders', 'customers', 'inventory', 'discounts', 'reviews', 'content', 'reports', 'shipping', 'taxes', 'payments', 'settings'])
             ->name('modules.show');
@@ -132,6 +151,40 @@ Route::middleware(['not.admin', 'auth:web', 'customer'])->prefix('account')->nam
         ->name('payment-methods.store');
     Route::patch('/payment-methods/{paymentMethod}/default', [PaymentMethodController::class, 'makeDefault'])->name('payment-methods.default');
     Route::delete('/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'destroy'])->name('payment-methods.destroy');
+
+
+    Route::get('/orders', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'dashboard'])->name('orders.dashboard');
+    Route::get('/orders/history', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{order}', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'show'])->name('orders.show');
+    Route::get('/orders/{order}/pay', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'pay'])->name('orders.pay');
+    Route::post('/orders/{order}/pay', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'storePayment'])->middleware('throttle:5,1')->name('orders.pay.store');
+    Route::get('/orders/{order}/retry-payment', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'retry'])->name('orders.payment.retry');
+    Route::get('/orders/{order}/reorder', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'reorder'])->name('orders.reorder');
+    Route::post('/orders/{order}/reorder', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'storeReorder'])->middleware('throttle:10,1')->name('orders.reorder.store');
+    Route::get('/orders/{order}/cancel-request', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'cancel'])->name('orders.cancel');
+    Route::post('/orders/{order}/cancel-request', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'storeCancel'])->middleware('throttle:5,1')->name('orders.cancel.store');
+    Route::get('/orders/{order}/change-request', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'change'])->name('orders.change');
+    Route::post('/orders/{order}/change-request', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'storeChange'])->middleware('throttle:5,1')->name('orders.change.store');
+    Route::get('/orders/{order}/shipments', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'shipments'])->name('orders.shipments');
+    Route::get('/orders/{order}/shipments/{shipment}', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'shipment'])->name('orders.shipments.show');
+    Route::get('/orders/{order}/invoice', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'invoice'])->name('orders.invoice');
+    Route::get('/orders/{order}/invoice/download', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'downloadInvoice'])->middleware('signed')->name('orders.invoice.download');
+
+    Route::get('/orders/{order}/return-request', [\App\Http\Controllers\Storefront\Account\ReturnCenterController::class, 'create'])->name('orders.returns.create');
+    Route::post('/orders/{order}/return-request', [\App\Http\Controllers\Storefront\Account\ReturnCenterController::class, 'store'])->middleware('throttle:5,1')->name('orders.returns.store');
+    Route::get('/orders/{order}/exchange-request', [\App\Http\Controllers\Storefront\Account\ReturnCenterController::class, 'createExchange'])->name('orders.exchanges.create');
+    Route::post('/orders/{order}/exchange-request', [\App\Http\Controllers\Storefront\Account\ReturnCenterController::class, 'storeExchange'])->middleware('throttle:5,1')->name('orders.exchanges.store');
+    Route::get('/returns', [\App\Http\Controllers\Storefront\Account\ReturnCenterController::class, 'index'])->name('returns.index');
+    Route::get('/returns/{returnRequest}', [\App\Http\Controllers\Storefront\Account\ReturnCenterController::class, 'show'])->name('returns.show');
+    Route::get(
+        '/return-attachments/{attachment}',
+        [\App\Http\Controllers\Storefront\Account\ReturnCenterController::class, 'downloadAttachment']
+    )->middleware('signed')->name('return-attachments.download');
+    Route::get('/refunds/{refund}', [\App\Http\Controllers\Storefront\Account\ReturnCenterController::class, 'refund'])->name('refunds.show');
+    Route::get('/credit-notes/{creditNote}', [\App\Http\Controllers\Storefront\Account\ReturnCenterController::class, 'creditNote'])->name('credit-notes.show');
+    Route::get('/credit-notes/{creditNote}/download', [\App\Http\Controllers\Storefront\Account\ReturnCenterController::class, 'downloadCreditNote'])->middleware('signed')->name('credit-notes.download');
+    Route::get('/order-downloads', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'downloads'])->name('downloads.index');
+    Route::get('/order-downloads/{download}', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'download'])->middleware('signed')->name('downloads.download');
 
     Route::get('/{section}', [AccountController::class, 'section'])->name('section');
 });

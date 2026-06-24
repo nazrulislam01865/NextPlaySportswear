@@ -13,8 +13,8 @@
     <form method="POST" action="{{ route('admin.categories.products.update',$category) }}">
         @csrf @method('PUT')
         <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
-            <div class="overflow-x-auto">
-                <table class="min-w-[1050px] w-full text-sm">
+            <div class="admin-table-scroll" tabindex="0" aria-label="Category product assignments table">
+                <table class="admin-table min-w-[1050px] text-sm">
                     <thead class="bg-slate-50 text-left text-[10px] font-black uppercase tracking-[.13em] text-slate-500"><tr><th class="px-5 py-4">Assigned</th><th class="px-5 py-4">Product</th><th class="px-5 py-4">Current categories</th><th class="px-5 py-4">Primary</th><th class="px-5 py-4">Featured here</th><th class="px-5 py-4">Order</th></tr></thead>
                     <tbody class="divide-y divide-slate-100">
                         @foreach($products as $product)

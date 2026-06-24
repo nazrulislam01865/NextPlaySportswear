@@ -208,6 +208,13 @@ class OrderExperienceService
                     'design_option' => (string) ($customization['design_option'] ?? 'Default Team Style'),
                     'size_summary' => (string) ($customization['size_summary'] ?? 'Sizes confirmed during proof review'),
                     'artwork_status' => (string) ($customization['artwork_status'] ?? 'Artwork/logo can be sent now or later'),
+                    'artwork_files' => collect((array) ($customization['artwork_files'] ?? []))
+                        ->filter(fn ($file) => is_array($file) && filled($file['original_name'] ?? null))
+                        ->map(fn ($file) => [
+                            'original_name' => (string) $file['original_name'],
+                            'size' => max(0, (int) ($file['size'] ?? 0)),
+                            'mime_type' => (string) ($file['mime_type'] ?? 'application/octet-stream'),
+                        ])->values()->all(),
                     'notes' => (string) ($customization['notes'] ?? ''),
                 ],
             ];

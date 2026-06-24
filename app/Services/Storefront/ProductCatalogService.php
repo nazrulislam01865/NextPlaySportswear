@@ -20,7 +20,7 @@ class ProductCatalogService
         if (Schema::hasTable('products') && Product::query()->published()->exists()) {
             return $this->hydratedProducts = Product::query()
                 ->published()
-                ->with(['category', 'subcategory', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'priceTiers', 'artworkMethods', 'productionSpeeds', 'faqs'])
+                ->with(['category', 'subcategory', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'priceTiers', 'artworkMethods', 'productionSpeeds', 'shippingMethods', 'faqs'])
                 ->orderBy('sort_order')
                 ->orderByDesc('is_featured')
                 ->orderByDesc('published_at')
@@ -58,7 +58,7 @@ class ProductCatalogService
     public function findBySlug(string $slug): ?array
     {
         if (Schema::hasTable('products')) {
-            $query = Product::query()->with(['category', 'subcategory', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'priceTiers', 'artworkMethods', 'productionSpeeds', 'faqs']);
+            $query = Product::query()->with(['category', 'subcategory', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'priceTiers', 'artworkMethods', 'productionSpeeds', 'shippingMethods', 'faqs']);
 
             if (! auth()->user()?->isAdmin()) {
                 $query->published();
@@ -149,6 +149,7 @@ class ProductCatalogService
 
         $optionGroups = $product->optionGroups
             ->where('is_active', true)
+            ->filter(fn ($group) => ($group->display_mode ?: 'customer') !== 'hidden')
             ->map(fn ($group) => [
                 'id' => $group->code,
                 'label' => $group->name,
@@ -156,6 +157,10 @@ class ProductCatalogService
                 'placeholder' => $group->placeholder,
                 'section' => $group->section,
                 'type' => $group->type,
+                'display_mode' => $group->display_mode ?: 'customer',
+                'fixed_value_code' => $group->fixed_value_code,
+                'fixed_text_value' => $group->fixed_text_value,
+                'show_in_summary' => $group->show_in_summary,
                 'required' => $group->is_required,
                 'minimum_selections' => $group->minimum_selections,
                 'maximum_selections' => $group->maximum_selections,
@@ -168,7 +173,9 @@ class ProductCatalogService
                     'color' => $this->normalizeColorHex($value->color_hex),
                     'contrast' => $this->contrastColor($value->color_hex),
                     'image' => $value->publicImageUrl(),
+                    'images' => $value->publicImages(),
                     'price_delta' => (float) $value->price_adjustment,
+                    'charge_type' => $value->charge_type ?: 'per_unit',
                     'stock_quantity' => $value->stock_quantity,
                     'default' => $value->is_default,
                 ])->values()->all(),
@@ -186,6 +193,19 @@ class ProductCatalogService
         if ($priceTiers === []) {
             $priceTiers[] = ['label' => $product->minimum_quantity.'+', 'min' => $product->minimum_quantity, 'max' => null, 'unit' => (float) $product->base_price, 'compare_at' => null, 'savings_label' => null];
         }
+
+        $visiblePriceRows = collect($product->price_table_rows ?: collect($priceTiers)->map(fn ($tier) => [
+            (string) $tier['min'],
+            '$'.number_format($tier['unit'], 2),
+            $tier['savings_label'] ?: '—',
+        ])->all())->map(function ($row, int $index) use ($priceTiers): array {
+            $row = array_values((array) $row);
+            if (isset($priceTiers[$index]['min'])) {
+                $row[0] = (string) $priceTiers[$index]['min'];
+            }
+
+            return $row;
+        })->values()->all();
 
         $primaryCategory = $product->relationLoaded('categories')
             ? ($product->categories->firstWhere('pivot.is_primary', true) ?? $product->categories->first())
@@ -227,6 +247,13 @@ class ProductCatalogService
             'details' => $product->specifications ?? [],
             'brand' => $product->brand ?: config('storefront.name'),
             'product_type' => $product->product_type,
+            'product_profile' => $product->product_profile ?: 'standard',
+            'jersey_roster' => [
+                'enabled' => (bool) $product->jersey_roster_enabled && ($product->product_profile === 'jersey'),
+                'optional' => (bool) $product->jersey_roster_optional,
+                'title' => $product->jersey_roster_title ?: 'Add player names and numbers',
+                'fields' => collect($product->jersey_roster_fields ?? [])->filter(fn ($field) => (bool) ($field['enabled'] ?? true))->values()->all(),
+            ],
             'is_featured' => $product->is_featured,
             'is_customizable' => $product->is_customizable,
             'track_inventory' => $product->track_inventory,
@@ -239,17 +266,30 @@ class ProductCatalogService
                 'sizes' => $group->sizes->where('is_active', true)->map(fn ($size) => [
                     'code' => $size->code,
                     'label' => $size->label,
-                    'price_delta' => (float) $size->price_adjustment,
+                    // Sizes select quantity only. Total quantity chooses the price tier.
+                    'price_delta' => 0.0,
                 ])->values()->all(),
+                'chart' => [
+                    'enabled' => (bool) $group->chart_enabled && ((! empty($group->chart_columns) && ! empty($group->chart_rows)) || filled($group->chartImageUrl())),
+                    'title' => $group->chart_title ?: $group->name.' Size Chart',
+                    'note' => $group->chart_note,
+                    'columns' => $group->chart_columns ?? [],
+                    'rows' => $group->chart_rows ?? [],
+                    'image' => $group->chartImageUrl(),
+                ],
             ])->values()->all(),
-            'artwork_methods' => $product->artworkMethods->where('is_active', true)->map(fn ($method) => [
-                'id' => $method->code,
-                'label' => $method->name,
-                'icon' => $method->icon,
-                'description' => $method->description,
-                'price_delta' => (float) $method->price_adjustment,
-                'requires_upload' => $method->requires_upload,
-            ])->values()->all(),
+            'artwork_upload' => [
+                'enabled' => (bool) $product->artwork_upload_enabled,
+                'required' => (bool) $product->artwork_upload_required,
+                'title' => $product->artwork_upload_title ?: 'Upload Custom Artwork',
+                'description' => $product->artwork_upload_description ?: 'Upload one or more artwork files for the production team.',
+                'max_files' => max(1, min(12, (int) ($product->artwork_upload_max_files ?: 5))),
+                'max_file_size_mb' => max(1, min(25, (int) ($product->artwork_upload_max_file_size_mb ?: 15))),
+                'accepted_types' => collect(explode(',', (string) ($product->artwork_upload_accepted_types ?: 'pdf,svg,png,jpg,jpeg,webp')))
+                    ->map(fn ($type) => Str::lower(ltrim(trim((string) $type), '.')))
+                    ->filter()->unique()->values()->all(),
+            ],
+            'artwork_methods' => [],
             'production_speeds' => $product->productionSpeeds->where('is_active', true)->map(fn ($speed) => [
                 'id' => $speed->code,
                 'label' => $speed->name,
@@ -258,10 +298,21 @@ class ProductCatalogService
                 'minimum_days' => $speed->minimum_days,
                 'maximum_days' => $speed->maximum_days,
             ])->values()->all(),
+            'shipping_methods_enabled' => (bool) $product->shipping_methods_enabled,
+            'shipping_methods' => $product->shipping_methods_enabled ? $product->shippingMethods->where('is_active', true)->map(fn ($method) => [
+                'id' => $method->code,
+                'label' => $method->name,
+                'description' => $method->description,
+                'price_delta' => (float) $method->price_adjustment,
+                'charge_type' => $method->charge_type ?: 'per_unit',
+                'minimum_days' => $method->minimum_days,
+                'maximum_days' => $method->maximum_days,
+                'default' => (bool) $method->is_default,
+            ])->values()->all() : [],
             'price_tiers' => $priceTiers,
             'price_table' => [
                 'headers' => $product->price_table_headers ?: ['Quantity', 'Unit Price', 'Savings'],
-                'rows' => $product->price_table_rows ?: collect($priceTiers)->map(fn ($tier) => [$tier['label'], '$'.number_format($tier['unit'], 2), $tier['savings_label'] ?: '—'])->all(),
+                'rows' => $visiblePriceRows,
                 'highlight_column' => $product->price_table_highlight_column,
                 'note' => $product->price_table_note,
             ],
@@ -304,12 +355,20 @@ class ProductCatalogService
             'label' => $group['label'],
             'sizes' => collect($group['sizes'])->map(fn ($size) => ['code' => Str::slug($size), 'label' => $size, 'price_delta' => 0])->all(),
         ])->all();
-        $product['artwork_methods'] = $product['artwork_methods'] ?? [
-            ['id' => 'upload', 'label' => 'Upload Design', 'icon' => '⇧', 'description' => 'Upload artwork now.', 'price_delta' => 0, 'requires_upload' => true],
-            ['id' => 'design-later', 'label' => 'Design Later', 'icon' => '◷', 'description' => 'Send artwork after checkout.', 'price_delta' => 0, 'requires_upload' => false],
-            ['id' => 'design-help', 'label' => 'Free Design Help', 'icon' => '✦', 'description' => 'Request help from the art team.', 'price_delta' => 0, 'requires_upload' => false],
-            ['id' => 'blank', 'label' => 'Blank Product', 'icon' => '□', 'description' => 'No decoration.', 'price_delta' => 0, 'requires_upload' => false],
+        $product['artwork_upload'] = $product['artwork_upload'] ?? [
+            'enabled' => true,
+            'required' => false,
+            'title' => 'Upload Custom Artwork',
+            'description' => 'Upload one or more artwork files for the production team.',
+            'max_files' => 5,
+            'max_file_size_mb' => 15,
+            'accepted_types' => ['pdf', 'svg', 'png', 'jpg', 'jpeg', 'webp'],
         ];
+        $product['artwork_methods'] = [];
+        $product['shipping_methods'] = $product['shipping_methods'] ?? [];
+        $product['shipping_methods_enabled'] = $product['shipping_methods_enabled'] ?? false;
+        $product['product_profile'] = $product['product_profile'] ?? 'standard';
+        $product['jersey_roster'] = $product['jersey_roster'] ?? ['enabled' => false, 'optional' => true, 'title' => 'Add player names and numbers', 'fields' => []];
         $product['production_speeds'] = $product['production_speeds'] ?? [
             ['id' => 'standard', 'label' => 'Standard Production', 'description' => 'Standard schedule', 'price_delta' => 0, 'minimum_days' => 14, 'maximum_days' => 18],
         ];

@@ -1,51 +1,66 @@
-# NextPlay Responsive Implementation
+# NextPlay Responsive Integration
 
-## Scope completed
+## Scope merged
 
-The storefront, customer-account, checkout/order, catalog, product customization, cart, and administration interfaces now share mobile-first responsive behavior.
+The latest responsive storefront and administration updates from the supplied project were merged into the implemented order-management project without replacing its order, payment, shipment, return, refund, invoice, download, security, or administration backend.
 
-### Shared safeguards
+### Shared responsive safeguards
 
-- Added viewport-safe containers with 12px phone gutters and 16px tablet/desktop gutters.
-- Added horizontal overflow protection with an older-browser fallback.
-- Added safe wrapping for long product names, emails, SKUs, navigation labels, and generated content.
-- Standardized 44px minimum interactive targets for primary buttons and navigation controls.
-- Added reusable horizontal-scroll utilities for data that must remain tabular.
+- Phone gutters use 12px on narrow screens and 16px from the small breakpoint upward.
+- Global min-width and long-text wrapping protections prevent common document-level overflow.
+- Buttons and primary navigation controls use a minimum 44px touch target.
+- Forms, action groups, headings, images, generated text, and tables now remain within the viewport.
+- Intentional tabular data uses contained horizontal scrolling instead of forcing page-level overflow.
 
 ### Storefront navigation
 
-- Rebuilt the primary header for narrow phones, tablets, and desktops.
-- Added a viewport-constrained mobile navigation drawer with internal scrolling.
-- Added body scroll locking, Escape-to-close, outside-click close, and link-click close behavior.
-- Constrained desktop mega menus to the viewport and aligned later menu items from the right.
-- Added a mobile product search and compact cart/logo treatment.
-- Updated the standalone homepage navigation with the same mobile safeguards.
+- Responsive logo and compact mobile cart treatment.
+- Mobile product search inside the navigation drawer.
+- Viewport-constrained navigation drawer with internal scrolling.
+- Body scroll locking, Escape close, outside-click close, and link-click close behavior.
+- Desktop mega menus are constrained to the viewport and later menu items align from the right.
 
-### Customer-facing pages
+### Customer pages
 
-- Updated account, authentication, checkout, order, category, product, and content shells.
-- Converted dense product price and quantity tables into mobile cards while preserving desktop tables.
-- Updated product builders, size selectors, product details, carts, summaries, and item rows for narrow screens.
-- Stacked action bars and form controls where side-by-side layouts would become too narrow.
-- Preserved intentional table scrolling for size charts and administrative datasets.
+- Account, authentication, category, product, cart, checkout, order preview, and content shells received the latest narrow-screen spacing and wrapping changes.
+- Product price tables become mobile cards while desktop users retain the full table.
+- Product configuration, size selectors, summaries, and cart rows stack safely on small screens.
+- The implemented customer order center now uses the same responsive action bars, item rows, document layouts, invoice table containment, and selection-card safeguards.
+- The cancellation and payment selection cards preserve full rectangular borders and no longer fragment around wrapped text.
 
 ### Administration
 
-- Converted the admin sidebar into an accessible mobile drawer with an overlay and internal scrolling.
-- Added a compact mobile admin header and responsive main-content padding.
-- Updated sticky form action bars, menu editing controls, product specification rows, and page actions.
-- Kept large data tables inside contained horizontal-scrolling regions rather than allowing page-level overflow.
+- The admin sidebar is now a viewport-safe mobile drawer with overlay, Escape support, body scroll locking, and internal scrolling.
+- The real Orders and Returns & Exchanges links remain permission-protected and were not replaced by placeholder module links.
+- Admin headers, form action bars, product editors, order filters, and operational tables are responsive.
+- Large order and return datasets stay inside touch-scroll containers.
 
-## Validation performed
+## Preserved functionality
 
-- Production frontend build: `npm run build`
-- Route registration check: 133 application routes loaded successfully.
-- Blade compilation/lint check: 135 Blade templates compiled and passed PHP syntax validation.
-- Headless Chromium viewport audit at 320px, 375px, 768px, and 1024px.
-- No document-level horizontal overflow was detected in the homepage or representative storefront, account, checkout, product, and admin layouts.
-- Standalone homepage mobile navigation was verified to open, lock page scrolling, close after selecting a link, and restore scrolling.
+The following order-management implementation remains present:
 
-The full PHPUnit suite could not run in the provided execution container because its PHP CLI installation does not include DOM/XML, mbstring, or a PDO database driver. This is an environment limitation; the frontend build, route load, Blade compilation, and browser checks completed successfully.
+- Persistent orders and immutable order-item snapshots
+- Payments and retry attempts
+- Reorder validation
+- Cancellation and change requests
+- Shipments and split shipments
+- Returns, exchanges, private attachments, refunds, and credit notes
+- Secure invoices and private digital downloads
+- Order policies, throttling, signed links, private storage, database transactions, and state-transition validation
+- Super Admin/Admin-only operational order controls
+
+No backend route, controller, model, migration, policy, request validator, service, order view, or test from the implemented project was removed.
+
+## Validation completed after merge
+
+- Frontend production build completed successfully with Vite.
+- 173 application routes registered successfully.
+- Required customer and admin order routes were confirmed.
+- 192 PHP source files passed syntax validation.
+- 164 Blade templates compiled and their generated PHP passed syntax validation.
+- The generated production CSS contains both the latest responsive utilities and the order-choice border fix.
+
+The PHP CLI in the packaging environment does not include DOM/XML, Mbstring, or a PDO database driver, so the database-backed PHPUnit suite was not executed here. Run the normal test suite in the configured development or deployment environment.
 
 ## Deployment commands
 
@@ -53,7 +68,8 @@ The full PHPUnit suite could not run in the provided execution container because
 npm ci
 npm run build
 php artisan optimize:clear
+php artisan migrate --force
+php artisan config:cache
+php artisan route:cache
 php artisan view:cache
 ```
-
-Run the normal application test suite in the deployment or development environment where the required PHP extensions and database driver are installed.

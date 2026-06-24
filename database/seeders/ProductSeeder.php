@@ -51,10 +51,10 @@ class ProductSeeder extends Seeder
                         'tags' => $data['tags'],
                         'price_table_headers' => ['Quantity', 'Blank / No Print', 'Full Customization', 'Estimated Savings'],
                         'price_table_rows' => [
-                            ['1–11', '$'.number_format($data['price'] - 3, 2), '$'.number_format($data['price'], 2), '—'],
-                            ['12–23', '$'.number_format($data['price'] * .84, 2), '$'.number_format($data['price'] * .90, 2), 'Save up to 10%'],
-                            ['24–49', '$'.number_format($data['price'] * .75, 2), '$'.number_format($data['price'] * .81, 2), 'Save up to 19%'],
-                            ['50+', '$'.number_format($data['price'] * .66, 2), '$'.number_format($data['price'] * .72, 2), 'Save up to 28%'],
+                            ['1', '$'.number_format($data['price'] - 3, 2), '$'.number_format($data['price'], 2), '—'],
+                            ['12', '$'.number_format($data['price'] * .84, 2), '$'.number_format($data['price'] * .90, 2), 'Save up to 10%'],
+                            ['24', '$'.number_format($data['price'] * .75, 2), '$'.number_format($data['price'] * .81, 2), 'Save up to 19%'],
+                            ['50', '$'.number_format($data['price'] * .66, 2), '$'.number_format($data['price'] * .72, 2), 'Save up to 28%'],
                         ],
                         'price_table_highlight_column' => 2,
                         'price_table_note' => 'Pricing is an estimate. Final pricing is recalculated after product options, artwork complexity, production speed, tax, and shipping are validated.',
@@ -151,7 +151,7 @@ class ProductSeeder extends Seeder
         $product->faqs()->delete();
         foreach ([
             ['Can this product have different customization options?', 'Yes. Administrators can add, remove, reorder, require, or disable product-specific option groups and values.'],
-            ['Can the quantity pricing table be different?', 'Yes. Both live pricing tiers and the visible customer table are controlled independently per product.'],
+            ['Can the quantity pricing table be different?', 'Yes. Each product has its own visible price table, and those same rows drive live quantity pricing.'],
             ['Will I receive a proof?', 'The available artwork and proof options are configured per product. When enabled, artwork is reviewed before production.'],
         ] as $index => [$question, $answer]) {
             $product->faqs()->create(['question' => $question, 'answer' => $answer, 'is_active' => true, 'sort_order' => $index]);

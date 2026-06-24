@@ -48,8 +48,12 @@
         max-width: 100%;
     }
 
-    h1, h2, h3, h4, p, a, span, dd, dt, li {
+    h1, h2, h3, h4, p, dd, dt, li {
         overflow-wrap: anywhere;
+    }
+
+    a, button, span {
+        word-break: normal;
     }
 
     [x-cloak] {
@@ -87,6 +91,10 @@
         @apply border border-slate-300 bg-slate-50 text-slate-900;
     }
 
+    .btn-navy {
+        @apply bg-brand-navy text-white shadow-sm hover:bg-brand-dark;
+    }
+
     .btn-white {
         @apply border border-slate-300 bg-white text-slate-900 shadow-sm;
     }
@@ -113,6 +121,71 @@
 }
 
 @layer components {
+    .order-choice {
+        @apply block min-w-0 cursor-pointer;
+    }
+
+    .order-choice > span {
+        @apply block h-full w-full min-w-0;
+    }
+
+
+
+    .admin-sidebar-nav {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(148, 163, 184, .45) transparent;
+    }
+
+    .admin-sidebar-nav::-webkit-scrollbar {
+        width: 7px;
+    }
+
+    .admin-sidebar-nav::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .admin-sidebar-nav::-webkit-scrollbar-thumb {
+        border-radius: 999px;
+        background: rgba(148, 163, 184, .35);
+    }
+
+    .admin-table-scroll {
+        max-width: 100%;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .admin-table th,
+    .admin-table td {
+        vertical-align: middle;
+    }
+
+    .admin-status-pill {
+        @apply inline-flex items-center whitespace-nowrap rounded-full;
+        overflow-wrap: normal;
+        word-break: normal;
+    }
+
+    .admin-row-actions {
+        @apply flex flex-nowrap items-center justify-end gap-2 whitespace-nowrap;
+    }
+
+    .admin-row-actions form {
+        @apply shrink-0;
+    }
+
+    .admin-row-action {
+        @apply inline-flex min-h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-lg border px-3 py-2 text-sm font-bold leading-none transition hover:bg-slate-50;
+        overflow-wrap: normal;
+        word-break: normal;
+    }
+
     .admin-label {
         @apply block text-sm font-black text-slate-700;
     }

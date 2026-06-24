@@ -10,6 +10,7 @@ use App\Services\Cart\CartService;
 use App\Services\Storefront\ProductCatalogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class CartController extends Controller
@@ -40,14 +41,74 @@ class CartController extends Controller
     public function store(AddCartItemRequest $request): RedirectResponse
     {
         $payload = $request->validated();
+        $product = $this->products->findBySlug((string) $payload['product_slug']);
 
+        abort_if($product === null, 404);
+
+        $artworkSettings = $product['artwork_upload'] ?? ['enabled' => false];
+        $artworkFiles = collect((array) $request->file('artwork_files', []));
         if ($request->hasFile('artwork_file')) {
-            $payload['artwork_path'] = $request->file('artwork_file')->store(
+            $artworkFiles->push($request->file('artwork_file'));
+        }
+        $artworkFiles = $artworkFiles->filter()->values();
+
+        if (! ($artworkSettings['enabled'] ?? false) && $artworkFiles->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'artwork_files' => 'Custom artwork uploads are not enabled for this product.',
+            ]);
+        }
+
+        $maximumFiles = max(1, min(12, (int) ($artworkSettings['max_files'] ?? 5)));
+        $maximumSizeMb = max(1, min(25, (int) ($artworkSettings['max_file_size_mb'] ?? 15)));
+        $acceptedTypes = collect($artworkSettings['accepted_types'] ?? ['pdf', 'svg', 'png', 'jpg', 'jpeg', 'webp'])
+            ->map(fn ($type) => strtolower(ltrim(trim((string) $type), '.')))
+            ->filter(fn ($type) => in_array($type, ['pdf', 'svg', 'png', 'jpg', 'jpeg', 'webp'], true))
+            ->unique()
+            ->values();
+
+        if ($artworkFiles->count() > $maximumFiles) {
+            throw ValidationException::withMessages([
+                'artwork_files' => "You may upload a maximum of {$maximumFiles} artwork files for this product.",
+            ]);
+        }
+
+        foreach ($artworkFiles as $file) {
+            $extension = strtolower((string) $file->getClientOriginalExtension());
+            if (! $acceptedTypes->contains($extension)) {
+                throw ValidationException::withMessages([
+                    'artwork_files' => 'One or more artwork files use an unsupported file type.',
+                ]);
+            }
+            if ((int) $file->getSize() > ($maximumSizeMb * 1024 * 1024)) {
+                throw ValidationException::withMessages([
+                    'artwork_files' => "Each artwork file must be no larger than {$maximumSizeMb} MB.",
+                ]);
+            }
+        }
+
+        if (($artworkSettings['enabled'] ?? false) && ($artworkSettings['required'] ?? false) && $artworkFiles->isEmpty()) {
+            throw ValidationException::withMessages([
+                'artwork_files' => 'Upload at least one custom artwork file for this product.',
+            ]);
+        }
+
+        $storedArtwork = $artworkFiles->map(function ($file) use ($request): array {
+            $path = $file->store(
                 'customer-artwork/'.hash('sha256', $request->session()->getId()),
                 'local'
             );
-            $payload['artwork_original_name'] = $request->file('artwork_file')->getClientOriginalName();
-        }
+
+            return [
+                'path' => $path,
+                'original_name' => mb_substr(basename((string) $file->getClientOriginalName()), 0, 255),
+                'size' => (int) $file->getSize(),
+                'mime_type' => mb_substr((string) ($file->getMimeType() ?: 'application/octet-stream'), 0, 120),
+            ];
+        })->values()->all();
+
+        $payload['artwork_files'] = $storedArtwork;
+        $payload['artwork_path'] = $storedArtwork[0]['path'] ?? null;
+        $payload['artwork_original_name'] = $storedArtwork[0]['original_name'] ?? null;
 
         $this->cart->store($payload);
 

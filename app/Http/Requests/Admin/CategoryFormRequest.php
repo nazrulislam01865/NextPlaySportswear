@@ -21,7 +21,9 @@ class CategoryFormRequest extends FormRequest
             'parent_id' => ['nullable', 'integer', 'exists:categories,id', Rule::notIn(array_filter([$categoryId]))],
             'name' => ['required', 'string', 'max:160'],
             'menu_label' => ['nullable', 'string', 'max:160'],
-            'slug' => ['required', 'string', 'max:180', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', Rule::unique('categories', 'slug')->ignore($categoryId)],
+            'slug' => [$this->isMethod('post') ? 'nullable' : 'required', 'string', 'max:180', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', Rule::unique('categories', 'slug')->ignore($categoryId)],
+            'display_mode' => ['nullable', Rule::in(['default', 'subcategories', 'content'])],
+            'publish_now' => ['nullable', 'boolean'],
             'category_type' => ['required', Rule::in(['standard', 'sport', 'collection', 'apparel', 'accessory', 'promotional', 'sale', 'new-arrival', 'navigation-only'])],
             'page_template' => ['required', Rule::in(['product_grid', 'sport_landing', 'collection_landing', 'image_focused', 'quote_only', 'content_landing', 'navigation_only'])],
             'status' => ['required', Rule::in(['draft', 'active', 'inactive', 'archived'])],
@@ -110,8 +112,43 @@ class CategoryFormRequest extends FormRequest
         ];
 
         $payload = [];
+        $createDefaults = [
+            'is_visible_in_catalog' => true,
+            'is_visible_in_menu' => true,
+            'is_featured' => false,
+            'show_product_count' => true,
+            'include_descendant_products' => true,
+            'robots_index' => true,
+            'robots_follow' => true,
+        ];
+
         foreach ($booleanFields as $field) {
-            $payload[$field] = $this->boolean($field);
+            $payload[$field] = $this->isMethod('post') && ! $this->has($field)
+                ? ($createDefaults[$field] ?? false)
+                : $this->boolean($field);
+        }
+
+        if ($this->isMethod('post')) {
+            $displayMode = (string) $this->input('display_mode', 'default');
+            $template = match ($displayMode) {
+                'subcategories' => 'navigation_only',
+                'content' => 'content_landing',
+                default => 'product_grid',
+            };
+
+            $payload = array_merge($payload, [
+                'category_type' => 'standard',
+                'page_template' => $template,
+                'status' => $this->boolean('publish_now', true) ? 'active' : 'draft',
+                'cta_label' => 'View Category',
+                'default_product_sort' => 'featured',
+                'robots_index' => true,
+                'robots_follow' => true,
+                'include_descendant_products' => true,
+                'show_product_count' => $this->has('show_product_count')
+                    ? $this->boolean('show_product_count')
+                    : true,
+            ]);
         }
 
         $payload['filter_settings'] = collect($this->input('filter_settings', []))

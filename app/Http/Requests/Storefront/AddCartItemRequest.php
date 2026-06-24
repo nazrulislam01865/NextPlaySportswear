@@ -21,8 +21,11 @@ class AddCartItemRequest extends FormRequest
             'size_summary' => ['nullable', 'string', 'max:600'],
             'artwork_status' => ['nullable', 'string', 'max:120'],
             'notes' => ['nullable', 'string', 'max:1000'],
-            'configuration_json' => ['nullable', 'json', 'max:50000'],
-            'artwork_file' => ['nullable', 'file', 'mimes:pdf,svg,png,jpg,jpeg,webp', 'max:15360'],
+            'configuration_json' => ['nullable', 'json', 'max:1000000'],
+            'artwork_files' => ['nullable', 'array', 'max:12'],
+            'artwork_files.*' => ['file', 'mimes:pdf,svg,png,jpg,jpeg,webp', 'max:25600'],
+            // Kept for backward compatibility with older cached product forms.
+            'artwork_file' => ['nullable', 'file', 'mimes:pdf,svg,png,jpg,jpeg,webp', 'max:25600'],
         ];
     }
 }

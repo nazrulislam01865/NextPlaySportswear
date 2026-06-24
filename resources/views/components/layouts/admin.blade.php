@@ -18,12 +18,12 @@
     x-effect="document.documentElement.classList.toggle('overflow-hidden', sidebarOpen)"
     @keydown.escape.window="sidebarOpen = false"
 >
-    <div class="min-h-screen lg:grid lg:grid-cols-[280px_minmax(0,1fr)]">
+    <div class="min-h-screen lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
         <div x-cloak x-show="sidebarOpen" x-transition.opacity class="fixed inset-0 z-40 bg-slate-950/60 lg:hidden" @click="sidebarOpen = false" aria-hidden="true"></div>
 
         <aside
             id="admin-sidebar"
-            class="fixed inset-y-0 left-0 z-50 flex w-[min(86vw,280px)] -translate-x-full flex-col bg-brand-dark text-white shadow-2xl transition-transform duration-200 lg:static lg:w-[280px] lg:translate-x-0 lg:shadow-none"
+            class="fixed inset-y-0 left-0 z-50 flex h-screen max-h-screen w-[min(86vw,280px)] -translate-x-full flex-col overflow-hidden bg-brand-dark text-white shadow-2xl transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:w-[280px] lg:translate-x-0 lg:self-start lg:shadow-none"
             :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
             aria-label="Admin navigation"
         >
@@ -35,7 +35,7 @@
                 <button type="button" class="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-2xl text-slate-300 hover:bg-white/10 lg:hidden" @click="sidebarOpen = false" aria-label="Close sidebar">×</button>
             </div>
 
-            <nav class="flex-1 overflow-y-auto overscroll-contain px-3 py-5 text-sm" @click="if ($event.target.closest('a')) sidebarOpen = false">
+            <nav class="admin-sidebar-nav min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-5 text-sm" @click="if ($event.target.closest('a')) sidebarOpen = false">
                 <p class="px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Overview</p>
                 <x-admin.sidebar-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')" icon="▦">Dashboard</x-admin.sidebar-link>
 
@@ -47,7 +47,10 @@
                 <x-admin.sidebar-link :href="route('admin.modules.show', 'inventory')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'inventory'" icon="▤">Inventory</x-admin.sidebar-link>
 
                 <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Commerce</p>
-                <x-admin.sidebar-link :href="route('admin.modules.show', 'orders')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'orders'" icon="▣">Orders</x-admin.sidebar-link>
+                @if(auth()->user()->canManageOrders())
+                    <x-admin.sidebar-link :href="route('admin.orders.index')" :active="request()->routeIs('admin.orders.*')" icon="▣">Orders</x-admin.sidebar-link>
+                    <x-admin.sidebar-link :href="route('admin.returns.index')" :active="request()->routeIs('admin.returns.*')" icon="↶">Returns & Exchanges</x-admin.sidebar-link>
+                @endif
                 <x-admin.sidebar-link :href="route('admin.modules.show', 'customers')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'customers'" icon="♙">Customers</x-admin.sidebar-link>
                 <x-admin.sidebar-link :href="route('admin.modules.show', 'discounts')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'discounts'" icon="%">Discounts & Coupons</x-admin.sidebar-link>
                 <x-admin.sidebar-link :href="route('admin.modules.show', 'reviews')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'reviews'" icon="★">Reviews</x-admin.sidebar-link>

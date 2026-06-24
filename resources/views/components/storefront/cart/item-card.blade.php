@@ -51,7 +51,16 @@
                         </div>
                         <div class="flex flex-col gap-1 min-[420px]:flex-row min-[420px]:gap-2">
                             <dt class="min-[420px]:w-24 min-[420px]:shrink-0 font-black text-slate-700">Artwork</dt>
-                            <dd class="text-slate-600">{{ $customization['artwork_status'] }}</dd>
+                            <dd class="min-w-0 text-slate-600">
+                                {{ $customization['artwork_status'] }}
+                                @if(!empty($customization['artwork_files']))
+                                    <ul class="mt-1 space-y-1 text-xs">
+                                        @foreach($customization['artwork_files'] as $artworkFile)
+                                            <li class="break-all">{{ $artworkFile['original_name'] ?? 'Artwork file' }}</li>
+                                        @endforeach
+                                    </ul>
+                                @endif
+                            </dd>
                         </div>
                     </dl>
                 </div>

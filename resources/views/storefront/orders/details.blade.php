@@ -39,7 +39,16 @@
                                     <p><strong class="text-slate-900">Quantity:</strong> {{ $item['quantity'] }}</p>
                                     <p><strong class="text-slate-900">Sizes:</strong> {{ $item['customization']['size_summary'] }}</p>
                                     <p><strong class="text-slate-900">Design:</strong> {{ $item['customization']['design_option'] }}</p>
-                                    <p><strong class="text-slate-900">Artwork:</strong> {{ $item['customization']['artwork_status'] }}</p>
+                                    <div>
+                                        <p><strong class="text-slate-900">Artwork:</strong> {{ $item['customization']['artwork_status'] }}</p>
+                                        @if(!empty($item['customization']['artwork_files']))
+                                            <ul class="mt-1 list-inside list-disc text-xs">
+                                                @foreach($item['customization']['artwork_files'] as $artworkFile)
+                                                    <li class="break-all">{{ $artworkFile['original_name'] ?? 'Artwork file' }}</li>
+                                                @endforeach
+                                            </ul>
+                                        @endif
+                                    </div>
                                 </div>
                                 @if ($item['customization']['notes'] !== '')
                                     <p class="mt-3 rounded-xl bg-slate-50 p-3 text-sm font-semibold leading-6 text-slate-600">{{ $item['customization']['notes'] }}</p>

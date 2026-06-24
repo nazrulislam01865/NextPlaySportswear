@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureAdmin::class,
             'customer' => \App\Http\Middleware\EnsureCustomer::class,
+            'order.manager' => \App\Http\Middleware\EnsureOrderManager::class,
             'not.admin' => \App\Http\Middleware\RedirectAdminFromCustomerArea::class,
         ]);
     })

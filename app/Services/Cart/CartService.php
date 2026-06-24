@@ -26,7 +26,11 @@ class CartService
         $merchandiseTotal = $subtotal + $customizationTotal;
         $quantity = collect($items)->sum('quantity');
         $discount = $this->calculateDiscount($merchandiseTotal, $couponCode);
-        $shipping = $this->calculateShipping($merchandiseTotal, $quantity);
+        $genericShippingItems = collect($items)->where('uses_product_shipping', false);
+        $shipping = $this->calculateShipping(
+            (float) $genericShippingItems->sum(fn (array $item) => ($item['line_subtotal'] ?? 0) + ($item['customization_total'] ?? 0)),
+            (int) $genericShippingItems->sum('quantity')
+        );
         $tax = $this->calculateTax($merchandiseTotal - $discount);
         $total = max(0, $merchandiseTotal - $discount + $shipping + $tax);
 
@@ -148,6 +152,11 @@ class CartService
         return $this->summary();
     }
 
+    public function clear(): void
+    {
+        session()->forget([self::SESSION_ITEMS_KEY, self::SESSION_COUPON_KEY]);
+    }
+
     private function repriceItem(array $item): array
     {
         $product = $this->products->findBySlug((string) ($item['product_slug'] ?? ''));
@@ -172,6 +181,7 @@ class CartService
             'line_subtotal' => round($unitPrice * $quantity, 2),
             'customization_total' => round($customizationUnitPrice * $quantity, 2),
             'line_total' => round(($unitPrice + $customizationUnitPrice) * $quantity, 2),
+            'uses_product_shipping' => ! empty($product['shipping_methods']),
         ]);
     }
 
@@ -183,16 +193,45 @@ class CartService
         $artworkStatus = Str::limit(trim((string) ($payload['artwork_status'] ?? 'Artwork can be sent now or later')), 120, '');
         $notes = Str::limit(trim((string) ($payload['notes'] ?? '')), 1000, '');
         $configuration = $this->normalizeConfiguration($payload['configuration_json'] ?? ($payload['configuration'] ?? []), $product);
+        $selectedSpeed = collect($product['production_speeds'] ?? [])->firstWhere('id', $configuration['production_speed'] ?? null);
+        $selectedShipping = collect($product['shipping_methods'] ?? [])->firstWhere('id', $configuration['shipping_method'] ?? null);
+        $secureDeliveryLabels = collect([$selectedSpeed['label'] ?? null, $selectedShipping['label'] ?? null])->filter()->implode(' / ');
+
+        $artworkFiles = collect((array) ($payload['artwork_files'] ?? []))
+            ->filter(fn ($file) => is_array($file) && filled($file['path'] ?? null))
+            ->map(fn ($file) => [
+                'path' => Str::limit((string) $file['path'], 500, ''),
+                'original_name' => Str::limit((string) ($file['original_name'] ?? 'Artwork file'), 255, ''),
+                'size' => max(0, (int) ($file['size'] ?? 0)),
+                'mime_type' => Str::limit((string) ($file['mime_type'] ?? 'application/octet-stream'), 120, ''),
+            ])
+            ->take(12)
+            ->values();
+
+        if ($artworkFiles->isEmpty() && filled($payload['artwork_path'] ?? null)) {
+            $artworkFiles->push([
+                'path' => Str::limit((string) $payload['artwork_path'], 500, ''),
+                'original_name' => Str::limit((string) ($payload['artwork_original_name'] ?? 'Artwork file'), 255, ''),
+                'size' => 0,
+                'mime_type' => 'application/octet-stream',
+            ]);
+        }
+
+        $firstArtwork = $artworkFiles->first();
 
         return [
             'design_option' => $designOption === '' ? 'Configured product' : $designOption,
-            'delivery_preference' => $deliveryPreference === '' ? 'Standard production' : $deliveryPreference,
+            'delivery_preference' => $secureDeliveryLabels ?: ($deliveryPreference === '' ? 'Standard production' : $deliveryPreference),
             'size_summary' => $sizeSummary === '' ? 'Sizes selected in configuration' : $sizeSummary,
-            'artwork_status' => $artworkStatus === '' ? 'Artwork can be sent now or later' : $artworkStatus,
+            'artwork_status' => $artworkFiles->isNotEmpty()
+                ? $artworkFiles->count().' artwork file'.($artworkFiles->count() === 1 ? '' : 's').' uploaded'
+                : ($artworkStatus === '' ? 'No artwork uploaded' : $artworkStatus),
             'notes' => $notes,
             'configuration' => $configuration,
-            'artwork_path' => isset($payload['artwork_path']) ? Str::limit((string) $payload['artwork_path'], 500, '') : null,
-            'artwork_original_name' => isset($payload['artwork_original_name']) ? Str::limit((string) $payload['artwork_original_name'], 255, '') : null,
+            'artwork_files' => $artworkFiles->all(),
+            // Legacy first-file fields remain for existing order/cart views.
+            'artwork_path' => $firstArtwork['path'] ?? null,
+            'artwork_original_name' => $firstArtwork['original_name'] ?? null,
         ];
     }
 
@@ -205,43 +244,70 @@ class CartService
 
         $groups = collect($product['option_groups'] ?? [])->keyBy('id');
         $selections = [];
-        foreach ((array) ($raw['selections'] ?? []) as $groupId => $valueId) {
-            $group = $groups->get((string) $groupId);
-            if (! $group || ! in_array($group['type'], ['image', 'swatch', 'buttons', 'select'], true)) {
-                continue;
-            }
-            $allowed = collect($group['values'] ?? [])->pluck('id')->map(fn ($id) => (string) $id)->all();
-            if (in_array((string) $valueId, $allowed, true)) {
-                $selections[(string) $groupId] = (string) $valueId;
-            }
-        }
-
         $multiSelections = [];
-        foreach ((array) ($raw['multi_selections'] ?? []) as $groupId => $valueIds) {
-            $group = $groups->get((string) $groupId);
-            if (! $group || $group['type'] !== 'checkbox') {
-                continue;
-            }
-            $allowed = collect($group['values'] ?? [])->pluck('id')->map(fn ($id) => (string) $id)->all();
-            $maximum = (int) ($group['maximum_selections'] ?? count($allowed));
-            $multiSelections[(string) $groupId] = collect((array) $valueIds)
-                ->map(fn ($id) => (string) $id)
-                ->filter(fn ($id) => in_array($id, $allowed, true))
-                ->unique()->take(max(1, $maximum))->values()->all();
-        }
-
         $inputs = [];
-        foreach ((array) ($raw['inputs'] ?? []) as $groupId => $value) {
-            $group = $groups->get((string) $groupId);
-            if (! $group || in_array($group['type'], ['image', 'swatch', 'buttons', 'select', 'checkbox', 'file'], true)) {
+
+        foreach ($groups as $groupId => $group) {
+            $mode = (string) ($group['display_mode'] ?? 'customer');
+            $type = (string) ($group['type'] ?? 'select');
+            $values = collect($group['values'] ?? []);
+
+            if ($mode === 'fixed') {
+                if ($type === 'checkbox') {
+                    $fixed = $values->where('default', true)->pluck('id')->map(fn ($id) => (string) $id)->values()->all();
+                    if ($fixed !== []) {
+                        $multiSelections[(string) $groupId] = $fixed;
+                    }
+                } elseif (in_array($type, ['image', 'swatch', 'buttons', 'select'], true)) {
+                    $fixedCode = (string) ($group['fixed_value_code'] ?? '');
+                    $fixedValue = $values->firstWhere('id', $fixedCode) ?? $values->firstWhere('default', true) ?? $values->first();
+                    if ($fixedValue) {
+                        $selections[(string) $groupId] = (string) $fixedValue['id'];
+                    }
+                } elseif ($type !== 'file' && filled($group['fixed_text_value'] ?? null)) {
+                    $inputs[(string) $groupId] = Str::limit(trim((string) $group['fixed_text_value']), $type === 'textarea' ? 2000 : 255, '');
+                }
                 continue;
             }
-            $inputs[(string) $groupId] = Str::limit(trim((string) $value), $group['type'] === 'textarea' ? 2000 : 255, '');
+
+            if ($mode !== 'customer') {
+                continue;
+            }
+
+            if (in_array($type, ['image', 'swatch', 'buttons', 'select'], true)) {
+                $valueId = (string) (($raw['selections'] ?? [])[$groupId] ?? '');
+                $allowed = $values->pluck('id')->map(fn ($id) => (string) $id)->all();
+                if (in_array($valueId, $allowed, true)) {
+                    $selections[(string) $groupId] = $valueId;
+                }
+                continue;
+            }
+
+            if ($type === 'checkbox') {
+                $allowed = $values->pluck('id')->map(fn ($id) => (string) $id)->all();
+                $maximum = (int) ($group['maximum_selections'] ?? count($allowed));
+                $multiSelections[(string) $groupId] = collect((array) (($raw['multi_selections'] ?? [])[$groupId] ?? []))
+                    ->map(fn ($id) => (string) $id)
+                    ->filter(fn ($id) => in_array($id, $allowed, true))
+                    ->unique()->take(max(1, $maximum))->values()->all();
+                continue;
+            }
+
+            if ($type !== 'file') {
+                $value = (($raw['inputs'] ?? [])[$groupId] ?? null);
+                if ($value !== null) {
+                    $inputs[(string) $groupId] = Str::limit(trim((string) $value), $type === 'textarea' ? 2000 : 255, '');
+                }
+            }
         }
 
         $sizeLookup = collect($product['size_groups'] ?? [])->mapWithKeys(function (array $group): array {
             return collect($group['sizes'] ?? [])->mapWithKeys(fn (array $size) => [
-                $group['id'].':'.$size['code'] => ['group' => $group['id'], 'size' => $size['code'], 'price_delta' => (float) ($size['price_delta'] ?? 0)],
+                $group['id'].':'.$size['code'] => [
+                    'group' => $group['id'], 'group_label' => $group['label'],
+                    'size' => $size['code'], 'size_label' => $size['label'],
+                    'price_delta' => 0.0,
+                ],
             ])->all();
         });
         $quantities = [];
@@ -255,16 +321,59 @@ class CartService
             }
         }
 
-        $artworkMethods = collect($product['artwork_methods'] ?? [])->pluck('id')->map(fn ($id) => (string) $id)->all();
         $productionSpeeds = collect($product['production_speeds'] ?? [])->pluck('id')->map(fn ($id) => (string) $id)->all();
+        $shippingMethods = collect($product['shipping_methods'] ?? []);
+        $shippingIds = $shippingMethods->pluck('id')->map(fn ($id) => (string) $id)->all();
+        $defaultShipping = $shippingMethods->firstWhere('default', true)['id'] ?? ($shippingIds[0] ?? null);
+
+        $rosterSettings = $product['jersey_roster'] ?? [];
+        $rosterAvailable = ($product['product_profile'] ?? 'standard') === 'jersey' && (bool) ($rosterSettings['enabled'] ?? false);
+        $rosterEnabled = $rosterAvailable && (! (bool) ($rosterSettings['optional'] ?? true) || filter_var($raw['roster_enabled'] ?? false, FILTER_VALIDATE_BOOL));
+        $roster = [];
+
+        if ($rosterEnabled) {
+            $desiredRows = [];
+            foreach ($quantities as $sizeKey => $count) {
+                $size = $sizeLookup->get($sizeKey);
+                for ($index = 0; $index < $count; $index++) {
+                    $desiredRows[] = [
+                        'size_key' => $sizeKey,
+                        'size_group' => $size['group'],
+                        'size_group_label' => $size['group_label'],
+                        'size_code' => $size['size'],
+                        'size_label' => $size['size_label'],
+                    ];
+                }
+            }
+
+            abort_if(count($desiredRows) > 250, 422, 'Per-jersey personalization is limited to 250 pieces per configured cart line.');
+
+            $fields = collect($rosterSettings['fields'] ?? [])->filter(fn ($field) => (bool) ($field['enabled'] ?? true))->keyBy('key');
+            $submittedRows = array_values((array) ($raw['roster'] ?? []));
+            foreach ($desiredRows as $index => $row) {
+                $submittedValues = (array) ($submittedRows[$index]['values'] ?? []);
+                $values = [];
+                foreach ($fields as $key => $field) {
+                    $maximum = max(1, min(120, (int) ($field['max_length'] ?? 60)));
+                    $value = Str::limit(trim((string) ($submittedValues[$key] ?? '')), $maximum, '');
+                    if (($field['type'] ?? 'text') === 'number') {
+                        $value = preg_replace('/[^0-9A-Za-z\-]/', '', $value) ?? '';
+                    }
+                    $values[(string) $key] = $value;
+                }
+                $roster[] = $row + ['values' => $values];
+            }
+        }
 
         return [
             'selections' => $selections,
             'multi_selections' => $multiSelections,
             'inputs' => $inputs,
             'quantities' => $quantities,
-            'artwork_method' => in_array((string) ($raw['artwork_method'] ?? ''), $artworkMethods, true) ? (string) $raw['artwork_method'] : ($artworkMethods[0] ?? null),
             'production_speed' => in_array((string) ($raw['production_speed'] ?? ''), $productionSpeeds, true) ? (string) $raw['production_speed'] : ($productionSpeeds[0] ?? null),
+            'shipping_method' => in_array((string) ($raw['shipping_method'] ?? ''), $shippingIds, true) ? (string) $raw['shipping_method'] : $defaultShipping,
+            'roster_enabled' => $rosterEnabled,
+            'roster' => $roster,
         ];
     }
 
@@ -276,7 +385,7 @@ class CartService
 
         $configuration = $customization['configuration'] ?? [];
         foreach (($product['option_groups'] ?? []) as $group) {
-            if (! ($group['required'] ?? false)) {
+            if (($group['display_mode'] ?? 'customer') !== 'customer' || ! ($group['required'] ?? false)) {
                 continue;
             }
 
@@ -284,16 +393,36 @@ class CartService
             $valid = match ($group['type']) {
                 'checkbox' => count($configuration['multi_selections'][$groupId] ?? []) >= max(1, (int) ($group['minimum_selections'] ?? 1)),
                 'image', 'swatch', 'buttons', 'select' => filled($configuration['selections'][$groupId] ?? null),
-                'file' => filled($customization['artwork_path'] ?? null),
+                'file' => count($customization['artwork_files'] ?? []) > 0,
                 default => filled($configuration['inputs'][$groupId] ?? null),
             };
 
             abort_unless($valid, 422, 'A required product customization is missing: '.$group['label']);
         }
 
-        $artwork = collect($product['artwork_methods'] ?? [])->firstWhere('id', $configuration['artwork_method'] ?? null);
-        if (($artwork['requires_upload'] ?? false) && ! filled($customization['artwork_path'] ?? null)) {
-            abort(422, 'The selected artwork method requires an uploaded file.');
+        $artworkSettings = $product['artwork_upload'] ?? ['enabled' => false];
+        $artworkFiles = collect($customization['artwork_files'] ?? []);
+        if (($artworkSettings['enabled'] ?? false) && ($artworkSettings['required'] ?? false)) {
+            abort_unless($artworkFiles->isNotEmpty(), 422, 'Upload at least one custom artwork file.');
+        }
+        if ($artworkFiles->count() > max(1, min(12, (int) ($artworkSettings['max_files'] ?? 5)))) {
+            abort(422, 'Too many custom artwork files were uploaded.');
+        }
+
+        $rosterSettings = $product['jersey_roster'] ?? [];
+        if (($product['product_profile'] ?? 'standard') === 'jersey' && ($rosterSettings['enabled'] ?? false)) {
+            if (! ($rosterSettings['optional'] ?? true)) {
+                abort_unless((bool) ($configuration['roster_enabled'] ?? false), 422, 'Player details are required for this jersey.');
+            }
+
+            if ($configuration['roster_enabled'] ?? false) {
+                $requiredFields = collect($rosterSettings['fields'] ?? [])->filter(fn ($field) => ($field['enabled'] ?? true) && ($field['required'] ?? false));
+                foreach (($configuration['roster'] ?? []) as $index => $row) {
+                    foreach ($requiredFields as $field) {
+                        abort_unless(filled($row['values'][$field['key']] ?? null), 422, 'Complete '.$field['label'].' for jersey '.($index + 1).'.');
+                    }
+                }
+            }
         }
     }
 
@@ -330,36 +459,50 @@ class CartService
     {
         $configuration = $customization['configuration'] ?? [];
         $groups = collect($product['option_groups'] ?? [])->keyBy('id');
-        $delta = 0.0;
+        $perUnit = 0.0;
+        $fixedOrder = 0.0;
+
+        $applyValue = function (?array $value) use (&$perUnit, &$fixedOrder): void {
+            $amount = (float) ($value['price_delta'] ?? 0);
+            $chargeType = (string) ($value['charge_type'] ?? 'per_unit');
+            if ($chargeType === 'fixed_order') {
+                $fixedOrder += $amount;
+            } elseif ($chargeType !== 'included') {
+                $perUnit += $amount;
+            }
+        };
 
         foreach ((array) ($configuration['selections'] ?? []) as $groupId => $valueId) {
-            $value = collect($groups->get($groupId)['values'] ?? [])->firstWhere('id', $valueId);
-            $delta += (float) ($value['price_delta'] ?? 0);
+            $applyValue(collect($groups->get($groupId)['values'] ?? [])->firstWhere('id', $valueId));
         }
 
         foreach ((array) ($configuration['multi_selections'] ?? []) as $groupId => $valueIds) {
             $values = collect($groups->get($groupId)['values'] ?? [])->keyBy('id');
             foreach ((array) $valueIds as $valueId) {
-                $delta += (float) ($values->get($valueId)['price_delta'] ?? 0);
+                $applyValue($values->get($valueId));
             }
         }
 
-        $artwork = collect($product['artwork_methods'] ?? [])->firstWhere('id', $configuration['artwork_method'] ?? null);
         $speed = collect($product['production_speeds'] ?? [])->firstWhere('id', $configuration['production_speed'] ?? null);
-        $delta += (float) ($artwork['price_delta'] ?? 0) + (float) ($speed['price_delta'] ?? 0);
+        $perUnit += (float) ($speed['price_delta'] ?? 0);
+
+        $shipping = collect($product['shipping_methods'] ?? [])->firstWhere('id', $configuration['shipping_method'] ?? null);
+        if ($shipping) {
+            $amount = (float) ($shipping['price_delta'] ?? 0);
+            if (($shipping['charge_type'] ?? 'per_unit') === 'fixed_order') {
+                $fixedOrder += $amount;
+            } elseif (($shipping['charge_type'] ?? 'per_unit') !== 'included') {
+                $perUnit += $amount;
+            }
+        }
 
         if ($quantity > 0) {
-            $sizeLookup = collect($product['size_groups'] ?? [])->flatMap(fn (array $group) => collect($group['sizes'] ?? [])->mapWithKeys(fn (array $size) => [
-                $group['id'].':'.$size['code'] => (float) ($size['price_delta'] ?? 0),
-            ]));
-            $weighted = 0.0;
-            foreach ((array) ($configuration['quantities'] ?? []) as $key => $count) {
-                $weighted += (float) ($sizeLookup->get($key, 0)) * (int) $count;
-            }
-            $delta += $weighted / $quantity;
+            // Sizes determine only the total quantity. The price tier chosen for that
+            // total quantity determines the base unit price; sizes never add a price.
+            $perUnit += $fixedOrder / $quantity;
         }
 
-        return round($delta, 2);
+        return round($perUnit, 2);
     }
 
     private function calculateDiscount(float $merchandiseTotal, ?string $couponCode): float

@@ -1,132 +1,131 @@
 # NextPlay E-commerce Remaining Pages Audit
 
-This audit is based on the current routes, controllers, models, services, migrations, and storefront views in the supplied Laravel project.
+This audit reflects the current Laravel project after implementation of the persistent customer order-management module.
 
-## Present in the project
+## Present and database-backed
 
-- Homepage
-- Database-driven category landing page
-- Category product-result page
-- Product listing/search page
-- Product details and customization UI
-- Cart
-- Login and registration
-- Customer profile
-- Saved addresses
-- Saved payment-method interface
-- Checkout information
-- Shipping-address selection
-- Billing-address selection
-- Shipping method
-- Payment method
-- Order review
-- Place-order step
-- Checkout success
-- Order confirmation
-- Payment success and failure
-- Order details
-- Order tracking UI
-- Invoice view
+### Storefront and checkout
 
-## Storefront pages still required
+- Homepage and managed homepage slider
+- Category landing and category product pages
+- Product listing/search
+- Flexible product details and customization
+- Session cart with server-side price recalculation
+- Login, registration, customer profile, addresses, and tokenized payment-method metadata
+- Checkout information, shipping address, billing address, shipping method, payment method, review, and place-order steps
+- Durable order and item creation at checkout
 
-### Highest priority
+### Customer order center
 
-1. **Bulk quote request page and submission flow**  
-   The current `/quote-request` route is a placeholder.
+- Customer Orders dashboard
+- My Orders / Order History
+- Authenticated Order Details
+- Pay for Order and Retry Failed Payment
+- Order Again / Reorder
+- Cancel Order Request
+- Change Order Request
+- Shipment Details
+- Partial / Split Shipments
+- Return Request with private evidence
+- Exchange Request with private evidence
+- Return History
+- Return Details and Status
+- Refund Status
+- Credit Note preview and secure PDF download
+- Secure Invoice preview and PDF download
+- Private Order Downloads for digital files
 
-2. **Forgot-password and reset-password flow**  
-   The current forgot-password route is a placeholder and no reset form/token flow exists.
+### Admin
 
-3. **Customer order history**  
-   The account “Orders” section is currently informational rather than database-backed.
+- Separate admin authentication
+- Admin dashboard
+- Category, attribute, navigation, product, and homepage-slider management
+- Order list and order details
+- Payment/order/fulfillment status management
+- Split shipment creation and tracking updates
+- Cancellation and change-request review
+- Return/exchange review and private evidence access
+- Refund processing state and automatic credit-note creation
+- Private order-download upload, limits, expiry, and deletion
+- Order history/audit timeline
+- Least-privilege separation: catalog managers cannot access order/customer operations
 
-4. **Quote history and quote details**  
-   Customer quote pages are currently informational placeholders.
+## Highest-priority remaining work
 
-5. **Saved designs and artwork/proof approval**  
-   Required for a custom sportswear workflow; the account section is currently a placeholder.
+1. **Live payment provider and webhooks**  
+   Add Stripe, PayPal, or the chosen provider using hosted/tokenized payment collection and signature-verified idempotent webhooks. Current payment attempts are provider-neutral and intentionally do not mark an order paid without verified confirmation or authorized reconciliation.
 
-6. **Saved carts and repeat-order pages**  
-   Both account modules are currently placeholders.
+2. **Bulk quote workflow**  
+   Replace the current quote placeholder with quote submission, admin pricing, attachments, approval, expiry, and quote-to-order conversion.
 
-7. **Wishlist / saved products**  
-   No wishlist model, route, or page exists.
+3. **Artwork and proof workflow**  
+   Add customer artwork uploads, admin/designer proof versions, approval/rejection comments, and production locking after approval.
 
-8. **Real product reviews and rating submission**  
-   Product ratings are display data only.
+4. **Password reset and email verification**  
+   Complete forgot-password, reset-token, email-verification, and resend-verification pages.
 
-### Content and support pages
+5. **Queued customer notifications**  
+   Send email notifications for order placement, payment, proof, production, shipment, return, refund, and download availability.
 
-9. About Us
-10. Contact Us with a working form
-11. FAQ / Help Center
-12. Standalone Size Guide
-13. Artwork and Logo Guidelines
-14. Shipping and Delivery Policy
-15. Returns, Refunds, and Exchanges
-16. Privacy Policy
-17. Terms and Conditions
-18. Cookie Policy / consent settings
-19. Accessibility Statement
-20. Custom-order / team-order instructions
+6. **Persistent saved carts**  
+   The active cart remains session-based. Add database-backed saved carts for authenticated customers who need to resume large team orders.
 
-### Account and authentication completion
+## Other customer modules still useful
 
-21. Email verification
-22. Resend verification page
-23. Account deletion and data-download request
-24. Notification preferences
-25. Support ticket list and details
-26. Gift-card balance/history if gift cards are retained in navigation
+- Quote history and quote details
+- Saved designs/artwork library
+- Wishlist / saved products
+- Review and rating submission
+- Support ticket list and details
+- Notification preferences
+- Account data export and deletion request
+- Gift-card balance/history only if gift cards remain in the product plan
 
-## Back-office/admin pages still required
+## Content and compliance work still useful
 
-The current archive contains no complete administration area. A production e-commerce site still needs:
+The project includes several content/support pages, but final legal and policy wording should be reviewed for the actual business, fulfillment locations, payment provider, return rules, privacy practices, and applicable US state requirements:
 
-1. Admin login and role/permission management
-2. Admin dashboard
-3. Category and filter-tag CRUD
-4. Product CRUD
-5. Product images/gallery management
-6. Product variants, sizes, colors, fabrics, and customizable-option management
-7. Tiered pricing and MOQ management
-8. Inventory/availability management
-9. Order list and order details
-10. Production and artwork-proof workflow
-11. Quote request list, quote builder, approval, and conversion to order
-12. Customer management
-13. Payment transaction and webhook logs
-14. Refund and cancellation management
-15. Coupon, promotion, and gift-card management
-16. Shipping-zone, carrier, and rate management
-17. Tax settings
-18. Review moderation
-19. CMS/banner/FAQ/legal-page management
-20. Reports, sales analytics, product analytics, and audit logs
+- About and Contact
+- FAQ / Help Center
+- Size Guide
+- Artwork and Logo Guidelines
+- Shipping and Delivery Policy
+- Returns, Refunds, and Exchanges Policy
+- Privacy Policy
+- Terms and Conditions
+- Cookie consent/settings
+- Accessibility Statement
+- Team/bulk-order instructions
 
-## Important backend gaps behind existing designs
+## Additional admin modules still useful
 
-Several pages exist visually but are not yet backed by production database modules:
+- Quote builder and quote conversion
+- Artwork/proof production board
+- Customer support/tickets
+- Payment webhook/event log
+- Coupons, promotions, and gift cards
+- Shipping zones, carrier integrations, and live rates
+- Tax-provider integration
+- Review moderation
+- Sales, product, customer, return, and fulfillment reports
+- Broader audit log and data-retention controls
 
-- Products are still defined in `ProductCatalogService` arrays; product, variant, price, inventory, and image tables are missing.
-- Cart content is session-based rather than persisted for logged-in customers.
-- Checkout state is session-based.
-- Orders, order items, payments, shipments, refunds, coupons, and invoices do not have database models/migrations.
-- Order tracking and order details use session/demo order data rather than durable order records.
-- Payment-method UI stores masked metadata only; a real tokenized payment-provider integration is still required.
-- No Stripe/PayPal webhook processing exists.
-- No email notification system for account, order, proof, shipping, or password-reset events exists.
+## Current technical boundaries
 
-## Recommended implementation order
+- Orders and order items are durable database records.
+- Checkout form state and the active cart are still session-based until order placement.
+- Product pricing is recalculated server-side.
+- Customer order documents and evidence are served from private storage through authorization and signed links.
+- A real payment-provider adapter and webhook verification are still required before live card/PayPal acceptance.
+- PDF invoice and credit-note generation is intentionally dependency-free and compact; a branded PDF library can be introduced later if richer pagination/layout is required.
+- Queued emails and object-storage malware scanning are recommended before high-volume production use.
 
-1. Products, variants, customization options, pricing, and inventory database layer
-2. Admin product/category management
-3. Persistent carts and coupons
-4. Persistent orders/order items and secure order authorization
-5. Payment provider and webhook flow
-6. Quote/artwork/proof workflow
-7. Customer order/quote/saved-design pages
-8. Password reset and email verification
-9. Shipping, tax, refund, and notification modules
-10. Content/legal/support pages and analytics
+## Recommended next implementation order
+
+1. Live payment provider and verified webhooks
+2. Quote, artwork, and proof approval workflow
+3. Queued order/return/shipment notifications
+4. Password reset and email verification
+5. Persistent saved carts and saved designs
+6. Carrier/tax integrations
+7. Support tickets, reviews, promotions, and analytics

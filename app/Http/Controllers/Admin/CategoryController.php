@@ -108,6 +108,8 @@ class CategoryController extends Controller
             return $category;
         });
 
+        $this->navigationService->flushCache();
+
         return redirect()->route('admin.categories.edit', $category)->with('status', 'Category created successfully.');
     }
 
@@ -261,12 +263,17 @@ class CategoryController extends Controller
             'meta_keywords', 'canonical_url', 'og_title', 'og_description', 'robots_index', 'robots_follow',
         ]);
 
+        $payload['slug'] = $this->uniqueSlug(
+            trim((string) ($data['slug'] ?? '')) ?: (string) $data['name'],
+            $category?->id,
+        );
         $payload['description'] = Str::limit($plainDescription, 10000, '');
         $payload['description_html'] = $sanitizedHtml;
         $payload['display_type'] = $data['category_type'] === 'sport' ? 'sport' : 'collection';
         $payload['is_active'] = $data['status'] === 'active';
         $payload['image_url'] = $category?->image_url ?? (string) ($data['image_url'] ?? '');
         $payload['image_alt'] = filled($data['image_alt'] ?? null) ? $data['image_alt'] : $data['name'];
+        $payload['thumbnail_alt'] = filled($data['thumbnail_alt'] ?? null) ? $data['thumbnail_alt'] : $data['name'];
         $payload['highlights'] = collect(preg_split('/\r\n|\r|\n/', (string) ($data['highlights_text'] ?? '')))
             ->map(fn ($value) => trim((string) $value))->filter()->values()->all();
         $payload['schema_json'] = filled($data['schema_json_text'] ?? null)
@@ -276,6 +283,23 @@ class CategoryController extends Controller
         $payload['updated_by'] = auth()->id();
 
         return $payload;
+    }
+
+    private function uniqueSlug(string $value, ?int $ignoreId = null): string
+    {
+        $base = Str::limit(Str::slug($value) ?: 'category', 170, '');
+        $slug = $base;
+        $suffix = 2;
+
+        while (Category::withTrashed()
+            ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
+            ->where('slug', $slug)
+            ->exists()) {
+            $ending = '-'.$suffix++;
+            $slug = Str::limit($base, 180 - strlen($ending), '').$ending;
+        }
+
+        return $slug;
     }
 
     /** @param array<int|string, mixed> $settings */

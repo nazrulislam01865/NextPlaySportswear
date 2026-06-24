@@ -16,7 +16,7 @@
 
             <form method="POST" action="{{ route('checkout.place-order.submit') }}" class="mt-6 grid gap-5" x-data="{processing:false}" @submit="processing=true">
                 @csrf
-                <input type="hidden" name="idempotency_key" value="{{ sha1(session()->getId() . '|nextplay-place-order') }}">
+                <input type="hidden" name="idempotency_key" value="{{ $orderIdempotencyKey }}">
                 <label class="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left text-sm font-bold leading-6 text-amber-900">
                     <input type="checkbox" name="terms" value="1" class="mt-1">
                     <span><strong>I agree to the Terms, Privacy Policy, and Custom Product Production Policy.</strong><br><span class="font-semibold">This action uses double-submit protection through an idempotency key.</span></span>

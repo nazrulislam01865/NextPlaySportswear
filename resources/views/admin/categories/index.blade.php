@@ -71,12 +71,12 @@
     </form>
 
     <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
-        <div class="overflow-x-auto">
-            <table class="min-w-[1220px] w-full text-sm">
+        <div class="admin-table-scroll" tabindex="0" aria-label="Category tree table">
+            <table class="admin-table min-w-[1540px] text-sm">
                 <thead class="bg-slate-50 text-left text-[10px] font-black uppercase tracking-[.13em] text-slate-500">
                     <tr>
                         <th class="w-12 px-4 py-4"><input id="category-check-all" type="checkbox" aria-label="Select all categories on this page"></th>
-                        <th class="px-5 py-4">Category tree</th><th class="px-5 py-4">Type / Template</th><th class="px-5 py-4">Products</th><th class="px-5 py-4">Children</th><th class="px-5 py-4">Visibility</th><th class="px-5 py-4">Updated</th><th class="px-5 py-4 text-right">Actions</th>
+                        <th class="w-[330px] px-5 py-4">Category tree</th><th class="w-[175px] px-5 py-4">Type / Template</th><th class="w-[90px] px-5 py-4">Products</th><th class="w-[90px] px-5 py-4">Children</th><th class="w-[175px] px-5 py-4">Visibility</th><th class="w-[145px] px-5 py-4">Updated</th><th class="w-[500px] px-5 py-4 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -97,18 +97,18 @@
                             <td class="px-5 py-4 font-black">{{ $category->products_count }}</td>
                             <td class="px-5 py-4">{{ $category->children_count }}</td>
                             <td class="px-5 py-4">
-                                <span class="rounded-full px-2.5 py-1 text-xs font-black {{ $category->status === 'active' ? 'bg-emerald-50 text-emerald-700' : ($category->status === 'draft' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600') }}">{{ ucfirst($category->status) }}</span>
+                                <span class="admin-status-pill px-2.5 py-1 text-xs font-black {{ $category->status === 'active' ? 'bg-emerald-50 text-emerald-700' : ($category->status === 'draft' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600') }}">{{ ucfirst($category->status) }}</span>
                                 <p class="mt-2 text-[11px] text-slate-500">Catalog: {{ $category->is_visible_in_catalog ? 'Yes' : 'No' }} · Menu: {{ $category->is_visible_in_menu ? 'Yes' : 'No' }}</p>
                             </td>
-                            <td class="px-5 py-4 text-xs text-slate-500">{{ $category->updated_at?->format('M j, Y g:i A') }}@if($category->updater)<span class="mt-1 block">by {{ $category->updater->name }}</span>@endif</td>
+                            <td class="whitespace-nowrap px-5 py-4 text-xs text-slate-500">{{ $category->updated_at?->format('M j, Y g:i A') }}@if($category->updater)<span class="mt-1 block">by {{ $category->updater->name }}</span>@endif</td>
                             <td class="px-5 py-4">
-                                <div class="flex justify-end gap-2">
-                                    @if($category->status === 'active')<a href="{{ route('categories.show', $category->slug) }}" target="_blank" rel="noopener" class="rounded-lg border border-slate-200 px-3 py-2 font-bold">Preview</a>@endif
-                                    <a href="{{ route('admin.categories.create', ['parent_id'=>$category->id]) }}" class="rounded-lg border border-slate-200 px-3 py-2 font-bold">Add Child</a>
-                                    <a href="{{ route('admin.categories.products.index', $category) }}" class="rounded-lg border border-blue-200 px-3 py-2 font-bold text-brand-blue">Products</a>
-                                    <a href="{{ route('admin.categories.edit', $category) }}" class="rounded-lg border border-slate-200 px-3 py-2 font-bold">Edit</a>
-                                    <form method="POST" action="{{ route('admin.categories.duplicate', $category) }}" onsubmit="return confirm('Duplicate this category as a draft?')">@csrf<button class="rounded-lg border border-slate-200 px-3 py-2 font-bold">Duplicate</button></form>
-                                    <form method="POST" action="{{ route('admin.categories.destroy', $category) }}" onsubmit="return confirm('Move this category to trash?')">@csrf @method('DELETE')<button class="rounded-lg border border-red-200 px-3 py-2 font-bold text-red-700">Delete</button></form>
+                                <div class="admin-row-actions">
+                                    @if($category->status === 'active')<a href="{{ route('categories.show', $category->slug) }}" target="_blank" rel="noopener" class="admin-row-action border-slate-200">Preview</a>@endif
+                                    <a href="{{ route('admin.categories.create', ['parent_id'=>$category->id]) }}" class="admin-row-action border-slate-200">Add Child</a>
+                                    <a href="{{ route('admin.categories.products.index', $category) }}" class="admin-row-action border-blue-200 text-brand-blue">Products</a>
+                                    <a href="{{ route('admin.categories.edit', $category) }}" class="admin-row-action border-slate-200">Edit</a>
+                                    <form method="POST" action="{{ route('admin.categories.duplicate', $category) }}" onsubmit="return confirm('Duplicate this category as a draft?')">@csrf<button class="admin-row-action border-slate-200">Duplicate</button></form>
+                                    <form method="POST" action="{{ route('admin.categories.destroy', $category) }}" onsubmit="return confirm('Move this category to trash?')">@csrf @method('DELETE')<button class="admin-row-action border-red-200 text-red-700 hover:bg-red-50">Delete</button></form>
                                 </div>
                             </td>
                         </tr>

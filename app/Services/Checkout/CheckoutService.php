@@ -4,9 +4,13 @@ namespace App\Services\Checkout;
 
 use App\Models\CustomerAddress;
 use App\Models\CustomerPaymentMethod;
+use App\Models\Order;
+use App\Models\Product;
 use App\Models\User;
 use App\Services\Cart\CartService;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -32,6 +36,7 @@ class CheckoutService
             'shippingMethods' => $this->shippingMethods($cart),
             'paymentOptions' => $this->paymentOptions(),
             'summary' => $this->checkoutSummary($cart, $state),
+            'orderIdempotencyKey' => $this->orderIdempotencyKey(),
         ];
     }
 
@@ -139,42 +144,170 @@ class CheckoutService
         $state = $this->state();
         $cart = $this->cart->summary();
         $summary = $this->checkoutSummary($cart, $state);
+        $idempotencyKey = trim((string) ($payload['idempotency_key'] ?? ''));
 
-        $idempotencyKey = (string) ($payload['idempotency_key'] ?? '');
-        $existing = $state['placed_order'] ?? null;
-
-        if (is_array($existing) && hash_equals((string) ($existing['idempotency_key'] ?? ''), $idempotencyKey)) {
-            return $existing;
+        $existingSnapshot = $state['placed_order'] ?? null;
+        if (is_array($existingSnapshot) && hash_equals((string) ($existingSnapshot['idempotency_key'] ?? ''), $idempotencyKey)) {
+            return $existingSnapshot;
         }
 
-        $order = [
-            'order_number' => 'NP-' . now()->format('ymd') . '-' . Str::upper(Str::random(6)),
-            'status' => $summary['payment_method']['method'] === 'invoice' ? 'quote_invoice_requested' : 'pending_payment',
-            'payment_status' => 'pending',
-            'idempotency_key' => $idempotencyKey,
-            'user_id' => $user?->id,
-            'customer_email' => $state['information']['email'] ?? $user?->email,
-            'customer_name' => trim(($state['information']['first_name'] ?? '') . ' ' . ($state['information']['last_name'] ?? '')),
-            'items' => $cart['items'],
-            'totals' => Arr::only($summary, ['subtotal', 'customization_total', 'discount', 'shipping', 'tax', 'total', 'quantity']),
-            'information' => $state['information'] ?? [],
-            'shipping_address' => $state['shipping_address'] ?? [],
-            'billing_address' => $state['billing_address'] ?? [],
-            'shipping_method' => $state['shipping_method'] ?? [],
-            'payment_method' => $summary['payment_method'],
-            'placed_at' => now()->toIso8601String(),
-            'next_step' => $summary['payment_method']['method'] === 'invoice' ? 'admin_invoice_review' : 'payment_provider_redirect',
-        ];
+        $existingOrder = Order::query()->where('idempotency_key', $idempotencyKey)->first();
+        if ($existingOrder instanceof Order) {
+            $snapshot = $this->orderSnapshot($existingOrder->load('items'));
+            $this->mergeState('placed_order', $snapshot);
+            return $snapshot;
+        }
 
-        $this->mergeState('placed_order', $order);
+        try {
+            $order = DB::transaction(function () use ($state, $cart, $summary, $idempotencyKey, $user): Order {
+                $paymentMethod = (string) ($summary['payment_method']['method'] ?? 'card');
+                $order = Order::create([
+                    'user_id' => $user?->id,
+                    'order_number' => $this->uniqueOrderNumber(),
+                    'status' => $paymentMethod === 'invoice' ? 'quote_invoice_requested' : 'pending_payment',
+                    'payment_status' => 'pending',
+                    'fulfillment_status' => 'unfulfilled',
+                    'currency' => 'USD',
+                    'customer_email' => $state['information']['email'] ?? $user?->email ?? '',
+                    'customer_name' => trim(($state['information']['first_name'] ?? '') . ' ' . ($state['information']['last_name'] ?? '')) ?: ($user?->name ?? 'Customer'),
+                    'customer_phone' => $state['information']['phone'] ?? null,
+                    'subtotal' => $summary['subtotal'],
+                    'customization_total' => $summary['customization_total'],
+                    'discount_total' => $summary['discount'],
+                    'shipping_total' => $summary['shipping'],
+                    'tax_total' => $summary['tax'],
+                    'grand_total' => $summary['total'],
+                    'total_quantity' => $summary['quantity'],
+                    'information' => $state['information'] ?? [],
+                    'shipping_address' => $state['shipping_address'] ?? [],
+                    'billing_address' => $state['billing_address'] ?? [],
+                    'shipping_method' => $state['shipping_method'] ?? [],
+                    'payment_method' => $summary['payment_method'],
+                    'customer_note' => $state['information']['order_note'] ?? null,
+                    'idempotency_key' => $idempotencyKey,
+                    'placed_at' => now(),
+                ]);
 
-        Log::info('Checkout order snapshot created', [
-            'order_number' => $order['order_number'],
-            'status' => $order['status'],
-            'user_id' => $order['user_id'],
+                foreach ($cart['items'] as $cartItem) {
+                    $productData = (array) ($cartItem['product'] ?? []);
+                    $product = Product::query()->where('slug', $cartItem['product_slug'] ?? $productData['slug'] ?? '')->first();
+                    $order->items()->create([
+                        'product_id' => $product?->id,
+                        'product_slug' => $cartItem['product_slug'] ?? $productData['slug'] ?? null,
+                        'product_name' => $productData['title'] ?? $productData['short_title'] ?? 'Custom Product',
+                        'sku' => $productData['sku'] ?? $product?->sku,
+                        'image_url' => $productData['image'] ?? null,
+                        'quantity' => (int) ($cartItem['quantity'] ?? 1),
+                        'unit_price' => (float) ($cartItem['unit_price'] ?? 0),
+                        'customization_unit_price' => (float) ($cartItem['customization_unit_price'] ?? 0),
+                        'line_total' => (float) ($cartItem['line_total'] ?? 0),
+                        'customization' => $cartItem['customization'] ?? [],
+                        'is_digital' => false,
+                    ]);
+                }
+
+                $order->histories()->create([
+                    'actor_id' => $user?->id,
+                    'status' => $order->status,
+                    'title' => 'Order placed',
+                    'description' => $paymentMethod === 'invoice'
+                        ? 'The order was submitted for invoice review.'
+                        : 'The order was created and is waiting for secure payment confirmation.',
+                    'occurred_at' => now(),
+                ]);
+
+                return $order->load('items');
+            });
+        } catch (QueryException $exception) {
+            $order = Order::query()
+                ->where('idempotency_key', $idempotencyKey)
+                ->with('items')
+                ->first();
+
+            if (! $order) {
+                throw $exception;
+            }
+        }
+
+        $snapshot = $this->orderSnapshot($order);
+        $this->mergeState('placed_order', $snapshot);
+        $this->cart->clear();
+
+        Log::info('Checkout order persisted', [
+            'order_number' => $order->order_number,
+            'status' => $order->status,
+            'user_id' => $order->user_id,
         ]);
 
-        return $order;
+        return $snapshot;
+    }
+
+    private function orderSnapshot(Order $order): array
+    {
+        return [
+            'id' => $order->id,
+            'order_number' => $order->order_number,
+            'status' => $order->status,
+            'payment_status' => $order->payment_status,
+            'idempotency_key' => $order->idempotency_key,
+            'user_id' => $order->user_id,
+            'customer_email' => $order->customer_email,
+            'customer_name' => $order->customer_name,
+            'items' => $order->items->map(fn ($item): array => [
+                'product' => [
+                    'title' => $item->product_name,
+                    'image' => $item->image_url,
+                    'alt' => $item->product_name,
+                    'slug' => $item->product_slug,
+                    'sku' => $item->sku,
+                ],
+                'quantity' => $item->quantity,
+                'unit_price' => (float) $item->unit_price,
+                'customization_unit_price' => (float) $item->customization_unit_price,
+                'line_total' => (float) $item->line_total,
+                'customization' => $item->customization ?? [],
+            ])->all(),
+            'totals' => [
+                'subtotal' => (float) $order->subtotal,
+                'customization_total' => (float) $order->customization_total,
+                'discount' => (float) $order->discount_total,
+                'shipping' => (float) $order->shipping_total,
+                'tax' => (float) $order->tax_total,
+                'total' => (float) $order->grand_total,
+                'quantity' => $order->total_quantity,
+            ],
+            'information' => $order->information ?? [],
+            'shipping_address' => $order->shipping_address ?? [],
+            'billing_address' => $order->billing_address ?? [],
+            'shipping_method' => $order->shipping_method ?? [],
+            'payment_method' => $order->payment_method ?? [],
+            'placed_at' => $order->placed_at?->toIso8601String(),
+            'next_step' => $order->status === 'quote_invoice_requested' ? 'admin_invoice_review' : 'payment_provider_redirect',
+        ];
+    }
+
+    private function uniqueOrderNumber(): string
+    {
+        do {
+            $number = 'NP-'.now()->format('ymd').'-'.Str::upper(Str::random(6));
+        } while (Order::query()->where('order_number', $number)->exists());
+
+        return $number;
+    }
+
+    public function orderIdempotencyKey(): string
+    {
+        $state = $this->state();
+        $key = (string) ($state['order_idempotency_key'] ?? '');
+
+        if (isset($state['placed_order']) || strlen($key) !== 40) {
+            unset($state['placed_order']);
+            $key = Str::random(40);
+            $state['order_idempotency_key'] = $key;
+            session()->put(self::SESSION_KEY, $state);
+        }
+
+        return $key;
     }
 
     public function clear(): void
@@ -190,6 +323,12 @@ class CheckoutService
     private function mergeState(string $key, array $value): void
     {
         $state = $this->state();
+
+        if ($key !== 'placed_order' && isset($state['placed_order'])) {
+            unset($state['placed_order']);
+            $state['order_idempotency_key'] = Str::random(40);
+        }
+
         $state[$key] = $value;
         $state['updated_at'] = now()->toIso8601String();
 

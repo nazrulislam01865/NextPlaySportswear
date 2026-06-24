@@ -34,6 +34,17 @@ class User extends Authenticatable
         return $this->hasMany(CustomerPaymentMethod::class)->latest();
     }
 
+    /** @return HasMany<Order> */
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class)->latest('placed_at');
+    }
+
+    /** @return HasMany<OrderReturnRequest> */
+    public function orderReturnRequests(): HasMany
+    {
+        return $this->hasMany(OrderReturnRequest::class)->latest('requested_at');
+    }
 
     public function isAdmin(): bool
     {
@@ -43,6 +54,11 @@ class User extends Authenticatable
     public function isCustomer(): bool
     {
         return $this->role === 'customer' && $this->is_active;
+    }
+
+    public function canManageOrders(): bool
+    {
+        return in_array($this->role, ['super_admin', 'admin'], true) && $this->is_active;
     }
 
     /**
