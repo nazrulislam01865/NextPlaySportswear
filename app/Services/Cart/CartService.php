@@ -72,7 +72,7 @@ class CartService
 
         abort_if($product === null, 404);
 
-        $customization = $this->sanitizeCustomization($payload, $product);
+        $customization = $this->sanitizeCustomization($payload, $product, (int) ($payload['quantity'] ?? 1));
         $configuredQuantity = (int) collect($customization['configuration']['quantities'] ?? [])->sum();
         $quantity = $this->sanitizeQuantity($configuredQuantity > 0 ? $configuredQuantity : (int) ($payload['quantity'] ?? 1), $product);
         $this->validateRequiredConfiguration($product, $customization);
@@ -165,7 +165,11 @@ class CartService
             return [];
         }
 
-        $customization = $this->sanitizeCustomization((array) ($item['customization'] ?? []), $product);
+        $customization = $this->sanitizeCustomization(
+            (array) ($item['customization'] ?? []),
+            $product,
+            (int) ($item['quantity'] ?? 1)
+        );
         $configuredQuantity = (int) collect($customization['configuration']['quantities'] ?? [])->sum();
         $quantity = $this->sanitizeQuantity($configuredQuantity > 0 ? $configuredQuantity : (int) ($item['quantity'] ?? 1), $product);
         $unitPrice = $this->unitPriceForQuantity($product, $quantity);
@@ -185,14 +189,18 @@ class CartService
         ]);
     }
 
-    private function sanitizeCustomization(array $payload, array $product): array
+    private function sanitizeCustomization(array $payload, array $product, int $fallbackQuantity = 1): array
     {
         $designOption = Str::limit(trim((string) ($payload['design_option'] ?? 'Configured product')), 80, '');
         $deliveryPreference = Str::limit(trim((string) ($payload['delivery_preference'] ?? 'Standard production')), 80, '');
         $sizeSummary = Str::limit(trim((string) ($payload['size_summary'] ?? 'Sizes selected in configuration')), 600, '');
         $artworkStatus = Str::limit(trim((string) ($payload['artwork_status'] ?? 'Artwork can be sent now or later')), 120, '');
         $notes = Str::limit(trim((string) ($payload['notes'] ?? '')), 1000, '');
-        $configuration = $this->normalizeConfiguration($payload['configuration_json'] ?? ($payload['configuration'] ?? []), $product);
+        $configuration = $this->normalizeConfiguration(
+            $payload['configuration_json'] ?? ($payload['configuration'] ?? []),
+            $product,
+            $fallbackQuantity
+        );
         $selectedSpeed = collect($product['production_speeds'] ?? [])->firstWhere('id', $configuration['production_speed'] ?? null);
         $selectedShipping = collect($product['shipping_methods'] ?? [])->firstWhere('id', $configuration['shipping_method'] ?? null);
         $secureDeliveryLabels = collect([$selectedSpeed['label'] ?? null, $selectedShipping['label'] ?? null])->filter()->implode(' / ');
@@ -235,7 +243,7 @@ class CartService
         ];
     }
 
-    private function normalizeConfiguration(array|string $raw, array $product): array
+    private function normalizeConfiguration(array|string $raw, array $product, int $fallbackQuantity = 1): array
     {
         if (is_string($raw)) {
             $decoded = json_decode($raw, true);
@@ -321,7 +329,23 @@ class CartService
             }
         }
 
-        $productionSpeeds = collect($product['production_speeds'] ?? [])->pluck('id')->map(fn ($id) => (string) $id)->all();
+        $productionSpeeds = collect($product['production_speeds'] ?? []);
+        $productionQuantity = max(
+            (int) collect($quantities)->sum() ?: max(1, $fallbackQuantity),
+            (int) ($product['minimum_quantity'] ?? 1)
+        );
+        $availableProductionSpeeds = $productionSpeeds->filter(function (array $speed) use ($productionQuantity): bool {
+            $minimum = max(1, (int) ($speed['minimum_quantity'] ?? 1));
+            $maximum = filled($speed['maximum_quantity'] ?? null)
+                ? (int) $speed['maximum_quantity']
+                : null;
+
+            return $productionQuantity >= $minimum
+                && ($maximum === null || $productionQuantity <= $maximum);
+        })->values();
+        $requestedProductionSpeed = (string) ($raw['production_speed'] ?? '');
+        $productionSpeed = $availableProductionSpeeds->firstWhere('id', $requestedProductionSpeed)
+            ?? $availableProductionSpeeds->first();
         $shippingMethods = collect($product['shipping_methods'] ?? []);
         $shippingIds = $shippingMethods->pluck('id')->map(fn ($id) => (string) $id)->all();
         $defaultShipping = $shippingMethods->firstWhere('default', true)['id'] ?? ($shippingIds[0] ?? null);
@@ -370,7 +394,7 @@ class CartService
             'multi_selections' => $multiSelections,
             'inputs' => $inputs,
             'quantities' => $quantities,
-            'production_speed' => in_array((string) ($raw['production_speed'] ?? ''), $productionSpeeds, true) ? (string) $raw['production_speed'] : ($productionSpeeds[0] ?? null),
+            'production_speed' => filled($productionSpeed['id'] ?? null) ? (string) $productionSpeed['id'] : null,
             'shipping_method' => in_array((string) ($raw['shipping_method'] ?? ''), $shippingIds, true) ? (string) $raw['shipping_method'] : $defaultShipping,
             'roster_enabled' => $rosterEnabled,
             'roster' => $roster,
@@ -483,7 +507,14 @@ class CartService
             }
         }
 
-        $speed = collect($product['production_speeds'] ?? [])->firstWhere('id', $configuration['production_speed'] ?? null);
+        $speed = collect($product['production_speeds'] ?? [])
+            ->filter(function (array $speed) use ($quantity): bool {
+                $minimum = max(1, (int) ($speed['minimum_quantity'] ?? 1));
+                $maximum = filled($speed['maximum_quantity'] ?? null) ? (int) $speed['maximum_quantity'] : null;
+
+                return $quantity >= $minimum && ($maximum === null || $quantity <= $maximum);
+            })
+            ->firstWhere('id', $configuration['production_speed'] ?? null);
         $perUnit += (float) ($speed['price_delta'] ?? 0);
 
         $shipping = collect($product['shipping_methods'] ?? [])->firstWhere('id', $configuration['shipping_method'] ?? null);
@@ -579,7 +610,16 @@ class CartService
 
         return collect($preview)
             ->map(function (array $item): array {
-                $customization = $this->sanitizeCustomization($item['customization']);
+                $product = $this->products->findBySlug($item['product_slug']);
+                if ($product === null) {
+                    return [];
+                }
+
+                $customization = $this->sanitizeCustomization(
+                    $item['customization'],
+                    $product,
+                    (int) $item['quantity']
+                );
 
                 return $this->repriceItem([
                     'key' => $this->makeItemKey($item['product_slug'], $customization),
@@ -590,6 +630,7 @@ class CartService
                     'updated_at' => now()->toIso8601String(),
                 ]);
             })
+            ->filter()
             ->values()
             ->all();
     }

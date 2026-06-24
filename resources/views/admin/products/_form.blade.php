@@ -82,7 +82,39 @@
         'chart_image_url' => $group->chart_image_url, 'chart_image_preview' => $group->chartImageUrl(),
         'clear_chart_image' => false,
     ])->values()->all() : []);
-    $speedValues = old('production_speeds', $product->relationLoaded('productionSpeeds') ? $product->productionSpeeds->where('is_active', true)->map(fn($speed) => $speed->only(['name','code','description','price_adjustment','minimum_days','maximum_days','is_active']))->values()->all() : []);
+    $storedSpeedValues = collect($product->relationLoaded('productionSpeeds')
+        ? $product->productionSpeeds->where('is_active', true)->map(fn($speed) => $speed->only([
+            'name', 'code', 'description', 'price_adjustment', 'minimum_quantity', 'maximum_quantity',
+            'minimum_days', 'maximum_days', 'is_active',
+        ]))->values()->all()
+        : [])->values();
+    $oldProductionRanges = old('production_ranges');
+    $submittedProductionRanges = collect(is_array($oldProductionRanges) ? $oldProductionRanges : [])->values();
+    $speedRangeValues = collect($priceRowValues)->map(function (array $range, int $index) use ($storedSpeedValues, $submittedProductionRanges, $oldProductionRanges): array {
+        $minimum = (int) ($range['minimum_quantity'] ?? 1);
+        $maximum = filled($range['maximum_quantity'] ?? null) ? (int) $range['maximum_quantity'] : null;
+
+        $options = is_array($oldProductionRanges)
+            ? collect(data_get($submittedProductionRanges->get($index), 'options', []))
+            : $storedSpeedValues->filter(function ($speed) use ($minimum, $maximum): bool {
+                return (int) data_get($speed, 'minimum_quantity', 0) === $minimum
+                    && (filled(data_get($speed, 'maximum_quantity')) ? (int) data_get($speed, 'maximum_quantity') : null) === $maximum;
+            });
+
+        return [
+            'minimum_quantity' => $minimum,
+            'maximum_quantity' => $maximum,
+            'options' => $options->take(3)->map(fn ($speed) => [
+                'name' => data_get($speed, 'name', ''),
+                'code' => data_get($speed, 'code', ''),
+                'description' => data_get($speed, 'description', ''),
+                'price_adjustment' => data_get($speed, 'price_adjustment', 0),
+                'minimum_days' => data_get($speed, 'minimum_days', 1),
+                'maximum_days' => data_get($speed, 'maximum_days', data_get($speed, 'minimum_days', 1)),
+                'is_active' => true,
+            ])->values()->all(),
+        ];
+    })->values()->all();
     $shippingValues = old('shipping_methods', $product->relationLoaded('shippingMethods') ? $product->shippingMethods->where('is_active', true)->map(fn($method) => $method->only(['name','code','description','price_adjustment','charge_type','minimum_days','maximum_days','is_default','is_active']))->values()->all() : []);
     $defaultRosterFields = [
         ['key' => 'name', 'label' => 'Player name', 'type' => 'text', 'max_length' => 60, 'required' => false, 'enabled' => true],
@@ -99,7 +131,7 @@
         'priceRows' => $priceRowValues,
         'optionGroups' => $optionValues,
         'sizeGroups' => $sizeValues,
-        'productionSpeeds' => $speedValues,
+        'productionRanges' => $speedRangeValues,
         'shippingMethods' => $shippingValues,
         'rosterFields' => $rosterFieldValues,
         'productProfile' => old('product_profile', $product->product_profile ?: 'standard'),
@@ -162,14 +194,49 @@
                 <label class="admin-label">Gallery badge label<input class="admin-input" name="badge_label" value="{{ old('badge_label',$product->badge_label) }}" maxlength="80" placeholder="Customizable, New, Best Seller"></label>
             </div>
             <div class="space-y-5">
-                <label class="admin-label">Upload product images<input class="admin-input py-3" type="file" name="images[]" multiple accept="image/jpeg,image/png,image/webp,image/avif"><small class="mt-1 block font-normal text-slate-500">JPG, PNG, WebP or AVIF. Maximum 5 MB each.</small></label>
-                <div class="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-brand-blue">The primary image appears first in the large gallery. Alt text is used for accessibility and image SEO.</div>
+                <label class="admin-label">Upload product images
+                    <input
+                        x-ref="productImageInput"
+                        class="admin-input py-3"
+                        type="file"
+                        name="images[]"
+                        multiple
+                        accept="image/jpeg,image/png,image/webp,image/avif"
+                        @change="previewProductImages($event)"
+                    >
+                    <small class="mt-1 block font-normal text-slate-500">Select multiple JPG, PNG, WebP or AVIF images. Maximum 5 MB each.</small>
+                </label>
+
+                <div x-show="newImagePreviews.length" x-cloak>
+                    <div class="mb-3 flex items-center justify-between gap-3">
+                        <strong class="text-sm text-brand-ink">New image previews</strong>
+                        <span class="text-xs font-black text-brand-blue"><span x-text="newImagePreviews.length"></span> selected</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        <template x-for="(image, index) in newImagePreviews" :key="image.client_key">
+                            <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                                <img :src="image.url" :alt="image.name" class="aspect-square w-full object-cover">
+                                <div class="p-3">
+                                    <strong class="block truncate text-xs text-brand-ink" x-text="image.name"></strong>
+                                    <span class="mt-1 block text-[11px] text-slate-500" x-text="image.sizeLabel"></span>
+                                    <button type="button" class="mt-2 text-xs font-black text-red-700" @click="removeProductImage(index)">Remove</button>
+                                </div>
+                            </article>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-brand-blue">Every selected image is shown here before saving. Existing saved images remain below, and the primary image appears first in the storefront gallery.</div>
             </div>
         </div>
 
         <div class="mt-5 space-y-3">
             <template x-for="(image, index) in imageUrls" :key="index">
-                <div class="grid gap-3 rounded-2xl border border-slate-200 p-4 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_auto_auto] md:items-end">
+                <div class="grid gap-3 rounded-2xl border border-slate-200 p-4 md:grid-cols-[96px_minmax(0,1.4fr)_minmax(0,1fr)_auto_auto] md:items-end">
+                    <div class="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                        <img x-show="image.url" :src="image.url" :alt="image.alt || productName" class="aspect-square w-full object-cover" x-on:error="$el.classList.add('hidden')">
+                        <div x-show="!image.url" class="grid aspect-square place-items-center text-xs font-bold text-slate-400">No preview</div>
+                    </div>
                     <label class="admin-label">Existing or remote image URL<input class="admin-input" type="url" :name="`image_urls[${index}][url]`" x-model="image.url"></label>
                     <label class="admin-label">Alt text<input class="admin-input" :name="`image_urls[${index}][alt]`" x-model="image.alt"></label>
                     <div><input type="hidden" :name="`image_urls[${index}][is_primary]`" :value="image.is_primary ? 1 : 0"><button type="button" class="btn btn-white" @click="setPrimaryImage(index)" x-text="image.is_primary ? 'Primary image' : 'Make primary'"></button></div>
@@ -242,14 +309,14 @@
                             <td class="border-r border-t border-slate-200 p-3 align-top">
                                 <input type="hidden" :name="`price_table_rows[${rIndex}][0]`" :value="row.minimum_quantity || ''">
                                 <div class="grid gap-3 sm:grid-cols-2">
-                                    <label class="admin-label">Min Qty<input class="admin-input" type="number" min="1" :name="`price_table_ranges[${rIndex}][minimum_quantity]`" x-model.number="row.minimum_quantity" required></label>
-                                    <label class="admin-label">Max Qty<input class="admin-input" type="number" min="1" :name="`price_table_ranges[${rIndex}][maximum_quantity]`" x-model.number="row.maximum_quantity" placeholder="No limit"></label>
+                                    <label class="admin-label">Min Qty<input class="admin-input" type="number" min="1" :name="`price_table_ranges[${rIndex}][minimum_quantity]`" x-model.number="row.minimum_quantity" @input="$nextTick(() => syncProductionRangesWithPriceRows())" required></label>
+                                    <label class="admin-label">Max Qty<input class="admin-input" type="number" min="1" :name="`price_table_ranges[${rIndex}][maximum_quantity]`" x-model.number="row.maximum_quantity" @input="$nextTick(() => syncProductionRangesWithPriceRows())" placeholder="No limit"></label>
                                 </div>
                             </td>
                             <template x-for="(cell,cIndex) in row.cells" :key="cIndex">
                                 <td class="border-r border-t border-slate-200 p-3"><input class="admin-input" :name="`price_table_rows[${rIndex}][${cIndex + 1}]`" x-model="row.cells[cIndex]"></td>
                             </template>
-                            <td class="border-t border-slate-200 p-3"><button type="button" class="text-xs font-black text-red-700" @click="priceRows.splice(rIndex,1)">Remove</button></td>
+                            <td class="border-t border-slate-200 p-3"><button type="button" class="text-xs font-black text-red-700" @click="removePriceRow(rIndex)">Remove</button></td>
                         </tr>
                     </template>
                 </tbody>
@@ -463,17 +530,61 @@
 
     <x-admin.section-card id="delivery" title="8. Production & Shipping" description="These choices appear together in the final configuration step before the live order summary.">
         <div>
-            <div class="flex items-center justify-between"><div><h3 class="font-black">Production speeds</h3><p class="text-xs text-slate-500">Remove every row when no production-speed selector should appear.</p></div><button type="button" class="btn btn-white" @click="addProductionSpeed()">+ Add</button></div>
-            <div class="mt-4 grid gap-3 xl:grid-cols-2">
-                <template x-for="(speed,index) in productionSpeeds" :key="index">
-                    <div class="rounded-2xl border border-slate-200 p-4">
-                        <input type="hidden" :name="`production_speeds[${index}][code]`" x-model="speed.code">
-                        <input type="hidden" :name="`production_speeds[${index}][is_active]`" value="1">
-                        <div class="grid gap-3 sm:grid-cols-2"><label class="admin-label">Name<input class="admin-input" :name="`production_speeds[${index}][name]`" x-model="speed.name" @blur="if(!speed.code) speed.code = speed.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')"></label><label class="admin-label">Per-unit charge<input class="admin-input" type="number" step="0.01" :name="`production_speeds[${index}][price_adjustment]`" x-model="speed.price_adjustment"></label><label class="admin-label">Minimum days<input class="admin-input" type="number" min="0" :name="`production_speeds[${index}][minimum_days]`" x-model="speed.minimum_days"></label><label class="admin-label">Maximum days<input class="admin-input" type="number" min="0" :name="`production_speeds[${index}][maximum_days]`" x-model="speed.maximum_days"></label></div>
-                        <label class="admin-label mt-3">Description<input class="admin-input" :name="`production_speeds[${index}][description]`" x-model="speed.description"></label>
-                        <div class="mt-3 text-right"><button type="button" class="text-sm font-black text-red-700" @click="productionSpeeds.splice(index,1)">Remove</button></div>
-                    </div>
+            <div>
+                <h3 class="font-black">Production options by quantity</h3>
+                <p class="mt-1 text-xs leading-5 text-slate-500">Each quantity range comes from the Visible Storefront Pricing Table. Add up to three production options for a range, or leave it empty when no production choice is needed.</p>
+            </div>
+
+            <div class="mt-4 space-y-4">
+                <template x-for="(range,rangeIndex) in productionRanges" :key="range.client_key || rangeIndex">
+                    <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                        <input type="hidden" :name="`production_ranges[${rangeIndex}][minimum_quantity]`" :value="range.minimum_quantity">
+                        <input type="hidden" :name="`production_ranges[${rangeIndex}][maximum_quantity]`" :value="range.maximum_quantity || ''">
+
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p class="text-[10px] font-black uppercase tracking-[.14em] text-brand-blue">Quantity range</p>
+                                <h4 class="mt-1 text-lg font-black text-brand-ink" x-text="productionQuantityLabel(range)"></h4>
+                                <p class="mt-1 text-xs text-slate-500"><span x-text="range.options.length"></span> of 3 production options added</p>
+                            </div>
+                            <button type="button" class="btn btn-white shrink-0" @click="openProductionOptionDialog(rangeIndex)" :disabled="range.options.length >= 3" :class="range.options.length >= 3 && 'cursor-not-allowed opacity-50'">+ Add Production Option</button>
+                        </div>
+
+                        <div class="mt-4 grid gap-3 lg:grid-cols-3" x-show="range.options.length > 0">
+                            <template x-for="(option,optionIndex) in range.options" :key="option.client_key || optionIndex">
+                                <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                                    <input type="hidden" :name="`production_ranges[${rangeIndex}][options][${optionIndex}][name]`" :value="option.name">
+                                    <input type="hidden" :name="`production_ranges[${rangeIndex}][options][${optionIndex}][code]`" :value="option.code">
+                                    <input type="hidden" :name="`production_ranges[${rangeIndex}][options][${optionIndex}][description]`" :value="option.description || ''">
+                                    <input type="hidden" :name="`production_ranges[${rangeIndex}][options][${optionIndex}][price_adjustment]`" :value="option.price_adjustment || 0">
+                                    <input type="hidden" :name="`production_ranges[${rangeIndex}][options][${optionIndex}][minimum_days]`" :value="option.minimum_days || 0">
+                                    <input type="hidden" :name="`production_ranges[${rangeIndex}][options][${optionIndex}][maximum_days]`" :value="option.maximum_days || option.minimum_days || 0">
+                                    <input type="hidden" :name="`production_ranges[${rangeIndex}][options][${optionIndex}][is_active]`" value="1">
+
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0">
+                                            <strong class="block truncate text-sm text-brand-ink" x-text="option.name"></strong>
+                                            <span class="mt-1 block text-xs font-black text-brand-red" x-text="productionChargeLabel(option)"></span>
+                                        </div>
+                                        <span class="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-black text-brand-blue" x-show="optionIndex === 0">Default</span>
+                                    </div>
+                                    <p class="mt-3 text-xs font-bold text-brand-blue"><span x-text="option.minimum_days || 0"></span>–<span x-text="option.maximum_days || option.minimum_days || 0"></span> working days</p>
+                                    <p class="mt-2 line-clamp-2 text-xs leading-5 text-slate-500" x-show="option.description" x-text="option.description"></p>
+                                    <div class="mt-4 flex gap-3 border-t border-slate-100 pt-3">
+                                        <button type="button" class="text-xs font-black text-brand-blue" @click="openProductionOptionDialog(rangeIndex, optionIndex)">Edit</button>
+                                        <button type="button" class="text-xs font-black text-red-700" @click="removeProductionOption(rangeIndex, optionIndex)">Remove</button>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <div class="mt-4 rounded-2xl border-2 border-dashed border-slate-300 bg-white p-5 text-center text-xs leading-5 text-slate-500" x-show="range.options.length === 0">
+                            No production option has been added for this quantity range. Nothing will be shown or charged on the product page for this range.
+                        </div>
+                    </article>
                 </template>
+
+                <div x-show="productionRanges.length === 0" class="rounded-2xl border-2 border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">Add a row to the Visible Storefront Pricing Table first.</div>
             </div>
         </div>
 
@@ -495,6 +606,44 @@
                     </article>
                 </template>
                 <div x-show="shippingMethods.length === 0" class="rounded-2xl border-2 border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">Shipping methods are enabled but no method has been added.</div>
+            </div>
+        </div>
+
+        <div x-cloak x-show="productionOptionDialogOpen" x-transition.opacity class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-4" @keydown.escape.window="closeProductionOptionDialog()">
+            <div class="w-full max-w-2xl overflow-hidden rounded-[28px] bg-white shadow-2xl" @click.outside="closeProductionOptionDialog()">
+                <div class="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-5 sm:px-6">
+                    <div>
+                        <p class="text-[10px] font-black uppercase tracking-[.14em] text-brand-blue" x-text="productionOptionEditingIndex === null ? 'Add production option' : 'Edit production option'"></p>
+                        <h3 class="mt-1 text-xl font-black text-brand-ink" x-text="productionOptionRangeIndex === null ? 'Production option' : productionQuantityLabel(productionRanges[productionOptionRangeIndex])"></h3>
+                    </div>
+                    <button type="button" class="grid h-10 w-10 place-items-center rounded-full border border-slate-200 text-xl text-slate-500" @click="closeProductionOptionDialog()" aria-label="Close">×</button>
+                </div>
+
+                <div class="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
+                    <label class="admin-label sm:col-span-2">Production option name
+                        <input class="admin-input" x-model="productionOptionDraft.name" maxlength="160" placeholder="Example: Standard Production">
+                    </label>
+                    <label class="admin-label">Separate charge / piece
+                        <input class="admin-input" type="number" min="0" step="0.01" x-model.number="productionOptionDraft.price_adjustment">
+                    </label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="admin-label">Minimum days
+                            <input class="admin-input" type="number" min="0" max="3650" x-model.number="productionOptionDraft.minimum_days">
+                        </label>
+                        <label class="admin-label">Maximum days
+                            <input class="admin-input" type="number" min="0" max="3650" x-model.number="productionOptionDraft.maximum_days">
+                        </label>
+                    </div>
+                    <label class="admin-label sm:col-span-2">Description
+                        <textarea class="admin-textarea" x-model="productionOptionDraft.description" maxlength="2000" placeholder="Optional customer-facing production details"></textarea>
+                    </label>
+                    <p class="sm:col-span-2 text-xs font-bold text-red-700" x-show="productionOptionDialogError" x-text="productionOptionDialogError"></p>
+                </div>
+
+                <div class="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+                    <button type="button" class="btn btn-white" @click="closeProductionOptionDialog()">Cancel</button>
+                    <button type="button" class="btn btn-red" @click="saveProductionOption()" x-text="productionOptionEditingIndex === null ? 'Add Production Option' : 'Save Changes'"></button>
+                </div>
             </div>
         </div>
     </x-admin.section-card>

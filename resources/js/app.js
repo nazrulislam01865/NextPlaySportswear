@@ -24,6 +24,7 @@ window.adminProductForm = (initial = {}) => ({
     features: initial.features?.length ? initial.features : [''],
     specifications: initial.specifications?.length ? initial.specifications : [{ name: '', value: '' }],
     imageUrls: initial.imageUrls?.length ? initial.imageUrls : [{ url: '', alt: '', is_primary: true }],
+    newImagePreviews: [],
     priceHeaders: initial.priceHeaders?.length ? initial.priceHeaders : ['Unit Price', 'Savings'],
     priceRows: initial.priceRows?.length ? initial.priceRows : [{ minimum_quantity: 1, maximum_quantity: '', cells: ['$0.00', '—'] }],
     optionGroups: initial.optionGroups?.length ? initial.optionGroups : [],
@@ -38,9 +39,12 @@ window.adminProductForm = (initial = {}) => ({
     artworkUploadMaxFiles: Number(initial.artworkUploadMaxFiles || 5),
     artworkUploadMaxFileSizeMb: Number(initial.artworkUploadMaxFileSizeMb || 15),
     artworkUploadAcceptedTypes: initial.artworkUploadAcceptedTypes || 'pdf,svg,png,jpg,jpeg,webp',
-    productionSpeeds: initial.productionSpeeds?.length ? initial.productionSpeeds : [
-        { name: 'Standard Production', code: 'standard', description: 'Standard production schedule.', price_adjustment: 0, minimum_days: 14, maximum_days: 18, is_active: true },
-    ],
+    productionRanges: initial.productionRanges?.length ? initial.productionRanges : [],
+    productionOptionDialogOpen: false,
+    productionOptionRangeIndex: null,
+    productionOptionEditingIndex: null,
+    productionOptionDialogError: '',
+    productionOptionDraft: { name: '', code: '', description: '', price_adjustment: 0, minimum_days: 1, maximum_days: 1 },
     shippingMethods: initial.shippingMethods?.length ? initial.shippingMethods : [],
     rosterFields: initial.rosterFields?.length ? initial.rosterFields : [
         { key: 'name', label: 'Player name', type: 'text', max_length: 60, required: false, enabled: true },
@@ -52,6 +56,7 @@ window.adminProductForm = (initial = {}) => ({
 
     init() {
         this.normalizePriceRows();
+        this.syncProductionRangesWithPriceRows();
         this.optionGroups.forEach(group => {
             group.client_key ||= this.clientKey();
             group.display_mode = 'customer';
@@ -103,13 +108,51 @@ window.adminProductForm = (initial = {}) => ({
     addSpecification() { this.specifications.push({ name: '', value: '' }); },
     addImageUrl() { this.imageUrls.push({ url: '', alt: '', is_primary: false }); },
     setPrimaryImage(index) { this.imageUrls.forEach((item, itemIndex) => item.is_primary = itemIndex === index); },
+    previewProductImages(event) {
+        this.newImagePreviews.forEach(image => URL.revokeObjectURL(image.url));
+        const files = Array.from(event.target.files || []);
+        const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
+        const invalid = files.find(file => !allowed.includes(file.type) || file.size > 5 * 1024 * 1024);
+
+        if (invalid || files.length > 20) {
+            event.target.value = '';
+            this.newImagePreviews = [];
+            window.alert('Choose up to 20 JPG, PNG, WebP, or AVIF images, each no larger than 5 MB.');
+            return;
+        }
+
+        this.newImagePreviews = files.map(file => ({
+            client_key: this.clientKey(),
+            file,
+            name: String(file.name || 'Product image').slice(0, 255),
+            url: URL.createObjectURL(file),
+            sizeLabel: file.size >= 1024 * 1024
+                ? `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+                : `${Math.max(1, Math.round(file.size / 1024))} KB`,
+        }));
+    },
+    removeProductImage(index) {
+        const removed = this.newImagePreviews.splice(index, 1)[0];
+        if (removed?.url) URL.revokeObjectURL(removed.url);
+
+        const transfer = new DataTransfer();
+        this.newImagePreviews.forEach(image => transfer.items.add(image.file));
+        if (this.$refs.productImageInput) this.$refs.productImageInput.files = transfer.files;
+    },
     addPriceHeader() { this.priceHeaders.push('New Column'); this.normalizePriceRows(); },
     removePriceHeader(index) {
         if (this.priceHeaders.length <= 1) return;
         this.priceHeaders.splice(index, 1);
         this.priceRows.forEach(row => row.cells.splice(index, 1));
     },
-    addPriceRow() { this.priceRows.push({ minimum_quantity: '', maximum_quantity: '', cells: this.priceHeaders.map(() => '') }); },
+    addPriceRow() {
+        this.priceRows.push({ minimum_quantity: '', maximum_quantity: '', cells: this.priceHeaders.map(() => '') });
+        this.syncProductionRangesWithPriceRows();
+    },
+    removePriceRow(index) {
+        this.priceRows.splice(index, 1);
+        this.syncProductionRangesWithPriceRows();
+    },
     normalizePriceRows() {
         this.priceRows = this.priceRows.map(row => {
             const sourceCells = Array.isArray(row) ? row.slice(1) : (Array.isArray(row.cells) ? row.cells : []);
@@ -288,7 +331,137 @@ window.adminProductForm = (initial = {}) => ({
         group.clear_chart_image = false;
     },
     clearSizeChartImage(group) { group.chart_image_preview = ''; group.chart_image_url = ''; group.clear_chart_image = true; },
-    addProductionSpeed() { this.productionSpeeds.push({ name: '', code: '', description: '', price_adjustment: 0, minimum_days: 1, maximum_days: 1, is_active: true }); },
+    productionQuantityLabel(range) {
+        const minimum = Math.max(1, Number(range?.minimum_quantity || 1));
+        const maximum = range?.maximum_quantity === '' || range?.maximum_quantity === null || range?.maximum_quantity === undefined
+            ? null
+            : Number(range.maximum_quantity);
+        return maximum ? `${minimum}–${maximum} pieces` : `${minimum}+ pieces`;
+    },
+    productionChargeLabel(option) {
+        const amount = Number(option?.price_adjustment || 0);
+        return amount > 0 ? `+$${amount.toFixed(2)} / piece` : 'Included';
+    },
+    uniqueProductionCode(name, rangeIndex, optionIndex = null) {
+        const range = this.productionRanges[rangeIndex] || { minimum_quantity: 1, maximum_quantity: '' };
+        const rangeSuffix = `${Number(range.minimum_quantity || 1)}-${range.maximum_quantity === '' || range.maximum_quantity === null || range.maximum_quantity === undefined ? 'plus' : Number(range.maximum_quantity)}`;
+        const base = `${slugify(name) || 'production'}-${rangeSuffix}`;
+        const used = new Set(this.productionRanges
+            .flatMap(item => item.options || [])
+            .filter(option => option !== this.productionRanges[rangeIndex]?.options?.[optionIndex])
+            .map(option => String(option.code || ''))
+            .filter(Boolean));
+        let code = base;
+        let suffix = 2;
+        while (used.has(code)) code = `${base}-${suffix++}`;
+        return code;
+    },
+    syncProductionRangesWithPriceRows() {
+        const existing = Array.isArray(this.productionRanges) ? this.productionRanges : [];
+        this.productionRanges = this.priceRows.map((row, index) => {
+            const minimum = Math.max(1, Number(row.minimum_quantity || 1));
+            const maximum = row.maximum_quantity === '' || row.maximum_quantity === null || row.maximum_quantity === undefined
+                ? ''
+                : Math.max(minimum, Number(row.maximum_quantity));
+            const exact = existing.find(range => Number(range.minimum_quantity || 0) === minimum
+                && String(range.maximum_quantity ?? '') === String(maximum));
+            const previous = exact || existing[index] || {};
+            const options = Array.isArray(previous.options) ? previous.options.slice(0, 3) : [];
+
+            return {
+                client_key: previous.client_key || this.clientKey(),
+                minimum_quantity: minimum,
+                maximum_quantity: maximum,
+                options: options.map(option => ({
+                    client_key: option.client_key || this.clientKey(),
+                    name: String(option.name || ''),
+                    code: String(option.code || ''),
+                    description: String(option.description || ''),
+                    price_adjustment: Number(option.price_adjustment || 0),
+                    minimum_days: Math.max(0, Number(option.minimum_days ?? 1)),
+                    maximum_days: Math.max(Number(option.minimum_days ?? 1), Number(option.maximum_days ?? option.minimum_days ?? 1)),
+                    is_active: true,
+                })),
+            };
+        });
+    },
+    openProductionOptionDialog(rangeIndex, optionIndex = null) {
+        const range = this.productionRanges[rangeIndex];
+        if (!range || (optionIndex === null && range.options.length >= 3)) return;
+
+        const option = optionIndex === null ? null : range.options[optionIndex];
+        this.productionOptionRangeIndex = rangeIndex;
+        this.productionOptionEditingIndex = optionIndex;
+        this.productionOptionDialogError = '';
+        this.productionOptionDraft = option ? {
+            name: String(option.name || ''),
+            code: String(option.code || ''),
+            description: String(option.description || ''),
+            price_adjustment: Number(option.price_adjustment || 0),
+            minimum_days: Math.max(0, Number(option.minimum_days ?? 1)),
+            maximum_days: Math.max(0, Number(option.maximum_days ?? option.minimum_days ?? 1)),
+        } : {
+            name: '',
+            code: '',
+            description: '',
+            price_adjustment: 0,
+            minimum_days: 1,
+            maximum_days: 1,
+        };
+        this.productionOptionDialogOpen = true;
+        document.documentElement.classList.add('overflow-hidden');
+        this.$nextTick(() => this.$root.querySelector('[x-model="productionOptionDraft.name"]')?.focus());
+    },
+    closeProductionOptionDialog() {
+        this.productionOptionDialogOpen = false;
+        this.productionOptionRangeIndex = null;
+        this.productionOptionEditingIndex = null;
+        this.productionOptionDialogError = '';
+        document.documentElement.classList.remove('overflow-hidden');
+    },
+    saveProductionOption() {
+        const rangeIndex = this.productionOptionRangeIndex;
+        const range = this.productionRanges[rangeIndex];
+        if (!range) return this.closeProductionOptionDialog();
+
+        const name = String(this.productionOptionDraft.name || '').trim();
+        const minimumDays = Math.max(0, Number(this.productionOptionDraft.minimum_days || 0));
+        const maximumDays = Math.max(0, Number(this.productionOptionDraft.maximum_days || 0));
+        if (!name) {
+            this.productionOptionDialogError = 'Enter the production option name.';
+            return;
+        }
+        if (maximumDays < minimumDays) {
+            this.productionOptionDialogError = 'Maximum days cannot be less than minimum days.';
+            return;
+        }
+        if (this.productionOptionEditingIndex === null && range.options.length >= 3) {
+            this.productionOptionDialogError = 'A quantity range can contain a maximum of three production options.';
+            return;
+        }
+
+        const option = {
+            client_key: this.productionOptionEditingIndex === null
+                ? this.clientKey()
+                : (range.options[this.productionOptionEditingIndex]?.client_key || this.clientKey()),
+            name,
+            code: this.productionOptionDraft.code || this.uniqueProductionCode(name, rangeIndex, this.productionOptionEditingIndex),
+            description: String(this.productionOptionDraft.description || '').trim(),
+            price_adjustment: Math.max(0, Number(this.productionOptionDraft.price_adjustment || 0)),
+            minimum_days: minimumDays,
+            maximum_days: maximumDays,
+            is_active: true,
+        };
+
+        if (this.productionOptionEditingIndex === null) range.options.push(option);
+        else range.options.splice(this.productionOptionEditingIndex, 1, option);
+        this.closeProductionOptionDialog();
+    },
+    removeProductionOption(rangeIndex, optionIndex) {
+        const range = this.productionRanges[rangeIndex];
+        if (!range) return;
+        range.options.splice(optionIndex, 1);
+    },
     addShippingMethod() { this.shippingMethods.push({ name: '', code: '', description: '', price_adjustment: 0, charge_type: 'per_unit', minimum_days: 1, maximum_days: 1, is_default: this.shippingMethods.length === 0, is_active: true }); },
     setDefaultShipping(index) { this.shippingMethods.forEach((method, methodIndex) => method.is_default = methodIndex === index); },
     addRosterField() { this.rosterFields.push({ key: '', label: '', type: 'text', max_length: 60, required: false, enabled: true }); },
@@ -325,7 +498,7 @@ window.productBuilder = (config = {}) => ({
     quantities: {},
     activeSizeGroup: config.size_groups?.[0]?.id || null,
     artworkFiles: [],
-    productionSpeed: config.production_speeds?.[0]?.id || null,
+    productionSpeed: null,
     shippingMethod: config.shipping_methods?.find(method => method.default)?.id || config.shipping_methods?.[0]?.id || null,
     rosterEnabled: Boolean(config.jersey_roster?.enabled && !config.jersey_roster?.optional),
     rosterRows: [],
@@ -361,6 +534,7 @@ window.productBuilder = (config = {}) => ({
             });
         });
 
+        this.syncProductionSpeed();
         this.syncRosterRows();
         this.sync();
     },
@@ -405,12 +579,49 @@ window.productBuilder = (config = {}) => ({
     changeQuantity(key, amount) {
         const maximum = Number(config.maximum_quantity || 999);
         this.quantities[key] = Math.max(0, Math.min(maximum, Number(amount || 0)));
+        this.syncProductionSpeed();
         this.syncRosterRows();
         this.sync();
     },
 
     totalQuantity() {
         return Object.values(this.quantities).reduce((sum, value) => sum + Number(value || 0), 0);
+    },
+
+    effectiveProductionQuantity() {
+        return Math.max(this.totalQuantity(), Number(config.minimum_quantity || 1));
+    },
+
+    productionOptionsForQuantity(quantity = this.effectiveProductionQuantity()) {
+        return (config.production_speeds || []).filter(speed => {
+            const minimum = Number(speed.minimum_quantity || 1);
+            const maximum = speed.maximum_quantity === null || speed.maximum_quantity === '' || speed.maximum_quantity === undefined
+                ? null
+                : Number(speed.maximum_quantity);
+            return quantity >= minimum && (maximum === null || quantity <= maximum);
+        });
+    },
+
+    currentProductionOptions() {
+        return this.productionOptionsForQuantity();
+    },
+
+    syncProductionSpeed() {
+        const options = this.productionOptionsForQuantity();
+        if (!options.some(option => option.id === this.productionSpeed)) {
+            this.productionSpeed = options[0]?.id || null;
+        }
+    },
+
+    chooseProductionSpeed(id) {
+        if (!this.productionOptionsForQuantity().some(option => option.id === id)) return;
+        this.productionSpeed = id;
+        this.sync();
+    },
+
+    currentProductionSpeed() {
+        const options = this.productionOptionsForQuantity();
+        return options.find(option => option.id === this.productionSpeed) || options[0] || null;
     },
 
     tierPrice() {
@@ -442,7 +653,7 @@ window.productBuilder = (config = {}) => ({
             }
         });
 
-        const speed = (config.production_speeds || []).find(item => item.id === this.productionSpeed);
+        const speed = this.currentProductionSpeed();
         breakdown.perUnit += Number(speed?.price_delta || 0);
 
         const shipping = (config.shipping_methods || []).find(item => item.id === this.shippingMethod);
@@ -554,7 +765,17 @@ window.productBuilder = (config = {}) => ({
     },
 
     speedLabel() {
-        return (config.production_speeds || []).find(item => item.id === this.productionSpeed)?.label || 'Standard production';
+        return this.currentProductionSpeed()?.label || 'Standard production';
+    },
+
+    productionRangeLabel() {
+        const speed = this.currentProductionSpeed();
+        if (!speed) return '';
+        const minimum = Number(speed.minimum_quantity || 1);
+        const maximum = speed.maximum_quantity === null || speed.maximum_quantity === '' || speed.maximum_quantity === undefined
+            ? null
+            : Number(speed.maximum_quantity);
+        return maximum ? `${minimum}–${maximum} pieces` : `${minimum}+ pieces`;
     },
 
     shippingLabel() {
@@ -563,7 +784,7 @@ window.productBuilder = (config = {}) => ({
 
     deliveryLabel() {
         const labels = [];
-        if ((config.production_speeds || []).length) labels.push(this.speedLabel());
+        if (this.currentProductionSpeed()) labels.push(this.speedLabel());
         if ((config.shipping_methods || []).length) labels.push(this.shippingLabel());
         return labels.join(' · ') || 'Standard delivery';
     },
@@ -660,6 +881,7 @@ window.productBuilder = (config = {}) => ({
     },
 
     sync() {
+        this.syncProductionSpeed();
         this.configurationJson = JSON.stringify({
             selections: this.selections,
             multi_selections: this.multiSelections,
@@ -718,6 +940,12 @@ window.productBuilder = (config = {}) => ({
                 window.alert(`You can upload a maximum of ${maximumFiles} artwork files.`);
                 return false;
             }
+        }
+
+        if (this.currentProductionOptions().length && !this.productionSpeed) {
+            window.alert('Please choose a production option.');
+            document.getElementById('delivery-options')?.scrollIntoView({ behavior: 'smooth' });
+            return false;
         }
 
         if ((config.shipping_methods || []).length && !this.shippingMethod) {

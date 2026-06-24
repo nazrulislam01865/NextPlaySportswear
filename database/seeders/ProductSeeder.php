@@ -137,13 +137,32 @@ class ProductSeeder extends Seeder
     private function seedProduction(Product $product): void
     {
         $product->productionSpeeds()->delete();
-        foreach ([
-            ['Standard Production', 'standard', 'Standard production schedule.', 0, 14, 18],
-            ['Priority Production', 'priority', 'Faster production for approved artwork.', 3.5, 10, 13],
-            ['Rush Production', 'rush', 'Rush service where capacity allows.', 7.5, 7, 9],
-        ] as $index => [$name, $code, $description, $price, $min, $max]) {
-            $product->productionSpeeds()->create(['name' => $name, 'code' => $code, 'description' => $description, 'price_adjustment' => $price, 'minimum_days' => $min, 'maximum_days' => $max, 'is_active' => true, 'sort_order' => $index]);
-        }
+
+        $product->priceTiers()
+            ->orderBy('sort_order')
+            ->orderBy('minimum_quantity')
+            ->get()
+            ->values()
+            ->each(function ($tier, int $index) use ($product): void {
+                $minimum = (int) $tier->minimum_quantity;
+                $maximum = $tier->maximum_quantity === null ? null : (int) $tier->maximum_quantity;
+                $rangeLabel = $maximum === null ? $minimum.'+' : $minimum.'–'.$maximum;
+                $minimumDays = 10 + ($index * 2);
+                $maximumDays = $minimumDays + 4;
+
+                $product->productionSpeeds()->create([
+                    'name' => 'Standard Production',
+                    'code' => 'standard-'.$minimum.($maximum === null ? '-plus' : '-'.$maximum),
+                    'description' => 'Production schedule for '.$rangeLabel.' pieces.',
+                    'price_adjustment' => 0,
+                    'minimum_quantity' => $minimum,
+                    'maximum_quantity' => $maximum,
+                    'minimum_days' => $minimumDays,
+                    'maximum_days' => $maximumDays,
+                    'is_active' => true,
+                    'sort_order' => $index,
+                ]);
+            });
     }
 
     private function seedFaqs(Product $product): void

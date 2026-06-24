@@ -446,7 +446,8 @@ class ProductController extends Controller
         // legacy method cards so stale choices can never reappear on the storefront.
         $product->artworkMethods()->delete();
         $this->replaceSimpleRelation($product, 'productionSpeeds', $data['production_speeds'] ?? [], ['name', 'code'], [
-            'name', 'code', 'description', 'price_adjustment', 'minimum_days', 'maximum_days', 'is_active',
+            'name', 'code', 'description', 'price_adjustment', 'minimum_quantity', 'maximum_quantity',
+            'minimum_days', 'maximum_days', 'is_active',
         ]);
         $this->replaceSimpleRelation($product, 'shippingMethods', $data['shipping_methods'] ?? [], ['name', 'code'], [
             'name', 'code', 'description', 'price_adjustment', 'charge_type', 'minimum_days', 'maximum_days', 'is_default', 'is_active',

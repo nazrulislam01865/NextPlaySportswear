@@ -259,11 +259,33 @@
                 @endif
 
                 @if(!empty($product['production_speeds']) || !empty($product['shipping_methods']))
-                    <section class="rounded-[28px] border border-slate-200 bg-white shadow-card" id="delivery-options">
-                        <div class="flex items-start gap-4 border-b border-slate-200 bg-gradient-to-r from-white to-red-50 p-5 sm:p-6"><span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-dark font-black text-white">{{ $stepNumber++ }}</span><div><h3 class="text-xl font-black leading-tight text-brand-ink sm:text-2xl">Production & Shipping</h3><p class="mt-1 text-sm leading-6 text-slate-500">The administrator controls which production speeds and product-specific shipping methods are visible.</p></div></div>
+                    <section class="rounded-[28px] border border-slate-200 bg-white shadow-card" id="delivery-options" x-show="currentProductionOptions().length > 0 || @js(!empty($product['shipping_methods']))">
+                        <div class="flex items-start gap-4 border-b border-slate-200 bg-gradient-to-r from-white to-red-50 p-5 sm:p-6"><span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-dark font-black text-white">{{ $stepNumber++ }}</span><div><h3 class="text-xl font-black leading-tight text-brand-ink sm:text-2xl">Production & Shipping</h3><p class="mt-1 text-sm leading-6 text-slate-500">Production choices update from the selected total quantity; each option keeps its separate charge.</p></div></div>
                         <div class="space-y-5 p-5 sm:p-6">
                             @if(!empty($product['production_speeds']))
-                                <label class="block text-sm font-black text-slate-700">Production speed<select class="mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-4" x-model="productionSpeed" @change="sync()">@foreach($product['production_speeds'] as $speed)<option value="{{ $speed['id'] }}">{{ $speed['label'] }} · {{ $speed['minimum_days'] }}–{{ $speed['maximum_days'] }} days @if($speed['price_delta'] != 0)· {{ $speed['price_delta'] > 0 ? '+' : '−' }}${{ number_format(abs($speed['price_delta']),2) }}/piece @endif</option>@endforeach</select></label>
+                                <div x-show="currentProductionOptions().length > 0">
+                                    <div class="flex flex-wrap items-end justify-between gap-2">
+                                        <div>
+                                            <h4 class="text-sm font-black text-slate-700">Production option</h4>
+                                            <p class="mt-1 text-xs text-slate-500">Available for <strong class="text-brand-blue" x-text="productionRangeLabel()"></strong></p>
+                                        </div>
+                                        <small class="text-[11px] font-bold text-slate-500">Choose one</small>
+                                    </div>
+                                    <div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                        <template x-for="option in currentProductionOptions()" :key="option.id">
+                                            <button type="button" @click="chooseProductionSpeed(option.id)" :class="productionSpeed === option.id ? 'border-brand-blue bg-blue-50 ring-2 ring-blue-100' : 'border-slate-200 bg-white'" class="rounded-2xl border-2 p-4 text-left transition">
+                                                <span class="flex items-start justify-between gap-3">
+                                                    <strong class="text-sm text-brand-ink" x-text="option.label"></strong>
+                                                    <small class="shrink-0 font-black text-brand-red" x-text="chargeLabel(option)"></small>
+                                                </span>
+                                                <small class="mt-2 block text-xs font-bold text-brand-blue">
+                                                    <span x-text="option.minimum_days || 0"></span>–<span x-text="option.maximum_days || option.minimum_days || 0"></span> working days
+                                                </small>
+                                                <small x-show="option.description" class="mt-2 block text-xs leading-5 text-slate-500" x-text="option.description"></small>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
                             @endif
 
                             @if(!empty($product['shipping_methods']))
@@ -295,7 +317,7 @@
                     <div class="flex justify-between gap-3"><span class="text-slate-500">Sizes</span><strong class="min-w-0 break-words text-right" x-text="sizeSummary() || 'No quantities selected'"></strong></div>
                     @if($rosterEnabled)<div class="flex justify-between gap-3"><span class="text-slate-500">Player details</span><strong class="text-right" x-text="rosterSummary()"></strong></div>@endif
                     @if((bool) ($artworkUpload['enabled'] ?? false))<div class="flex justify-between gap-3"><span class="text-slate-500">Artwork</span><strong class="text-right" x-text="artworkLabel()"></strong></div>@endif
-                    @if(!empty($product['production_speeds']))<div class="flex justify-between gap-3"><span class="text-slate-500">Production</span><strong class="text-right" x-text="speedLabel()"></strong></div>@endif
+                    @if(!empty($product['production_speeds']))<div x-show="currentProductionSpeed()" class="flex justify-between gap-3"><span class="text-slate-500">Production</span><strong class="text-right" x-text="speedLabel()"></strong></div>@endif
                     @if(!empty($product['shipping_methods']))<div class="flex justify-between gap-3"><span class="text-slate-500">Shipping</span><strong class="text-right" x-text="shippingLabel()"></strong></div>@endif
                 </div>
                 <div class="space-y-3 p-5 text-sm">

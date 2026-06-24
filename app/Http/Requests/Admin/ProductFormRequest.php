@@ -172,13 +172,28 @@ class ProductFormRequest extends FormRequest
             'artwork_methods.*.requires_upload' => ['nullable', 'boolean'],
             'artwork_methods.*.is_active' => ['nullable', 'boolean'],
 
-            'production_speeds' => ['nullable', 'array', 'max:50'],
+            'production_ranges' => ['nullable', 'array', 'max:50'],
+            'production_ranges.*.minimum_quantity' => ['nullable', 'integer', 'min:1', 'max:1000000'],
+            'production_ranges.*.maximum_quantity' => ['nullable', 'integer', 'max:1000000'],
+            'production_ranges.*.options' => ['nullable', 'array', 'max:3'],
+            'production_ranges.*.options.*.name' => ['required', 'string', 'max:160'],
+            'production_ranges.*.options.*.code' => ['nullable', 'string', 'max:160', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
+            'production_ranges.*.options.*.description' => ['nullable', 'string', 'max:2000'],
+            'production_ranges.*.options.*.price_adjustment' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'production_ranges.*.options.*.minimum_days' => ['required', 'integer', 'min:0', 'max:3650'],
+            'production_ranges.*.options.*.maximum_days' => ['required', 'integer', 'min:0', 'gte:production_ranges.*.options.*.minimum_days', 'max:3650'],
+            'production_ranges.*.options.*.is_active' => ['nullable', 'boolean'],
+
+            // Flattened by prepareForValidation for the existing persistence layer.
+            'production_speeds' => ['nullable', 'array', 'max:150'],
             'production_speeds.*.name' => ['nullable', 'string', 'max:160'],
             'production_speeds.*.code' => ['nullable', 'string', 'max:160', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', 'distinct'],
             'production_speeds.*.description' => ['nullable', 'string', 'max:2000'],
-            'production_speeds.*.price_adjustment' => ['nullable', 'numeric', 'min:-999999999.99', 'max:999999999.99'],
-            'production_speeds.*.minimum_days' => ['nullable', 'integer', 'min:0', 'max:3650'],
-            'production_speeds.*.maximum_days' => ['nullable', 'integer', 'gte:production_speeds.*.minimum_days', 'max:3650'],
+            'production_speeds.*.price_adjustment' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'production_speeds.*.minimum_quantity' => ['required', 'integer', 'min:1', 'max:1000000'],
+            'production_speeds.*.maximum_quantity' => ['nullable', 'integer', 'gte:production_speeds.*.minimum_quantity', 'max:1000000'],
+            'production_speeds.*.minimum_days' => ['required', 'integer', 'min:0', 'max:3650'],
+            'production_speeds.*.maximum_days' => ['required', 'integer', 'gte:production_speeds.*.minimum_days', 'max:3650'],
             'production_speeds.*.is_active' => ['nullable', 'boolean'],
 
             'shipping_methods' => ['nullable', 'array', 'max:30'],
@@ -324,6 +339,50 @@ class ProductFormRequest extends FormRequest
             })->values()->all();
         };
 
+        $submittedProductionRanges = collect($this->input('production_ranges', []))->values();
+        $legacyProductionSpeeds = collect($this->input('production_speeds', []))->values();
+        $productionSpeeds = collect($pricing['price_table_ranges'] ?? [])->values()
+            ->flatMap(function ($range, int $index) use ($submittedProductionRanges, $legacyProductionSpeeds): array {
+                $minimum = max(1, (int) data_get($range, 'minimum_quantity', 1));
+                $maximumRaw = data_get($range, 'maximum_quantity');
+                $maximum = filled($maximumRaw) ? (int) $maximumRaw : null;
+                $submittedRange = (array) $submittedProductionRanges->get($index, []);
+                $options = collect($submittedRange['options'] ?? []);
+
+                // Backward compatibility for a request submitted by the previous one-option editor.
+                if ($submittedProductionRanges->isEmpty() && $legacyProductionSpeeds->isNotEmpty()) {
+                    $options = $legacyProductionSpeeds->filter(function ($speed) use ($minimum, $maximum): bool {
+                        return (int) data_get($speed, 'minimum_quantity', 0) === $minimum
+                            && (filled(data_get($speed, 'maximum_quantity')) ? (int) data_get($speed, 'maximum_quantity') : null) === $maximum;
+                    });
+                }
+
+                return $options->take(3)
+                    ->filter(fn ($option) => is_array($option) && filled($option['name'] ?? null))
+                    ->map(function (array $option) use ($minimum, $maximum): array {
+                        $minimumDays = max(0, (int) ($option['minimum_days'] ?? 1));
+
+                        return [
+                            'name' => trim((string) $option['name']),
+                            'code' => $option['code'] ?? null,
+                            'description' => filled($option['description'] ?? null)
+                                ? trim((string) $option['description'])
+                                : null,
+                            'price_adjustment' => max(0, (float) ($option['price_adjustment'] ?? 0)),
+                            'minimum_quantity' => $minimum,
+                            'maximum_quantity' => $maximum,
+                            'minimum_days' => $minimumDays,
+                            'maximum_days' => max($minimumDays, (int) ($option['maximum_days'] ?? $minimumDays)),
+                            'is_active' => true,
+                        ];
+                    })
+                    ->values()
+                    ->all();
+            })
+            ->values()
+            ->all();
+        $productionSpeeds = $normalizeRowsWithCodes($productionSpeeds);
+
         $rosterFields = collect($this->input('jersey_roster_fields', []))
             ->map(function ($field, int $index): array {
                 if (! is_array($field)) {
@@ -339,7 +398,7 @@ class ProductFormRequest extends FormRequest
         $this->merge([
             'option_groups' => $optionGroups,
             'size_groups' => $normalizeRowsWithCodes((array) $this->input('size_groups', [])),
-            'production_speeds' => $normalizeRowsWithCodes((array) $this->input('production_speeds', [])),
+            'production_speeds' => $productionSpeeds,
             'shipping_methods' => $normalizeRowsWithCodes((array) $this->input('shipping_methods', [])),
             'jersey_roster_fields' => $rosterFields,
             'product_profile' => $this->input('product_profile', 'standard'),
