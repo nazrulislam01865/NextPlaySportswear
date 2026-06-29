@@ -80,6 +80,8 @@ class ProductController extends Controller
         $product = DB::transaction(function () use ($request): Product {
             $product = Product::query()->create($this->productPayload($request, null));
             $this->syncRelations($product, $request);
+            $product->load($this->relations());
+            $this->syncProductSpecifications($product, $request);
 
             return $product;
         });
@@ -108,6 +110,8 @@ class ProductController extends Controller
         DB::transaction(function () use ($request, $product): void {
             $product->update($this->productPayload($request, $product));
             $this->syncRelations($product, $request);
+            $product->load($this->relations());
+            $this->syncProductSpecifications($product, $request);
         });
 
         $this->categoryTreeService->flushCache();
@@ -272,7 +276,7 @@ class ProductController extends Controller
         $payload['subcategory_id'] = $primaryCategory?->parent_id ? $primaryCategory->id : null;
 
         $payload['description_html'] = $this->safeHtml->sanitize($data['description_html'] ?? null);
-        $payload['detail_information_html'] = $this->safeHtml->sanitize($data['detail_information_html'] ?? null);
+        $payload['detail_information_html'] = null;
 
         // The storefront-aligned editor intentionally omits legacy fields that are
         // not rendered on the product page. Preserve their existing values during
@@ -389,6 +393,291 @@ class ProductController extends Controller
         $payload['updated_by'] = auth()->id();
 
         return $payload;
+    }
+
+    private function syncProductSpecifications(Product $product, ProductFormRequest $request): void
+    {
+        $data = $request->validated();
+
+        $product->forceFill([
+            'specifications' => $this->buildProductSpecifications(
+                $product,
+                (string) ($data['product_specification_text'] ?? '')
+            ),
+            // Keep the frontend specification table driven by structured rows.
+            // Old rich HTML is cleared so it cannot override the new Product Specification field.
+            'detail_information_html' => null,
+        ])->save();
+    }
+
+    private function buildProductSpecifications(Product $product, string $specificationText): array
+    {
+        $manualRows = $this->parseProductSpecificationText($specificationText);
+        $autoRows = $this->productSpecificationAutoRows($product);
+        $templateLabels = ['SKU', 'Product Type', 'Fabric', 'Fit', 'Customization', 'Size Range', 'MOQ', 'Lead Time'];
+        $result = [];
+
+        foreach ($templateLabels as $label) {
+            $manualValue = trim((string) ($manualRows[$label] ?? ''));
+            $autoValue = trim((string) ($autoRows[$label] ?? ''));
+            $finalValue = $manualValue !== '' ? $manualValue : $autoValue;
+
+            if ($finalValue !== '') {
+                $result[$label] = $finalValue;
+            }
+        }
+
+        foreach ($manualRows as $label => $value) {
+            if (in_array($label, $templateLabels, true)) {
+                continue;
+            }
+
+            $label = trim((string) $label);
+            $value = trim((string) $value);
+
+            if ($label !== '' && $value !== '') {
+                $result[$label] = $value;
+            }
+        }
+
+        return collect($result)->take(30)->all();
+    }
+
+    private function parseProductSpecificationText(string $specificationText): array
+    {
+        $knownLabels = ['SKU', 'Product Type', 'Fabric', 'Fit', 'Customization', 'Size Range', 'MOQ', 'Lead Time'];
+        $rows = collect();
+
+        if (str_contains($specificationText, '<')) {
+            $tableHtml = preg_replace('/<\/(tr|p|div|li)>/i', "\n", $specificationText) ?? $specificationText;
+            $tableHtml = preg_replace('/<\/(td|th)>/i', "\t", $tableHtml) ?? $tableHtml;
+            $specificationText = html_entity_decode(strip_tags($tableHtml), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+
+        $lines = collect(preg_split('/\r\n|\r|\n/', $specificationText) ?: [])
+            ->map(fn ($line) => $this->cleanSpecificationText($line))
+            ->filter();
+
+        foreach ($lines as $line) {
+            if (preg_match('/^(detail|information|detail\s+information)$/i', $line)) {
+                continue;
+            }
+
+            $flatRows = $this->parseFlatProductSpecificationText($line, $knownLabels);
+            if (count($flatRows) > 1) {
+                foreach ($flatRows as $label => $value) {
+                    $rows->put($label, $value);
+                }
+                continue;
+            }
+
+            $tabParts = collect(preg_split('/\t+/', $line) ?: [])
+                ->map(fn ($part) => $this->cleanSpecificationText($part))
+                ->filter()
+                ->values();
+
+            if ($tabParts->count() >= 2) {
+                $label = $this->normalizeSpecificationLabel($tabParts->first());
+                $value = $this->cleanSpecificationText($tabParts->slice(1)->implode(' '));
+
+                if ($label !== '' && ! in_array(Str::lower($label), ['detail', 'information'], true)) {
+                    $rows->put($label, $value);
+                    continue;
+                }
+            }
+
+            if (str_contains($line, ':')) {
+                [$label, $value] = array_pad(explode(':', $line, 2), 2, '');
+                $label = $this->normalizeSpecificationLabel($label);
+                $value = $this->cleanSpecificationText($value);
+
+                if ($label !== '') {
+                    $rows->put($label, $value);
+                }
+
+                continue;
+            }
+
+            foreach ($knownLabels as $knownLabel) {
+                if (preg_match('/^'.preg_quote($knownLabel, '/').'\b\s*(.*)$/i', $line, $matches)) {
+                    $rows->put($knownLabel, $this->cleanSpecificationText($matches[1] ?? ''));
+                    continue 2;
+                }
+            }
+        }
+
+        if ($rows->isEmpty()) {
+            foreach ($this->parseFlatProductSpecificationText($specificationText, $knownLabels) as $label => $value) {
+                $rows->put($label, $value);
+            }
+        }
+
+        return $rows
+            ->filter(fn ($value, $label) => filled($label))
+            ->map(fn ($value) => $this->cleanSpecificationText($value))
+            ->all();
+    }
+
+    private function cleanSpecificationText(?string $value): string
+    {
+        return trim(preg_replace('/[ \t]+/', ' ', str_replace("\xc2\xa0", ' ', (string) $value)) ?? '');
+    }
+
+    /**
+     * Splits compact pasted text such as
+     * "SKU: ABCProduct Type: JerseyFabric: Polyester" back into rows.
+     */
+    private function parseFlatProductSpecificationText(string $text, array $knownLabels): array
+    {
+        $flatText = $this->cleanSpecificationText($text);
+        if ($flatText === '') {
+            return [];
+        }
+
+        $labelPattern = collect($knownLabels)->map(fn ($label) => preg_quote($label, '/'))->implode('|');
+        if (! preg_match_all('/('.$labelPattern.')\s*:/i', $flatText, $matches, PREG_OFFSET_CAPTURE)) {
+            return [];
+        }
+
+        $rows = [];
+        $labelMatches = $matches[1];
+        foreach ($labelMatches as $index => $match) {
+            $label = $this->normalizeSpecificationLabel($match[0]);
+            $start = $match[1] + strlen($match[0]);
+            $end = isset($labelMatches[$index + 1]) ? $labelMatches[$index + 1][1] : strlen($flatText);
+            $value = substr($flatText, $start, max(0, $end - $start));
+            $value = preg_replace('/^\s*:\s*/', '', $value) ?? $value;
+
+            if ($label !== '') {
+                $rows[$label] = $this->cleanSpecificationText($value);
+            }
+        }
+
+        return $rows;
+    }
+
+    private function normalizeSpecificationLabel(?string $label): string
+    {
+        $clean = Str::of($this->cleanSpecificationText($label))->rtrim(':')->trim()->toString();
+        $lookup = Str::lower($clean);
+
+        $aliases = [
+            'sku' => 'SKU',
+            'style no' => 'SKU',
+            'style number' => 'SKU',
+            'product type' => 'Product Type',
+            'product' => 'Product Type',
+            'fabric' => 'Fabric',
+            'material' => 'Fabric',
+            'fit' => 'Fit',
+            'customization' => 'Customization',
+            'customisation' => 'Customization',
+            'printing' => 'Customization',
+            'print method' => 'Customization',
+            'size range' => 'Size Range',
+            'sizes' => 'Size Range',
+            'size' => 'Size Range',
+            'moq' => 'MOQ',
+            'minimum order' => 'MOQ',
+            'minimum order quantity' => 'MOQ',
+            'lead time' => 'Lead Time',
+            'lead-time' => 'Lead Time',
+            'production time' => 'Lead Time',
+        ];
+
+        return $aliases[$lookup] ?? Str::headline($clean);
+    }
+
+    private function productSpecificationAutoRows(Product $product): array
+    {
+        return [
+            'SKU' => $product->sku,
+            'Product Type' => $product->product_type,
+            'Fabric' => $this->optionValueSummary($product, JerseyCustomizationType::Fabric->value),
+            'Fit' => collect([
+                $this->optionValueSummary($product, JerseyCustomizationType::JerseyStyle->value),
+                $this->optionValueSummary($product, JerseyCustomizationType::SleevesAndCuffs->value),
+            ])->filter()->implode(', '),
+            'Customization' => null,
+            'Size Range' => $this->sizeRangeSummary($product),
+            'MOQ' => $product->minimum_quantity
+                ? number_format((int) $product->minimum_quantity).' '.((int) $product->minimum_quantity === 1 ? 'Piece' : 'Pieces')
+                : null,
+            'Lead Time' => $this->leadTimeSummary($product),
+        ];
+    }
+
+    private function optionValueSummary(Product $product, string $type): ?string
+    {
+        if (! $product->relationLoaded('optionGroups')) {
+            return null;
+        }
+
+        $values = $product->optionGroups
+            ->where('jersey_customization_type', $type)
+            ->where('is_active', true)
+            ->flatMap(fn ($group) => $group->relationLoaded('values')
+                ? $group->values->where('is_active', true)->pluck('label')
+                : [])
+            ->filter()
+            ->unique()
+            ->values();
+
+        return $values->isNotEmpty() ? $values->implode(', ') : null;
+    }
+
+    private function sizeRangeSummary(Product $product): ?string
+    {
+        if (! $product->relationLoaded('sizeGroups')) {
+            return null;
+        }
+
+        $group = $product->sizeGroups->where('is_active', true)->first();
+        if (! $group || ! $group->relationLoaded('sizes')) {
+            return null;
+        }
+
+        $sizes = $group->sizes->where('is_active', true)->pluck('label')->filter()->values();
+        if ($sizes->isEmpty()) {
+            return null;
+        }
+
+        return $sizes->first() === $sizes->last()
+            ? $sizes->first()
+            : $sizes->first().' – '.$sizes->last();
+    }
+
+    private function leadTimeSummary(Product $product): ?string
+    {
+        if ($product->relationLoaded('productionSpeeds')) {
+            $speeds = $product->productionSpeeds->where('is_active', true);
+            if ($speeds->isNotEmpty()) {
+                $min = (int) $speeds->min('minimum_days');
+                $max = (int) $speeds->max('maximum_days');
+
+                if ($min > 0 || $max > 0) {
+                    return $min === $max ? $min.' Business Days' : $min.'–'.$max.' Business Days';
+                }
+            }
+        }
+
+        $times = collect($product->production_table_rows ?? [])
+            ->flatMap(fn ($row) => collect($row['cells'] ?? []))
+            ->filter(fn ($cell) => (bool) ($cell['enabled'] ?? false))
+            ->map(fn ($cell) => [
+                'minimum_days' => (int) ($cell['minimum_days'] ?? 0),
+                'maximum_days' => (int) ($cell['maximum_days'] ?? ($cell['minimum_days'] ?? 0)),
+            ])
+            ->filter(fn ($cell) => $cell['minimum_days'] > 0 || $cell['maximum_days'] > 0);
+
+        if ($times->isEmpty()) {
+            return null;
+        }
+
+        $min = (int) $times->min('minimum_days');
+        $max = (int) $times->max('maximum_days');
+
+        return $min === $max ? $min.' Business Days' : $min.'–'.$max.' Business Days';
     }
 
     private function syncRelations(Product $product, ProductFormRequest $request): void

@@ -26,6 +26,85 @@
             padding-bottom: 10px;
         }
 
+
+
+        .np-product-page .np-product-title {
+            font-size: clamp(28px, 3.1vw, 38px);
+            line-height: 1.13;
+            letter-spacing: -0.028em;
+        }
+
+        .np-product-page .np-product-summary {
+            font-size: 15px;
+            line-height: 1.68;
+        }
+
+        .np-product-page .np-detail-information table {
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        .np-product-page .np-detail-information thead tr {
+            font-size: 12px;
+            letter-spacing: .035em;
+        }
+
+        .np-product-page .np-detail-information th,
+        .np-product-page .np-detail-information td {
+            padding-top: 8px;
+            padding-bottom: 8px;
+        }
+
+        .np-product-page .np-product-meta {
+            font-size: 13px;
+            line-height: 1.65;
+        }
+
+        .np-product-page .product-rich-content,
+        .np-product-page .product-rich-content p,
+        .np-product-page .product-rich-content li,
+        .np-product-page .product-rich-content td,
+        .np-product-page .product-rich-content th {
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .np-product-page .product-rich-content h2 {
+            font-size: 22px;
+            line-height: 1.25;
+        }
+
+        .np-product-page .product-rich-content h3 {
+            font-size: 18px;
+            line-height: 1.3;
+        }
+
+        .np-product-page .np-selected-size-chart table {
+            font-size: 13px;
+        }
+
+        .np-product-page .np-selected-size-chart th,
+        .np-product-page .np-selected-size-chart td {
+            padding: 9px 12px;
+        }
+
+        @media (max-width: 640px) {
+            .np-product-page .np-product-title {
+                font-size: 28px;
+                line-height: 1.15;
+            }
+
+            .np-product-page .np-product-summary,
+            .np-product-page .np-detail-information table,
+            .np-product-page .product-rich-content,
+            .np-product-page .product-rich-content p,
+            .np-product-page .product-rich-content li,
+            .np-product-page .product-rich-content td,
+            .np-product-page .product-rich-content th {
+                font-size: 13px;
+            }
+        }
+
         @media (max-width: 640px) {
             .product-gallery-frame {
                 background:
@@ -39,7 +118,7 @@
         }
     </style>
 
-    <div x-data="{ imageOpen: false, image: null }" @open-product-image.window="image = $event.detail; imageOpen = true">
+    <div class="np-product-page" x-data="{ imageOpen: false, image: null }" @open-product-image.window="image = $event.detail; imageOpen = true">
         <nav class="border-b border-slate-200 bg-slate-50" aria-label="Breadcrumb">
             <div class="site-container flex flex-wrap items-center gap-2 py-4 text-xs text-slate-500">
                 <a href="{{ route('home') }}" class="hover:text-brand-red">Home</a><span>/</span>
@@ -63,14 +142,14 @@
                     <x-storefront.product.gallery :gallery="$product['gallery']" :badge="$product['tag']" />
 
                     <article class="min-w-0 lg:pt-1">
-                        <h1 class="max-w-3xl text-3xl font-black leading-[1.16] tracking-[-.025em] text-slate-950 sm:text-4xl lg:text-[40px] xl:text-[44px]">
+                        <h1 class="np-product-title max-w-3xl font-black text-slate-950">
                             {{ $product['title'] }}
                         </h1>
 
                         <div class="mt-5 h-1 w-10 bg-slate-200" aria-hidden="true"></div>
 
                         @if(filled($product['summary']))
-                            <p class="mt-5 max-w-3xl text-base leading-7 text-slate-700 sm:text-[17px] sm:leading-8">
+                            <p class="np-product-summary mt-5 max-w-3xl text-slate-700">
                                 {{ $product['summary'] }}
                             </p>
                         @endif

@@ -17,15 +17,19 @@ class ProductController extends Controller
     public function index(Request $request): View
     {
         $query = $request->string('q')->trim()->toString();
-        $products = $this->productCatalogService->search($query);
+        $tag = trim((string) $request->query('tag', ''));
+        $products = $this->productCatalogService->search($query, $tag);
 
         return view('storefront.products.index', [
             'products' => $products,
             'query' => $query,
+            'tag' => $tag,
             'seo' => [
-                'title' => filled($query)
-                    ? 'Search results for '.$query.' | '.config('storefront.name')
-                    : 'Products | '.config('storefront.name'),
+                'title' => filled($tag)
+                    ? 'Products tagged '.$tag.' | '.config('storefront.name')
+                    : (filled($query)
+                        ? 'Search results for '.$query.' | '.config('storefront.name')
+                        : 'Products | '.config('storefront.name')),
                 'description' => 'Browse custom jerseys, uniforms, hoodies, caps, bags, and bulk-ready team sportswear products.',
                 'canonical' => route('products.index'),
             ],

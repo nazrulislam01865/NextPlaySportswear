@@ -17,14 +17,67 @@
         ? $product->attributeValues->reject(fn($value) => $dynamicCatalogAttributeIds->contains((int) $value->attribute_id))->pluck('id')->all()
         : [];
     $selectedAttributeValueIds = collect(old('attribute_value_ids', $persistedManualAttributeValueIds))->map(fn($id)=>(int)$id)->all();
-    $legacyDetailInformationHtml = collect($product->specifications ?? [])
-        ->filter(fn ($value, $name) => filled($name) && filled($value))
-        ->map(fn ($value, $name) => '<tr><th>'.e((string) $name).'</th><td>'.e((string) $value).'</td></tr>')
-        ->implode('');
-    $legacyDetailInformationHtml = $legacyDetailInformationHtml !== ''
-        ? '<table><thead><tr><th>Detail</th><th>Information</th></tr></thead><tbody>'.$legacyDetailInformationHtml.'</tbody></table>'
-        : null;
-    $detailInformationHtml = old('detail_information_html', $product->detail_information_html ?: $legacyDetailInformationHtml);
+    $productSpecificationLabels = ['SKU', 'Product Type', 'Fabric', 'Fit', 'Customization', 'Size Range', 'MOQ', 'Lead Time'];
+    $storedSpecificationRows = collect($product->specifications ?? [])
+        ->mapWithKeys(function ($value, $label) {
+            if (is_array($value)) {
+                $rowLabel = $value['label'] ?? $value['name'] ?? $label;
+                $rowValue = $value['value'] ?? $value['information'] ?? null;
+
+                return filled($rowLabel) && filled($rowValue) ? [(string) $rowLabel => (string) $rowValue] : [];
+            }
+
+            return filled($label) && filled($value) ? [(string) $label => (string) $value] : [];
+        });
+    $productSpecificationText = old('product_specification_text');
+    if ($productSpecificationText === null) {
+        $productSpecificationText = collect($productSpecificationLabels)
+            ->map(fn ($label) => $label.': '.($storedSpecificationRows->get($label) ?: ''))
+            ->implode(PHP_EOL);
+    }
+    $specificationOptionSummary = static function (string $type) use ($product): string {
+        if (! $product->relationLoaded('optionGroups')) {
+            return '';
+        }
+
+        return $product->optionGroups
+            ->where('jersey_customization_type', $type)
+            ->where('is_active', true)
+            ->flatMap(fn ($group) => $group->relationLoaded('values') ? $group->values->where('is_active', true)->pluck('label') : [])
+            ->filter()
+            ->unique()
+            ->values()
+            ->implode(', ');
+    };
+    $specificationSizeRange = '';
+    if ($product->relationLoaded('sizeGroups')) {
+        $firstSizeGroup = $product->sizeGroups->where('is_active', true)->first();
+        $sizeLabels = $firstSizeGroup && $firstSizeGroup->relationLoaded('sizes')
+            ? $firstSizeGroup->sizes->where('is_active', true)->pluck('label')->filter()->values()
+            : collect();
+        $specificationSizeRange = $sizeLabels->isEmpty()
+            ? ''
+            : ($sizeLabels->first() === $sizeLabels->last() ? $sizeLabels->first() : $sizeLabels->first().' – '.$sizeLabels->last());
+    }
+    $specificationLeadTime = '';
+    if ($product->relationLoaded('productionSpeeds')) {
+        $activeSpeeds = $product->productionSpeeds->where('is_active', true);
+        if ($activeSpeeds->isNotEmpty()) {
+            $minDays = (int) $activeSpeeds->min('minimum_days');
+            $maxDays = (int) $activeSpeeds->max('maximum_days');
+            $specificationLeadTime = $minDays === $maxDays ? $minDays.' Business Days' : $minDays.'–'.$maxDays.' Business Days';
+        }
+    }
+    $productSpecificationAutoValues = [
+        'SKU' => old('sku', $product->sku),
+        'Product Type' => old('product_type', $product->product_type),
+        'Fabric' => $specificationOptionSummary('fabric'),
+        'Fit' => collect([$specificationOptionSummary('jersey_style'), $specificationOptionSummary('sleeves_and_cuffs')])->filter()->implode(', '),
+        'Customization' => '',
+        'Size Range' => $specificationSizeRange,
+        'MOQ' => $product->minimum_quantity ? number_format((int) $product->minimum_quantity).' '.((int) $product->minimum_quantity === 1 ? 'Piece' : 'Pieces') : '',
+        'Lead Time' => $specificationLeadTime,
+    ];
     $existingProductImages = $product->relationLoaded('images') ? $product->images->keyBy('id') : collect();
     $submittedImageValues = old('image_urls');
     $imageValues = $submittedImageValues !== null
@@ -346,6 +399,66 @@
                         <textarea class="admin-textarea np-textarea-sm" name="short_description" maxlength="1500" x-model="shortDescription" placeholder="Describe your product in a few words..."></textarea>
                     </label>
 
+                    <div class="np-product-spec-card rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm" x-data="productSpecificationEditor(@js($productSpecificationText), @js($productSpecificationAutoValues))" x-init="init()">
+                        <div class="mb-4 flex items-center justify-between gap-3">
+                            <label class="admin-label mb-0 text-base">Product Specification</label>
+                            <button type="button" class="np-link-button" @click="resetTemplate()">Reset template</button>
+                        </div>
+
+                        <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(340px,.82fr)] lg:items-stretch">
+                            <div class="np-product-spec-panel flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-300 bg-white">
+                                <div class="np-product-spec-toolbar flex flex-wrap gap-1.5 border-b border-slate-200 bg-slate-50 p-2">
+                                    <button type="button" class="admin-editor-button" @click="command('formatBlock', 'h2')">H2</button>
+                                    <button type="button" class="admin-editor-button" @click="command('formatBlock', 'h3')">H3</button>
+                                    <button type="button" class="admin-editor-button font-black" @click="command('bold')">B</button>
+                                    <button type="button" class="admin-editor-button italic" @click="command('italic')">I</button>
+                                    <button type="button" class="admin-editor-button underline" @click="command('underline')">U</button>
+                                    <button type="button" class="admin-editor-button" @click="command('insertUnorderedList')">• List</button>
+                                    <button type="button" class="admin-editor-button" @click="command('insertOrderedList')">1. List</button>
+                                    <button type="button" class="admin-editor-button" @click="command('formatBlock', 'blockquote')">Quote</button>
+                                    <button type="button" class="admin-editor-button" @click="createLink()">Link</button>
+                                    <button type="button" class="admin-editor-button" @click="clearFormat()">Clear</button>
+                                </div>
+                                <div x-ref="editor" contenteditable="true" @input="sync()" @paste="handlePaste($event)" class="admin-rich-editor np-product-spec-editor min-h-[260px] flex-1 whitespace-pre-wrap p-4 text-[13px] leading-6 text-slate-700" role="textbox" aria-multiline="true" data-placeholder="SKU:
+Product Type:
+Fabric:
+Fit:
+Customization:
+Size Range:
+MOQ:
+Lead Time:"></div>
+                                <textarea name="product_specification_text" x-model="value" hidden></textarea>
+                            </div>
+
+                            <div class="np-product-spec-preview flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                                <div class="border-b border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-800">Storefront specification preview</div>
+                                <div class="min-h-[260px] flex-1 overflow-auto">
+                                    <table class="w-full table-fixed border-collapse text-[13px]">
+                                        <thead>
+                                            <tr class="bg-slate-50 text-left text-[11px] font-black uppercase tracking-[.04em] text-slate-500">
+                                                <th class="w-[34%] border-b border-slate-200 px-4 py-2.5">Detail</th>
+                                                <th class="border-b border-slate-200 px-4 py-2.5">Information</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody x-show="previewRows().length" x-cloak>
+                                            <template x-for="row in previewRows()" :key="row.label">
+                                                <tr class="border-b border-slate-100 last:border-b-0">
+                                                    <th class="break-words px-4 py-2.5 text-left align-top font-semibold text-slate-700" x-text="row.label"></th>
+                                                    <td class="break-words px-4 py-2.5 align-top text-slate-600" x-text="row.value"></td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                        <tbody x-show="!previewRows().length" x-cloak>
+                                            <tr>
+                                                <td colspan="2" class="px-4 py-8 text-center text-sm font-medium text-slate-400">No specification information yet.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="grid gap-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)]">
                         <div class="admin-label np-category-field" @click.outside="closeCategoryDropdown()">
                             <span>Category <span class="text-brand-red">*</span></span>
@@ -381,8 +494,7 @@
                         </div>
 
                         <label class="admin-label">Tags
-                            <input class="admin-input" name="tags_text" value="{{ old('tags_text',implode(', ',$product->tags ?? [])) }}" placeholder="Add tags and press Enter...">
-                            <span class="mt-1 block text-[11px] font-semibold text-slate-400">Press Enter to add each tag.</span>
+                            <input class="admin-input" name="tags_text" value="{{ old('tags_text',implode(', ',$product->tags ?? [])) }}" placeholder="Add tags">
                         </label>
                     </div>
 
@@ -418,7 +530,7 @@
                         </template>
                     </div>
 
-                    <div class="np-image-grid" x-show="imageUrls.length" x-cloak>
+                    <div class="np-image-grid np-linked-image-grid" x-show="imageUrls.length" x-cloak>
                         <template x-for="(image, index) in imageUrls" :key="image.client_key || index">
                             <article class="np-linked-image">
                                 <input type="hidden" :name="`image_urls[${index}][existing_id]`" x-model="image.existing_id">
@@ -430,9 +542,9 @@
                                 <div class="np-linked-image__fields">
                                     <input class="admin-input !mt-0" :name="`image_urls[${index}][name]`" x-model="image.name" placeholder="Image name">
                                     <input class="admin-input !mt-2" type="url" :name="`image_urls[${index}][url]`" x-model="image.url" placeholder="https://example.com/product-image.jpg">
-                                    <div class="mt-2 flex gap-3">
-                                        <button type="button" class="np-link-button" @click="setPrimaryImage(index)" x-text="image.is_primary ? 'Primary image' : 'Make primary'"></button>
-                                        <button type="button" class="np-danger-link" @click="removeImageUrl(index)">Remove</button>
+                                    <div class="np-linked-image__actions">
+                                        <button type="button" class="np-linked-image__primary" @click="setPrimaryImage(index)" x-text="image.is_primary ? 'Primary image' : 'Make primary'"></button>
+                                        <button type="button" class="np-linked-image__remove" @click="removeImageUrl(index)">Remove</button>
                                     </div>
                                 </div>
                             </article>
@@ -445,7 +557,6 @@
                 <header class="np-card__header">
                     <div>
                         <h2>2. Pricing &amp; Quantity Tiers</h2>
-                        <p>Set your base pricing and optional quantity-based pricing tiers.</p>
                     </div>
                     <label class="np-import-button">
                         <input x-ref="priceTableImportInput" type="file" accept=".xlsx,.csv" @change="importPriceTable($event)">
@@ -513,7 +624,7 @@
             </section>
 
             <section id="options" class="np-card">
-                <header class="np-card__header"><div><h2>3. Product Options</h2><p>Configure product options, sizes, and roster fields.</p></div></header>
+                <header class="np-card__header"><div><h2>3. Product Options</h2></div></header>
                 <div class="np-option-tiles">
                     <article><span class="np-option-tiles__icon purple">✦</span><div><strong>Customizable Features</strong><small>Add features customers can personalize.</small></div><button type="button" class="np-secondary-button" @click="openNewFeatureDialog()">＋ Add feature</button></article>
                     <article><span class="np-option-tiles__icon amber">✎</span><div><strong>Sizes &amp; Quantities</strong><small>Define available sizes and quantity rules.</small></div><button type="button" class="np-secondary-button" @click="openSizeGroupPicker()">＋ Add size option</button></article>
@@ -552,7 +663,7 @@
 
             <section id="fulfillment" class="np-card"><header class="np-card__header"><div><h2>5. Production &amp; Shipping</h2><p>Set production times and available shipping methods.</p></div></header><div class="grid gap-4 lg:grid-cols-2"><details class="np-config-panel" open><summary>Production options</summary><div class="mt-4 flex flex-wrap gap-2"><button type="button" class="np-secondary-button" @click="addProductionHeader()" :disabled="productionHeaders.length >= 12">＋ Add production option</button><button type="button" class="np-secondary-button" @click="addProductionRow()" :disabled="productionRows.length >= 100">＋ Add range</button></div><div class="np-table-wrap mt-4"><table class="np-simple-table"><thead><tr><th>Quantity range</th><template x-for="(header,columnIndex) in productionHeaders" :key="columnIndex"><th><input class="np-table-input font-black" :name="`production_table_headers[${columnIndex}]`" x-model="productionHeaders[columnIndex]" maxlength="160" placeholder="Standard Production"><button type="button" class="mt-2 text-xs font-black text-red-700" @click="removeProductionHeader(columnIndex)" x-show="productionHeaders.length > 1">Remove column</button></th></template><th>Action</th></tr></thead><tbody><template x-for="(row,rowIndex) in productionRows" :key="row.client_key || rowIndex"><tr><td><input class="np-table-input font-black" :name="`production_table_rows[${rowIndex}][range]`" x-model="row.range" maxlength="50" placeholder="1-40" required></td><template x-for="(cell,columnIndex) in row.cells" :key="columnIndex"><td><input type="hidden" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][enabled]`" :value="cell.enabled ? 1 : 0"><label class="flex items-center gap-2 text-xs font-black text-slate-700"><input type="checkbox" x-model="cell.enabled"> Offer</label><div class="mt-2 space-y-2" :class="!cell.enabled && 'pointer-events-none opacity-45'"><input class="np-table-input" type="number" min="0" step="0.01" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][price_adjustment]`" x-model.number="cell.price_adjustment" placeholder="Charge"><input class="np-table-input" type="text" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][production_time]`" x-model="cell.production_time" maxlength="60" placeholder="5-15 days"><textarea class="admin-textarea !mt-0 min-h-[70px]" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][description]`" x-model="cell.description" maxlength="2000" placeholder="Description"></textarea></div></td></template><td><button type="button" class="np-icon-button" @click="removeProductionRow(rowIndex)">⌫</button></td></tr></template></tbody></table></div></details><details class="np-config-panel" open><summary>Shipping methods</summary><div class="mt-4 flex flex-wrap items-center gap-3"><label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold"><input type="hidden" name="shipping_methods_enabled" :value="shippingMethodsEnabled ? 1 : 0"><input type="checkbox" x-model="shippingMethodsEnabled"> Show shipping methods</label><button type="button" class="np-secondary-button" @click="addShippingMethod()">＋ Add shipping method</button></div><div x-show="shippingMethodsEnabled" class="mt-4 space-y-3"><template x-for="(method,index) in shippingMethods" :key="index"><article class="np-nested-card"><input type="hidden" :name="`shipping_methods[${index}][code]`" x-model="method.code"><input type="hidden" :name="`shipping_methods[${index}][is_active]`" value="1"><div class="grid gap-3 md:grid-cols-2"><label class="admin-label">Name<input class="admin-input" :name="`shipping_methods[${index}][name]`" x-model="method.name" @blur="if(!method.code) method.code = method.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')"></label><label class="admin-label">Charge<input class="admin-input" type="number" min="0" step="0.01" :name="`shipping_methods[${index}][price_adjustment]`" x-model="method.price_adjustment"></label><label class="admin-label">Charge basis<select class="admin-input" :name="`shipping_methods[${index}][charge_type]`" x-model="method.charge_type"><option value="included">Included</option><option value="per_unit">Per piece</option><option value="fixed_order">Fixed per order</option></select></label><label class="admin-label">Days<input class="admin-input" type="number" min="0" :name="`shipping_methods[${index}][minimum_days]`" x-model="method.minimum_days"></label><input type="hidden" :name="`shipping_methods[${index}][maximum_days]`" x-model="method.maximum_days"><label class="admin-label md:col-span-2">Description<input class="admin-input" :name="`shipping_methods[${index}][description]`" x-model="method.description"></label></div><div class="mt-3 flex justify-between"><input type="hidden" :name="`shipping_methods[${index}][is_default]`" :value="method.is_default ? 1 : 0"><button type="button" class="np-link-button" @click="setDefaultShipping(index)" x-text="method.is_default ? 'Default customer choice' : 'Make default'"></button><button type="button" class="np-danger-link" @click="shippingMethods.splice(index,1)">Remove</button></div></article></template><div x-show="shippingMethods.length === 0" class="rounded-2xl border-2 border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">Shipping methods are enabled but no method has been added.</div></div></details></div></section>
 
-            <section id="description" class="np-card"><header class="np-card__header"><div><h2>6. Product Detail</h2><p>Write a detailed description for this product.</p></div></header><x-admin.rich-editor name="description_html" :value="$product->description_html" label="Detailed product description" /><textarea name="detail_information_html" class="hidden" aria-hidden="true">{{ $detailInformationHtml }}</textarea></section>
+            <section id="description" class="np-card"><header class="np-card__header"><div><h2>6. Product Detail</h2><p>Write a detailed description for this product.</p></div></header><x-admin.rich-editor name="description_html" :value="$product->description_html" label="Detailed product description" /></section>
 
             <section id="faq" class="np-card"><header class="np-card__header"><div><h2>7. FAQ</h2><p>Add frequently asked questions and their answers.</p></div><button type="button" class="np-secondary-button" @click="addFaq()">＋ Add FAQ</button></header><div class="space-y-3"><template x-for="(faq,index) in faqs" :key="index"><div class="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2"><input type="hidden" :name="`faqs[${index}][is_active]`" value="1"><label class="admin-label">Question<input class="admin-input" :name="`faqs[${index}][question]`" x-model="faq.question" placeholder="e.g., What is the minimum order quantity?"></label><label class="admin-label">Answer<textarea class="admin-textarea np-textarea-sm" :name="`faqs[${index}][answer]`" x-model="faq.answer" placeholder="e.g., The minimum order quantity is 12 items"></textarea></label><div class="md:col-span-2 text-right"><button type="button" class="np-danger-link" @click="faqs.splice(index,1)">Remove FAQ</button></div></div></template></div></section>
         </section>

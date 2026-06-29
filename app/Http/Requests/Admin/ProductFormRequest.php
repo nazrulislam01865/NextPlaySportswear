@@ -43,6 +43,7 @@ class ProductFormRequest extends FormRequest
             'badge_color' => ['nullable', 'string', 'max:30'],
             'short_description' => ['nullable', 'string', 'max:1500'],
             'description_html' => ['nullable', 'string', 'max:100000'],
+            'product_specification_text' => ['nullable', 'string', 'max:100000'],
             'detail_information_html' => ['nullable', 'string', 'max:100000'],
             'base_price' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
             'compare_at_price' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],

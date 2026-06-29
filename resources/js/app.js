@@ -1292,6 +1292,246 @@ window.adminProductForm = (initial = {}) => ({
     addFaq() { this.faqs.push({ question: '', answer: '', is_active: true }); },
 });
 
+window.productSpecificationEditor = (initial = '', autoValues = {}) => ({
+    value: String(initial || ''),
+    autoValues: autoValues || {},
+    knownLabels: ['SKU', 'Product Type', 'Fabric', 'Fit', 'Customization', 'Size Range', 'MOQ', 'Lead Time'],
+    aliases: {
+        'sku': 'SKU',
+        'style no': 'SKU',
+        'style number': 'SKU',
+        'product type': 'Product Type',
+        'product': 'Product Type',
+        'fabric': 'Fabric',
+        'material': 'Fabric',
+        'fit': 'Fit',
+        'customization': 'Customization',
+        'customisation': 'Customization',
+        'printing': 'Customization',
+        'print method': 'Customization',
+        'size range': 'Size Range',
+        'sizes': 'Size Range',
+        'size': 'Size Range',
+        'moq': 'MOQ',
+        'minimum order': 'MOQ',
+        'minimum order quantity': 'MOQ',
+        'lead time': 'Lead Time',
+        'lead-time': 'Lead Time',
+        'production time': 'Lead Time',
+    },
+    get template() {
+        return this.knownLabels.map((label) => `${label}:`).join('\n');
+    },
+    init() {
+        if (!this.value.trim()) {
+            this.value = this.template;
+        }
+
+        this.$refs.editor.innerText = this.value;
+        this.sync();
+    },
+    command(command, value = null) {
+        this.$refs.editor.focus();
+        document.execCommand(command, false, value);
+        this.sync();
+    },
+    createLink() {
+        const url = window.prompt('Enter a secure URL (https://, mailto:, tel:, /path or #anchor):');
+        if (url) this.command('createLink', url);
+    },
+    clearFormat() {
+        this.command('removeFormat');
+    },
+    resetTemplate() {
+        this.value = this.template;
+        this.$refs.editor.innerText = this.value;
+        this.sync();
+    },
+    handlePaste(event) {
+        const clipboard = event.clipboardData || window.clipboardData;
+        if (!clipboard) return;
+
+        const plain = clipboard.getData('text/plain') || '';
+        const html = clipboard.getData('text/html') || '';
+        const rows = this.rowsFromPastedHtml(html);
+
+        if (!plain.trim() && rows.length === 0) return;
+
+        event.preventDefault();
+        const text = rows.length > 0
+            ? rows.map((row) => `${row.label}: ${row.value}`.trim()).join('\n')
+            : plain;
+
+        document.execCommand('insertText', false, text);
+        this.$nextTick(() => this.sync());
+    },
+    sync() {
+        this.value = this.$refs.editor?.innerText || '';
+    },
+    rowsFromPastedHtml(html = '') {
+        if (!html.trim()) return [];
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = html;
+        const rows = [];
+
+        wrapper.querySelectorAll('table tr').forEach((tr) => {
+            const cells = Array.from(tr.querySelectorAll('th,td'))
+                .map((cell) => this.cleanText(cell.innerText || cell.textContent || ''))
+                .filter(Boolean);
+
+            if (cells.length < 2) return;
+
+            const label = this.normalizeLabel(cells[0]);
+            const value = this.cleanText(cells.slice(1).join(' '));
+
+            if (label && !this.isHeaderLabel(label) && !this.isHeaderLabel(value)) {
+                rows.push({ label, value });
+            }
+        });
+
+        return this.uniqueRows(rows);
+    },
+    rowsFromText(text = '') {
+        const lines = String(text || '')
+            .replace(/\u00a0/g, ' ')
+            .split(/\r?\n|\r/)
+            .map((line) => line.trim())
+            .filter(Boolean);
+
+        const rows = [];
+
+        lines.forEach((line) => {
+            if (/^detail\s+information$/i.test(line) || /^(detail|information)$/i.test(line)) return;
+
+            const flatRows = this.rowsFromFlatText(line);
+            if (flatRows.length > 1) {
+                rows.push(...flatRows);
+                return;
+            }
+
+            const tabParts = line.split(/\t+/).map((part) => this.cleanText(part)).filter(Boolean);
+            if (tabParts.length >= 2) {
+                const label = this.normalizeLabel(tabParts[0]);
+                if (label && !this.isHeaderLabel(label)) {
+                    rows.push({ label, value: tabParts.slice(1).join(' ') });
+                    return;
+                }
+            }
+
+            if (line.includes(':')) {
+                const [rawLabel, ...rest] = line.split(':');
+                const label = this.normalizeLabel(rawLabel);
+                if (label && !this.isHeaderLabel(label)) {
+                    rows.push({ label, value: this.cleanText(rest.join(':')) });
+                    return;
+                }
+            }
+
+            const matched = this.rowFromKnownLabelPrefix(line);
+            if (matched) rows.push(matched);
+        });
+
+        return this.uniqueRows(rows);
+    },
+    rowsFromFlatText(text = '') {
+        const labels = this.knownLabels.map((label) => label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const pattern = new RegExp(`(${labels.join('|')})\\s*:`, 'gi');
+        const matches = Array.from(String(text || '').matchAll(pattern));
+        const rows = [];
+
+        matches.forEach((match, index) => {
+            const label = this.normalizeLabel(match[1]);
+            if (!label) return;
+
+            const start = match.index + match[0].length;
+            const end = matches[index + 1]?.index ?? String(text).length;
+            const value = this.cleanText(String(text).slice(start, end));
+
+            rows.push({ label, value });
+        });
+
+        return this.uniqueRows(rows);
+    },
+    rowFromKnownLabelPrefix(line) {
+        const clean = this.cleanText(line);
+        const lower = clean.toLowerCase();
+
+        const label = this.knownLabels.find((item) => {
+            const key = item.toLowerCase();
+            return lower === key || lower.startsWith(`${key} `) || lower.startsWith(`${key}\t`);
+        });
+
+        if (!label) return null;
+
+        return {
+            label,
+            value: this.cleanText(clean.slice(label.length)),
+        };
+    },
+    uniqueRows(rows) {
+        const map = new Map();
+
+        rows.forEach((row) => {
+            const label = this.normalizeLabel(row.label);
+            if (!label) return;
+
+            const value = this.cleanText(row.value || '');
+            const key = label.toLowerCase();
+
+            if (!map.has(key) || value) {
+                map.set(key, { label, value });
+            }
+        });
+
+        return Array.from(map.values());
+    },
+    normalizeLabel(label = '') {
+        const clean = this.cleanText(label).replace(/:$/, '').trim();
+        if (!clean) return '';
+
+        const lower = clean.toLowerCase();
+        if (this.aliases[lower]) return this.aliases[lower];
+
+        return clean
+            .split(' ')
+            .map((word) => word.length <= 3 && word === word.toUpperCase() ? word : word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+    },
+    isHeaderLabel(value = '') {
+        return ['detail', 'information'].includes(String(value).trim().toLowerCase());
+    },
+    cleanText(value = '') {
+        return String(value)
+            .replace(/\u00a0/g, ' ')
+            .replace(/[ \t]+/g, ' ')
+            .replace(/\s+$/g, '')
+            .replace(/^\s+/g, '');
+    },
+    previewRows() {
+        const manualRows = new Map(
+            this.rowsFromText(this.value).map((row) => [row.label, row.value])
+        );
+
+        const rows = this.knownLabels.map((label) => {
+            const manualValue = String(manualRows.get(label) || '').trim();
+            const finalValue = manualValue || String(this.autoValues[label] || '').trim();
+
+            if (!finalValue) return null;
+
+            return { label, value: finalValue };
+        }).filter(Boolean);
+
+        manualRows.forEach((value, label) => {
+            if (!this.knownLabels.includes(label) && String(value || '').trim()) {
+                rows.push({ label, value: String(value).trim() });
+            }
+        });
+
+        return rows;
+    },
+});
+
 window.adminRichEditor = (initial = '', name = '') => ({
     value: initial || '',
     name,

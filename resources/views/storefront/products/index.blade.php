@@ -7,6 +7,7 @@
 
             <form method="GET" action="{{ route('products.index') }}" class="mt-8 flex max-w-2xl flex-col gap-3 rounded-2xl bg-white p-2 shadow-hero sm:flex-row">
                 <input type="search" name="q" value="{{ $query }}" placeholder="Search football, jersey, cap, bag..." class="min-h-12 flex-1 rounded-xl border border-slate-200 px-4 text-sm text-slate-700 outline-none focus:border-brand-red">
+                @if(filled($tag ?? null))<input type="hidden" name="tag" value="{{ $tag }}">@endif
                 <button class="btn btn-red" type="submit">Search</button>
             </form>
         </div>
@@ -17,7 +18,10 @@
             <div class="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <p class="text-sm font-bold text-slate-500">{{ count($products) }} product{{ count($products) === 1 ? '' : 's' }} found</p>
-                    <h2 class="font-display text-4xl font-bold uppercase tracking-tight text-brand-ink">{{ filled($query) ? 'Search: ' . $query : 'Featured Products' }}</h2>
+                    <h2 class="font-display text-4xl font-bold uppercase tracking-tight text-brand-ink">{{ filled($tag ?? null) ? 'Tag: ' . $tag : (filled($query) ? 'Search: ' . $query : 'Featured Products') }}</h2>
+                    @if(filled($tag ?? null))
+                        <a href="{{ route('products.index') }}" class="mt-2 inline-flex text-sm font-black text-brand-red hover:underline">Clear tag filter</a>
+                    @endif
                 </div>
                 <a href="{{ route('quote.request') }}" class="btn btn-white">Need Bulk Quote?</a>
             </div>

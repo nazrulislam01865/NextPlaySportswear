@@ -16,4 +16,3 @@
     <div x-ref="editor" contenteditable="true" @input="sync()" class="admin-rich-editor min-h-[260px] p-5 text-sm leading-7 text-slate-700" role="textbox" aria-multiline="true"></div>
     <textarea name="{{ $name }}" x-model="value" hidden></textarea>
 </div>
-<p class="mt-2 text-xs text-slate-500">Formatting is sanitized on the server. Scripts, inline styles, event handlers, and unsafe links are removed.</p>

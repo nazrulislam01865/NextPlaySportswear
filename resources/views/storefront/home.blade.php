@@ -186,9 +186,9 @@
         <div class="section-head"><span class="small-red">Find it fast</span><h2>What Are You Looking For?</h2><p>Start with an admin-managed category and find the right product faster.</p></div>
         <div class="grid-3">
           @forelse($categories as $category)
-            <article class="image-card"><img loading="lazy" src="{{ $category['image'] }}" alt="{{ $category['alt'] }}"><div class="card-body"><h3>{{ $category['title'] }}</h3><p>{{ $category['description'] }}</p><a class="link-red" href="{{ $category['url'] }}">{{ $category['link_label'] }}</a></div></article>
+            <a class="image-card" href="{{ $category['url'] }}" aria-label="Browse {{ $category['title'] }}"><img loading="lazy" src="{{ $category['image'] }}" alt="{{ $category['alt'] }}"><div class="card-body"><h3>{{ $category['title'] }}</h3><p>{{ $category['description'] }}</p><span class="link-red">{{ $category['link_label'] }}</span></div></a>
           @empty
-            <article class="image-card"><div class="card-body"><h3>Categories are being prepared</h3><p>Publish featured categories from the admin catalog to display them here.</p><a class="link-red" href="{{ route('categories.index') }}">Browse Categories</a></div></article>
+            <a class="image-card" href="{{ route('categories.index') }}" aria-label="Browse Categories"><div class="card-body"><h3>Categories are being prepared</h3><p>Publish featured categories from the admin catalog to display them here.</p><span class="link-red">Browse Categories</span></div></a>
           @endforelse
         </div>
       </div>
@@ -304,7 +304,7 @@
         <div class="section-head"><span class="small-red">Popular gear</span><h2>Best-Selling Team Gear</h2></div>
         <div class="gear-list">
           @forelse($categories as $category)
-            <article class="gear-card"><img loading="lazy" src="{{ $category['image'] }}" alt="{{ $category['alt'] }}"><div><h3>{{ $category['short_title'] }}</h3><p>{{ $category['description'] }}</p><a class="link-red" href="{{ $category['url'] }}">{{ $category['link_label'] }}</a></div></article>
+            <a class="gear-card" href="{{ $category['url'] }}" aria-label="Browse {{ $category['short_title'] }}"><img loading="lazy" src="{{ $category['image'] }}" alt="{{ $category['alt'] }}"><div><h3>{{ $category['short_title'] }}</h3><p>{{ $category['description'] }}</p><span class="link-red">{{ $category['link_label'] }}</span></div></a>
           @empty
             <p>No featured catalog categories are available yet.</p>
           @endforelse
@@ -318,7 +318,7 @@
         <div class="section-head"><span class="small-red">Find your sport</span><h2>Shop by Sport</h2><p>Active sport categories from the admin catalog appear here automatically.</p></div>
         <div class="grid-6">
           @forelse($sports as $sport)
-            <article class="sport-card"><img loading="lazy" src="{{ $sport['image'] }}" alt="{{ $sport['alt'] }}"><h3>{{ $sport['title'] }}</h3><a class="link-red" href="{{ $sport['url'] }}">Shop {{ $sport['short_title'] }} Gear</a></article>
+            <a class="sport-card" href="{{ $sport['url'] }}" aria-label="Shop {{ $sport['short_title'] }} Gear"><img loading="lazy" src="{{ $sport['image'] }}" alt="{{ $sport['alt'] }}"><h3>{{ $sport['title'] }}</h3><span class="link-red">Shop {{ $sport['short_title'] }} Gear</span></a>
           @empty
             <p>No active sport categories are available yet.</p>
           @endforelse

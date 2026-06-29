@@ -36,9 +36,19 @@ class ProductCatalogService
             ->all();
     }
 
-    public function search(?string $query = null): array
+    public function search(?string $query = null, ?string $tag = null): array
     {
         $products = collect($this->all());
+
+        if (filled($tag)) {
+            $tagNeedle = Str::lower(trim((string) $tag));
+
+            $products = $products->filter(function (array $product) use ($tagNeedle): bool {
+                return collect($product['tags'] ?? [])
+                    ->map(fn ($productTag) => Str::lower(trim((string) $productTag)))
+                    ->contains($tagNeedle);
+            });
+        }
 
         if (filled($query)) {
             $needle = Str::lower((string) $query);
@@ -245,8 +255,8 @@ class ProductCatalogService
             'gallery' => $gallery,
             'tags' => $product->tags ?? [],
             'features' => $product->features ?? [],
-            'detail_information' => $product->specifications ?? [],
-            'details' => $product->specifications ?? [],
+            'detail_information' => $this->normalizeDetailInformation($product->specifications ?? []),
+            'details' => $this->normalizeDetailInformation($product->specifications ?? []),
             'brand' => $product->brand ?: config('storefront.name'),
             'product_type' => $product->product_type,
             'product_profile' => $product->product_profile ?: 'standard',
@@ -334,6 +344,125 @@ class ProductCatalogService
             'custom_schema' => $product->schema_json,
             'url' => route('products.show', $product->slug),
         ];
+    }
+
+    private function normalizeDetailInformation(array $specifications): array
+    {
+        $rows = collect($specifications)
+            ->mapWithKeys(function ($value, $label): array {
+                if (is_array($value)) {
+                    $rowLabel = $value['label'] ?? $value['name'] ?? null;
+                    $rowValue = $value['value'] ?? $value['information'] ?? null;
+
+                    return filled($rowLabel) && filled($rowValue)
+                        ? [(string) $rowLabel => (string) $rowValue]
+                        : [];
+                }
+
+                return filled($label) && filled($value)
+                    ? [(string) $label => (string) $value]
+                    : [];
+            });
+
+        $parsedRows = $this->parseDetailInformationText(
+            $rows->map(fn ($value, $label) => $label.': '.$value)->implode(PHP_EOL)
+        );
+
+        return collect($parsedRows ?: $rows->all())
+            ->filter(fn ($value, $label) => filled($label) && filled($value))
+            ->take(30)
+            ->all();
+    }
+
+    private function parseDetailInformationText(string $text): array
+    {
+        $knownLabels = ['SKU', 'Product Type', 'Fabric', 'Fit', 'Customization', 'Size Range', 'MOQ', 'Lead Time'];
+        $rows = [];
+        $lines = collect(preg_split('/\r\n|\r|\n/', $text) ?: [])
+            ->map(fn ($line) => $this->cleanDetailInformationText($line))
+            ->filter();
+
+        foreach ($lines as $line) {
+            if (preg_match('/^(detail|information|detail\s+information)$/i', $line)) {
+                continue;
+            }
+
+            $flatRows = $this->parseFlatDetailInformationText($line, $knownLabels);
+            if (count($flatRows) > 1) {
+                foreach ($flatRows as $label => $value) {
+                    $rows[$label] = $value;
+                }
+                continue;
+            }
+
+            if (str_contains($line, ':')) {
+                [$label, $value] = array_pad(explode(':', $line, 2), 2, '');
+                $label = $this->normalizeDetailLabel($label);
+                if ($label !== '') {
+                    $rows[$label] = $this->cleanDetailInformationText($value);
+                }
+            }
+        }
+
+        if ($rows === []) {
+            $rows = $this->parseFlatDetailInformationText($text, $knownLabels);
+        }
+
+        return $rows;
+    }
+
+    private function parseFlatDetailInformationText(string $text, array $knownLabels): array
+    {
+        $flatText = $this->cleanDetailInformationText($text);
+        if ($flatText === '') {
+            return [];
+        }
+
+        $labelPattern = collect($knownLabels)->map(fn ($label) => preg_quote($label, '/'))->implode('|');
+        if (! preg_match_all('/('.$labelPattern.')\s*:/i', $flatText, $matches, PREG_OFFSET_CAPTURE)) {
+            return [];
+        }
+
+        $rows = [];
+        $labelMatches = $matches[1];
+        foreach ($labelMatches as $index => $match) {
+            $label = $this->normalizeDetailLabel($match[0]);
+            $start = $match[1] + strlen($match[0]);
+            $end = isset($labelMatches[$index + 1]) ? $labelMatches[$index + 1][1] : strlen($flatText);
+            $value = substr($flatText, $start, max(0, $end - $start));
+            $value = preg_replace('/^\s*:\s*/', '', $value) ?? $value;
+
+            if ($label !== '') {
+                $rows[$label] = $this->cleanDetailInformationText($value);
+            }
+        }
+
+        return $rows;
+    }
+
+    private function normalizeDetailLabel(?string $label): string
+    {
+        $clean = trim((string) $label, " \t\n\r\0\x0B:");
+        $lookup = Str::lower($clean);
+
+        return [
+            'sku' => 'SKU',
+            'product type' => 'Product Type',
+            'fabric' => 'Fabric',
+            'fit' => 'Fit',
+            'customization' => 'Customization',
+            'customisation' => 'Customization',
+            'size range' => 'Size Range',
+            'moq' => 'MOQ',
+            'lead time' => 'Lead Time',
+            'lead-time' => 'Lead Time',
+            'production time' => 'Lead Time',
+        ][$lookup] ?? Str::headline($clean);
+    }
+
+    private function cleanDetailInformationText(?string $value): string
+    {
+        return trim(preg_replace('/[ 	]+/', ' ', str_replace("\xc2\xa0", ' ', (string) $value)) ?? '');
     }
 
     private function hydrateProduct(array $product): array

@@ -108,13 +108,7 @@ class CategoryCatalogService
     public function productsFor(Category $category, array $filters): LengthAwarePaginator
     {
         $categoryIds = $this->categoryIdsForListing($category);
-
-        // Aggregate category-specific ordering before joining products. This avoids
-        // duplicate products when an item belongs to both a parent and a child category.
-        $listing = DB::table('category_product')
-            ->selectRaw('product_id, MAX(is_featured) AS category_featured, MIN(sort_order) AS category_sort')
-            ->whereIn('category_id', $categoryIds)
-            ->groupBy('product_id');
+        $listing = $this->productListingSubquery($categoryIds);
 
         $query = Product::query()
             ->published()
@@ -216,11 +210,12 @@ class CategoryCatalogService
                 'count' => (int) ($child->products_count ?? 0),
             ])->filter(fn (array $child) => $child['count'] > 0)->values()->all();
 
+            $listing = $this->productListingSubquery($categoryIds);
+
             $valueCounts = DB::table('attribute_value_product as avp')
+                ->joinSub($listing, 'category_listing', fn ($join) => $join->on('category_listing.product_id', '=', 'avp.product_id'))
                 ->join('attribute_values as av', 'av.id', '=', 'avp.attribute_value_id')
                 ->join('products as p', 'p.id', '=', 'avp.product_id')
-                ->join('category_product as cp', 'cp.product_id', '=', 'p.id')
-                ->whereIn('cp.category_id', $categoryIds)
                 ->where('p.status', 'active')
                 ->where('p.is_active', true)
                 ->where(function ($query): void {
@@ -263,9 +258,7 @@ class CategoryCatalogService
                 ->values()
                 ->all();
 
-            $priceCeiling = (float) Product::query()
-                ->published()
-                ->whereHas('categories', fn (Builder $query) => $query->whereIn('categories.id', $categoryIds))
+            $priceCeiling = (float) $this->applyCategoryProductFilter(Product::query()->published(), $categoryIds)
                 ->max('base_price');
 
             return [
@@ -327,80 +320,65 @@ class CategoryCatalogService
 
     private function productCount(Category $category): int
     {
-        $ids = $this->categoryIdsForListing($category);
-
-        return Product::query()
-            ->published()
-            ->whereHas('categories', fn (Builder $query) => $query->whereIn('categories.id', $ids))
-            ->count();
+        return $this->applyCategoryProductFilter(
+            Product::query()->published(),
+            $this->categoryIdsForListing($category)
+        )->count();
     }
 
     /** @param Collection<int, Category> $categories */
     private function attachProductCounts(Collection $categories): void
     {
-        if ($categories->isEmpty()) {
-            return;
-        }
-
-        $ids = $categories->pluck('id')->map(fn ($id) => (int) $id)->all();
-
-        $directCounts = DB::table('category_product as cp')
-            ->join('products as p', 'p.id', '=', 'cp.product_id')
-            ->whereIn('cp.category_id', $ids)
-            ->where('p.status', 'active')
-            ->where('p.is_active', true)
-            ->where(function ($query): void {
-                $query->whereNull('p.published_at')->orWhere('p.published_at', '<=', now());
-            })
-            ->selectRaw('cp.category_id, COUNT(DISTINCT p.id) AS aggregate')
-            ->groupBy('cp.category_id')
-            ->pluck('aggregate', 'cp.category_id');
-
-        $descendantCounts = DB::table('category_closure as cc')
-            ->join('categories as dc', 'dc.id', '=', 'cc.descendant_id')
-            ->join('category_product as cp', 'cp.category_id', '=', 'dc.id')
-            ->join('products as p', 'p.id', '=', 'cp.product_id')
-            ->whereIn('cc.ancestor_id', $ids)
-            ->whereNull('dc.deleted_at')
-            ->where('dc.is_active', true)
-            ->where('dc.status', 'active')
-            ->where('dc.is_visible_in_catalog', true)
-            ->where(function ($query): void {
-                $query->whereNull('dc.published_at')->orWhere('dc.published_at', '<=', now());
-            })
-            ->whereNotExists(function ($query): void {
-                $query->selectRaw('1')
-                    ->from('category_closure as blocked_cc')
-                    ->join('categories as blocked_category', 'blocked_category.id', '=', 'blocked_cc.ancestor_id')
-                    ->whereColumn('blocked_cc.descendant_id', 'dc.id')
-                    ->where('blocked_cc.depth', '>', 0)
-                    ->where(function ($blocked): void {
-                        $blocked->whereNotNull('blocked_category.deleted_at')
-                            ->orWhere('blocked_category.is_active', false)
-                            ->orWhere('blocked_category.status', '!=', 'active')
-                            ->orWhere('blocked_category.is_visible_in_catalog', false)
-                            ->orWhere(function ($scheduled): void {
-                                $scheduled->whereNotNull('blocked_category.published_at')
-                                    ->where('blocked_category.published_at', '>', now());
-                            });
-                    });
-            })
-            ->where('p.status', 'active')
-            ->where('p.is_active', true)
-            ->where(function ($query): void {
-                $query->whereNull('p.published_at')->orWhere('p.published_at', '<=', now());
-            })
-            ->selectRaw('cc.ancestor_id, COUNT(DISTINCT p.id) AS aggregate')
-            ->groupBy('cc.ancestor_id')
-            ->pluck('aggregate', 'cc.ancestor_id');
-
         foreach ($categories as $category) {
-            $count = $category->include_descendant_products
-                ? (int) ($descendantCounts[$category->id] ?? 0)
-                : (int) ($directCounts[$category->id] ?? 0);
-            $category->setAttribute('products_count', $count);
+            $category->setAttribute('products_count', $this->productCount($category));
         }
     }
+
+    /** @param array<int> $categoryIds */
+    private function productListingSubquery(array $categoryIds)
+    {
+        $categoryIds = collect($categoryIds)
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        $pivotListing = DB::table('category_product')
+            ->selectRaw('product_id, MAX(CASE WHEN is_featured THEN 1 ELSE 0 END) AS category_featured, MIN(sort_order) AS category_sort')
+            ->whereIn('category_id', $categoryIds)
+            ->groupBy('product_id');
+
+        $legacyListing = DB::table('products')
+            ->selectRaw('id AS product_id, 0 AS category_featured, COALESCE(sort_order, 999999) AS category_sort')
+            ->where(function ($query) use ($categoryIds): void {
+                $query->whereIn('category_id', $categoryIds)
+                    ->orWhereIn('subcategory_id', $categoryIds);
+            });
+
+        return DB::query()
+            ->fromSub($pivotListing->unionAll($legacyListing), 'category_listing_source')
+            ->selectRaw('product_id, MAX(category_featured) AS category_featured, MIN(category_sort) AS category_sort')
+            ->groupBy('product_id');
+    }
+
+    /** @param array<int> $categoryIds */
+    private function applyCategoryProductFilter(Builder $query, array $categoryIds): Builder
+    {
+        $categoryIds = collect($categoryIds)
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        return $query->where(function (Builder $builder) use ($categoryIds): void {
+            $builder->whereHas('categories', fn (Builder $categoryQuery) => $categoryQuery->whereIn('categories.id', $categoryIds))
+                ->orWhereIn('category_id', $categoryIds)
+                ->orWhereIn('subcategory_id', $categoryIds);
+        });
+    }
+
 
     private function productRelations(): array
     {
