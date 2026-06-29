@@ -102,14 +102,24 @@ class JerseyCustomizationOptionRequest extends FormRequest
         $hex = strtoupper(ltrim(trim((string) $this->input('color_hex')), '#'));
         $option = $this->route('jerseyCustomizationOption');
 
+        $optionName = trim((string) $this->input('name'));
+
         $images = collect($this->input('images', []))
-            ->map(function (mixed $image, int $index): array {
+            ->map(function (mixed $image, int $index) use ($optionName): array {
                 $row = is_array($image) ? $image : [];
+                $existingId = filled($row['existing_id'] ?? null) ? (int) $row['existing_id'] : null;
+                $imageUrl = trim((string) ($row['image_url'] ?? ''));
+                $hasUploadedFile = $this->hasFile("images.{$index}.image_file");
+                $imageName = trim((string) ($row['name'] ?? ''));
+
+                if ($imageName === '' && ($existingId || $imageUrl !== '' || $hasUploadedFile)) {
+                    $imageName = $optionName;
+                }
 
                 return [
-                    'existing_id' => filled($row['existing_id'] ?? null) ? (int) $row['existing_id'] : null,
-                    'name' => trim((string) ($row['name'] ?? '')),
-                    'image_url' => trim((string) ($row['image_url'] ?? '')),
+                    'existing_id' => $existingId,
+                    'name' => $imageName,
+                    'image_url' => $imageUrl,
                     'is_primary' => filter_var($row['is_primary'] ?? false, FILTER_VALIDATE_BOOL),
                     'sort_order' => is_numeric($row['sort_order'] ?? null) ? (int) $row['sort_order'] : $index,
                 ];
@@ -118,10 +128,10 @@ class JerseyCustomizationOptionRequest extends FormRequest
             ->all();
 
         $this->merge([
-            'name' => trim((string) $this->input('name')),
+            'name' => $optionName,
             'slug' => Str::slug((string) $this->input('slug', $this->input('name'))),
             'color_hex' => $type === JerseyCustomizationType::Color->value && $hex !== '' ? '#'.$hex : null,
-            'description' => filled($this->input('description'))
+            'description' => $type === JerseyCustomizationType::Fabric->value && filled($this->input('description'))
                 ? trim((string) $this->input('description'))
                 : null,
             'is_active' => true,

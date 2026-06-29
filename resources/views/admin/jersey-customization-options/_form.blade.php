@@ -3,7 +3,26 @@
 
     $isEdit = $option->exists;
     $selectedType = old('type', $option->type instanceof JerseyCustomizationType ? $option->type->value : $option->type);
+    $selectedTypeEnum = JerseyCustomizationType::tryFrom((string) $selectedType) ?: JerseyCustomizationType::NeckAndCollar;
+    $imageTitle = match ($selectedTypeEnum) {
+        JerseyCustomizationType::Color => 'Color swatch image',
+        JerseyCustomizationType::NeckAndCollar => 'Neck/collar reference image',
+        JerseyCustomizationType::Fabric => 'Fabric texture image',
+        JerseyCustomizationType::SleevesAndCuffs => 'Sleeve/cuff reference image',
+        JerseyCustomizationType::JerseyStyle => 'Jersey style preview image',
+    };
+    $imageDescription = match ($selectedTypeEnum) {
+        JerseyCustomizationType::Color => 'Optional. Add a real swatch only when the HEX color needs a visual reference.',
+        JerseyCustomizationType::NeckAndCollar => 'Optional. Add a clear close-up of the neckline or collar shape.',
+        JerseyCustomizationType::Fabric => 'Optional. Add a texture or material close-up for this fabric.',
+        JerseyCustomizationType::SleevesAndCuffs => 'Optional. Add a close-up of the sleeve or cuff finish.',
+        JerseyCustomizationType::JerseyStyle => 'Optional. Add a full jersey preview for this style.',
+    };
     $existingImages = $option->relationLoaded('images') ? $option->images->keyBy('id') : collect();
+    $returnType = request('return_type');
+    $cancelUrl = $returnType
+        ? route('admin.jersey-customization-options.type', $returnType)
+        : route('admin.jersey-customization-options.index');
     $submittedImages = old('images');
 
     $initialImages = $submittedImages !== null
@@ -30,6 +49,9 @@
 @endphp
 
 <div class="space-y-6" x-data="{ type: @js($selectedType) }">
+    @if($returnType)
+        <input type="hidden" name="_return_to_type" value="1">
+    @endif
     <x-admin.section-card
         title="Jersey Customization Option"
         description="Create a reusable jersey customization value. Images are optional."
@@ -84,21 +106,28 @@
                 </span>
             </label>
 
-            <label class="admin-label">
-                Description
+            <label
+                class="admin-label"
+                x-show="type === @js(JerseyCustomizationType::Fabric->value)"
+                x-cloak
+            >
+                Fabric details
                 <textarea
-                    class="admin-input min-h-28 resize-y"
+                    class="admin-textarea min-h-28 resize-y"
                     name="description"
                     maxlength="2000"
-                    placeholder="Optional description for this customization option."
+                    placeholder="Example: Lightweight dry-fit mesh with breathable texture and quick-dry finish."
                 >{{ old('description', $option->description) }}</textarea>
+                <span class="mt-1 block text-xs font-medium text-slate-500">
+                    Details are shown only for Fabric options.
+                </span>
             </label>
         </div>
     </x-admin.section-card>
 
     <x-admin.section-card
-        title="Image"
-        description="Optional. Add one image or multiple images only when this option needs a visual reference."
+        :title="$imageTitle"
+        :description="$imageDescription"
     >
         <x-admin.image-collection-field
             name="images"
@@ -110,7 +139,7 @@
     </x-admin.section-card>
 
     <div class="sticky bottom-3 z-30 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-soft backdrop-blur sm:bottom-4 sm:flex-row sm:justify-end">
-        <a class="btn btn-white" href="{{ route('admin.jersey-customization-options.index') }}">Cancel</a>
+        <a class="btn btn-white" href="{{ $cancelUrl }}">Cancel</a>
         <button class="btn btn-red">{{ $isEdit ? 'Update Option' : 'Create Option' }}</button>
     </div>
 </div>

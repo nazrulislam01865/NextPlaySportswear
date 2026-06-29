@@ -26,7 +26,7 @@ class CategoryCatalogService
             ->storefrontReachable()
             ->with([
                 'parent',
-                'children' => fn (Builder $query) => $query->storefrontReachable(),
+                'children' => fn ($query) => $query->storefrontReachable(),
                 'filters.values',
                 'contentBlocks',
                 'faqs',

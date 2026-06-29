@@ -65,7 +65,7 @@ class ProductController extends Controller
             'price_table_highlight_column' => 1,
             'is_active' => true, 'is_customizable' => true, 'robots_index' => true,
             'robots_follow' => true, 'low_stock_threshold' => 5,
-            'artwork_upload_enabled' => true, 'artwork_upload_required' => false,
+            'artwork_upload_enabled' => false, 'artwork_upload_required' => false,
             'artwork_upload_title' => 'Upload Custom Artwork',
             'artwork_upload_description' => 'Upload one or more artwork files for the production team.',
             'artwork_upload_max_files' => 5, 'artwork_upload_max_file_size_mb' => 15,
@@ -686,6 +686,7 @@ class ProductController extends Controller
 
     private function syncCatalogAssignments(Product $product, array $data): void
     {
+        $showInCategoryPage = (bool) ($data['show_in_category_page'] ?? true);
         $primaryId = isset($data['primary_category_id']) ? (int) $data['primary_category_id'] : null;
         $categoryIds = collect($data['category_assignments'] ?? [])
             ->map(fn ($id) => (int) $id)
@@ -693,10 +694,12 @@ class ProductController extends Controller
             ->unique()
             ->values();
 
-        if ($primaryId) {
+        if ($showInCategoryPage && $primaryId) {
             $categoryIds = $categoryIds->prepend($primaryId)->unique()->values();
-        } elseif ($categoryIds->isNotEmpty()) {
+        } elseif ($showInCategoryPage && $categoryIds->isNotEmpty()) {
             $primaryId = (int) $categoryIds->first();
+        } elseif (! $showInCategoryPage) {
+            $categoryIds = collect();
         }
 
         // Product editing must not erase category-specific merchandising choices

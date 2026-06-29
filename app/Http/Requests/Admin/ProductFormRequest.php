@@ -30,6 +30,7 @@ class ProductFormRequest extends FormRequest
             'primary_category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'category_assignments' => ['nullable', 'array', 'max:100'],
             'category_assignments.*' => ['integer', 'distinct', 'exists:categories,id'],
+            'show_in_category_page' => ['nullable', 'boolean'],
             'attribute_value_ids' => ['nullable', 'array', 'max:500'],
             'attribute_value_ids.*' => ['integer', 'distinct', 'exists:attribute_values,id'],
             // Legacy columns remain supported during the compatibility period.
@@ -245,13 +246,16 @@ class ProductFormRequest extends FormRequest
         }
         $this->merge(['sku' => $sku]);
 
+        $showInCategoryPage = $this->boolean('show_in_category_page');
         $assignments = collect($this->input('category_assignments', []))
             ->filter(fn ($id) => filter_var($id, FILTER_VALIDATE_INT) !== false)
             ->map(fn ($id) => (int) $id)->unique()->values();
         $primary = $this->input('primary_category_id');
         if (filled($primary)) {
             $primary = (int) $primary;
-            $assignments->prepend($primary);
+            if ($showInCategoryPage) {
+                $assignments->prepend($primary);
+            }
         } elseif ($assignments->isNotEmpty()) {
             // Every categorized product has one deterministic primary placement for
             // breadcrumbs, canonical grouping, exports, and legacy compatibility.
@@ -259,9 +263,15 @@ class ProductFormRequest extends FormRequest
         } else {
             $primary = null;
         }
+
+        if (! $showInCategoryPage) {
+            $assignments = collect();
+        }
+
         $this->merge([
             'primary_category_id' => $primary,
             'category_assignments' => $assignments->unique()->values()->all(),
+            'show_in_category_page' => $showInCategoryPage,
             'attribute_value_ids' => collect($this->input('attribute_value_ids', []))->map(fn ($id) => (int) $id)->filter()->unique()->values()->all(),
         ]);
 
@@ -763,17 +773,12 @@ class ProductFormRequest extends FormRequest
     }
 
     /**
-     * Complete quantity ranges from their starting breakpoints.
-     *
-     * A row such as 1 followed by 5 becomes 1-4. When an uploaded explicit
-     * maximum leaves a gap or overlaps the next row, the next row's minimum
-     * remains the source of truth and the previous maximum is corrected to
-     * next minimum minus one. The final row may remain open-ended or retain an
-     * explicit final maximum from the spreadsheet.
+     * Normalize the manually entered quantity ranges without overwriting the
+     * administrator's Qty To values from the product editor.
      */
     private function normalizeQuantityRanges(mixed $submittedRanges): \Illuminate\Support\Collection
     {
-        $ranges = collect(is_array($submittedRanges) ? $submittedRanges : [])
+        return collect(is_array($submittedRanges) ? $submittedRanges : [])
             ->values()
             ->map(function ($range): array {
                 $range = is_array($range) ? $range : [];
@@ -786,20 +791,6 @@ class ProductFormRequest extends FormRequest
                     'maximum_quantity' => $maximum === false ? $maximumRaw : $maximum,
                 ];
             });
-
-        return $ranges->map(function (array $range, int $index) use ($ranges): array {
-            $minimum = filter_var($range['minimum_quantity'] ?? null, FILTER_VALIDATE_INT);
-
-            if ($index < $ranges->count() - 1) {
-                $nextMinimum = filter_var(data_get($ranges->get($index + 1), 'minimum_quantity'), FILTER_VALIDATE_INT);
-
-                if ($minimum !== false && $nextMinimum !== false && $nextMinimum > $minimum) {
-                    $range['maximum_quantity'] = $nextMinimum - 1;
-                }
-            }
-
-            return $range;
-        });
     }
 
     private function resolveLivePriceColumn(array $headers, array $row, int $highlightColumn): ?int

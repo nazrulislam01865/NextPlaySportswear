@@ -59,8 +59,9 @@ class ProductCatalogService
     {
         if (Schema::hasTable('products')) {
             $query = Product::query()->with(['category', 'subcategory', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'priceTiers', 'artworkMethods', 'productionSpeeds', 'shippingMethods', 'faqs']);
+            $isAdminPreview = auth('admin')->check() || (auth()->user()?->isAdmin() ?? false);
 
-            if (! auth()->user()?->isAdmin()) {
+            if (! $isAdminPreview) {
                 $query->published();
             }
 

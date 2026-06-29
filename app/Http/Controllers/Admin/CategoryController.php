@@ -32,11 +32,27 @@ class CategoryController extends Controller
 
     public function index(Request $request): View
     {
+        $allowedStatuses = ['draft', 'active', 'inactive', 'archived'];
+        $allowedTypes = ['standard', 'sport', 'collection', 'apparel', 'accessory', 'promotional', 'sale', 'new-arrival', 'navigation-only'];
+
+        $filters = [
+            'q' => Str::limit(trim((string) $request->query('q')), 100, ''),
+            'status' => in_array($request->query('status'), $allowedStatuses, true) ? (string) $request->query('status') : '',
+            'type' => in_array($request->query('type'), $allowedTypes, true) ? (string) $request->query('type') : '',
+            'empty' => $request->boolean('empty'),
+        ];
+
         $query = Category::query()
-            ->with(['parent', 'updater'])
+            ->select([
+                'id', 'parent_id', 'name', 'menu_label', 'slug', 'category_type', 'page_template',
+                'status', 'depth', 'tree_path', 'is_active', 'is_visible_in_catalog', 'is_visible_in_menu',
+                'is_featured', 'sort_order', 'updated_at', 'updated_by',
+            ])
+            ->with(['parent:id,name', 'updater:id,name'])
             ->withCount(['children', 'products']);
 
-        if ($search = trim((string) $request->query('q'))) {
+        if ($filters['q'] !== '') {
+            $search = addcslashes($filters['q'], '\\%_');
             $query->where(function ($builder) use ($search): void {
                 $builder->where('name', 'like', "%{$search}%")
                     ->orWhere('slug', 'like', "%{$search}%")
@@ -44,21 +60,21 @@ class CategoryController extends Controller
             });
         }
 
-        if ($status = $request->query('status')) {
-            $query->where('status', $status);
+        if ($filters['status'] !== '') {
+            $query->where('status', $filters['status']);
         }
 
-        if ($type = $request->query('type')) {
-            $query->where('category_type', $type);
+        if ($filters['type'] !== '') {
+            $query->where('category_type', $filters['type']);
         }
 
-        if ($request->boolean('empty')) {
+        if ($filters['empty']) {
             $query->doesntHave('products');
         }
 
         return view('admin.categories.index', [
             'categories' => $query->orderBy('tree_path')->orderBy('sort_order')->orderBy('name')->paginate(40)->withQueryString(),
-            'filters' => $request->only(['q', 'status', 'type', 'empty']),
+            'filters' => $filters,
             'analytics' => [
                 'total' => Category::query()->count(),
                 'active' => Category::query()->where('status', 'active')->where('is_active', true)->count(),

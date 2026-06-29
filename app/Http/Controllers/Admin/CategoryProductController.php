@@ -9,7 +9,6 @@ use App\Services\Catalog\CategoryTreeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class CategoryProductController extends Controller
@@ -20,29 +19,43 @@ class CategoryProductController extends Controller
 
     public function index(Request $request, Category $category): View
     {
-        $query = Product::query()
-            ->with(['categories' => fn ($builder) => $builder->select('categories.id', 'categories.name')])
-            ->with(['images'])
-            ->orderBy('name');
+        $search = trim(mb_substr((string) $request->query('q', ''), 0, 100));
+        $assignment = in_array($request->query('assignment'), ['assigned', 'unassigned'], true)
+            ? (string) $request->query('assignment')
+            : '';
 
-        if ($search = trim((string) $request->query('q'))) {
-            $query->where(function ($builder) use ($search): void {
-                $builder->where('name', 'like', "%{$search}%")
-                    ->orWhere('sku', 'like', "%{$search}%")
-                    ->orWhere('slug', 'like', "%{$search}%");
+        $query = Product::query()
+            ->select(['id', 'name', 'slug', 'sku'])
+            ->with([
+                'categories' => fn ($builder) => $builder->select('categories.id', 'categories.name'),
+                'images:id,product_id,path,url,alt_text,is_primary,sort_order',
+            ])
+            ->orderBy('name')
+            ->orderBy('id');
+
+        if ($search !== '') {
+            $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search) . '%';
+
+            $query->where(function ($builder) use ($like): void {
+                $builder->where('name', 'like', $like)
+                    ->orWhere('sku', 'like', $like)
+                    ->orWhere('slug', 'like', $like);
             });
         }
 
-        if ($request->query('assignment') === 'assigned') {
+        if ($assignment === 'assigned') {
             $query->whereHas('categories', fn ($builder) => $builder->whereKey($category->id));
-        } elseif ($request->query('assignment') === 'unassigned') {
+        } elseif ($assignment === 'unassigned') {
             $query->whereDoesntHave('categories', fn ($builder) => $builder->whereKey($category->id));
         }
 
         return view('admin.categories.products', [
             'category' => $category,
             'products' => $query->paginate(30)->withQueryString(),
-            'filters' => $request->only(['q', 'assignment']),
+            'filters' => [
+                'q' => $search,
+                'assignment' => $assignment,
+            ],
         ]);
     }
 

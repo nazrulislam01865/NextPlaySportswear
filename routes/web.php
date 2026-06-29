@@ -78,6 +78,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::put('/categories/{category}/products', [\App\Http\Controllers\Admin\CategoryProductController::class, 'update'])->name('categories.products.update');
         Route::resource('categories', \App\Http\Controllers\Admin\CategoryController::class)->except('show');
         Route::resource('attributes', \App\Http\Controllers\Admin\AttributeController::class)->except('show');
+        Route::get(
+            '/jersey-customization-options/type/{type}',
+            [\App\Http\Controllers\Admin\JerseyCustomizationOptionController::class, 'typeIndex']
+        )->name('jersey-customization-options.type');
         Route::resource(
             'jersey-customization-options',
             \App\Http\Controllers\Admin\JerseyCustomizationOptionController::class

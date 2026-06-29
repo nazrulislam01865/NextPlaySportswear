@@ -19,9 +19,20 @@ class JerseyCustomizationOptionController extends Controller
     ) {
     }
 
-    public function index(Request $request): View
+    public function index(Request $request): RedirectResponse
     {
+        return redirect()->route(
+            'admin.jersey-customization-options.type',
+            JerseyCustomizationType::Color->value
+        );
+    }
+
+    public function typeIndex(Request $request, string $type): View
+    {
+        $selectedType = $this->resolveType($type);
+
         $query = JerseyCustomizationOption::query()
+            ->where('type', $selectedType->value)
             ->with('primaryImage')
             ->withCount('images');
 
@@ -29,18 +40,21 @@ class JerseyCustomizationOptionController extends Controller
             $query->where(function (Builder $builder) use ($search): void {
                 $builder
                     ->where('name', 'like', "%{$search}%")
-                    ->orWhere('slug', 'like', "%{$search}%");
+                    ->orWhere('slug', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
-        if ($request->filled('type')) {
-            $query->where('type', $request->query('type'));
-        }
-
-        return view('admin.jersey-customization-options.index', [
-            'options' => $query->ordered()->paginate(30)->withQueryString(),
-            'types' => JerseyCustomizationType::options(),
-            'filters' => $request->only(['q', 'type']),
+        return view('admin.jersey-customization-options.type-index', [
+            'options' => $query->ordered()->paginate(20)->withQueryString(),
+            'type' => $selectedType,
+            'typeLinks' => $this->typeLinks(),
+            'filters' => $request->only(['q']),
+            'option' => new JerseyCustomizationOption([
+                'type' => $selectedType,
+                'is_active' => true,
+                'sort_order' => 0,
+            ]),
         ]);
     }
 
@@ -59,6 +73,16 @@ class JerseyCustomizationOptionController extends Controller
     public function store(JerseyCustomizationOptionRequest $request): RedirectResponse
     {
         $option = $this->optionService->create($request);
+
+        if ($request->boolean('_return_to_type')) {
+            $type = $option->type instanceof JerseyCustomizationType
+                ? $option->type->value
+                : (string) $option->type;
+
+            return redirect()
+                ->route('admin.jersey-customization-options.type', $type)
+                ->with('status', $option->name.' created successfully.');
+        }
 
         return redirect()
             ->route('admin.jersey-customization-options.edit', $option)
@@ -81,6 +105,16 @@ class JerseyCustomizationOptionController extends Controller
     ): RedirectResponse {
         $option = $this->optionService->update($jerseyCustomizationOption, $request);
 
+        if ($request->boolean('_return_to_type')) {
+            $type = $option->type instanceof JerseyCustomizationType
+                ? $option->type->value
+                : (string) $option->type;
+
+            return redirect()
+                ->route('admin.jersey-customization-options.type', $type)
+                ->with('status', $option->name.' updated successfully.');
+        }
+
         return redirect()
             ->route('admin.jersey-customization-options.edit', $option)
             ->with('status', 'Jersey customization option updated successfully.');
@@ -89,10 +123,35 @@ class JerseyCustomizationOptionController extends Controller
     public function destroy(
         JerseyCustomizationOption $jerseyCustomizationOption
     ): RedirectResponse {
+        $type = $jerseyCustomizationOption->type instanceof JerseyCustomizationType
+            ? $jerseyCustomizationOption->type->value
+            : (string) $jerseyCustomizationOption->type;
+
         $this->optionService->delete($jerseyCustomizationOption);
 
         return redirect()
-            ->route('admin.jersey-customization-options.index')
+            ->route('admin.jersey-customization-options.type', $type ?: JerseyCustomizationType::Color->value)
             ->with('status', 'Jersey customization option deleted successfully.');
+    }
+
+    private function resolveType(string $type): JerseyCustomizationType
+    {
+        $selectedType = JerseyCustomizationType::tryFrom($type);
+
+        abort_if($selectedType === null, 404);
+
+        return $selectedType;
+    }
+
+    /** @return array<int, array{number: string, type: JerseyCustomizationType, label: string}> */
+    private function typeLinks(): array
+    {
+        return [
+            ['number' => '1.1.1', 'type' => JerseyCustomizationType::Color, 'label' => 'Color'],
+            ['number' => '1.1.2', 'type' => JerseyCustomizationType::NeckAndCollar, 'label' => 'Neck & Collar'],
+            ['number' => '1.1.3', 'type' => JerseyCustomizationType::Fabric, 'label' => 'Fabric'],
+            ['number' => '1.1.4', 'type' => JerseyCustomizationType::SleevesAndCuffs, 'label' => 'Sleeves & Cuffs'],
+            ['number' => '1.1.5', 'type' => JerseyCustomizationType::JerseyStyle, 'label' => 'Jersey Style'],
+        ];
     }
 }

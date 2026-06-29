@@ -32,20 +32,28 @@ window.adminSizeOptionRows = (initial = []) => ({
 
 window.adminProductForm = (initial = {}) => ({
     productName: initial.productName || '',
+    shortDescription: initial.shortDescription || '',
+    descriptionHtml: initial.descriptionHtml || '',
     slug: initial.slug || '',
     slugTouched: Boolean(initial.slug),
     productProfile: initial.productProfile || 'standard',
     shippingMethodsEnabled: Boolean(initial.shippingMethodsEnabled),
     jerseyRosterEnabled: Boolean(initial.jerseyRosterEnabled),
     jerseyRosterOptional: initial.jerseyRosterOptional !== false,
-    categoryId: String(initial.categoryId || ''),
+    categoryId: String(initial.primaryCategoryId || initial.categoryId || ''),
+    categoryName: initial.primaryCategoryName || '',
+    isFeatured: Boolean(initial.isFeatured),
+    showInCategoryPage: initial.showInCategoryPage !== false,
+    categoryOptions: Array.isArray(initial.categoryOptions) ? initial.categoryOptions : [],
+    categorySearch: '',
+    categoryDropdownOpen: false,
     subcategoryId: String(initial.subcategoryId || ''),
     subcategories: initial.subcategories || [],
     features: initial.features?.length ? initial.features : [''],
     imageUrls: initial.imageUrls?.length ? initial.imageUrls : [],
     newImagePreviews: [],
     primaryImageSource: '',
-    priceHeaders: initial.priceHeaders?.length ? initial.priceHeaders : ['Unit Price', 'Savings'],
+    priceHeaders: initial.priceHeaders?.length ? initial.priceHeaders : ['Unit Price ($)', 'Setup Fee ($)'],
     priceHighlightColumn: Number(initial.priceHighlightColumn || 1),
     priceImportBusy: false,
     priceImportStatus: '',
@@ -63,7 +71,8 @@ window.adminProductForm = (initial = {}) => ({
     priceImportIncludedColumns: [],
     priceImportPrimaryPriceColumn: '',
     priceImportMappingError: '',
-    priceRows: initial.priceRows?.length ? initial.priceRows : [{ minimum_quantity: 1, maximum_quantity: '', cells: ['$0.00', '—'] }],
+    pricingMode: initial.pricingMode || 'standard',
+    priceRows: initial.priceRows?.length ? initial.priceRows : [{ minimum_quantity: 1, maximum_quantity: '', cells: ['0.00', '0.00'] }],
     optionGroups: initial.optionGroups?.length ? initial.optionGroups : [],
     optionGroupErrors: initial.optionGroupErrors || {},
     jerseyCustomizationTypes: initial.jerseyCustomizationTypes || {},
@@ -94,6 +103,31 @@ window.adminProductForm = (initial = {}) => ({
         { key: 'back', label: 'Back text / position', type: 'text', max_length: 80, required: false, enabled: false },
     ],
     faqs: initial.faqs?.length ? initial.faqs : [{ question: '', answer: '', is_active: true }],
+    steps: [
+        { id: 'header', label: 'Basics' },
+        { id: 'pricing', label: 'Pricing' },
+        { id: 'options', label: 'Options' },
+        { id: 'artwork', label: 'Personalization' },
+        { id: 'fulfillment', label: 'Fulfillment' },
+        { id: 'description', label: 'Description' },
+    ],
+    activeStep: 'header',
+    stepObserver: null,
+    autoAdvanceReady: false,
+    autoAdvanceTimer: null,
+    autoAdvancedSteps: [],
+    autoScrollingUntil: 0,
+    checklistItems: [
+        { key: 'title', label: 'Add product title' },
+        { key: 'summary', label: 'Add product summary' },
+        { key: 'category', label: 'Select a category' },
+        { key: 'image', label: 'Add at least 1 image' },
+        { key: 'pricing', label: 'Set pricing tiers' },
+        { key: 'size', label: 'Add size options' },
+        { key: 'features', label: '(Optional) Add features' },
+        { key: 'production', label: 'Set production options' },
+        { key: 'description', label: 'Write description' },
+    ],
 
     init() {
         this.normalizePriceRows();
@@ -178,6 +212,11 @@ window.adminProductForm = (initial = {}) => ({
         if (primaryUrlIndex >= 0) this.primaryImageSource = `url:${primaryUrlIndex}`;
         else if (this.imageUrls.some(image => image.url || image.preview)) this.primaryImageSource = `url:${this.imageUrls.findIndex(image => image.url || image.preview)}`;
         this.syncImagePrimaryFlags();
+        this.$nextTick(() => {
+            this.setupStepperObserver();
+            this.autoAdvanceReady = true;
+            this.handleProgressChange(false);
+        });
 
         if (Object.keys(this.optionGroupErrors || {}).length > 0) {
             this.$nextTick(() => {
@@ -187,6 +226,211 @@ window.adminProductForm = (initial = {}) => ({
                 });
             });
         }
+    },
+    setupStepperObserver() {
+        const sections = this.steps
+            .map(step => document.getElementById(step.id))
+            .filter(Boolean);
+
+        if (!sections.length) return;
+
+        const syncActiveFromScroll = () => {
+            if (Date.now() < this.autoScrollingUntil) return;
+
+            const offset = this.stepScrollOffset();
+            let active = sections[0];
+            sections.forEach(section => {
+                if (section.getBoundingClientRect().top <= offset) active = section;
+            });
+            if (active?.id && this.activeStep !== active.id) {
+                this.activeStep = active.id;
+            }
+            this.keepActiveStepVisible();
+        };
+
+        if ('IntersectionObserver' in window) {
+            if (this.stepObserver) this.stepObserver.disconnect();
+            this.stepObserver = new IntersectionObserver((entries) => {
+                if (Date.now() < this.autoScrollingUntil) return;
+
+                const visible = entries
+                    .filter(entry => entry.isIntersecting)
+                    .sort((a, b) => {
+                        const aTop = Math.abs(a.boundingClientRect.top);
+                        const bTop = Math.abs(b.boundingClientRect.top);
+                        return aTop - bTop || b.intersectionRatio - a.intersectionRatio;
+                    })[0];
+                if (visible?.target?.id && this.activeStep !== visible.target.id) {
+                    this.activeStep = visible.target.id;
+                }
+                this.keepActiveStepVisible();
+            }, {
+                root: null,
+                rootMargin: '-15% 0px -65% 0px',
+                threshold: [0.01, 0.12, 0.25, 0.5],
+            });
+            sections.forEach(section => this.stepObserver.observe(section));
+        }
+
+        window.addEventListener('scroll', syncActiveFromScroll, { passive: true });
+        window.addEventListener('resize', syncActiveFromScroll, { passive: true });
+        syncActiveFromScroll();
+    },
+    stepScrollOffset() {
+        return window.innerWidth < 768 ? 118 : 145;
+    },
+    visualActiveStepId() {
+        const currentIndex = this.steps.findIndex(step => step.id === this.activeStep);
+        if (currentIndex >= 0 && this.isStepComplete(this.activeStep)) {
+            const nextIncomplete = this.steps.slice(currentIndex + 1).find(step => !this.isStepComplete(step.id));
+            if (nextIncomplete) return nextIncomplete.id;
+        }
+
+        return this.activeStep;
+    },
+    goToStep(stepId, event = null) {
+        if (event) event.preventDefault();
+        clearTimeout(this.autoAdvanceTimer);
+        this.activeStep = stepId;
+        this.autoScrollingUntil = Date.now() + 900;
+        this.keepActiveStepVisible(stepId);
+
+        const target = document.getElementById(stepId);
+        if (!target) return;
+
+        const top = target.getBoundingClientRect().top + window.scrollY - this.stepScrollOffset();
+        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+
+        window.setTimeout(() => {
+            this.activeStep = stepId;
+            this.keepActiveStepVisible(stepId);
+        }, 650);
+    },
+    keepActiveStepVisible(stepId = null) {
+        this.$nextTick(() => {
+            const activeId = stepId || this.visualActiveStepId();
+            const activeItem = document.querySelector(`.np-stepper__item[href="#${activeId}"]`);
+            const stepper = activeItem?.closest('.np-stepper');
+
+            if (!activeItem || !stepper) return;
+
+            const itemLeft = activeItem.offsetLeft;
+            const itemWidth = activeItem.offsetWidth;
+            const targetLeft = itemLeft - (stepper.clientWidth / 2) + (itemWidth / 2);
+
+            stepper.scrollTo({
+                left: Math.max(0, targetLeft),
+                behavior: 'smooth',
+            });
+        });
+    },
+    handleProgressChange(allowAutoAdvance = true) {
+        if (!this.autoAdvanceReady) return;
+        clearTimeout(this.autoAdvanceTimer);
+        this.autoAdvanceTimer = setTimeout(() => {
+            this.keepActiveStepVisible();
+            if (allowAutoAdvance) this.advanceWhenCurrentStepComplete();
+        }, 250);
+    },
+    advanceWhenCurrentStepComplete() {
+        const currentStepId = this.activeStep;
+        const currentIndex = this.steps.findIndex(step => step.id === currentStepId);
+        if (currentIndex < 0 || currentIndex >= this.steps.length - 1) return;
+        if (!this.isStepComplete(currentStepId)) return;
+        if (this.autoAdvancedSteps.includes(currentStepId)) return;
+
+        const nextStep = this.steps.slice(currentIndex + 1).find(step => !this.isStepComplete(step.id)) || this.steps[currentIndex + 1];
+        if (!nextStep) return;
+
+        this.autoAdvancedSteps.push(currentStepId);
+        this.goToStep(nextStep.id);
+    },
+    isStepActive(stepId) {
+        return this.visualActiveStepId() === stepId;
+    },
+    isStepComplete(stepId) {
+        if (stepId === 'header') {
+            return this.checklistDone('title')
+                && this.checklistDone('summary')
+                && this.checklistDone('category')
+                && this.checklistDone('image');
+        }
+        if (stepId === 'pricing') return this.checklistDone('pricing');
+        if (stepId === 'options') return this.checklistDone('size') || this.checklistDone('features') || this.jerseyRosterEnabled;
+        if (stepId === 'artwork') {
+            return this.artworkUploadEnabled
+                && this.textFilled(this.artworkUploadTitle)
+                && this.textFilled(this.artworkUploadAcceptedTypes)
+                && Number(this.artworkUploadMaxFileSizeMb || 0) > 0;
+        }
+        if (stepId === 'fulfillment') return this.checklistDone('production');
+        if (stepId === 'description') return this.checklistDone('description');
+        return false;
+    },
+    textFilled(value) {
+        return String(value || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().length > 0;
+    },
+    hasProductImage() {
+        return this.newImagePreviews.length > 0 || this.imageUrls.some(image => image.url || image.preview || image.existing_id);
+    },
+    hasValidPricing() {
+        return this.priceRows.some(row => {
+            const minimum = Number(row?.minimum_quantity);
+            const hasMinimum = Number.isInteger(minimum) && minimum >= 1;
+            const hasValue = (row?.cells || []).some(cell => {
+                if (!this.textFilled(cell)) return false;
+                const numeric = Number(String(cell).replace(/[$,\s]/g, ''));
+                return Number.isFinite(numeric) && numeric > 0;
+            });
+            return hasMinimum && hasValue;
+        });
+    },
+    hasProductionOptions() {
+        return this.productionRows.some(row => (row.cells || []).some(cell => Boolean(cell.enabled)));
+    },
+    checklistDone(key) {
+        if (key === 'title') return this.textFilled(this.productName);
+        if (key === 'summary') return this.textFilled(this.shortDescription);
+        if (key === 'category') return this.textFilled(this.categoryId);
+        if (key === 'image') return this.hasProductImage();
+        if (key === 'pricing') return this.hasValidPricing();
+        if (key === 'size') return this.sizeGroups.length > 0;
+        if (key === 'features') return this.optionGroups.length > 0;
+        if (key === 'production') return this.hasProductionOptions();
+        if (key === 'description') return this.textFilled(this.descriptionHtml);
+        return false;
+    },
+    selectedCategoryName() {
+        if (!this.categoryId) return '';
+        const selected = this.categoryOptions.find(category => String(category.id) === String(this.categoryId));
+        return selected?.label || this.categoryName || '';
+    },
+    filteredCategories() {
+        const query = String(this.categorySearch || '').trim().toLowerCase();
+        return this.categoryOptions
+            .filter(category => {
+                if (!query) return true;
+                return [category.label, category.name, category.slug]
+                    .filter(Boolean)
+                    .some(value => String(value).toLowerCase().includes(query));
+            })
+            .slice(0, 80);
+    },
+    toggleCategoryDropdown() {
+        this.categoryDropdownOpen = !this.categoryDropdownOpen;
+        if (this.categoryDropdownOpen) {
+            this.categorySearch = '';
+            this.$nextTick(() => this.$refs.categorySearchInput?.focus());
+        }
+    },
+    closeCategoryDropdown() {
+        this.categoryDropdownOpen = false;
+    },
+    selectCategory(id, label = '') {
+        this.categoryId = id === '' || id === null ? '' : String(id);
+        this.categoryName = label || this.selectedCategoryName();
+        this.closeCategoryDropdown();
+        this.handleProgressChange();
     },
     optionGroupErrorMessages(index) {
         const messages = this.optionGroupErrors?.[String(index)] ?? this.optionGroupErrors?.[index] ?? [];
@@ -272,6 +516,7 @@ window.adminProductForm = (initial = {}) => ({
             this.primaryImageSource = this.newImagePreviews.length ? 'upload:0' : this.firstAvailableImageSource();
         }
         this.syncImagePrimaryFlags();
+        this.handleProgressChange();
     },
     removeProductImage(index) {
         const removed = this.newImagePreviews.splice(index, 1)[0];
@@ -287,6 +532,7 @@ window.adminProductForm = (initial = {}) => ({
         this.newImagePreviews.forEach(image => transfer.items.add(image.file));
         if (this.$refs.productImageInput) this.$refs.productImageInput.files = transfer.files;
         this.syncImagePrimaryFlags();
+        this.handleProgressChange(false);
     },
     normalizeSpreadsheetHeader(value) {
         return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
@@ -683,21 +929,8 @@ window.adminProductForm = (initial = {}) => ({
         this.recalculatePriceMaximums();
     },
     recalculatePriceMaximums() {
-        this.priceRows.forEach((row, index) => {
+        this.priceRows.forEach(row => {
             const minimum = Number(row.minimum_quantity);
-            if (index < this.priceRows.length - 1) {
-                const nextMinimum = Number(this.priceRows[index + 1]?.minimum_quantity);
-                row.maximum_quantity = Number.isInteger(minimum)
-                    && minimum >= 1
-                    && Number.isInteger(nextMinimum)
-                    && nextMinimum > minimum
-                    ? nextMinimum - 1
-                    : '';
-                return;
-            }
-
-            // The final imported row may contain an explicit maximum. A blank
-            // final maximum remains open-ended and is displayed with a plus.
             const maximum = Number(row.maximum_quantity);
             if (row.maximum_quantity !== '' && (!Number.isInteger(maximum) || !Number.isInteger(minimum) || maximum < minimum)) {
                 row.maximum_quantity = '';
@@ -853,9 +1086,11 @@ window.adminProductForm = (initial = {}) => ({
         });
         this.hydrateValueFromMaster(value, item);
         group.values.push(value);
+        this.handleProgressChange();
     },
     removeOptionGroup(index) {
         this.optionGroups.splice(index, 1);
+        this.handleProgressChange(false);
     },
     normalizeOptionGroupType(group) {
         group.display_mode = 'customer';
@@ -971,6 +1206,7 @@ window.adminProductForm = (initial = {}) => ({
             chart_image_preview: String(master.chart_image_preview || ''),
             is_active: true,
         });
+        this.handleProgressChange();
     },
     productionCellTemplate(overrides = {}) {
         return {
@@ -1032,6 +1268,7 @@ window.adminProductForm = (initial = {}) => ({
             range: '',
             cells: this.productionHeaders.map(() => this.productionCellTemplate()),
         });
+        this.handleProgressChange(false);
     },
     removeProductionRow(index) {
         this.productionRows.splice(index, 1);
@@ -1055,8 +1292,9 @@ window.adminProductForm = (initial = {}) => ({
     addFaq() { this.faqs.push({ question: '', answer: '', is_active: true }); },
 });
 
-window.adminRichEditor = (initial = '') => ({
+window.adminRichEditor = (initial = '', name = '') => ({
     value: initial || '',
+    name,
     init() {
         this.$refs.editor.innerHTML = this.value;
         this.sync();
@@ -1072,6 +1310,7 @@ window.adminRichEditor = (initial = '') => ({
     },
     sync() {
         this.value = this.$refs.editor.innerHTML;
+        this.$dispatch('admin-rich-editor-updated', { name: this.name, value: this.value });
     },
 });
 
@@ -1570,4 +1809,42 @@ window.productBuilder = (config = {}) => ({
         return true;
     },
 });
+
+const preserveAdminSidebarPosition = () => {
+    const sidebarNav = document.querySelector('[data-admin-sidebar-nav]');
+    if (!sidebarNav) return;
+
+    const storageKey = 'nextplay.admin.sidebar.scrollTop';
+    const savedScroll = Number(sessionStorage.getItem(storageKey) || 0);
+
+    requestAnimationFrame(() => {
+        if (savedScroll > 0) {
+            sidebarNav.scrollTop = savedScroll;
+            return;
+        }
+
+        const activeLink = sidebarNav.querySelector('[data-sidebar-active="true"]');
+        if (activeLink) {
+            activeLink.scrollIntoView({ block: 'center', inline: 'nearest' });
+        }
+    });
+
+    let saveTimer = null;
+    const saveScroll = () => {
+        if (saveTimer) window.clearTimeout(saveTimer);
+        saveTimer = window.setTimeout(() => {
+            sessionStorage.setItem(storageKey, String(sidebarNav.scrollTop));
+        }, 80);
+    };
+
+    sidebarNav.addEventListener('scroll', saveScroll, { passive: true });
+    sidebarNav.addEventListener('click', (event) => {
+        if (event.target.closest('a')) {
+            sessionStorage.setItem(storageKey, String(sidebarNav.scrollTop));
+        }
+    }, true);
+};
+
+preserveAdminSidebarPosition();
+
 Alpine.start();

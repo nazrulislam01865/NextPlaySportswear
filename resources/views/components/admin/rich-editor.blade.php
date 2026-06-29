@@ -1,6 +1,6 @@
 @props(['name', 'value' => '', 'label' => 'Description'])
 <label class="block text-sm font-black text-slate-700">{{ $label }}</label>
-<div class="mt-2 overflow-hidden rounded-2xl border border-slate-300 bg-white" x-data="adminRichEditor(@js(old($name, $value)))" x-init="init()">
+<div class="mt-2 overflow-hidden rounded-2xl border border-slate-300 bg-white" x-data="adminRichEditor(@js(old($name, $value)), @js($name))" x-init="init()">
     <div class="flex flex-wrap gap-1 border-b border-slate-200 bg-slate-50 p-2">
         <button type="button" class="admin-editor-button" @click="command('formatBlock', 'h2')">H2</button>
         <button type="button" class="admin-editor-button" @click="command('formatBlock', 'h3')">H3</button>
