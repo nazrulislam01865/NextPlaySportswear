@@ -351,7 +351,7 @@
 @endphp
 
 
-<form method="POST" enctype="multipart/form-data" action="{{ $isEdit ? route('admin.products.update', $product) : route('admin.products.store') }}" class="np-product-form" x-data="adminProductForm(@js($initial))" x-init="init()" @input.debounce.300ms="handleProgressChange()" @change.debounce.300ms="handleProgressChange()" @admin-rich-editor-updated.window="if ($event.detail.name === 'description_html') { descriptionHtml = $event.detail.value; handleProgressChange(); }">
+<form method="POST" enctype="multipart/form-data" action="{{ $isEdit ? route('admin.products.update', $product) : route('admin.products.store') }}" class="np-product-form" x-data="adminProductForm(@js($initial))" x-init="init()" @input.debounce.300ms="handleProgressChange(false)" @change.debounce.300ms="handleProgressChange(false)" @admin-rich-editor-updated.window="if ($event.detail.name === 'description_html') { descriptionHtml = $event.detail.value; handleProgressChange(false); }">
     @csrf
     @if($isEdit) @method('PUT') @endif
 

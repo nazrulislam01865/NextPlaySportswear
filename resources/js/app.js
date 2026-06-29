@@ -280,12 +280,9 @@ window.adminProductForm = (initial = {}) => ({
         return window.innerWidth < 768 ? 118 : 145;
     },
     visualActiveStepId() {
-        const currentIndex = this.steps.findIndex(step => step.id === this.activeStep);
-        if (currentIndex >= 0 && this.isStepComplete(this.activeStep)) {
-            const nextIncomplete = this.steps.slice(currentIndex + 1).find(step => !this.isStepComplete(step.id));
-            if (nextIncomplete) return nextIncomplete.id;
-        }
-
+        // Keep the highlighted step exactly where the admin is working.
+        // Previously this moved the visual state to the next incomplete step as soon as
+        // the current section became complete, which felt like the form was jumping.
         return this.activeStep;
     },
     goToStep(stepId, event = null) {
@@ -324,12 +321,14 @@ window.adminProductForm = (initial = {}) => ({
             });
         });
     },
-    handleProgressChange(allowAutoAdvance = true) {
+    handleProgressChange(allowAutoAdvance = false) {
         if (!this.autoAdvanceReady) return;
         clearTimeout(this.autoAdvanceTimer);
         this.autoAdvanceTimer = setTimeout(() => {
+            // Do not auto-scroll to the next section while the admin is typing.
+            // The stepper should update progress only; navigation happens only when a
+            // step tab is clicked manually.
             this.keepActiveStepVisible();
-            if (allowAutoAdvance) this.advanceWhenCurrentStepComplete();
         }, 250);
     },
     advanceWhenCurrentStepComplete() {
