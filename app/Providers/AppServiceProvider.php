@@ -5,8 +5,10 @@ namespace App\Providers;
 use App\Services\Cart\CartService;
 use App\Services\Catalog\NavigationService;
 use App\Services\Storefront\HomepageSliderService;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
@@ -27,6 +29,13 @@ class AppServiceProvider extends ServiceProvider
         if (is_string($compiledViewPath) && $compiledViewPath !== '') {
             File::ensureDirectoryExists($compiledViewPath, 0755, true);
         }
+
+
+        Event::listen(Login::class, function (Login $event): void {
+            if ($event->user instanceof \App\Models\User) {
+                app(CartService::class)->claimSessionCart($event->user);
+            }
+        });
 
         View::composer('components.storefront.header', function ($view): void {
             $view->with('cartItemCount', app(CartService::class)->count());

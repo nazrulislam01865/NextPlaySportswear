@@ -12,8 +12,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'user_id', 'order_number', 'status', 'payment_status', 'fulfillment_status', 'currency',
-    'customer_name', 'customer_email', 'customer_phone', 'subtotal', 'customization_total',
-    'discount_total', 'shipping_total', 'tax_total', 'grand_total', 'total_quantity',
+    'coupon_id', 'coupon_code', 'coupon_snapshot', 'customer_name', 'customer_email', 'customer_phone', 'subtotal', 'customization_total',
+    'discount_total', 'shipping_total', 'rural_surcharge_total', 'product_shipping_total', 'tax_total', 'grand_total', 'total_quantity',
     'information', 'shipping_address', 'billing_address', 'shipping_method', 'payment_method',
     'customer_note', 'admin_note', 'idempotency_key', 'placed_at', 'paid_at', 'cancelled_at',
     'completed_at', 'delivered_at',
@@ -30,6 +30,11 @@ class Order extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class);
     }
 
     public function items(): HasMany
@@ -152,10 +157,13 @@ class Order extends Model
             'billing_address' => 'array',
             'shipping_method' => 'array',
             'payment_method' => 'array',
+            'coupon_snapshot' => 'array',
             'subtotal' => 'decimal:2',
             'customization_total' => 'decimal:2',
             'discount_total' => 'decimal:2',
             'shipping_total' => 'decimal:2',
+            'rural_surcharge_total' => 'decimal:2',
+            'product_shipping_total' => 'decimal:2',
             'tax_total' => 'decimal:2',
             'grand_total' => 'decimal:2',
             'placed_at' => 'datetime',

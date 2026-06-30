@@ -8,6 +8,7 @@ use App\Http\Requests\Storefront\ApplyCouponRequest;
 use App\Http\Requests\Storefront\UpdateCartItemRequest;
 use App\Services\Cart\CartService;
 use App\Services\Storefront\ProductCatalogService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -135,21 +136,42 @@ class CartController extends Controller
             ->with('status', 'Item removed from cart.');
     }
 
-    public function applyCoupon(ApplyCouponRequest $request): RedirectResponse
+    public function applyCoupon(ApplyCouponRequest $request): RedirectResponse|JsonResponse
     {
-        $this->cart->applyCoupon($request->validated('coupon_code'));
+        $summary = $this->cart->applyCoupon($request->validated('coupon_code'));
+        $applied = filled($summary['coupon_code'] ?? null) && blank($summary['coupon_error'] ?? null);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => $applied,
+                'message' => $applied
+                    ? ($summary['coupon_message'] ?? 'Promo code applied successfully.')
+                    : ($summary['coupon_error'] ?? 'This promo code is not valid for the current cart.'),
+                'cart' => $summary,
+            ], $applied ? 200 : 422);
+        }
 
         return redirect()
             ->route('cart.index')
-            ->with('status', 'Coupon checked and applied if eligible.');
+            ->with($applied ? 'status' : 'coupon_error', $applied
+                ? ($summary['coupon_message'] ?? 'Promo code applied successfully.')
+                : ($summary['coupon_error'] ?? 'This promo code is not valid for the current cart.'));
     }
 
-    public function removeCoupon(): RedirectResponse
+    public function removeCoupon(Request $request): RedirectResponse|JsonResponse
     {
-        $this->cart->removeCoupon();
+        $summary = $this->cart->removeCoupon();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Promo code removed.',
+                'cart' => $summary,
+            ]);
+        }
 
         return redirect()
             ->route('cart.index')
-            ->with('status', 'Coupon removed.');
+            ->with('status', 'Promo code removed.');
     }
 }

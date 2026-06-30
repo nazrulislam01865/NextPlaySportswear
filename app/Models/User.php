@@ -34,6 +34,17 @@ class User extends Authenticatable
         return $this->hasMany(CustomerPaymentMethod::class)->latest();
     }
 
+    /** @return HasMany<ShoppingCart> */
+    public function shoppingCarts(): HasMany
+    {
+        return $this->hasMany(ShoppingCart::class)->latest('updated_at');
+    }
+
+    public function activeShoppingCart(): HasMany
+    {
+        return $this->shoppingCarts()->where('status', 'active');
+    }
+
     /** @return HasMany<Order> */
     public function orders(): HasMany
     {

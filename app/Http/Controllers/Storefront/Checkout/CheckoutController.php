@@ -27,12 +27,16 @@ class CheckoutController extends Controller
             return $redirect;
         }
 
-        return $this->view('storefront.checkout.information', 'Checkout Information', 'Enter contact information and order deadline details before selecting your shipping address.', $request, 'information');
+        return $this->view('storefront.checkout.information', 'Checkout Information', 'Use saved contact details or add the minimum contact information needed for order updates.', $request, 'information');
     }
 
     public function storeInformation(CheckoutInformationRequest $request): RedirectResponse
     {
-        $this->checkout->storeInformation($request->validated());
+        if ($redirect = $this->guardCart()) {
+            return $redirect;
+        }
+
+        $this->checkout->storeInformation($request->validated(), $request->user());
 
         return redirect()->route('checkout.shipping-address')->with('status', 'Contact information saved securely.');
     }
@@ -43,11 +47,23 @@ class CheckoutController extends Controller
             return $redirect;
         }
 
+        if ($redirect = $this->guardStep('shipping')) {
+            return $redirect;
+        }
+
         return $this->view('storefront.checkout.shipping-address', 'Shipping Address Selection', 'Select a saved shipping address or add a new address for your custom sportswear order.', $request, 'shipping');
     }
 
     public function storeShippingAddress(ShippingAddressRequest $request): RedirectResponse
     {
+        if ($redirect = $this->guardCart()) {
+            return $redirect;
+        }
+
+        if ($redirect = $this->guardStep('shipping')) {
+            return $redirect;
+        }
+
         $this->checkout->storeShippingAddress($request->validated(), $request->user());
 
         return redirect()->route('checkout.billing-address')->with('status', 'Shipping address saved.');
@@ -59,11 +75,23 @@ class CheckoutController extends Controller
             return $redirect;
         }
 
+        if ($redirect = $this->guardStep('billing')) {
+            return $redirect;
+        }
+
         return $this->view('storefront.checkout.billing-address', 'Billing Address Selection', 'Choose whether billing address is the same as shipping or add a separate billing address.', $request, 'billing');
     }
 
     public function storeBillingAddress(BillingAddressRequest $request): RedirectResponse
     {
+        if ($redirect = $this->guardCart()) {
+            return $redirect;
+        }
+
+        if ($redirect = $this->guardStep('billing')) {
+            return $redirect;
+        }
+
         $this->checkout->storeBillingAddress($request->validated(), $request->user());
 
         return redirect()->route('checkout.shipping-method')->with('status', 'Billing preference saved.');
@@ -75,11 +103,23 @@ class CheckoutController extends Controller
             return $redirect;
         }
 
+        if ($redirect = $this->guardStep('shipping_method')) {
+            return $redirect;
+        }
+
         return $this->view('storefront.checkout.shipping-method', 'Shipping Method', 'Select a shipping method based on order timeline, production needs, and delivery urgency.', $request, 'shipping_method');
     }
 
     public function storeShippingMethod(ShippingMethodRequest $request): RedirectResponse
     {
+        if ($redirect = $this->guardCart()) {
+            return $redirect;
+        }
+
+        if ($redirect = $this->guardStep('shipping_method')) {
+            return $redirect;
+        }
+
         $this->checkout->storeShippingMethod($request->validated());
 
         return redirect()->route('checkout.payment-method')->with('status', 'Shipping method selected.');
@@ -91,11 +131,23 @@ class CheckoutController extends Controller
             return $redirect;
         }
 
+        if ($redirect = $this->guardStep('payment')) {
+            return $redirect;
+        }
+
         return $this->view('storefront.checkout.payment-method', 'Payment Method', 'Choose a secure payment method for online order payment or bulk quote invoice handling.', $request, 'payment');
     }
 
     public function storePaymentMethod(PaymentMethodRequest $request): RedirectResponse
     {
+        if ($redirect = $this->guardCart()) {
+            return $redirect;
+        }
+
+        if ($redirect = $this->guardStep('payment')) {
+            return $redirect;
+        }
+
         $this->checkout->storePaymentMethod($request->validated(), $request->user());
 
         return redirect()->route('checkout.review')->with('status', 'Payment method selected. No raw card information was stored.');
@@ -107,11 +159,23 @@ class CheckoutController extends Controller
             return $redirect;
         }
 
+        if ($redirect = $this->guardStep('review')) {
+            return $redirect;
+        }
+
         return $this->view('storefront.checkout.review', 'Order Review', 'Review contact, shipping, billing, payment, customization, and total before placing the order.', $request, 'review');
     }
 
     public function storeReview(ReviewConfirmationRequest $request): RedirectResponse
     {
+        if ($redirect = $this->guardCart()) {
+            return $redirect;
+        }
+
+        if ($redirect = $this->guardStep('review')) {
+            return $redirect;
+        }
+
         $this->checkout->confirmReview($request->validated());
 
         return redirect()->route('checkout.place-order')->with('status', 'Order details confirmed.');
@@ -123,11 +187,23 @@ class CheckoutController extends Controller
             return $redirect;
         }
 
+        if ($redirect = $this->guardStep('place')) {
+            return $redirect;
+        }
+
         return $this->view('storefront.checkout.place-order', 'Place Order', 'Final secure order placement action with confirmation, protection, and processing state.', $request, 'place');
     }
 
     public function submitOrder(PlaceOrderRequest $request): RedirectResponse
     {
+        if ($redirect = $this->guardCart()) {
+            return $redirect;
+        }
+
+        if ($redirect = $this->guardStep('place')) {
+            return $redirect;
+        }
+
         $order = $this->checkout->placeOrder($request->validated(), $request->user());
 
         return redirect()->route('order.confirmation')->with('status', 'Order snapshot created securely.');
@@ -162,5 +238,18 @@ class CheckoutController extends Controller
         }
 
         return null;
+    }
+
+    private function guardStep(string $currentStep): ?RedirectResponse
+    {
+        $missingStep = $this->checkout->firstIncompleteStepBefore($currentStep);
+
+        if ($missingStep === null) {
+            return null;
+        }
+
+        return redirect()
+            ->route($missingStep['route'])
+            ->with('status', $missingStep['message']);
     }
 }

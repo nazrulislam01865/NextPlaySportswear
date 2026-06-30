@@ -95,6 +95,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
             'size-option-groups' => 'sizeOptionGroup',
         ])->except('show');
         Route::resource('menus', \App\Http\Controllers\Admin\MenuController::class)->except('show');
+        Route::resource('coupons', \App\Http\Controllers\Admin\CouponController::class)->except('show');
+        Route::resource('rural-area-surcharges', \App\Http\Controllers\Admin\RuralAreaSurchargeController::class)
+            ->parameters(['rural-area-surcharges' => 'ruralAreaSurcharge'])
+            ->except('show');
+        Route::resource('shipping-methods', \App\Http\Controllers\Admin\ShippingMethodController::class)
+            ->parameters(['shipping-methods' => 'shippingMethod'])
+            ->except('show');
+        Route::resource('payment-methods', \App\Http\Controllers\Admin\PaymentMethodController::class)
+            ->parameters(['payment-methods' => 'paymentMethod'])
+            ->except('show');
 
 
         Route::middleware('order.manager')->group(function (): void {
@@ -239,7 +249,7 @@ Route::post('/track-order', [OrderController::class, 'lookup'])->middleware('thr
 Route::get('/invoice-download', [OrderController::class, 'invoice'])->name('orders.invoice.legacy');
 Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->where('orderNumber', '[A-Za-z0-9\-]+')->name('orders.invoice');
 
-Route::prefix('checkout')->name('checkout.')->middleware('throttle:60,1')->group(function () {
+Route::prefix('checkout')->name('checkout.')->middleware(['not.admin', 'auth:web', 'customer', 'throttle:60,1'])->group(function () {
     Route::get('/', [CheckoutController::class, 'information'])->name('index');
     Route::get('/information', [CheckoutController::class, 'information'])->name('information');
     Route::post('/information', [CheckoutController::class, 'storeInformation'])->middleware('throttle:12,1')->name('information.store');

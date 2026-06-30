@@ -4,7 +4,7 @@
     <div class="mt-5 space-y-3 text-sm">
         <div class="flex justify-between gap-4"><span class="text-slate-500">Subtotal</span><strong>${{ number_format((float)$order->subtotal,2) }}</strong></div>
         <div class="flex justify-between gap-4"><span class="text-slate-500">Customization</span><strong>${{ number_format((float)$order->customization_total,2) }}</strong></div>
-        <div class="flex justify-between gap-4"><span class="text-slate-500">Discount</span><strong>−${{ number_format((float)$order->discount_total,2) }}</strong></div>
+        <div class="flex justify-between gap-4"><span class="text-slate-500">Discount @if($order->coupon_code)<span class="text-xs font-black text-green-700">({{ $order->coupon_code }})</span>@endif</span><strong>−${{ number_format((float)$order->discount_total,2) }}</strong></div>
         <div class="flex justify-between gap-4"><span class="text-slate-500">Shipping</span><strong>${{ number_format((float)$order->shipping_total,2) }}</strong></div>
         <div class="flex justify-between gap-4"><span class="text-slate-500">Tax</span><strong>${{ number_format((float)$order->tax_total,2) }}</strong></div>
         <div class="flex justify-between gap-4 border-t border-slate-200 pt-4 text-lg"><span class="font-black">Total</span><strong>${{ number_format((float)$order->grand_total,2) }}</strong></div>

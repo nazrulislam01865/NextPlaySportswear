@@ -8,7 +8,7 @@ class ReviewConfirmationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->isCustomer() === true;
     }
 
     public function rules(): array

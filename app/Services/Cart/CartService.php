@@ -2,8 +2,16 @@
 
 namespace App\Services\Cart;
 
+use App\Models\Coupon;
+use App\Models\Order;
+use App\Models\ShoppingCart;
+use App\Models\ShoppingCartItem;
+use App\Models\User;
+use App\Services\Discounts\CouponService;
 use App\Services\Storefront\ProductCatalogService;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class CartService
@@ -13,19 +21,23 @@ class CartService
 
     public function __construct(
         private readonly ProductCatalogService $products,
+        private readonly CouponService $coupons,
     ) {
     }
 
     public function summary(bool $preview = false): array
     {
         $items = $preview ? $this->previewItems() : $this->items();
-        $couponCode = $preview ? 'TEAM10' : (session(self::SESSION_COUPON_KEY) ?: null);
+        $couponCode = $preview ? 'TEAM10' : $this->couponCode();
 
         $subtotal = collect($items)->sum('line_subtotal');
         $customizationTotal = collect($items)->sum('customization_total');
         $merchandiseTotal = $subtotal + $customizationTotal;
-        $quantity = collect($items)->sum('quantity');
-        $discount = $this->calculateDiscount($merchandiseTotal, $couponCode);
+        $quantity = (int) collect($items)->sum('quantity');
+        $couponValidation = $couponCode
+            ? $this->coupons->validateForCart($couponCode, (float) $merchandiseTotal, $quantity, $this->currentUser())
+            : null;
+        $discount = $couponValidation['valid'] ?? false ? (float) $couponValidation['discount'] : 0.00;
         $genericShippingItems = collect($items)->where('uses_product_shipping', false);
         $shipping = $this->calculateShipping(
             (float) $genericShippingItems->sum(fn (array $item) => ($item['line_subtotal'] ?? 0) + ($item['customization_total'] ?? 0)),
@@ -36,14 +48,19 @@ class CartService
 
         return [
             'items' => array_values($items),
-            'coupon_code' => $couponCode,
+            'coupon_code' => ($couponValidation['valid'] ?? false) ? $couponCode : null,
+            'coupon_error' => ($couponCode && ! ($couponValidation['valid'] ?? false)) ? ($couponValidation['message'] ?? 'This promo code is not valid for the current cart.') : null,
+            'coupon_message' => ($couponValidation['valid'] ?? false) ? ($couponValidation['message'] ?? 'Promo code applied successfully.') : null,
+            'coupon_id' => $couponValidation['coupon_id'] ?? null,
+            'coupon_snapshot' => $couponValidation['snapshot'] ?? null,
             'subtotal' => round($subtotal, 2),
             'customization_total' => round($customizationTotal, 2),
+            'merchandise_total' => round($merchandiseTotal, 2),
             'discount' => round($discount, 2),
             'shipping' => round($shipping, 2),
             'tax' => round($tax, 2),
             'total' => round($total, 2),
-            'quantity' => (int) $quantity,
+            'quantity' => $quantity,
             'is_empty' => count($items) === 0,
             'is_preview' => $preview,
             'checkout_ready' => count($items) > 0,
@@ -54,8 +71,22 @@ class CartService
 
     public function items(): array
     {
-        return collect(session(self::SESSION_ITEMS_KEY, []))
-            ->map(fn (array $item): array => $this->repriceItem($item))
+        if (! $this->databaseCartAvailable()) {
+            return $this->sessionItems();
+        }
+
+        $cart = $this->currentCart($this->hasLegacySessionCart());
+
+        if (! $cart instanceof ShoppingCart) {
+            return [];
+        }
+
+        $this->importLegacySessionCart($cart);
+
+        return $cart->items()
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn (ShoppingCartItem $item): array => $this->cartItemArray($item))
             ->filter()
             ->values()
             ->all();
@@ -78,21 +109,513 @@ class CartService
         $this->validateRequiredConfiguration($product, $customization);
         $key = $this->makeItemKey($product['slug'], $customization);
 
-        $items = $this->items();
-        $existingIndex = collect($items)->search(fn (array $item): bool => $item['key'] === $key);
+        $item = $this->repriceItem([
+            'key' => $key,
+            'product_slug' => $product['slug'],
+            'quantity' => $quantity,
+            'customization' => $customization,
+            'created_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
 
-        if ($existingIndex !== false) {
-            $items[$existingIndex]['quantity'] = $this->sanitizeQuantity($items[$existingIndex]['quantity'] + $quantity, $product);
+        if (! $this->databaseCartAvailable()) {
+            return $this->storeSessionItem($item, true);
+        }
+
+        $cart = $this->currentCart(true);
+        abort_unless($cart instanceof ShoppingCart, 500, 'Unable to create a shopping cart.');
+
+        $this->importLegacySessionCart($cart);
+        $this->persistCartItem($cart, $item, true);
+        $this->touchCart($cart);
+
+        return $this->summary();
+    }
+
+    public function update(string $key, int $quantity): array
+    {
+        if (! $this->databaseCartAvailable()) {
+            return $this->updateSessionItem($key, $quantity);
+        }
+
+        $cart = $this->currentCart(false);
+
+        if (! $cart instanceof ShoppingCart) {
+            return $this->summary();
+        }
+
+        $record = $cart->items()->where('item_key', $key)->first();
+
+        if ($record instanceof ShoppingCartItem) {
+            $product = $this->products->findBySlug((string) $record->product_slug);
+            $record->quantity = $product ? $this->sanitizeQuantity($quantity, $product) : max(1, $quantity);
+            $record->save();
+            $this->persistCalculatedCartItem($record, $this->cartItemArray($record));
+            $this->touchCart($cart);
+        }
+
+        return $this->summary();
+    }
+
+    public function remove(string $key): array
+    {
+        if (! $this->databaseCartAvailable()) {
+            return $this->removeSessionItem($key);
+        }
+
+        $cart = $this->currentCart(false);
+
+        if ($cart instanceof ShoppingCart) {
+            $cart->items()->where('item_key', $key)->delete();
+            $this->touchCart($cart);
+        }
+
+        return $this->summary();
+    }
+
+    public function applyCoupon(?string $code): array
+    {
+        $code = $this->coupons->normalizeCode($code);
+        $items = $this->items();
+        $subtotal = (float) collect($items)->sum('line_subtotal');
+        $customizationTotal = (float) collect($items)->sum('customization_total');
+        $quantity = (int) collect($items)->sum('quantity');
+        $validation = $this->coupons->validateForCart($code, $subtotal + $customizationTotal, $quantity, $this->currentUser());
+
+        if (! ($validation['valid'] ?? false)) {
+            $summary = $this->summary();
+            $summary['coupon_error'] = $validation['message'] ?? 'This promo code is not valid for the current cart.';
+            $summary['coupon_message'] = null;
+            return $summary;
+        }
+
+        if (! $this->databaseCartAvailable()) {
+            session()->put(self::SESSION_COUPON_KEY, $code);
+            $summary = $this->summary();
+            $summary['coupon_message'] = $validation['message'] ?? 'Promo code applied successfully.';
+            $summary['coupon_error'] = null;
+            return $summary;
+        }
+
+        $cart = $this->currentCart(true);
+        abort_unless($cart instanceof ShoppingCart, 500, 'Unable to create a shopping cart.');
+
+        $this->importLegacySessionCart($cart);
+        $cart->forceFill([
+            'coupon_code' => $code,
+            'coupon_id' => $validation['coupon_id'] ?? null,
+            'last_activity_at' => now(),
+        ])->save();
+
+        $summary = $this->summary();
+        $summary['coupon_message'] = $validation['message'] ?? 'Promo code applied successfully.';
+        $summary['coupon_error'] = null;
+
+        return $summary;
+    }
+
+    public function removeCoupon(): array
+    {
+        if (! $this->databaseCartAvailable()) {
+            session()->forget(self::SESSION_COUPON_KEY);
+
+            return $this->summary();
+        }
+
+        $cart = $this->currentCart(false);
+
+        if ($cart instanceof ShoppingCart) {
+            $cart->forceFill([
+                'coupon_code' => null,
+                'coupon_id' => null,
+                'last_activity_at' => now(),
+            ])->save();
+        }
+
+        return $this->summary();
+    }
+
+    public function appliedCouponValidation(?string $customerEmail = null, ?User $user = null): ?array
+    {
+        $code = $this->couponCode();
+
+        if (! $code) {
+            return null;
+        }
+
+        $summary = $this->summary();
+
+        return $this->coupons->validateForCart(
+            $code,
+            (float) ($summary['merchandise_total'] ?? (($summary['subtotal'] ?? 0) + ($summary['customization_total'] ?? 0))),
+            (int) ($summary['quantity'] ?? 0),
+            $user ?: $this->currentUser(),
+            $customerEmail
+        );
+    }
+
+    public function recordCouponRedemption(Order $order, float $discountAmount, ?User $user = null): void
+    {
+        $validation = $this->appliedCouponValidation((string) $order->customer_email, $user);
+
+        if (! ($validation['valid'] ?? false) || ! (($validation['coupon'] ?? null) instanceof Coupon)) {
+            return;
+        }
+
+        $cart = $this->currentCart(false);
+        $merchandiseTotal = (float) $order->subtotal + (float) $order->customization_total;
+
+        $this->coupons->recordRedemption(
+            $validation['coupon'],
+            $order,
+            $merchandiseTotal,
+            $discountAmount,
+            $cart,
+            $user
+        );
+    }
+
+    public function clear(bool $converted = false): void
+    {
+        if (! $this->databaseCartAvailable()) {
+            session()->forget([self::SESSION_ITEMS_KEY, self::SESSION_COUPON_KEY]);
+
+            return;
+        }
+
+        $cart = $this->currentCart(false);
+
+        if (! $cart instanceof ShoppingCart) {
+            return;
+        }
+
+        $cart->update([
+            'status' => $converted ? 'converted' : 'cleared',
+            'converted_at' => $converted ? now() : null,
+            'last_activity_at' => now(),
+        ]);
+    }
+
+    public function claimSessionCart(User $user): void
+    {
+        if (! $this->databaseCartAvailable()) {
+            return;
+        }
+
+        $sessionId = $this->sessionId();
+
+        if ($sessionId === '') {
+            return;
+        }
+
+        $guestCart = ShoppingCart::query()
+            ->with('items')
+            ->whereNull('user_id')
+            ->where('session_id', $sessionId)
+            ->where('status', 'active')
+            ->latest('updated_at')
+            ->first();
+
+        $userCart = ShoppingCart::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'active')
+            ->latest('updated_at')
+            ->first();
+
+        if (! $guestCart instanceof ShoppingCart) {
+            if ($userCart instanceof ShoppingCart) {
+                $userCart->forceFill([
+                    'session_id' => $sessionId,
+                    'last_activity_at' => now(),
+                ])->save();
+            }
+
+            return;
+        }
+
+        if (! $userCart instanceof ShoppingCart) {
+            $guestCart->forceFill([
+                'user_id' => $user->id,
+                'session_id' => $sessionId,
+                'last_activity_at' => now(),
+            ])->save();
+
+            return;
+        }
+
+        if ($guestCart->is($userCart)) {
+            $userCart->forceFill(['session_id' => $sessionId, 'last_activity_at' => now()])->save();
+
+            return;
+        }
+
+        DB::transaction(function () use ($guestCart, $userCart, $sessionId): void {
+            $guestCart->loadMissing('items');
+
+            foreach ($guestCart->items as $item) {
+                $this->persistCartItem($userCart, $this->cartItemArray($item), true);
+            }
+
+            if (blank($userCart->coupon_code) && filled($guestCart->coupon_code)) {
+                $userCart->coupon_code = $guestCart->coupon_code;
+                $userCart->coupon_id = $guestCart->coupon_id;
+            }
+
+            $userCart->session_id = $sessionId;
+            $userCart->last_activity_at = now();
+            $userCart->save();
+
+            $guestCart->update([
+                'status' => 'merged',
+                'last_activity_at' => now(),
+            ]);
+        });
+    }
+
+    private function databaseCartAvailable(): bool
+    {
+        return Schema::hasTable('shopping_carts') && Schema::hasTable('shopping_cart_items');
+    }
+
+    private function currentCart(bool $create = false): ?ShoppingCart
+    {
+        $user = auth()->user();
+        $user = $user instanceof User ? $user : null;
+        $sessionId = $this->sessionId();
+
+        if ($user instanceof User) {
+            $cart = ShoppingCart::query()
+                ->where('user_id', $user->id)
+                ->where('status', 'active')
+                ->latest('updated_at')
+                ->first();
+
+            if (! $cart instanceof ShoppingCart && $sessionId !== '') {
+                $guestCart = ShoppingCart::query()
+                    ->whereNull('user_id')
+                    ->where('session_id', $sessionId)
+                    ->where('status', 'active')
+                    ->latest('updated_at')
+                    ->first();
+
+                if ($guestCart instanceof ShoppingCart) {
+                    $guestCart->forceFill([
+                        'user_id' => $user->id,
+                        'last_activity_at' => now(),
+                    ])->save();
+                    $cart = $guestCart;
+                }
+            }
+
+            if (! $cart instanceof ShoppingCart && $create) {
+                $cart = ShoppingCart::create([
+                    'user_id' => $user->id,
+                    'session_id' => $sessionId ?: null,
+                    'status' => 'active',
+                    'currency' => 'USD',
+                    'last_activity_at' => now(),
+                ]);
+            }
+
+            if ($cart instanceof ShoppingCart && $sessionId !== '' && $cart->session_id !== $sessionId) {
+                $cart->forceFill([
+                    'session_id' => $sessionId,
+                    'last_activity_at' => now(),
+                ])->save();
+            }
+
+            return $cart;
+        }
+
+        if ($sessionId === '') {
+            return null;
+        }
+
+        $cart = ShoppingCart::query()
+            ->whereNull('user_id')
+            ->where('session_id', $sessionId)
+            ->where('status', 'active')
+            ->latest('updated_at')
+            ->first();
+
+        if (! $cart instanceof ShoppingCart && $create) {
+            $cart = ShoppingCart::create([
+                'session_id' => $sessionId,
+                'status' => 'active',
+                'currency' => 'USD',
+                'last_activity_at' => now(),
+            ]);
+        }
+
+        return $cart;
+    }
+
+    private function cartItemArray(ShoppingCartItem $record): array
+    {
+        $item = [
+            'key' => $record->item_key,
+            'product_slug' => $record->product_slug,
+            'quantity' => (int) $record->quantity,
+            'customization' => $record->customization ?? [],
+            'created_at' => $record->created_at?->toIso8601String(),
+            'updated_at' => $record->updated_at?->toIso8601String(),
+        ];
+
+        $priced = $this->repriceItem($item);
+
+        if ($priced === []) {
+            $record->delete();
+
+            return [];
+        }
+
+        $this->persistCalculatedCartItem($record, $priced);
+
+        return $priced;
+    }
+
+    private function persistCartItem(ShoppingCart $cart, array $item, bool $merge): ShoppingCartItem
+    {
+        $record = $cart->items()->where('item_key', $item['key'])->first();
+
+        if ($record instanceof ShoppingCartItem && $merge) {
+            $product = $this->products->findBySlug((string) $item['product_slug']);
+            $record->quantity = $product
+                ? $this->sanitizeQuantity(((int) $record->quantity) + ((int) $item['quantity']), $product)
+                : ((int) $record->quantity) + ((int) $item['quantity']);
+            $record->customization = $item['customization'] ?? [];
+            $record->updated_at = now();
+            $record->save();
+
+            return $this->persistCalculatedCartItem($record, $this->cartItemArray($record));
+        }
+
+        if (! $record instanceof ShoppingCartItem) {
+            $record = new ShoppingCartItem([
+                'shopping_cart_id' => $cart->id,
+                'product_slug' => $item['product_slug'],
+                'item_key' => $item['key'],
+                'quantity' => (int) $item['quantity'],
+                'customization' => $item['customization'] ?? [],
+            ]);
+            $record->shopping_cart_id = $cart->id;
+        }
+
+        return $this->persistCalculatedCartItem($record, $item);
+    }
+
+    private function persistCalculatedCartItem(ShoppingCartItem $record, array $item): ShoppingCartItem
+    {
+        if ($item === []) {
+            return $record;
+        }
+
+        $product = (array) ($item['product'] ?? []);
+
+        $record->forceFill([
+            'product_id' => $product['id'] ?? null,
+            'product_slug' => $item['product_slug'] ?? $product['slug'] ?? $record->product_slug,
+            'item_key' => $item['key'] ?? $record->item_key,
+            'quantity' => (int) ($item['quantity'] ?? $record->quantity),
+            'unit_price' => (float) ($item['unit_price'] ?? 0),
+            'customization_unit_price' => (float) ($item['customization_unit_price'] ?? 0),
+            'line_subtotal' => (float) ($item['line_subtotal'] ?? 0),
+            'customization_total' => (float) ($item['customization_total'] ?? 0),
+            'line_total' => (float) ($item['line_total'] ?? 0),
+            'customization' => $item['customization'] ?? [],
+            'product_snapshot' => Arr::only($product, ['id', 'slug', 'title', 'short_title', 'summary', 'sku', 'category', 'sport', 'image', 'alt', 'url', 'base_price', 'price']),
+        ]);
+
+        $record->saveQuietly();
+
+        return $record;
+    }
+
+    private function touchCart(ShoppingCart $cart): void
+    {
+        $cart->forceFill(['last_activity_at' => now()])->save();
+    }
+
+    private function couponCode(): ?string
+    {
+        if (! $this->databaseCartAvailable()) {
+            return session(self::SESSION_COUPON_KEY) ?: null;
+        }
+
+        $cart = $this->currentCart($this->hasLegacySessionCart());
+
+        if (! $cart instanceof ShoppingCart) {
+            return null;
+        }
+
+        $this->importLegacySessionCart($cart);
+
+        return $cart->coupon_code ?: null;
+    }
+
+    private function importLegacySessionCart(ShoppingCart $cart): void
+    {
+        if (! $this->hasLegacySessionCart()) {
+            return;
+        }
+
+        foreach (session(self::SESSION_ITEMS_KEY, []) as $item) {
+            $priced = $this->repriceItem((array) $item);
+
+            if ($priced !== []) {
+                $this->persistCartItem($cart, $priced, true);
+            }
+        }
+
+        $coupon = Str::upper(trim((string) session(self::SESSION_COUPON_KEY, '')));
+        if ($coupon !== '') {
+            $items = $cart->items()->get()->map(fn (ShoppingCartItem $item): array => $this->cartItemArray($item))->filter()->values();
+            $merchandiseTotal = (float) $items->sum(fn (array $item) => ($item['line_subtotal'] ?? 0) + ($item['customization_total'] ?? 0));
+            $quantity = (int) $items->sum('quantity');
+            $validation = $this->coupons->validateForCart($coupon, $merchandiseTotal, $quantity, $this->currentUser());
+            if ($validation['valid'] ?? false) {
+                $cart->coupon_code = $coupon;
+                $cart->coupon_id = $validation['coupon_id'] ?? null;
+                $cart->last_activity_at = now();
+                $cart->save();
+            }
+        }
+
+        session()->forget([self::SESSION_ITEMS_KEY, self::SESSION_COUPON_KEY]);
+    }
+
+    private function hasLegacySessionCart(): bool
+    {
+        return count((array) session(self::SESSION_ITEMS_KEY, [])) > 0 || filled(session(self::SESSION_COUPON_KEY));
+    }
+
+    private function sessionId(): string
+    {
+        return (string) (session()->getId() ?: '');
+    }
+
+    private function sessionItems(): array
+    {
+        return collect(session(self::SESSION_ITEMS_KEY, []))
+            ->map(fn (array $item): array => $this->repriceItem($item))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function storeSessionItem(array $item, bool $merge): array
+    {
+        $items = $this->sessionItems();
+        $existingIndex = collect($items)->search(fn (array $cartItem): bool => $cartItem['key'] === $item['key']);
+
+        if ($existingIndex !== false && $merge) {
+            $product = $this->products->findBySlug((string) $item['product_slug']);
+            $items[$existingIndex]['quantity'] = $product
+                ? $this->sanitizeQuantity((int) $items[$existingIndex]['quantity'] + (int) $item['quantity'], $product)
+                : (int) $items[$existingIndex]['quantity'] + (int) $item['quantity'];
             $items[$existingIndex]['updated_at'] = now()->toIso8601String();
         } else {
-            $items[] = $this->repriceItem([
-                'key' => $key,
-                'product_slug' => $product['slug'],
-                'quantity' => $quantity,
-                'customization' => $customization,
-                'created_at' => now()->toIso8601String(),
-                'updated_at' => now()->toIso8601String(),
-            ]);
+            $items[] = $item;
         }
 
         session()->put(self::SESSION_ITEMS_KEY, array_values($items));
@@ -100,9 +623,9 @@ class CartService
         return $this->summary();
     }
 
-    public function update(string $key, int $quantity): array
+    private function updateSessionItem(string $key, int $quantity): array
     {
-        $items = collect($this->items())
+        $items = collect($this->sessionItems())
             ->map(function (array $item) use ($key, $quantity): array {
                 if (hash_equals($item['key'], $key)) {
                     $product = $this->products->findBySlug((string) $item['product_slug']);
@@ -120,9 +643,9 @@ class CartService
         return $this->summary();
     }
 
-    public function remove(string $key): array
+    private function removeSessionItem(string $key): array
     {
-        $items = collect($this->items())
+        $items = collect($this->sessionItems())
             ->reject(fn (array $item): bool => hash_equals($item['key'], $key))
             ->values()
             ->all();
@@ -130,31 +653,6 @@ class CartService
         session()->put(self::SESSION_ITEMS_KEY, $items);
 
         return $this->summary();
-    }
-
-    public function applyCoupon(?string $code): array
-    {
-        $code = Str::upper(trim((string) $code));
-
-        if ($code === '') {
-            session()->forget(self::SESSION_COUPON_KEY);
-        } elseif (array_key_exists($code, $this->availableCoupons())) {
-            session()->put(self::SESSION_COUPON_KEY, $code);
-        }
-
-        return $this->summary();
-    }
-
-    public function removeCoupon(): array
-    {
-        session()->forget(self::SESSION_COUPON_KEY);
-
-        return $this->summary();
-    }
-
-    public function clear(): void
-    {
-        session()->forget([self::SESSION_ITEMS_KEY, self::SESSION_COUPON_KEY]);
     }
 
     private function repriceItem(array $item): array
@@ -177,7 +675,7 @@ class CartService
 
         return array_merge($item, [
             'key' => $item['key'] ?? $this->makeItemKey($product['slug'], $customization),
-            'product' => Arr::only($product, ['slug', 'title', 'short_title', 'summary', 'sku', 'category', 'sport', 'image', 'alt', 'url', 'base_price', 'price']),
+            'product' => Arr::only($product, ['id', 'slug', 'title', 'short_title', 'summary', 'sku', 'category', 'sport', 'image', 'alt', 'url', 'base_price', 'price']),
             'quantity' => $quantity,
             'customization' => $customization,
             'unit_price' => $unitPrice,
@@ -538,21 +1036,9 @@ class CartService
 
     private function calculateDiscount(float $merchandiseTotal, ?string $couponCode): float
     {
-        if ($couponCode === null) {
-            return 0.00;
-        }
+        $validation = $this->coupons->validateForCart($couponCode, $merchandiseTotal, 1, $this->currentUser());
 
-        $coupon = $this->availableCoupons()[Str::upper($couponCode)] ?? null;
-
-        if ($coupon === null || $merchandiseTotal < $coupon['minimum']) {
-            return 0.00;
-        }
-
-        if ($coupon['type'] === 'percentage') {
-            return min(round($merchandiseTotal * $coupon['value'], 2), $coupon['max_discount']);
-        }
-
-        return min($merchandiseTotal, $coupon['value']);
+        return ($validation['valid'] ?? false) ? (float) $validation['discount'] : 0.00;
     }
 
     private function calculateShipping(float $merchandiseTotal, int $quantity): float
@@ -573,12 +1059,11 @@ class CartService
         return round(max(0, $taxableAmount) * 0.00, 2);
     }
 
-    private function availableCoupons(): array
+    private function currentUser(): ?User
     {
-        return [
-            'TEAM10' => ['type' => 'percentage', 'value' => 0.10, 'minimum' => 100, 'max_discount' => 75],
-            'NEXTPLAY25' => ['type' => 'fixed', 'value' => 25, 'minimum' => 250, 'max_discount' => 25],
-        ];
+        $user = auth()->user();
+
+        return $user instanceof User ? $user : null;
     }
 
     private function previewItems(): array

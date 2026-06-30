@@ -106,15 +106,16 @@
                     <x-admin.sidebar-link :href="route('admin.returns.index')" :active="request()->routeIs('admin.returns.*')" icon="↶">Returns & Exchanges</x-admin.sidebar-link>
                 @endif
                 <x-admin.sidebar-link :href="route('admin.modules.show', 'customers')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'customers'" icon="♙">Customers</x-admin.sidebar-link>
-                <x-admin.sidebar-link :href="route('admin.modules.show', 'discounts')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'discounts'" icon="%">Discounts & Coupons</x-admin.sidebar-link>
+                <x-admin.sidebar-link :href="route('admin.coupons.index')" :active="request()->routeIs('admin.coupons.*')" icon="%">Discounts & Coupons</x-admin.sidebar-link>
                 <x-admin.sidebar-link :href="route('admin.modules.show', 'reviews')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'reviews'" icon="★">Reviews</x-admin.sidebar-link>
 
                 <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Store</p>
                 <x-admin.sidebar-link :href="route('admin.homepage-slides.index')" :active="request()->routeIs('admin.homepage-slides.*')" icon="▧">Homepage Slider</x-admin.sidebar-link>
                 <x-admin.sidebar-link :href="route('admin.modules.show', 'content')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'content'" icon="✎">Content & Navigation</x-admin.sidebar-link>
-                <x-admin.sidebar-link :href="route('admin.modules.show', 'shipping')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'shipping'" icon="➜">Shipping</x-admin.sidebar-link>
+                <x-admin.sidebar-link :href="route('admin.shipping-methods.index')" :active="request()->routeIs('admin.shipping-methods.*')" icon="➜">Shipping Methods</x-admin.sidebar-link>
+                <x-admin.sidebar-link :href="route('admin.rural-area-surcharges.index')" :active="request()->routeIs('admin.rural-area-surcharges.*')" icon="⌁">Rural Surcharges</x-admin.sidebar-link>
                 <x-admin.sidebar-link :href="route('admin.modules.show', 'taxes')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'taxes'" icon="§">Taxes</x-admin.sidebar-link>
-                <x-admin.sidebar-link :href="route('admin.modules.show', 'payments')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'payments'" icon="$">Payments</x-admin.sidebar-link>
+                <x-admin.sidebar-link :href="route('admin.payment-methods.index')" :active="request()->routeIs('admin.payment-methods.*')" icon="$">Payment Methods</x-admin.sidebar-link>
                 <x-admin.sidebar-link :href="route('admin.modules.show', 'reports')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'reports'" icon="↗">Reports</x-admin.sidebar-link>
                 <x-admin.sidebar-link :href="route('admin.modules.show', 'settings')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'settings'" icon="⚙">Settings</x-admin.sidebar-link>
             </nav>

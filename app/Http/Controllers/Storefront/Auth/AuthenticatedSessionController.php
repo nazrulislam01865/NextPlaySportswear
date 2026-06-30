@@ -14,6 +14,7 @@ class AuthenticatedSessionController extends Controller
     public function create(): View
     {
         return view('storefront.auth.login', [
+            'checkoutIntended' => str_contains((string) session('url.intended', ''), '/checkout'),
             'seo' => [
                 'title' => 'Customer Login | NextPlay Sportswear',
                 'description' => 'Sign in to your NextPlay Sportswear account to manage quotes, custom sportswear orders, design proofs, and saved checkout details.',

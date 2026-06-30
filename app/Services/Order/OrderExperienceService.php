@@ -237,6 +237,7 @@ class OrderExperienceService
                 'subtotal' => round((float) ($totals['subtotal'] ?? collect($items)->sum('line_total')), 2),
                 'customization_total' => round((float) ($totals['customization_total'] ?? 0), 2),
                 'discount' => round((float) ($totals['discount'] ?? 0), 2),
+                'coupon_code' => (string) ($totals['coupon_code'] ?? ($order['coupon_code'] ?? '')),
                 'shipping' => round((float) ($totals['shipping'] ?? 0), 2),
                 'tax' => round((float) ($totals['tax'] ?? 0), 2),
                 'total' => round((float) ($totals['total'] ?? collect($items)->sum('line_total')), 2),

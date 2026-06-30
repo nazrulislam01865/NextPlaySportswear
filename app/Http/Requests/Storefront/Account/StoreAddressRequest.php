@@ -30,6 +30,7 @@ class StoreAddressRequest extends FormRequest
             'postal_code' => ['required', 'string', 'max:30', 'regex:/^[A-Za-z0-9\-\s]{3,30}$/'],
             'phone' => ['nullable', 'string', 'max:40', 'regex:/^[0-9+\-\s().]{7,40}$/'],
             'email' => ['nullable', 'email:rfc', 'max:255'],
+            'delivery_instruction' => ['nullable', 'string', 'max:800'],
             'is_default' => ['nullable', 'boolean'],
         ];
     }

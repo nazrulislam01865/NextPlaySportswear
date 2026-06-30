@@ -44,7 +44,7 @@ class RegisteredUserController extends Controller
         $request->session()->regenerate();
 
         return redirect()
-            ->route('account.dashboard')
+            ->intended(route('account.dashboard'))
             ->with('status', 'Your account has been created. You can now manage quotes, orders, and custom design proofs.');
     }
 }

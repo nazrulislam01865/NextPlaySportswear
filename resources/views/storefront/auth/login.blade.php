@@ -28,6 +28,11 @@
                     {{ session('status') }}
                 </div>
             @endif
+            @if (! empty($checkoutIntended))
+                <div class="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+                    Please sign in or create a customer account to continue secure checkout. Your cart will stay saved and will be linked to your account after login.
+                </div>
+            @endif
 
             <form method="POST" action="{{ route('login.store') }}" class="grid gap-5" novalidate>
                 @csrf
@@ -79,8 +84,8 @@
                         Keep me signed in
                     </label>
 
-                    <a href="{{ route('checkout.index') }}" class="text-sm font-black text-slate-700 hover:text-brand-red">
-                        Checkout as guest
+                    <a href="{{ route('register') }}" class="text-sm font-black text-slate-700 hover:text-brand-red">
+                        Create account to checkout
                     </a>
                 </div>
 

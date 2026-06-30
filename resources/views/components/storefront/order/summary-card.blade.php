@@ -20,7 +20,7 @@
         @if (($summary['totals']['customization_total'] ?? 0) > 0)
             <div class="flex justify-between gap-3"><span>Customization</span><strong class="text-brand-ink">${{ number_format($summary['totals']['customization_total'], 2) }}</strong></div>
         @endif
-        <div class="flex justify-between gap-3"><span>Discount</span><strong class="text-brand-red">-${{ number_format($summary['totals']['discount'], 2) }}</strong></div>
+        <div class="flex justify-between gap-3"><span>Discount @if(!empty($summary['totals']['coupon_code']))<span class="text-xs font-black text-green-700">({{ $summary['totals']['coupon_code'] }})</span>@endif</span><strong class="text-brand-red">-${{ number_format($summary['totals']['discount'], 2) }}</strong></div>
         <div class="flex justify-between gap-3"><span>Shipping</span><strong class="text-brand-ink">${{ number_format($summary['totals']['shipping'], 2) }}</strong></div>
         <div class="flex justify-between gap-3"><span>Estimated tax</span><strong class="text-brand-ink">${{ number_format($summary['totals']['tax'], 2) }}</strong></div>
         <div class="mt-2 flex justify-between gap-3 border-t border-slate-200 pt-4 text-lg text-brand-ink">

@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'postal_code',
     'phone',
     'email',
+    'delivery_instruction',
     'is_default',
 ])]
 class CustomerAddress extends Model

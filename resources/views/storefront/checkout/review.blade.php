@@ -27,12 +27,22 @@
 
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                     <div class="flex items-center justify-between gap-4"><h3 class="font-black text-brand-ink">Shipping Method</h3><a class="text-sm font-black text-brand-red" href="{{ route('checkout.shipping-method') }}">Edit</a></div>
-                    <p class="mt-2 text-sm font-semibold leading-6 text-slate-600">{{ $summary['shipping_method']['title'] ?? 'Standard Shipping' }} · {{ $summary['shipping_method']['eta'] ?? '' }} · {{ $summary['shipping_method']['display_price'] ?? '$0.00' }}</p>
+                    <p class="mt-2 text-sm font-semibold leading-6 text-slate-600">{{ $summary['shipping_method']['title'] ?? 'Standard Shipping' }} · {{ $summary['shipping_method']['eta'] ?? '' }} · {{ $summary['shipping_method']['display_price'] ?? '$0.00' }}@if(($summary['rural_surcharge'] ?? 0) > 0) · Rural surcharge ${{ number_format($summary['rural_surcharge'], 2) }} applied @endif</p>
                 </div>
 
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                     <div class="flex items-center justify-between gap-4"><h3 class="font-black text-brand-ink">Payment Method</h3><a class="text-sm font-black text-brand-red" href="{{ route('checkout.payment-method') }}">Edit</a></div>
-                    <p class="mt-2 text-sm font-semibold leading-6 text-slate-600">{{ $summary['payment_method']['label'] ?? 'Credit / Debit Card' }}</p>
+                    <p class="mt-2 text-sm font-semibold leading-6 text-slate-600">
+                        {{ $summary['payment_method']['label'] ?? 'Payment method not selected' }}
+                        @if(!empty($summary['payment_method']['gateway_label']))
+                            · {{ $summary['payment_method']['gateway_label'] }}
+                        @endif
+                        @if(!empty($summary['payment_method']['display_amount']))
+                            · Payable {{ $summary['payment_method']['display_amount'] }}
+                        @else
+                            · Payable ${{ number_format((float)($summary['total'] ?? 0), 2) }}
+                        @endif
+                    </p>
                 </div>
 
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
