@@ -32,6 +32,10 @@
                     <img
                         src="{{ $image }}"
                         alt="{{ $imageAlt }}"
+                        width="900"
+                        height="620"
+                        loading="lazy"
+                        decoding="async"
                         class="w-full rounded-2xl object-cover {{ $compact ? 'h-64' : 'h-72 sm:h-80' }}"
                     >
                 </div>

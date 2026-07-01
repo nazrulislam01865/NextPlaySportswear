@@ -6,7 +6,7 @@
         eyebrow="Secure checkout guidance"
         title="Know When and How Payment Is Collected"
         description="Regular online orders follow the payment method selected during checkout. Team and bulk orders may use a deposit or staged payment schedule stated in the accepted quotation."
-        image="https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&w=1100&q=80"
+        :image="asset('storage/storefront/content/payment.webp')"
         image-alt="Secure online payment on a mobile device"
     >
         <a href="#payment-types" class="btn btn-red">View Payment Guidance</a>

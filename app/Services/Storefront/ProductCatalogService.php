@@ -3,6 +3,7 @@
 namespace App\Services\Storefront;
 
 use App\Models\Product;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -18,16 +19,20 @@ class ProductCatalogService
         }
 
         if (Schema::hasTable('products') && Product::query()->published()->exists()) {
-            return $this->hydratedProducts = Product::query()
+            $cacheVersion = (int) Cache::get('catalog.category-facets.version', 1);
+            $cacheKey = 'catalog.product-summaries.'.$cacheVersion;
+            $ttl = max(60, (int) config('catalog.category_cache_seconds', 1800));
+
+            return $this->hydratedProducts = Cache::remember($cacheKey, $ttl, fn (): array => Product::query()
                 ->published()
-                ->with(['category', 'subcategory', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'priceTiers', 'artworkMethods', 'productionSpeeds', 'shippingMethods', 'faqs'])
+                ->with($this->listingRelations())
                 ->orderBy('sort_order')
                 ->orderByDesc('is_featured')
                 ->orderByDesc('published_at')
                 ->get()
-                ->map(fn (Product $product): array => $this->fromModel($product))
+                ->map(fn (Product $product): array => $this->fromListingModel($product))
                 ->values()
-                ->all();
+                ->all());
         }
 
         return $this->hydratedProducts = collect($this->products())
@@ -145,6 +150,84 @@ class ProductCatalogService
         $luminance = (($red * 299) + ($green * 587) + ($blue * 114)) / 1000;
 
         return $luminance > 160 ? '#0F172A' : '#FFFFFF';
+    }
+
+    public function fromListingModel(Product $product): array
+    {
+        $gallery = $product->images->map(fn ($image) => [
+            'url' => $image->publicUrl(),
+            'alt' => $image->alt_text ?: $product->name,
+        ])->values()->all();
+
+        if ($gallery === []) {
+            $gallery[] = ['url' => asset('images/product-placeholder.svg'), 'alt' => $product->name];
+        }
+
+        $primaryCategory = $product->relationLoaded('categories')
+            ? ($product->categories->firstWhere('pivot.is_primary', true) ?? $product->categories->first())
+            : null;
+        $primaryCategory ??= $product->subcategory ?: $product->category;
+
+        $firstTier = $product->relationLoaded('priceTiers')
+            ? $product->priceTiers->sortBy('minimum_quantity')->first()
+            : null;
+        $unitPrice = $firstTier?->unit_price ?? $product->base_price;
+
+        return [
+            'id' => $product->id,
+            'slug' => $product->slug,
+            'title' => $product->name,
+            'short_title' => $product->name,
+            'summary' => $product->short_description ?: str(strip_tags((string) $product->description_html))->limit(130)->toString(),
+            'description' => strip_tags((string) $product->description_html),
+            'price' => 'From $'.number_format((float) $unitPrice, 2),
+            'base_price' => (float) $product->base_price,
+            'currency' => $product->currency,
+            'minimum_quantity' => $product->minimum_quantity,
+            'maximum_quantity' => $product->maximum_quantity,
+            'tag' => $product->badge_label ?: ($product->is_customizable ? 'Customizable' : null),
+            'tag_color' => $product->badge_color ?: 'red',
+            'sport' => $primaryCategory?->name ?: 'Custom Sportswear',
+            'category' => $primaryCategory?->name ?: 'Custom Sportswear',
+            'category_slug' => $primaryCategory?->slug,
+            'subcategory' => $product->subcategory?->name,
+            'subcategory_slug' => $product->subcategory?->slug,
+            'categories' => $product->relationLoaded('categories') ? $product->categories->map(fn ($category) => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'slug' => $category->slug,
+                'primary' => (bool) ($category->pivot->is_primary ?? false),
+            ])->values()->all() : [],
+            'attributes' => [],
+            'sku' => $product->sku,
+            'rating' => 0,
+            'reviews_count' => 0,
+            'image' => $gallery[0]['url'],
+            'alt' => $gallery[0]['alt'],
+            'gallery' => $gallery,
+            'tags' => $product->tags ?? [],
+            'features' => $product->features ?? [],
+            'brand' => $product->brand ?: config('storefront.name'),
+            'product_type' => $product->product_type,
+            'is_featured' => $product->is_featured,
+            'is_customizable' => $product->is_customizable,
+            'track_inventory' => $product->track_inventory,
+            'stock_quantity' => $product->stock_quantity,
+            'allow_backorder' => $product->allow_backorder,
+            'url' => route('products.show', $product->slug),
+        ];
+    }
+
+    /** @return array<int, string> */
+    public function listingRelations(): array
+    {
+        return [
+            'category',
+            'subcategory',
+            'categories',
+            'images',
+            'priceTiers',
+        ];
     }
 
     public function fromModel(Product $product): array
@@ -543,12 +626,12 @@ class ProductCatalogService
                 'sku' => 'NPS-FBL-JER-AYU-001',
                 'rating' => 5,
                 'reviews_count' => 34,
-                'image' => 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=900&q=80',
+                'image' => asset('storage/storefront/home/football.webp'),
                 'alt' => 'Custom football jersey with name and number',
                 'gallery' => [
-                    'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=900&q=80',
-                    'https://images.unsplash.com/photo-1551958219-acbc608c6377?auto=format&fit=crop&w=900&q=80',
-                    'https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=900&q=80',
+                    asset('storage/storefront/home/football.webp'),
+                    asset('storage/storefront/home/baseball.webp'),
+                    asset('storage/storefront/home/hero.webp'),
                 ],
                 'tags' => ['football jersey', 'cool shapes', 'custom football uniform', 'adult youth unisex', 'sublimation football jersey', 'team football uniform'],
                 'features' => [
@@ -585,7 +668,7 @@ class ProductCatalogService
                 'sku' => 'NPS-FBL-JER-NN-002',
                 'rating' => 5,
                 'reviews_count' => 28,
-                'image' => 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=900&q=80',
+                'image' => asset('storage/storefront/home/football.webp'),
                 'alt' => 'Custom football jersey',
                 'tags' => ['football jersey', 'custom name number', 'team jersey', 'sportswear'],
                 'features' => ['Player name and number', 'Team color direction', 'Logo placement notes', 'Team roster support'],
@@ -606,7 +689,7 @@ class ProductCatalogService
                 'sku' => 'NPS-BSB-UNI-SET-003',
                 'rating' => 5,
                 'reviews_count' => 21,
-                'image' => 'https://images.unsplash.com/photo-1533236897111-3e94666b2edf?auto=format&fit=crop&w=900&q=80',
+                'image' => asset('storage/storefront/home/baseball.webp'),
                 'alt' => 'Baseball uniform set',
                 'tags' => ['baseball uniform', 'team set', 'jersey pants', 'club uniform'],
                 'features' => ['Team roster sizing', 'Jersey and pants direction', 'Logo and number support', 'Bulk quote ready'],
@@ -627,7 +710,7 @@ class ProductCatalogService
                 'sku' => 'NPS-BSK-JER-UR-001',
                 'rating' => 5,
                 'reviews_count' => 17,
-                'image' => 'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=900&q=80',
+                'image' => asset('storage/storefront/home/basketball.webp'),
                 'alt' => 'Custom basketball jersey',
                 'tags' => ['basketball club uniform', 'birdseye mesh jersey', 'breathable basketball jersey', 'Custom Basketball Jersey', 'custom sportswear', 'custom team jersey', 'elite basketball jersey', 'round neck basketball jersey', 'sublimation basketball jersey', 'team basketball uniform', 'unisex basketball jersey', 'youth basketball jersey'],
                 'features' => ['Sleeveless jersey style', 'Name and number support', 'Team color direction', 'Bulk team order ready'],
@@ -690,7 +773,7 @@ class ProductCatalogService
                 'sku' => 'NPS-SCR-KIT-TM-005',
                 'rating' => 5,
                 'reviews_count' => 24,
-                'image' => 'https://images.unsplash.com/photo-1553778263-73a83bab9b0c?auto=format&fit=crop&w=900&q=80',
+                'image' => asset('storage/storefront/home/soccer.webp'),
                 'alt' => 'Sublimated soccer kit',
                 'tags' => ['soccer kit', 'uniform', 'club team', 'sublimated'],
                 'features' => ['Club and school team ready', 'Logo and sponsor notes', 'Player roster support', 'Bulk sizing table support'],
@@ -711,7 +794,7 @@ class ProductCatalogService
                 'sku' => 'NPS-HOD-APP-TM-006',
                 'rating' => 5,
                 'reviews_count' => 18,
-                'image' => 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=900&q=80',
+                'image' => asset('storage/storefront/home/hoodies.webp'),
                 'alt' => 'Custom team hoodie',
                 'tags' => ['hoodie', 'apparel', 'team', 'spirit wear'],
                 'features' => ['Team logo support', 'Front/back print notes', 'Bulk apparel pricing', 'Coach and fan gear ready'],
@@ -732,7 +815,7 @@ class ProductCatalogService
                 'sku' => 'NPS-CAP-EMB-007',
                 'rating' => 5,
                 'reviews_count' => 14,
-                'image' => 'https://images.unsplash.com/photo-1521369909029-2afed882baee?auto=format&fit=crop&w=900&q=80',
+                'image' => asset('storage/storefront/home/caps.webp'),
                 'alt' => 'Custom embroidered cap',
                 'tags' => ['cap', 'hat', 'embroidery', 'team logo'],
                 'features' => ['Front logo placement', 'Embroidery quote support', 'Event and team order ready', 'Bulk available'],
@@ -753,7 +836,7 @@ class ProductCatalogService
                 'sku' => 'NPS-BAG-DUF-008',
                 'rating' => 5,
                 'reviews_count' => 12,
-                'image' => 'https://images.unsplash.com/photo-1622560480654-d96214fdc887?auto=format&fit=crop&w=900&q=80',
+                'image' => asset('storage/storefront/home/bags.webp'),
                 'alt' => 'Personalized sports duffel bag',
                 'tags' => ['bag', 'duffel', 'team', 'travel'],
                 'features' => ['Team logo direction', 'Player name notes', 'Travel-friendly product', 'Promotional order support'],
@@ -774,7 +857,7 @@ class ProductCatalogService
                 'sku' => 'NPS-FAN-JER-009',
                 'rating' => 5,
                 'reviews_count' => 16,
-                'image' => 'https://images.unsplash.com/photo-1599058917212-d750089bc07e?auto=format&fit=crop&w=900&q=80',
+                'image' => asset('storage/storefront/home/training.webp'),
                 'alt' => 'Custom fan jersey',
                 'tags' => ['fan jersey', 'customizable', 'spirit wear', 'event'],
                 'features' => ['Fan name and number', 'Event color direction', 'Spirit wear ready', 'Small and bulk order support'],

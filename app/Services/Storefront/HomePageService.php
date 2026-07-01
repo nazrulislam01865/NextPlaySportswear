@@ -38,7 +38,7 @@ class HomePageService
             'canonical' => route('home'),
             'og_title' => 'Custom Sportswear, Team Uniforms & Jerseys | ' . config('storefront.name'),
             'og_description' => 'Custom sportswear, jerseys, uniforms, hoodies, caps, bags, and promotional products for teams, schools, businesses, and events.',
-            'og_image' => 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=1200&q=80',
+            'og_image' => asset('storage/storefront/home/hero.webp'),
         ];
     }
 
@@ -117,7 +117,7 @@ class HomePageService
             ],
             [
                 'question' => 'Do you offer bulk pricing?',
-                'answer' => 'Yes. For larger orders, please contact us for a custom quotation.',
+                'answer' => 'Yes. For larger orders, especially 500+ or 1,000+ pieces, please contact us for a custom quotation.',
             ],
             [
                 'question' => 'Can I add player names and numbers?',
@@ -126,6 +126,14 @@ class HomePageService
             [
                 'question' => 'Do you help with artwork or mockups?',
                 'answer' => 'Yes. You can send your logo or design idea. A proof or mockup may be reviewed before production.',
+            ],
+            [
+                'question' => 'How long does production take?',
+                'answer' => 'Production time depends on the product, customization method, quantity, and order season. The timeline should be confirmed before production.',
+            ],
+            [
+                'question' => 'Do you ship across the USA?',
+                'answer' => 'Yes, shipping options should be shown or confirmed based on the order and delivery location.',
             ],
         ];
     }

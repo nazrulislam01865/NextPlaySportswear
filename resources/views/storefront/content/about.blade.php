@@ -6,7 +6,7 @@
         eyebrow="About NextPlay"
         title="Built Around Teams, Details, and Better Ordering"
         description="NextPlay Sportswear helps teams, schools, clubs, businesses, event organizers, and individual buyers turn an idea into wearable team gear. Our goal is to make custom ordering easier to understand from the first product choice to final delivery."
-        image="https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=1100&q=80"
+        :image="asset('storage/storefront/content/about.webp')"
         image-alt="Sports team gathering before a game"
     >
         <a href="{{ route('categories.index') }}" class="btn btn-red">Browse Categories</a>
@@ -16,7 +16,7 @@
     <section class="section-padding">
         <div class="site-container grid gap-10 lg:grid-cols-[.9fr_1.1fr] lg:items-center">
             <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-soft">
-                <img loading="lazy" src="https://images.unsplash.com/photo-1551958219-acbc608c6377?auto=format&fit=crop&w=950&q=80" alt="Custom sports uniforms prepared for a team" class="h-[360px] w-full rounded-2xl object-cover">
+                <img loading="lazy" src="{{ asset('storage/storefront/home/baseball.webp') }}" width="900" height="620" decoding="async" alt="Custom sports uniforms prepared for a team" class="h-[360px] w-full rounded-2xl object-cover">
             </div>
             <div>
                 <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">Our purpose</p>

@@ -1,9 +1,16 @@
 @php
     $isEdit = $product->exists;
-    $primaryCategoryId = old('primary_category_id', $product->relationLoaded('categories') ? optional($product->categories->firstWhere('pivot.is_primary', true))->id : ($product->subcategory_id ?: $product->category_id));
+    $pivotPrimaryCategoryId = $product->relationLoaded('categories')
+        ? optional($product->categories->firstWhere('pivot.is_primary', true) ?? $product->categories->first())->id
+        : null;
+    $legacyPrimaryCategoryId = $product->subcategory_id ?: $product->category_id;
+    $primaryCategoryId = old('primary_category_id', $pivotPrimaryCategoryId ?: $legacyPrimaryCategoryId);
     $assignedCategoryIds = $product->relationLoaded('categories')
         ? $product->categories->pluck('id')->map(fn ($id) => (int) $id)->all()
         : [];
+    if ($assignedCategoryIds === []) {
+        $assignedCategoryIds = collect([$product->category_id, $product->subcategory_id])->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+    }
     $showInCategoryPageValue = old(
         'show_in_category_page',
         $isEdit ? ($primaryCategoryId && in_array((int) $primaryCategoryId, $assignedCategoryIds, true)) : true

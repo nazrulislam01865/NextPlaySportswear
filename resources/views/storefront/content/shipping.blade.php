@@ -6,7 +6,7 @@
         eyebrow="Shipping and delivery"
         title="Understand Production Time and Transit Time"
         description="Custom products usually require production before they can ship. Delivery planning should consider artwork approval, roster completion, payment, manufacturing, carrier transit, and the destination."
-        image="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1100&q=80"
+        :image="asset('storage/storefront/content/shipping.webp')"
         image-alt="Packages prepared in a shipping warehouse"
     >
         <a href="{{ route('orders.track') }}" class="btn btn-red">Track an Order</a>

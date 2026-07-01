@@ -106,7 +106,7 @@ class OrderExperienceService
                 [
                     'product' => [
                         'title' => 'Custom Football Jersey',
-                        'image' => 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=300&q=80',
+                        'image' => asset('storage/storefront/home/football.webp'),
                         'alt' => 'Custom football jersey',
                     ],
                     'quantity' => 2,
@@ -121,7 +121,7 @@ class OrderExperienceService
                 [
                     'product' => [
                         'title' => 'Custom Team Hoodie',
-                        'image' => 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=300&q=80',
+                        'image' => asset('storage/storefront/home/hoodies.webp'),
                         'alt' => 'Custom team hoodie',
                     ],
                     'quantity' => 1,
@@ -199,7 +199,7 @@ class OrderExperienceService
 
             return [
                 'title' => (string) ($product['title'] ?? $product['short_title'] ?? 'Custom Product'),
-                'image' => (string) ($product['image'] ?? 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=300&q=80'),
+                'image' => (string) ($product['image'] ?? asset('storage/storefront/home/football.webp')),
                 'alt' => (string) ($product['alt'] ?? $product['title'] ?? 'Custom sportswear product'),
                 'quantity' => $quantity,
                 'unit_price' => round((float) ($item['unit_price'] ?? 0), 2),

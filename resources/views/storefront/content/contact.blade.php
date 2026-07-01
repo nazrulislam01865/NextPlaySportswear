@@ -6,7 +6,7 @@
         eyebrow="Customer support"
         title="Tell Us What You Need Help With"
         description="Send a product question, order reference, artwork concern, shipping request, or general support message. Providing clear details helps our team respond accurately."
-        image="https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1100&q=80"
+        :image="asset('storage/storefront/content/contact.webp')"
         image-alt="Customer support team working together"
     >
         <a href="#contact-form" class="btn btn-red">Send a Message</a>

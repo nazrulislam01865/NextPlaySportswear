@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
+use App\Services\Catalog\CategoryProductAssignmentSyncService;
 use App\Services\Catalog\CategoryTreeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,8 +14,10 @@ use Illuminate\View\View;
 
 class CategoryProductController extends Controller
 {
-    public function __construct(private readonly CategoryTreeService $treeService)
-    {
+    public function __construct(
+        private readonly CategoryTreeService $treeService,
+        private readonly CategoryProductAssignmentSyncService $assignmentSyncService,
+    ) {
     }
 
     public function index(Request $request, Category $category): View
@@ -57,6 +60,22 @@ class CategoryProductController extends Controller
                 'assignment' => $assignment,
             ],
         ]);
+    }
+
+    public function syncLegacyAssignments(): RedirectResponse
+    {
+        $stats = $this->assignmentSyncService->syncAllProductCategoryAssignments(resetExisting: true);
+
+        return back()->with(
+            'status',
+            sprintf(
+                'Category assignments rebuilt. %d old rows removed, %d trusted assignments created, %d parent assignments created, %d products checked.',
+                $stats['assignments_deleted'],
+                $stats['legacy_assignments_created'] + $stats['trusted_rule_assignments_created'],
+                $stats['ancestor_assignments_created'] + $stats['trusted_rule_ancestor_assignments_created'],
+                $stats['products_scanned']
+            )
+        );
     }
 
     public function update(Request $request, Category $category): RedirectResponse

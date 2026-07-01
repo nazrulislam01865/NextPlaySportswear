@@ -91,7 +91,7 @@
 
     <section id="bulk" class="bg-[#f3f5f7] py-[66px]">
         <div class="site-container">
-            <div class="grid items-center gap-9 rounded-[20px] bg-[linear-gradient(90deg,rgba(13,37,69,.95),rgba(21,52,93,.83)),url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1400&q=80')] bg-cover bg-center p-7 text-white shadow-hero lg:grid-cols-[1fr_.82fr] lg:p-[42px]">
+            <div class="storefront-category-bulk-cta grid items-center gap-9 rounded-[20px] bg-cover bg-center p-7 text-white shadow-hero lg:grid-cols-[1fr_.82fr] lg:p-[42px]">
                 <div>
                     <span class="text-xs font-black uppercase tracking-[.08em] text-brand-red">Team and bulk ordering</span>
                     <h2 class="mt-2 font-display text-[clamp(32px,4vw,42px)] font-bold uppercase leading-[1.02]">Ordering for a Team, School, League, or Event?</h2>

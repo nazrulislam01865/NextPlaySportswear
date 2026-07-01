@@ -26,15 +26,35 @@
                 </a>
             </div>
 
-            <a
-                href="{{ route('admin.products.create') }}"
-                class="inline-flex min-h-16 w-full items-center justify-center gap-3 rounded-xl bg-brand-navy px-7 text-base font-extrabold text-white shadow-card transition hover:-translate-y-0.5 hover:bg-brand-dark sm:w-auto"
-            >
-                <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
-                </svg>
-                Create Product
-            </a>
+            <div class="flex w-full flex-col gap-3 sm:w-auto">
+                <form
+                    method="POST"
+                    action="{{ route('admin.categories.products.sync-legacy') }}"
+                    onsubmit="return confirm('This will bulk repair category-product assignments from selected categories, parent categories, and product text matching. Continue?')"
+                >
+                    @csrf
+                    <button
+                        type="submit"
+                        class="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-6 text-sm font-extrabold text-emerald-700 shadow-card transition hover:-translate-y-0.5 hover:bg-white"
+                    >
+                        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M4 7h10a5 5 0 0 1 5 5v0a5 5 0 0 1-5 5H7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="m8 11-4-4 4-4M16 13l4 4-4 4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        Auto Assign / Repair / Repair Products
+                    </button>
+                </form>
+
+                <a
+                    href="{{ route('admin.products.create') }}"
+                    class="inline-flex min-h-16 w-full items-center justify-center gap-3 rounded-xl bg-brand-navy px-7 text-base font-extrabold text-white shadow-card transition hover:-translate-y-0.5 hover:bg-brand-dark"
+                >
+                    <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+                    </svg>
+                    Create Product
+                </a>
+            </div>
         </section>
 
         <form

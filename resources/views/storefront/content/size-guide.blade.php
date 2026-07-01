@@ -6,7 +6,7 @@
         eyebrow="Fit and measurements"
         title="Measure First. Order with Confidence."
         description="Custom products may have limited return options, so accurate measurements matter. Use a flexible tape, measure over light clothing, and compare the result with the size chart shown for the specific product."
-        image="https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1100&q=80"
+        :image="asset('storage/storefront/content/size-guide.webp')"
         image-alt="Athletic apparel prepared for sizing"
     >
         <a href="#size-tables" class="btn btn-red">View Size Charts</a>
@@ -28,7 +28,7 @@
     <section class="section-alt section-padding">
         <div class="site-container grid gap-8 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
             <div class="overflow-hidden rounded-3xl bg-white p-3 shadow-soft">
-                <img loading="lazy" src="https://images.unsplash.com/photo-1538805060514-97d9cc17730c?auto=format&fit=crop&w=900&q=80" alt="Athlete standing in fitted sportswear" class="h-[410px] w-full rounded-2xl object-cover">
+                <img loading="lazy" src="{{ asset('storage/storefront/content/size-guide.webp') }}" width="900" height="620" decoding="async" alt="Athlete standing in fitted sportswear" class="h-[410px] w-full rounded-2xl object-cover">
             </div>
             <div>
                 <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">How to measure</p>

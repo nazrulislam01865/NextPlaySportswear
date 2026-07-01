@@ -6,7 +6,7 @@
         eyebrow="Team and high-volume orders"
         title="Organize the Details Before Production"
         description="Bulk orders work best when the product, quantity, size breakdown, artwork, player roster, deadline, and delivery plan are prepared together. A quotation gives those requirements one clear reference."
-        image="https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=1100&q=80"
+        :image="asset('storage/storefront/content/bulk-ordering.webp')"
         image-alt="Large sports team preparing for a game"
     >
         <a href="{{ route('quote.request') }}" class="btn btn-red">Request Bulk Quote</a>

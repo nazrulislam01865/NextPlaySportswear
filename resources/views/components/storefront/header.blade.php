@@ -2,16 +2,16 @@
     x-data="{ open: false }"
     x-effect="document.documentElement.classList.toggle('overflow-hidden', open)"
     @keydown.escape.window="open = false"
-    class="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-sm"
+    class="storefront-site-header sticky top-0 z-40 border-b border-slate-200 bg-white shadow-sm"
     aria-label="Site header"
 >
-    <div class="site-container flex min-h-[72px] items-center justify-between gap-2 py-3 lg:grid lg:grid-cols-[auto_minmax(220px,1fr)_auto] lg:gap-6 lg:py-4">
-        <a href="{{ route('home') }}" class="flex min-w-0 items-center gap-2 font-display text-lg font-bold uppercase leading-none tracking-tight text-brand-ink sm:gap-3 sm:text-xl lg:text-2xl" aria-label="{{ config('storefront.name') }} home">
-            <span class="relative grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border-[3px] border-brand-red text-brand-red">
+    <div class="site-container storefront-header-main flex min-h-[64px] items-center justify-between gap-2 py-2.5 sm:min-h-[72px] sm:py-3 lg:grid lg:grid-cols-[auto_minmax(220px,1fr)_auto] lg:gap-6 lg:py-4">
+        <a href="{{ route('home') }}" class="storefront-logo flex min-w-0 items-center gap-2 font-display text-lg font-bold uppercase leading-none tracking-tight text-brand-ink sm:gap-3 sm:text-xl lg:text-2xl" aria-label="{{ config('storefront.name') }} home">
+            <span class="storefront-logo-mark relative grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border-[3px] border-brand-red text-brand-red">
                 ✓
                 <span class="absolute -top-2 h-1.5 w-3.5 rounded-t-lg border-2 border-b-0 border-current" aria-hidden="true"></span>
             </span>
-            <span class="truncate">NextPlay <span class="hidden sm:inline text-brand-red">Sportswear</span></span>
+            <span class="storefront-logo-text truncate">NextPlay <span class="hidden sm:inline text-brand-red">Sportswear</span></span>
         </a>
 
         <form
@@ -38,9 +38,9 @@
             >
         </form>
 
-        <div class="flex shrink-0 items-center justify-end gap-2">
-            <a href="{{ route('products.index') }}" class="btn btn-white hidden lg:inline-flex">Shop Now</a>
-            <a href="{{ route('quote.request') }}" class="btn btn-red hidden lg:inline-flex">Request Quote</a>
+        <div class="storefront-header-actions flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
+            <a href="{{ route('products.index') }}" class="btn btn-white hidden xl:inline-flex">Shop Now</a>
+            <a href="{{ route('quote.request') }}" class="btn btn-red hidden xl:inline-flex">Request Quote</a>
 
             @if(auth('admin')->check())
                 <a href="{{ route('admin.dashboard') }}" class="btn btn-white hidden xl:inline-flex">Admin Dashboard</a>
@@ -50,7 +50,7 @@
                 <a href="{{ route('login') }}" class="btn btn-white hidden xl:inline-flex">Login</a>
             @endif
 
-            <a href="{{ route('cart.index') }}" class="relative inline-flex min-h-11 items-center justify-center gap-1 rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm font-extrabold text-slate-900" aria-label="Shopping cart{{ ($cartItemCount ?? 0) > 0 ? ', ' . $cartItemCount . ' items' : '' }}">
+            <a href="{{ route('cart.index') }}" class="storefront-cart-button relative inline-flex min-h-10 items-center justify-center gap-1 rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm font-extrabold text-slate-900 sm:min-h-11" aria-label="Shopping cart{{ ($cartItemCount ?? 0) > 0 ? ', ' . $cartItemCount . ' items' : '' }}">
                 <span class="cart-label">Cart</span>
                 <svg class="sm:hidden" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="20" r="1"></circle><circle cx="19" cy="20" r="1"></circle><path d="M3 4h2l2.7 11.1a2 2 0 0 0 2 1.5h7.7a2 2 0 0 0 2-1.6L21 8H6"></path></svg>
                 @if (($cartItemCount ?? 0) > 0)
@@ -60,7 +60,7 @@
 
             <button
                 type="button"
-                class="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-slate-300 bg-white lg:hidden"
+                class="storefront-menu-button grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-300 bg-white lg:hidden sm:h-11 sm:w-11"
                 :aria-label="open ? 'Close menu' : 'Open menu'"
                 :aria-expanded="open.toString()"
                 aria-controls="storefront-mobile-menu"
@@ -72,8 +72,8 @@
         </div>
     </div>
 
-    <div class="border-t border-slate-200">
-        <nav class="site-container hidden flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm font-extrabold text-slate-600 lg:flex" aria-label="Main navigation">
+    <div class="storefront-nav-row">
+        <nav class="storefront-main-nav site-container hidden lg:flex" aria-label="Main navigation">
             @forelse(($storefrontMenus['header'] ?? collect()) as $item)
                 <x-storefront.menu.desktop-item :item="$item" :align="$loop->index >= 4 ? 'right' : 'left'" />
             @empty
@@ -100,6 +100,11 @@
                     <button class="btn btn-red shrink-0 px-4" type="submit">Search</button>
                 </div>
             </form>
+
+            <div class="mb-4 grid grid-cols-2 gap-2" @click="if ($event.target.closest('a')) open = false">
+                <a href="{{ route('products.index') }}" class="btn btn-light w-full text-xs">Shop Now</a>
+                <a href="{{ route('quote.request') }}" class="btn btn-red w-full text-xs">Request Quote</a>
+            </div>
 
             <div @click="if ($event.target.closest('a')) open = false">
                 @forelse(($storefrontMenus['header'] ?? collect()) as $item)
@@ -128,3 +133,5 @@
         </nav>
     </div>
 </header>
+
+

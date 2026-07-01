@@ -6,7 +6,7 @@
         eyebrow="Make it yours"
         title="Plan Every Detail of Your Custom Gear"
         description="Customization can range from a simple name and number to a complete team identity with logos, sponsor marks, fabrics, colors, player rosters, and coordinated accessories."
-        image="https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=1100&q=80"
+        :image="asset('storage/storefront/content/customization-guide.webp')"
         image-alt="Custom sports uniforms and team gear"
     >
         <a href="#custom-options" class="btn btn-red">Explore Options</a>
@@ -76,7 +76,7 @@
                 </div>
             </div>
             <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-soft">
-                <img loading="lazy" src="https://images.unsplash.com/photo-1551958219-acbc608c6377?auto=format&fit=crop&w=950&q=80" alt="Custom sports uniforms displayed together" class="h-[520px] w-full rounded-2xl object-cover">
+                <img loading="lazy" src="{{ asset('storage/storefront/content/customization-guide.webp') }}" width="900" height="620" decoding="async" alt="Custom sports uniforms displayed together" class="h-[520px] w-full rounded-2xl object-cover">
             </div>
         </div>
     </section>

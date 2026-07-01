@@ -74,6 +74,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('categories.import');
         Route::get('/categories-ordering', [\App\Http\Controllers\Admin\CategoryOperationsController::class, 'ordering'])->name('categories.ordering');
         Route::put('/categories-ordering', [\App\Http\Controllers\Admin\CategoryOperationsController::class, 'updateOrdering'])->name('categories.ordering.update');
+        Route::post('/categories/products/sync-legacy', [\App\Http\Controllers\Admin\CategoryProductController::class, 'syncLegacyAssignments'])->name('categories.products.sync-legacy');
         Route::get('/categories/{category}/products', [\App\Http\Controllers\Admin\CategoryProductController::class, 'index'])->name('categories.products.index');
         Route::put('/categories/{category}/products', [\App\Http\Controllers\Admin\CategoryProductController::class, 'update'])->name('categories.products.update');
         Route::resource('categories', \App\Http\Controllers\Admin\CategoryController::class)->except('show');

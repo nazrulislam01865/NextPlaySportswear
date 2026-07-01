@@ -46,11 +46,9 @@ class CategoryContentService
         ];
 
         if (in_array($block->block_type, ['featured_products', 'selected_products'], true)) {
-            $query = Product::query()->published()->with([
-                'category', 'subcategory', 'categories', 'attributeValues.attribute', 'images',
-                'optionGroups.values', 'sizeGroups.sizes', 'priceTiers', 'artworkMethods',
-                'productionSpeeds', 'faqs',
-            ]);
+            $query = Product::query()
+                ->published()
+                ->with($this->products->listingRelations());
 
             if ($block->block_type === 'featured_products') {
                 $query->whereHas('categories', fn (Builder $builder) => $builder
@@ -66,7 +64,7 @@ class CategoryContentService
                 ->orderBy('products.sort_order')
                 ->limit($limit)
                 ->get()
-                ->map(fn (Product $product) => $this->products->fromModel($product))
+                ->map(fn (Product $product) => $this->products->fromListingModel($product))
                 ->all();
         }
 

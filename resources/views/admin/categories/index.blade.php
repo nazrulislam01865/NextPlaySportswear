@@ -183,6 +183,26 @@
                         Import
                     </button>
                 </form>
+
+                <form
+                    method="POST"
+                    action="{{ route('admin.categories.products.sync-legacy') }}"
+                    class="category-import-form"
+                    onsubmit="return confirm('This will bulk repair product-category assignments from category fields, parent categories, and product text matching. Continue?')"
+                >
+                    @csrf
+
+                    <div class="category-import-field">
+                        <span class="category-import-label">Repair product assignments</span>
+                        <p class="text-xs font-semibold leading-5 text-slate-500">
+                            Use this after product/category import to fill parent, child, and smart matched category_product rows automatically.
+                        </p>
+                    </div>
+
+                    <button class="category-import-button" type="submit">
+                        Auto Assign / Repair
+                    </button>
+                </form>
             </div>
         </section>
 

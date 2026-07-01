@@ -14,6 +14,12 @@ use Illuminate\Support\Facades\DB;
 
 class CategoryCatalogService
 {
+    /** @var array<int, array<int>> */
+    private array $runtimeListingCategoryIds = [];
+
+    /** @var Collection<int, array{id:int,parent_id:int|null}>|null */
+    private ?Collection $runtimeCategoryParentRows = null;
+
     public function __construct(
         private readonly ProductCatalogService $productCatalogService,
         private readonly CategoryTreeService $treeService,
@@ -108,13 +114,12 @@ class CategoryCatalogService
     public function productsFor(Category $category, array $filters): LengthAwarePaginator
     {
         $categoryIds = $this->categoryIdsForListing($category);
-        $listing = $this->productListingSubquery($categoryIds);
 
-        $query = Product::query()
-            ->published()
-            ->joinSub($listing, 'listing_cp', fn ($join) => $join->on('listing_cp.product_id', '=', 'products.id'))
-            ->select(['products.*', 'listing_cp.category_featured', 'listing_cp.category_sort'])
-            ->with($this->productRelations());
+        $query = $this->applyCategoryProductFilter(Product::query()->published(), $categoryIds)
+            ->select('products.*')
+            ->selectSub($this->categoryFeaturedSelect($categoryIds), 'category_featured')
+            ->selectSub($this->categorySortSelect($categoryIds), 'category_sort')
+            ->with($this->productCatalogService->listingRelations());
 
         if ($filters['q'] !== '') {
             $needle = $filters['q'];
@@ -137,14 +142,11 @@ class CategoryCatalogService
                 ->all();
 
             if ($selected !== []) {
-                $query->whereHas('categories', fn (Builder $builder) => $builder->whereIn('categories.id', $selected));
+                $this->applyCategoryProductFilter($query, $selected);
             }
         }
 
-        $allowedAttributeSlugs = $category->filters
-            ->filter(fn (CatalogAttribute $attribute): bool => $attribute->is_active && $attribute->is_filterable)
-            ->pluck('slug')
-            ->all();
+        $allowedAttributeSlugs = $this->filterableAttributeSlugsForListing($category, $categoryIds);
 
         foreach ($filters['attributes'] as $attributeSlug => $valueSlugs) {
             if (! in_array($attributeSlug, $allowedAttributeSlugs, true)) {
@@ -182,15 +184,15 @@ class CategoryCatalogService
             'name-asc' => $query->orderBy('products.name'),
             'newest' => $query->orderByDesc('products.published_at')->orderByDesc('products.id'),
             default => $query
-                ->orderByDesc('listing_cp.category_featured')
-                ->orderBy('listing_cp.category_sort')
+                ->orderByDesc('category_featured')
+                ->orderByRaw('COALESCE(category_sort, products.sort_order, 999999) ASC')
                 ->orderByDesc('products.is_featured')
                 ->orderBy('products.sort_order')
                 ->orderBy('products.name'),
         };
 
         $paginator = $query->paginate(config('catalog.category_page_size', 24))->withQueryString();
-        $paginator->through(fn (Product $product): array => $this->productCatalogService->fromModel($product));
+        $paginator->through(fn (Product $product): array => $this->productCatalogService->fromListingModel($product));
 
         return $paginator;
     }
@@ -226,8 +228,46 @@ class CategoryCatalogService
                 ->groupBy('avp.attribute_value_id')
                 ->pluck('aggregate', 'avp.attribute_value_id');
 
-            $attributes = $category->filters
+            $configuredAttributes = $category->filters
                 ->filter(fn (CatalogAttribute $attribute) => $attribute->is_active && $attribute->is_filterable)
+                ->values();
+
+            $configuredAttributeIds = $configuredAttributes
+                ->pluck('id')
+                ->map(fn ($id): int => (int) $id)
+                ->all();
+
+            $attributeValueIds = $valueCounts->keys()
+                ->map(fn ($id): int => (int) $id)
+                ->filter(fn (int $id): bool => $id > 0)
+                ->all();
+
+            $attributeIdsWithProducts = $attributeValueIds === []
+                ? collect()
+                : DB::table('attribute_values as av')
+                    ->join('attributes as a', 'a.id', '=', 'av.attribute_id')
+                    ->whereIn('av.id', $attributeValueIds)
+                    ->where('a.is_active', true)
+                    ->where('a.is_filterable', true)
+                    ->whereNull('a.deleted_at')
+                    ->orderBy('a.sort_order')
+                    ->orderBy('a.name')
+                    ->pluck('av.attribute_id')
+                    ->map(fn ($id): int => (int) $id)
+                    ->unique()
+                    ->values();
+
+            $autoAttributes = CatalogAttribute::query()
+                ->whereIn('id', $attributeIdsWithProducts->diff($configuredAttributeIds)->all())
+                ->where('is_active', true)
+                ->where('is_filterable', true)
+                ->with('values')
+                ->ordered()
+                ->get();
+
+            $attributes = $configuredAttributes
+                ->concat($autoAttributes)
+                ->unique('id')
                 ->map(function (CatalogAttribute $attribute) use ($valueCounts): array {
                     $values = $attribute->values
                         ->where('is_active', true)
@@ -247,10 +287,10 @@ class CategoryCatalogService
 
                     return [
                         'id' => $attribute->id,
-                        'name' => $attribute->pivot->label ?: $attribute->name,
+                        'name' => $attribute->pivot?->label ?: $attribute->name,
                         'slug' => $attribute->slug,
                         'display_type' => $attribute->display_type,
-                        'is_expanded' => (bool) $attribute->pivot->is_expanded,
+                        'is_expanded' => (bool) ($attribute->pivot?->is_expanded ?? true),
                         'values' => $values,
                     ];
                 })
@@ -304,26 +344,122 @@ class CategoryCatalogService
     /** @return array<int> */
     private function categoryIdsForListing(Category $category): array
     {
-        if (! $category->include_descendant_products) {
-            return [$category->id];
+        $categoryId = (int) $category->id;
+        $cacheVersion = (int) Cache::get('catalog.category-facets.version', 1);
+        $cacheKey = 'catalog.category-listing-ids.'.$categoryId.'.'.$cacheVersion;
+
+        if (isset($this->runtimeListingCategoryIds[$categoryId])) {
+            return $this->runtimeListingCategoryIds[$categoryId];
         }
 
-        $descendantIds = $this->treeService->descendantIds($category->id, true);
+        $ttl = max(60, (int) config('catalog.category_cache_seconds', 1800));
 
-        return Category::query()
-            ->storefrontReachable()
-            ->whereIn('id', $descendantIds)
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
+        return $this->runtimeListingCategoryIds[$categoryId] = Cache::remember($cacheKey, $ttl, function () use ($category, $categoryId): array {
+            $closureIds = $this->treeService->descendantIds($categoryId, true);
+            $fallbackIds = $this->descendantIdsFromParentTree($categoryId);
+
+            $categoryIds = collect([$categoryId])
+                ->merge($closureIds)
+                ->merge($fallbackIds)
+                ->map(fn ($id): int => (int) $id)
+                ->filter(fn (int $id): bool => $id > 0)
+                ->unique()
+                ->values()
+                ->all();
+
+            /*
+             * Menu clicks usually land on a parent category such as Bags,
+             * Accessories, or Performance Apparel. Those parent rows often do not
+             * have products assigned directly; products are assigned to child/leaf
+             * categories. If we only use the parent id, the page looks empty from
+             * the menu while the same products appear after entering through a
+             * product's leaf-category link.
+             *
+             * Leaf categories still respect the Include child products setting.
+             * Parent categories always include descendants so menu category pages
+             * behave like real storefront landing pages.
+             */
+            if (! $category->include_descendant_products && count($categoryIds) <= 1) {
+                $categoryIds = [$categoryId];
+            }
+
+            return Category::query()
+                ->whereIn('id', $categoryIds)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->whenEmpty(fn (Collection $ids): Collection => collect([$categoryId]))
+                ->unique()
+                ->values()
+                ->all();
+        });
+    }
+
+    /**
+     * Fallback for imported/category-edited data when category_closure has not
+     * been rebuilt yet. Category pages should still find products assigned by
+     * category_id, subcategory_id, or category_product while the admin rebuilds
+     * the closure table/cache.
+     *
+     * @return array<int>
+     */
+    private function descendantIdsFromParentTree(int $categoryId): array
+    {
+        $byParent = $this->categoryParentRows()
+            ->groupBy(fn (array $category): int => (int) ($category['parent_id'] ?? 0));
+
+        $ids = [];
+        $visited = [];
+
+        $walk = function (int $id) use (&$walk, &$ids, &$visited, $byParent): void {
+            if (isset($visited[$id])) {
+                return;
+            }
+
+            $visited[$id] = true;
+            $ids[] = $id;
+
+            foreach (($byParent->get($id) ?? collect()) as $child) {
+                $walk((int) $child['id']);
+            }
+        };
+
+        $walk($categoryId);
+
+        return $ids;
+    }
+
+    /** @return Collection<int, array{id:int,parent_id:int|null}> */
+    private function categoryParentRows(): Collection
+    {
+        if ($this->runtimeCategoryParentRows !== null) {
+            return $this->runtimeCategoryParentRows;
+        }
+
+        $cacheVersion = (int) Cache::get('catalog.category-facets.version', 1);
+        $cacheKey = 'catalog.category-parent-rows.'.$cacheVersion;
+        $ttl = max(60, (int) config('catalog.category_cache_seconds', 1800));
+
+        $rows = Cache::remember($cacheKey, $ttl, fn (): array => Category::query()
+            ->get(['id', 'parent_id'])
+            ->map(fn (Category $category): array => [
+                'id' => (int) $category->id,
+                'parent_id' => $category->parent_id === null ? null : (int) $category->parent_id,
+            ])
+            ->all());
+
+        return $this->runtimeCategoryParentRows = collect($rows);
     }
 
     private function productCount(Category $category): int
     {
-        return $this->applyCategoryProductFilter(
+        $cacheVersion = (int) Cache::get('catalog.category-facets.version', 1);
+        $cacheKey = 'catalog.category-product-count.'.$category->id.'.'.$cacheVersion;
+        $ttl = max(60, (int) config('catalog.category_cache_seconds', 1800));
+
+        return (int) Cache::remember($cacheKey, $ttl, fn (): int => $this->applyCategoryProductFilter(
             Product::query()->published(),
             $this->categoryIdsForListing($category)
-        )->count();
+        )->count());
     }
 
     /** @param Collection<int, Category> $categories */
@@ -332,6 +468,46 @@ class CategoryCatalogService
         foreach ($categories as $category) {
             $category->setAttribute('products_count', $this->productCount($category));
         }
+    }
+
+    /** @param array<int> $categoryIds */
+    private function filterableAttributeSlugsForListing(Category $category, array $categoryIds): array
+    {
+        $cacheVersion = (int) Cache::get('catalog.category-facets.version', 1);
+        $cacheKey = 'catalog.category-filterable-slugs.'.$category->id.'.'.$cacheVersion;
+        $ttl = max(60, (int) config('catalog.facets_cache_seconds', 300));
+
+        return Cache::remember($cacheKey, $ttl, function () use ($category, $categoryIds): array {
+            $configured = $category->filters
+                ->filter(fn (CatalogAttribute $attribute): bool => $attribute->is_active && $attribute->is_filterable)
+                ->pluck('slug');
+
+            $listing = $this->productListingSubquery($categoryIds);
+
+            $dynamic = DB::table('attributes as a')
+                ->join('attribute_values as av', 'av.attribute_id', '=', 'a.id')
+                ->join('attribute_value_product as avp', 'avp.attribute_value_id', '=', 'av.id')
+                ->joinSub($listing, 'category_listing', fn ($join) => $join->on('category_listing.product_id', '=', 'avp.product_id'))
+                ->join('products as p', 'p.id', '=', 'avp.product_id')
+                ->where('p.status', 'active')
+                ->where('p.is_active', true)
+                ->where(function ($query): void {
+                    $query->whereNull('p.published_at')->orWhere('p.published_at', '<=', now());
+                })
+                ->where('a.is_active', true)
+                ->where('a.is_filterable', true)
+                ->whereNull('a.deleted_at')
+                ->where('av.is_active', true)
+                ->pluck('a.slug');
+
+            return $configured
+                ->merge($dynamic)
+                ->map(fn ($slug): string => (string) $slug)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+        });
     }
 
     /** @param array<int> $categoryIds */
@@ -363,29 +539,54 @@ class CategoryCatalogService
     }
 
     /** @param array<int> $categoryIds */
+    private function categoryFeaturedSelect(array $categoryIds)
+    {
+        $categoryIds = $this->normalizeCategoryIds($categoryIds);
+
+        return DB::table('category_product')
+            ->selectRaw('COALESCE(MAX(CASE WHEN is_featured THEN 1 ELSE 0 END), 0)')
+            ->whereColumn('category_product.product_id', 'products.id')
+            ->whereIn('category_product.category_id', $categoryIds);
+    }
+
+    /** @param array<int> $categoryIds */
+    private function categorySortSelect(array $categoryIds)
+    {
+        $categoryIds = $this->normalizeCategoryIds($categoryIds);
+
+        return DB::table('category_product')
+            ->selectRaw('MIN(category_product.sort_order)')
+            ->whereColumn('category_product.product_id', 'products.id')
+            ->whereIn('category_product.category_id', $categoryIds);
+    }
+
+    /** @param array<int> $categoryIds */
     private function applyCategoryProductFilter(Builder $query, array $categoryIds): Builder
     {
-        $categoryIds = collect($categoryIds)
+        $categoryIds = $this->normalizeCategoryIds($categoryIds);
+
+        if ($categoryIds === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $builder) use ($categoryIds): void {
+            $builder->whereHas('categories', fn (Builder $categoryQuery) => $categoryQuery->whereIn('categories.id', $categoryIds))
+                ->orWhereIn('products.category_id', $categoryIds)
+                ->orWhereIn('products.subcategory_id', $categoryIds);
+        });
+    }
+
+    /**
+     * @param  array<int>  $categoryIds
+     * @return array<int>
+     */
+    private function normalizeCategoryIds(array $categoryIds): array
+    {
+        return collect($categoryIds)
             ->map(fn ($id): int => (int) $id)
             ->filter(fn (int $id): bool => $id > 0)
             ->unique()
             ->values()
             ->all();
-
-        return $query->where(function (Builder $builder) use ($categoryIds): void {
-            $builder->whereHas('categories', fn (Builder $categoryQuery) => $categoryQuery->whereIn('categories.id', $categoryIds))
-                ->orWhereIn('category_id', $categoryIds)
-                ->orWhereIn('subcategory_id', $categoryIds);
-        });
-    }
-
-
-    private function productRelations(): array
-    {
-        return [
-            'category', 'subcategory', 'categories', 'attributeValues.attribute', 'images',
-            'optionGroups.values', 'sizeGroups.sizes', 'priceTiers', 'artworkMethods',
-            'productionSpeeds', 'faqs',
-        ];
     }
 }

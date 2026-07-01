@@ -6,7 +6,7 @@
         eyebrow="After-purchase support"
         title="Returns Depend on the Product and Order Type"
         description="Standard, unused products may qualify for return under the applicable conditions. Customized products are made from approved details and usually have more limited return and cancellation options."
-        image="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1100&q=80"
+        :image="asset('storage/storefront/content/returns.webp')"
         image-alt="Customer service representative reviewing an order"
     >
         <a href="#eligibility" class="btn btn-red">Check Eligibility</a>

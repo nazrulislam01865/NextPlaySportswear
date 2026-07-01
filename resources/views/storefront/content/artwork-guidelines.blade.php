@@ -6,7 +6,7 @@
         eyebrow="Design file preparation"
         title="Better Artwork Creates a Smoother Production Review"
         description="Send the cleanest original logo or design file available. Good source artwork helps preserve edges, colors, text, and placement when a design is prepared for printing, sublimation, embroidery, or heat transfer."
-        image="https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&w=1100&q=80"
+        :image="asset('storage/storefront/content/artwork-guidelines.webp')"
         image-alt="Designer preparing digital artwork on a desk"
     >
         <a href="#file-types" class="btn btn-red">View File Requirements</a>
@@ -75,7 +75,7 @@
     <section class="section-alt section-padding">
         <div class="site-container grid gap-8 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
             <div class="overflow-hidden rounded-3xl bg-white p-3 shadow-soft">
-                <img loading="lazy" src="https://images.unsplash.com/photo-1600697395543-ef3ee6e9af7b?auto=format&fit=crop&w=900&q=80" alt="Printed sportswear detail" class="h-[360px] w-full rounded-2xl object-cover">
+                <img loading="lazy" src="{{ asset('storage/storefront/content/artwork-guidelines.webp') }}" width="900" height="620" decoding="async" alt="Printed sportswear detail" class="h-[360px] w-full rounded-2xl object-cover">
             </div>
             <div>
                 <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">Proof review</p>

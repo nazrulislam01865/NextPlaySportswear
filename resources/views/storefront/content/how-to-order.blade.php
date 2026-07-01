@@ -6,7 +6,7 @@
         eyebrow="Ordering guide"
         title="From Product Choice to Delivery"
         description="Choose the ordering path that matches your quantity and customization needs. Regular products can move through checkout, while complex team and bulk orders should be reviewed through a quotation."
-        image="https://images.unsplash.com/photo-1516321497487-e288fb19713f?auto=format&fit=crop&w=1100&q=80"
+        :image="asset('storage/storefront/content/how-to-order.webp')"
         image-alt="Order planning notes and laptop"
     >
         <a href="#order-paths" class="btn btn-red">Choose Your Path</a>

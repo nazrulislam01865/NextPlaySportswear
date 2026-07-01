@@ -28,7 +28,7 @@
         eyebrow="Help center"
         title="Common Questions, Clear Answers"
         description="Find guidance for regular online orders, custom team orders, artwork, production, shipping, tracking, returns, and payment."
-        image="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1100&q=80"
+        :image="asset('storage/storefront/content/faq.webp')"
         image-alt="Customer searching support information on a laptop"
     >
         <a href="#faq-browser" class="btn btn-red">Browse Questions</a>
