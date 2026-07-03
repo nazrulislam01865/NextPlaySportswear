@@ -179,7 +179,8 @@ class ProductCatalogService
         $unitPrice = $firstTier?->unit_price ?? $product->base_price;
 
         $detailInformation = $this->normalizeDetailInformation($product->specifications ?? []);
-        $specificationSku = trim((string) ($detailInformation['SKU'] ?? ''));
+        $summaryDetailInformation = $this->summaryDetailInformation($detailInformation, $product);
+        $specificationSku = trim((string) (($summaryDetailInformation['SKU'] ?? null) ?: ($detailInformation['SKU'] ?? '')));
 
         return [
             'id' => $product->id,
@@ -215,6 +216,7 @@ class ProductCatalogService
             'gallery' => $gallery,
             'tags' => $product->tags ?? [],
             'features' => $product->features ?? [],
+            'summary_detail_information' => $summaryDetailInformation,
             'brand' => $product->brand ?: config('storefront.name'),
             'product_type' => $product->product_type,
             'is_featured' => $product->is_featured,
@@ -297,13 +299,13 @@ class ProductCatalogService
         }
 
         $visiblePriceRows = collect($product->price_table_rows ?: collect($priceTiers)->map(fn ($tier) => [
-            (string) $tier['min'],
+            (string) ($tier['label'] ?? $tier['min']),
             '$'.number_format($tier['unit'], 2),
             $tier['savings_label'] ?: '—',
         ])->all())->map(function ($row, int $index) use ($priceTiers): array {
             $row = array_values((array) $row);
             if (isset($priceTiers[$index]['min'])) {
-                $row[0] = (string) $priceTiers[$index]['min'];
+                $row[0] = (string) ($priceTiers[$index]['label'] ?? $priceTiers[$index]['min']);
             }
 
             return $row;
@@ -320,7 +322,8 @@ class ProductCatalogService
             ->values();
 
         $detailInformation = $this->normalizeDetailInformation($product->specifications ?? []);
-        $specificationSku = trim((string) ($detailInformation['SKU'] ?? ''));
+        $summaryDetailInformation = $this->summaryDetailInformation($detailInformation, $product);
+        $specificationSku = trim((string) (($summaryDetailInformation['SKU'] ?? null) ?: ($detailInformation['SKU'] ?? '')));
 
         return [
             'id' => $product->id,
@@ -355,6 +358,7 @@ class ProductCatalogService
             'gallery' => $gallery,
             'tags' => $product->tags ?? [],
             'features' => $product->features ?? [],
+            'summary_detail_information' => $summaryDetailInformation,
             'detail_information' => $detailInformation,
             'details' => $detailInformation,
             'brand' => $product->brand ?: config('storefront.name'),
@@ -446,6 +450,26 @@ class ProductCatalogService
         ];
     }
 
+    private function summaryDetailInformation(array $detailInformation, Product $product): array
+    {
+        $labels = ['SKU', 'Product Type', 'Fabric', 'Fit', 'Size Range', 'MOQ', 'Lead Time'];
+        $fallbacks = [
+            'SKU' => $product->sku,
+            'Product Type' => $product->product_type,
+            'MOQ' => $product->minimum_quantity
+                ? number_format((int) $product->minimum_quantity).' '.((int) $product->minimum_quantity === 1 ? 'Piece' : 'Pieces')
+                : null,
+        ];
+
+        return collect($labels)
+            ->mapWithKeys(function (string $label) use ($detailInformation, $fallbacks): array {
+                $value = trim((string) ($detailInformation[$label] ?? ($fallbacks[$label] ?? '')));
+
+                return $value !== '' ? [$label => $value] : [];
+            })
+            ->all();
+    }
+
     private function normalizeDetailInformation(array $specifications): array
     {
         $rows = collect($specifications)
@@ -470,7 +494,7 @@ class ProductCatalogService
 
         return collect($parsedRows ?: $rows->all())
             ->filter(fn ($value, $label) => filled($label) && filled($value))
-            ->take(30)
+            ->take(100)
             ->all();
     }
 
@@ -575,6 +599,10 @@ class ProductCatalogService
         $product['size_chart'] = $product['size_chart'] ?? $this->defaultSizeChart($product);
         $product['price_tiers'] = $product['price_tiers'] ?? $this->defaultPriceTiers((float) ($product['base_price'] ?? 39));
         $product['detail_information'] = $product['detail_information'] ?? $this->defaultDetailInformation($product);
+        $product['summary_detail_information'] = $product['summary_detail_information'] ?? collect($product['detail_information'] ?? [])
+            ->only(['SKU', 'Product Type', 'Fabric', 'Fit', 'Size Range', 'MOQ', 'Lead Time'])
+            ->filter(fn ($value) => filled($value))
+            ->all();
         $product['details'] = $product['details'] ?? $this->legacyDetails($product);
         $product['option_steps'] = $product['option_steps'] ?? $this->defaultOptionSteps();
         $product['faqs'] = $product['faqs'] ?? $this->defaultFaqs();

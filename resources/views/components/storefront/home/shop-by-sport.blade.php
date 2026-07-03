@@ -10,7 +10,7 @@
         <div class="grid-6">
             @forelse($sports as $sport)
                 <a class="sport-card" href="{{ $sport['url'] }}" aria-label="Shop {{ $sport['short_title'] }} Gear">
-                    <img loading="lazy" decoding="async" src="{{ $sport['image'] }}" alt="{{ $sport['alt'] }}" width="420" height="260">
+                    <img loading="lazy" decoding="async" src="{{ $sport['image'] }}" alt="{{ $sport['alt'] }}" class="np-category-square-image" width="420" height="420">
                     <h3>{{ $sport['title'] }}</h3>
                     <span class="link-red">Shop {{ $sport['short_title'] }} Gear</span>
                 </a>

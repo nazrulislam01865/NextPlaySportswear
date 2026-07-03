@@ -46,7 +46,7 @@
     <div class="mt-6 grid gap-4">
         @forelse ($items as $item)
             <div class="grid grid-cols-[68px_1fr] gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-                <img src="{{ $item['product']['image'] ?? '' }}" alt="{{ $item['product']['alt'] ?? $item['product']['title'] ?? 'Product' }}" class="h-16 w-16 rounded-xl object-cover">
+                <img src="{{ $item['product']['image'] ?? '' }}" alt="{{ $item['product']['alt'] ?? $item['product']['title'] ?? 'Product' }}" class="h-16 w-16 rounded-xl bg-white object-contain">
                 <div class="min-w-0">
                     <h3 class="line-clamp-2 text-sm font-black text-brand-ink">{{ $item['product']['short_title'] ?? $item['product']['title'] ?? 'Product' }}</h3>
                     <p class="mt-1 text-xs font-semibold text-slate-500">Qty {{ $item['quantity'] ?? 1 }} · {{ $item['customization']['design_option'] ?? 'Custom design' }}</p>

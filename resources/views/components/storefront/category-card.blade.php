@@ -3,14 +3,14 @@
 ])
 
 <article class="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card card-hover">
-    <a href="{{ $category['url'] }}" class="relative block overflow-hidden" aria-label="Browse {{ $category['title'] }}">
+    <a href="{{ $category['url'] }}" class="np-category-square-media relative block overflow-hidden" aria-label="Browse {{ $category['title'] }}">
         <img
             src="{{ $category['image'] }}"
             alt="{{ $category['alt'] }}"
-            class="h-[210px] w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+            class="np-category-square-image transition duration-500 group-hover:scale-[1.04]"
             loading="lazy"
             width="800"
-            height="600"
+            height="800"
         >
         @isset($category['product_count'])
             <span class="absolute bottom-3 left-3 rounded-full bg-slate-950/75 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-white backdrop-blur-sm">

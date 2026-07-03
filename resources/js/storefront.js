@@ -601,6 +601,168 @@ const setupHomepageFaqs = () => {
     });
 };
 
+
+const escapeHtml = (value = '') => String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+
+const setupStorefrontSearchSuggestions = () => {
+    document.querySelectorAll('[data-storefront-search-suggest]').forEach((wrapper) => {
+        if (wrapper.dataset.suggestionsReady === 'true') return;
+        wrapper.dataset.suggestionsReady = 'true';
+
+        const input = wrapper.querySelector('input[type="search"][name="q"]');
+        const panel = wrapper.querySelector('[data-storefront-search-suggestions]');
+        const endpoint = wrapper.dataset.suggestUrl;
+
+        if (!input || !panel || !endpoint) return;
+
+        let debounceTimer = null;
+        let abortController = null;
+        let activeIndex = -1;
+        let suggestions = [];
+
+        const close = () => {
+            panel.classList.add('hidden');
+            panel.innerHTML = '';
+            activeIndex = -1;
+            suggestions = [];
+            input.setAttribute('aria-expanded', 'false');
+        };
+
+        const setActive = (index) => {
+            activeIndex = index;
+            panel.querySelectorAll('[data-suggestion-index]').forEach((item) => {
+                const isActive = Number(item.dataset.suggestionIndex) === activeIndex;
+                item.classList.toggle('bg-slate-50', isActive);
+                item.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+        };
+
+        const render = (items, query) => {
+            suggestions = Array.isArray(items) ? items : [];
+            activeIndex = -1;
+
+            if (!query.trim()) {
+                close();
+                return;
+            }
+
+            if (suggestions.length === 0) {
+                panel.innerHTML = '<div class="px-4 py-3 text-sm font-bold text-slate-500">No matching products found.</div>';
+                panel.classList.remove('hidden');
+                input.setAttribute('aria-expanded', 'true');
+                return;
+            }
+
+            panel.innerHTML = suggestions.map((item, index) => `
+                <a
+                    href="${escapeHtml(item.url || '#')}"
+                    class="flex items-center gap-3 border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 hover:bg-slate-50"
+                    data-suggestion-index="${index}"
+                    role="option"
+                    aria-selected="false"
+                >
+                    <img src="${escapeHtml(item.image || '')}" alt="" class="h-12 w-12 shrink-0 rounded-xl border border-slate-200 object-cover" loading="lazy">
+                    <span class="min-w-0 flex-1">
+                        <span class="block truncate text-sm font-black text-brand-ink">${escapeHtml(item.title || 'Untitled product')}</span>
+                        <span class="mt-0.5 block truncate text-xs font-bold text-slate-500">${escapeHtml([item.sku, item.category].filter(Boolean).join(' · '))}</span>
+                    </span>
+                    ${item.price ? `<span class="hidden shrink-0 text-xs font-black text-brand-red sm:inline">${escapeHtml(item.price)}</span>` : ''}
+                </a>
+            `).join('');
+
+            panel.classList.remove('hidden');
+            input.setAttribute('aria-expanded', 'true');
+        };
+
+        const fetchSuggestions = () => {
+            const query = input.value.trim();
+
+            if (query === '') {
+                close();
+                return;
+            }
+
+            window.clearTimeout(debounceTimer);
+            debounceTimer = window.setTimeout(async () => {
+                abortController?.abort();
+                abortController = new AbortController();
+
+                try {
+                    const url = new URL(endpoint, window.location.origin);
+                    url.searchParams.set('q', query);
+
+                    const response = await fetch(url.toString(), {
+                        headers: { 'Accept': 'application/json' },
+                        signal: abortController.signal,
+                    });
+
+                    if (!response.ok) throw new Error('Suggestion request failed');
+
+                    const payload = await response.json();
+                    render(payload.data || [], query);
+                } catch (error) {
+                    if (error.name === 'AbortError') return;
+                    panel.innerHTML = '<div class="px-4 py-3 text-sm font-bold text-red-600">Suggestions could not load.</div>';
+                    panel.classList.remove('hidden');
+                    input.setAttribute('aria-expanded', 'true');
+                }
+            }, 220);
+        };
+
+        input.setAttribute('autocomplete', 'off');
+        input.setAttribute('aria-autocomplete', 'list');
+        input.setAttribute('aria-expanded', 'false');
+
+        input.addEventListener('input', fetchSuggestions);
+        input.addEventListener('focus', () => {
+            if (input.value.trim() === '') close();
+        });
+        input.addEventListener('keydown', (event) => {
+            if (panel.classList.contains('hidden') || suggestions.length === 0) {
+                if (event.key === 'Escape') close();
+                return;
+            }
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                setActive(activeIndex < suggestions.length - 1 ? activeIndex + 1 : 0);
+            }
+
+            if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                setActive(activeIndex > 0 ? activeIndex - 1 : suggestions.length - 1);
+            }
+
+            if (event.key === 'Enter' && activeIndex >= 0) {
+                event.preventDefault();
+                const selected = suggestions[activeIndex];
+                if (selected?.url) window.location.assign(selected.url);
+            }
+
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                close();
+            }
+        });
+
+        panel.addEventListener('pointerdown', (event) => {
+            const link = event.target.closest('a[href]');
+            if (!link) return;
+            event.preventDefault();
+            window.location.assign(link.href);
+        });
+
+        document.addEventListener('pointerdown', (event) => {
+            if (!wrapper.contains(event.target)) close();
+        }, { passive: true });
+    });
+};
+
 const syncShopMenuPosition = () => {
     const navRow = document.querySelector('.storefront-nav-row');
     if (!navRow) return;
@@ -677,11 +839,12 @@ const setupStorefrontMenus = () => {
 };
 
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => { setupStorefrontMenus(); setupHomepageSliders(); setupHomepageFaqs(); }, { once: true });
+    document.addEventListener('DOMContentLoaded', () => { setupStorefrontMenus(); setupHomepageSliders(); setupHomepageFaqs(); setupStorefrontSearchSuggestions(); }, { once: true });
 } else {
     setupStorefrontMenus();
     setupHomepageSliders();
     setupHomepageFaqs();
+    setupStorefrontSearchSuggestions();
 }
 
 Alpine.start();

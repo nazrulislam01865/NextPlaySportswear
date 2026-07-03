@@ -29,7 +29,7 @@
                 @foreach ($order['items'] as $item)
                     <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
                         <div class="flex flex-col gap-4 sm:flex-row">
-                            <img src="{{ $item['image'] }}" alt="{{ $item['alt'] }}" loading="lazy" class="h-24 w-24 rounded-xl object-cover">
+                            <img src="{{ $item['image'] }}" alt="{{ $item['alt'] }}" loading="lazy" class="h-24 w-24 rounded-xl bg-white object-contain">
                             <div class="min-w-0 flex-1">
                                 <div class="flex flex-col justify-between gap-2 sm:flex-row">
                                     <h4 class="text-base font-black text-brand-ink">{{ $item['title'] }}</h4>

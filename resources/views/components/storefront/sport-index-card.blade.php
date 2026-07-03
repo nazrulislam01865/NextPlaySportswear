@@ -1,6 +1,6 @@
 @props(['sport'])
 
-<article class="group relative min-h-[190px] overflow-hidden rounded-[14px] bg-brand-dark text-white shadow-card">
+<article class="group relative aspect-square overflow-hidden rounded-[14px] bg-brand-dark text-white shadow-card">
     <img
         loading="lazy"
         src="{{ $sport['image'] }}"

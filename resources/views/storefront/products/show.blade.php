@@ -26,7 +26,27 @@
             padding-bottom: 10px;
         }
 
+        .product-gallery-frame .np-product-gallery-main {
+            aspect-ratio: 1 / 1;
+        }
 
+        .product-gallery-frame .np-product-gallery-slide {
+            height: 100%;
+            width: 100%;
+        }
+
+        .product-gallery-frame .np-product-gallery-main > button:not(.np-product-gallery-slide) {
+            height: 44px;
+            width: 44px;
+            aspect-ratio: 1 / 1;
+        }
+
+        .product-gallery-frame .np-product-gallery-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
 
         .np-product-page .np-product-title {
             font-size: clamp(28px, 3.1vw, 38px);

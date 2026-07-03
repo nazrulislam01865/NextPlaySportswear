@@ -7,11 +7,11 @@
 
 <article class="cart-item-card overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-card">
     <div class="cart-item-main grid gap-0 md:grid-cols-[150px_minmax(0,1fr)]">
-        <a href="{{ $product['url'] }}" class="cart-item-image group flex h-44 items-center justify-center border-b border-slate-100 bg-slate-50 p-4 md:h-auto md:min-h-[210px] md:border-b-0 md:border-r">
+        <a href="{{ $product['url'] }}" class="cart-item-image np-product-square-media group border-b border-slate-100 bg-white p-4 md:border-b-0 md:border-r">
             <img
                 src="{{ $product['image'] }}"
                 alt="{{ $product['alt'] ?? $product['title'] }}"
-                class="max-h-36 w-full object-contain transition duration-300 group-hover:scale-105 md:max-h-44"
+                class="np-product-square-image transition duration-300 group-hover:scale-105"
                 loading="lazy"
             >
         </a>

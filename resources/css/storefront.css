@@ -1937,3 +1937,112 @@
 @media (min-width: 640px) {
     .np-product-detail-tab { min-width: 0; }
 }
+
+/* NextPlay ecommerce square media normalization
+   Product and category cards now use 1:1 media frames on desktop and mobile. */
+.np-product-square-media,
+.np-category-square-media {
+    aspect-ratio: 1 / 1;
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    background: #f8fafc;
+}
+
+.np-product-square-media {
+    background: #fff;
+}
+
+.np-product-square-media > img,
+.np-product-square-media img,
+.product-gallery-frame .np-product-gallery-image,
+.cart-item-image.np-product-square-media img {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+    object-fit: contain !important;
+}
+
+.np-category-square-media > img,
+.np-category-square-media img {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+    object-fit: cover !important;
+}
+
+img.np-product-square-image,
+img.np-category-square-image {
+    aspect-ratio: 1 / 1;
+    width: 100% !important;
+    display: block;
+}
+
+img.np-product-square-image {
+    height: auto !important;
+    object-fit: contain !important;
+    background: #fff;
+}
+
+img.np-category-square-image {
+    height: auto !important;
+    object-fit: cover !important;
+    background: #f8fafc;
+}
+
+.np-product-square-media > img.np-product-square-image,
+.np-category-square-media > img.np-category-square-image {
+    height: 100% !important;
+}
+
+.product-gallery-frame .np-product-gallery-main {
+    aspect-ratio: 1 / 1;
+    width: 100%;
+}
+
+.product-gallery-frame .np-product-gallery-slide {
+    height: 100%;
+    width: 100%;
+}
+.product-gallery-frame .np-product-gallery-main > button:not(.np-product-gallery-slide) {
+    height: 2.75rem;
+    width: 2.75rem;
+    aspect-ratio: 1 / 1;
+}
+
+.product-gallery-frame .np-product-gallery-image {
+    padding: clamp(1rem, 4vw, 2rem);
+}
+.product-gallery-frame {
+    border-radius: 0;
+}
+.product-gallery-frame .np-product-gallery-main {
+    min-height: 0;
+}
+.product-gallery-frame .np-product-gallery-main .absolute {
+    flex: none;
+}
+
+
+.home-page .image-card > img.np-category-square-image,
+.home-page .product-card > img.np-product-square-image,
+.home-page .product-card > img.np-category-square-image,
+.home-page .sport-card > img.np-category-square-image,
+.home-page .use-card > img.np-category-square-image {
+    aspect-ratio: 1 / 1;
+    height: auto !important;
+    width: 100% !important;
+}
+
+.home-page .gear-card img.np-category-square-image {
+    aspect-ratio: 1 / 1;
+    width: 92px !important;
+    height: auto !important;
+}
+
+@media (max-width: 420px) {
+    .home-page .gear-card img.np-category-square-image {
+        width: 74px !important;
+        height: auto !important;
+    }
+}

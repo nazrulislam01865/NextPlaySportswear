@@ -10,7 +10,7 @@
         <div class="grid-4">
             @forelse($products as $product)
                 <article class="product-card">
-                    <img loading="lazy" decoding="async" src="{{ $product['image'] }}" alt="{{ $product['alt'] }}" width="650" height="450">
+                    <img loading="lazy" decoding="async" src="{{ $product['image'] }}" alt="{{ $product['alt'] }}" class="np-product-square-image" width="650" height="650">
                     <div class="product-info">
                         @if($product['tag'])
                             <span class="tag {{ $product['tag_color'] ?? '' }}">{{ $product['tag'] }}</span>

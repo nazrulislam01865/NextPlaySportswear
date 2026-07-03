@@ -38,8 +38,14 @@
         });
     $productSpecificationText = old('product_specification_text');
     if ($productSpecificationText === null) {
-        $productSpecificationText = collect($productSpecificationLabels)
-            ->map(fn ($label) => $label.': '.($storedSpecificationRows->get($label) ?: ''))
+        $knownSpecificationRows = collect($productSpecificationLabels)
+            ->map(fn ($label) => $label.': '.($storedSpecificationRows->get($label) ?: ''));
+        $extraSpecificationRows = $storedSpecificationRows
+            ->reject(fn ($value, $label) => in_array((string) $label, $productSpecificationLabels, true))
+            ->map(fn ($value, $label) => $label.': '.$value)
+            ->values();
+        $productSpecificationText = $knownSpecificationRows
+            ->merge($extraSpecificationRows)
             ->implode(PHP_EOL);
     }
     $specificationOptionSummary = static function (string $type) use ($product): string {
@@ -78,7 +84,7 @@
     $productSpecificationAutoValues = [
         'SKU' => old('sku', $storedSpecificationRows->get('SKU') ?: $product->sku),
         'Product Type' => old('product_type', $product->product_type),
-        'Fabric' => $specificationOptionSummary('fabric'),
+        'Fabric' => collect(\App\Enums\JerseyCustomizationType::fabricTypeValues())->map(fn ($type) => $specificationOptionSummary($type))->filter()->implode(', '),
         'Fit' => collect([$specificationOptionSummary('jersey_style'), $specificationOptionSummary('sleeves_and_cuffs')])->filter()->implode(', '),
         'Customization' => '',
         'Size Range' => $specificationSizeRange,
@@ -334,6 +340,17 @@
         'optionGroups' => $optionValues,
         'optionGroupErrors' => $optionGroupValidationErrors,
         'jerseyCustomizationTypes' => $jerseyCustomizationTypes,
+        'customizationTypeGroups' => collect(\App\Enums\JerseyCustomizationType::menuGroups())
+            ->map(fn ($group) => [
+                'number' => $group['number'],
+                'label' => $group['label'],
+                'types' => collect($group['types'])->map(fn ($type) => [
+                    'value' => $type->value,
+                    'label' => $type->label(),
+                ])->values()->all(),
+            ])
+            ->values()
+            ->all(),
         'jerseyCustomizationOptions' => $jerseyCustomizationOptions,
         'sizeOptionGroups' => $sizeOptionGroups,
         'sizeGroups' => $sizeValues,
@@ -361,6 +378,10 @@
         'slug' => 'name',
         'category_id' => 'primary_category_id',
         'subcategory_id' => 'primary_category_id',
+        'base_price' => 'price_table_rows.0.1',
+        'minimum_quantity' => 'price_table_ranges.0.minimum_quantity',
+        'maximum_quantity' => 'price_table_ranges.0.maximum_quantity',
+        'price_tiers.0.unit_price' => 'price_table_rows.0.1',
     ];
 @endphp
 
@@ -369,17 +390,6 @@
     @csrf
     @if($isEdit) @method('PUT') @endif
 
-    @if($errors->any())
-        <div class="np-form-error-summary" role="alert" aria-live="polite">
-            <strong>Some product information needs your attention.</strong>
-            <p>Please fix the highlighted field below. The page will move to the first field that needs correction.</p>
-            <ul>
-                @foreach($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
 
     <input type="hidden" name="slug" x-model="slug">
     <input type="hidden" name="currency" value="{{ old('currency', $product->currency ?: 'USD') }}">
@@ -622,10 +632,10 @@ Lead Time:"></div>
                                 <tr>
                                     <td>
                                         <input type="hidden" :name="`price_table_rows[${rIndex}][0]`" :value="row.minimum_quantity || ''">
-                                        <input class="np-table-input" type="number" min="1" :name="`price_table_ranges[${rIndex}][minimum_quantity]`" x-model.number="row.minimum_quantity" required>
+                                        <input class="np-table-input" type="number" min="1" :name="`price_table_ranges[${rIndex}][minimum_quantity]`" x-model.number="row.minimum_quantity" @input.debounce.250ms="recalculatePriceMaximums()" @blur="recalculatePriceMaximums()" required>
                                     </td>
                                     <td>
-                                        <input class="np-table-input" type="number" min="1" :name="`price_table_ranges[${rIndex}][maximum_quantity]`" x-model.number="row.maximum_quantity" placeholder="e.g., 24">
+                                        <input class="np-table-input" type="number" min="1" :name="`price_table_ranges[${rIndex}][maximum_quantity]`" x-model.number="row.maximum_quantity" @input.debounce.250ms="markPriceMaximumManual(row); recalculatePriceMaximums()" @blur="markPriceMaximumManual(row); recalculatePriceMaximums()" placeholder="Auto">
                                     </td>
                                     <template x-for="(cell,cIndex) in row.cells" :key="cIndex">
                                         <td><input class="np-table-input" :name="`price_table_rows[${rIndex}][${cIndex + 1}]`" x-model="row.cells[cIndex]" placeholder="0.00"></td>
@@ -687,7 +697,7 @@ Lead Time:"></div>
 
             <section id="artwork" class="np-card"><header class="np-card__header"><div><h2>4. Custom Artwork Upload</h2><p>Allow customers to upload custom artwork for this product.</p></div></header><div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,.7fr)]"><div class="np-field-stack"><div class="grid gap-4 sm:grid-cols-2"><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4"><input type="hidden" name="artwork_upload_enabled" :value="artworkUploadEnabled ? 1 : 0"><input type="checkbox" x-model="artworkUploadEnabled"><span><strong class="block text-sm">Show artwork upload step</strong><small class="text-xs text-slate-500">The section disappears when disabled.</small></span></label><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4" :class="!artworkUploadEnabled && 'opacity-50'"><input type="hidden" name="artwork_upload_required" :value="artworkUploadRequired ? 1 : 0"><input type="checkbox" x-model="artworkUploadRequired" :disabled="!artworkUploadEnabled"><span><strong class="block text-sm">Artwork is required</strong><small class="text-xs text-slate-500">At least one file must be selected.</small></span></label></div><div x-show="artworkUploadEnabled" class="grid gap-4 sm:grid-cols-2"><label class="admin-label sm:col-span-2">Section title<input class="admin-input" name="artwork_upload_title" x-model="artworkUploadTitle" maxlength="180"></label><label class="admin-label sm:col-span-2">Upload instructions<textarea class="admin-textarea np-textarea-sm" name="artwork_upload_description" x-model="artworkUploadDescription" maxlength="3000"></textarea></label><label class="admin-label">Accepted extensions<input class="admin-input font-mono" name="artwork_upload_accepted_types" x-model="artworkUploadAcceptedTypes" placeholder="pdf,ai,png,jpg,jpeg,eps"></label><label class="admin-label">Maximum file size (MB)<input class="admin-input" type="number" min="1" max="25" name="artwork_upload_max_file_size_mb" x-model.number="artworkUploadMaxFileSizeMb"></label><label class="admin-label sm:col-span-2">Maximum files<input class="admin-input" type="number" min="1" max="12" name="artwork_upload_max_files" x-model.number="artworkUploadMaxFiles"></label></div></div><div x-show="artworkUploadEnabled" class="np-artwork-preview"><span>☁</span><strong>Upload area will appear on product page</strong><small>Drag &amp; drop or click to upload</small></div></div></section>
 
-            <section id="fulfillment" class="np-card"><header class="np-card__header"><div><h2>5. Production &amp; Shipping</h2><p>Set production times and available shipping methods.</p></div></header><div class="grid gap-4 lg:grid-cols-2"><details class="np-config-panel" open><summary>Production options</summary><div class="mt-4 flex flex-wrap gap-2"><button type="button" class="np-secondary-button" @click="addProductionHeader()" :disabled="productionHeaders.length >= 12">＋ Add production option</button><button type="button" class="np-secondary-button" @click="addProductionRow()" :disabled="productionRows.length >= 100">＋ Add range</button></div><div class="np-table-wrap mt-4"><table class="np-simple-table"><thead><tr><th>Quantity range</th><template x-for="(header,columnIndex) in productionHeaders" :key="columnIndex"><th><input class="np-table-input font-black" :name="`production_table_headers[${columnIndex}]`" x-model="productionHeaders[columnIndex]" maxlength="160" placeholder="Standard Production"><button type="button" class="mt-2 text-xs font-black text-red-700" @click="removeProductionHeader(columnIndex)" x-show="productionHeaders.length > 1">Remove column</button></th></template><th>Action</th></tr></thead><tbody><template x-for="(row,rowIndex) in productionRows" :key="row.client_key || rowIndex"><tr><td><input class="np-table-input font-black" :name="`production_table_rows[${rowIndex}][range]`" x-model="row.range" maxlength="50" placeholder="1-40" required></td><template x-for="(cell,columnIndex) in row.cells" :key="columnIndex"><td><input type="hidden" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][enabled]`" :value="cell.enabled ? 1 : 0"><label class="flex items-center gap-2 text-xs font-black text-slate-700"><input type="checkbox" x-model="cell.enabled"> Offer</label><div class="mt-2 space-y-2" :class="!cell.enabled && 'pointer-events-none opacity-45'"><input class="np-table-input" type="number" min="0" step="0.01" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][price_adjustment]`" x-model.number="cell.price_adjustment" placeholder="Charge"><input class="np-table-input" type="text" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][production_time]`" x-model="cell.production_time" maxlength="60" placeholder="5-15 days"><textarea class="admin-textarea !mt-0 min-h-[70px]" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][description]`" x-model="cell.description" maxlength="2000" placeholder="Description"></textarea></div></td></template><td><button type="button" class="np-icon-button" @click="removeProductionRow(rowIndex)">⌫</button></td></tr></template></tbody></table></div></details><details class="np-config-panel" open><summary>Shipping methods</summary><div class="mt-4 flex flex-wrap items-center gap-3"><label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold"><input type="hidden" name="shipping_methods_enabled" :value="shippingMethodsEnabled ? 1 : 0"><input type="checkbox" x-model="shippingMethodsEnabled"> Show shipping methods</label><button type="button" class="np-secondary-button" @click="addShippingMethod()">＋ Add shipping method</button></div><div x-show="shippingMethodsEnabled" class="mt-4 space-y-3"><template x-for="(method,index) in shippingMethods" :key="index"><article class="np-nested-card"><input type="hidden" :name="`shipping_methods[${index}][code]`" x-model="method.code"><input type="hidden" :name="`shipping_methods[${index}][is_active]`" value="1"><div class="grid gap-3 md:grid-cols-2"><label class="admin-label">Name<input class="admin-input" :name="`shipping_methods[${index}][name]`" x-model="method.name" @blur="if(!method.code) method.code = method.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')"></label><label class="admin-label">Charge<input class="admin-input" type="number" min="0" step="0.01" :name="`shipping_methods[${index}][price_adjustment]`" x-model="method.price_adjustment"></label><label class="admin-label">Charge basis<select class="admin-input" :name="`shipping_methods[${index}][charge_type]`" x-model="method.charge_type"><option value="included">Included</option><option value="per_unit">Per piece</option><option value="fixed_order">Fixed per order</option></select></label><label class="admin-label">Days<input class="admin-input" type="number" min="0" :name="`shipping_methods[${index}][minimum_days]`" x-model="method.minimum_days"></label><input type="hidden" :name="`shipping_methods[${index}][maximum_days]`" x-model="method.maximum_days"><label class="admin-label md:col-span-2">Description<input class="admin-input" :name="`shipping_methods[${index}][description]`" x-model="method.description"></label></div><div class="mt-3 flex justify-between"><input type="hidden" :name="`shipping_methods[${index}][is_default]`" :value="method.is_default ? 1 : 0"><button type="button" class="np-link-button" @click="setDefaultShipping(index)" x-text="method.is_default ? 'Default customer choice' : 'Make default'"></button><button type="button" class="np-danger-link" @click="shippingMethods.splice(index,1)">Remove</button></div></article></template><div x-show="shippingMethods.length === 0" class="rounded-2xl border-2 border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">Shipping methods are enabled but no method has been added.</div></div></details></div></section>
+            <section id="fulfillment" class="np-card"><header class="np-card__header"><div><h2>5. Production &amp; Shipping</h2><p>Set production times and available shipping methods.</p></div></header><div class="space-y-4"><details class="np-config-panel" open><summary>Production options</summary><div class="mt-4 flex flex-wrap gap-2"><button type="button" class="np-secondary-button" @click="addProductionHeader()" :disabled="productionHeaders.length >= 12">＋ Add production option</button><button type="button" class="np-secondary-button" @click="addProductionRow()" :disabled="productionRows.length >= 100">＋ Add range</button></div><div class="np-table-wrap mt-4"><table class="np-simple-table"><thead><tr><th>Quantity range</th><template x-for="(header,columnIndex) in productionHeaders" :key="columnIndex"><th><input class="np-table-input font-black" :name="`production_table_headers[${columnIndex}]`" x-model="productionHeaders[columnIndex]" maxlength="160" placeholder="Standard Production"><button type="button" class="mt-2 text-xs font-black text-red-700" @click="removeProductionHeader(columnIndex)" x-show="productionHeaders.length > 1">Remove column</button></th></template><th>Action</th></tr></thead><tbody><template x-for="(row,rowIndex) in productionRows" :key="row.client_key || rowIndex"><tr><td><input class="np-table-input font-black" :name="`production_table_rows[${rowIndex}][range]`" x-model="row.range" maxlength="50" placeholder="1-40" required></td><template x-for="(cell,columnIndex) in row.cells" :key="columnIndex"><td><input type="hidden" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][enabled]`" :value="cell.enabled ? 1 : 0"><label class="flex items-center gap-2 text-xs font-black text-slate-700"><input type="checkbox" x-model="cell.enabled"> Offer</label><div class="mt-2 space-y-2" :class="!cell.enabled && 'pointer-events-none opacity-45'"><input class="np-table-input" type="number" min="0" step="0.01" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][price_adjustment]`" x-model.number="cell.price_adjustment" placeholder="Charge"><input class="np-table-input" type="text" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][production_time]`" x-model="cell.production_time" maxlength="60" placeholder="5-15 days"><textarea class="admin-textarea !mt-0 min-h-[70px]" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][description]`" x-model="cell.description" maxlength="2000" placeholder="Description"></textarea></div></td></template><td><button type="button" class="np-icon-button" @click="removeProductionRow(rowIndex)">⌫</button></td></tr></template></tbody></table></div></details><details class="np-config-panel" open><summary>Shipping methods</summary><div class="mt-4 flex flex-wrap items-center gap-3"><label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold"><input type="hidden" name="shipping_methods_enabled" :value="shippingMethodsEnabled ? 1 : 0"><input type="checkbox" x-model="shippingMethodsEnabled"> Show shipping methods</label><button type="button" class="np-secondary-button" @click="addShippingMethod()">＋ Add shipping method</button></div><div x-show="shippingMethodsEnabled" class="mt-4 space-y-3"><template x-for="(method,index) in shippingMethods" :key="index"><article class="np-nested-card"><input type="hidden" :name="`shipping_methods[${index}][code]`" x-model="method.code"><input type="hidden" :name="`shipping_methods[${index}][is_active]`" value="1"><div class="grid gap-3 md:grid-cols-2"><label class="admin-label">Name<input class="admin-input" :name="`shipping_methods[${index}][name]`" x-model="method.name" @blur="if(!method.code) method.code = method.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')"></label><label class="admin-label">Charge<input class="admin-input" type="number" min="0" step="0.01" :name="`shipping_methods[${index}][price_adjustment]`" x-model="method.price_adjustment"></label><label class="admin-label">Charge basis<select class="admin-input" :name="`shipping_methods[${index}][charge_type]`" x-model="method.charge_type"><option value="included">Included</option><option value="per_unit">Per piece</option><option value="fixed_order">Fixed per order</option></select></label><label class="admin-label">Days<input class="admin-input" type="number" min="0" :name="`shipping_methods[${index}][minimum_days]`" x-model="method.minimum_days"></label><input type="hidden" :name="`shipping_methods[${index}][maximum_days]`" x-model="method.maximum_days"><label class="admin-label md:col-span-2">Description<input class="admin-input" :name="`shipping_methods[${index}][description]`" x-model="method.description"></label></div><div class="mt-3 flex justify-between"><input type="hidden" :name="`shipping_methods[${index}][is_default]`" :value="method.is_default ? 1 : 0"><button type="button" class="np-link-button" @click="setDefaultShipping(index)" x-text="method.is_default ? 'Default customer choice' : 'Make default'"></button><button type="button" class="np-danger-link" @click="shippingMethods.splice(index,1)">Remove</button></div></article></template><div x-show="shippingMethods.length === 0" class="rounded-2xl border-2 border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">Shipping methods are enabled but no method has been added.</div></div></details></div></section>
 
             <section id="description" class="np-card">
                 <header class="np-card__header">
@@ -914,7 +924,7 @@ Lead Time:"></div>
                 <div>
                     <p class="text-[10px] font-black uppercase tracking-[.14em] text-brand-red">New product feature</p>
                     <h2 id="new-feature-dialog-title" class="mt-2 text-2xl font-black text-brand-ink">Choose the feature name</h2>
-                    <p class="mt-2 text-sm leading-6 text-slate-500">The selected name determines which Jersey Customization Options are available.</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-500">The selected name determines which matching master-data items are available.</p>
                 </div>
                 <button type="button" class="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-200 text-xl text-slate-500 hover:bg-slate-50" @click="closeNewFeatureDialog()" aria-label="Close">×</button>
             </div>
@@ -922,8 +932,12 @@ Lead Time:"></div>
             <label class="admin-label mt-6">Feature name
                 <select x-ref="newFeatureNameInput" class="admin-input" x-model="newFeatureType" @change="newFeatureNameError = ''">
                     <option value="">Select a feature</option>
-                    <template x-for="(label,type) in jerseyCustomizationTypes" :key="type">
-                        <option :value="type" x-text="label"></option>
+                    <template x-for="group in customizationTypeGroups" :key="group.label">
+                        <optgroup :label="group.label">
+                            <template x-for="feature in group.types" :key="feature.value">
+                                <option :value="feature.value" x-text="feature.label"></option>
+                            </template>
+                        </optgroup>
                     </template>
                 </select>
             </label>
@@ -940,7 +954,7 @@ Lead Time:"></div>
         <div x-show="masterItemPickerOpen" x-transition class="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
             <div class="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-7">
                 <div>
-                    <p class="text-[10px] font-black uppercase tracking-[.14em] text-brand-blue">Jersey customization master data</p>
+                    <p class="text-[10px] font-black uppercase tracking-[.14em] text-brand-blue">Product customization master data</p>
                     <h2 id="master-item-picker-title" class="mt-2 text-2xl font-black text-brand-ink">Add <span x-text="activeMasterItemGroup()?.name || 'item'"></span></h2>
                     <p class="mt-2 text-sm text-slate-500">Only active items matching this feature type are shown. Already selected items cannot be added twice.</p>
                 </div>
@@ -970,8 +984,8 @@ Lead Time:"></div>
 
                 <div x-show="availableMasterItems().length === 0" class="rounded-2xl border-2 border-dashed border-slate-200 p-10 text-center">
                     <p class="font-black text-brand-ink">No master-data item is available for this feature.</p>
-                    <p class="mt-2 text-sm text-slate-500">Create an item under Master Data → Jersey Customization Options first.</p>
-                    <a href="{{ route('admin.jersey-customization-options.index') }}" class="btn btn-white mt-5">Open Jersey Customization Options</a>
+                    <p class="mt-2 text-sm text-slate-500">Create an item under Master Data → Product Customization first.</p>
+                    <a href="{{ route('admin.jersey-customization-options.index') }}" class="btn btn-white mt-5">Open Product Customization</a>
                 </div>
             </div>
 
@@ -1031,18 +1045,19 @@ Lead Time:"></div>
 
     @if($errors->any())
         <script>
-            window.addEventListener('load', function () {
+            document.addEventListener('DOMContentLoaded', function () {
                 const form = document.querySelector('.np-product-form[data-validation-errors]');
-                if (!form) return;
+                if (! form) return;
 
                 const parseJson = (value, fallback) => {
-                    try { return JSON.parse(value || ''); } catch (error) { return fallback; }
+                    try { return value ? JSON.parse(value) : fallback; } catch (error) { return fallback; }
                 };
+
                 const errors = parseJson(form.dataset.validationErrors, {});
                 const aliases = parseJson(form.dataset.validationFieldAliases, {});
                 const escapeSelector = (value) => {
                     if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(value);
-                    return String(value).replace(/([ #;&,.+*~\':"!^$[\]()=>|/@])/g, '\\$1');
+                    return String(value).replace(/([ #;&,.+*~\':"!^$[\]()=>|\/@])/g, '\\$1');
                 };
                 const bracketName = (key) => {
                     const parts = String(key).split('.');
@@ -1060,6 +1075,18 @@ Lead Time:"></div>
                     const candidates = [alias, bracketName(alias)];
                     const arrayName = baseArrayName(alias);
                     if (arrayName) candidates.push(arrayName, bracketName(arrayName));
+
+                    const priceRow = String(alias).match(/^price_table_rows\.(\d+)$/);
+                    if (priceRow) {
+                        candidates.push(`price_table_rows[${priceRow[1]}][1]`);
+                        candidates.push(`price_table_ranges[${priceRow[1]}][minimum_quantity]`);
+                    }
+
+                    const imageRow = String(alias).match(/^images\.(\d+)$/);
+                    if (imageRow) {
+                        candidates.push('images[]');
+                    }
+
                     if (alias.includes('.')) {
                         const parent = alias.split('.').slice(0, -1).join('.');
                         candidates.push(parent, bracketName(parent));
@@ -1075,45 +1102,69 @@ Lead Time:"></div>
                     }
                     return null;
                 };
+                const revealField = (field) => {
+                    if (! field) return;
+                    let node = field.parentElement;
+                    while (node && node !== form) {
+                        if (node.tagName === 'DETAILS') node.open = true;
+                        node = node.parentElement;
+                    }
+                };
                 const visibleTarget = (field) => {
                     if (!field) return null;
                     if (field.matches('[data-field-name="product_specification_text"]')) {
                         return field.closest('.np-product-spec-card')?.querySelector('[contenteditable="true"]') || field;
                     }
+                    if (field.matches('[data-field-name="primary_category_id"]')) {
+                        return field.querySelector('.np-searchable-trigger') || field;
+                    }
                     if (field.type === 'hidden') {
                         return field.closest('[data-field-name]')?.querySelector('button, [contenteditable="true"], input:not([type="hidden"]), textarea:not([hidden]), select')
                             || field.closest('[data-field-name]')
+                            || field.closest('td, th, .admin-label, .np-nested-card, .np-config-panel')
                             || field;
                     }
                     return field;
                 };
+                const holderFor = (field) => {
+                    return field.closest('.admin-label, .np-product-spec-card, .np-category-field, .np-nested-card, .np-config-panel, td, th, .np-upload-zone') || field.parentElement;
+                };
                 const addMessage = (field, message) => {
-                    const holder = field.closest('.admin-label, .np-product-spec-card, .np-category-field, .np-nested-card, .np-config-panel, td, th') || field.parentElement;
+                    const holder = holderFor(field);
                     if (!holder || holder.querySelector(':scope > .np-field-error-message')) return;
                     const note = document.createElement('p');
                     note.className = 'np-field-error-message';
-                    note.textContent = message || 'Please review this field.';
+                    note.textContent = message || 'Please check this field and try again.';
                     holder.appendChild(note);
                 };
+                const applyErrors = () => {
+                    let first = null;
+                    Object.entries(errors).forEach(([key, messages]) => {
+                        const field = findField(key);
+                        const target = visibleTarget(field);
+                        if (!target) return;
 
-                let first = null;
-                Object.entries(errors).forEach(([key, messages]) => {
-                    const field = findField(key);
-                    const target = visibleTarget(field);
-                    if (!target) return;
+                        revealField(target);
+                        target.classList.add('np-field-invalid');
+                        target.setAttribute('aria-invalid', 'true');
+                        if (!first) first = target;
+                        addMessage(target, Array.isArray(messages) ? messages[0] : messages);
+                    });
 
-                    target.classList.add('np-field-invalid');
-                    target.setAttribute('aria-invalid', 'true');
-                    if (!first) first = target;
-                    addMessage(target, Array.isArray(messages) ? messages[0] : messages);
-                });
+                    if (first) {
+                        const section = first.closest('.np-card[id]');
+                        if (section && history.replaceState) {
+                            history.replaceState(null, '', '#' + section.id);
+                        }
+                        setTimeout(function () {
+                            first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            if (typeof first.focus === 'function') first.focus({ preventScroll: true });
+                        }, 120);
+                    }
+                };
 
-                if (first) {
-                    setTimeout(function () {
-                        first.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        if (typeof first.focus === 'function') first.focus({ preventScroll: true });
-                    }, 260);
-                }
+                setTimeout(applyErrors, 180);
+                setTimeout(applyErrors, 650);
             });
         </script>
     @endif

@@ -10,7 +10,7 @@
         <div class="grid-3">
             @forelse($categories as $category)
                 <a class="image-card" href="{{ $category['url'] }}" aria-label="Browse {{ $category['title'] }}">
-                    <img loading="lazy" decoding="async" src="{{ $category['image'] }}" alt="{{ $category['alt'] }}" width="650" height="450">
+                    <img loading="lazy" decoding="async" src="{{ $category['image'] }}" alt="{{ $category['alt'] }}" class="np-category-square-image" width="650" height="650">
                     <div class="card-body">
                         <h3>{{ $category['title'] }}</h3>
                         <p>{{ $category['description'] }}</p>

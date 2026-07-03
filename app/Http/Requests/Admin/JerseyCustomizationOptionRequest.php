@@ -34,7 +34,7 @@ class JerseyCustomizationOptionRequest extends FormRequest
                     ->ignore($option?->getKey()),
             ],
             'color_hex' => [
-                Rule::requiredIf($this->input('type') === JerseyCustomizationType::Color->value),
+                Rule::requiredIf(JerseyCustomizationType::tryFrom((string) $this->input('type'))?->usesColorValue() === true),
                 'nullable',
                 'regex:/^#[0-9A-F]{6}$/',
             ],
@@ -99,6 +99,7 @@ class JerseyCustomizationOptionRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $type = (string) $this->input('type');
+        $typeEnum = JerseyCustomizationType::tryFrom($type);
         $hex = strtoupper(ltrim(trim((string) $this->input('color_hex')), '#'));
         $option = $this->route('jerseyCustomizationOption');
 
@@ -130,8 +131,8 @@ class JerseyCustomizationOptionRequest extends FormRequest
         $this->merge([
             'name' => $optionName,
             'slug' => Str::slug((string) $this->input('slug', $this->input('name'))),
-            'color_hex' => $type === JerseyCustomizationType::Color->value && $hex !== '' ? '#'.$hex : null,
-            'description' => $type === JerseyCustomizationType::Fabric->value && filled($this->input('description'))
+            'color_hex' => $typeEnum?->usesColorValue() === true && $hex !== '' ? '#'.$hex : null,
+            'description' => $typeEnum?->usesDescription() === true && filled($this->input('description'))
                 ? trim((string) $this->input('description'))
                 : null,
             'is_active' => true,

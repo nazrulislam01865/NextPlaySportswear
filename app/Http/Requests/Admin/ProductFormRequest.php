@@ -780,14 +780,15 @@ class ProductFormRequest extends FormRequest
                 ->values()
                 ->all();
             $cells = array_pad($cells, $headers->count(), '');
-            $cells[0] = $minimum === null ? '' : (string) $minimum;
+            $quantityLabel = $this->formatQuantityRangeLabel($minimum, $maximum);
+            $cells[0] = $quantityLabel;
             $unitPriceColumn = $this->resolveLivePriceColumn($headers->all(), $cells, $highlightColumn);
             $unitPrice = $unitPriceColumn === null ? null : $this->parseMoney($cells[$unitPriceColumn] ?? null);
             $savingsLabel = $this->findSavingsLabel($headers->all(), $cells);
 
             $normalizedRows[] = $cells;
             $priceTiers[] = [
-                'label' => $minimum === null ? null : (string) $minimum,
+                'label' => $quantityLabel !== '' ? $quantityLabel : null,
                 'minimum_quantity' => $minimum,
                 'maximum_quantity' => $maximum,
                 'unit_price' => $unitPrice,
@@ -820,12 +821,13 @@ class ProductFormRequest extends FormRequest
     }
 
     /**
-     * Normalize the manually entered quantity ranges without overwriting the
-     * administrator's Qty To values from the product editor.
+     * Normalize the manually entered quantity ranges and auto-complete empty
+     * Qty To values. A blank Qty To uses the next Qty From minus one; the last
+     * row falls back to the same quantity as its Qty From value.
      */
     private function normalizeQuantityRanges(mixed $submittedRanges): \Illuminate\Support\Collection
     {
-        return collect(is_array($submittedRanges) ? $submittedRanges : [])
+        $ranges = collect(is_array($submittedRanges) ? $submittedRanges : [])
             ->values()
             ->map(function ($range): array {
                 $range = is_array($range) ? $range : [];
@@ -838,6 +840,43 @@ class ProductFormRequest extends FormRequest
                     'maximum_quantity' => $maximum === false ? $maximumRaw : $maximum,
                 ];
             });
+
+        return $this->autoCompleteQuantityRangeMaximums($ranges);
+    }
+
+    private function autoCompleteQuantityRangeMaximums(\Illuminate\Support\Collection $ranges): \Illuminate\Support\Collection
+    {
+        return $ranges->values()->map(function (array $range, int $index) use ($ranges): array {
+            $minimum = filter_var(data_get($range, 'minimum_quantity'), FILTER_VALIDATE_INT);
+            if ($minimum === false || $minimum < 1 || filled(data_get($range, 'maximum_quantity'))) {
+                return $range;
+            }
+
+            $nextMinimum = $ranges->slice($index + 1)
+                ->map(fn ($nextRange) => filter_var(data_get($nextRange, 'minimum_quantity'), FILTER_VALIDATE_INT))
+                ->first(fn ($value) => $value !== false && $value >= 1);
+
+            $range['maximum_quantity'] = $nextMinimum !== null && $nextMinimum !== false && $nextMinimum > $minimum
+                ? $nextMinimum - 1
+                : $minimum;
+
+            return $range;
+        });
+    }
+
+    private function formatQuantityRangeLabel(?int $minimum, ?int $maximum): string
+    {
+        if ($minimum === null) {
+            return '';
+        }
+
+        if ($maximum === null) {
+            return (string) $minimum;
+        }
+
+        return $minimum === $maximum
+            ? (string) $minimum
+            : $minimum.'-'.$maximum;
     }
 
     private function resolveLivePriceColumn(array $headers, array $row, int $highlightColumn): ?int
@@ -909,9 +948,9 @@ class ProductFormRequest extends FormRequest
             'base_price.required' => 'Enter the base price for this product.',
             'base_price.numeric' => 'Enter the base price as a number.',
             'base_price.min' => 'The base price cannot be negative.',
-            'minimum_quantity.required' => 'Enter the minimum order quantity.',
-            'minimum_quantity.integer' => 'Enter the minimum order quantity as a whole number.',
-            'minimum_quantity.min' => 'The minimum order quantity must be at least 1.',
+            'minimum_quantity.required' => 'Add at least one price tier with a starting quantity.',
+            'minimum_quantity.integer' => 'Enter the quantity as a whole number.',
+            'minimum_quantity.min' => 'The first quantity must be at least 1.',
             'maximum_quantity.gte' => 'The maximum quantity must be greater than or equal to the minimum quantity.',
             'product_specification_text.max' => 'The product specification section is too long. Please shorten it.',
             'description_html.max' => 'The product description is too long. Please shorten it.',
@@ -920,16 +959,23 @@ class ProductFormRequest extends FormRequest
             'price_table_headers.min' => 'Add at least one visible price-table column after Quantity.',
             'price_table_headers.0.in' => 'The first storefront price-table column must stay as Quantity.',
             'price_table_headers.*.required' => 'Every price-table column needs a heading.',
+            'price_table_headers.*.max' => 'Keep each price-table heading within 160 characters.',
+            'price_table_headers.*.distinct' => 'Each price-table heading must be unique.',
             'price_table_rows.required' => 'Add at least one price row.',
             'price_table_rows.min' => 'Add at least one price row.',
+            'price_table_rows.*.required' => 'Enter a valid price for this quantity row.',
+            'price_table_rows.*.*.required' => 'Enter a price-table value or remove the empty column.',
+            'price_table_rows.*.*.max' => 'Keep this price-table value short and readable.',
             'price_table_ranges.required' => 'Add the quantity range for each price row.',
             'price_table_ranges.*.minimum_quantity.required' => 'Enter the starting quantity for this price row.',
             'price_table_ranges.*.minimum_quantity.integer' => 'Enter the starting quantity as a whole number.',
             'price_table_ranges.*.minimum_quantity.min' => 'The starting quantity must be at least 1.',
+            'price_table_ranges.*.maximum_quantity.integer' => 'Enter the ending quantity as a whole number, or leave it empty for the final open-ended row.',
             'price_table_ranges.*.maximum_quantity.gte' => 'The ending quantity must be greater than or equal to the starting quantity.',
             'price_table_highlight_column.required' => 'Choose the price column used for live product calculations.',
             'price_table_highlight_column.integer' => 'Choose a valid price column for live product calculations.',
             'price_tiers.*.unit_price.required_with' => 'Enter a valid unit price in the highlighted price column for every quantity row.',
+            'price_tiers.*.unit_price.numeric' => 'Enter a numeric unit price for this row.',
             'option_groups.*.code.regex' => 'This customization feature has an invalid internal identifier. Refresh the page and try saving again.',
             'option_groups.*.code.distinct' => 'The same customization feature cannot be added more than once.',
             'option_groups.*.values.*.color_hex.regex' => 'Enter a valid HEX color such as #15345D or 15345D.',
@@ -941,9 +987,31 @@ class ProductFormRequest extends FormRequest
             'images.*.max' => 'Each uploaded product image must not exceed 5 MB.',
             'image_urls.*.url.url' => 'Enter a valid product image URL.',
             'artwork_upload_accepted_types.regex' => 'Enter file extensions only, separated by commas, for example: pdf, ai, png, jpg.',
+            'artwork_upload_title.max' => 'Keep the artwork upload title within 180 characters.',
+            'artwork_upload_description.max' => 'Keep the artwork upload instructions within 3000 characters.',
+            'artwork_upload_max_files.integer' => 'Enter the maximum artwork files as a whole number.',
+            'artwork_upload_max_files.min' => 'Allow at least 1 artwork file.',
+            'artwork_upload_max_files.max' => 'Allow no more than 12 artwork files.',
+            'artwork_upload_max_file_size_mb.integer' => 'Enter the artwork file size as a whole number.',
+            'artwork_upload_max_file_size_mb.min' => 'Artwork file size must be at least 1 MB.',
+            'artwork_upload_max_file_size_mb.max' => 'Artwork file size must not exceed 25 MB.',
+            'shipping_methods.*.name.max' => 'Keep the shipping method name within 160 characters.',
+            'shipping_methods.*.price_adjustment.numeric' => 'Enter the shipping charge as a number.',
+            'shipping_methods.*.price_adjustment.min' => 'The shipping charge cannot be negative.',
+            'shipping_methods.*.minimum_days.integer' => 'Enter shipping days as a whole number.',
+            'shipping_methods.*.minimum_days.min' => 'Shipping days cannot be negative.',
             'shipping_methods.*.maximum_days.gte' => 'The shipping maximum days must be greater than or equal to the minimum days.',
+            'production_table_headers.*.required' => 'Enter a name for this production option.',
+            'production_table_headers.*.distinct' => 'Each production option name must be unique.',
+            'production_table_rows.*.range.required' => 'Enter the production quantity range.',
+            'production_table_rows.*.range.max' => 'Keep the production quantity range within 50 characters.',
+            'production_table_rows.*.cells.*.price_adjustment.numeric' => 'Enter the production charge as a number.',
+            'production_table_rows.*.cells.*.price_adjustment.min' => 'The production charge cannot be negative.',
+            'production_table_rows.*.cells.*.production_time.max' => 'Keep the production time within 60 characters.',
             'production_speeds.*.maximum_quantity.gte' => 'The production quantity maximum must be greater than or equal to the minimum quantity.',
             'production_speeds.*.maximum_days.gte' => 'The production maximum days must be greater than or equal to the minimum days.',
+            'faqs.*.question.max' => 'Keep the FAQ question within 500 characters.',
+            'faqs.*.answer.max' => 'Keep the FAQ answer within 5000 characters.',
             'schema_json_text.json' => 'Enter valid JSON-LD schema or leave this field blank.',
         ];
     }

@@ -3,21 +3,19 @@
 
     $isEdit = $option->exists;
     $selectedType = old('type', $option->type instanceof JerseyCustomizationType ? $option->type->value : $option->type);
-    $selectedTypeEnum = JerseyCustomizationType::tryFrom((string) $selectedType) ?: JerseyCustomizationType::NeckAndCollar;
-    $imageTitle = match ($selectedTypeEnum) {
-        JerseyCustomizationType::Color => 'Color swatch image',
-        JerseyCustomizationType::NeckAndCollar => 'Neck/collar reference image',
-        JerseyCustomizationType::Fabric => 'Fabric texture image',
-        JerseyCustomizationType::SleevesAndCuffs => 'Sleeve/cuff reference image',
-        JerseyCustomizationType::JerseyStyle => 'Jersey style preview image',
-    };
-    $imageDescription = match ($selectedTypeEnum) {
-        JerseyCustomizationType::Color => 'Optional. Add a real swatch only when the HEX color needs a visual reference.',
-        JerseyCustomizationType::NeckAndCollar => 'Optional. Add a clear close-up of the neckline or collar shape.',
-        JerseyCustomizationType::Fabric => 'Optional. Add a texture or material close-up for this fabric.',
-        JerseyCustomizationType::SleevesAndCuffs => 'Optional. Add a close-up of the sleeve or cuff finish.',
-        JerseyCustomizationType::JerseyStyle => 'Optional. Add a full jersey preview for this style.',
-    };
+    $selectedTypeEnum = JerseyCustomizationType::tryFrom((string) $selectedType) ?: JerseyCustomizationType::Color;
+    $imageTitle = $selectedTypeEnum->imageTitle();
+    $imageDescription = $selectedTypeEnum->imageDescription();
+    $colorTypes = collect(JerseyCustomizationType::cases())
+        ->filter(fn (JerseyCustomizationType $type) => $type->usesColorValue())
+        ->map(fn (JerseyCustomizationType $type) => $type->value)
+        ->values()
+        ->all();
+    $descriptionTypes = collect(JerseyCustomizationType::cases())
+        ->filter(fn (JerseyCustomizationType $type) => $type->usesDescription())
+        ->map(fn (JerseyCustomizationType $type) => $type->value)
+        ->values()
+        ->all();
     $existingImages = $option->relationLoaded('images') ? $option->images->keyBy('id') : collect();
     $returnType = request('return_type');
     $cancelUrl = $returnType
@@ -48,13 +46,20 @@
         ])->all();
 @endphp
 
-<div class="space-y-6" x-data="{ type: @js($selectedType) }">
+<div
+    class="space-y-6"
+    x-data="{
+        type: @js($selectedType),
+        colorTypes: @js($colorTypes),
+        descriptionTypes: @js($descriptionTypes)
+    }"
+>
     @if($returnType)
         <input type="hidden" name="_return_to_type" value="1">
     @endif
     <x-admin.section-card
-        title="Jersey Customization Option"
-        description="Create a reusable jersey customization value. Images are optional."
+        title="Customization Option"
+        description="Create a reusable product customization value. Images are optional."
     >
         <div class="space-y-5">
             <label class="admin-label">
@@ -64,7 +69,7 @@
                     name="name"
                     value="{{ old('name', $option->name) }}"
                     maxlength="160"
-                    placeholder="Example: V-Neck"
+                    placeholder="{{ $selectedTypeEnum->placeholder() }}"
                     required
                 >
             </label>
@@ -80,10 +85,10 @@
 
             <label
                 class="admin-label"
-                x-show="type === @js(JerseyCustomizationType::Color->value)"
+                x-show="colorTypes.includes(type)"
                 x-cloak
             >
-                Value
+                Color value
                 <div class="mt-2 flex items-center gap-3">
                     <input
                         class="h-11 w-14 shrink-0 cursor-pointer rounded-xl border border-slate-300 bg-white p-1"
@@ -98,17 +103,17 @@
                         value="{{ old('color_hex', $option->color_hex) }}"
                         maxlength="7"
                         placeholder="#111827"
-                        :required="type === @js(JerseyCustomizationType::Color->value)"
+                        :required="colorTypes.includes(type)"
                     >
                 </div>
                 <span class="mt-1 block text-xs font-medium text-slate-500">
-                    This value is shown only for Color options.
+                    This value is shown only for color-based customization options.
                 </span>
             </label>
 
             <label
                 class="admin-label"
-                x-show="type === @js(JerseyCustomizationType::Fabric->value)"
+                x-show="descriptionTypes.includes(type)"
                 x-cloak
             >
                 Fabric details
@@ -119,7 +124,7 @@
                     placeholder="Example: Lightweight dry-fit mesh with breathable texture and quick-dry finish."
                 >{{ old('description', $option->description) }}</textarea>
                 <span class="mt-1 block text-xs font-medium text-slate-500">
-                    Details are shown only for Fabric options.
+                    Details are shown only for fabric-based options.
                 </span>
             </label>
         </div>

@@ -12,7 +12,7 @@
 
 <div class="min-w-0">
     <div class="product-gallery-frame relative bg-white p-[3px] shadow-[0_18px_48px_rgba(15,23,42,.08)]">
-        <div class="relative overflow-hidden bg-white">
+        <div class="np-product-gallery-main relative overflow-hidden bg-white">
             @if(filled($badge))
                 <span class="absolute left-4 top-4 z-10 rounded-full bg-brand-red px-3 py-2 text-[10px] font-black uppercase tracking-[.14em] text-white shadow-sm">
                     {{ $badge }}
@@ -24,16 +24,16 @@
                     type="button"
                     x-show="galleryIndex === index"
                     x-transition.opacity
-                    class="block w-full cursor-zoom-in bg-white"
+                    class="np-product-gallery-slide block h-full w-full cursor-zoom-in bg-white"
                     @click="$dispatch('open-product-image', currentImage())"
                     :aria-label="`Enlarge ${image.alt || 'product image'}`"
                 >
                     <img
                         :src="image.url"
                         :alt="image.alt"
-                        class="h-[430px] w-full object-contain p-5 sm:h-[560px] sm:p-8 lg:h-[650px]"
-                        width="820"
-                        height="820"
+                        class="np-product-gallery-image w-full object-contain p-5 sm:p-8"
+                        width="900"
+                        height="900"
                     >
                 </button>
             </template>
@@ -56,13 +56,13 @@
                     type="button"
                     @click="galleryIndex={{ $index }}"
                     :class="galleryIndex === {{ $index }} ? 'border-brand-blue ring-2 ring-blue-100' : 'border-slate-200 hover:border-slate-400'"
-                    class="min-w-[108px] overflow-hidden border-2 bg-white p-1.5 transition sm:min-w-[126px]"
+                    class="np-product-square-media min-w-[108px] overflow-hidden border-2 bg-white p-1.5 transition sm:min-w-[126px]"
                     aria-label="View image {{ $index + 1 }}"
                 >
                     <img
                         src="{{ $image['url'] }}"
                         alt="{{ $image['alt'] ?? '' }}"
-                        class="h-[104px] w-full bg-white object-contain sm:h-[120px]"
+                        class="np-product-square-image bg-white"
                         width="150"
                         height="150"
                         loading="lazy"

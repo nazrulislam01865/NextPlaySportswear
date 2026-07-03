@@ -19,6 +19,8 @@
         ->values();
     $artworkUpload = $product['artwork_upload'] ?? [];
     $hasGeneratedCustomizationGuidance = $customizationGroups->isNotEmpty() || (bool) ($artworkUpload['enabled'] ?? false);
+    $fullDetailInformation = collect($product['detail_information'] ?? [])
+        ->filter(fn ($value, $label) => filled($label) && filled($value));
 @endphp
 
 <section class="section-padding bg-white" x-data="{ tab: 'description', sizeChart: @js($firstSizeChartId) }">
@@ -103,10 +105,21 @@
             </div>
 
             <div x-show="tab === 'specifications'">
-                @if(filled($product['detail_information_html'] ?? null))
+                @if($fullDetailInformation->isNotEmpty())
+                    <table class="w-full table-fixed border-collapse text-[13px] sm:text-sm">
+                        <tbody>
+                            @foreach($fullDetailInformation as $name => $value)
+                                <tr>
+                                    <th class="w-[42%] break-words border border-slate-200 bg-slate-50 p-2.5 text-left align-top font-black sm:w-1/3">{{ $name }}</th>
+                                    <td class="break-words border border-slate-200 p-2.5 align-top text-slate-600">{{ $value }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                @elseif(filled($product['detail_information_html'] ?? null))
                     <div class="product-rich-content">{!! $product['detail_information_html'] !!}</div>
                 @else
-                    <table class="w-full table-fixed border-collapse text-[13px] sm:text-sm"><tbody>@forelse($product['detail_information'] as $name => $value)<tr><th class="w-[42%] break-words border border-slate-200 bg-slate-50 p-2.5 text-left align-top font-black sm:w-1/3">{{ $name }}</th><td class="break-words border border-slate-200 p-2.5 align-top text-slate-600">{{ $value }}</td></tr>@empty<tr><td class="p-8 text-center text-slate-500">No specifications have been added.</td></tr>@endforelse</tbody></table>
+                    <p class="p-8 text-center text-sm text-slate-500">No specifications have been added.</p>
                 @endif
             </div>
 

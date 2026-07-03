@@ -7,8 +7,10 @@
         <img
             src="{{ $sport['image'] }}"
             alt="{{ $sport['alt'] }}"
-            class="h-[150px] w-full object-cover"
+            class="np-category-square-image"
             loading="lazy"
+            width="500"
+            height="500"
         >
     </a>
 

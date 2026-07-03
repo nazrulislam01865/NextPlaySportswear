@@ -12,14 +12,14 @@
 @endphp
 
 <article class="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card card-hover">
-    <a href="{{ $product['url'] }}" class="relative block overflow-hidden bg-slate-100" aria-label="View {{ $product['title'] }}">
+    <a href="{{ $product['url'] }}" class="np-product-square-media relative block overflow-hidden bg-white" aria-label="View {{ $product['title'] }}">
         <img
             src="{{ $product['image'] }}"
             alt="{{ $product['alt'] }}"
-            class="h-[220px] w-full object-cover transition duration-500 group-hover:scale-[1.035]"
+            class="np-product-square-image transition duration-500 group-hover:scale-[1.035]"
             loading="lazy"
             width="900"
-            height="700"
+            height="900"
         >
         @if (filled($product['tag'] ?? null))
             <span class="{{ $tagClass }} absolute left-3 top-3 inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide shadow-sm">

@@ -6,14 +6,14 @@
     x-show="filter === 'all' || $el.dataset.tags.split(' ').includes(filter)"
     x-transition.opacity.duration.150ms
 >
-    <a href="{{ $category['url'] }}" class="block overflow-hidden" aria-label="{{ $category['link_label'] }}">
+    <a href="{{ $category['url'] }}" class="np-category-square-media block overflow-hidden" aria-label="{{ $category['link_label'] }}">
         <img
             loading="lazy"
             src="{{ $category['image'] }}"
             alt="{{ $category['alt'] }}"
-            class="h-[184px] w-full object-cover transition duration-300 group-hover:scale-[1.025] sm:h-[200px] lg:h-[184px]"
+            class="np-category-square-image transition duration-300 group-hover:scale-[1.025]"
             width="700"
-            height="500"
+            height="700"
         >
     </a>
 

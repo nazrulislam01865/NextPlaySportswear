@@ -1,7 +1,11 @@
 @props(['category', 'filters', 'options', 'idPrefix' => 'category-filter'])
 
 <form method="GET" action="{{ $category['url'] }}" class="space-y-6" aria-label="Filter products">
-    <div>
+    <div
+        class="relative"
+        data-storefront-search-suggest
+        data-suggest-url="{{ route('products.suggestions') }}"
+    >
         <label for="{{ $idPrefix }}-search" class="text-sm font-extrabold text-brand-ink">Search this category</label>
         <input
             id="{{ $idPrefix }}-search"
@@ -11,7 +15,14 @@
             value="{{ $filters['q'] }}"
             maxlength="100"
             placeholder="Search products..."
+            autocomplete="off"
         >
+        <div
+            class="storefront-search-suggestions absolute left-0 right-0 top-[calc(100%+0.5rem)] z-[60] hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+            data-storefront-search-suggestions
+            role="listbox"
+            aria-label="Product suggestions"
+        ></div>
     </div>
 
     @if ($options['subcategories'] !== [])

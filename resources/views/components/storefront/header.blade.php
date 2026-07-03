@@ -20,6 +20,8 @@
             role="search"
             aria-label="Product search"
             class="relative mx-auto hidden w-full max-w-[450px] lg:block"
+            data-storefront-search-suggest
+            data-suggest-url="{{ route('products.suggestions') }}"
         >
             <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -34,8 +36,15 @@
                 name="q"
                 value="{{ request('q') }}"
                 placeholder="Search jerseys, uniforms, caps, bags..."
+                autocomplete="off"
                 class="h-11 w-full rounded-xl border border-slate-300 bg-slate-50 pl-11 pr-4 text-sm text-slate-700 outline-none focus:border-brand-blue"
             >
+            <div
+                class="storefront-search-suggestions absolute left-0 right-0 top-[calc(100%+0.5rem)] z-[70] hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+                data-storefront-search-suggestions
+                role="listbox"
+                aria-label="Product suggestions"
+            ></div>
         </form>
 
         <div class="storefront-header-actions flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
@@ -93,12 +102,25 @@
             class="site-container max-h-[calc(100dvh-74px)] overflow-y-auto overscroll-contain py-4 text-sm text-slate-700 lg:hidden"
             aria-label="Mobile navigation"
         >
-            <form method="GET" action="{{ route('products.index') }}" role="search" class="mb-4">
+            <form
+                method="GET"
+                action="{{ route('products.index') }}"
+                role="search"
+                class="relative mb-4"
+                data-storefront-search-suggest
+                data-suggest-url="{{ route('products.suggestions') }}"
+            >
                 <label for="mobile-product-search" class="sr-only">Search products</label>
                 <div class="flex gap-2">
-                    <input id="mobile-product-search" type="search" name="q" value="{{ request('q') }}" placeholder="Search products..." class="h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-slate-50 px-4 text-sm outline-none focus:border-brand-blue">
+                    <input id="mobile-product-search" type="search" name="q" value="{{ request('q') }}" placeholder="Search products..." autocomplete="off" class="h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-slate-50 px-4 text-sm outline-none focus:border-brand-blue">
                     <button class="btn btn-red shrink-0 px-4" type="submit">Search</button>
                 </div>
+                <div
+                    class="storefront-search-suggestions absolute left-0 right-0 top-[calc(100%+0.5rem)] z-[70] hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+                    data-storefront-search-suggestions
+                    role="listbox"
+                    aria-label="Product suggestions"
+                ></div>
             </form>
 
             <div class="mb-4 grid grid-cols-2 gap-2" @click="if ($event.target.closest('a')) open = false">

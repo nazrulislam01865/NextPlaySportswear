@@ -76,6 +76,7 @@ window.adminProductForm = (initial = {}) => ({
     optionGroups: initial.optionGroups?.length ? initial.optionGroups : [],
     optionGroupErrors: initial.optionGroupErrors || {},
     jerseyCustomizationTypes: initial.jerseyCustomizationTypes || {},
+    customizationTypeGroups: Array.isArray(initial.customizationTypeGroups) ? initial.customizationTypeGroups : [],
     jerseyCustomizationOptions: initial.jerseyCustomizationOptions || [],
     newFeatureDialogOpen: false,
     newFeatureType: '',
@@ -909,7 +910,7 @@ window.adminProductForm = (initial = {}) => ({
         this.priceRows.forEach(row => row.cells.splice(index, 1));
     },
     addPriceRow() {
-        this.priceRows.push({ minimum_quantity: '', maximum_quantity: '', cells: this.priceHeaders.map(() => '') });
+        this.priceRows.push({ minimum_quantity: '', maximum_quantity: '', maximum_quantity_auto: true, cells: this.priceHeaders.map(() => '') });
         this.recalculatePriceMaximums();
     },
     removePriceRow(index) {
@@ -919,20 +920,51 @@ window.adminProductForm = (initial = {}) => ({
     normalizePriceRows() {
         this.priceRows = this.priceRows.map(row => {
             const sourceCells = Array.isArray(row) ? row.slice(1) : (Array.isArray(row.cells) ? row.cells : []);
+            const maximum = Array.isArray(row) ? '' : (row.maximum_quantity ?? '');
             return {
                 minimum_quantity: Array.isArray(row) ? (row[0] || '') : (row.minimum_quantity ?? ''),
-                maximum_quantity: Array.isArray(row) ? '' : (row.maximum_quantity ?? ''),
+                maximum_quantity: maximum,
+                maximum_quantity_auto: Array.isArray(row) ? true : (row.maximum_quantity_auto ?? String(maximum ?? '').trim() === ''),
                 cells: this.priceHeaders.map((_, index) => sourceCells[index] ?? ''),
             };
         });
         this.recalculatePriceMaximums();
     },
+    calculatedMaximumForPriceRow(index) {
+        const row = this.priceRows[index] || {};
+        const minimum = Number(row.minimum_quantity);
+        if (!Number.isInteger(minimum) || minimum < 1) return '';
+
+        const nextRow = this.priceRows.slice(index + 1).find(item => {
+            const nextMinimum = Number(item?.minimum_quantity);
+            return Number.isInteger(nextMinimum) && nextMinimum >= 1;
+        });
+        const nextMinimum = Number(nextRow?.minimum_quantity);
+        return Number.isInteger(nextMinimum) && nextMinimum > minimum
+            ? nextMinimum - 1
+            : minimum;
+    },
+    markPriceMaximumManual(row) {
+        row.maximum_quantity_auto = String(row.maximum_quantity ?? '').trim() === '';
+    },
     recalculatePriceMaximums() {
-        this.priceRows.forEach(row => {
+        this.priceRows.forEach((row, index) => {
             const minimum = Number(row.minimum_quantity);
             const maximum = Number(row.maximum_quantity);
-            if (row.maximum_quantity !== '' && (!Number.isInteger(maximum) || !Number.isInteger(minimum) || maximum < minimum)) {
+            if (!Number.isInteger(minimum) || minimum < 1) {
+                if (row.maximum_quantity_auto || String(row.maximum_quantity ?? '').trim() === '') row.maximum_quantity = '';
+                return;
+            }
+
+            if (row.maximum_quantity_auto || String(row.maximum_quantity ?? '').trim() === '') {
+                row.maximum_quantity = this.calculatedMaximumForPriceRow(index);
+                row.maximum_quantity_auto = true;
+                return;
+            }
+
+            if (!Number.isInteger(maximum) || maximum < minimum) {
                 row.maximum_quantity = '';
+                row.maximum_quantity_auto = true;
             }
         });
     },
@@ -975,11 +1007,25 @@ window.adminProductForm = (initial = {}) => ({
         const direct = Object.entries(this.jerseyCustomizationTypes)
             .find(([type, label]) => type === normalized || String(label).trim().toLowerCase() === plain)?.[0];
         if (direct) return direct;
+        if (/shorts?.*colou?r|colou?r.*shorts?/.test(plain)) return 'shorts_color';
+        if (/shorts?.*(fabric|material)|(fabric|material).*shorts?/.test(plain)) return 'shorts_fabric';
+        if (/shorts?.*size|size.*shorts?/.test(plain)) return 'shorts_size';
+        if (/shorts?.*pocket|pocket.*shorts?/.test(plain)) return 'shorts_pocket_option';
+        if (/uniform.*type|type.*uniform/.test(plain)) return 'uniform_type';
+        if (/reversible|standard/.test(plain) && /uniform/.test(plain)) return 'uniform_style';
+        if (/uniform.*neck|neck.*uniform|uniform.*collar|collar.*uniform/.test(plain)) return 'uniform_neckline';
+        if (/uniform.*sleeve|sleeve.*uniform/.test(plain)) return 'uniform_sleeve';
+        if (/uniform.*size|size.*uniform/.test(plain)) return 'uniform_size';
+        if (/uniform.*pocket|pocket.*uniform/.test(plain)) return 'uniform_pocket';
+        if (/pants?.*colou?r|colou?r.*pants?/.test(plain)) return 'pants_color';
+        if (/pants?.*(fabric|material)|(fabric|material).*pants?/.test(plain)) return 'pants_fabric';
+        if (/calf|pants?.*style|style.*pants?/.test(plain)) return 'pants_calf_style';
+        if (/pants?.*size|size.*pants?/.test(plain)) return 'pants_size';
         if (/collar|neck/.test(plain)) return 'neck_and_collar';
         if (/fabric|material/.test(plain)) return 'fabric';
         if (/colou?r/.test(plain)) return 'color';
         if (/sleeve|cuff/.test(plain)) return 'sleeves_and_cuffs';
-        if (/jersey\s*style|uniform\s*style|style/.test(plain)) return 'jersey_style';
+        if (/jersey\s*style|uniform\s*style|\bstyle\b/.test(plain)) return 'jersey_style';
         return '';
     },
     masterItemById(id) {
@@ -1004,7 +1050,7 @@ window.adminProductForm = (initial = {}) => ({
         return value;
     },
     defaultInputStyleForFeature(type) {
-        if (type === 'color') return 'swatch';
+        if (String(type || '').includes('color')) return 'swatch';
         const options = this.jerseyCustomizationOptions.filter(item => item.type === type);
         return options.some(item => this.masterItemPrimaryImage(item)) ? 'image' : 'buttons';
     },
@@ -2056,6 +2102,10 @@ const preserveAdminSidebarPosition = () => {
     const storageKey = 'nextplay.admin.sidebar.scrollTop';
     const savedScroll = Number(sessionStorage.getItem(storageKey) || 0);
 
+    if (savedScroll > 0) {
+        sidebarNav.scrollTop = savedScroll;
+    }
+
     requestAnimationFrame(() => {
         if (savedScroll > 0) {
             sidebarNav.scrollTop = savedScroll;
@@ -2068,22 +2118,31 @@ const preserveAdminSidebarPosition = () => {
         }
     });
 
+    const persistScroll = () => {
+        sessionStorage.setItem(storageKey, String(sidebarNav.scrollTop));
+    };
+
     let saveTimer = null;
     const saveScroll = () => {
         if (saveTimer) window.clearTimeout(saveTimer);
-        saveTimer = window.setTimeout(() => {
-            sessionStorage.setItem(storageKey, String(sidebarNav.scrollTop));
-        }, 80);
+        saveTimer = window.setTimeout(persistScroll, 80);
     };
 
     sidebarNav.addEventListener('scroll', saveScroll, { passive: true });
-    sidebarNav.addEventListener('click', (event) => {
+    sidebarNav.addEventListener('pointerdown', (event) => {
         if (event.target.closest('a')) {
-            sessionStorage.setItem(storageKey, String(sidebarNav.scrollTop));
+            persistScroll();
         }
     }, true);
+    sidebarNav.addEventListener('click', (event) => {
+        if (event.target.closest('a')) {
+            persistScroll();
+        }
+    }, true);
+    window.addEventListener('pagehide', persistScroll);
 };
 
 preserveAdminSidebarPosition();
+
 
 Alpine.start();

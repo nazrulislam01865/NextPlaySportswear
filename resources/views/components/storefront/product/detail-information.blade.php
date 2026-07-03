@@ -1,15 +1,22 @@
 @props(['product' => []])
 
 @php
-    $detailInformationHtml = trim((string) ($product['detail_information_html'] ?? ''));
-    $detailInformation = collect($product['detail_information'] ?? [])
-        ->filter(fn ($value, $label) => filled($label) && filled($value))
-        ->take(30);
+    $summaryLabels = ['SKU', 'Product Type', 'Fabric', 'Fit', 'Size Range', 'MOQ', 'Lead Time'];
+    $detailInformation = collect($product['summary_detail_information'] ?? [])
+        ->only($summaryLabels)
+        ->filter(fn ($value, $label) => filled($label) && filled($value));
+
+    if ($detailInformation->isEmpty()) {
+        $detailInformation = collect($product['detail_information'] ?? [])
+            ->only($summaryLabels)
+            ->filter(fn ($value, $label) => filled($label) && filled($value));
+    }
 
     if ($detailInformation->isEmpty()) {
         $detailInformation = collect([
+            'SKU' => $product['sku'] ?? null,
             'Product Type' => $product['product_type'] ?? null,
-            'Minimum Order' => isset($product['minimum_quantity'])
+            'MOQ' => isset($product['minimum_quantity'])
                 ? number_format((int) $product['minimum_quantity']).' '.((int) $product['minimum_quantity'] === 1 ? 'Piece' : 'Pieces')
                 : null,
         ])->filter();
@@ -40,9 +47,7 @@
 @endphp
 
 <div class="np-detail-information mt-6">
-    @if($detailInformationHtml !== '')
-        <div class="product-rich-content overflow-hidden border-y border-slate-200 py-4">{!! $detailInformationHtml !!}</div>
-    @elseif($detailInformation->isNotEmpty())
+    @if($detailInformation->isNotEmpty())
         <div class="overflow-hidden border-y border-slate-200">
             <table class="w-full table-fixed border-collapse text-left">
                 <thead>

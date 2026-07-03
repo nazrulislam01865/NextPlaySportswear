@@ -149,6 +149,27 @@
         background: rgba(148, 163, 184, .35);
     }
 
+    [data-sidebar-disclosure] > summary::-webkit-details-marker {
+        display: none;
+    }
+
+    [data-sidebar-disclosure] > summary::marker {
+        content: '';
+    }
+
+    [data-sidebar-disclosure][open] > [data-sidebar-disclosure-toggle] {
+        background: rgba(255, 255, 255, .10);
+        color: #fff;
+    }
+
+    [data-sidebar-disclosure][open] > [data-sidebar-disclosure-toggle] [data-sidebar-arrow] {
+        transform: rotate(180deg);
+    }
+
+    [data-sidebar-disclosure]:not([open]) > [data-sidebar-disclosure-panel] {
+        display: none;
+    }
+
     .admin-table-scroll {
         max-width: 100%;
         overflow-x: auto;
@@ -1970,6 +1991,8 @@
 .np-field-invalid,
 .admin-input.np-field-invalid,
 .admin-textarea.np-field-invalid,
+.np-table-input.np-field-invalid,
+.np-upload-zone.np-field-invalid,
 .np-searchable-trigger.np-field-invalid,
 .admin-rich-editor.np-field-invalid {
     border-color: #e91d33 !important;
@@ -1977,9 +2000,16 @@
     box-shadow: 0 0 0 3px rgba(233, 29, 51, .14) !important;
 }
 .np-field-error-message {
+    display: block;
     margin-top: .5rem;
     font-size: .8125rem;
     font-weight: 800;
     line-height: 1.35rem;
     color: #be123c;
+}
+
+.np-simple-table .np-field-error-message {
+    margin-top: .35rem;
+    font-size: .75rem;
+    line-height: 1.2rem;
 }

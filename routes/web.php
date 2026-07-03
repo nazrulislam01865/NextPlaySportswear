@@ -64,6 +64,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('/homepage-slides/{homepageSlide}/toggle', [\App\Http\Controllers\Admin\HomepageSlideController::class, 'toggle'])->name('homepage-slides.toggle');
         Route::resource('homepage-slides', \App\Http\Controllers\Admin\HomepageSlideController::class)->except('show');
 
+        Route::get('/products/stats', [\App\Http\Controllers\Admin\ProductController::class, 'stats'])->name('products.stats');
+        Route::get('/products/search-suggestions', [\App\Http\Controllers\Admin\ProductController::class, 'suggestions'])->name('products.suggestions');
         Route::post('/products/{product}/duplicate', [\App\Http\Controllers\Admin\ProductController::class, 'duplicate'])->name('products.duplicate');
         Route::resource('products', \App\Http\Controllers\Admin\ProductController::class);
         Route::post('/categories/bulk', [\App\Http\Controllers\Admin\CategoryOperationsController::class, 'bulk'])->name('categories.bulk');
@@ -222,6 +224,9 @@ Route::get('/category/{slug}', [CategoryController::class, 'show'])
     ->name('categories.show');
 
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+Route::get('/products/search-suggestions', [ProductController::class, 'suggestions'])
+    ->middleware('throttle:60,1')
+    ->name('products.suggestions');
 Route::get('/product/{slug}', [ProductController::class, 'show'])->name('products.show');
 Route::get('/products/{slug}', [ProductController::class, 'show'])->name('products.show.legacy');
 

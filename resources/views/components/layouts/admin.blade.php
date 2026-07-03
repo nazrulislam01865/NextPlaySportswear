@@ -48,56 +48,67 @@
 
                 <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Master Data</p>
                 @php
-                    $jerseyMenuTypes = [
-                        ['number' => '1.1.1', 'value' => \App\Enums\JerseyCustomizationType::Color->value, 'label' => 'Color'],
-                        ['number' => '1.1.2', 'value' => \App\Enums\JerseyCustomizationType::NeckAndCollar->value, 'label' => 'Neck & Collar'],
-                        ['number' => '1.1.3', 'value' => \App\Enums\JerseyCustomizationType::Fabric->value, 'label' => 'Fabric'],
-                        ['number' => '1.1.4', 'value' => \App\Enums\JerseyCustomizationType::SleevesAndCuffs->value, 'label' => 'Sleeves & Cuffs'],
-                        ['number' => '1.1.5', 'value' => \App\Enums\JerseyCustomizationType::JerseyStyle->value, 'label' => 'Jersey Style'],
-                    ];
-                    $isJerseyCustomizationActive = request()->routeIs('admin.jersey-customization-options.*');
-                    $activeJerseyType = request()->route('type');
+                    $customizationMenuGroups = \App\Enums\JerseyCustomizationType::menuGroups();
+                    $isCustomizationActive = request()->routeIs('admin.jersey-customization-options.*');
+                    $activeCustomizationType = request()->route('type');
+                    $activeCustomizationOption = request()->route('jerseyCustomizationOption');
+
+                    if (! $activeCustomizationType && $activeCustomizationOption instanceof \App\Models\JerseyCustomizationOption) {
+                        $activeCustomizationType = $activeCustomizationOption->type instanceof \App\Enums\JerseyCustomizationType
+                            ? $activeCustomizationOption->type->value
+                            : (string) $activeCustomizationOption->type;
+                    }
+
+                    if (! $activeCustomizationType && old('type')) {
+                        $activeCustomizationType = old('type');
+                    }
+
+                    $activeCustomizationTypeEnum = \App\Enums\JerseyCustomizationType::tryFrom((string) $activeCustomizationType);
+                    $activeCustomizationGroup = $activeCustomizationTypeEnum?->group();
                 @endphp
                 <x-admin.sidebar-group
                     label="Master Data"
                     icon="◈"
-                    :active="$isJerseyCustomizationActive || request()->routeIs('admin.size-option-groups.*')"
+                    :active="$isCustomizationActive || request()->routeIs('admin.size-option-groups.*')"
                 >
-                    <div class="space-y-1" x-data="{ jerseyOpen: @js($isJerseyCustomizationActive) }">
-                        <button
-                            type="button"
-                            class="flex min-h-10 w-full min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-black transition"
-                            :class="jerseyOpen || @js($isJerseyCustomizationActive) ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/10 hover:text-white'"
-                            @click="jerseyOpen = ! jerseyOpen"
-                            :aria-expanded="jerseyOpen.toString()"
-                        >
-                            <span class="text-[10px] text-slate-500">1.1</span>
-                            <span class="min-w-0 flex-1 truncate">Jersey Customization</span>
-                            <span class="text-[10px] transition-transform" :class="jerseyOpen ? 'rotate-180' : ''">⌄</span>
-                        </button>
+                    @foreach($customizationMenuGroups as $groupKey => $customizationGroup)
+                        @php($isCurrentCustomizationGroup = $isCustomizationActive && $activeCustomizationGroup === $groupKey)
+                        <details class="space-y-1" data-sidebar-disclosure data-sidebar-nested-disclosure @if($isCurrentCustomizationGroup) open @endif>
+                            <summary
+                                class="flex min-h-10 w-full min-w-0 cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-black text-slate-400 transition hover:bg-white/10 hover:text-white"
+                                data-sidebar-disclosure-toggle
+                            >
+                                <span class="text-[10px] text-slate-500">{{ $customizationGroup['number'] }}</span>
+                                <span class="min-w-0 flex-1 truncate">{{ $customizationGroup['label'] }}</span>
+                                <span class="text-[10px] transition-transform" data-sidebar-arrow>⌄</span>
+                            </summary>
 
-                        <div x-cloak x-show="jerseyOpen" class="space-y-1 pl-4">
-                            @foreach($jerseyMenuTypes as $jerseyMenuType)
-                                <a
-                                    href="{{ route('admin.jersey-customization-options.type', $jerseyMenuType['value']) }}"
-                                    @if($isJerseyCustomizationActive && $activeJerseyType === $jerseyMenuType['value']) data-sidebar-active="true" @endif
-                                    @class([
-                                        'flex min-h-9 min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold transition',
-                                        'bg-brand-red text-white' => $isJerseyCustomizationActive && $activeJerseyType === $jerseyMenuType['value'],
-                                        'text-slate-400 hover:bg-white/10 hover:text-white' => ! ($isJerseyCustomizationActive && $activeJerseyType === $jerseyMenuType['value']),
-                                    ])
-                                >
-                                    <span class="shrink-0 text-[10px] opacity-80">{{ $jerseyMenuType['number'] }}</span>
-                                    <span class="min-w-0 truncate">{{ $jerseyMenuType['label'] }}</span>
-                                </a>
-                            @endforeach
-                        </div>
-                    </div>
+                            <div
+                                class="space-y-1 pl-4"
+                                data-sidebar-disclosure-panel
+                            >
+                                @foreach($customizationGroup['types'] as $customizationType)
+                                    <a
+                                        href="{{ route('admin.jersey-customization-options.type', $customizationType->value) }}"
+                                        @if($isCustomizationActive && $activeCustomizationType === $customizationType->value) data-sidebar-active="true" @endif
+                                        @class([
+                                            'flex min-h-9 min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold transition',
+                                            'bg-brand-red text-white' => $isCustomizationActive && $activeCustomizationType === $customizationType->value,
+                                            'text-slate-400 hover:bg-white/10 hover:text-white' => ! ($isCustomizationActive && $activeCustomizationType === $customizationType->value),
+                                        ])
+                                    >
+                                        <span class="shrink-0 text-[10px] opacity-80">{{ $customizationType->menuNumber() }}</span>
+                                        <span class="min-w-0 truncate">{{ $customizationType->label() }}</span>
+                                    </a>
+                                @endforeach
+                            </div>
+                        </details>
+                    @endforeach
 
                     <x-admin.sidebar-sub-link
                         :href="route('admin.size-option-groups.index')"
                         :active="request()->routeIs('admin.size-option-groups.*')"
-                    >1.2 Size Options</x-admin.sidebar-sub-link>
+                    >1.8 Size Options</x-admin.sidebar-sub-link>
                 </x-admin.sidebar-group>
 
                 <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Commerce</p>
@@ -160,7 +171,7 @@
                 @if (session('status'))
                     <div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
                 @endif
-                @if ($errors->any())
+                @if ($errors->any() && ! request()->routeIs('admin.products.create', 'admin.products.edit'))
                     <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                         <p class="font-black">Please correct the highlighted information.</p>
                         <ul class="mt-2 list-disc space-y-1 pl-5">

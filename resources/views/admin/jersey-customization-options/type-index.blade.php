@@ -1,57 +1,29 @@
 @php
-    use App\Enums\JerseyCustomizationType;
-
     $typeLabel = $type->label();
-    $isColor = $type === JerseyCustomizationType::Color;
-    $placeholder = match ($type) {
-        JerseyCustomizationType::Color => 'Example: Navy Blue',
-        JerseyCustomizationType::NeckAndCollar => 'Example: V-Neck Collar',
-        JerseyCustomizationType::Fabric => 'Example: Dry Fit Mesh',
-        JerseyCustomizationType::SleevesAndCuffs => 'Example: Raglan Short Sleeve',
-        JerseyCustomizationType::JerseyStyle => 'Example: Pro Match Jersey',
-    };
-    $helpText = match ($type) {
-        JerseyCustomizationType::Color => 'Add jersey colors with the exact display color. Upload a swatch only when the color needs a visual reference.',
-        JerseyCustomizationType::NeckAndCollar => 'Add neck and collar styles. Use a close-up image only when customers need to see the shape.',
-        JerseyCustomizationType::Fabric => 'Add fabric choices with short details so customers understand feel, texture, and performance.',
-        JerseyCustomizationType::SleevesAndCuffs => 'Add sleeve and cuff styles. Use a close-up image when the finish needs a visual preview.',
-        JerseyCustomizationType::JerseyStyle => 'Add jersey style options used across product configuration. Use a full jersey image when helpful.',
-    };
-    $imageTitle = match ($type) {
-        JerseyCustomizationType::Color => 'Optional color swatch',
-        JerseyCustomizationType::NeckAndCollar => 'Optional neck/collar image',
-        JerseyCustomizationType::Fabric => 'Optional fabric texture image',
-        JerseyCustomizationType::SleevesAndCuffs => 'Optional sleeve/cuff image',
-        JerseyCustomizationType::JerseyStyle => 'Optional jersey style image',
-    };
-    $imageHint = match ($type) {
-        JerseyCustomizationType::Color => 'Upload only if the color needs a real jersey swatch beyond the HEX value.',
-        JerseyCustomizationType::NeckAndCollar => 'Use a clear close-up of the neckline or collar shape.',
-        JerseyCustomizationType::Fabric => 'Use a texture or material close-up so customers can recognize the fabric.',
-        JerseyCustomizationType::SleevesAndCuffs => 'Use a close-up of the sleeve or cuff finish.',
-        JerseyCustomizationType::JerseyStyle => 'Use a full jersey preview for this style when available.',
-    };
-    $imageCta = match ($type) {
-        JerseyCustomizationType::Color => 'Choose swatch image',
-        JerseyCustomizationType::NeckAndCollar => 'Choose neck/collar image',
-        JerseyCustomizationType::Fabric => 'Choose fabric image',
-        JerseyCustomizationType::SleevesAndCuffs => 'Choose sleeve/cuff image',
-        JerseyCustomizationType::JerseyStyle => 'Choose style image',
-    };
+    $isColor = $type->usesColorValue();
+    $showsDescription = $type->usesDescription();
+    $columnCount = 4 + ($isColor ? 1 : 0) + ($showsDescription ? 1 : 0);
+    $placeholder = $type->placeholder();
+    $helpText = $type->helpText();
+    $imageTitle = $type->imageTitle();
+    $imageHint = $type->imageDescription();
+    $imageCta = $type->imageCta();
 @endphp
 
 <x-layouts.admin
     :title="$typeLabel"
-    eyebrow="Master Data / 1.1 Jersey Customization"
+    :eyebrow="'Master Data / '.$type->groupNumber().' '.$type->groupLabel()"
     :subtitle="$helpText"
     compact-header
 >
     <div class="space-y-6">
         <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
             <div class="border-b border-slate-100 p-4 sm:p-5">
-                <p class="text-xs font-black uppercase tracking-[.22em] text-slate-400">1.1 Jersey Customization Submenus</p>
+                <p class="text-xs font-black uppercase tracking-[.22em] text-slate-400">
+                    {{ $type->groupNumber() }} {{ $type->groupLabel() }} Submenus
+                </p>
             </div>
-            <div class="flex gap-2 overflow-x-auto p-4 sm:p-5" aria-label="Jersey customization type navigation">
+            <div class="flex gap-2 overflow-x-auto p-4 sm:p-5" aria-label="{{ $type->groupLabel() }} type navigation">
                 @foreach($typeLinks as $link)
                     <a
                         href="{{ route('admin.jersey-customization-options.type', $link['type']->value) }}"
@@ -94,7 +66,7 @@
                                 @if($isColor)
                                     <th class="px-5 py-4">Color Value</th>
                                 @endif
-                                @if($type === JerseyCustomizationType::Fabric)
+                                @if($showsDescription)
                                     <th class="px-5 py-4">Details</th>
                                 @endif
                                 <th class="px-5 py-4">Image</th>
@@ -123,7 +95,7 @@
                                             @endif
                                         </td>
                                     @endif
-                                    @if($type === JerseyCustomizationType::Fabric)
+                                    @if($showsDescription)
                                         <td class="max-w-[280px] px-5 py-4">
                                             @if(filled($item->description))
                                                 <p class="max-h-12 overflow-hidden text-sm font-semibold leading-6 text-slate-600">{{ $item->description }}</p>
@@ -181,7 +153,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ $isColor ? 5 : ($type === JerseyCustomizationType::Fabric ? 5 : 4) }}" class="px-5 py-14 text-center">
+                                    <td colspan="{{ $columnCount }}" class="px-5 py-14 text-center">
                                         <p class="font-black text-brand-ink">No {{ strtolower($typeLabel) }} option has been added.</p>
                                         <p class="mt-1 text-sm font-semibold text-slate-500">Use the form beside this table to add the first item.</p>
                                     </td>
@@ -256,7 +228,7 @@
                         </label>
                     @endif
 
-                    @if($type === JerseyCustomizationType::Fabric)
+                    @if($showsDescription)
                         <label class="admin-label">
                             Details
                             <textarea

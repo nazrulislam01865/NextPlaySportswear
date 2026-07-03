@@ -1,4 +1,4 @@
-<x-layouts.admin title="Create Jersey Customization Option">
+<x-layouts.admin title="Create Customization Option">
     <form method="POST" action="{{ route('admin.jersey-customization-options.store') }}" enctype="multipart/form-data">
         @csrf
         @include('admin.jersey-customization-options._form')

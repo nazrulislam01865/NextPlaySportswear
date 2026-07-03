@@ -1,7 +1,7 @@
-<x-layouts.admin title="Jersey Customization Options">
+<x-layouts.admin title="Product Customization Options">
     <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p class="max-w-3xl text-sm leading-6 text-slate-500">
-            Manage reusable jersey values for Neck and Collar, Fabric, Color, Sleeves and Cuffs, and Jersey Style.
+            Manage reusable customization values for jerseys, shorts, uniforms, pants, hoodies, polos, and T-shirts.
         </p>
         <a href="{{ route('admin.jersey-customization-options.create') }}" class="btn btn-red">+ Add Option</a>
     </div>
@@ -30,7 +30,7 @@
     </form>
 
     <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
-        <div class="admin-table-scroll" tabindex="0" aria-label="Jersey customization options table">
+        <div class="admin-table-scroll" tabindex="0" aria-label="Product customization options table">
             <table class="admin-table min-w-[920px] text-sm">
                 <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                     <tr>
@@ -107,7 +107,7 @@
                                     <form
                                         method="POST"
                                         action="{{ route('admin.jersey-customization-options.destroy', $option) }}"
-                                        onsubmit="return confirm('Delete this jersey customization option?');"
+                                        onsubmit="return confirm('Delete this customization option?');"
                                     >
                                         @csrf
                                         @method('DELETE')
@@ -121,7 +121,7 @@
                     @empty
                         <tr>
                             <td colspan="6" class="px-5 py-14 text-center text-slate-500">
-                                No jersey customization options found.
+                                No customization options found.
                             </td>
                         </tr>
                     @endforelse

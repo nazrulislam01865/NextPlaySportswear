@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Storefront;
 use App\Http\Controllers\Controller;
 use App\Services\Storefront\ProductCatalogService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
@@ -34,6 +36,46 @@ class ProductController extends Controller
                 'canonical' => route('products.index'),
             ],
         ]);
+    }
+
+
+    public function suggestions(Request $request): JsonResponse
+    {
+        $query = $request->string('q')->trim()->limit(100)->toString();
+
+        if ($query === '') {
+            return response()->json(['data' => []]);
+        }
+
+        $needle = Str::lower($query);
+
+        $suggestions = collect($this->productCatalogService->all())
+            ->filter(function (array $product) use ($needle): bool {
+                $searchText = collect([
+                    $product['title'] ?? '',
+                    $product['short_title'] ?? '',
+                    $product['slug'] ?? '',
+                    $product['sku'] ?? '',
+                    $product['category'] ?? '',
+                    $product['subcategory'] ?? '',
+                    $product['sport'] ?? '',
+                    implode(' ', $product['tags'] ?? []),
+                ])->filter()->implode(' ');
+
+                return Str::contains(Str::lower($searchText), $needle);
+            })
+            ->take(8)
+            ->map(fn (array $product): array => [
+                'title' => (string) ($product['title'] ?? ''),
+                'sku' => (string) ($product['sku'] ?? ''),
+                'category' => (string) (($product['category'] ?? '') ?: ($product['sport'] ?? '')),
+                'price' => (string) ($product['price'] ?? ''),
+                'image' => (string) (($product['image'] ?? '') ?: asset('images/product-placeholder.svg')),
+                'url' => (string) (($product['url'] ?? '') ?: route('products.show', $product['slug'] ?? '')),
+            ])
+            ->values();
+
+        return response()->json(['data' => $suggestions]);
     }
 
     public function show(string $slug): View

@@ -21,7 +21,7 @@
         <div class="grid-4">
             @foreach($popularCategories as $category)
                 <article class="product-card">
-                    <img loading="lazy" decoding="async" src="{{ asset('storage/storefront/home/'.$category['image']) }}" alt="{{ $category['alt'] }}" width="650" height="450">
+                    <img loading="lazy" decoding="async" src="{{ asset('storage/storefront/home/'.$category['image']) }}" alt="{{ $category['alt'] }}" class="np-category-square-image" width="650" height="650">
                     <div class="product-info">
                         <h3>{{ $category['title'] }}</h3>
                         <p>{{ $category['description'] }}</p>

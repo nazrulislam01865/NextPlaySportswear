@@ -15,6 +15,7 @@ use App\Services\Catalog\ProductOptionFilterSyncService;
 use App\Services\Security\SafeHtmlService;
 use App\Support\ProductionTime;
 use App\Support\PublicMedia;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -48,13 +49,99 @@ class ProductController extends Controller
             $query->where('status', $status);
         }
 
+        if ($categoryId = (int) $request->query('category_id')) {
+            $categoryIds = $this->categoryTreeService->descendantIds($categoryId, true);
+            $categoryIds = $categoryIds === [] ? [$categoryId] : $categoryIds;
+
+            $query->where(function ($builder) use ($categoryIds): void {
+                $builder->whereIn('category_id', $categoryIds)
+                    ->orWhereIn('subcategory_id', $categoryIds)
+                    ->orWhereHas('categories', fn ($categoryQuery) => $categoryQuery->whereIn('categories.id', $categoryIds));
+            });
+        }
+
         if ($request->boolean('featured')) {
             $query->where('is_featured', true);
         }
 
         return view('admin.products.index', [
             'products' => $query->latest()->paginate(25)->withQueryString(),
-            'filters' => $request->only(['q', 'status', 'featured']),
+            'filters' => $request->only(['q', 'status', 'category_id', 'featured']),
+            'categoryOptions' => $this->categoryTreeService->flatOptions(),
+            'productStats' => $this->productStats(),
+        ]);
+    }
+
+    public function suggestions(Request $request): JsonResponse
+    {
+        $search = trim((string) $request->query('q', ''));
+
+        $query = Product::query()
+            ->with(['category', 'subcategory', 'images'])
+            ->select([
+                'id',
+                'name',
+                'slug',
+                'sku',
+                'status',
+                'category_id',
+                'subcategory_id',
+                'is_active',
+                'is_customizable',
+                'track_inventory',
+                'updated_at',
+            ])
+            ->latest('updated_at')
+            ->limit(8);
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search): void {
+                $builder->where('name', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%")
+                    ->orWhere('slug', 'like', "%{$search}%");
+            });
+        }
+
+        $suggestions = $query->get()->map(static function (Product $product) use ($search): array {
+            $lowerSearch = Str::lower($search);
+            $searchValue = $product->name;
+
+            if ($lowerSearch !== '' && $product->sku && str_contains(Str::lower($product->sku), $lowerSearch)) {
+                $searchValue = $product->sku;
+            } elseif ($lowerSearch !== '' && $product->slug && str_contains(Str::lower($product->slug), $lowerSearch)) {
+                $searchValue = $product->slug;
+            }
+
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'sku' => $product->sku,
+                'slug' => $product->slug,
+                'status' => ucfirst((string) $product->status),
+                'category' => $product->category?->name ?? $product->subcategory?->name ?? 'Uncategorized',
+                'image_url' => $product->primaryImageUrl(),
+                'search_value' => $searchValue,
+            ];
+        })->values();
+
+        return response()->json([
+            'data' => $suggestions,
+            'query' => $search,
+        ])->withHeaders([
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+        ]);
+    }
+
+
+    public function stats(): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->productStats(),
+            'updated_at' => now()->toIso8601String(),
+        ])->withHeaders([
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
         ]);
     }
 
@@ -179,6 +266,25 @@ class ProductController extends Controller
         $this->categoryTreeService->flushCache();
 
         return redirect()->route('admin.products.edit', $copy)->with('status', 'Product duplicated as a draft.');
+    }
+
+
+    private function productStats(): array
+    {
+        return [
+            'total' => Product::query()->count(),
+            'active' => Product::query()->published()->count(),
+            'draft_incomplete' => Product::query()
+                ->where(function ($builder): void {
+                    $builder->where('status', 'draft')
+                        ->orWhere('is_active', false)
+                        ->orWhereNull('base_price')
+                        ->orWhere('base_price', '<=', 0);
+                })
+                ->count(),
+            'customizable' => Product::query()->where('is_customizable', true)->count(),
+            'inventory_not_tracked' => Product::query()->where('track_inventory', false)->count(),
+        ];
     }
 
     private function formView(string $view, Product $product): View
@@ -441,7 +547,7 @@ class ProductController extends Controller
             }
         }
 
-        return collect($result)->take(30)->all();
+        return collect($result)->take(100)->all();
     }
 
     private function parseProductSpecificationText(string $specificationText): array
@@ -594,7 +700,10 @@ class ProductController extends Controller
         return [
             'SKU' => $product->sku,
             'Product Type' => $product->product_type,
-            'Fabric' => $this->optionValueSummary($product, JerseyCustomizationType::Fabric->value),
+            'Fabric' => collect(JerseyCustomizationType::fabricTypeValues())
+                ->map(fn (string $type): ?string => $this->optionValueSummary($product, $type))
+                ->filter()
+                ->implode(', '),
             'Fit' => collect([
                 $this->optionValueSummary($product, JerseyCustomizationType::JerseyStyle->value),
                 $this->optionValueSummary($product, JerseyCustomizationType::SleevesAndCuffs->value),

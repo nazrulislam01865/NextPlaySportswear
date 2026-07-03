@@ -48,7 +48,7 @@ class JerseyCustomizationOptionController extends Controller
         return view('admin.jersey-customization-options.type-index', [
             'options' => $query->ordered()->paginate(20)->withQueryString(),
             'type' => $selectedType,
-            'typeLinks' => $this->typeLinks(),
+            'typeLinks' => $this->typeLinks($selectedType),
             'filters' => $request->only(['q']),
             'option' => new JerseyCustomizationOption([
                 'type' => $selectedType,
@@ -62,7 +62,7 @@ class JerseyCustomizationOptionController extends Controller
     {
         return view('admin.jersey-customization-options.create', [
             'option' => new JerseyCustomizationOption([
-                'type' => JerseyCustomizationType::NeckAndCollar,
+                'type' => JerseyCustomizationType::Color,
                 'is_active' => true,
                 'sort_order' => 0,
             ]),
@@ -86,7 +86,7 @@ class JerseyCustomizationOptionController extends Controller
 
         return redirect()
             ->route('admin.jersey-customization-options.edit', $option)
-            ->with('status', 'Jersey customization option created successfully.');
+            ->with('status', 'Customization option created successfully.');
     }
 
     public function edit(JerseyCustomizationOption $jerseyCustomizationOption): View
@@ -117,7 +117,7 @@ class JerseyCustomizationOptionController extends Controller
 
         return redirect()
             ->route('admin.jersey-customization-options.edit', $option)
-            ->with('status', 'Jersey customization option updated successfully.');
+            ->with('status', 'Customization option updated successfully.');
     }
 
     public function destroy(
@@ -131,7 +131,7 @@ class JerseyCustomizationOptionController extends Controller
 
         return redirect()
             ->route('admin.jersey-customization-options.type', $type ?: JerseyCustomizationType::Color->value)
-            ->with('status', 'Jersey customization option deleted successfully.');
+            ->with('status', 'Customization option deleted successfully.');
     }
 
     private function resolveType(string $type): JerseyCustomizationType
@@ -144,14 +144,15 @@ class JerseyCustomizationOptionController extends Controller
     }
 
     /** @return array<int, array{number: string, type: JerseyCustomizationType, label: string}> */
-    private function typeLinks(): array
+    private function typeLinks(JerseyCustomizationType $selectedType): array
     {
-        return [
-            ['number' => '1.1.1', 'type' => JerseyCustomizationType::Color, 'label' => 'Color'],
-            ['number' => '1.1.2', 'type' => JerseyCustomizationType::NeckAndCollar, 'label' => 'Neck & Collar'],
-            ['number' => '1.1.3', 'type' => JerseyCustomizationType::Fabric, 'label' => 'Fabric'],
-            ['number' => '1.1.4', 'type' => JerseyCustomizationType::SleevesAndCuffs, 'label' => 'Sleeves & Cuffs'],
-            ['number' => '1.1.5', 'type' => JerseyCustomizationType::JerseyStyle, 'label' => 'Jersey Style'],
-        ];
+        return collect(JerseyCustomizationType::typesForGroup($selectedType->group()))
+            ->map(static fn (JerseyCustomizationType $type): array => [
+                'number' => $type->menuNumber(),
+                'type' => $type,
+                'label' => $type->label(),
+            ])
+            ->values()
+            ->all();
     }
 }
