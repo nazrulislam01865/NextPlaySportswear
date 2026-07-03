@@ -45,6 +45,7 @@ class ProductFormRequest extends FormRequest
             'description_html' => ['nullable', 'string', 'max:100000'],
             'product_specification_text' => ['nullable', 'string', 'max:100000'],
             'detail_information_html' => ['nullable', 'string', 'max:100000'],
+            'customization_artwork_html' => ['nullable', 'string', 'max:100000'],
             'base_price' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
             'compare_at_price' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'cost_price' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
@@ -241,10 +242,9 @@ class ProductFormRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $routeProduct = $this->route('product');
-        $sku = trim((string) $this->input('sku', ''));
-        if ($sku === '') {
-            $sku = $routeProduct?->sku ?: $this->generateSku((string) $this->input('name', 'Product'));
-        }
+        $submittedSku = trim((string) $this->input('sku', ''));
+        $specificationSku = $this->extractSkuFromSpecificationText($this->input('product_specification_text'));
+        $sku = $submittedSku !== '' ? $submittedSku : ($specificationSku ?: ($routeProduct?->sku ?: $this->generateSku((string) $this->input('name', 'Product'))));
         $this->merge(['sku' => $sku]);
 
         $showInCategoryPage = $this->boolean('show_in_category_page');
@@ -445,6 +445,52 @@ class ProductFormRequest extends FormRequest
             'robots_index' => $this->boolean('robots_index'),
             'robots_follow' => $this->boolean('robots_follow'),
         ]);
+    }
+
+    private function extractSkuFromSpecificationText(mixed $value): ?string
+    {
+        $text = (string) $value;
+        if (trim($text) === '') {
+            return null;
+        }
+
+        if (str_contains($text, '<')) {
+            $text = preg_replace('/<\/(tr|p|div|li)>/i', "\n", $text) ?? $text;
+            $text = preg_replace('/<\/(td|th)>/i', "\t", $text) ?? $text;
+            $text = html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+
+        $text = str_replace("\xc2\xa0", ' ', $text);
+        $knownNextLabels = ['Product Type', 'Fabric', 'Fit', 'Customization', 'Customisation', 'Size Range', 'MOQ', 'Minimum Order', 'Lead Time', 'Production Time'];
+        $nextLabelPattern = collect($knownNextLabels)->map(fn ($label) => preg_quote($label, '/'))->implode('|');
+
+        foreach (preg_split('/\r\n|\r|\n/', $text) ?: [] as $line) {
+            $line = trim(preg_replace('/[ \t]+/', ' ', (string) $line) ?? '');
+            if ($line === '') {
+                continue;
+            }
+
+            if (preg_match('/^SKU\s*[:\t]\s*(.+)$/i', $line, $matches) === 1
+                || preg_match('/^SKU\s+(.+)$/i', $line, $matches) === 1) {
+                return $this->cleanSkuValue($matches[1], $nextLabelPattern);
+            }
+        }
+
+        $flatText = trim(preg_replace('/[ \t]+/', ' ', $text) ?? '');
+        if ($flatText !== '' && preg_match('/\bSKU\s*:\s*(.+?)(?=\b(?:'.$nextLabelPattern.')\s*:|$)/i', $flatText, $matches) === 1) {
+            return $this->cleanSkuValue($matches[1], $nextLabelPattern);
+        }
+
+        return null;
+    }
+
+    private function cleanSkuValue(string $value, string $nextLabelPattern): ?string
+    {
+        $sku = trim(preg_replace('/[ \t]+/', ' ', str_replace("\xc2\xa0", ' ', $value)) ?? '');
+        $sku = preg_replace('/\b(?:'.$nextLabelPattern.')\s*:.*$/i', '', $sku) ?? $sku;
+        $sku = trim($sku, " \t\n\r\0\x0B:-");
+
+        return $sku !== '' ? Str::limit($sku, 120, '') : null;
     }
 
     private function generateSku(string $name): string
@@ -848,14 +894,84 @@ class ProductFormRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'name.required' => 'Enter the product title.',
+            'name.max' => 'Keep the product title within 220 characters.',
+            'slug.required' => 'Enter the product title so the product link can be created.',
+            'slug.regex' => 'Use only lowercase letters, numbers, and hyphens in the product link.',
+            'slug.unique' => 'Another product already uses this product link. Change the title slightly or edit the link.',
+            'sku.required' => 'Add the SKU in the Product Specification table.',
+            'sku.unique' => 'This SKU is already used by another product. Update the SKU in the Product Specification table.',
+            'sku.max' => 'Keep the SKU within 120 characters.',
+            'status.required' => 'Choose whether this product should be draft, active, or archived.',
+            'status.in' => 'Choose a valid product status.',
+            'primary_category_id.required' => 'Choose the category where this product should appear.',
+            'primary_category_id.exists' => 'Choose a valid category from the category list.',
+            'base_price.required' => 'Enter the base price for this product.',
+            'base_price.numeric' => 'Enter the base price as a number.',
+            'base_price.min' => 'The base price cannot be negative.',
+            'minimum_quantity.required' => 'Enter the minimum order quantity.',
+            'minimum_quantity.integer' => 'Enter the minimum order quantity as a whole number.',
+            'minimum_quantity.min' => 'The minimum order quantity must be at least 1.',
+            'maximum_quantity.gte' => 'The maximum quantity must be greater than or equal to the minimum quantity.',
+            'product_specification_text.max' => 'The product specification section is too long. Please shorten it.',
+            'description_html.max' => 'The product description is too long. Please shorten it.',
+            'customization_artwork_html.max' => 'The customization and artwork guideline section is too long. Please shorten it.',
+            'price_table_headers.required' => 'Add at least one visible price-table column after Quantity.',
+            'price_table_headers.min' => 'Add at least one visible price-table column after Quantity.',
+            'price_table_headers.0.in' => 'The first storefront price-table column must stay as Quantity.',
+            'price_table_headers.*.required' => 'Every price-table column needs a heading.',
+            'price_table_rows.required' => 'Add at least one price row.',
+            'price_table_rows.min' => 'Add at least one price row.',
+            'price_table_ranges.required' => 'Add the quantity range for each price row.',
+            'price_table_ranges.*.minimum_quantity.required' => 'Enter the starting quantity for this price row.',
+            'price_table_ranges.*.minimum_quantity.integer' => 'Enter the starting quantity as a whole number.',
+            'price_table_ranges.*.minimum_quantity.min' => 'The starting quantity must be at least 1.',
+            'price_table_ranges.*.maximum_quantity.gte' => 'The ending quantity must be greater than or equal to the starting quantity.',
+            'price_table_highlight_column.required' => 'Choose the price column used for live product calculations.',
+            'price_table_highlight_column.integer' => 'Choose a valid price column for live product calculations.',
+            'price_tiers.*.unit_price.required_with' => 'Enter a valid unit price in the highlighted price column for every quantity row.',
             'option_groups.*.code.regex' => 'This customization feature has an invalid internal identifier. Refresh the page and try saving again.',
             'option_groups.*.code.distinct' => 'The same customization feature cannot be added more than once.',
             'option_groups.*.values.*.color_hex.regex' => 'Enter a valid HEX color such as #15345D or 15345D.',
             'option_groups.*.values.*.image_file.image' => 'Each option image must be a valid image file.',
             'option_groups.*.values.*.image_file.mimes' => 'Option images must be JPG, PNG, WebP, or AVIF files.',
             'option_groups.*.values.*.image_file.max' => 'Each option image must not exceed 5 MB.',
-            'price_table_headers.0.in' => 'The first storefront price-table column must remain Quantity.',
-            'price_tiers.*.unit_price.required_with' => 'Enter a valid unit price in the highlighted price column for every quantity row.',
+            'images.*.image' => 'Each uploaded product image must be a valid image file.',
+            'images.*.mimes' => 'Product images must be JPG, PNG, WebP, or AVIF files.',
+            'images.*.max' => 'Each uploaded product image must not exceed 5 MB.',
+            'image_urls.*.url.url' => 'Enter a valid product image URL.',
+            'artwork_upload_accepted_types.regex' => 'Enter file extensions only, separated by commas, for example: pdf, ai, png, jpg.',
+            'shipping_methods.*.maximum_days.gte' => 'The shipping maximum days must be greater than or equal to the minimum days.',
+            'production_speeds.*.maximum_quantity.gte' => 'The production quantity maximum must be greater than or equal to the minimum quantity.',
+            'production_speeds.*.maximum_days.gte' => 'The production maximum days must be greater than or equal to the minimum days.',
+            'schema_json_text.json' => 'Enter valid JSON-LD schema or leave this field blank.',
+        ];
+    }
+
+    public function attributes(): array
+    {
+        return [
+            'name' => 'product title',
+            'slug' => 'product link',
+            'sku' => 'SKU',
+            'status' => 'product status',
+            'primary_category_id' => 'category',
+            'short_description' => 'short product summary',
+            'product_specification_text' => 'product specification',
+            'description_html' => 'product description',
+            'customization_artwork_html' => 'customization and artwork guideline',
+            'base_price' => 'base price',
+            'minimum_quantity' => 'minimum order quantity',
+            'maximum_quantity' => 'maximum quantity',
+            'price_table_headers.*' => 'price-table column heading',
+            'price_table_ranges.*.minimum_quantity' => 'price row starting quantity',
+            'price_table_ranges.*.maximum_quantity' => 'price row ending quantity',
+            'price_table_highlight_column' => 'live price column',
+            'images.*' => 'product image',
+            'image_urls.*.url' => 'product image URL',
+            'option_groups.*.values.*.jersey_customization_option_id' => 'customization item',
+            'faqs.*.question' => 'FAQ question',
+            'faqs.*.answer' => 'FAQ answer',
         ];
     }
 }

@@ -276,6 +276,7 @@ class ProductController extends Controller
         $payload['subcategory_id'] = $primaryCategory?->parent_id ? $primaryCategory->id : null;
 
         $payload['description_html'] = $this->safeHtml->sanitize($data['description_html'] ?? null);
+        $payload['customization_artwork_html'] = $this->safeHtml->sanitize($data['customization_artwork_html'] ?? null);
         $payload['detail_information_html'] = null;
 
         // The storefront-aligned editor intentionally omits legacy fields that are

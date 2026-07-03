@@ -338,11 +338,14 @@
                 <div class="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[24px] bg-white shadow-2xl">
                     <div class="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-5 py-4"><div><p class="text-[10px] font-black uppercase tracking-[.14em] text-brand-red">Administrator provided</p><h3 class="text-xl font-black text-brand-ink" x-text="chartGroup()?.chart?.title || 'Size Chart'"></h3></div><button type="button" class="grid h-10 w-10 place-items-center rounded-full border border-slate-300 text-xl font-black" @click="closeSizeChart()" aria-label="Close size chart">×</button></div>
                     @foreach($sizeGroupsWithCharts as $group)
+                        @php
+                            $hasStructuredSizeTable = ! empty(data_get($group, 'chart.columns')) && ! empty(data_get($group, 'chart.rows'));
+                        @endphp
                         <div x-show="activeChartGroup === @js($group['id'])" x-cloak class="p-5 sm:p-7">
                             @if(data_get($group, 'chart.note'))<p class="mb-5 rounded-xl bg-blue-50 p-4 text-sm leading-6 text-slate-600">{{ data_get($group, 'chart.note') }}</p>@endif
-                            @if(data_get($group, 'chart.html'))<div class="product-rich-content touch-scroll-x">{!! data_get($group, 'chart.html') !!}</div>@endif
+                            @if(data_get($group, 'chart.html') && ! $hasStructuredSizeTable)<div class="product-rich-content touch-scroll-x">{!! data_get($group, 'chart.html') !!}</div>@endif
                             @if(data_get($group, 'chart.image'))<img src="{{ data_get($group, 'chart.image') }}" alt="{{ data_get($group, 'chart.title', $group['label'].' size chart') }}" class="mb-6 max-h-[520px] w-full rounded-2xl border border-slate-200 object-contain" loading="lazy" decoding="async">@endif
-                            @if(!empty(data_get($group, 'chart.columns')) && !empty(data_get($group, 'chart.rows')))
+                            @if($hasStructuredSizeTable)
                                 <div class="touch-scroll-x rounded-2xl border border-slate-200" tabindex="0">
                                     <table class="w-full min-w-[620px] text-sm"><thead class="bg-brand-dark text-left text-xs font-black uppercase tracking-[.08em] text-white"><tr>@foreach(data_get($group, 'chart.columns', []) as $column)<th class="px-4 py-3">{{ $column }}</th>@endforeach</tr></thead><tbody class="divide-y divide-slate-100">@foreach(data_get($group, 'chart.rows', []) as $row)<tr class="odd:bg-slate-50">@foreach($row as $cell)<td class="px-4 py-3 font-semibold text-slate-700">{{ $cell }}</td>@endforeach</tr>@endforeach</tbody></table>
                                 </div>

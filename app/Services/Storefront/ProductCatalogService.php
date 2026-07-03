@@ -163,15 +163,23 @@ class ProductCatalogService
             $gallery[] = ['url' => asset('images/product-placeholder.svg'), 'alt' => $product->name];
         }
 
-        $primaryCategory = $product->relationLoaded('categories')
+        $primaryCategory = $product->category ?: $product->subcategory;
+        $primaryCategory ??= $product->relationLoaded('categories')
             ? ($product->categories->firstWhere('pivot.is_primary', true) ?? $product->categories->first())
             : null;
-        $primaryCategory ??= $product->subcategory ?: $product->category;
+
+        $visibleCategories = collect([$primaryCategory, $product->subcategory])
+            ->filter()
+            ->unique(fn ($category) => $category->id)
+            ->values();
 
         $firstTier = $product->relationLoaded('priceTiers')
             ? $product->priceTiers->sortBy('minimum_quantity')->first()
             : null;
         $unitPrice = $firstTier?->unit_price ?? $product->base_price;
+
+        $detailInformation = $this->normalizeDetailInformation($product->specifications ?? []);
+        $specificationSku = trim((string) ($detailInformation['SKU'] ?? ''));
 
         return [
             'id' => $product->id,
@@ -192,14 +200,14 @@ class ProductCatalogService
             'category_slug' => $primaryCategory?->slug,
             'subcategory' => $product->subcategory?->name,
             'subcategory_slug' => $product->subcategory?->slug,
-            'categories' => $product->relationLoaded('categories') ? $product->categories->map(fn ($category) => [
+            'categories' => $visibleCategories->map(fn ($category) => [
                 'id' => $category->id,
                 'name' => $category->name,
                 'slug' => $category->slug,
-                'primary' => (bool) ($category->pivot->is_primary ?? false),
-            ])->values()->all() : [],
+                'primary' => (int) $category->id === (int) ($primaryCategory?->id),
+            ])->values()->all(),
             'attributes' => [],
-            'sku' => $product->sku,
+            'sku' => $specificationSku !== '' ? $specificationSku : $product->sku,
             'rating' => 0,
             'reviews_count' => 0,
             'image' => $gallery[0]['url'],
@@ -301,10 +309,18 @@ class ProductCatalogService
             return $row;
         })->values()->all();
 
-        $primaryCategory = $product->relationLoaded('categories')
+        $primaryCategory = $product->category ?: $product->subcategory;
+        $primaryCategory ??= $product->relationLoaded('categories')
             ? ($product->categories->firstWhere('pivot.is_primary', true) ?? $product->categories->first())
             : null;
-        $primaryCategory ??= $product->subcategory ?: $product->category;
+
+        $visibleCategories = collect([$primaryCategory, $product->subcategory])
+            ->filter()
+            ->unique(fn ($category) => $category->id)
+            ->values();
+
+        $detailInformation = $this->normalizeDetailInformation($product->specifications ?? []);
+        $specificationSku = trim((string) ($detailInformation['SKU'] ?? ''));
 
         return [
             'id' => $product->id,
@@ -315,6 +331,7 @@ class ProductCatalogService
             'description' => strip_tags((string) $product->description_html),
             'description_html' => $product->description_html,
             'detail_information_html' => $product->detail_information_html,
+            'customization_artwork_html' => $product->customization_artwork_html,
             'price' => 'From $'.number_format((float) $priceTiers[0]['unit'], 2),
             'base_price' => (float) $product->base_price,
             'compare_at_price' => $product->compare_at_price ? (float) $product->compare_at_price : null,
@@ -328,9 +345,9 @@ class ProductCatalogService
             'category_slug' => $primaryCategory?->slug,
             'subcategory' => $product->subcategory?->name,
             'subcategory_slug' => $product->subcategory?->slug,
-            'categories' => $product->relationLoaded('categories') ? $product->categories->map(fn ($category) => ['id' => $category->id, 'name' => $category->name, 'slug' => $category->slug, 'primary' => (bool) $category->pivot->is_primary])->values()->all() : [],
+            'categories' => $visibleCategories->map(fn ($category) => ['id' => $category->id, 'name' => $category->name, 'slug' => $category->slug, 'primary' => (int) $category->id === (int) ($primaryCategory?->id)])->values()->all(),
             'attributes' => $product->relationLoaded('attributeValues') ? $product->attributeValues->groupBy('attribute.slug')->map(fn ($values) => $values->pluck('label')->values()->all())->all() : [],
-            'sku' => $product->sku,
+            'sku' => $specificationSku !== '' ? $specificationSku : $product->sku,
             'rating' => 0,
             'reviews_count' => 0,
             'image' => $gallery[0]['url'],
@@ -338,8 +355,8 @@ class ProductCatalogService
             'gallery' => $gallery,
             'tags' => $product->tags ?? [],
             'features' => $product->features ?? [],
-            'detail_information' => $this->normalizeDetailInformation($product->specifications ?? []),
-            'details' => $this->normalizeDetailInformation($product->specifications ?? []),
+            'detail_information' => $detailInformation,
+            'details' => $detailInformation,
             'brand' => $product->brand ?: config('storefront.name'),
             'product_type' => $product->product_type,
             'product_profile' => $product->product_profile ?: 'standard',
@@ -567,6 +584,7 @@ class ProductCatalogService
         $product['minimum_quantity'] = $product['minimum_quantity'] ?? 1;
         $product['maximum_quantity'] = $product['maximum_quantity'] ?? null;
         $product['description_html'] = $product['description_html'] ?? '<p>'.e($product['description']).'</p>';
+        $product['customization_artwork_html'] = $product['customization_artwork_html'] ?? '';
         $product['option_groups'] = $product['option_groups'] ?? [];
         $product['size_groups'] = $product['size_groups'] ?? collect($product['size_quantity_groups'])->map(fn ($group) => [
             'id' => $group['key'],

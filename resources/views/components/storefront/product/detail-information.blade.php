@@ -16,7 +16,27 @@
     }
 
     $tags = collect($product['tags'] ?? [])->filter()->values();
-    $categories = collect($product['categories'] ?? [])->filter(fn ($category) => filled($category['name'] ?? null));
+    $categories = collect([
+        [
+            'name' => $product['category'] ?? null,
+            'slug' => $product['category_slug'] ?? null,
+        ],
+        [
+            'name' => $product['subcategory'] ?? null,
+            'slug' => $product['subcategory_slug'] ?? null,
+        ],
+    ])->filter(fn ($category) => filled($category['name'] ?? null))
+        ->unique(fn ($category) => ($category['slug'] ?? null) ?: ($category['name'] ?? null))
+        ->values();
+
+    if ($categories->isEmpty()) {
+        $fallbackCategory = collect($product['categories'] ?? [])
+            ->filter(fn ($category) => filled($category['name'] ?? null))
+            ->sortByDesc(fn ($category) => (bool) ($category['primary'] ?? false))
+            ->first();
+
+        $categories = $fallbackCategory ? collect([$fallbackCategory]) : collect();
+    }
 @endphp
 
 <div class="np-detail-information mt-6">
@@ -57,12 +77,8 @@
                         <span class="font-medium text-blue-800">{{ $category['name'] }}</span>
                     @endif
                 @endforeach
-            @elseif(filled($product['category'] ?? null) && filled($product['category_slug'] ?? null))
-                <a href="{{ route('categories.show', $product['category_slug']) }}" class="font-medium text-blue-800 hover:text-brand-red hover:underline">
-                    {{ $product['category'] }}
-                </a>
             @else
-                <span>{{ $product['category'] ?? 'Custom Sportswear' }}</span>
+                <span>Custom Sportswear</span>
             @endif
         </div>
 

@@ -76,7 +76,7 @@
         }
     }
     $productSpecificationAutoValues = [
-        'SKU' => old('sku', $product->sku),
+        'SKU' => old('sku', $storedSpecificationRows->get('SKU') ?: $product->sku),
         'Product Type' => old('product_type', $product->product_type),
         'Fabric' => $specificationOptionSummary('fabric'),
         'Fit' => collect([$specificationOptionSummary('jersey_style'), $specificationOptionSummary('sleeves_and_cuffs')])->filter()->implode(', '),
@@ -355,12 +355,31 @@
         'faqs' => $faqValues,
     ];
     $currentProductStatus = old('status', $product->status ?: 'draft');
+    $validationErrorMessages = collect($errors->getMessages())->map(fn ($messages) => $messages[0] ?? 'Please review this field.')->all();
+    $validationFieldAliases = [
+        'sku' => 'product_specification_text',
+        'slug' => 'name',
+        'category_id' => 'primary_category_id',
+        'subcategory_id' => 'primary_category_id',
+    ];
 @endphp
 
 
-<form method="POST" enctype="multipart/form-data" action="{{ $isEdit ? route('admin.products.update', $product) : route('admin.products.store') }}" class="np-product-form" x-data="adminProductForm(@js($initial))" x-init="init()" @input.debounce.300ms="handleProgressChange(false)" @change.debounce.300ms="handleProgressChange(false)" @admin-rich-editor-updated.window="if ($event.detail.name === 'description_html') { descriptionHtml = $event.detail.value; handleProgressChange(false); }">
+<form method="POST" enctype="multipart/form-data" action="{{ $isEdit ? route('admin.products.update', $product) : route('admin.products.store') }}" class="np-product-form" data-validation-errors='@json($validationErrorMessages)' data-validation-field-aliases='@json($validationFieldAliases)' x-data="adminProductForm(@js($initial))" x-init="init()" @input.debounce.300ms="handleProgressChange(false)" @change.debounce.300ms="handleProgressChange(false)" @admin-rich-editor-updated.window="if ($event.detail.name === 'description_html') { descriptionHtml = $event.detail.value; } handleProgressChange(false);">
     @csrf
     @if($isEdit) @method('PUT') @endif
+
+    @if($errors->any())
+        <div class="np-form-error-summary" role="alert" aria-live="polite">
+            <strong>Some product information needs your attention.</strong>
+            <p>Please fix the highlighted field below. The page will move to the first field that needs correction.</p>
+            <ul>
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
 
     <input type="hidden" name="slug" x-model="slug">
     <input type="hidden" name="currency" value="{{ old('currency', $product->currency ?: 'USD') }}">
@@ -406,7 +425,7 @@
                         <textarea class="admin-textarea np-textarea-sm" name="short_description" maxlength="1500" x-model="shortDescription" placeholder="Describe your product in a few words..."></textarea>
                     </label>
 
-                    <div class="np-product-spec-card rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm" x-data="productSpecificationEditor(@js($productSpecificationText), @js($productSpecificationAutoValues))" x-init="init()">
+                    <div class="np-product-spec-card rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm" data-field-name="product_specification_text" x-data="productSpecificationEditor(@js($productSpecificationText), @js($productSpecificationAutoValues))" x-init="init()">
                         <div class="mb-4 flex items-center justify-between gap-3">
                             <label class="admin-label mb-0 text-base">Product Specification</label>
                             <button type="button" class="np-link-button" @click="resetTemplate()">Reset template</button>
@@ -426,7 +445,7 @@
                                     <button type="button" class="admin-editor-button" @click="createLink()">Link</button>
                                     <button type="button" class="admin-editor-button" @click="clearFormat()">Clear</button>
                                 </div>
-                                <div x-ref="editor" contenteditable="true" @input="sync()" @paste="handlePaste($event)" class="admin-rich-editor np-product-spec-editor min-h-[260px] flex-1 whitespace-pre-wrap p-4 text-[13px] leading-6 text-slate-700" role="textbox" aria-multiline="true" data-placeholder="SKU:
+                                <div x-ref="editor" contenteditable="true" @input="sync()" @paste="handlePaste($event)" class="admin-rich-editor np-product-spec-editor min-h-[260px] flex-1 whitespace-pre-wrap p-4 text-[13px] leading-6 text-slate-700" role="textbox" aria-multiline="true" data-field-name="product_specification_text" data-placeholder="SKU:
 Product Type:
 Fabric:
 Fit:
@@ -467,7 +486,7 @@ Lead Time:"></div>
                     </div>
 
                     <div class="grid gap-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)]">
-                        <div class="admin-label np-category-field" @click.outside="closeCategoryDropdown()">
+                        <div class="admin-label np-category-field" data-field-name="primary_category_id" @click.outside="closeCategoryDropdown()">
                             <span>Category <span class="text-brand-red">*</span></span>
                             <input type="hidden" name="primary_category_id" x-model="categoryId" required>
                             <button type="button" class="np-searchable-trigger" :class="categoryDropdownOpen ? 'is-open' : ''" @click="toggleCategoryDropdown()" @keydown.enter.prevent="toggleCategoryDropdown()" @keydown.space.prevent="toggleCategoryDropdown()">
@@ -670,7 +689,18 @@ Lead Time:"></div>
 
             <section id="fulfillment" class="np-card"><header class="np-card__header"><div><h2>5. Production &amp; Shipping</h2><p>Set production times and available shipping methods.</p></div></header><div class="grid gap-4 lg:grid-cols-2"><details class="np-config-panel" open><summary>Production options</summary><div class="mt-4 flex flex-wrap gap-2"><button type="button" class="np-secondary-button" @click="addProductionHeader()" :disabled="productionHeaders.length >= 12">＋ Add production option</button><button type="button" class="np-secondary-button" @click="addProductionRow()" :disabled="productionRows.length >= 100">＋ Add range</button></div><div class="np-table-wrap mt-4"><table class="np-simple-table"><thead><tr><th>Quantity range</th><template x-for="(header,columnIndex) in productionHeaders" :key="columnIndex"><th><input class="np-table-input font-black" :name="`production_table_headers[${columnIndex}]`" x-model="productionHeaders[columnIndex]" maxlength="160" placeholder="Standard Production"><button type="button" class="mt-2 text-xs font-black text-red-700" @click="removeProductionHeader(columnIndex)" x-show="productionHeaders.length > 1">Remove column</button></th></template><th>Action</th></tr></thead><tbody><template x-for="(row,rowIndex) in productionRows" :key="row.client_key || rowIndex"><tr><td><input class="np-table-input font-black" :name="`production_table_rows[${rowIndex}][range]`" x-model="row.range" maxlength="50" placeholder="1-40" required></td><template x-for="(cell,columnIndex) in row.cells" :key="columnIndex"><td><input type="hidden" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][enabled]`" :value="cell.enabled ? 1 : 0"><label class="flex items-center gap-2 text-xs font-black text-slate-700"><input type="checkbox" x-model="cell.enabled"> Offer</label><div class="mt-2 space-y-2" :class="!cell.enabled && 'pointer-events-none opacity-45'"><input class="np-table-input" type="number" min="0" step="0.01" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][price_adjustment]`" x-model.number="cell.price_adjustment" placeholder="Charge"><input class="np-table-input" type="text" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][production_time]`" x-model="cell.production_time" maxlength="60" placeholder="5-15 days"><textarea class="admin-textarea !mt-0 min-h-[70px]" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][description]`" x-model="cell.description" maxlength="2000" placeholder="Description"></textarea></div></td></template><td><button type="button" class="np-icon-button" @click="removeProductionRow(rowIndex)">⌫</button></td></tr></template></tbody></table></div></details><details class="np-config-panel" open><summary>Shipping methods</summary><div class="mt-4 flex flex-wrap items-center gap-3"><label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold"><input type="hidden" name="shipping_methods_enabled" :value="shippingMethodsEnabled ? 1 : 0"><input type="checkbox" x-model="shippingMethodsEnabled"> Show shipping methods</label><button type="button" class="np-secondary-button" @click="addShippingMethod()">＋ Add shipping method</button></div><div x-show="shippingMethodsEnabled" class="mt-4 space-y-3"><template x-for="(method,index) in shippingMethods" :key="index"><article class="np-nested-card"><input type="hidden" :name="`shipping_methods[${index}][code]`" x-model="method.code"><input type="hidden" :name="`shipping_methods[${index}][is_active]`" value="1"><div class="grid gap-3 md:grid-cols-2"><label class="admin-label">Name<input class="admin-input" :name="`shipping_methods[${index}][name]`" x-model="method.name" @blur="if(!method.code) method.code = method.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')"></label><label class="admin-label">Charge<input class="admin-input" type="number" min="0" step="0.01" :name="`shipping_methods[${index}][price_adjustment]`" x-model="method.price_adjustment"></label><label class="admin-label">Charge basis<select class="admin-input" :name="`shipping_methods[${index}][charge_type]`" x-model="method.charge_type"><option value="included">Included</option><option value="per_unit">Per piece</option><option value="fixed_order">Fixed per order</option></select></label><label class="admin-label">Days<input class="admin-input" type="number" min="0" :name="`shipping_methods[${index}][minimum_days]`" x-model="method.minimum_days"></label><input type="hidden" :name="`shipping_methods[${index}][maximum_days]`" x-model="method.maximum_days"><label class="admin-label md:col-span-2">Description<input class="admin-input" :name="`shipping_methods[${index}][description]`" x-model="method.description"></label></div><div class="mt-3 flex justify-between"><input type="hidden" :name="`shipping_methods[${index}][is_default]`" :value="method.is_default ? 1 : 0"><button type="button" class="np-link-button" @click="setDefaultShipping(index)" x-text="method.is_default ? 'Default customer choice' : 'Make default'"></button><button type="button" class="np-danger-link" @click="shippingMethods.splice(index,1)">Remove</button></div></article></template><div x-show="shippingMethods.length === 0" class="rounded-2xl border-2 border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">Shipping methods are enabled but no method has been added.</div></div></details></div></section>
 
-            <section id="description" class="np-card"><header class="np-card__header"><div><h2>6. Product Detail</h2><p>Write a detailed description for this product.</p></div></header><x-admin.rich-editor name="description_html" :value="$product->description_html" label="Detailed product description" /></section>
+            <section id="description" class="np-card">
+                <header class="np-card__header">
+                    <div>
+                        <h2>6. Product Detail</h2>
+                        <p>Write the product description and the combined customization / artwork guidance shown in the product tabs.</p>
+                    </div>
+                </header>
+                <div class="grid gap-6">
+                    <x-admin.rich-editor name="description_html" :value="$product->description_html" label="Detailed product description" />
+                    <x-admin.rich-editor name="customization_artwork_html" :value="$product->customization_artwork_html" label="Customization options & artwork / design guidelines" />
+                </div>
+            </section>
 
             <section id="faq" class="np-card"><header class="np-card__header"><div><h2>7. FAQ</h2><p>Add frequently asked questions and their answers.</p></div><button type="button" class="np-secondary-button" @click="addFaq()">＋ Add FAQ</button></header><div class="space-y-3"><template x-for="(faq,index) in faqs" :key="index"><div class="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2"><input type="hidden" :name="`faqs[${index}][is_active]`" value="1"><label class="admin-label">Question<input class="admin-input" :name="`faqs[${index}][question]`" x-model="faq.question" placeholder="e.g., What is the minimum order quantity?"></label><label class="admin-label">Answer<textarea class="admin-textarea np-textarea-sm" :name="`faqs[${index}][answer]`" x-model="faq.answer" placeholder="e.g., The minimum order quantity is 12 items"></textarea></label><div class="md:col-span-2 text-right"><button type="button" class="np-danger-link" @click="faqs.splice(index,1)">Remove FAQ</button></div></div></template></div></section>
         </section>
@@ -999,4 +1029,92 @@ Lead Time:"></div>
             </div>
         </div>
 
+    @if($errors->any())
+        <script>
+            window.addEventListener('load', function () {
+                const form = document.querySelector('.np-product-form[data-validation-errors]');
+                if (!form) return;
+
+                const parseJson = (value, fallback) => {
+                    try { return JSON.parse(value || ''); } catch (error) { return fallback; }
+                };
+                const errors = parseJson(form.dataset.validationErrors, {});
+                const aliases = parseJson(form.dataset.validationFieldAliases, {});
+                const escapeSelector = (value) => {
+                    if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(value);
+                    return String(value).replace(/([ #;&,.+*~\':"!^$[\]()=>|/@])/g, '\\$1');
+                };
+                const bracketName = (key) => {
+                    const parts = String(key).split('.');
+                    return parts.shift() + parts.map((part) => `[${part}]`).join('');
+                };
+                const baseArrayName = (key) => {
+                    const parts = String(key).split('.');
+                    if (parts.length > 1 && /^\d+$/.test(parts[parts.length - 1])) {
+                        return parts.slice(0, -1).join('.') + '[]';
+                    }
+                    return null;
+                };
+                const fieldCandidates = (key) => {
+                    const alias = aliases[key] || key;
+                    const candidates = [alias, bracketName(alias)];
+                    const arrayName = baseArrayName(alias);
+                    if (arrayName) candidates.push(arrayName, bracketName(arrayName));
+                    if (alias.includes('.')) {
+                        const parent = alias.split('.').slice(0, -1).join('.');
+                        candidates.push(parent, bracketName(parent));
+                    }
+                    return [...new Set(candidates.filter(Boolean))];
+                };
+                const findField = (key) => {
+                    for (const name of fieldCandidates(key)) {
+                        const dataTarget = form.querySelector(`[data-field-name="${escapeSelector(name)}"]`);
+                        if (dataTarget) return dataTarget;
+                        const field = form.querySelector(`[name="${escapeSelector(name)}"]`);
+                        if (field) return field;
+                    }
+                    return null;
+                };
+                const visibleTarget = (field) => {
+                    if (!field) return null;
+                    if (field.matches('[data-field-name="product_specification_text"]')) {
+                        return field.closest('.np-product-spec-card')?.querySelector('[contenteditable="true"]') || field;
+                    }
+                    if (field.type === 'hidden') {
+                        return field.closest('[data-field-name]')?.querySelector('button, [contenteditable="true"], input:not([type="hidden"]), textarea:not([hidden]), select')
+                            || field.closest('[data-field-name]')
+                            || field;
+                    }
+                    return field;
+                };
+                const addMessage = (field, message) => {
+                    const holder = field.closest('.admin-label, .np-product-spec-card, .np-category-field, .np-nested-card, .np-config-panel, td, th') || field.parentElement;
+                    if (!holder || holder.querySelector(':scope > .np-field-error-message')) return;
+                    const note = document.createElement('p');
+                    note.className = 'np-field-error-message';
+                    note.textContent = message || 'Please review this field.';
+                    holder.appendChild(note);
+                };
+
+                let first = null;
+                Object.entries(errors).forEach(([key, messages]) => {
+                    const field = findField(key);
+                    const target = visibleTarget(field);
+                    if (!target) return;
+
+                    target.classList.add('np-field-invalid');
+                    target.setAttribute('aria-invalid', 'true');
+                    if (!first) first = target;
+                    addMessage(target, Array.isArray(messages) ? messages[0] : messages);
+                });
+
+                if (first) {
+                    setTimeout(function () {
+                        first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        if (typeof first.focus === 'function') first.focus({ preventScroll: true });
+                    }, 260);
+                }
+            });
+        </script>
+    @endif
 </form>

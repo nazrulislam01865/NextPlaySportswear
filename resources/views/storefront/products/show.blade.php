@@ -154,6 +154,13 @@
                             </p>
                         @endif
 
+                        @if(filled($product['sku'] ?? null))
+                            <div class="mt-5 inline-flex max-w-full items-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-black uppercase tracking-[.18em] text-slate-400 sm:px-5">
+                                <span>SKU</span>
+                                <strong class="break-all font-black tracking-[.18em] text-slate-900">{{ $product['sku'] }}</strong>
+                            </div>
+                        @endif
+
                         <x-storefront.product.detail-information :product="$product" />
                     </article>
                 </div>
