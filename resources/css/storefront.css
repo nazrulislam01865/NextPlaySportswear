@@ -2517,3 +2517,37 @@ img.np-product-square-image {
         min-height: auto !important;
     }
 }
+
+/* NEXTPLAY_WHOLE_SYSTEM_MINIMAL_TYPE_SCALE
+   Keeps the whole system visually lighter/minimal even when older Blade files
+   still contain font-black/font-extrabold/font-bold Tailwind classes. */
+body .font-black,
+body .font-extrabold {
+    font-weight: 650 !important;
+}
+
+body .font-bold {
+    font-weight: 600 !important;
+}
+
+body .font-semibold {
+    font-weight: 500 !important;
+}
+
+body :where(h1, h2, h3, h4, h5, h6) {
+    font-weight: 650 !important;
+    letter-spacing: -0.015em;
+}
+
+body :where(strong, b, th, label, legend, summary) {
+    font-weight: 600 !important;
+}
+
+body :where(.btn, button, .badge, .status-badge, .admin-badge, .nav-link, .sidebar-link) {
+    font-weight: 600 !important;
+}
+
+body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
+    letter-spacing: -0.025em;
+}
+
