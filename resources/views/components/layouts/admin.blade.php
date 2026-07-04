@@ -11,23 +11,32 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/admin.css', 'resources/js/admin.js'])
+    @php
+        $adminPusherEnabled = filled(config('services.pusher.key'))
+            && filled(config('services.pusher.secret'))
+            && filled(config('services.pusher.app_id'))
+            && filled(config('services.pusher.cluster'));
+        $adminNotificationsJsVersion = file_exists(public_path('js/admin-notifications.js'))
+            ? filemtime(public_path('js/admin-notifications.js'))
+            : time();
+    @endphp
 </head>
 <body
-    class="bg-slate-100 text-slate-900"
+    class="admin-clean-ui bg-slate-100 text-slate-900"
     x-data="{ sidebarOpen: false }"
     x-effect="document.documentElement.classList.toggle('overflow-hidden', sidebarOpen)"
     @keydown.escape.window="sidebarOpen = false"
 >
-    <div class="min-h-screen lg:grid lg:grid-cols-[276px_minmax(0,1fr)] lg:items-start">
+    <div class="min-h-screen lg:grid lg:grid-cols-[256px_minmax(0,1fr)] lg:items-start">
         <div x-cloak x-show="sidebarOpen" x-transition.opacity class="fixed inset-0 z-40 bg-slate-950/60 lg:hidden" @click="sidebarOpen = false" aria-hidden="true"></div>
 
         <aside
             id="admin-sidebar"
-            class="fixed inset-y-0 left-0 z-50 flex h-screen max-h-screen w-[min(86vw,276px)] -translate-x-full flex-col overflow-hidden bg-brand-dark text-white shadow-2xl transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:w-[276px] lg:translate-x-0 lg:self-start lg:shadow-none"
+            class="fixed inset-y-0 left-0 z-50 flex h-screen max-h-screen w-[min(86vw,256px)] -translate-x-full flex-col overflow-hidden bg-brand-dark text-white shadow-2xl transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:w-[256px] lg:translate-x-0 lg:self-start lg:shadow-none"
             :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
             aria-label="Admin navigation"
         >
-            <div class="flex h-20 shrink-0 items-center justify-between border-b border-white/10 px-5">
+            <div class="flex h-[72px] shrink-0 items-center justify-between border-b border-white/10 px-4">
                 <a href="{{ route('admin.dashboard') }}" class="flex min-w-0 items-center gap-3 font-black" @click="sidebarOpen = false">
                     <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl border-2 border-brand-red text-brand-red">✓</span>
                     <span class="min-w-0"><span class="block truncate text-lg">NextPlay</span><span class="block truncate text-[10px] uppercase tracking-[.25em] text-slate-400">Commerce Admin</span></span>
@@ -35,7 +44,7 @@
                 <button type="button" class="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-2xl text-slate-300 hover:bg-white/10 lg:hidden" @click="sidebarOpen = false" aria-label="Close sidebar">×</button>
             </div>
 
-            <nav data-admin-sidebar-nav class="admin-sidebar-nav min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-5 text-sm" @click="if ($event.target.closest('a')) sidebarOpen = false">
+            <nav data-admin-sidebar-nav class="admin-sidebar-nav min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 text-sm" @click="if ($event.target.closest('a')) sidebarOpen = false">
                 @php
                     $adminUser = auth('admin')->user();
                     $canAdmin = static fn (string $permission): bool => (bool) ($adminUser?->canAdmin($permission) ?? false);
@@ -197,7 +206,7 @@
                 @endif
             </nav>
 
-            <div class="shrink-0 border-t border-white/10 p-4">
+            <div class="shrink-0 border-t border-white/10 p-3">
                 <p class="mb-3 px-1 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Manage Store</p>
                 <a href="{{ route('home') }}" target="_blank" rel="noopener" class="mb-3 block rounded-xl border border-white/15 bg-white/5 p-3 transition hover:bg-white/10">
                     <p class="truncate text-sm font-black text-white">NextPlay Athletic Store</p>
@@ -212,9 +221,9 @@
 
         <div class="min-w-0">
             <header @class([
-                'sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-slate-200 bg-white/95 px-4 py-5 backdrop-blur sm:px-7 lg:px-10',
-                'min-h-[92px] lg:min-h-[112px]' => $compactHeader,
-                'min-h-[104px] lg:min-h-[126px]' => ! $compactHeader,
+                'sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-slate-200 bg-white/95 px-4 py-4 backdrop-blur sm:px-6 lg:px-8',
+                'min-h-[82px] lg:min-h-[92px]' => $compactHeader,
+                'min-h-[90px] lg:min-h-[104px]' => ! $compactHeader,
             ])>
                 <div class="flex min-w-0 items-center gap-4">
                     <button type="button" class="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-slate-200 text-xl lg:hidden" @click="sidebarOpen = true" aria-label="Open sidebar" aria-controls="admin-sidebar">☰</button>
@@ -222,18 +231,23 @@
                         <p class="text-[11px] font-black uppercase tracking-[.28em] text-brand-red">{{ $eyebrow ?? 'Administration' }}</p>
                         <h1 @class([
                             'truncate font-black leading-tight text-brand-ink',
-                            'text-2xl sm:text-3xl lg:text-[32px]' => $compactHeader,
-                            'text-2xl sm:text-4xl lg:text-[40px]' => ! $compactHeader,
+                            'text-xl sm:text-2xl lg:text-[28px]' => $compactHeader,
+                            'text-2xl sm:text-3xl lg:text-[34px]' => ! $compactHeader,
                         ])>{{ $title }}</h1>
                         @if($subtitle)
-                            <p class="mt-1 max-w-2xl truncate text-sm font-semibold text-slate-500 sm:text-base">{{ $subtitle }}</p>
+                            <p class="mt-1 max-w-2xl truncate text-sm font-medium text-slate-500">{{ $subtitle }}</p>
                         @endif
                     </div>
                 </div>
-                <a href="{{ $storefrontUrl ?: route('home') }}" target="_blank" rel="noopener" class="inline-flex min-h-11 shrink-0 items-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-extrabold text-brand-blue shadow-sm transition hover:bg-slate-50 sm:min-h-12 sm:px-5"><span class="hidden sm:inline">View storefront&nbsp;</span>↗</a>
+                <div class="flex shrink-0 items-center gap-2 sm:gap-3">
+                    @auth('admin')
+                        <x-admin.notification-bell />
+                    @endauth
+                    <a href="{{ $storefrontUrl ?: route('home') }}" target="_blank" rel="noopener" class="inline-flex min-h-10 shrink-0 items-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-brand-blue shadow-sm transition hover:bg-slate-50 sm:min-h-11"><span class="hidden sm:inline">View storefront&nbsp;</span>↗</a>
+                </div>
             </header>
 
-            <main class="min-w-0 p-4 sm:p-7 lg:p-10">
+            <main class="min-w-0 p-4 sm:p-6 lg:p-8">
                 @if (session('status'))
                     <div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
                 @endif
@@ -249,5 +263,25 @@
             </main>
         </div>
     </div>
+    @auth('admin')
+        <div class="admin-toast" id="adminToast" aria-live="polite"></div>
+        <script>
+            window.NEXTPLAY_ADMIN_NOTIFICATIONS = {
+                userId: {{ (int) auth('admin')->id() }},
+                feedUrl: @json(route('admin.notifications.feed')),
+                readAllUrl: @json(route('admin.notifications.read-all')),
+                readUrlTemplate: @json(route('admin.notifications.read', ['notification' => '__ID__'])),
+                pusherAuthUrl: @json(route('admin.notifications.pusher-auth')),
+                pusherEnabled: @json($adminPusherEnabled),
+                pusherKey: @json(config('services.pusher.key')),
+                pusherCluster: @json(config('services.pusher.cluster')),
+                pollIntervalMs: 60000
+            };
+        </script>
+        @if($adminPusherEnabled)
+            <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
+        @endif
+        <script src="{{ asset('js/admin-notifications.js') }}?v={{ $adminNotificationsJsVersion }}"></script>
+    @endauth
 </body>
 </html>

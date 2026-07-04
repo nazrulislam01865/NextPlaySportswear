@@ -52,23 +52,23 @@
             || (bool) ($filters['featured'] ?? false);
     @endphp
 
-    <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5" data-product-stats data-product-stats-url="{{ route('admin.products.stats') }}">
+    <div class="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5" data-product-stats data-product-stats-url="{{ route('admin.products.stats') }}">
         @foreach($statCards as $card)
-            <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
+            <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
                 <div class="flex items-center gap-4">
-                    <span class="grid h-12 w-12 shrink-0 place-items-center rounded-full text-xl font-black {{ $card['iconClass'] }}">{{ $card['icon'] }}</span>
+                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full text-lg font-bold {{ $card['iconClass'] }}">{{ $card['icon'] }}</span>
                     <div class="min-w-0">
-                        <p class="truncate text-sm font-black text-slate-700">{{ $card['label'] }}</p>
-                        <p class="mt-1 text-3xl font-black leading-none text-brand-ink" data-product-stat-value="{{ $card['key'] }}" aria-live="polite">{{ number_format((int) $card['value']) }}</p>
-                        <p class="mt-2 truncate text-xs font-semibold text-slate-400">{{ $card['note'] }}</p>
+                        <p class="text-xs font-semibold leading-4 text-slate-600">{{ $card['label'] }}</p>
+                        <p class="mt-1 text-2xl font-bold leading-none text-brand-ink" data-product-stat-value="{{ $card['key'] }}" aria-live="polite">{{ number_format((int) $card['value']) }}</p>
+                        <p class="mt-1 truncate text-[11px] font-medium text-slate-400">{{ $card['note'] }}</p>
                     </div>
                 </div>
             </article>
         @endforeach
     </div>
 
-    <div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <form method="GET" class="grid min-w-0 flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(260px,1fr)_220px_240px_auto_auto]">
+    <div class="mb-5 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+        <form method="GET" class="grid min-w-0 flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(240px,1fr)_190px_220px_auto_auto]">
             <label class="admin-label relative" data-product-search data-product-search-url="{{ route('admin.products.suggestions') }}">
                 Search
                 <input
@@ -105,73 +105,73 @@
                 </select>
             </label>
             <div class="flex flex-col justify-end">
-                <label class="flex h-12 min-w-0 items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold shadow-sm">
+                <label class="flex h-11 min-w-0 items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold shadow-sm">
                     <input class="h-4 w-4 rounded border-slate-300" type="checkbox" name="featured" value="1" @checked($filters['featured'] ?? false)>
                     <span class="whitespace-nowrap">Featured</span>
                 </label>
             </div>
             <div class="flex flex-col gap-2 sm:flex-row sm:items-end">
-                <button class="btn btn-navy h-12 w-full whitespace-nowrap sm:w-auto">◇ Filter</button>
+                <button class="btn btn-navy h-11 w-full whitespace-nowrap sm:w-auto">◇ Filter</button>
                 @if($hasActiveFilters)
-                    <a href="{{ route('admin.products.index') }}" class="btn btn-white h-12 w-full whitespace-nowrap sm:w-auto">Clear</a>
+                    <a href="{{ route('admin.products.index') }}" class="btn btn-white h-11 w-full whitespace-nowrap sm:w-auto">Clear</a>
                 @endif
             </div>
         </form>
-        <a href="{{ route('admin.products.create') }}" class="btn btn-red h-12 shrink-0 whitespace-nowrap">＋ Add Product</a>
+        <a href="{{ route('admin.products.create') }}" class="btn btn-red h-11 shrink-0 whitespace-nowrap">＋ Add Product</a>
     </div>
 
-    <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
+    <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
         <div class="admin-table-scroll" tabindex="0" aria-label="Products table">
-            <table class="admin-table min-w-[1320px] text-sm">
-                <thead class="bg-slate-50 text-left text-[10px] font-black uppercase tracking-[.13em] text-slate-500">
+            <table class="admin-table min-w-[1180px] text-[13px]">
+                <thead class="bg-slate-50 text-left text-[10px] font-bold uppercase tracking-[.12em] text-slate-500">
                     <tr>
-                        <th class="w-[330px] px-5 py-4">Product</th>
-                        <th class="w-[210px] px-5 py-4">Category</th>
-                        <th class="w-[115px] px-5 py-4">Price</th>
-                        <th class="w-[135px] px-5 py-4">Inventory</th>
-                        <th class="w-[105px] px-5 py-4">Status</th>
-                        <th class="w-[150px] px-5 py-4">Flags</th>
-                        <th class="w-[350px] px-5 py-4 text-right">Actions</th>
+                        <th class="w-[315px] px-4 py-3.5">Product</th>
+                        <th class="w-[185px] px-4 py-3.5">Category</th>
+                        <th class="w-[105px] px-4 py-3.5">Price</th>
+                        <th class="w-[125px] px-4 py-3.5">Inventory</th>
+                        <th class="w-[95px] px-4 py-3.5">Status</th>
+                        <th class="w-[135px] px-4 py-3.5">Flags</th>
+                        <th class="w-[300px] px-4 py-3.5 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse($products as $product)
                         <tr class="hover:bg-slate-50/70">
-                            <td class="px-5 py-4">
+                            <td class="px-4 py-3.5">
                                 <div class="flex items-center gap-3">
-                                    <img src="{{ $product->primaryImageUrl() }}" alt="" class="h-14 w-14 shrink-0 rounded-xl object-cover">
+                                    <img src="{{ $product->primaryImageUrl() }}" alt="" class="h-12 w-12 shrink-0 rounded-xl object-cover">
                                     <div class="min-w-0">
-                                        <a href="{{ route('admin.products.edit', $product) }}" class="block font-black leading-5 text-brand-blue">{{ $product->name }}</a>
+                                        <a href="{{ route('admin.products.edit', $product) }}" class="block font-bold leading-5 text-brand-blue">{{ $product->name }}</a>
                                         <p class="mt-1 text-xs leading-5 text-slate-400">{{ $product->sku }} · /product/{{ $product->slug }}</p>
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-5 py-4">
+                            <td class="px-4 py-3.5">
                                 <p class="font-bold">{{ $product->category?->name ?? 'Uncategorized' }}</p>
                                 <p class="mt-1 text-xs text-slate-400">{{ $product->subcategory?->name ?? 'No subcategory' }}</p>
                             </td>
-                            <td class="whitespace-nowrap px-5 py-4 font-black">{{ $product->currency }} {{ number_format((float) $product->base_price, 2) }}</td>
-                            <td class="px-5 py-4">
+                            <td class="whitespace-nowrap px-4 py-3.5 font-semibold">{{ $product->currency }} {{ number_format((float) $product->base_price, 2) }}</td>
+                            <td class="px-4 py-3.5">
                                 @if($product->track_inventory)
                                     <span class="whitespace-nowrap font-bold {{ $product->stock_quantity <= $product->low_stock_threshold ? 'text-amber-700' : 'text-slate-700' }}">{{ number_format($product->stock_quantity) }} in stock</span>
                                 @else
                                     <span class="whitespace-nowrap text-slate-400">Not tracked</span>
                                 @endif
                             </td>
-                            <td class="px-5 py-4">
-                                <span class="admin-status-pill px-2.5 py-1 text-xs font-black {{ $product->status === 'active' && $product->is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">{{ ucfirst($product->status) }}</span>
+                            <td class="px-4 py-3.5">
+                                <span class="admin-status-pill px-2.5 py-1 text-xs font-bold {{ $product->status === 'active' && $product->is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">{{ ucfirst($product->status) }}</span>
                             </td>
-                            <td class="px-5 py-4">
+                            <td class="px-4 py-3.5">
                                 <div class="flex flex-wrap gap-1">
                                     @if($product->is_featured)
-                                        <span class="admin-status-pill bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-700">Featured</span>
+                                        <span class="admin-status-pill bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700">Featured</span>
                                     @endif
                                     @if($product->is_customizable)
-                                        <span class="admin-status-pill bg-blue-50 px-2 py-1 text-[10px] font-black text-brand-blue">Customizable</span>
+                                        <span class="admin-status-pill bg-blue-50 px-2 py-1 text-[10px] font-bold text-brand-blue">Customizable</span>
                                     @endif
                                 </div>
                             </td>
-                            <td class="px-5 py-4">
+                            <td class="px-4 py-3.5">
                                 <div class="admin-row-actions">
                                     <a href="{{ route('products.show', $product->slug) }}" target="_blank" rel="noopener" class="admin-row-action border-slate-200">Preview</a>
                                     <a href="{{ route('admin.products.edit', $product) }}" class="admin-row-action border-slate-200">Edit</a>
@@ -188,14 +188,14 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="px-5 py-14 text-center text-slate-500">No products found.</td></tr>
+                        <tr><td colspan="7" class="px-4 py-12 text-center text-slate-500">No products found.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-        <div class="border-t border-slate-100 p-4">
+        <div class="border-t border-slate-100 p-3.5">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p class="text-sm font-semibold text-slate-500">
+                <p class="text-sm font-medium text-slate-500">
                     @if($products->total() > 0)
                         Showing {{ $products->firstItem() }} to {{ $products->lastItem() }} of {{ $products->total() }} products
                     @else

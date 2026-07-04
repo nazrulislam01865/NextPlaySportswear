@@ -111,7 +111,7 @@
 
     @vite(['resources/css/storefront.css', 'resources/js/storefront.js'])
 </head>
-<body>
+<body class="storefront-clean-ui">
     <x-storefront.topbar />
     <x-storefront.header />
 

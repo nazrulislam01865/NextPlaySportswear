@@ -61,6 +61,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/', \App\Http\Controllers\Admin\DashboardController::class)->name('dashboard');
         Route::post('/logout', [\App\Http\Controllers\Admin\Auth\AdminSessionController::class, 'destroy'])->name('logout');
 
+        Route::get('/notifications', [\App\Http\Controllers\Admin\NotificationController::class, 'index'])->name('notifications.index');
+        Route::get('/notifications/feed', [\App\Http\Controllers\Admin\NotificationController::class, 'feed'])->name('notifications.feed');
+        Route::post('/notifications/read-all', [\App\Http\Controllers\Admin\NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+        Route::post('/notifications/{notification}/read', [\App\Http\Controllers\Admin\NotificationController::class, 'markRead'])->name('notifications.read');
+        Route::post('/notifications/pusher/auth', [\App\Http\Controllers\Admin\NotificationController::class, 'pusherAuth'])->name('notifications.pusher-auth');
+
         Route::patch('/homepage-slides/{homepageSlide}/toggle', [\App\Http\Controllers\Admin\HomepageSlideController::class, 'toggle'])->name('homepage-slides.toggle');
         Route::resource('homepage-slides', \App\Http\Controllers\Admin\HomepageSlideController::class)->except('show');
 

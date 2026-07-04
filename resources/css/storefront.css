@@ -2115,3 +2115,282 @@ img.np-product-square-image {
     height: auto !important;
     width: 100% !important;
 }
+
+/* NextPlay UI density + elegance refinements (storefront) */
+.storefront-clean-ui {
+    color: #1e293b;
+    background: #fff;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+.storefront-clean-ui .site-container {
+    width: min(1180px, calc(100% - 32px));
+}
+
+.storefront-clean-ui .btn {
+    min-height: 2.625rem;
+    border-radius: .8rem;
+    padding: .65rem 1rem;
+    font-size: .875rem;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    box-shadow: 0 5px 14px rgba(15, 23, 42, .055);
+}
+
+.storefront-clean-ui .btn-red {
+    box-shadow: 0 10px 22px rgba(233, 29, 51, .17);
+}
+
+.storefront-clean-ui .font-black,
+.storefront-clean-ui .font-extrabold {
+    font-weight: 700 !important;
+}
+
+.storefront-clean-ui .font-bold {
+    font-weight: 600 !important;
+}
+
+.storefront-clean-ui .font-display {
+    font-weight: 650 !important;
+    letter-spacing: -.025em;
+}
+
+.storefront-clean-ui h1,
+.storefront-clean-ui h2,
+.storefront-clean-ui h3,
+.storefront-clean-ui h4 {
+    letter-spacing: -.022em;
+}
+
+.storefront-clean-ui .shadow-card,
+.storefront-clean-ui .shadow-soft,
+.storefront-clean-ui .shadow-hero {
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .07) !important;
+}
+
+.storefront-clean-ui .section-padding {
+    padding-top: 3.4rem;
+    padding-bottom: 3.4rem;
+}
+
+.storefront-clean-ui .storefront-site-header {
+    box-shadow: 0 4px 18px rgba(15, 23, 42, .055);
+}
+
+.storefront-clean-ui .storefront-header-main {
+    min-height: 66px;
+}
+
+.storefront-clean-ui .storefront-logo {
+    font-weight: 650 !important;
+}
+
+.storefront-clean-ui .storefront-main-nav,
+.storefront-clean-ui .np-menu-link {
+    font-size: .8125rem;
+    font-weight: 650;
+    color: #475569;
+}
+
+.storefront-clean-ui .np-menu-link {
+    padding-block: .75rem;
+}
+
+.storefront-clean-ui .np-mega-title {
+    font-size: .875rem !important;
+    font-weight: 700 !important;
+}
+
+.storefront-clean-ui .np-mega-subtitle {
+    font-size: .8125rem !important;
+    font-weight: 650 !important;
+}
+
+.storefront-clean-ui .np-mega-leaf {
+    font-size: .8rem !important;
+    font-weight: 500 !important;
+}
+
+.storefront-clean-ui .product-rich-content h2 {
+    font-size: 1.35rem !important;
+    line-height: 1.3 !important;
+    font-weight: 700 !important;
+    text-transform: none !important;
+    letter-spacing: -.015em !important;
+}
+
+.storefront-clean-ui .product-rich-content h3 {
+    font-size: 1.05rem !important;
+    line-height: 1.35 !important;
+    font-weight: 700 !important;
+}
+
+.storefront-clean-ui .product-rich-content p,
+.storefront-clean-ui .product-rich-content li,
+.storefront-clean-ui .product-rich-content td,
+.storefront-clean-ui .product-rich-content th {
+    font-size: .9rem !important;
+    line-height: 1.7 !important;
+    font-weight: 400 !important;
+}
+
+.storefront-clean-ui .product-rich-content th {
+    font-weight: 600 !important;
+}
+
+.storefront-clean-ui .home-page {
+    --max: 1180px;
+    font-size: .925rem;
+    line-height: 1.6;
+}
+
+.storefront-clean-ui .home-page .container {
+    width: min(var(--max), calc(100% - 32px));
+}
+
+.storefront-clean-ui .home-page .hero .container {
+    min-height: 470px;
+    gap: 44px;
+    padding: 58px 0 60px;
+}
+
+.storefront-clean-ui .home-page .hero h1,
+.storefront-clean-ui .promo-copy h1,
+.storefront-clean-ui .promo-copy h2 {
+    font-size: clamp(2.25rem, 4.8vw, 3.55rem);
+    line-height: 1;
+    font-weight: 650;
+    letter-spacing: -.035em;
+}
+
+.storefront-clean-ui .home-page .hero p,
+.storefront-clean-ui .promo-copy p {
+    font-size: clamp(.98rem, 1.3vw, 1.08rem);
+    line-height: 1.65;
+}
+
+.storefront-clean-ui .promo-track {
+    height: clamp(390px, 48vw, 560px);
+    min-height: 390px;
+}
+
+.storefront-clean-ui .home-page .eyebrow,
+.storefront-clean-ui .promo-eyebrow,
+.storefront-clean-ui [class*="tracking-[.18em]"],
+.storefront-clean-ui [class*="tracking-[.22em]"] {
+    letter-spacing: .13em !important;
+}
+
+.storefront-clean-ui .home-page .btn {
+    font-weight: 700;
+}
+
+.storefront-clean-ui .grid-3 {
+    gap: 1rem;
+}
+
+.storefront-clean-ui .grid-4 {
+    gap: 1rem;
+}
+
+.storefront-clean-ui .card-hover:hover {
+    transform: translateY(-3px);
+}
+
+.storefront-clean-ui .np-product-square-media {
+    background: #fff;
+}
+
+.storefront-clean-ui x-storefront\:product-card,
+.storefront-clean-ui .group.flex.h-full.flex-col.overflow-hidden.rounded-2xl {
+    border-radius: 1rem;
+}
+
+.storefront-clean-ui .np-product-title {
+    font-size: clamp(1.7rem, 2.65vw, 2.15rem) !important;
+    line-height: 1.18 !important;
+    font-weight: 700 !important;
+    letter-spacing: -.035em !important;
+}
+
+.storefront-clean-ui .np-product-summary {
+    font-size: .925rem !important;
+    line-height: 1.72 !important;
+    color: #475569 !important;
+}
+
+.storefront-clean-ui .np-product-meta,
+.storefront-clean-ui .np-detail-information table {
+    font-size: .86rem !important;
+}
+
+.storefront-clean-ui .np-detail-information th,
+.storefront-clean-ui .np-detail-information td {
+    font-weight: 500 !important;
+    padding-top: .45rem !important;
+    padding-bottom: .45rem !important;
+}
+
+.storefront-clean-ui .np-detail-information thead tr {
+    font-size: .72rem !important;
+    font-weight: 700 !important;
+}
+
+.storefront-clean-ui .np-product-page section.py-8 {
+    padding-top: 2rem;
+    padding-bottom: 2.4rem;
+}
+
+.storefront-clean-ui .np-product-page .grid.min-w-0.gap-10 {
+    gap: 2rem;
+}
+
+.storefront-clean-ui .np-product-page [class*="rounded-[28px]"],
+.storefront-clean-ui .np-product-page .rounded-3xl {
+    border-radius: 1.1rem !important;
+}
+
+.storefront-clean-ui .np-product-page h2,
+.storefront-clean-ui .np-product-page h3 {
+    font-weight: 700 !important;
+}
+
+.storefront-clean-ui .np-product-page button,
+.storefront-clean-ui .np-product-page a,
+.storefront-clean-ui .np-product-page label,
+.storefront-clean-ui .np-product-page summary {
+    font-weight: 650;
+}
+
+.storefront-clean-ui .storefront-cart-button {
+    font-weight: 700;
+}
+
+@media (max-width: 640px) {
+    .storefront-clean-ui .site-container {
+        width: min(100% - 24px, 1180px);
+    }
+
+    .storefront-clean-ui .section-padding {
+        padding-top: 2.7rem;
+        padding-bottom: 2.7rem;
+    }
+
+    .storefront-clean-ui .home-page .hero .container {
+        min-height: auto;
+        padding: 46px 0 48px;
+    }
+
+    .storefront-clean-ui .home-page .hero h1,
+    .storefront-clean-ui .promo-copy h1,
+    .storefront-clean-ui .promo-copy h2 {
+        font-size: clamp(2rem, 11vw, 3rem);
+    }
+
+    .storefront-clean-ui .promo-track {
+        height: 430px;
+        min-height: 430px;
+    }
+}

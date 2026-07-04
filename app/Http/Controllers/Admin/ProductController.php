@@ -13,6 +13,7 @@ use App\Models\SizeOptionGroup;
 use App\Models\ShippingMethod;
 use App\Services\Catalog\CategoryTreeService;
 use App\Services\Catalog\ProductOptionFilterSyncService;
+use App\Services\AdminNotificationService;
 use App\Services\Security\SafeHtmlService;
 use App\Support\ProductionTime;
 use App\Support\PublicMedia;
@@ -32,6 +33,7 @@ class ProductController extends Controller
         private readonly SafeHtmlService $safeHtml,
         private readonly CategoryTreeService $categoryTreeService,
         private readonly ProductOptionFilterSyncService $productOptionFilterSyncService,
+        private readonly AdminNotificationService $adminNotifications,
     ) {
     }
 
@@ -175,6 +177,12 @@ class ProductController extends Controller
         });
 
         $this->categoryTreeService->flushCache();
+        $this->adminNotifications->productChanged(
+            $product,
+            'created',
+            auth('admin')->user(),
+            route('admin.products.edit', $product)
+        );
 
         return redirect()->route('admin.products.edit', $product)->with('status', 'Product created successfully.');
     }
@@ -203,14 +211,29 @@ class ProductController extends Controller
         });
 
         $this->categoryTreeService->flushCache();
+        $this->adminNotifications->productChanged(
+            $product->fresh() ?? $product,
+            'updated',
+            auth('admin')->user(),
+            route('admin.products.edit', $product)
+        );
 
         return redirect()->route('admin.products.edit', $product)->with('status', 'Product updated successfully.');
     }
 
     public function destroy(Product $product): RedirectResponse
     {
+        $notificationProduct = $product->replicate();
+        $notificationProduct->id = $product->id;
+
         $product->delete();
         $this->categoryTreeService->flushCache();
+        $this->adminNotifications->productChanged(
+            $notificationProduct,
+            'deleted',
+            auth('admin')->user(),
+            route('admin.products.index')
+        );
 
         return redirect()->route('admin.products.index')->with('status', 'Product moved to trash.');
     }
@@ -265,6 +288,12 @@ class ProductController extends Controller
         });
 
         $this->categoryTreeService->flushCache();
+        $this->adminNotifications->productChanged(
+            $copy,
+            'duplicated',
+            auth('admin')->user(),
+            route('admin.products.edit', $copy)
+        );
 
         return redirect()->route('admin.products.edit', $copy)->with('status', 'Product duplicated as a draft.');
     }
