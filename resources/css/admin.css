@@ -4117,3 +4117,38 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     letter-spacing: -0.025em;
 }
 
+/* NEXTPLAY_FINAL_MINIMAL_UI_FIX
+   Final specific override for admin typography. */
+body.admin-clean-ui .font-black,
+body.admin-clean-ui .font-extrabold {
+    font-weight: 620 !important;
+}
+
+body.admin-clean-ui .font-bold,
+body.admin-clean-ui .font-display {
+    font-weight: 600 !important;
+}
+
+body.admin-clean-ui .font-semibold {
+    font-weight: 500 !important;
+}
+
+body.admin-clean-ui h1,
+body.admin-clean-ui h2,
+body.admin-clean-ui h3,
+body.admin-clean-ui h4,
+body.admin-clean-ui strong,
+body.admin-clean-ui b,
+body.admin-clean-ui th,
+body.admin-clean-ui label,
+body.admin-clean-ui legend,
+body.admin-clean-ui summary {
+    font-weight: 600 !important;
+}
+
+body.admin-clean-ui button,
+body.admin-clean-ui .btn,
+body.admin-clean-ui .admin-badge,
+body.admin-clean-ui .sidebar-link {
+    font-weight: 580 !important;
+}

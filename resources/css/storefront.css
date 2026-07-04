@@ -2551,3 +2551,83 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     letter-spacing: -0.025em;
 }
 
+/* NEXTPLAY_FINAL_MINIMAL_UI_FIX
+   Final specific override. This wins over older storefront-clean-ui/product-title rules. */
+body.storefront-clean-ui {
+    font-size: 14.5px;
+}
+
+body.storefront-clean-ui .site-container {
+    width: min(1060px, calc(100% - 32px)) !important;
+}
+
+@media (min-width: 1280px) {
+    body.storefront-clean-ui .site-container {
+        width: min(1080px, calc(100% - 48px)) !important;
+    }
+}
+
+body.storefront-clean-ui .font-black,
+body.storefront-clean-ui .font-extrabold {
+    font-weight: 620 !important;
+}
+
+body.storefront-clean-ui .font-bold,
+body.storefront-clean-ui .font-display {
+    font-weight: 600 !important;
+}
+
+body.storefront-clean-ui .font-semibold {
+    font-weight: 500 !important;
+}
+
+body.storefront-clean-ui h1,
+body.storefront-clean-ui h2,
+body.storefront-clean-ui h3,
+body.storefront-clean-ui h4,
+body.storefront-clean-ui strong,
+body.storefront-clean-ui b,
+body.storefront-clean-ui th,
+body.storefront-clean-ui label,
+body.storefront-clean-ui legend,
+body.storefront-clean-ui summary {
+    font-weight: 600 !important;
+}
+
+body.storefront-clean-ui .btn,
+body.storefront-clean-ui button,
+body.storefront-clean-ui .np-menu-link,
+body.storefront-clean-ui .np-product-card-button {
+    font-weight: 580 !important;
+}
+
+body.storefront-clean-ui .np-product-page .np-product-title,
+body.storefront-clean-ui .np-product-title {
+    font-size: clamp(1.45rem, 2vw, 1.9rem) !important;
+    line-height: 1.18 !important;
+    font-weight: 620 !important;
+    letter-spacing: -0.025em !important;
+}
+
+body.storefront-clean-ui .np-product-summary {
+    font-size: .9rem !important;
+    line-height: 1.65 !important;
+}
+
+body.storefront-clean-ui .np-detail-information table,
+body.storefront-clean-ui .np-product-meta {
+    font-size: .82rem !important;
+}
+
+body.storefront-clean-ui .np-detail-information thead tr {
+    font-weight: 600 !important;
+}
+
+body.storefront-clean-ui .np-product-page .grid.min-w-0.gap-10 {
+    gap: 1.75rem !important;
+}
+
+body.storefront-clean-ui .np-product-page section.py-8 {
+    padding-top: 1.75rem !important;
+    padding-bottom: 2rem !important;
+}
