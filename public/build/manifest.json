@@ -4,7 +4,7 @@
     "name": "module.esm"
   },
   "resources/css/admin.css": {
-    "file": "assets/admin-8DPiPWIH.css",
+    "file": "assets/admin-DiHor5Yp.css",
     "name": "admin",
     "names": [
       "admin.css"
@@ -13,7 +13,7 @@
     "isEntry": true
   },
   "resources/css/storefront.css": {
-    "file": "assets/storefront-BebQBZFd.css",
+    "file": "assets/storefront-DO1dO4-V.css",
     "name": "storefront",
     "names": [
       "storefront.css"
