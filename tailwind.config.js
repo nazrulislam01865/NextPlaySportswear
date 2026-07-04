@@ -12,24 +12,22 @@ export default {
         extend: {
             fontFamily: {
                 sans: ['Inter', ...defaultTheme.fontFamily.sans],
-                // Permanent typography fix: keep display text on Inter too.
-                // Oswald made headings/menus look too bold after every Vite build.
                 display: ['Inter', ...defaultTheme.fontFamily.sans],
             },
 
-            // Permanent typography fix: make Tailwind generate lighter weights.
-            // This prevents font-black/font-extrabold/font-bold classes in Blade
-            // from becoming heavy again after npm run build.
+            // NEXTPLAY_LIGHT_TYPOGRAPHY_FONT_WEIGHT_SCALE
+            // Project-wide Tailwind weights: old Blade files may still use
+            // font-bold/font-extrabold/font-black, but the generated CSS stays clean.
             fontWeight: {
                 thin: '100',
                 extralight: '200',
                 light: '300',
                 normal: '400',
                 medium: '500',
-                semibold: '550',
-                bold: '600',
-                extrabold: '650',
-                black: '650',
+                semibold: '500',
+                bold: '500',
+                extrabold: '600',
+                black: '600',
             },
 
             colors: {
