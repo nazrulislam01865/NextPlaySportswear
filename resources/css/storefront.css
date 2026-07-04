@@ -2551,3 +2551,40 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     letter-spacing: -0.025em;
 }
 
+
+/* NEXTPLAY_STOREFRONT_PERMANENT_LIGHT_FONT_FIX
+   Keeps storefront typography clean and prevents product/category/home pages
+   from becoming overly bold after Vite rebuild/deployment. */
+
+body.storefront-clean-ui.storefront-clean-ui.storefront-clean-ui :is(.font-black, .font-extrabold) {
+    font-weight: 650 !important;
+}
+
+body.storefront-clean-ui.storefront-clean-ui.storefront-clean-ui :is(.font-bold) {
+    font-weight: 600 !important;
+}
+
+body.storefront-clean-ui.storefront-clean-ui.storefront-clean-ui :is(.font-semibold) {
+    font-weight: 500 !important;
+}
+
+body.storefront-clean-ui.storefront-clean-ui.storefront-clean-ui :is(h1, h2, h3, h4, h5, h6) {
+    font-weight: 650 !important;
+    letter-spacing: -0.018em !important;
+}
+
+body.storefront-clean-ui.storefront-clean-ui.storefront-clean-ui :is(strong, b, th, label, legend, summary) {
+    font-weight: 600 !important;
+}
+
+body.storefront-clean-ui.storefront-clean-ui.storefront-clean-ui :is(button, .btn, .np-product-card-button, .storefront-cart-button, .link-red, .small-red) {
+    font-weight: 600 !important;
+}
+
+body.storefront-clean-ui.storefront-clean-ui.storefront-clean-ui :is(.np-product-card-title, .np-product-card-price, .np-product-card-category, .np-product-card-tag) {
+    font-weight: 600 !important;
+}
+
+body.storefront-clean-ui.storefront-clean-ui.storefront-clean-ui :is(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
+    letter-spacing: -0.025em !important;
+}
