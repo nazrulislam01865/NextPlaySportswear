@@ -4117,43 +4117,54 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     letter-spacing: -0.025em;
 }
 
+/* NEXTPLAY_PERMANENT_ADMIN_TYPOGRAPHY_SOURCE_FIX_V2
+   Source-level permanent fix. This block is intentionally at the very end.
+   It wins against older Blade font-black/font-extrabold classes and older
+   custom CSS with font-weight 800/900 so rebuilds cannot make admin bold again. */
+body.admin-clean-ui.admin-clean-ui.admin-clean-ui {
+    --np-fw-normal: 400;
+    --np-fw-medium: 500;
+    --np-fw-semibold: 550;
+    --np-fw-bold: 600;
+    --np-fw-heavy: 650;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    font-weight: var(--np-fw-normal);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
 
-/* NEXTPLAY_ADMIN_PERMANENT_LIGHT_FONT_FIX
-   Keeps admin typography clean and prevents pages from becoming overly bold
-   after Vite rebuild/deployment. */
+body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(.font-display),
+body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(header h1, main h1, main h2, main h3, main h4),
+body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(.admin-sidebar-nav, .admin-logo) {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
 
 body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(.font-black, .font-extrabold),
-body.admin-ui-minimalize.admin-ui-minimalize.admin-ui-minimalize :is(.font-black, .font-extrabold) {
-    font-weight: 650 !important;
+body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(header h1, main h1, main h2, main h3, main h4, main h5, main h6),
+body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(.category-stat-card strong, .admin-notification-panel-head strong, .admin-notification-item-copy strong),
+body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(.admin-rich-editor h2, .admin-rich-editor h3, .product-rich-content h2, .product-rich-content h3) {
+    font-weight: var(--np-fw-heavy) !important;
 }
 
 body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(.font-bold),
-body.admin-ui-minimalize.admin-ui-minimalize.admin-ui-minimalize :is(.font-bold) {
-    font-weight: 600 !important;
+body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(strong, b, th, label, legend, summary),
+body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(button, .btn, a.btn, .admin-row-action, .category-header-action, .category-filter-button, .category-import-button, .category-bulk-button),
+body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(.np-primary-button, .np-secondary-button, .np-danger-button, .admin-editor-button),
+body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(.admin-status-pill, .category-stat-label, .admin-notification-count, .admin-notification-item-actions a, .admin-notification-item-actions button) {
+    font-weight: var(--np-fw-bold) !important;
 }
 
 body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(.font-semibold),
-body.admin-ui-minimalize.admin-ui-minimalize.admin-ui-minimalize :is(.font-semibold) {
-    font-weight: 500 !important;
+body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(.admin-label, .np-field-help, .category-control, .category-empty-filter, .category-file-trigger, .category-file-name, .category-import-label),
+body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(input, select, textarea, .admin-input, .admin-textarea, .np-table-input) {
+    font-weight: var(--np-fw-semibold) !important;
 }
 
-body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(h1, h2, h3, h4, h5, h6),
-body.admin-ui-minimalize.admin-ui-minimalize.admin-ui-minimalize :is(h1, h2, h3, h4, h5, h6) {
-    font-weight: 650 !important;
-    letter-spacing: -0.018em !important;
+body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(main p, main li, main td, main small, .admin-notification-item-copy p) {
+    font-weight: var(--np-fw-normal) !important;
 }
 
-body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(strong, b, th, label, legend, summary),
-body.admin-ui-minimalize.admin-ui-minimalize.admin-ui-minimalize :is(strong, b, th, label, legend, summary) {
-    font-weight: 600 !important;
+body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(.tracking-\[\.25em\], .tracking-\[\.22em\], .tracking-\[\.2em\], .tracking-\[\.18em\], .tracking-\[\.16em\], .tracking-\[\.14em\], .tracking-\[\.13em\], .tracking-\[\.12em\]) {
+    letter-spacing: .08em !important;
 }
 
-body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(button, .btn, .admin-row-action, .np-primary-button, .np-secondary-button, .np-danger-button),
-body.admin-ui-minimalize.admin-ui-minimalize.admin-ui-minimalize :is(button, .btn, .admin-row-action, .np-primary-button, .np-secondary-button, .np-danger-button) {
-    font-weight: 600 !important;
-}
-
-body.admin-clean-ui.admin-clean-ui.admin-clean-ui :is(.text-4xl, .text-5xl, .text-6xl, .text-7xl),
-body.admin-ui-minimalize.admin-ui-minimalize.admin-ui-minimalize :is(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
-    letter-spacing: -0.025em !important;
-}
