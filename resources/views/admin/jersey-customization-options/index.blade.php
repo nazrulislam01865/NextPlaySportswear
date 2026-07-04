@@ -1,7 +1,7 @@
 <x-layouts.admin title="Product Customization Options">
     <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p class="max-w-3xl text-sm leading-6 text-slate-500">
-            Manage reusable customization values for jerseys, shorts, uniforms, pants, hoodies, polos, and T-shirts.
+            Manage reusable customization values for jerseys, shorts, uniforms, pants, hoodies, polos, T-shirts, quarter-zips, tank tops, compression wear, and socks.
         </p>
         <a href="{{ route('admin.jersey-customization-options.create') }}" class="btn btn-red">+ Add Option</a>
     </div>

@@ -144,13 +144,13 @@
                             <x-admin.sidebar-sub-link
                                 :href="route('admin.size-option-groups.index')"
                                 :active="request()->routeIs('admin.size-option-groups.*')"
-                            >1.8 Size Options</x-admin.sidebar-sub-link>
+                            >1.12 Size Options</x-admin.sidebar-sub-link>
                         @endif
                         @if($canAdmin('shipping.view'))
                             <x-admin.sidebar-sub-link
                                 :href="route('admin.shipping-methods.index')"
                                 :active="request()->routeIs('admin.shipping-methods.*')"
-                            >1.9 Shipping Methods</x-admin.sidebar-sub-link>
+                            >1.13 Shipping Methods</x-admin.sidebar-sub-link>
                         @endif
                     </x-admin.sidebar-group>
                 @endif

@@ -49,6 +49,23 @@ enum JerseyCustomizationType: string
     case TshirtSleeve = 'tshirt_sleeve';
     case TshirtNeck = 'tshirt_neck';
 
+    case QuarterZipColor = 'quarter_zip_color';
+    case QuarterZipZipper = 'quarter_zip_zipper';
+    case QuarterZipSleeve = 'quarter_zip_sleeve';
+    case QuarterZipSize = 'quarter_zip_size';
+
+    case TankTopColor = 'tank_top_color';
+    case TankTopFabric = 'tank_top_fabric';
+    case TankTopStyle = 'tank_top_style';
+    case TankTopSize = 'tank_top_size';
+
+    case CompressionWearColor = 'compression_wear_color';
+    case CompressionWearPattern = 'compression_wear_pattern';
+
+    case SocksColor = 'socks_color';
+    case SocksPattern = 'socks_pattern';
+    case SocksMaterialConstruction = 'socks_material_construction';
+
     public function label(): string
     {
         return match ($this) {
@@ -88,6 +105,19 @@ enum JerseyCustomizationType: string
             self::TshirtFabric => 'T-Shirt Fabric',
             self::TshirtSleeve => 'T-Shirt Sleeve',
             self::TshirtNeck => 'T-Shirt Neck',
+            self::QuarterZipColor => 'Quarter-Zip Color',
+            self::QuarterZipZipper => 'Quarter-Zip Zipper',
+            self::QuarterZipSleeve => 'Quarter-Zip Sleeves',
+            self::QuarterZipSize => 'Quarter-Zip Size',
+            self::TankTopColor => 'Tank Top Color',
+            self::TankTopFabric => 'Tank Top Fabric',
+            self::TankTopStyle => 'Tank Top Style',
+            self::TankTopSize => 'Tank Top Size',
+            self::CompressionWearColor => 'Compression Wear Color',
+            self::CompressionWearPattern => 'Compression Wear Pattern',
+            self::SocksColor => 'Socks Color',
+            self::SocksPattern => 'Socks Pattern',
+            self::SocksMaterialConstruction => 'Socks Material Construction',
         };
     }
 
@@ -130,6 +160,19 @@ enum JerseyCustomizationType: string
             self::TshirtFabric,
             self::TshirtSleeve,
             self::TshirtNeck => 'tshirt',
+            self::QuarterZipColor,
+            self::QuarterZipZipper,
+            self::QuarterZipSleeve,
+            self::QuarterZipSize => 'quarter_zip',
+            self::TankTopColor,
+            self::TankTopFabric,
+            self::TankTopStyle,
+            self::TankTopSize => 'tank_top',
+            self::CompressionWearColor,
+            self::CompressionWearPattern => 'compression_wear',
+            self::SocksColor,
+            self::SocksPattern,
+            self::SocksMaterialConstruction => 'socks',
         };
     }
 
@@ -143,6 +186,10 @@ enum JerseyCustomizationType: string
             'hoodie' => 'Hoodie Customization',
             'polo' => 'Polo Customization',
             'tshirt' => 'T-Shirt Customization',
+            'quarter_zip' => 'Quarter-Zip Customization',
+            'tank_top' => 'Tank Top Customization',
+            'compression_wear' => 'Compression Wear Customization',
+            'socks' => 'Socks Customization',
             default => 'Product Customization',
         };
     }
@@ -157,6 +204,10 @@ enum JerseyCustomizationType: string
             'hoodie' => '1.5',
             'polo' => '1.6',
             'tshirt' => '1.7',
+            'quarter_zip' => '1.8',
+            'tank_top' => '1.9',
+            'compression_wear' => '1.10',
+            'socks' => '1.11',
             default => '1',
         };
     }
@@ -183,6 +234,10 @@ enum JerseyCustomizationType: string
             self::HoodieColor,
             self::PoloColor,
             self::TshirtColor,
+            self::QuarterZipColor,
+            self::TankTopColor,
+            self::CompressionWearColor,
+            self::SocksColor,
         ], true);
     }
 
@@ -230,6 +285,19 @@ enum JerseyCustomizationType: string
             self::TshirtFabric => 'Example: Dry-Fit Polyester',
             self::TshirtSleeve => 'Example: Short Sleeve',
             self::TshirtNeck => 'Example: Crew Neck',
+            self::QuarterZipColor => 'Example: Athletic Navy',
+            self::QuarterZipZipper => 'Example: Contrast Quarter Zipper',
+            self::QuarterZipSleeve => 'Example: Raglan Long Sleeve',
+            self::QuarterZipSize => 'Example: Adult Large',
+            self::TankTopColor => 'Example: Team Red',
+            self::TankTopFabric => 'Example: Lightweight Mesh',
+            self::TankTopStyle => 'Example: Racerback Tank',
+            self::TankTopSize => 'Example: Adult Medium',
+            self::CompressionWearColor => 'Example: Black',
+            self::CompressionWearPattern => 'Example: Hex Pattern',
+            self::SocksColor => 'Example: White / Royal Blue',
+            self::SocksPattern => 'Example: Striped Crew Socks',
+            self::SocksMaterialConstruction => 'Example: Cushioned Polyester Blend',
         };
     }
 
@@ -272,6 +340,19 @@ enum JerseyCustomizationType: string
             self::TshirtFabric => 'Add simple T-shirt fabric choices with short details such as cotton, polyester, or dry-fit.',
             self::TshirtSleeve => 'Add T-shirt sleeve choices such as short sleeve, long sleeve, or sleeveless.',
             self::TshirtNeck => 'Add neck choices such as crew neck, V-neck, or round neck.',
+            self::QuarterZipColor => 'Add common quarter-zip color choices with exact color values for product configuration.',
+            self::QuarterZipZipper => 'Add zipper choices for quarter-zip products, such as matching zipper, contrast zipper, or hidden zipper.',
+            self::QuarterZipSleeve => 'Add quarter-zip sleeve choices such as long sleeve, raglan sleeve, or contrast sleeve.',
+            self::QuarterZipSize => 'Add quarter-zip-specific size values only when they are different from the main Size Options master data.',
+            self::TankTopColor => 'Add common tank top color choices with exact color values for product configuration.',
+            self::TankTopFabric => 'Add tank top fabric choices with short details when the material needs explanation.',
+            self::TankTopStyle => 'Add tank top style choices such as racerback, classic athletic cut, or reversible tank.',
+            self::TankTopSize => 'Add tank top-specific size values only when they are different from the main Size Options master data.',
+            self::CompressionWearColor => 'Add common compression wear color choices with exact color values for product configuration.',
+            self::CompressionWearPattern => 'Add compression wear pattern choices such as solid, camo, hex, stripe, or gradient.',
+            self::SocksColor => 'Add common socks color choices with exact color values for product configuration.',
+            self::SocksPattern => 'Add socks pattern choices such as solid, striped, crew stripe, or gradient.',
+            self::SocksMaterialConstruction => 'Add socks material and construction choices with short details such as cushioned sole, ribbed cuff, or polyester blend.',
         };
     }
 
@@ -283,24 +364,33 @@ enum JerseyCustomizationType: string
             self::PantsColor,
             self::HoodieColor,
             self::PoloColor,
-            self::TshirtColor => 'Optional color swatch',
+            self::TshirtColor,
+            self::QuarterZipColor,
+            self::TankTopColor,
+            self::CompressionWearColor,
+            self::SocksColor => 'Optional color swatch',
             self::NeckAndCollar => 'Optional neck/collar image',
             self::Fabric,
             self::ShortsFabric,
             self::PantsFabric,
             self::HoodieFabric,
             self::PoloFabric,
-            self::TshirtFabric => 'Optional fabric texture image',
+            self::TshirtFabric,
+            self::TankTopFabric,
+            self::SocksMaterialConstruction => 'Optional fabric texture image',
             self::SleevesAndCuffs,
             self::UniformSleeve,
             self::HoodieSleeve,
             self::PoloSleeve,
-            self::TshirtSleeve => 'Optional sleeve image',
+            self::TshirtSleeve,
+            self::QuarterZipSleeve => 'Optional sleeve image',
             self::JerseyStyle => 'Optional jersey style image',
             self::ShortsSize,
             self::UniformSize,
             self::PantsSize,
-            self::HoodieSize => 'Optional size reference image',
+            self::HoodieSize,
+            self::QuarterZipSize,
+            self::TankTopSize => 'Optional size reference image',
             self::ShortsPocketOption,
             self::UniformPocket,
             self::HoodiePocket,
@@ -314,6 +404,10 @@ enum JerseyCustomizationType: string
             self::HoodieClosure => 'Optional zipper/closure image',
             self::HoodieCuff => 'Optional cuff image',
             self::PoloCollarStyle => 'Optional collar style image',
+            self::QuarterZipZipper => 'Optional zipper image',
+            self::TankTopStyle => 'Optional style reference image',
+            self::CompressionWearPattern,
+            self::SocksPattern => 'Optional pattern image',
         };
     }
 
@@ -325,24 +419,33 @@ enum JerseyCustomizationType: string
             self::PantsColor,
             self::HoodieColor,
             self::PoloColor,
-            self::TshirtColor => 'Optional. Add a real swatch only when the HEX color needs a visual reference.',
+            self::TshirtColor,
+            self::QuarterZipColor,
+            self::TankTopColor,
+            self::CompressionWearColor,
+            self::SocksColor => 'Optional. Add a real swatch only when the HEX color needs a visual reference.',
             self::NeckAndCollar => 'Optional. Add a clear close-up of the neckline or collar shape.',
             self::Fabric,
             self::ShortsFabric,
             self::PantsFabric,
             self::HoodieFabric,
             self::PoloFabric,
-            self::TshirtFabric => 'Optional. Add a texture or material close-up for this fabric.',
+            self::TshirtFabric,
+            self::TankTopFabric,
+            self::SocksMaterialConstruction => 'Optional. Add a texture or material close-up for this fabric.',
             self::SleevesAndCuffs,
             self::UniformSleeve,
             self::HoodieSleeve,
             self::PoloSleeve,
-            self::TshirtSleeve => 'Optional. Add a close-up of the sleeve or cuff finish.',
+            self::TshirtSleeve,
+            self::QuarterZipSleeve => 'Optional. Add a close-up of the sleeve or cuff finish.',
             self::JerseyStyle => 'Optional. Add a full jersey preview for this style.',
             self::ShortsSize,
             self::UniformSize,
             self::PantsSize,
-            self::HoodieSize => 'Optional. Add only when a visual size reference helps the admin or customer.',
+            self::HoodieSize,
+            self::QuarterZipSize,
+            self::TankTopSize => 'Optional. Add only when a visual size reference helps the admin or customer.',
             self::ShortsPocketOption,
             self::UniformPocket,
             self::HoodiePocket,
@@ -356,6 +459,10 @@ enum JerseyCustomizationType: string
             self::HoodieClosure => 'Optional. Add a close-up only when the zipper or closure style needs a visual preview.',
             self::HoodieCuff => 'Optional. Add a close-up only when the cuff finish needs a visual preview.',
             self::PoloCollarStyle => 'Optional. Add a close-up only when the collar style needs a visual preview.',
+            self::QuarterZipZipper => 'Optional. Add a close-up only when the zipper style needs a visual preview.',
+            self::TankTopStyle => 'Optional. Add only when the tank top style needs a visual preview.',
+            self::CompressionWearPattern,
+            self::SocksPattern => 'Optional. Add only when the pattern needs a visual preview.',
         };
     }
 
@@ -367,24 +474,33 @@ enum JerseyCustomizationType: string
             self::PantsColor,
             self::HoodieColor,
             self::PoloColor,
-            self::TshirtColor => 'Choose swatch image',
+            self::TshirtColor,
+            self::QuarterZipColor,
+            self::TankTopColor,
+            self::CompressionWearColor,
+            self::SocksColor => 'Choose swatch image',
             self::NeckAndCollar => 'Choose neck/collar image',
             self::Fabric,
             self::ShortsFabric,
             self::PantsFabric,
             self::HoodieFabric,
             self::PoloFabric,
-            self::TshirtFabric => 'Choose fabric image',
+            self::TshirtFabric,
+            self::TankTopFabric,
+            self::SocksMaterialConstruction => 'Choose fabric image',
             self::SleevesAndCuffs,
             self::UniformSleeve,
             self::HoodieSleeve,
             self::PoloSleeve,
-            self::TshirtSleeve => 'Choose sleeve image',
+            self::TshirtSleeve,
+            self::QuarterZipSleeve => 'Choose sleeve image',
             self::JerseyStyle => 'Choose style image',
             self::ShortsSize,
             self::UniformSize,
             self::PantsSize,
-            self::HoodieSize => 'Choose size image',
+            self::HoodieSize,
+            self::QuarterZipSize,
+            self::TankTopSize => 'Choose size image',
             self::ShortsPocketOption,
             self::UniformPocket,
             self::HoodiePocket,
@@ -398,6 +514,10 @@ enum JerseyCustomizationType: string
             self::HoodieClosure => 'Choose zipper image',
             self::HoodieCuff => 'Choose cuff image',
             self::PoloCollarStyle => 'Choose collar image',
+            self::QuarterZipZipper => 'Choose zipper image',
+            self::TankTopStyle => 'Choose style image',
+            self::CompressionWearPattern,
+            self::SocksPattern => 'Choose pattern image',
         };
     }
 
@@ -463,6 +583,27 @@ enum JerseyCustomizationType: string
                 self::TshirtSleeve,
                 self::TshirtNeck,
             ],
+            'quarter_zip' => [
+                self::QuarterZipColor,
+                self::QuarterZipZipper,
+                self::QuarterZipSleeve,
+                self::QuarterZipSize,
+            ],
+            'tank_top' => [
+                self::TankTopColor,
+                self::TankTopFabric,
+                self::TankTopStyle,
+                self::TankTopSize,
+            ],
+            'compression_wear' => [
+                self::CompressionWearColor,
+                self::CompressionWearPattern,
+            ],
+            'socks' => [
+                self::SocksColor,
+                self::SocksPattern,
+                self::SocksMaterialConstruction,
+            ],
             default => [],
         };
     }
@@ -478,6 +619,10 @@ enum JerseyCustomizationType: string
             'hoodie' => ['number' => '1.5', 'label' => 'Hoodie Customization', 'types' => self::typesForGroup('hoodie')],
             'polo' => ['number' => '1.6', 'label' => 'Polo Customization', 'types' => self::typesForGroup('polo')],
             'tshirt' => ['number' => '1.7', 'label' => 'T-Shirt Customization', 'types' => self::typesForGroup('tshirt')],
+            'quarter_zip' => ['number' => '1.8', 'label' => 'Quarter-Zip Customization', 'types' => self::typesForGroup('quarter_zip')],
+            'tank_top' => ['number' => '1.9', 'label' => 'Tank Top Customization', 'types' => self::typesForGroup('tank_top')],
+            'compression_wear' => ['number' => '1.10', 'label' => 'Compression Wear Customization', 'types' => self::typesForGroup('compression_wear')],
+            'socks' => ['number' => '1.11', 'label' => 'Socks Customization', 'types' => self::typesForGroup('socks')],
         ];
     }
 
@@ -491,6 +636,8 @@ enum JerseyCustomizationType: string
             self::HoodieFabric,
             self::PoloFabric,
             self::TshirtFabric,
+            self::TankTopFabric,
+            self::SocksMaterialConstruction,
         ];
     }
 
