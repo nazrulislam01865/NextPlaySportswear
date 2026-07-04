@@ -111,6 +111,7 @@ window.adminProductForm = (initial = {}) => ({
         { id: 'artwork', label: 'Personalization' },
         { id: 'fulfillment', label: 'Fulfillment' },
         { id: 'description', label: 'Description' },
+        { id: 'faq', label: 'FAQ' },
     ],
     activeStep: 'header',
     stepObserver: null,
@@ -1777,13 +1778,25 @@ window.productBuilder = (config = {}) => ({
 
         const shipping = (config.shipping_methods || []).find(item => item.id === this.shippingMethod);
         if (shipping) {
-            const amount = Number(shipping.price_delta || 0);
-            if (shipping.charge_type === 'fixed_order') {
-                breakdown.fixed += amount;
-                breakdown.shippingFixed += amount;
-            } else if (shipping.charge_type !== 'included') {
-                breakdown.perUnit += amount;
-                breakdown.shippingPerUnit += amount;
+            if (shipping.charge_type === 'master_method') {
+                const base = Number(shipping.base_price || shipping.price_delta || 0);
+                const perItem = Number(shipping.per_item_price || 0);
+                if (base || perItem) {
+                    const fixedBase = Math.max(0, base - perItem);
+                    breakdown.fixed += fixedBase;
+                    breakdown.shippingFixed += fixedBase;
+                    breakdown.perUnit += perItem;
+                    breakdown.shippingPerUnit += perItem;
+                }
+            } else {
+                const amount = Number(shipping.price_delta || 0);
+                if (shipping.charge_type === 'fixed_order') {
+                    breakdown.fixed += amount;
+                    breakdown.shippingFixed += amount;
+                } else if (shipping.charge_type !== 'included') {
+                    breakdown.perUnit += amount;
+                    breakdown.shippingPerUnit += amount;
+                }
             }
         }
 
@@ -1915,9 +1928,22 @@ window.productBuilder = (config = {}) => ({
     },
 
     shippingChargeLabel(method) {
+        if (method?.charge_type === 'master_method') {
+            const base = Number(method?.base_price || method?.price_delta || 0);
+            const perItem = Number(method?.per_item_price || 0);
+            if (!base && !perItem) return 'Included';
+            const parts = [];
+            if (base) parts.push(`${this.money(base)} base`);
+            if (perItem) parts.push(`${this.money(perItem)} / extra`);
+            return `+${parts.join(' + ')}`;
+        }
         const amount = Number(method?.price_delta || 0);
         if (!amount || method?.charge_type === 'included') return 'Included';
-        return `${amount > 0 ? '+' : '−'}${this.money(Math.abs(amount))}${method?.charge_type === 'fixed_order' ? ' / order' : ' / piece'}`;
+        const application = method?.charge_application || '';
+        const suffix = application === 'per_product'
+            ? ' / product'
+            : (application === 'per_item' ? ' / item' : (method?.charge_type === 'fixed_order' ? ' / order' : ' / piece'));
+        return `${amount > 0 ? '+' : '−'}${this.money(Math.abs(amount))}${suffix}`;
     },
 
     sizeMeta(key) {

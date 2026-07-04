@@ -16,41 +16,13 @@ class ShippingMethodService
         $subtotal = (float) ($cart['merchandise_total'] ?? (($cart['subtotal'] ?? 0) + ($cart['customization_total'] ?? 0)));
         $discount = (float) ($cart['discount'] ?? 0);
         $quantity = max(0, (int) ($cart['quantity'] ?? 0));
-        $country = trim((string) ($shippingAddress['country'] ?? ''));
-        $state = trim((string) ($shippingAddress['state'] ?? ''));
         $ruralAmount = (float) ($ruralSurcharge['amount'] ?? 0);
         $productionWindow = $this->productionWindow($cart);
+        $lineCount = max(1, count((array) ($cart['items'] ?? [])));
 
         return $this->methodRecords()
-            ->filter(function (ShippingMethod $method) use ($subtotal, $quantity, $country, $state): bool {
-                if ($method->minimum_quantity !== null && $quantity < (int) $method->minimum_quantity) {
-                    return false;
-                }
-
-                if ($method->maximum_quantity !== null && $quantity > (int) $method->maximum_quantity) {
-                    return false;
-                }
-
-                if ($method->minimum_subtotal !== null && $subtotal < (float) $method->minimum_subtotal) {
-                    return false;
-                }
-
-                if ($method->maximum_subtotal !== null && $subtotal > (float) $method->maximum_subtotal) {
-                    return false;
-                }
-
-                if (filled($method->country) && filled($country) && strcasecmp((string) $method->country, $country) !== 0) {
-                    return false;
-                }
-
-                if (filled($method->state) && filled($state) && strcasecmp((string) $method->state, $state) !== 0) {
-                    return false;
-                }
-
-                return true;
-            })
-            ->map(function (ShippingMethod $method) use ($subtotal, $discount, $quantity, $ruralSurcharge, $ruralAmount, $productionWindow): array {
-                $base = (float) $method->base_price + ((float) $method->per_item_price * max(0, $quantity - 1));
+            ->map(function (ShippingMethod $method) use ($subtotal, $discount, $quantity, $lineCount, $ruralSurcharge, $ruralAmount, $productionWindow): array {
+                $base = $this->methodBaseCharge($method, $quantity, $lineCount);
                 $freeMinimum = $method->free_shipping_minimum === null ? null : (float) $method->free_shipping_minimum;
 
                 if ($freeMinimum !== null && ($subtotal - $discount) >= $freeMinimum) {
@@ -99,6 +71,24 @@ class ShippingMethodService
             ->all();
     }
 
+
+    private function methodBaseCharge(ShippingMethod $method, int $quantity, int $lineCount): float
+    {
+        $application = method_exists($method, 'chargeApplication') ? $method->chargeApplication() : (string) ($method->charge_application ?? '');
+        $amount = method_exists($method, 'effectiveChargeAmount') ? $method->effectiveChargeAmount() : (float) ($method->charge_amount ?? 0);
+
+        if ($application !== '') {
+            return round(match ($application) {
+                'included' => 0.00,
+                'per_item' => $amount * max(0, $quantity),
+                'per_product' => $amount * max(1, $lineCount),
+                default => $amount,
+            }, 2);
+        }
+
+        return round((float) $method->base_price + ((float) $method->per_item_price * max(0, $quantity - 1)), 2);
+    }
+
     public function productShippingTotal(array $cart): array
     {
         $lines = [];
@@ -128,11 +118,30 @@ class ShippingMethodService
                 continue;
             }
 
-            $amount = match ($method->charge_type) {
-                'fixed_order' => (float) $method->price_adjustment,
-                'included' => 0.00,
-                default => (float) $method->price_adjustment * $quantity,
-            };
+            if ($method->shipping_method_id && filled($method->charge_application)) {
+                $charge = (float) ($method->price_adjustment ?? $method->base_price ?? 0);
+                $amount = match ((string) $method->charge_application) {
+                    'included' => 0.00,
+                    'per_item' => $charge * $quantity,
+                    default => $charge,
+                };
+            } elseif ($method->charge_type === 'master_method' || $method->shipping_method_id) {
+                $basePrice = (float) ($method->base_price ?? $method->price_adjustment ?? 0);
+                $perItemPrice = (float) ($method->per_item_price ?? 0);
+                $lineSubtotal = (float) (($item['line_subtotal'] ?? 0) + ($item['customization_total'] ?? 0));
+
+                if ($method->free_shipping_minimum !== null && $lineSubtotal >= (float) $method->free_shipping_minimum) {
+                    $amount = 0.00;
+                } else {
+                    $amount = $basePrice + ($perItemPrice * max(0, $quantity - 1));
+                }
+            } else {
+                $amount = match ($method->charge_type) {
+                    'fixed_order' => (float) $method->price_adjustment,
+                    'included' => 0.00,
+                    default => (float) $method->price_adjustment * $quantity,
+                };
+            }
 
             $amount = round(max(0, $amount), 2);
             $total += $amount;
@@ -221,9 +230,11 @@ class ShippingMethodService
                 'name' => 'Standard Shipping',
                 'code' => 'standard',
                 'description' => 'Best for regular orders.',
+                'charge_amount' => 12.00,
+                'charge_application' => 'per_order',
                 'base_price' => 12.00,
                 'per_item_price' => 2.25,
-                'free_shipping_minimum' => 450.00,
+                'free_shipping_minimum' => null,
                 'minimum_days' => 5,
                 'maximum_days' => 7,
                 'starts_after_artwork_approval' => true,

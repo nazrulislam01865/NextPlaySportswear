@@ -1017,11 +1017,18 @@ class CartService
 
         $shipping = collect($product['shipping_methods'] ?? [])->firstWhere('id', $configuration['shipping_method'] ?? null);
         if ($shipping) {
-            $amount = (float) ($shipping['price_delta'] ?? 0);
-            if (($shipping['charge_type'] ?? 'per_unit') === 'fixed_order') {
-                $fixedOrder += $amount;
-            } elseif (($shipping['charge_type'] ?? 'per_unit') !== 'included') {
-                $perUnit += $amount;
+            if (($shipping['charge_type'] ?? 'per_unit') === 'master_method') {
+                $base = (float) ($shipping['base_price'] ?? $shipping['price_delta'] ?? 0);
+                $perItem = (float) ($shipping['per_item_price'] ?? 0);
+                $fixedOrder += max(0, $base - $perItem);
+                $perUnit += $perItem;
+            } else {
+                $amount = (float) ($shipping['price_delta'] ?? 0);
+                if (($shipping['charge_type'] ?? 'per_unit') === 'fixed_order') {
+                    $fixedOrder += $amount;
+                } elseif (($shipping['charge_type'] ?? 'per_unit') !== 'included') {
+                    $perUnit += $amount;
+                }
             }
         }
 

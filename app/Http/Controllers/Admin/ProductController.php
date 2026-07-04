@@ -10,6 +10,7 @@ use App\Models\Category;
 use App\Models\JerseyCustomizationOption;
 use App\Models\Product;
 use App\Models\SizeOptionGroup;
+use App\Models\ShippingMethod;
 use App\Services\Catalog\CategoryTreeService;
 use App\Services\Catalog\ProductOptionFilterSyncService;
 use App\Services\Security\SafeHtmlService;
@@ -339,6 +340,11 @@ class ProductController extends Controller
             ->values()
             ->all();
 
+        $shippingMethodOptions = ShippingMethod::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
         return view($view, [
             'product' => $product,
             'categoryOptions' => $this->categoryTreeService->flatOptions(),
@@ -346,6 +352,7 @@ class ProductController extends Controller
             'jerseyCustomizationTypes' => JerseyCustomizationType::options(),
             'jerseyCustomizationOptions' => $jerseyCustomizationOptions,
             'sizeOptionGroups' => $sizeOptionGroups,
+            'shippingMethodOptions' => $shippingMethodOptions,
         ]);
     }
 
@@ -383,6 +390,7 @@ class ProductController extends Controller
 
         $payload['description_html'] = $this->safeHtml->sanitize($data['description_html'] ?? null);
         $payload['customization_artwork_html'] = $this->safeHtml->sanitize($data['customization_artwork_html'] ?? null);
+        $payload['fulfillment_html'] = $this->safeHtml->sanitize($data['fulfillment_html'] ?? null);
         $payload['detail_information_html'] = null;
 
         // The storefront-aligned editor intentionally omits legacy fields that are
@@ -1063,7 +1071,9 @@ class ProductController extends Controller
             'minimum_days', 'maximum_days', 'is_active',
         ]);
         $this->replaceSimpleRelation($product, 'shippingMethods', $data['shipping_methods'] ?? [], ['name', 'code'], [
-            'name', 'code', 'description', 'price_adjustment', 'charge_type', 'minimum_days', 'maximum_days', 'is_default', 'is_active',
+            'shipping_method_id', 'name', 'code', 'description', 'price_adjustment', 'charge_type', 'base_price',
+            'per_item_price', 'free_shipping_minimum', 'minimum_days', 'maximum_days',
+            'starts_after_artwork_approval', 'is_quote_based', 'is_default', 'is_active',
         ]);
         $this->replaceSimpleRelation($product, 'faqs', $data['faqs'] ?? [], ['question', 'answer'], ['question', 'answer', 'is_active']);
     }

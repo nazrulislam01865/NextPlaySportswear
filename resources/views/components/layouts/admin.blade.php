@@ -36,99 +36,165 @@
             </div>
 
             <nav data-admin-sidebar-nav class="admin-sidebar-nav min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-5 text-sm" @click="if ($event.target.closest('a')) sidebarOpen = false">
-                <p class="px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Main Menu</p>
-                <x-admin.sidebar-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')" icon="▦">Dashboard</x-admin.sidebar-link>
-
-                <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Catalog</p>
-                <x-admin.sidebar-link :href="route('admin.products.index')" :active="request()->routeIs('admin.products.*')" icon="◇">Products</x-admin.sidebar-link>
-                <x-admin.sidebar-link :href="route('admin.categories.index')" :active="request()->routeIs('admin.categories.*')" icon="⌘">Categories</x-admin.sidebar-link>
-                <x-admin.sidebar-link :href="route('admin.attributes.index')" :active="request()->routeIs('admin.attributes.*')" icon="◫">Catalog Attributes</x-admin.sidebar-link>
-                <x-admin.sidebar-link :href="route('admin.menus.index')" :active="request()->routeIs('admin.menus.*')" icon="☷">Navigation Menus</x-admin.sidebar-link>
-                <x-admin.sidebar-link :href="route('admin.modules.show', 'inventory')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'inventory'" icon="▤">Inventory</x-admin.sidebar-link>
-
-                <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Master Data</p>
                 @php
-                    $customizationMenuGroups = \App\Enums\JerseyCustomizationType::menuGroups();
-                    $isCustomizationActive = request()->routeIs('admin.jersey-customization-options.*');
-                    $activeCustomizationType = request()->route('type');
-                    $activeCustomizationOption = request()->route('jerseyCustomizationOption');
-
-                    if (! $activeCustomizationType && $activeCustomizationOption instanceof \App\Models\JerseyCustomizationOption) {
-                        $activeCustomizationType = $activeCustomizationOption->type instanceof \App\Enums\JerseyCustomizationType
-                            ? $activeCustomizationOption->type->value
-                            : (string) $activeCustomizationOption->type;
-                    }
-
-                    if (! $activeCustomizationType && old('type')) {
-                        $activeCustomizationType = old('type');
-                    }
-
-                    $activeCustomizationTypeEnum = \App\Enums\JerseyCustomizationType::tryFrom((string) $activeCustomizationType);
-                    $activeCustomizationGroup = $activeCustomizationTypeEnum?->group();
+                    $adminUser = auth('admin')->user();
+                    $canAdmin = static fn (string $permission): bool => (bool) ($adminUser?->canAdmin($permission) ?? false);
                 @endphp
-                <x-admin.sidebar-group
-                    label="Master Data"
-                    icon="◈"
-                    :active="$isCustomizationActive || request()->routeIs('admin.size-option-groups.*')"
-                >
-                    @foreach($customizationMenuGroups as $groupKey => $customizationGroup)
-                        @php($isCurrentCustomizationGroup = $isCustomizationActive && $activeCustomizationGroup === $groupKey)
-                        <details class="space-y-1" data-sidebar-disclosure data-sidebar-nested-disclosure @if($isCurrentCustomizationGroup) open @endif>
-                            <summary
-                                class="flex min-h-10 w-full min-w-0 cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-black text-slate-400 transition hover:bg-white/10 hover:text-white"
-                                data-sidebar-disclosure-toggle
-                            >
-                                <span class="text-[10px] text-slate-500">{{ $customizationGroup['number'] }}</span>
-                                <span class="min-w-0 flex-1 truncate">{{ $customizationGroup['label'] }}</span>
-                                <span class="text-[10px] transition-transform" data-sidebar-arrow>⌄</span>
-                            </summary>
 
-                            <div
-                                class="space-y-1 pl-4"
-                                data-sidebar-disclosure-panel
-                            >
-                                @foreach($customizationGroup['types'] as $customizationType)
-                                    <a
-                                        href="{{ route('admin.jersey-customization-options.type', $customizationType->value) }}"
-                                        @if($isCustomizationActive && $activeCustomizationType === $customizationType->value) data-sidebar-active="true" @endif
-                                        @class([
-                                            'flex min-h-9 min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold transition',
-                                            'bg-brand-red text-white' => $isCustomizationActive && $activeCustomizationType === $customizationType->value,
-                                            'text-slate-400 hover:bg-white/10 hover:text-white' => ! ($isCustomizationActive && $activeCustomizationType === $customizationType->value),
-                                        ])
-                                    >
-                                        <span class="shrink-0 text-[10px] opacity-80">{{ $customizationType->menuNumber() }}</span>
-                                        <span class="min-w-0 truncate">{{ $customizationType->label() }}</span>
-                                    </a>
-                                @endforeach
-                            </div>
-                        </details>
-                    @endforeach
-
-                    <x-admin.sidebar-sub-link
-                        :href="route('admin.size-option-groups.index')"
-                        :active="request()->routeIs('admin.size-option-groups.*')"
-                    >1.8 Size Options</x-admin.sidebar-sub-link>
-                </x-admin.sidebar-group>
-
-                <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Commerce</p>
-                @if(auth()->user()->canManageOrders())
-                    <x-admin.sidebar-link :href="route('admin.orders.index')" :active="request()->routeIs('admin.orders.*')" icon="▣">Orders</x-admin.sidebar-link>
-                    <x-admin.sidebar-link :href="route('admin.returns.index')" :active="request()->routeIs('admin.returns.*')" icon="↶">Returns & Exchanges</x-admin.sidebar-link>
+                <p class="px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Main Menu</p>
+                @if($canAdmin('dashboard.view'))
+                    <x-admin.sidebar-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')" icon="▦">Dashboard</x-admin.sidebar-link>
                 @endif
-                <x-admin.sidebar-link :href="route('admin.modules.show', 'customers')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'customers'" icon="♙">Customers</x-admin.sidebar-link>
-                <x-admin.sidebar-link :href="route('admin.coupons.index')" :active="request()->routeIs('admin.coupons.*')" icon="%">Discounts & Coupons</x-admin.sidebar-link>
-                <x-admin.sidebar-link :href="route('admin.modules.show', 'reviews')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'reviews'" icon="★">Reviews</x-admin.sidebar-link>
 
-                <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Store</p>
-                <x-admin.sidebar-link :href="route('admin.homepage-slides.index')" :active="request()->routeIs('admin.homepage-slides.*')" icon="▧">Homepage Slider</x-admin.sidebar-link>
-                <x-admin.sidebar-link :href="route('admin.modules.show', 'content')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'content'" icon="✎">Content & Navigation</x-admin.sidebar-link>
-                <x-admin.sidebar-link :href="route('admin.shipping-methods.index')" :active="request()->routeIs('admin.shipping-methods.*')" icon="➜">Shipping Methods</x-admin.sidebar-link>
-                <x-admin.sidebar-link :href="route('admin.rural-area-surcharges.index')" :active="request()->routeIs('admin.rural-area-surcharges.*')" icon="⌁">Rural Surcharges</x-admin.sidebar-link>
-                <x-admin.sidebar-link :href="route('admin.modules.show', 'taxes')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'taxes'" icon="§">Taxes</x-admin.sidebar-link>
-                <x-admin.sidebar-link :href="route('admin.payment-methods.index')" :active="request()->routeIs('admin.payment-methods.*')" icon="$">Payment Methods</x-admin.sidebar-link>
-                <x-admin.sidebar-link :href="route('admin.modules.show', 'reports')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'reports'" icon="↗">Reports</x-admin.sidebar-link>
-                <x-admin.sidebar-link :href="route('admin.modules.show', 'settings')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'settings'" icon="⚙">Settings</x-admin.sidebar-link>
+                @if($canAdmin('products.view') || $canAdmin('categories.view') || $canAdmin('attributes.view') || $canAdmin('menus.view') || $canAdmin('inventory.view'))
+                    <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Catalog</p>
+                    @if($canAdmin('products.view'))
+                        <x-admin.sidebar-link :href="route('admin.products.index')" :active="request()->routeIs('admin.products.*')" icon="◇">Products</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('categories.view'))
+                        <x-admin.sidebar-link :href="route('admin.categories.index')" :active="request()->routeIs('admin.categories.*')" icon="⌘">Categories</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('attributes.view'))
+                        <x-admin.sidebar-link :href="route('admin.attributes.index')" :active="request()->routeIs('admin.attributes.*')" icon="◫">Catalog Attributes</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('menus.view'))
+                        <x-admin.sidebar-link :href="route('admin.menus.index')" :active="request()->routeIs('admin.menus.*')" icon="☷">Navigation Menus</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('inventory.view'))
+                        <x-admin.sidebar-link :href="route('admin.modules.show', 'inventory')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'inventory'" icon="▤">Inventory</x-admin.sidebar-link>
+                    @endif
+                @endif
+
+                @if($canAdmin('customization.view') || $canAdmin('shipping.view'))
+                    <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Master Data</p>
+                    @php
+                        $customizationMenuGroups = \App\Enums\JerseyCustomizationType::menuGroups();
+                        $isCustomizationActive = request()->routeIs('admin.jersey-customization-options.*');
+                        $activeCustomizationType = request()->route('type');
+                        $activeCustomizationOption = request()->route('jerseyCustomizationOption');
+
+                        if (! $activeCustomizationType && $activeCustomizationOption instanceof \App\Models\JerseyCustomizationOption) {
+                            $activeCustomizationType = $activeCustomizationOption->type instanceof \App\Enums\JerseyCustomizationType
+                                ? $activeCustomizationOption->type->value
+                                : (string) $activeCustomizationOption->type;
+                        }
+
+                        if (! $activeCustomizationType && old('type')) {
+                            $activeCustomizationType = old('type');
+                        }
+
+                        $activeCustomizationTypeEnum = \App\Enums\JerseyCustomizationType::tryFrom((string) $activeCustomizationType);
+                        $activeCustomizationGroup = $activeCustomizationTypeEnum?->group();
+                    @endphp
+                    <x-admin.sidebar-group
+                        label="Master Data"
+                        icon="◈"
+                        :active="$isCustomizationActive || request()->routeIs('admin.size-option-groups.*') || request()->routeIs('admin.shipping-methods.*')"
+                    >
+                        @if($canAdmin('customization.view'))
+                        @foreach($customizationMenuGroups as $groupKey => $customizationGroup)
+                            @php($isCurrentCustomizationGroup = $isCustomizationActive && $activeCustomizationGroup === $groupKey)
+                            <details class="space-y-1" data-sidebar-disclosure data-sidebar-nested-disclosure @if($isCurrentCustomizationGroup) open @endif>
+                                <summary
+                                    class="flex min-h-10 w-full min-w-0 cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-black text-slate-400 transition hover:bg-white/10 hover:text-white"
+                                    data-sidebar-disclosure-toggle
+                                >
+                                    <span class="text-[10px] text-slate-500">{{ $customizationGroup['number'] }}</span>
+                                    <span class="min-w-0 flex-1 truncate">{{ $customizationGroup['label'] }}</span>
+                                    <span class="text-[10px] transition-transform" data-sidebar-arrow>⌄</span>
+                                </summary>
+
+                                <div
+                                    class="space-y-1 pl-4"
+                                    data-sidebar-disclosure-panel
+                                >
+                                    @foreach($customizationGroup['types'] as $customizationType)
+                                        <a
+                                            href="{{ route('admin.jersey-customization-options.type', $customizationType->value) }}"
+                                            @if($isCustomizationActive && $activeCustomizationType === $customizationType->value) data-sidebar-active="true" @endif
+                                            @class([
+                                                'flex min-h-9 min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold transition',
+                                                'bg-brand-red text-white' => $isCustomizationActive && $activeCustomizationType === $customizationType->value,
+                                                'text-slate-400 hover:bg-white/10 hover:text-white' => ! ($isCustomizationActive && $activeCustomizationType === $customizationType->value),
+                                            ])
+                                        >
+                                            <span class="shrink-0 text-[10px] opacity-80">{{ $customizationType->menuNumber() }}</span>
+                                            <span class="min-w-0 truncate">{{ $customizationType->label() }}</span>
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </details>
+                        @endforeach
+                        @endif
+
+                        @if($canAdmin('customization.view'))
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.size-option-groups.index')"
+                                :active="request()->routeIs('admin.size-option-groups.*')"
+                            >1.8 Size Options</x-admin.sidebar-sub-link>
+                        @endif
+                        @if($canAdmin('shipping.view'))
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.shipping-methods.index')"
+                                :active="request()->routeIs('admin.shipping-methods.*')"
+                            >1.9 Shipping Methods</x-admin.sidebar-sub-link>
+                        @endif
+                    </x-admin.sidebar-group>
+                @endif
+
+                @if($canAdmin('orders.view') || $canAdmin('returns.view') || $canAdmin('customers.view') || $canAdmin('coupons.view') || $canAdmin('reviews.view'))
+                    <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Commerce</p>
+                    @if($canAdmin('orders.view'))
+                        <x-admin.sidebar-link :href="route('admin.orders.index')" :active="request()->routeIs('admin.orders.*')" icon="▣">Orders</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('returns.view'))
+                        <x-admin.sidebar-link :href="route('admin.returns.index')" :active="request()->routeIs('admin.returns.*')" icon="↶">Returns & Exchanges</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('customers.view'))
+                        <x-admin.sidebar-link :href="route('admin.modules.show', 'customers')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'customers'" icon="♙">Customers</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('coupons.view'))
+                        <x-admin.sidebar-link :href="route('admin.coupons.index')" :active="request()->routeIs('admin.coupons.*')" icon="%">Discounts & Coupons</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('reviews.view'))
+                        <x-admin.sidebar-link :href="route('admin.modules.show', 'reviews')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'reviews'" icon="★">Reviews</x-admin.sidebar-link>
+                    @endif
+                @endif
+
+                @if($canAdmin('homepage_slides.view') || $canAdmin('content.view') || $canAdmin('rural_surcharges.view') || $canAdmin('taxes.view') || $canAdmin('payment_methods.view') || $canAdmin('reports.view') || $canAdmin('settings.view'))
+                    <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Store</p>
+                    @if($canAdmin('homepage_slides.view'))
+                        <x-admin.sidebar-link :href="route('admin.homepage-slides.index')" :active="request()->routeIs('admin.homepage-slides.*')" icon="▧">Homepage Slider</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('content.view'))
+                        <x-admin.sidebar-link :href="route('admin.modules.show', 'content')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'content'" icon="✎">Content & Navigation</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('rural_surcharges.view'))
+                        <x-admin.sidebar-link :href="route('admin.rural-area-surcharges.index')" :active="request()->routeIs('admin.rural-area-surcharges.*')" icon="⌁">Rural Surcharges</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('taxes.view'))
+                        <x-admin.sidebar-link :href="route('admin.modules.show', 'taxes')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'taxes'" icon="§">Taxes</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('payment_methods.view'))
+                        <x-admin.sidebar-link :href="route('admin.payment-methods.index')" :active="request()->routeIs('admin.payment-methods.*')" icon="$">Payment Methods</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('reports.view'))
+                        <x-admin.sidebar-link :href="route('admin.modules.show', 'reports')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'reports'" icon="↗">Reports</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('settings.view'))
+                        <x-admin.sidebar-link :href="route('admin.modules.show', 'settings')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'settings'" icon="⚙">Settings</x-admin.sidebar-link>
+                    @endif
+                @endif
+
+                @if($canAdmin('users.view') || $canAdmin('role_matrix.view'))
+                    <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Access Control</p>
+                    @if($canAdmin('users.view'))
+                        <x-admin.sidebar-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')" icon="♚">Admin Users</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('role_matrix.view'))
+                        <x-admin.sidebar-link :href="route('admin.role-matrix.index')" :active="request()->routeIs('admin.role-matrix.*')" icon="▦">Role Matrix</x-admin.sidebar-link>
+                    @endif
+                @endif
             </nav>
 
             <div class="shrink-0 border-t border-white/10 p-4">

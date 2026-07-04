@@ -3,10 +3,12 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Support\AdminRbac;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -57,9 +59,14 @@ class User extends Authenticatable
         return $this->hasMany(OrderReturnRequest::class)->latest('requested_at');
     }
 
+    public function adminRole(): BelongsTo
+    {
+        return $this->belongsTo(AdminRole::class, 'role', 'slug');
+    }
+
     public function isAdmin(): bool
     {
-        return in_array($this->role, ['super_admin', 'admin', 'catalog_manager'], true) && $this->is_active;
+        return $this->is_active && AdminRbac::roleIsAdmin($this->role);
     }
 
     public function isCustomer(): bool
@@ -67,9 +74,29 @@ class User extends Authenticatable
         return $this->role === 'customer' && $this->is_active;
     }
 
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'super_admin' && $this->is_active;
+    }
+
     public function canManageOrders(): bool
     {
-        return in_array($this->role, ['super_admin', 'admin'], true) && $this->is_active;
+        return $this->canAdmin('orders.manage');
+    }
+
+    public function canAdmin(string $permissionKey): bool
+    {
+        return AdminRbac::userCan($this, $permissionKey);
+    }
+
+    public function canDeleteAdminRecords(): bool
+    {
+        return $this->canAdmin(AdminRbac::DELETE_PERMISSION_KEY);
+    }
+
+    public function adminRoleLabel(): string
+    {
+        return AdminRbac::roleLabel($this->role);
     }
 
     /**

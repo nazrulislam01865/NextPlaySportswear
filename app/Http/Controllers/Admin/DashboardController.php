@@ -16,9 +16,17 @@ class DashboardController extends Controller
 {
     public function __invoke(): View
     {
-        $canManageOrders = auth('admin')->user()?->canManageOrders() ?? false;
-        $ordersAvailable = $canManageOrders && Schema::hasTable('orders');
-        $returnsAvailable = $canManageOrders && Schema::hasTable('order_return_requests');
+        $admin = auth('admin')->user();
+        $canViewOrders = $admin?->canAdmin('orders.view') ?? false;
+        $canManageOrders = $admin?->canAdmin('orders.manage') ?? false;
+        $canViewReturns = $admin?->canAdmin('returns.view') ?? false;
+        $canViewProducts = $admin?->canAdmin('products.view') ?? false;
+        $canManageProducts = $admin?->canAdmin('products.manage') ?? false;
+        $canViewInventory = $admin?->canAdmin('inventory.view') ?? false;
+        $canViewCustomers = $admin?->canAdmin('customers.view') ?? false;
+
+        $ordersAvailable = $canViewOrders && Schema::hasTable('orders');
+        $returnsAvailable = $canViewReturns && Schema::hasTable('order_return_requests');
 
         $stats = [
             'orders' => $ordersAvailable ? Order::query()->count() : 0,
@@ -37,11 +45,19 @@ class DashboardController extends Controller
 
         return view('admin.dashboard', [
             'stats' => $stats,
+            'canViewOrders' => $canViewOrders,
             'canManageOrders' => $canManageOrders,
+            'canViewReturns' => $canViewReturns,
+            'canViewProducts' => $canViewProducts,
+            'canManageProducts' => $canManageProducts,
+            'canViewInventory' => $canViewInventory,
+            'canViewCustomers' => $canViewCustomers,
             'recentOrders' => $ordersAvailable
                 ? Order::query()->with('user')->latest('placed_at')->limit(8)->get()
                 : collect(),
-            'recentProducts' => Product::query()->with(['category', 'subcategory'])->latest()->limit(8)->get(),
+            'recentProducts' => $canViewProducts
+                ? Product::query()->with(['category', 'subcategory'])->latest()->limit(8)->get()
+                : collect(),
         ]);
     }
 }

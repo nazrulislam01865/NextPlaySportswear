@@ -21,14 +21,15 @@
             width="900"
             height="900"
         >
-        @if (filled($product['tag'] ?? null))
-            <span class="{{ $tagClass }} absolute left-3 top-3 inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide shadow-sm">
-                {{ $product['tag'] }}
-            </span>
-        @endif
     </a>
 
     <div class="flex flex-1 flex-col p-4">
+        @if (filled($product['tag'] ?? null))
+            <span class="{{ $tagClass }} mb-2 inline-flex w-fit rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide">
+                {{ $product['tag'] }}
+            </span>
+        @endif
+
         @if ($showCategory)
             <p class="text-[11px] font-black uppercase tracking-[.12em] text-slate-400">{{ $product['category'] }}</p>
         @endif

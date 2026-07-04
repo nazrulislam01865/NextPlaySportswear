@@ -14,16 +14,16 @@
                 @php($images = collect($value['images'] ?? [])->map(fn ($image) => is_array($image) ? ($image['url'] ?? null) : $image)->filter()->values())
                 <button type="button" @click="choose(@js($group), @js($value['id']))" :class="selections[@js($id)] === @js($value['id']) ? 'border-brand-red ring-2 ring-red-100' : 'border-slate-200'" class="min-w-0 overflow-hidden rounded-2xl border-2 bg-white p-2 text-left transition">
                     @if($images->isNotEmpty())
-                        <img src="{{ $images->first() }}" alt="{{ $value['label'] }} fabric or option preview" loading="lazy" decoding="async" class="aspect-[4/3] w-full rounded-xl object-cover">
+                        <img src="{{ $images->first() }}" alt="{{ $value['label'] }} fabric or option preview" loading="lazy" decoding="async" class="aspect-square w-full rounded-xl object-cover">
                         @if($images->count() > 1)
                             <div class="mt-2 grid grid-cols-4 gap-1.5">
                                 @foreach($images->take(4) as $image)<img src="{{ $image }}" alt="" loading="lazy" decoding="async" class="aspect-square w-full rounded-lg border border-slate-200 object-cover">@endforeach
                             </div>
                         @endif
                     @elseif($value['image'])
-                        <img src="{{ $value['image'] }}" alt="{{ $value['label'] }} fabric or option preview" loading="lazy" decoding="async" class="aspect-[4/3] w-full rounded-xl object-cover">
+                        <img src="{{ $value['image'] }}" alt="{{ $value['label'] }} fabric or option preview" loading="lazy" decoding="async" class="aspect-square w-full rounded-xl object-cover">
                     @else
-                        <div class="grid aspect-[4/3] place-items-center rounded-xl bg-slate-100 px-4 text-center text-sm font-black text-slate-400">No option image</div>
+                        <div class="grid aspect-square place-items-center rounded-xl bg-slate-100 px-4 text-center text-sm font-black text-slate-400">No option image</div>
                     @endif
                     <div class="p-2">
                         <div class="flex items-start justify-between gap-3"><strong class="min-w-0 break-words text-sm">{{ $value['label'] }}</strong><span class="shrink-0 text-xs font-black text-brand-red" x-text="chargeLabel(@js($value))"></span></div>

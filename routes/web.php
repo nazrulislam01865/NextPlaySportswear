@@ -57,7 +57,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         ->middleware('throttle:5,1')
         ->name('login.store');
 
-    Route::middleware(['auth:admin', 'admin'])->group(function () {
+    Route::middleware(['auth:admin', 'admin', 'admin.permission'])->group(function () {
         Route::get('/', \App\Http\Controllers\Admin\DashboardController::class)->name('dashboard');
         Route::post('/logout', [\App\Http\Controllers\Admin\Auth\AdminSessionController::class, 'destroy'])->name('logout');
 
@@ -110,7 +110,23 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->except('show');
 
 
-        Route::middleware('order.manager')->group(function (): void {
+        Route::get('/users', [\App\Http\Controllers\Admin\AdminUserController::class, 'index'])->name('users.index');
+        Route::post('/users', [\App\Http\Controllers\Admin\AdminUserController::class, 'store'])
+            ->middleware('throttle:10,1')
+            ->name('users.store');
+        Route::patch('/users/{user}', [\App\Http\Controllers\Admin\AdminUserController::class, 'update'])
+            ->middleware('throttle:20,1')
+            ->name('users.update');
+
+        Route::get('/role-matrix', [\App\Http\Controllers\Admin\RoleMatrixController::class, 'index'])->name('role-matrix.index');
+        Route::post('/role-matrix/roles', [\App\Http\Controllers\Admin\RoleMatrixController::class, 'storeRole'])
+            ->middleware('throttle:10,1')
+            ->name('role-matrix.roles.store');
+        Route::post('/role-matrix', [\App\Http\Controllers\Admin\RoleMatrixController::class, 'update'])
+            ->middleware('throttle:20,1')
+            ->name('role-matrix.update');
+
+        Route::group([], function (): void {
             Route::get('/orders', [\App\Http\Controllers\Admin\OrderController::class, 'index'])->name('orders.index');
             Route::get('/orders/{order}', [\App\Http\Controllers\Admin\OrderController::class, 'show'])->name('orders.show');
             Route::patch('/orders/{order}', [\App\Http\Controllers\Admin\OrderController::class, 'update'])->middleware('throttle:20,1')->name('orders.update');

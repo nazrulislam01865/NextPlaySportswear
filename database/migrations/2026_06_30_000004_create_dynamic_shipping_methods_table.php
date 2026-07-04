@@ -15,6 +15,8 @@ return new class extends Migration
                 $table->string('name', 160);
                 $table->string('code', 160)->unique();
                 $table->text('description')->nullable();
+                $table->decimal('charge_amount', 12, 2)->default(0);
+                $table->string('charge_application', 40)->default('per_order');
                 $table->decimal('base_price', 12, 2)->default(0);
                 $table->decimal('per_item_price', 12, 2)->default(0);
                 $table->decimal('free_shipping_minimum', 12, 2)->nullable();
@@ -46,9 +48,11 @@ return new class extends Migration
                     'name' => 'Standard Shipping',
                     'code' => 'standard',
                     'description' => 'Best for regular orders without event deadline pressure.',
+                    'charge_amount' => 12.00,
+                    'charge_application' => 'per_order',
                     'base_price' => 12.00,
                     'per_item_price' => 2.25,
-                    'free_shipping_minimum' => 450.00,
+                    'free_shipping_minimum' => null,
                     'minimum_quantity' => null,
                     'maximum_quantity' => null,
                     'minimum_subtotal' => null,
@@ -69,6 +73,8 @@ return new class extends Migration
                     'name' => 'Expedited Shipping',
                     'code' => 'expedited',
                     'description' => 'Faster delivery after production is complete.',
+                    'charge_amount' => 24.00,
+                    'charge_application' => 'per_order',
                     'base_price' => 24.00,
                     'per_item_price' => 3.50,
                     'free_shipping_minimum' => null,
@@ -92,6 +98,8 @@ return new class extends Migration
                     'name' => 'Rush Event Delivery Review',
                     'code' => 'rush-review',
                     'description' => 'For event or tournament deadlines. Support confirms production and delivery feasibility before payment capture.',
+                    'charge_amount' => 0.00,
+                    'charge_application' => 'included',
                     'base_price' => 0.00,
                     'per_item_price' => 0.00,
                     'free_shipping_minimum' => null,
@@ -104,7 +112,7 @@ return new class extends Migration
                     'minimum_days' => 1,
                     'maximum_days' => 3,
                     'starts_after_artwork_approval' => true,
-                    'is_quote_based' => true,
+                    'is_quote_based' => false,
                     'is_default' => false,
                     'is_active' => true,
                     'sort_order' => 30,
@@ -115,10 +123,12 @@ return new class extends Migration
                     'name' => 'Bulk Freight / Team Shipment',
                     'code' => 'bulk-freight',
                     'description' => 'Recommended for 50+ pieces, schools, leagues, and carton/freight shipments.',
+                    'charge_amount' => 0.00,
+                    'charge_application' => 'included',
                     'base_price' => 0.00,
                     'per_item_price' => 0.00,
                     'free_shipping_minimum' => null,
-                    'minimum_quantity' => 50,
+                    'minimum_quantity' => null,
                     'maximum_quantity' => null,
                     'minimum_subtotal' => null,
                     'maximum_subtotal' => null,
@@ -127,7 +137,7 @@ return new class extends Migration
                     'minimum_days' => 5,
                     'maximum_days' => 10,
                     'starts_after_artwork_approval' => true,
-                    'is_quote_based' => true,
+                    'is_quote_based' => false,
                     'is_default' => false,
                     'is_active' => true,
                     'sort_order' => 40,

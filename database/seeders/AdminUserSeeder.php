@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Support\AdminRbac;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -10,6 +11,8 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
+        AdminRbac::syncDefaults(false);
+
         $password = env('ADMIN_PASSWORD');
 
         if (app()->environment('production') && blank($password)) {

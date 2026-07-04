@@ -17,7 +17,7 @@ class Product extends Model
     protected $fillable = [
         'category_id', 'subcategory_id', 'name', 'slug', 'sku', 'status', 'product_type', 'product_profile', 'brand',
         'badge_label', 'badge_color', 'short_description', 'description_html', 'detail_information_html',
-        'customization_artwork_html', 'features',
+        'customization_artwork_html', 'fulfillment_html', 'features',
         'specifications', 'base_price', 'compare_at_price', 'cost_price', 'currency',
         'minimum_quantity', 'maximum_quantity', 'is_featured', 'is_customizable', 'is_active',
         'track_inventory', 'stock_quantity', 'low_stock_threshold', 'allow_backorder', 'weight',

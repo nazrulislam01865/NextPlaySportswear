@@ -13,6 +13,7 @@
         ->values();
     $firstSizeChartId = data_get($sizeGroupsWithCharts->first(), 'id');
     $customizationArtworkHtml = trim((string) ($product['customization_artwork_html'] ?? ''));
+    $fulfillmentHtml = trim((string) ($product['fulfillment_html'] ?? ''));
     $customizationGroups = collect($product['option_groups'] ?? [])
         ->filter(fn ($group) => ($group['display_mode'] ?? 'customer') === 'customer')
         ->filter(fn ($group) => filled($group['label'] ?? null) || collect($group['values'] ?? [])->isNotEmpty())
@@ -26,8 +27,8 @@
 <section class="section-padding bg-white" x-data="{ tab: 'description', sizeChart: @js($firstSizeChartId) }">
     <div class="site-container overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-card sm:rounded-[28px]">
         <div class="np-product-detail-tabs flex overflow-x-auto border-b border-slate-200 bg-slate-50">
-            @foreach(['description'=>'Description','specifications'=>'Specifications','customization'=>'Customization & Artwork','faq'=>'FAQ'] as $key => $label)
-                <button type="button" @click="tab='{{ $key }}'" :class="tab === '{{ $key }}' ? 'bg-white text-brand-red shadow-[inset_0_-3px_0_#e91d33]' : 'text-slate-600'" class="np-product-detail-tab min-h-12 flex-1 border-r border-slate-200 px-3 py-3 text-[11px] font-black leading-tight last:border-r-0 sm:px-5 sm:py-4 sm:text-sm">{{ $label }}</button>
+            @foreach(['description'=>'Description','specifications'=>'Specifications','customization'=>'Customization & Artwork','fulfillment'=>'Fulfillment','faq'=>'FAQ'] as $key => $label)
+                <button type="button" @click="tab='{{ $key }}'" :class="tab === '{{ $key }}' ? 'bg-white text-brand-red shadow-[inset_0_-3px_0_#e91d33]' : 'text-slate-600'" class="np-product-detail-tab min-h-12 min-w-[132px] flex-1 border-r border-slate-200 px-3 py-3 text-[11px] font-black leading-tight last:border-r-0 sm:px-5 sm:py-4 sm:text-sm">{{ $label }}</button>
             @endforeach
         </div>
         <div class="p-4 sm:p-6">
@@ -160,6 +161,14 @@
                     @endif
                 @else
                     <p class="text-sm text-slate-500">No customization or artwork guidelines have been added.</p>
+                @endif
+            </div>
+
+            <div x-show="tab === 'fulfillment'">
+                @if($fulfillmentHtml !== '')
+                    <div class="product-rich-content">{!! $fulfillmentHtml !!}</div>
+                @else
+                    <p class="p-8 text-center text-sm text-slate-500">No fulfillment details have been added.</p>
                 @endif
             </div>
 

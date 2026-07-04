@@ -2046,3 +2046,72 @@ img.np-category-square-image {
         height: auto !important;
     }
 }
+
+/* NextPlay clean square image display
+   Removes decorative product-gallery framing and keeps product/catalog media at 1:1. */
+.product-gallery-frame {
+    aspect-ratio: 1 / 1 !important;
+    width: 100% !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+.product-gallery-frame .np-product-gallery-main,
+.product-gallery-frame .np-product-gallery-slide {
+    aspect-ratio: 1 / 1 !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    background: #fff !important;
+}
+
+.product-gallery-frame .np-product-gallery-image,
+.np-product-square-media > img,
+.np-product-square-media img,
+.cart-item-image.np-product-square-media img {
+    width: 100% !important;
+    height: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    object-fit: contain !important;
+    display: block !important;
+    padding: 0 !important;
+    background: #fff !important;
+}
+
+.np-category-square-media > img,
+.np-category-square-media img,
+img.np-category-square-image {
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    object-fit: cover !important;
+    display: block !important;
+}
+
+img.np-product-square-image {
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    object-fit: contain !important;
+    display: block !important;
+    background: #fff !important;
+}
+
+.np-product-square-media,
+.np-category-square-media {
+    aspect-ratio: 1 / 1 !important;
+    width: 100% !important;
+    overflow: hidden !important;
+}
+
+.home-page .image-card > img.np-category-square-image,
+.home-page .product-card > img.np-product-square-image,
+.home-page .product-card > img.np-category-square-image,
+.home-page .sport-card > img.np-category-square-image,
+.home-page .use-card > img.np-category-square-image {
+    aspect-ratio: 1 / 1 !important;
+    height: auto !important;
+    width: 100% !important;
+}

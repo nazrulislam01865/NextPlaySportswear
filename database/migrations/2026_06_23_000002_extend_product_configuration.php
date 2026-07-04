@@ -47,6 +47,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->decimal('price_adjustment', 12, 2)->default(0);
             $table->string('charge_type', 24)->default('per_unit');
+            $table->string('charge_application', 40)->nullable();
             $table->unsignedInteger('minimum_days')->default(1);
             $table->unsignedInteger('maximum_days')->default(1);
             $table->boolean('is_default')->default(false);

@@ -17,17 +17,18 @@
 
     <style>
         .product-gallery-frame {
-            background:
-                linear-gradient(90deg, #1877df 0 56%, #55d4d4 56% 76%, #e7efef 76% 100%) top/100% 10px no-repeat,
-                linear-gradient(#1877df, #1877df) left/10px 100% no-repeat,
-                linear-gradient(90deg, #1877df 0 56%, #55d4d4 56% 76%, #e7efef 76% 100%) bottom/100% 10px no-repeat;
-            padding-top: 10px;
-            padding-left: 10px;
-            padding-bottom: 10px;
+            aspect-ratio: 1 / 1;
+            background: #fff;
+            border: 0;
+            border-radius: 0;
+            box-shadow: none;
+            overflow: hidden;
+            padding: 0;
         }
 
         .product-gallery-frame .np-product-gallery-main {
             aspect-ratio: 1 / 1;
+            background: #fff;
         }
 
         .product-gallery-frame .np-product-gallery-slide {
@@ -125,17 +126,6 @@
             }
         }
 
-        @media (max-width: 640px) {
-            .product-gallery-frame {
-                background:
-                    linear-gradient(90deg, #1877df 0 56%, #55d4d4 56% 76%, #e7efef 76% 100%) top/100% 7px no-repeat,
-                    linear-gradient(#1877df, #1877df) left/7px 100% no-repeat,
-                    linear-gradient(90deg, #1877df 0 56%, #55d4d4 56% 76%, #e7efef 76% 100%) bottom/100% 7px no-repeat;
-                padding-top: 7px;
-                padding-left: 7px;
-                padding-bottom: 7px;
-            }
-        }
     </style>
 
     <div class="np-product-page" x-data="{ imageOpen: false, image: null }" @open-product-image.window="image = $event.detail; imageOpen = true">

@@ -295,7 +295,24 @@
             })->values()->all(),
         ];
     })->values();
-    $shippingValues = old('shipping_methods', $product->relationLoaded('shippingMethods') ? $product->shippingMethods->where('is_active', true)->map(fn($method) => $method->only(['name','code','description','price_adjustment','charge_type','minimum_days','maximum_days','is_default','is_active']))->values()->all() : []);
+    $hasOldShippingInput = session()->hasOldInput();
+    $selectedShippingCodes = collect($hasOldShippingInput
+        ? old('shipping_method_codes', [])
+        : ($product->relationLoaded('shippingMethods') ? $product->shippingMethods->pluck('code')->all() : []))
+        ->map(fn ($code) => \Illuminate\Support\Str::slug((string) $code))
+        ->filter()
+        ->unique()
+        ->values();
+    $defaultShippingCode = \Illuminate\Support\Str::slug((string) ($hasOldShippingInput
+        ? old('shipping_method_default_code')
+        : optional($product->relationLoaded('shippingMethods') ? $product->shippingMethods->firstWhere('is_default', true) : null)->code));
+    if ($defaultShippingCode === '' && $selectedShippingCodes->isNotEmpty()) {
+        $defaultShippingCode = (string) $selectedShippingCodes->first();
+    }
+    $shippingValues = $selectedShippingCodes
+        ->map(fn ($code) => ['code' => $code, 'is_default' => $code === $defaultShippingCode])
+        ->values()
+        ->all();
     $defaultRosterFields = [
         ['key' => 'name', 'label' => 'Player name', 'type' => 'text', 'max_length' => 60, 'required' => false, 'enabled' => true],
         ['key' => 'number', 'label' => 'Player number', 'type' => 'number', 'max_length' => 4, 'required' => false, 'enabled' => true],
@@ -326,6 +343,7 @@
         'productName' => old('name', $product->name),
         'shortDescription' => old('short_description', $product->short_description),
         'descriptionHtml' => old('description_html', $product->description_html),
+        'fulfillmentHtml' => old('fulfillment_html', $product->fulfillment_html),
         'slug' => old('slug', $product->slug),
         'primaryCategoryId' => $primaryCategoryId ? (int) $primaryCategoryId : '',
         'primaryCategoryName' => $primaryCategoryName,
@@ -406,7 +424,7 @@
 
     <div class="np-product-builder">
         <section class="np-product-builder__main">
-            <div class="np-stepper" aria-label="Add product steps">
+            <div class="np-stepper" aria-label="Add product steps" :style="{ '--np-step-count': steps.length }">
                 <template x-for="(step, index) in steps" :key="step.id">
                     <a :href="`#${step.id}`" class="np-stepper__item" :class="{ 'is-active': isStepActive(step.id), 'is-complete': isStepComplete(step.id) }" :aria-current="isStepActive(step.id) ? 'step' : null" @click="goToStep(step.id, $event)">
                         <span>
@@ -496,7 +514,7 @@ Lead Time:"></div>
                     </div>
 
                     <div class="grid gap-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)]">
-                        <div class="admin-label np-category-field" data-field-name="primary_category_id" @click.outside="closeCategoryDropdown()">
+                        <div class="admin-label np-category-field np-category-field--plain" data-field-name="primary_category_id" @click.outside="closeCategoryDropdown()">
                             <span>Category <span class="text-brand-red">*</span></span>
                             <input type="hidden" name="primary_category_id" x-model="categoryId" required>
                             <button type="button" class="np-searchable-trigger" :class="categoryDropdownOpen ? 'is-open' : ''" @click="toggleCategoryDropdown()" @keydown.enter.prevent="toggleCategoryDropdown()" @keydown.space.prevent="toggleCategoryDropdown()">
@@ -530,16 +548,14 @@ Lead Time:"></div>
                         </div>
 
                         <label class="admin-label">Tags
-                            <input class="admin-input" name="tags_text" value="{{ old('tags_text',implode(', ',$product->tags ?? [])) }}" placeholder="Add tags">
+                            <textarea class="admin-textarea np-tags-textarea" name="tags_text" rows="3" placeholder="Add tags separated by commas">{{ old('tags_text',implode(', ',$product->tags ?? [])) }}</textarea>
+                            <small class="np-field-help">Separate multiple tags with commas. The field wraps to new lines automatically.</small>
                         </label>
                     </div>
 
-                    <details class="np-advanced-detail">
-                        <summary>Optional product badge</summary>
-                        <label class="admin-label mt-4">Gallery badge label
-                            <input class="admin-input" name="badge_label" value="{{ old('badge_label',$product->badge_label) }}" maxlength="80" placeholder="Customizable, New, Best Seller">
-                        </label>
-                    </details>
+                    <label class="admin-label">Gallery badge label <span class="text-xs font-bold text-slate-400">(optional)</span>
+                        <input class="admin-input" name="badge_label" value="{{ old('badge_label',$product->badge_label) }}" maxlength="80" placeholder="Customizable, New, Best Seller">
+                    </label>
 
                     <input type="hidden" name="new_image_primary_index" :value="newImagePrimaryIndex()">
                     <div>
@@ -697,19 +713,172 @@ Lead Time:"></div>
 
             <section id="artwork" class="np-card"><header class="np-card__header"><div><h2>4. Custom Artwork Upload</h2><p>Allow customers to upload custom artwork for this product.</p></div></header><div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,.7fr)]"><div class="np-field-stack"><div class="grid gap-4 sm:grid-cols-2"><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4"><input type="hidden" name="artwork_upload_enabled" :value="artworkUploadEnabled ? 1 : 0"><input type="checkbox" x-model="artworkUploadEnabled"><span><strong class="block text-sm">Show artwork upload step</strong><small class="text-xs text-slate-500">The section disappears when disabled.</small></span></label><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4" :class="!artworkUploadEnabled && 'opacity-50'"><input type="hidden" name="artwork_upload_required" :value="artworkUploadRequired ? 1 : 0"><input type="checkbox" x-model="artworkUploadRequired" :disabled="!artworkUploadEnabled"><span><strong class="block text-sm">Artwork is required</strong><small class="text-xs text-slate-500">At least one file must be selected.</small></span></label></div><div x-show="artworkUploadEnabled" class="grid gap-4 sm:grid-cols-2"><label class="admin-label sm:col-span-2">Section title<input class="admin-input" name="artwork_upload_title" x-model="artworkUploadTitle" maxlength="180"></label><label class="admin-label sm:col-span-2">Upload instructions<textarea class="admin-textarea np-textarea-sm" name="artwork_upload_description" x-model="artworkUploadDescription" maxlength="3000"></textarea></label><label class="admin-label">Accepted extensions<input class="admin-input font-mono" name="artwork_upload_accepted_types" x-model="artworkUploadAcceptedTypes" placeholder="pdf,ai,png,jpg,jpeg,eps"></label><label class="admin-label">Maximum file size (MB)<input class="admin-input" type="number" min="1" max="25" name="artwork_upload_max_file_size_mb" x-model.number="artworkUploadMaxFileSizeMb"></label><label class="admin-label sm:col-span-2">Maximum files<input class="admin-input" type="number" min="1" max="12" name="artwork_upload_max_files" x-model.number="artworkUploadMaxFiles"></label></div></div><div x-show="artworkUploadEnabled" class="np-artwork-preview"><span>☁</span><strong>Upload area will appear on product page</strong><small>Drag &amp; drop or click to upload</small></div></div></section>
 
-            <section id="fulfillment" class="np-card"><header class="np-card__header"><div><h2>5. Production &amp; Shipping</h2><p>Set production times and available shipping methods.</p></div></header><div class="space-y-4"><details class="np-config-panel" open><summary>Production options</summary><div class="mt-4 flex flex-wrap gap-2"><button type="button" class="np-secondary-button" @click="addProductionHeader()" :disabled="productionHeaders.length >= 12">＋ Add production option</button><button type="button" class="np-secondary-button" @click="addProductionRow()" :disabled="productionRows.length >= 100">＋ Add range</button></div><div class="np-table-wrap mt-4"><table class="np-simple-table"><thead><tr><th>Quantity range</th><template x-for="(header,columnIndex) in productionHeaders" :key="columnIndex"><th><input class="np-table-input font-black" :name="`production_table_headers[${columnIndex}]`" x-model="productionHeaders[columnIndex]" maxlength="160" placeholder="Standard Production"><button type="button" class="mt-2 text-xs font-black text-red-700" @click="removeProductionHeader(columnIndex)" x-show="productionHeaders.length > 1">Remove column</button></th></template><th>Action</th></tr></thead><tbody><template x-for="(row,rowIndex) in productionRows" :key="row.client_key || rowIndex"><tr><td><input class="np-table-input font-black" :name="`production_table_rows[${rowIndex}][range]`" x-model="row.range" maxlength="50" placeholder="1-40" required></td><template x-for="(cell,columnIndex) in row.cells" :key="columnIndex"><td><input type="hidden" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][enabled]`" :value="cell.enabled ? 1 : 0"><label class="flex items-center gap-2 text-xs font-black text-slate-700"><input type="checkbox" x-model="cell.enabled"> Offer</label><div class="mt-2 space-y-2" :class="!cell.enabled && 'pointer-events-none opacity-45'"><input class="np-table-input" type="number" min="0" step="0.01" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][price_adjustment]`" x-model.number="cell.price_adjustment" placeholder="Charge"><input class="np-table-input" type="text" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][production_time]`" x-model="cell.production_time" maxlength="60" placeholder="5-15 days"><textarea class="admin-textarea !mt-0 min-h-[70px]" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][description]`" x-model="cell.description" maxlength="2000" placeholder="Description"></textarea></div></td></template><td><button type="button" class="np-icon-button" @click="removeProductionRow(rowIndex)">⌫</button></td></tr></template></tbody></table></div></details><details class="np-config-panel" open><summary>Shipping methods</summary><div class="mt-4 flex flex-wrap items-center gap-3"><label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold"><input type="hidden" name="shipping_methods_enabled" :value="shippingMethodsEnabled ? 1 : 0"><input type="checkbox" x-model="shippingMethodsEnabled"> Show shipping methods</label><button type="button" class="np-secondary-button" @click="addShippingMethod()">＋ Add shipping method</button></div><div x-show="shippingMethodsEnabled" class="mt-4 space-y-3"><template x-for="(method,index) in shippingMethods" :key="index"><article class="np-nested-card"><input type="hidden" :name="`shipping_methods[${index}][code]`" x-model="method.code"><input type="hidden" :name="`shipping_methods[${index}][is_active]`" value="1"><div class="grid gap-3 md:grid-cols-2"><label class="admin-label">Name<input class="admin-input" :name="`shipping_methods[${index}][name]`" x-model="method.name" @blur="if(!method.code) method.code = method.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')"></label><label class="admin-label">Charge<input class="admin-input" type="number" min="0" step="0.01" :name="`shipping_methods[${index}][price_adjustment]`" x-model="method.price_adjustment"></label><label class="admin-label">Charge basis<select class="admin-input" :name="`shipping_methods[${index}][charge_type]`" x-model="method.charge_type"><option value="included">Included</option><option value="per_unit">Per piece</option><option value="fixed_order">Fixed per order</option></select></label><label class="admin-label">Days<input class="admin-input" type="number" min="0" :name="`shipping_methods[${index}][minimum_days]`" x-model="method.minimum_days"></label><input type="hidden" :name="`shipping_methods[${index}][maximum_days]`" x-model="method.maximum_days"><label class="admin-label md:col-span-2">Description<input class="admin-input" :name="`shipping_methods[${index}][description]`" x-model="method.description"></label></div><div class="mt-3 flex justify-between"><input type="hidden" :name="`shipping_methods[${index}][is_default]`" :value="method.is_default ? 1 : 0"><button type="button" class="np-link-button" @click="setDefaultShipping(index)" x-text="method.is_default ? 'Default customer choice' : 'Make default'"></button><button type="button" class="np-danger-link" @click="shippingMethods.splice(index,1)">Remove</button></div></article></template><div x-show="shippingMethods.length === 0" class="rounded-2xl border-2 border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">Shipping methods are enabled but no method has been added.</div></div></details></div></section>
+            <section id="fulfillment" class="np-card">
+                <header class="np-card__header">
+                    <div>
+                        <h2>5. Production &amp; Shipping</h2>
+                        <p>Set production times and available shipping methods.</p>
+                    </div>
+                </header>
+                <div class="space-y-4">
+                    <details class="np-config-panel" open>
+                        <summary>Production options</summary>
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <button type="button" class="np-secondary-button" @click="addProductionHeader()" :disabled="productionHeaders.length >= 12">＋ Add production option</button>
+                            <button type="button" class="np-secondary-button" @click="addProductionRow()" :disabled="productionRows.length >= 100">＋ Add range</button>
+                        </div>
+
+                        <div class="np-table-wrap np-production-table-wrap mt-4">
+                            <table class="np-simple-table np-production-table-desktop">
+                                <thead>
+                                    <tr>
+                                        <th>Quantity range</th>
+                                        <template x-for="(header,columnIndex) in productionHeaders" :key="columnIndex">
+                                            <th>
+                                                <input class="np-table-input font-black" :name="`production_table_headers[${columnIndex}]`" x-model="productionHeaders[columnIndex]" maxlength="160" placeholder="Standard Production">
+                                                <button type="button" class="mt-2 text-xs font-black text-red-700" @click="removeProductionHeader(columnIndex)" x-show="productionHeaders.length > 1">Remove column</button>
+                                            </th>
+                                        </template>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="(row,rowIndex) in productionRows" :key="row.client_key || rowIndex">
+                                        <tr>
+                                            <td>
+                                                <input class="np-table-input font-black" :name="`production_table_rows[${rowIndex}][range]`" x-model="row.range" maxlength="50" placeholder="1-40">
+                                            </td>
+                                            <template x-for="(cell,columnIndex) in row.cells" :key="columnIndex">
+                                                <td>
+                                                    <input type="hidden" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][enabled]`" :value="cell.enabled ? 1 : 0">
+                                                    <label class="flex items-center gap-2 text-xs font-black text-slate-700"><input type="checkbox" x-model="cell.enabled"> Offer</label>
+                                                    <div class="mt-2 space-y-2" :class="!cell.enabled && 'pointer-events-none opacity-45'">
+                                                        <input class="np-table-input" type="number" min="0" step="0.01" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][price_adjustment]`" x-model.number="cell.price_adjustment" placeholder="Charge">
+                                                        <input class="np-table-input" type="text" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][production_time]`" x-model="cell.production_time" maxlength="60" placeholder="5-15 days">
+                                                        <textarea class="admin-textarea !mt-0 min-h-[70px]" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][description]`" x-model="cell.description" maxlength="2000" placeholder="Description"></textarea>
+                                                    </div>
+                                                </td>
+                                            </template>
+                                            <td><button type="button" class="np-icon-button" @click="removeProductionRow(rowIndex)">⌫</button></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+
+                            <div class="np-production-mobile-columns" aria-label="Production options mobile layout">
+                                <template x-for="(header,columnIndex) in productionHeaders" :key="`production-mobile-column-${columnIndex}`">
+                                    <article class="np-production-column-card">
+                                        <label class="np-production-mobile-field">
+                                            <span>Production option</span>
+                                            <input class="np-table-input font-black" :name="`production_table_headers[${columnIndex}]`" x-model="productionHeaders[columnIndex]" maxlength="160" placeholder="Standard Production">
+                                        </label>
+                                        <button type="button" class="np-production-remove-column" @click="removeProductionHeader(columnIndex)" x-show="productionHeaders.length > 1">Remove column</button>
+
+                                        <div class="np-production-mobile-ranges">
+                                            <template x-for="(row,rowIndex) in productionRows" :key="`${row.client_key || rowIndex}-${columnIndex}`">
+                                                <section class="np-production-range-card">
+                                                    <label class="np-production-mobile-field">
+                                                        <span>Quantity range</span>
+                                                        <input class="np-table-input font-black" :name="`production_table_rows[${rowIndex}][range]`" x-model="row.range" maxlength="50" placeholder="1-40">
+                                                    </label>
+
+                                                    <div class="np-production-offer-card">
+                                                        <p class="np-production-mobile-label">Production offer</p>
+                                                        <input type="hidden" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][enabled]`" :value="row.cells[columnIndex].enabled ? 1 : 0">
+                                                        <label class="flex items-center gap-2 text-xs font-black text-slate-700"><input type="checkbox" x-model="row.cells[columnIndex].enabled"> Offer</label>
+                                                        <div class="mt-2 space-y-2" :class="!row.cells[columnIndex].enabled && 'pointer-events-none opacity-45'">
+                                                            <input class="np-table-input" type="number" min="0" step="0.01" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][price_adjustment]`" x-model.number="row.cells[columnIndex].price_adjustment" placeholder="Charge">
+                                                            <input class="np-table-input" type="text" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][production_time]`" x-model="row.cells[columnIndex].production_time" maxlength="60" placeholder="5-15 days">
+                                                            <textarea class="admin-textarea !mt-0 min-h-[70px]" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][description]`" x-model="row.cells[columnIndex].description" maxlength="2000" placeholder="Description"></textarea>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="np-production-mobile-action">
+                                                        <button type="button" class="np-icon-button" @click="removeProductionRow(rowIndex)" aria-label="Remove quantity range">⌫</button>
+                                                    </div>
+                                                </section>
+                                            </template>
+                                        </div>
+                                    </article>
+                                </template>
+                            </div>
+                        </div>
+                    </details>
+
+                    <details class="np-config-panel" open>
+                        <summary>Shipping methods</summary>
+                        <div class="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <label class="inline-flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700">
+                                <input type="hidden" name="shipping_methods_enabled" :value="shippingMethodsEnabled ? 1 : 0">
+                                <input type="checkbox" x-model="shippingMethodsEnabled" class="h-4 w-4 rounded border-slate-300 text-brand-red">
+                                <span>Show shipping methods on product page</span>
+                            </label>
+                            <p class="min-w-0 text-xs font-medium leading-5 text-slate-500 md:text-right">Select reusable shipping methods from Master Data. Selected cards will appear for this product.</p>
+                        </div>
+
+                        <div x-show="shippingMethodsEnabled" class="mt-4" x-cloak>
+                            @if($shippingMethodOptions->isNotEmpty())
+                                <div class="grid items-stretch gap-3 xl:grid-cols-2">
+                                    @foreach($shippingMethodOptions as $shippingMethod)
+                                        @php
+                                            $isSelectedShipping = $selectedShippingCodes->contains($shippingMethod->code);
+                                            $isDefaultShipping = $defaultShippingCode === $shippingMethod->code;
+                                            $chargeAmount = $shippingMethod->effectiveChargeAmount();
+                                            $shippingPriceText = $chargeAmount > 0
+                                                ? '$'.number_format($chargeAmount, 2).' · '.$shippingMethod->chargeApplicationLabel()
+                                                : 'Included / no extra charge';
+                                        @endphp
+                                        <article @class([
+                                            'flex h-full flex-col justify-between rounded-2xl border bg-white p-4 transition',
+                                            'border-slate-300 bg-slate-50' => $isSelectedShipping,
+                                            'border-slate-200' => ! $isSelectedShipping,
+                                        ])>
+                                            <div class="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                                                <label class="grid min-w-0 cursor-pointer grid-cols-[auto_minmax(0,1fr)] gap-3">
+                                                    <input type="checkbox" name="shipping_method_codes[]" value="{{ $shippingMethod->code }}" @checked($isSelectedShipping) class="mt-1 h-4 w-4 rounded border-slate-300 text-brand-red">
+                                                    <span class="min-w-0">
+                                                        <span class="block text-sm font-semibold leading-5 text-slate-900">{{ $shippingMethod->name }}</span>
+                                                        <span class="mt-1 block text-xs font-medium leading-5 text-slate-500">{{ $shippingPriceText }}</span>
+                                                        @if($shippingMethod->description)
+                                                            <span class="mt-2 block text-sm font-normal leading-6 text-slate-500">{{ $shippingMethod->description }}</span>
+                                                        @endif
+                                                    </span>
+                                                </label>
+                                                <label class="inline-flex w-max items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600">
+                                                    <input type="radio" name="shipping_method_default_code" value="{{ $shippingMethod->code }}" @checked($isDefaultShipping) onclick="this.closest('article').querySelector('input[type=checkbox]').checked = true" class="h-3.5 w-3.5 border-slate-300 text-brand-red">
+                                                    Default
+                                                </label>
+                                            </div>
+                                            <div class="mt-4 flex flex-wrap gap-2 text-xs font-medium">
+                                                <span class="rounded-full bg-slate-50 px-3 py-1.5 text-slate-600">{{ $shippingMethod->minimum_days }}–{{ $shippingMethod->maximum_days }} business days</span>
+                                                <span class="rounded-full bg-slate-50 px-3 py-1.5 text-slate-500">{{ $shippingMethod->starts_after_artwork_approval ? 'After artwork approval' : 'After order placement' }}</span>
+                                                <span @class(["rounded-full px-3 py-1.5 font-medium", "bg-emerald-50 text-emerald-700" => $shippingMethod->is_active, "bg-slate-50 text-slate-500" => ! $shippingMethod->is_active])>{{ $shippingMethod->is_active ? 'Active' : 'Inactive' }}</span>
+                                            </div>
+                                        </article>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="rounded-2xl border border-dashed border-slate-300 p-7 text-center text-sm text-slate-500">
+                                    No shipping methods found. Add shipping methods from <strong>Master Data → Shipping Methods</strong> first.
+                                </div>
+                            @endif
+                        </div>
+                    </details>
+                </div>
+            </section>
 
             <section id="description" class="np-card">
                 <header class="np-card__header">
                     <div>
-                        <h2>6. Product Detail</h2>
-                        <p>Write the product description and the combined customization / artwork guidance shown in the product tabs.</p>
+                        <h2>6. Product Content</h2>
+                        <p>Write the description, customization / artwork guidance, and fulfillment content shown in the product tabs.</p>
                     </div>
                 </header>
-                <div class="grid gap-6">
-                    <x-admin.rich-editor name="description_html" :value="$product->description_html" label="Detailed product description" />
-                    <x-admin.rich-editor name="customization_artwork_html" :value="$product->customization_artwork_html" label="Customization options & artwork / design guidelines" />
-                </div>
+                <x-admin.tabbed-rich-editor
+                    :description-value="$product->description_html"
+                    :customization-value="$product->customization_artwork_html"
+                    :fulfillment-value="$product->fulfillment_html"
+                />
             </section>
 
             <section id="faq" class="np-card"><header class="np-card__header"><div><h2>7. FAQ</h2><p>Add frequently asked questions and their answers.</p></div><button type="button" class="np-secondary-button" @click="addFaq()">＋ Add FAQ</button></header><div class="space-y-3"><template x-for="(faq,index) in faqs" :key="index"><div class="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2"><input type="hidden" :name="`faqs[${index}][is_active]`" value="1"><label class="admin-label">Question<input class="admin-input" :name="`faqs[${index}][question]`" x-model="faq.question" placeholder="e.g., What is the minimum order quantity?"></label><label class="admin-label">Answer<textarea class="admin-textarea np-textarea-sm" :name="`faqs[${index}][answer]`" x-model="faq.answer" placeholder="e.g., The minimum order quantity is 12 items"></textarea></label><div class="md:col-span-2 text-right"><button type="button" class="np-danger-link" @click="faqs.splice(index,1)">Remove FAQ</button></div></div></template></div></section>

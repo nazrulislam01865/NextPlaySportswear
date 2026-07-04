@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin;
 use App\Enums\JerseyCustomizationType;
 use App\Models\JerseyCustomizationOption;
 use App\Models\Product;
+use App\Models\ShippingMethod;
 use App\Support\ProductionTime;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
@@ -46,6 +47,7 @@ class ProductFormRequest extends FormRequest
             'product_specification_text' => ['nullable', 'string', 'max:100000'],
             'detail_information_html' => ['nullable', 'string', 'max:100000'],
             'customization_artwork_html' => ['nullable', 'string', 'max:100000'],
+            'fulfillment_html' => ['nullable', 'string', 'max:100000'],
             'base_price' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
             'compare_at_price' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'cost_price' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
@@ -210,14 +212,24 @@ class ProductFormRequest extends FormRequest
             'production_speeds.*.maximum_days' => ['required', 'integer', 'gte:production_speeds.*.minimum_days', 'max:3650'],
             'production_speeds.*.is_active' => ['nullable', 'boolean'],
 
+            'shipping_method_codes' => ['nullable', 'array', 'max:30'],
+            'shipping_method_codes.*' => ['nullable', 'string', 'max:160', 'distinct', Rule::exists('shipping_methods', 'code')],
+            'shipping_method_default_code' => ['nullable', 'string', 'max:160', Rule::exists('shipping_methods', 'code')],
             'shipping_methods' => ['nullable', 'array', 'max:30'],
+            'shipping_methods.*.shipping_method_id' => ['nullable', 'integer', 'exists:shipping_methods,id'],
             'shipping_methods.*.name' => ['nullable', 'string', 'max:160'],
             'shipping_methods.*.code' => ['nullable', 'string', 'max:160', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', 'distinct'],
             'shipping_methods.*.description' => ['nullable', 'string', 'max:2000'],
             'shipping_methods.*.price_adjustment' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
-            'shipping_methods.*.charge_type' => ['nullable', Rule::in(['included', 'per_unit', 'fixed_order'])],
+            'shipping_methods.*.base_price' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'shipping_methods.*.per_item_price' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'shipping_methods.*.free_shipping_minimum' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'shipping_methods.*.charge_type' => ['nullable', Rule::in(['included', 'per_unit', 'fixed_order', 'master_method'])],
+            'shipping_methods.*.charge_application' => ['nullable', Rule::in(array_keys(ShippingMethod::chargeApplicationOptions()))],
             'shipping_methods.*.minimum_days' => ['nullable', 'integer', 'min:0', 'max:3650'],
             'shipping_methods.*.maximum_days' => ['nullable', 'integer', 'gte:shipping_methods.*.minimum_days', 'max:3650'],
+            'shipping_methods.*.starts_after_artwork_approval' => ['nullable', 'boolean'],
+            'shipping_methods.*.is_quote_based' => ['nullable', 'boolean'],
             'shipping_methods.*.is_default' => ['nullable', 'boolean'],
             'shipping_methods.*.is_active' => ['nullable', 'boolean'],
 
@@ -429,7 +441,7 @@ class ProductFormRequest extends FormRequest
             'production_table_headers' => $production['production_table_headers'],
             'production_table_rows' => $production['production_table_rows'],
             'production_speeds' => $productionSpeeds,
-            'shipping_methods' => $normalizeRowsWithCodes((array) $this->input('shipping_methods', [])),
+            'shipping_methods' => $this->shippingMethodsFromMaster(),
             'jersey_roster_fields' => $rosterFields,
             'product_profile' => $this->input('product_profile', 'standard'),
             'shipping_methods_enabled' => $this->boolean('shipping_methods_enabled'),
@@ -634,6 +646,65 @@ class ProductFormRequest extends FormRequest
      * Normalize the independent production table and flatten enabled cells into
      * the existing product_production_speeds persistence model.
      */
+    private function shippingMethodsFromMaster(): array
+    {
+        $codes = collect((array) $this->input('shipping_method_codes', []))
+            ->map(fn ($code) => Str::slug((string) $code))
+            ->filter()
+            ->unique()
+            ->take(30)
+            ->values();
+
+        if ($codes->isEmpty()) {
+            return [];
+        }
+
+        $defaultCode = Str::slug((string) $this->input('shipping_method_default_code', ''));
+        if ($defaultCode === '' || ! $codes->contains($defaultCode)) {
+            $defaultCode = (string) $codes->first();
+        }
+
+        $methods = ShippingMethod::query()
+            ->whereIn('code', $codes->all())
+            ->get()
+            ->keyBy('code');
+
+        return $codes->map(function (string $code) use ($methods, $defaultCode): ?array {
+            /** @var ShippingMethod|null $method */
+            $method = $methods->get($code);
+            if (! $method instanceof ShippingMethod) {
+                return null;
+            }
+
+            $chargeApplication = method_exists($method, 'chargeApplication') ? $method->chargeApplication() : (string) ($method->charge_application ?? 'per_order');
+            $chargeAmount = method_exists($method, 'effectiveChargeAmount') ? $method->effectiveChargeAmount() : (float) ($method->charge_amount ?? $method->base_price ?? 0);
+            $chargeType = match ($chargeApplication) {
+                'included' => 'included',
+                'per_item' => 'per_unit',
+                default => 'fixed_order',
+            };
+
+            return [
+                'shipping_method_id' => $method->id,
+                'name' => $method->name,
+                'code' => $method->code,
+                'description' => $method->description,
+                'price_adjustment' => $chargeType === 'included' ? 0 : (float) $chargeAmount,
+                'base_price' => $chargeType === 'fixed_order' ? (float) $chargeAmount : 0,
+                'per_item_price' => $chargeType === 'per_unit' ? (float) $chargeAmount : 0,
+                'free_shipping_minimum' => null,
+                'charge_type' => $chargeType,
+                'charge_application' => $chargeApplication,
+                'minimum_days' => (int) ($method->minimum_days ?? 1),
+                'maximum_days' => (int) ($method->maximum_days ?? ($method->minimum_days ?? 1)),
+                'starts_after_artwork_approval' => (bool) ($method->starts_after_artwork_approval ?? true),
+                'is_quote_based' => false,
+                'is_default' => $method->code === $defaultCode,
+                'is_active' => (bool) ($method->is_active ?? true),
+            ];
+        })->filter()->values()->all();
+    }
+
     private function normalizeProductionTable(): array
     {
         $submittedHeaders = collect($this->input('production_table_headers', []))->values();
@@ -955,6 +1026,7 @@ class ProductFormRequest extends FormRequest
             'product_specification_text.max' => 'The product specification section is too long. Please shorten it.',
             'description_html.max' => 'The product description is too long. Please shorten it.',
             'customization_artwork_html.max' => 'The customization and artwork guideline section is too long. Please shorten it.',
+            'fulfillment_html.max' => 'The fulfillment section is too long. Please shorten it.',
             'price_table_headers.required' => 'Add at least one visible price-table column after Quantity.',
             'price_table_headers.min' => 'Add at least one visible price-table column after Quantity.',
             'price_table_headers.0.in' => 'The first storefront price-table column must stay as Quantity.',
@@ -995,6 +1067,8 @@ class ProductFormRequest extends FormRequest
             'artwork_upload_max_file_size_mb.integer' => 'Enter the artwork file size as a whole number.',
             'artwork_upload_max_file_size_mb.min' => 'Artwork file size must be at least 1 MB.',
             'artwork_upload_max_file_size_mb.max' => 'Artwork file size must not exceed 25 MB.',
+            'shipping_method_codes.*.exists' => 'Choose a valid shipping method from Master Data.',
+            'shipping_method_default_code.exists' => 'Choose a valid default shipping method from Master Data.',
             'shipping_methods.*.name.max' => 'Keep the shipping method name within 160 characters.',
             'shipping_methods.*.price_adjustment.numeric' => 'Enter the shipping charge as a number.',
             'shipping_methods.*.price_adjustment.min' => 'The shipping charge cannot be negative.',
@@ -1028,6 +1102,7 @@ class ProductFormRequest extends FormRequest
             'product_specification_text' => 'product specification',
             'description_html' => 'product description',
             'customization_artwork_html' => 'customization and artwork guideline',
+            'fulfillment_html' => 'fulfillment tab content',
             'base_price' => 'base price',
             'minimum_quantity' => 'minimum order quantity',
             'maximum_quantity' => 'maximum quantity',

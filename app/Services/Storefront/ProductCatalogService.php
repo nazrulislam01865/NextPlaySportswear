@@ -335,6 +335,7 @@ class ProductCatalogService
             'description_html' => $product->description_html,
             'detail_information_html' => $product->detail_information_html,
             'customization_artwork_html' => $product->customization_artwork_html,
+            'fulfillment_html' => $product->fulfillment_html,
             'price' => 'From $'.number_format((float) $priceTiers[0]['unit'], 2),
             'base_price' => (float) $product->base_price,
             'compare_at_price' => $product->compare_at_price ? (float) $product->compare_at_price : null,
@@ -419,16 +420,25 @@ class ProductCatalogService
                 'maximum_days' => $speed->maximum_days,
             ])->values()->all(),
             'shipping_methods_enabled' => (bool) $product->shipping_methods_enabled,
-            'shipping_methods' => $product->shipping_methods_enabled ? $product->shippingMethods->where('is_active', true)->map(fn ($method) => [
-                'id' => $method->code,
-                'label' => $method->name,
-                'description' => $method->description,
-                'price_delta' => (float) $method->price_adjustment,
-                'charge_type' => $method->charge_type ?: 'per_unit',
-                'minimum_days' => $method->minimum_days,
-                'maximum_days' => $method->maximum_days,
-                'default' => (bool) $method->is_default,
-            ])->values()->all() : [],
+            'shipping_methods' => $product->shipping_methods_enabled ? $product->shippingMethods->where('is_active', true)->map(function ($method): array {
+                $isMasterMethod = $method->charge_type === 'master_method';
+
+                return [
+                    'id' => $method->code,
+                    'label' => $method->name,
+                    'description' => $method->description,
+                    'price_delta' => $isMasterMethod ? (float) ($method->base_price ?? $method->price_adjustment) : (float) $method->price_adjustment,
+                    'base_price' => $isMasterMethod ? (float) ($method->base_price ?? $method->price_adjustment) : 0,
+                    'per_item_price' => $isMasterMethod ? (float) ($method->per_item_price ?? 0) : 0,
+                    'free_shipping_minimum' => $method->free_shipping_minimum !== null ? (float) $method->free_shipping_minimum : null,
+                    'charge_type' => $isMasterMethod ? 'master_method' : ($method->charge_type ?: 'per_unit'),
+                    'charge_application' => $method->charge_application,
+                    'minimum_days' => $method->minimum_days,
+                    'maximum_days' => $method->maximum_days,
+                    'default' => (bool) $method->is_default,
+                    'is_quote_based' => (bool) ($method->is_quote_based ?? false),
+                ];
+            })->values()->all() : [],
             'price_tiers' => $priceTiers,
             'price_table' => [
                 'headers' => $product->price_table_headers ?: ['Quantity', 'Unit Price', 'Savings'],
@@ -613,6 +623,7 @@ class ProductCatalogService
         $product['maximum_quantity'] = $product['maximum_quantity'] ?? null;
         $product['description_html'] = $product['description_html'] ?? '<p>'.e($product['description']).'</p>';
         $product['customization_artwork_html'] = $product['customization_artwork_html'] ?? '';
+        $product['fulfillment_html'] = $product['fulfillment_html'] ?? '';
         $product['option_groups'] = $product['option_groups'] ?? [];
         $product['size_groups'] = $product['size_groups'] ?? collect($product['size_quantity_groups'])->map(fn ($group) => [
             'id' => $group['key'],

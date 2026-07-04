@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
+use App\Models\ShippingMethod;
 
 class ShippingMethodRequest extends FormRequest
 {
@@ -18,23 +19,37 @@ class ShippingMethodRequest extends FormRequest
         $name = trim((string) $this->input('name'));
         $code = trim((string) ($this->input('code') ?: Str::slug($name)));
 
+        $chargeApplication = (string) ($this->input('charge_application') ?: 'per_order');
+        if (! array_key_exists($chargeApplication, ShippingMethod::chargeApplicationOptions())) {
+            $chargeApplication = 'per_order';
+        }
+
+        $chargeAmount = $this->input('charge_amount');
+        $chargeAmount = $chargeAmount === '' || $chargeAmount === null ? 0 : max(0, (float) $chargeAmount);
+
+        if ($chargeApplication === 'included') {
+            $chargeAmount = 0;
+        }
+
         $this->merge([
             'name' => $name,
             'code' => Str::slug($code),
             'description' => trim((string) $this->input('description')),
-            'base_price' => $this->input('base_price'),
-            'per_item_price' => $this->input('per_item_price'),
-            'free_shipping_minimum' => $this->input('free_shipping_minimum') !== '' ? $this->input('free_shipping_minimum') : null,
-            'minimum_quantity' => $this->input('minimum_quantity') !== '' ? $this->input('minimum_quantity') : null,
-            'maximum_quantity' => $this->input('maximum_quantity') !== '' ? $this->input('maximum_quantity') : null,
-            'minimum_subtotal' => $this->input('minimum_subtotal') !== '' ? $this->input('minimum_subtotal') : null,
-            'maximum_subtotal' => $this->input('maximum_subtotal') !== '' ? $this->input('maximum_subtotal') : null,
-            'country' => trim((string) $this->input('country')) ?: null,
-            'state' => trim((string) $this->input('state')) ?: null,
+            'charge_amount' => $chargeAmount,
+            'charge_application' => $chargeApplication,
+            'base_price' => $chargeApplication === 'per_order' ? $chargeAmount : 0,
+            'per_item_price' => in_array($chargeApplication, ['per_product', 'per_item'], true) ? $chargeAmount : 0,
+            'free_shipping_minimum' => null,
+            'minimum_quantity' => null,
+            'maximum_quantity' => null,
+            'minimum_subtotal' => null,
+            'maximum_subtotal' => null,
+            'country' => null,
+            'state' => null,
             'minimum_days' => $this->input('minimum_days'),
             'maximum_days' => $this->input('maximum_days'),
             'starts_after_artwork_approval' => $this->boolean('starts_after_artwork_approval'),
-            'is_quote_based' => $this->boolean('is_quote_based'),
+            'is_quote_based' => false,
             'is_default' => $this->boolean('is_default'),
             'is_active' => $this->boolean('is_active'),
             'sort_order' => $this->input('sort_order') ?: 0,
@@ -50,7 +65,9 @@ class ShippingMethodRequest extends FormRequest
             'name' => ['required', 'string', 'max:160'],
             'code' => ['required', 'string', 'max:160', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', Rule::unique('shipping_methods', 'code')->ignore($id)],
             'description' => ['nullable', 'string', 'max:2000'],
-            'base_price' => ['required', 'numeric', 'min:0', 'max:999999.99'],
+            'charge_amount' => ['required', 'numeric', 'min:0', 'max:999999.99'],
+            'charge_application' => ['required', Rule::in(array_keys(ShippingMethod::chargeApplicationOptions()))],
+            'base_price' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'per_item_price' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'free_shipping_minimum' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'minimum_quantity' => ['nullable', 'integer', 'min:1', 'max:1000000'],
@@ -73,6 +90,7 @@ class ShippingMethodRequest extends FormRequest
     {
         return [
             'code.regex' => 'Use lowercase letters, numbers, and hyphens only, for example standard-shipping.',
+            'charge_application.in' => 'Choose how the extra charge should be applied.',
             'maximum_days.gte' => 'Maximum days must be greater than or equal to minimum days.',
         ];
     }

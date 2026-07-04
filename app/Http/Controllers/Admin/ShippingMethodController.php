@@ -23,6 +23,8 @@ class ShippingMethodController extends Controller
             'method' => new ShippingMethod([
                 'base_price' => 0,
                 'per_item_price' => 0,
+                'charge_amount' => 0,
+                'charge_application' => 'per_order',
                 'minimum_days' => 1,
                 'maximum_days' => 7,
                 'starts_after_artwork_approval' => true,
@@ -34,7 +36,11 @@ class ShippingMethodController extends Controller
 
     public function store(ShippingMethodRequest $request): RedirectResponse
     {
-        $method = ShippingMethod::create($request->validated());
+        $data = $request->validated();
+        if (empty($data['sort_order'])) {
+            $data['sort_order'] = ((int) ShippingMethod::query()->max('sort_order')) + 10;
+        }
+        $method = ShippingMethod::create($data);
         $this->syncDefault($method);
 
         return redirect()->route('admin.shipping-methods.index')
@@ -50,7 +56,9 @@ class ShippingMethodController extends Controller
 
     public function update(ShippingMethodRequest $request, ShippingMethod $shippingMethod): RedirectResponse
     {
-        $shippingMethod->update($request->validated());
+        $data = $request->validated();
+        $data['sort_order'] = $shippingMethod->sort_order ?: (((int) ShippingMethod::query()->whereKeyNot($shippingMethod->id)->max('sort_order')) + 10);
+        $shippingMethod->update($data);
         $this->syncDefault($shippingMethod);
 
         return redirect()->route('admin.shipping-methods.index')

@@ -1,18 +1,23 @@
 <x-layouts.admin title="Dashboard">
     @php
-        $dashboardCards = [
-            ['Products', $stats['products'], route('admin.products.index')],
-            ['Active Products', $stats['active_products'], route('admin.products.index', ['status' => 'active'])],
-            ['Low Stock', $stats['low_stock_products'], route('admin.modules.show', 'inventory')],
-            ['Customers', $stats['customers'], route('admin.modules.show', 'customers')],
-        ];
-        if ($canManageOrders) {
-            $dashboardCards = array_merge([
-                ['Orders', $stats['orders'], route('admin.orders.index')],
-                ['Open Orders', $stats['open_orders'], route('admin.orders.index')],
-                ['Payment Attention', $stats['payment_due'], route('admin.orders.index', ['payment_status' => 'failed'])],
-                ['Open Returns', $stats['open_returns'], route('admin.returns.index')],
-            ], $dashboardCards);
+        $dashboardCards = [];
+        if ($canViewOrders) {
+            $dashboardCards[] = ['Orders', $stats['orders'], route('admin.orders.index')];
+            $dashboardCards[] = ['Open Orders', $stats['open_orders'], route('admin.orders.index')];
+            $dashboardCards[] = ['Payment Attention', $stats['payment_due'], route('admin.orders.index', ['payment_status' => 'failed'])];
+        }
+        if ($canViewReturns) {
+            $dashboardCards[] = ['Open Returns', $stats['open_returns'], route('admin.returns.index')];
+        }
+        if ($canViewProducts) {
+            $dashboardCards[] = ['Products', $stats['products'], route('admin.products.index')];
+            $dashboardCards[] = ['Active Products', $stats['active_products'], route('admin.products.index', ['status' => 'active'])];
+        }
+        if ($canViewInventory) {
+            $dashboardCards[] = ['Low Stock', $stats['low_stock_products'], route('admin.modules.show', 'inventory')];
+        }
+        if ($canViewCustomers) {
+            $dashboardCards[] = ['Customers', $stats['customers'], route('admin.modules.show', 'customers')];
         }
     @endphp
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -24,8 +29,8 @@
         @endforeach
     </div>
 
-    <div class="mt-7 grid gap-6 {{ $canManageOrders ? 'xl:grid-cols-2' : 'xl:grid-cols-1' }}">
-        @if($canManageOrders)
+    <div class="mt-7 grid gap-6 {{ $canViewOrders && $canViewProducts ? 'xl:grid-cols-2' : 'xl:grid-cols-1' }}">
+        @if($canViewOrders)
         <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
             <div class="flex flex-col justify-between gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center">
                 <div>
@@ -56,13 +61,16 @@
         </section>
         @endif
 
+        @if($canViewProducts)
         <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
             <div class="flex flex-col justify-between gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center">
                 <div>
                     <h2 class="text-xl font-black">Recent products</h2>
                     <p class="text-sm text-slate-500">Newest catalog records and publication status.</p>
                 </div>
-                <a href="{{ route('admin.products.create') }}" class="btn btn-red">Add Product</a>
+                @if($canManageProducts)
+                    <a href="{{ route('admin.products.create') }}" class="btn btn-red">Add Product</a>
+                @endif
             </div>
             <div class="touch-scroll-x">
                 <table class="admin-table min-w-[620px] text-sm">
@@ -84,9 +92,10 @@
                 </table>
             </div>
         </section>
+        @endif
     </div>
 
-    @if($canManageOrders)
+    @if($canManageOrders || $canViewReturns)
     <section class="mt-7 rounded-3xl bg-brand-dark p-6 text-white shadow-card">
         <div class="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
@@ -94,7 +103,7 @@
                 <h2 class="mt-2 text-2xl font-black">Orders, shipments, customer requests, returns, refunds, invoices, and private downloads now share one workflow.</h2>
                 <p class="mt-3 max-w-4xl text-sm leading-6 text-slate-300">Use Orders for payment and fulfillment updates. Use Returns & Exchanges to review eligibility, approve requests, record refund progress, and issue credit notes.</p>
             </div>
-            <div class="responsive-actions [&_.btn]:w-full sm:[&_.btn]:w-auto"><a class="btn btn-red" href="{{ route('admin.orders.index') }}">Manage Orders</a><a class="btn btn-white" href="{{ route('admin.returns.index') }}">Review Returns</a></div>
+            <div class="responsive-actions [&_.btn]:w-full sm:[&_.btn]:w-auto">@if($canViewOrders)<a class="btn btn-red" href="{{ route('admin.orders.index') }}">Manage Orders</a>@endif @if($canViewReturns)<a class="btn btn-white" href="{{ route('admin.returns.index') }}">Review Returns</a>@endif</div>
         </div>
     </section>
     @endif

@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\EnsureAdmin::class,
             'customer' => \App\Http\Middleware\EnsureCustomer::class,
             'order.manager' => \App\Http\Middleware\EnsureOrderManager::class,
+            'admin.permission' => \App\Http\Middleware\EnsureAdminPermission::class,
             'not.admin' => \App\Http\Middleware\RedirectAdminFromCustomerArea::class,
         ]);
     })

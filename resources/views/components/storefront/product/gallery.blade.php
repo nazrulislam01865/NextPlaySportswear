@@ -11,14 +11,8 @@
 @endphp
 
 <div class="min-w-0">
-    <div class="product-gallery-frame relative bg-white p-[3px] shadow-[0_18px_48px_rgba(15,23,42,.08)]">
+    <div class="product-gallery-frame relative overflow-hidden bg-white">
         <div class="np-product-gallery-main relative overflow-hidden bg-white">
-            @if(filled($badge))
-                <span class="absolute left-4 top-4 z-10 rounded-full bg-brand-red px-3 py-2 text-[10px] font-black uppercase tracking-[.14em] text-white shadow-sm">
-                    {{ $badge }}
-                </span>
-            @endif
-
             <template x-for="(image, index) in config.gallery" :key="index">
                 <button
                     type="button"
@@ -31,21 +25,13 @@
                     <img
                         :src="image.url"
                         :alt="image.alt"
-                        class="np-product-gallery-image w-full object-contain p-5 sm:p-8"
+                        class="np-product-gallery-image w-full object-contain"
                         width="900"
                         height="900"
                     >
                 </button>
             </template>
 
-            <button
-                type="button"
-                class="absolute bottom-4 left-4 grid h-11 w-11 place-items-center rounded-full border border-slate-300 bg-white/95 text-lg font-black text-slate-500 shadow-card transition hover:border-brand-blue hover:text-brand-blue"
-                @click="$dispatch('open-product-image', currentImage())"
-                aria-label="Enlarge product image"
-            >
-                ↗
-            </button>
         </div>
     </div>
 
