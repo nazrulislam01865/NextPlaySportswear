@@ -22,7 +22,11 @@
     @endphp
 </head>
 <body
-    class="admin-clean-ui bg-slate-100 text-slate-900"
+    @class([
+        'admin-clean-ui bg-slate-100 text-slate-900',
+        'admin-ui-reference' => request()->routeIs('admin.dashboard') || request()->routeIs('admin.products.*'),
+        'admin-ui-minimalize' => ! request()->routeIs('admin.dashboard') && ! request()->routeIs('admin.products.*'),
+    ])
     x-data="{ sidebarOpen: false }"
     x-effect="document.documentElement.classList.toggle('overflow-hidden', sidebarOpen)"
     @keydown.escape.window="sidebarOpen = false"

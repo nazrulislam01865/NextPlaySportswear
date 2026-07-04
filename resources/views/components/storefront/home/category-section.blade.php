@@ -9,14 +9,7 @@
         </div>
         <div class="grid-3">
             @forelse($categories as $category)
-                <a class="image-card" href="{{ $category['url'] }}" aria-label="Browse {{ $category['title'] }}">
-                    <img loading="lazy" decoding="async" src="{{ $category['image'] }}" alt="{{ $category['alt'] }}" class="np-category-square-image" width="650" height="650">
-                    <div class="card-body">
-                        <h3>{{ $category['title'] }}</h3>
-                        <p>{{ $category['description'] }}</p>
-                        <span class="link-red">{{ $category['link_label'] }}</span>
-                    </div>
-                </a>
+                <x-storefront.category-card :category="$category" />
             @empty
                 <a class="image-card" href="{{ route('categories.index') }}" aria-label="Browse Categories">
                     <div class="card-body">

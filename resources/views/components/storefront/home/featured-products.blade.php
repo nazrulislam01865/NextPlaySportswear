@@ -9,19 +9,11 @@
         </div>
         <div class="grid-4">
             @forelse($products as $product)
-                <article class="product-card">
-                    <img loading="lazy" decoding="async" src="{{ $product['image'] }}" alt="{{ $product['alt'] }}" class="np-product-square-image" width="650" height="650">
-                    <div class="product-info">
-                        @if($product['tag'])
-                            <span class="tag {{ $product['tag_color'] ?? '' }}">{{ $product['tag'] }}</span>
-                        @endif
-                        <h3>{{ $product['title'] }}</h3>
-                        <div class="price-row"><span class="price">{{ $product['price'] }}</span><span class="stars">★★★★★</span></div>
-                        <a class="btn btn-light" href="{{ $product['url'] }}">View Product</a>
-                    </div>
-                </article>
+                <x-storefront.product-card :product="$product" />
             @empty
-                <p>No active featured products are available yet.</p>
+                <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500 sm:col-span-2 lg:col-span-4">
+                    No active featured products are available yet.
+                </div>
             @endforelse
         </div>
     </div>

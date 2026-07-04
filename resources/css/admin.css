@@ -3038,6 +3038,441 @@
     box-shadow: 0 8px 20px rgba(185, 28, 28, .07);
 }
 
+/* NextPlay admin all-page polish: lighter, denser, consistent screens */
+body.admin-clean-ui {
+    font-size: 14px;
+    background:
+        radial-gradient(circle at top right, rgba(36, 103, 183, .045), transparent 34rem),
+        #f6f8fc;
+}
+
+@media (min-width: 1024px) {
+    body.admin-clean-ui > div.min-h-screen {
+        grid-template-columns: 244px minmax(0, 1fr) !important;
+    }
+}
+
+body.admin-clean-ui #admin-sidebar {
+    width: min(84vw, 244px) !important;
+    background: linear-gradient(180deg, #0e2a4d 0%, #0b223f 100%);
+}
+
+body.admin-clean-ui #admin-sidebar > div:first-child {
+    height: 66px !important;
+    padding-inline: 1rem !important;
+}
+
+body.admin-clean-ui #admin-sidebar nav {
+    padding: .8rem .65rem 1rem !important;
+}
+
+body.admin-clean-ui #admin-sidebar p[class*="uppercase"] {
+    padding-inline: .7rem !important;
+    padding-bottom: .4rem !important;
+    font-size: .62rem !important;
+    letter-spacing: .18em !important;
+    color: rgba(203, 213, 225, .72) !important;
+}
+
+body.admin-clean-ui #admin-sidebar a,
+body.admin-clean-ui #admin-sidebar summary,
+body.admin-clean-ui #admin-sidebar button {
+    border-radius: .8rem !important;
+    font-size: .82rem !important;
+    line-height: 1.25rem !important;
+}
+
+body.admin-clean-ui #admin-sidebar a[class*="min-h-11"],
+body.admin-clean-ui #admin-sidebar summary[class*="min-h-11"] {
+    min-height: 2.45rem !important;
+    padding-block: .48rem !important;
+}
+
+body.admin-clean-ui #admin-sidebar [class*="h-7"][class*="w-7"] {
+    width: 1.65rem !important;
+    height: 1.65rem !important;
+    border-radius: .55rem !important;
+}
+
+body.admin-clean-ui header {
+    min-height: 76px !important;
+    padding: .9rem 1rem !important;
+    border-color: #e5eaf1 !important;
+    background: rgba(255, 255, 255, .94) !important;
+}
+
+@media (min-width: 640px) {
+    body.admin-clean-ui header {
+        padding-inline: 1.25rem !important;
+    }
+}
+
+@media (min-width: 1024px) {
+    body.admin-clean-ui header {
+        min-height: 82px !important;
+        padding-inline: 1.65rem !important;
+    }
+}
+
+body.admin-clean-ui header h1 {
+    font-size: clamp(1.35rem, 1.35vw + .9rem, 2rem) !important;
+    font-weight: 780 !important;
+    letter-spacing: -.04em !important;
+}
+
+body.admin-clean-ui header p:first-child {
+    font-size: .66rem !important;
+    letter-spacing: .22em !important;
+}
+
+body.admin-clean-ui header p:not(:first-child) {
+    max-width: 46rem !important;
+    font-size: .88rem !important;
+    font-weight: 500 !important;
+    color: #64748b !important;
+}
+
+body.admin-clean-ui header .admin-notification-bell,
+body.admin-clean-ui header a[target="_blank"] {
+    min-height: 2.45rem !important;
+    height: 2.45rem !important;
+    border-radius: .8rem !important;
+    font-size: .82rem !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, .05) !important;
+}
+
+body.admin-clean-ui main {
+    padding: 1rem !important;
+}
+
+@media (min-width: 640px) {
+    body.admin-clean-ui main {
+        padding: 1.2rem !important;
+    }
+}
+
+@media (min-width: 1024px) {
+    body.admin-clean-ui main {
+        padding: 1.45rem 1.65rem !important;
+    }
+}
+
+body.admin-clean-ui main > :first-child {
+    margin-top: 0 !important;
+}
+
+body.admin-clean-ui main .mb-7,
+body.admin-clean-ui main .mb-6 {
+    margin-bottom: 1.15rem !important;
+}
+
+body.admin-clean-ui main .mb-5 {
+    margin-bottom: 1rem !important;
+}
+
+body.admin-clean-ui main .mt-7,
+body.admin-clean-ui main .mt-6 {
+    margin-top: 1.15rem !important;
+}
+
+body.admin-clean-ui main .gap-7,
+body.admin-clean-ui main .gap-6 {
+    gap: 1.15rem !important;
+}
+
+body.admin-clean-ui main .gap-5,
+body.admin-clean-ui main .gap-4 {
+    gap: .9rem !important;
+}
+
+body.admin-clean-ui main .space-y-7 > :not([hidden]) ~ :not([hidden]),
+body.admin-clean-ui main .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1.15rem !important;
+}
+
+body.admin-clean-ui main .space-y-5 > :not([hidden]) ~ :not([hidden]),
+body.admin-clean-ui main .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: .9rem !important;
+}
+
+body.admin-clean-ui main :is(section, article, div, form)[class*="border-slate-200"][class*="bg-white"] {
+    border-color: #e3eaf2 !important;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, .045) !important;
+}
+
+body.admin-clean-ui main :is(section, article, div, form)[class*="rounded-3xl"] {
+    border-radius: 1.15rem !important;
+}
+
+body.admin-clean-ui main :is(section, article, div, form)[class*="rounded-2xl"] {
+    border-radius: .95rem !important;
+}
+
+body.admin-clean-ui main .p-7,
+body.admin-clean-ui main .p-6 {
+    padding: 1.2rem !important;
+}
+
+body.admin-clean-ui main .p-5 {
+    padding: 1rem !important;
+}
+
+body.admin-clean-ui main .px-7,
+body.admin-clean-ui main .px-6 {
+    padding-left: 1.1rem !important;
+    padding-right: 1.1rem !important;
+}
+
+body.admin-clean-ui main .py-7,
+body.admin-clean-ui main .py-6 {
+    padding-top: 1.1rem !important;
+    padding-bottom: 1.1rem !important;
+}
+
+body.admin-clean-ui main h2,
+body.admin-clean-ui main h3,
+body.admin-clean-ui main h4 {
+    color: #172033;
+    font-weight: 750 !important;
+    letter-spacing: -.025em;
+}
+
+body.admin-clean-ui main .font-display {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    text-transform: none !important;
+    letter-spacing: -.035em !important;
+}
+
+body.admin-clean-ui main .font-black {
+    font-weight: 750 !important;
+}
+
+body.admin-clean-ui main .font-extrabold {
+    font-weight: 700 !important;
+}
+
+body.admin-clean-ui main .text-4xl {
+    font-size: 1.95rem !important;
+    line-height: 2.25rem !important;
+}
+
+body.admin-clean-ui main .text-3xl {
+    font-size: 1.55rem !important;
+    line-height: 2rem !important;
+}
+
+body.admin-clean-ui main .text-2xl {
+    font-size: 1.3rem !important;
+    line-height: 1.75rem !important;
+}
+
+body.admin-clean-ui main .text-xl {
+    font-size: 1.08rem !important;
+    line-height: 1.55rem !important;
+}
+
+body.admin-clean-ui main .text-lg {
+    font-size: .98rem !important;
+    line-height: 1.5rem !important;
+}
+
+body.admin-clean-ui main p,
+body.admin-clean-ui main li,
+body.admin-clean-ui main dd,
+body.admin-clean-ui main dt {
+    line-height: 1.55;
+}
+
+body.admin-clean-ui .admin-label {
+    margin-bottom: 0 !important;
+}
+
+body.admin-clean-ui .admin-input,
+body.admin-clean-ui .admin-textarea,
+body.admin-clean-ui select.admin-input {
+    border-color: #d8e0ec !important;
+    background-color: #fff !important;
+}
+
+body.admin-clean-ui .admin-input:focus,
+body.admin-clean-ui .admin-textarea:focus,
+body.admin-clean-ui select.admin-input:focus {
+    border-color: #2467b7 !important;
+    box-shadow: 0 0 0 3px rgba(36, 103, 183, .11) !important;
+}
+
+body.admin-clean-ui main [class*="min-h-16"] {
+    min-height: 3rem !important;
+}
+
+body.admin-clean-ui main [class*="min-h-14"] {
+    min-height: 2.75rem !important;
+}
+
+body.admin-clean-ui main [class*="h-14"] {
+    height: 2.75rem !important;
+}
+
+body.admin-clean-ui main [class*="h-12"] {
+    height: 2.65rem !important;
+}
+
+body.admin-clean-ui main .btn,
+body.admin-clean-ui main .admin-row-action,
+body.admin-clean-ui main button,
+body.admin-clean-ui main a[class*="inline-flex"] {
+    letter-spacing: -.012em;
+}
+
+body.admin-clean-ui main table {
+    font-size: .82rem !important;
+}
+
+body.admin-clean-ui main table thead {
+    background: #f8fafc !important;
+}
+
+body.admin-clean-ui main table th {
+    padding: .72rem .95rem !important;
+    font-size: .68rem !important;
+    font-weight: 720 !important;
+    letter-spacing: .105em !important;
+    color: #64748b !important;
+}
+
+body.admin-clean-ui main table td {
+    padding: .82rem .95rem !important;
+    color: #334155;
+}
+
+body.admin-clean-ui main table tr:hover {
+    background-color: rgba(248, 250, 252, .8);
+}
+
+body.admin-clean-ui .admin-table-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+body.admin-clean-ui .admin-status-pill,
+body.admin-clean-ui main [class*="rounded-full"][class*="text-xs"] {
+    padding: .24rem .58rem !important;
+    font-size: .68rem !important;
+    font-weight: 700 !important;
+}
+
+body.admin-clean-ui main img[class*="h-16"][class*="w-16"],
+body.admin-clean-ui main img[class*="h-14"][class*="w-14"] {
+    width: 3rem !important;
+    height: 3rem !important;
+}
+
+body.admin-clean-ui main img[class*="h-12"][class*="w-12"] {
+    width: 2.6rem !important;
+    height: 2.6rem !important;
+}
+
+body.admin-clean-ui .category-header-action {
+    min-height: 2.75rem !important;
+    border-radius: .9rem !important;
+    padding: .65rem 1rem !important;
+    font-size: .86rem !important;
+    font-weight: 700 !important;
+}
+
+body.admin-clean-ui .category-stat-card {
+    min-height: 96px !important;
+    gap: .9rem !important;
+    border-radius: 1.05rem !important;
+    padding: 1rem !important;
+}
+
+body.admin-clean-ui .category-stat-icon {
+    width: 2.75rem !important;
+    height: 2.75rem !important;
+}
+
+body.admin-clean-ui .category-stat-icon svg {
+    width: 1.3rem !important;
+    height: 1.3rem !important;
+}
+
+body.admin-clean-ui .category-stat-card strong {
+    font-size: 1.65rem !important;
+    font-weight: 750 !important;
+}
+
+body.admin-clean-ui .category-stat-label {
+    font-size: .82rem !important;
+    font-weight: 700 !important;
+}
+
+body.admin-clean-ui .category-filter-card {
+    border-radius: 1.1rem !important;
+    padding: 1rem !important;
+}
+
+body.admin-clean-ui .category-control,
+body.admin-clean-ui .category-empty-filter,
+body.admin-clean-ui .category-filter-button,
+body.admin-clean-ui .category-import-form .admin-input {
+    height: 2.75rem !important;
+    min-height: 2.75rem !important;
+    border-radius: .8rem !important;
+    font-size: .86rem !important;
+    font-weight: 600 !important;
+}
+
+body.admin-clean-ui .category-product-assignment-table th,
+body.admin-clean-ui .category-product-assignment-table td {
+    padding: .78rem .9rem !important;
+}
+
+body.admin-clean-ui .admin-rich-editor h2,
+body.admin-clean-ui .product-rich-content h2 {
+    font-size: 1.3rem !important;
+    font-weight: 750 !important;
+    letter-spacing: -.025em !important;
+}
+
+body.admin-clean-ui .admin-rich-editor h3,
+body.admin-clean-ui .product-rich-content h3 {
+    font-size: 1.08rem !important;
+    font-weight: 750 !important;
+}
+
+body.admin-clean-ui .admin-editor-button {
+    min-height: 2rem !important;
+    border-radius: .55rem !important;
+    padding-inline: .55rem !important;
+    font-size: .72rem !important;
+    font-weight: 700 !important;
+}
+
+body.admin-clean-ui .admin-notification-page-item,
+body.admin-clean-ui .admin-notification-panel {
+    border-color: #dfe7f1 !important;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, .08) !important;
+}
+
+@media (max-width: 767.98px) {
+    body.admin-clean-ui main {
+        padding-inline: .8rem !important;
+    }
+
+    body.admin-clean-ui main .p-7,
+    body.admin-clean-ui main .p-6,
+    body.admin-clean-ui main .p-5 {
+        padding: .9rem !important;
+    }
+
+    body.admin-clean-ui main table th,
+    body.admin-clean-ui main table td {
+        padding: .7rem .8rem !important;
+    }
+}
+
 /* NextPlay admin product activity notifications */
 .admin-notification-widget {
     position: relative;
@@ -3335,4 +3770,316 @@
         grid-column: 2;
         justify-content: flex-start;
     }
+}
+
+body.admin-clean-ui .btn-dark {
+    background: #15345d !important;
+    color: #fff !important;
+    box-shadow: 0 7px 18px rgba(21, 52, 93, .16) !important;
+}
+
+body.admin-clean-ui .btn-dark:hover {
+    background: #0d2545 !important;
+}
+
+/* --------------------------------------------------------------------------
+   Admin minimal typography polish
+   Keeps the already-clean Dashboard and Product screens unchanged while making
+   the rest of the admin pages feel closer to the product list/add-product UI.
+-------------------------------------------------------------------------- */
+body.admin-ui-minimalize header h1 {
+    font-size: clamp(1.55rem, 2.2vw, 2.05rem) !important;
+    line-height: 1.12 !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.025em !important;
+}
+
+body.admin-ui-minimalize header p,
+body.admin-ui-minimalize header a,
+body.admin-ui-minimalize header button {
+    font-weight: 600 !important;
+}
+
+body.admin-ui-minimalize main {
+    font-size: .925rem;
+    color: rgb(30 41 59);
+}
+
+body.admin-ui-minimalize main .font-display {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    text-transform: none !important;
+    letter-spacing: -0.02em !important;
+}
+
+body.admin-ui-minimalize main .font-black,
+body.admin-ui-minimalize main .font-extrabold {
+    font-weight: 650 !important;
+}
+
+body.admin-ui-minimalize main .font-bold,
+body.admin-ui-minimalize main strong,
+body.admin-ui-minimalize main b {
+    font-weight: 600 !important;
+}
+
+body.admin-ui-minimalize main h1,
+body.admin-ui-minimalize main h2,
+body.admin-ui-minimalize main h3,
+body.admin-ui-minimalize main h4 {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    letter-spacing: -0.02em !important;
+    text-transform: none !important;
+    color: rgb(15 23 42);
+}
+
+body.admin-ui-minimalize main h1 {
+    font-size: clamp(1.55rem, 2.1vw, 1.95rem) !important;
+    line-height: 1.15 !important;
+    font-weight: 700 !important;
+}
+
+body.admin-ui-minimalize main h2 {
+    font-size: clamp(1.25rem, 1.6vw, 1.5rem) !important;
+    line-height: 1.25 !important;
+    font-weight: 700 !important;
+}
+
+body.admin-ui-minimalize main h3 {
+    font-size: 1.05rem !important;
+    line-height: 1.35 !important;
+    font-weight: 650 !important;
+}
+
+body.admin-ui-minimalize main h4 {
+    font-size: .95rem !important;
+    line-height: 1.4 !important;
+    font-weight: 650 !important;
+}
+
+body.admin-ui-minimalize main .text-4xl {
+    font-size: 1.875rem !important;
+    line-height: 1.15 !important;
+}
+
+body.admin-ui-minimalize main .text-3xl {
+    font-size: 1.625rem !important;
+    line-height: 1.2 !important;
+}
+
+body.admin-ui-minimalize main .text-2xl {
+    font-size: 1.35rem !important;
+    line-height: 1.25 !important;
+}
+
+body.admin-ui-minimalize main .text-xl {
+    font-size: 1.125rem !important;
+    line-height: 1.35 !important;
+}
+
+body.admin-ui-minimalize main .text-lg {
+    font-size: 1rem !important;
+    line-height: 1.45 !important;
+}
+
+body.admin-ui-minimalize main .tracking-\[\.22em\],
+body.admin-ui-minimalize main .tracking-\[\.18em\],
+body.admin-ui-minimalize main .tracking-\[\.16em\],
+body.admin-ui-minimalize main .tracking-\[\.14em\],
+body.admin-ui-minimalize main .tracking-\[\.13em\],
+body.admin-ui-minimalize main .tracking-\[\.12em\] {
+    letter-spacing: .08em !important;
+}
+
+body.admin-ui-minimalize main .rounded-3xl {
+    border-radius: 1.125rem !important;
+}
+
+body.admin-ui-minimalize main .shadow-hero {
+    box-shadow: 0 16px 35px rgba(15, 23, 42, .12) !important;
+}
+
+body.admin-ui-minimalize main .shadow-card {
+    box-shadow: 0 10px 24px rgba(15, 23, 42, .05) !important;
+}
+
+body.admin-ui-minimalize main .btn,
+body.admin-ui-minimalize main .category-header-action,
+body.admin-ui-minimalize main .category-filter-button,
+body.admin-ui-minimalize main .category-import-button,
+body.admin-ui-minimalize main .category-bulk-button,
+body.admin-ui-minimalize main .admin-row-action,
+body.admin-ui-minimalize main .np-secondary-button,
+body.admin-ui-minimalize main .np-primary-button,
+body.admin-ui-minimalize main .np-danger-button,
+body.admin-ui-minimalize main [class*="min-h-14"],
+body.admin-ui-minimalize main [class*="min-h-16"] {
+    min-height: 2.65rem !important;
+    font-weight: 600 !important;
+    border-radius: .75rem !important;
+}
+
+body.admin-ui-minimalize main .btn,
+body.admin-ui-minimalize main .category-header-action,
+body.admin-ui-minimalize main .category-filter-button,
+body.admin-ui-minimalize main .category-import-button,
+body.admin-ui-minimalize main .category-bulk-button {
+    padding: .65rem 1rem !important;
+    font-size: .875rem !important;
+}
+
+body.admin-ui-minimalize main .category-header-action svg,
+body.admin-ui-minimalize main .category-filter-button svg,
+body.admin-ui-minimalize main .category-import-button svg {
+    width: 1.05rem !important;
+    height: 1.05rem !important;
+}
+
+body.admin-ui-minimalize .admin-label,
+body.admin-ui-minimalize .np-field-help,
+body.admin-ui-minimalize main label,
+body.admin-ui-minimalize main summary {
+    font-weight: 600 !important;
+}
+
+body.admin-ui-minimalize .admin-input,
+body.admin-ui-minimalize .admin-textarea,
+body.admin-ui-minimalize .np-table-input,
+body.admin-ui-minimalize main select,
+body.admin-ui-minimalize main input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+body.admin-ui-minimalize main textarea {
+    font-size: .875rem !important;
+    font-weight: 500 !important;
+    border-radius: .75rem !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .04) !important;
+}
+
+body.admin-ui-minimalize .admin-input,
+body.admin-ui-minimalize .np-table-input,
+body.admin-ui-minimalize main select,
+body.admin-ui-minimalize main input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+    min-height: 2.65rem !important;
+    height: 2.65rem !important;
+}
+
+body.admin-ui-minimalize main table th,
+body.admin-ui-minimalize main thead,
+body.admin-ui-minimalize main thead tr {
+    font-weight: 600 !important;
+    letter-spacing: .08em !important;
+}
+
+body.admin-ui-minimalize main table td {
+    font-weight: 400;
+}
+
+body.admin-ui-minimalize main .admin-status-pill,
+body.admin-ui-minimalize main [class*="rounded-full"] {
+    font-weight: 600 !important;
+}
+
+body.admin-ui-minimalize main .category-stat-card {
+    min-height: 96px !important;
+    gap: 1rem !important;
+    border-radius: 1rem !important;
+    padding: 1rem !important;
+}
+
+body.admin-ui-minimalize main .category-stat-icon {
+    width: 2.6rem !important;
+    height: 2.6rem !important;
+}
+
+body.admin-ui-minimalize main .category-stat-icon svg {
+    width: 1.35rem !important;
+    height: 1.35rem !important;
+}
+
+body.admin-ui-minimalize main .category-stat-card strong {
+    margin-top: .35rem !important;
+    font-size: 1.55rem !important;
+    font-weight: 700 !important;
+}
+
+body.admin-ui-minimalize main .category-stat-card span:not(.category-stat-icon),
+body.admin-ui-minimalize main .category-stat-label {
+    font-size: .75rem !important;
+    font-weight: 600 !important;
+}
+
+body.admin-ui-minimalize main .category-filter-card,
+body.admin-ui-minimalize main .category-bulk-card,
+body.admin-ui-minimalize main .np-nested-card,
+body.admin-ui-minimalize main .np-side-card {
+    border-radius: 1rem !important;
+    padding: 1rem !important;
+}
+
+body.admin-ui-minimalize main .category-control,
+body.admin-ui-minimalize main .category-file-picker,
+body.admin-ui-minimalize main .category-empty-filter {
+    height: 2.75rem !important;
+    min-height: 2.75rem !important;
+    font-size: .875rem !important;
+    font-weight: 500 !important;
+}
+
+body.admin-ui-minimalize main .category-file-trigger,
+body.admin-ui-minimalize main .category-file-name,
+body.admin-ui-minimalize main .category-import-label {
+    font-size: .875rem !important;
+    font-weight: 600 !important;
+}
+
+body.admin-ui-minimalize main .category-management-table,
+body.admin-ui-minimalize main .category-product-assignment-table,
+body.admin-ui-minimalize main .admin-table {
+    font-size: .875rem !important;
+}
+
+body.admin-ui-minimalize main .category-management-table thead tr,
+body.admin-ui-minimalize main .category-product-assignment-table thead tr,
+body.admin-ui-minimalize main .admin-table thead {
+    font-size: .68rem !important;
+}
+
+body.admin-ui-minimalize main .category-tree-cell,
+body.admin-ui-minimalize main .category-item-actions,
+body.admin-ui-minimalize main .admin-row-actions {
+    gap: .55rem !important;
+}
+
+body.admin-ui-minimalize main .category-row-primary-action,
+body.admin-ui-minimalize main .admin-row-action {
+    min-height: 2.4rem !important;
+    padding: .5rem .75rem !important;
+    font-size: .8125rem !important;
+}
+
+body.admin-ui-minimalize main .category-table-footer p,
+body.admin-ui-minimalize main p,
+body.admin-ui-minimalize main small {
+    font-weight: 400;
+}
+
+body.admin-ui-minimalize main .admin-pagination [aria-label="Pagination Navigation"] span,
+body.admin-ui-minimalize main .admin-pagination [aria-label="Pagination Navigation"] a {
+    min-width: 2.5rem !important;
+    min-height: 2.5rem !important;
+    font-weight: 600 !important;
+    border-radius: .7rem !important;
+}
+
+@media (max-width: 767.98px) {
+    body.admin-ui-minimalize header h1 {
+        font-size: 1.45rem !important;
+    }
+
+    body.admin-ui-minimalize main .text-4xl,
+    body.admin-ui-minimalize main .text-3xl {
+        font-size: 1.45rem !important;
+    }
+}
+
+body.admin-ui-minimalize main [class*="tracking-"] {
+    letter-spacing: .08em !important;
 }
