@@ -20,6 +20,7 @@
             $dashboardCards[] = ['Customers', $stats['customers'], route('admin.modules.show', 'customers')];
         }
     @endphp
+
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         @foreach ($dashboardCards as [$label, $value, $url])
             <a href="{{ $url }}" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-card transition hover:-translate-y-0.5 hover:shadow-soft">
@@ -29,7 +30,55 @@
         @endforeach
     </div>
 
-    <div class="mt-7 grid gap-6 {{ $canViewOrders && $canViewProducts ? 'xl:grid-cols-2' : 'xl:grid-cols-1' }}">
+    <div class="mt-7 space-y-6">
+        <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
+            <div class="flex flex-col justify-between gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center">
+                <div>
+                    <h2 class="text-xl font-black">Recent notifications</h2>
+                    <p class="text-sm text-slate-500">Latest admin activity alerts across products, orders, master data, and settings.</p>
+                </div>
+                <div class="responsive-actions [&_.btn]:w-full sm:[&_.btn]:w-auto">
+                    @if(($stats['unread_notifications'] ?? 0) > 0)
+                        <span class="inline-flex min-h-10 items-center rounded-xl bg-red-50 px-4 text-sm font-black text-brand-red">{{ number_format($stats['unread_notifications']) }} unread</span>
+                    @endif
+                    <a href="{{ route('admin.notifications.index') }}" class="btn btn-white">View All</a>
+                </div>
+            </div>
+
+            <div class="divide-y divide-slate-100">
+                @forelse($recentNotifications as $notification)
+                    @php($data = is_array($notification->data) ? $notification->data : [])
+                    <article class="grid gap-4 p-5 lg:grid-cols-[auto_minmax(220px,1fr)_auto] lg:items-center {{ $notification->read_at ? '' : 'bg-slate-50/70' }}">
+                        <div class="grid h-11 w-11 place-items-center rounded-2xl bg-slate-100 text-lg font-black text-brand-dark">
+                            {{ $data['icon'] ?? '🔔' }}
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h3 class="font-black text-brand-dark">{{ $data['title'] ?? 'NextPlay Notification' }}</h3>
+                                @unless($notification->read_at)
+                                    <span class="rounded-full bg-brand-red px-2.5 py-1 text-[10px] font-black uppercase tracking-[.12em] text-white">New</span>
+                                @endunless
+                            </div>
+                            <p class="mt-1 text-sm leading-6 text-slate-600">{{ $data['message'] ?? 'Admin activity notification.' }}</p>
+                            <p class="mt-1 text-xs font-semibold text-slate-400">{{ optional($notification->created_at)->format('M d, Y · g:i A') }}</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 lg:justify-end">
+                            @if(!empty($data['url']))
+                                <a class="btn btn-light" href="{{ $data['url'] }}">Open</a>
+                            @endif
+                            <a class="btn btn-white" href="{{ route('admin.notifications.index') }}">Details</a>
+                        </div>
+                    </article>
+                @empty
+                    <div class="px-5 py-10 text-center text-slate-500">No notifications yet.</div>
+                @endforelse
+            </div>
+
+            @if(method_exists($recentNotifications, 'hasPages') && $recentNotifications->hasPages())
+                <div class="admin-pagination border-t border-slate-100 p-5">{{ $recentNotifications->links() }}</div>
+            @endif
+        </section>
+
         @if($canViewOrders)
         <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
             <div class="flex flex-col justify-between gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center">
@@ -39,25 +88,37 @@
                 </div>
                 <a href="{{ route('admin.orders.index') }}" class="btn btn-white">View All</a>
             </div>
-            <div class="touch-scroll-x">
-                <table class="admin-table min-w-[620px] text-sm">
-                    <thead class="bg-slate-50 text-left text-[10px] uppercase tracking-[.12em] text-slate-500">
-                        <tr><th class="px-5 py-3">Order</th><th class="px-5 py-3">Customer</th><th class="px-5 py-3">Status</th><th class="px-5 py-3 text-right">Total</th></tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @forelse($recentOrders as $order)
-                            <tr>
-                                <td class="px-5 py-4"><a class="font-black text-brand-blue" href="{{ route('admin.orders.show', $order) }}">{{ $order->order_number }}</a><p class="text-xs text-slate-400">{{ $order->placed_at?->format('M d, Y') }}</p></td>
-                                <td class="px-5 py-4"><p class="font-bold">{{ $order->customer_name }}</p><p class="max-w-[180px] truncate text-xs text-slate-400">{{ $order->customer_email }}</p></td>
-                                <td class="px-5 py-4"><x-storefront.account.orders.status-pill :status="$order->status" /></td>
-                                <td class="whitespace-nowrap px-5 py-4 text-right font-black">{{ $order->currency }} {{ number_format((float) $order->grand_total, 2) }}</td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="4" class="px-5 py-10 text-center text-slate-500">No orders yet.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
+
+            <div class="divide-y divide-slate-100">
+                @forelse($recentOrders as $order)
+                    <article class="grid gap-4 p-5 lg:grid-cols-[1fr_1fr_auto] lg:items-center">
+                        <div class="min-w-0">
+                            <a class="font-black text-brand-blue" href="{{ route('admin.orders.show', $order) }}">{{ $order->order_number }}</a>
+                            <p class="mt-1 text-xs font-semibold text-slate-400">{{ $order->placed_at?->format('M d, Y · g:i A') }}</p>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="font-bold text-brand-dark">{{ $order->customer_name }}</p>
+                            <p class="mt-1 truncate text-xs text-slate-400">{{ $order->customer_email }}</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-4 lg:justify-end">
+                            <div>
+                                <p class="mb-1 text-[10px] font-black uppercase tracking-[.12em] text-slate-400">Status</p>
+                                <x-storefront.account.orders.status-pill :status="$order->status" />
+                            </div>
+                            <div class="lg:text-right">
+                                <p class="mb-1 text-[10px] font-black uppercase tracking-[.12em] text-slate-400">Total</p>
+                                <p class="font-black text-brand-dark">{{ $order->currency }} {{ number_format((float) $order->grand_total, 2) }}</p>
+                            </div>
+                        </div>
+                    </article>
+                @empty
+                    <div class="px-5 py-10 text-center text-slate-500">No orders yet.</div>
+                @endforelse
             </div>
+
+            @if(method_exists($recentOrders, 'hasPages') && $recentOrders->hasPages())
+                <div class="admin-pagination border-t border-slate-100 p-5">{{ $recentOrders->links() }}</div>
+            @endif
         </section>
         @endif
 
@@ -68,29 +129,47 @@
                     <h2 class="text-xl font-black">Recent products</h2>
                     <p class="text-sm text-slate-500">Newest catalog records and publication status.</p>
                 </div>
-                @if($canManageProducts)
-                    <a href="{{ route('admin.products.create') }}" class="btn btn-red">Add Product</a>
-                @endif
+                <div class="responsive-actions [&_.btn]:w-full sm:[&_.btn]:w-auto">
+                    <a href="{{ route('admin.products.index') }}" class="btn btn-white">View All</a>
+                    @if($canManageProducts)
+                        <a href="{{ route('admin.products.create') }}" class="btn btn-red">Add Product</a>
+                    @endif
+                </div>
             </div>
-            <div class="touch-scroll-x">
-                <table class="admin-table min-w-[620px] text-sm">
-                    <thead class="bg-slate-50 text-left text-[10px] uppercase tracking-[.12em] text-slate-500">
-                        <tr><th class="px-5 py-3">Product</th><th class="px-5 py-3">Category</th><th class="px-5 py-3">Status</th><th class="px-5 py-3 text-right">Price</th></tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @forelse($recentProducts as $product)
-                            <tr>
-                                <td class="px-5 py-4"><a class="font-black text-brand-blue" href="{{ route('admin.products.edit', $product) }}">{{ $product->name }}</a><p class="text-xs text-slate-400">{{ $product->sku }}</p></td>
-                                <td class="px-5 py-4 text-slate-600">{{ $product->subcategory?->name ?? $product->category?->name ?? 'Uncategorized' }}</td>
-                                <td class="px-5 py-4"><span class="admin-status-pill bg-slate-100 px-2.5 py-1 text-xs font-black">{{ ucfirst($product->status) }}</span></td>
-                                <td class="whitespace-nowrap px-5 py-4 text-right font-black">{{ $product->currency }} {{ number_format((float) $product->base_price, 2) }}</td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="4" class="px-5 py-10 text-center text-slate-500">No products yet.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
+
+            <div class="divide-y divide-slate-100">
+                @forelse($recentProducts as $product)
+                    <article class="grid gap-4 p-5 lg:grid-cols-[1fr_1fr_auto] lg:items-center">
+                        <div class="flex min-w-0 items-center gap-3">
+                            <img src="{{ $product->primaryImageUrl() }}" alt="" class="h-14 w-14 shrink-0 rounded-2xl object-cover">
+                            <div class="min-w-0">
+                                <a class="block truncate font-black text-brand-blue" href="{{ route('admin.products.edit', $product) }}">{{ $product->name }}</a>
+                                <p class="mt-1 truncate text-xs text-slate-400">{{ $product->sku ?: 'No SKU' }}</p>
+                            </div>
+                        </div>
+                        <div class="min-w-0 text-sm text-slate-600">
+                            <p class="font-bold text-brand-dark">{{ $product->subcategory?->name ?? $product->category?->name ?? 'Uncategorized' }}</p>
+                            <p class="mt-1 text-xs text-slate-400">Category</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-4 lg:justify-end">
+                            <div>
+                                <p class="mb-1 text-[10px] font-black uppercase tracking-[.12em] text-slate-400">Status</p>
+                                <span class="admin-status-pill bg-slate-100 px-2.5 py-1 text-xs font-black">{{ ucfirst($product->status) }}</span>
+                            </div>
+                            <div class="lg:text-right">
+                                <p class="mb-1 text-[10px] font-black uppercase tracking-[.12em] text-slate-400">Price</p>
+                                <p class="font-black text-brand-dark">{{ $product->currency }} {{ number_format((float) $product->base_price, 2) }}</p>
+                            </div>
+                        </div>
+                    </article>
+                @empty
+                    <div class="px-5 py-10 text-center text-slate-500">No products yet.</div>
+                @endforelse
             </div>
+
+            @if(method_exists($recentProducts, 'hasPages') && $recentProducts->hasPages())
+                <div class="admin-pagination border-t border-slate-100 p-5">{{ $recentProducts->links() }}</div>
+            @endif
         </section>
         @endif
     </div>
@@ -103,7 +182,10 @@
                 <h2 class="mt-2 text-2xl font-black">Orders, shipments, customer requests, returns, refunds, invoices, and private downloads now share one workflow.</h2>
                 <p class="mt-3 max-w-4xl text-sm leading-6 text-slate-300">Use Orders for payment and fulfillment updates. Use Returns & Exchanges to review eligibility, approve requests, record refund progress, and issue credit notes.</p>
             </div>
-            <div class="responsive-actions [&_.btn]:w-full sm:[&_.btn]:w-auto">@if($canViewOrders)<a class="btn btn-red" href="{{ route('admin.orders.index') }}">Manage Orders</a>@endif @if($canViewReturns)<a class="btn btn-white" href="{{ route('admin.returns.index') }}">Review Returns</a>@endif</div>
+            <div class="responsive-actions [&_.btn]:w-full sm:[&_.btn]:w-auto">
+                @if($canViewOrders)<a class="btn btn-red" href="{{ route('admin.orders.index') }}">Manage Orders</a>@endif
+                @if($canViewReturns)<a class="btn btn-white" href="{{ route('admin.returns.index') }}">Review Returns</a>@endif
+            </div>
         </div>
     </section>
     @endif

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\JerseyCustomizationType;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ProductBulkRequest;
 use App\Http\Requests\Admin\ProductFormRequest;
 use App\Models\CatalogAttribute;
 use App\Models\Category;
@@ -146,6 +147,107 @@ class ProductController extends Controller
             'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
             'Pragma' => 'no-cache',
         ]);
+    }
+
+    public function bulk(ProductBulkRequest $request): RedirectResponse
+    {
+        $ids = collect($request->validated('product_ids'))
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
+        $action = (string) $request->validated('action');
+        $actor = auth('admin')->user();
+
+        if ($action === 'delete' && ! $actor?->canDeleteAdminRecords()) {
+            return back()->with('status', 'Delete permission is required. A Super Admin can grant it from Role Matrix.');
+        }
+
+        if ($action === 'delete') {
+            $deletedProducts = DB::transaction(function () use ($ids) {
+                $products = Product::query()
+                    ->whereIn('id', $ids)
+                    ->lockForUpdate()
+                    ->get(['id', 'name', 'sku']);
+
+                foreach ($products as $product) {
+                    $product->delete();
+                }
+
+                return $products;
+            });
+
+            $count = $deletedProducts->count();
+            $this->categoryTreeService->flushCache();
+
+            if ($count > 0) {
+                $sampleNames = $deletedProducts
+                    ->take(3)
+                    ->map(fn (Product $product): string => $product->name ?: ($product->sku ?: '#'.$product->id))
+                    ->implode(', ');
+
+                $this->adminNotifications->adminActivity(
+                    'deleted',
+                    'Products',
+                    $count === 1 ? $sampleNames : $count.' selected products'.($sampleNames !== '' ? ' including '.$sampleNames : ''),
+                    $actor,
+                    route('admin.products.index'),
+                    [
+                        'resource_id' => null,
+                        'resource_code' => '',
+                        'route_name' => 'admin.products.bulk',
+                        'request_method' => 'POST',
+                    ]
+                );
+            }
+
+            return back()->with('status', "{$count} product records moved to trash.");
+        }
+
+        $payload = match ($action) {
+            'activate' => ['status' => 'active', 'is_active' => true],
+            'deactivate' => ['status' => 'draft', 'is_active' => false],
+            'archive' => ['status' => 'archived', 'is_active' => false],
+            'feature' => ['is_featured' => true],
+            'unfeature' => ['is_featured' => false],
+        };
+
+        $updated = DB::transaction(function () use ($ids, $payload): int {
+            return Product::query()
+                ->whereIn('id', $ids)
+                ->lockForUpdate()
+                ->update(array_merge($payload, [
+                    'updated_by' => auth('admin')->id(),
+                    'updated_at' => now(),
+                ]));
+        });
+
+        $this->categoryTreeService->flushCache();
+
+        if ($updated > 0) {
+            $label = match ($action) {
+                'activate' => 'activated',
+                'deactivate' => 'deactivated',
+                'archive' => 'archived',
+                'feature' => 'marked featured',
+                'unfeature' => 'removed from featured',
+            };
+
+            $this->adminNotifications->adminActivity(
+                'updated',
+                'Products',
+                $updated.' selected products '.$label,
+                $actor,
+                route('admin.products.index'),
+                [
+                    'resource_id' => null,
+                    'resource_code' => '',
+                    'route_name' => 'admin.products.bulk',
+                    'request_method' => 'POST',
+                ]
+            );
+        }
+
+        return back()->with('status', "{$updated} product records updated.");
     }
 
     public function create(): View

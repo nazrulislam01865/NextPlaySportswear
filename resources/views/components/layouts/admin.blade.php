@@ -9,7 +9,7 @@
     <title>{{ $title }} | NextPlay Admin</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/admin.css', 'resources/js/admin.js'])
     @php
         $adminPusherEnabled = filled(config('services.pusher.key'))
@@ -83,6 +83,7 @@
                     @php
                         $customizationMenuGroups = \App\Enums\JerseyCustomizationType::menuGroups();
                         $isCustomizationActive = request()->routeIs('admin.jersey-customization-options.*');
+                        $isSizeOptionActive = request()->routeIs('admin.size-option-groups.*');
                         $activeCustomizationType = request()->route('type');
                         $activeCustomizationOption = request()->route('jerseyCustomizationOption');
 
@@ -102,11 +103,11 @@
                     <x-admin.sidebar-group
                         label="Master Data"
                         icon="◈"
-                        :active="$isCustomizationActive || request()->routeIs('admin.size-option-groups.*') || request()->routeIs('admin.shipping-methods.*')"
+                        :active="$isCustomizationActive || $isSizeOptionActive || request()->routeIs('admin.shipping-methods.*')"
                     >
                         @if($canAdmin('customization.view'))
                         @foreach($customizationMenuGroups as $groupKey => $customizationGroup)
-                            @php($isCurrentCustomizationGroup = $isCustomizationActive && $activeCustomizationGroup === $groupKey)
+                            @php($isCurrentCustomizationGroup = ($isCustomizationActive && $activeCustomizationGroup === $groupKey) || ($isSizeOptionActive && $groupKey === 'jersey'))
                             <details class="space-y-1" data-sidebar-disclosure data-sidebar-nested-disclosure @if($isCurrentCustomizationGroup) open @endif>
                                 <summary
                                     class="flex min-h-10 w-full min-w-0 cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-black text-slate-400 transition hover:bg-white/10 hover:text-white"
@@ -135,17 +136,27 @@
                                             <span class="min-w-0 truncate">{{ $customizationType->label() }}</span>
                                         </a>
                                     @endforeach
+
+                                    @if($groupKey === 'jersey')
+                                        @php($sizeOptionMenuNumber = $customizationGroup['number'].'.'.(count($customizationGroup['types']) + 1))
+                                        <a
+                                            href="{{ route('admin.size-option-groups.index') }}"
+                                            @if($isSizeOptionActive) data-sidebar-active="true" @endif
+                                            @class([
+                                                'flex min-h-9 min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold transition',
+                                                'bg-brand-red text-white' => $isSizeOptionActive,
+                                                'text-slate-400 hover:bg-white/10 hover:text-white' => ! $isSizeOptionActive,
+                                            ])
+                                        >
+                                            <span class="shrink-0 text-[10px] opacity-80">{{ $sizeOptionMenuNumber }}</span>
+                                            <span class="min-w-0 truncate">Size Options</span>
+                                        </a>
+                                    @endif
                                 </div>
                             </details>
                         @endforeach
                         @endif
 
-                        @if($canAdmin('customization.view'))
-                            <x-admin.sidebar-sub-link
-                                :href="route('admin.size-option-groups.index')"
-                                :active="request()->routeIs('admin.size-option-groups.*')"
-                            >1.12 Size Options</x-admin.sidebar-sub-link>
-                        @endif
                         @if($canAdmin('shipping.view'))
                             <x-admin.sidebar-sub-link
                                 :href="route('admin.shipping-methods.index')"

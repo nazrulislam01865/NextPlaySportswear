@@ -120,11 +120,36 @@
         <a href="{{ route('admin.products.create') }}" class="btn btn-red h-11 shrink-0 whitespace-nowrap">＋ Add Product</a>
     </div>
 
+    <form id="bulk-product-form" method="POST" action="{{ route('admin.products.bulk') }}" class="category-bulk-card mb-5" data-product-bulk-form>
+        @csrf
+
+        <strong>Selected products</strong>
+
+        <select class="admin-input category-control" name="action" required data-product-bulk-action>
+            <option value="">Choose bulk action</option>
+            <option value="activate">Activate</option>
+            <option value="deactivate">Deactivate / Draft</option>
+            <option value="archive">Archive</option>
+            <option value="feature">Mark featured</option>
+            <option value="unfeature">Remove featured</option>
+            <option value="delete">Delete / Move to trash</option>
+        </select>
+
+        <button class="category-bulk-button" type="submit">
+            Apply
+        </button>
+
+        <span class="category-bulk-note">
+            Bulk changes are validated and recorded server-side.
+        </span>
+    </form>
+
     <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
         <div class="admin-table-scroll" tabindex="0" aria-label="Products table">
-            <table class="admin-table min-w-[1180px] text-[13px]">
+            <table class="admin-table min-w-[1235px] text-[13px]">
                 <thead class="bg-slate-50 text-left text-[10px] font-bold uppercase tracking-[.12em] text-slate-500">
                     <tr>
+                        <th class="w-14 px-4 py-3.5"><input id="product-check-all" type="checkbox" class="h-4 w-4 rounded border-slate-300" aria-label="Select all products on this page"></th>
                         <th class="w-[315px] px-4 py-3.5">Product</th>
                         <th class="w-[185px] px-4 py-3.5">Category</th>
                         <th class="w-[105px] px-4 py-3.5">Price</th>
@@ -137,6 +162,9 @@
                 <tbody class="divide-y divide-slate-100">
                     @forelse($products as $product)
                         <tr class="hover:bg-slate-50/70">
+                            <td class="px-4 py-3.5">
+                                <input class="product-row-check h-4 w-4 rounded border-slate-300" type="checkbox" name="product_ids[]" value="{{ $product->id }}" form="bulk-product-form" aria-label="Select {{ $product->name }}">
+                            </td>
                             <td class="px-4 py-3.5">
                                 <div class="flex items-center gap-3">
                                     <img src="{{ $product->primaryImageUrl() }}" alt="" class="h-12 w-12 shrink-0 rounded-xl object-cover">
@@ -188,7 +216,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="px-4 py-12 text-center text-slate-500">No products found.</td></tr>
+                        <tr><td colspan="8" class="px-4 py-12 text-center text-slate-500">No products found.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -206,6 +234,55 @@
             </div>
         </div>
     </section>
+
+
+    <script>
+        (() => {
+            const checkAll = document.getElementById('product-check-all');
+            const bulkForm = document.querySelector('[data-product-bulk-form]');
+            const bulkAction = document.querySelector('[data-product-bulk-action]');
+            const rowChecks = () => Array.from(document.querySelectorAll('.product-row-check'));
+
+            checkAll?.addEventListener('change', event => {
+                rowChecks().forEach(checkbox => checkbox.checked = event.target.checked);
+            });
+
+            rowChecks().forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    if (!checkAll) return;
+                    const checks = rowChecks();
+                    const checked = checks.filter(item => item.checked).length;
+                    checkAll.checked = checks.length > 0 && checked === checks.length;
+                    checkAll.indeterminate = checked > 0 && checked < checks.length;
+                });
+            });
+
+            bulkForm?.addEventListener('submit', event => {
+                const selectedCount = rowChecks().filter(item => item.checked).length;
+                const action = bulkAction?.value || '';
+
+                if (selectedCount === 0) {
+                    event.preventDefault();
+                    alert('Please select at least one product first.');
+                    return;
+                }
+
+                if (action === '') {
+                    event.preventDefault();
+                    alert('Please choose a bulk action first.');
+                    return;
+                }
+
+                const message = action === 'delete'
+                    ? `Move ${selectedCount} selected product${selectedCount === 1 ? '' : 's'} to trash?`
+                    : `Apply this bulk action to ${selectedCount} selected product${selectedCount === 1 ? '' : 's'}?`;
+
+                if (!confirm(message)) {
+                    event.preventDefault();
+                }
+            });
+        })();
+    </script>
 
     <script>
         (() => {

@@ -1201,7 +1201,7 @@ Lead Time:"></div>
 
                     <div x-show="filteredSizeOptionGroups().length === 0" class="rounded-2xl border-2 border-dashed border-slate-200 p-10 text-center">
                         <p class="font-black text-brand-ink">No size option is available.</p>
-                        <p class="mt-2 text-sm text-slate-500">Create one under Master Data → Size Options first.</p>
+                        <p class="mt-2 text-sm text-slate-500">Create one under Master Data → Jersey Customization → Size Options first.</p>
                         <a href="{{ route('admin.size-option-groups.index') }}" class="btn btn-white mt-5">Open Size Options</a>
                     </div>
                 </div>

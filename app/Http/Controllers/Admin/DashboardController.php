@@ -27,6 +27,7 @@ class DashboardController extends Controller
 
         $ordersAvailable = $canViewOrders && Schema::hasTable('orders');
         $returnsAvailable = $canViewReturns && Schema::hasTable('order_return_requests');
+        $notificationsAvailable = $admin && Schema::hasTable('notifications');
 
         $stats = [
             'orders' => $ordersAvailable ? Order::query()->count() : 0,
@@ -41,6 +42,7 @@ class DashboardController extends Controller
             'active_slides' => Schema::hasTable('homepage_slides')
                 ? HomepageSlide::query()->where('is_active', true)->count()
                 : 0,
+            'unread_notifications' => $notificationsAvailable ? $admin->unreadNotifications()->count() : 0,
         ];
 
         return view('admin.dashboard', [
@@ -52,11 +54,14 @@ class DashboardController extends Controller
             'canManageProducts' => $canManageProducts,
             'canViewInventory' => $canViewInventory,
             'canViewCustomers' => $canViewCustomers,
+            'recentNotifications' => $notificationsAvailable
+                ? $admin->notifications()->latest()->paginate(5, ['*'], 'notifications_page')->withQueryString()
+                : collect(),
             'recentOrders' => $ordersAvailable
-                ? Order::query()->with('user')->latest('placed_at')->limit(8)->get()
+                ? Order::query()->with('user')->latest('placed_at')->paginate(5, ['*'], 'orders_page')->withQueryString()
                 : collect(),
             'recentProducts' => $canViewProducts
-                ? Product::query()->with(['category', 'subcategory'])->latest()->limit(8)->get()
+                ? Product::query()->with(['category', 'subcategory'])->latest()->paginate(5, ['*'], 'products_page')->withQueryString()
                 : collect(),
         ]);
     }

@@ -57,7 +57,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         ->middleware('throttle:5,1')
         ->name('login.store');
 
-    Route::middleware(['auth:admin', 'admin', 'admin.permission'])->group(function () {
+    Route::middleware(['auth:admin', 'admin', 'admin.permission', 'admin.activity'])->group(function () {
         Route::get('/', \App\Http\Controllers\Admin\DashboardController::class)->name('dashboard');
         Route::post('/logout', [\App\Http\Controllers\Admin\Auth\AdminSessionController::class, 'destroy'])->name('logout');
 
@@ -73,6 +73,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/products/stats', [\App\Http\Controllers\Admin\ProductController::class, 'stats'])->name('products.stats');
         Route::get('/products/search-suggestions', [\App\Http\Controllers\Admin\ProductController::class, 'suggestions'])->name('products.suggestions');
         Route::post('/products/{product}/duplicate', [\App\Http\Controllers\Admin\ProductController::class, 'duplicate'])->name('products.duplicate');
+        Route::post('/products/bulk', [\App\Http\Controllers\Admin\ProductController::class, 'bulk'])->name('products.bulk');
         Route::resource('products', \App\Http\Controllers\Admin\ProductController::class);
         Route::post('/categories/bulk', [\App\Http\Controllers\Admin\CategoryOperationsController::class, 'bulk'])->name('categories.bulk');
         Route::post('/categories/{category}/duplicate', [\App\Http\Controllers\Admin\CategoryController::class, 'duplicate'])->name('categories.duplicate');

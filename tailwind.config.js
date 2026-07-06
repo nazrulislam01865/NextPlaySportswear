@@ -12,22 +12,7 @@ export default {
         extend: {
             fontFamily: {
                 sans: ['Inter', ...defaultTheme.fontFamily.sans],
-                display: ['Inter', ...defaultTheme.fontFamily.sans],
-            },
-
-            // NEXTPLAY_LIGHT_TYPOGRAPHY_FONT_WEIGHT_SCALE
-            // Project-wide Tailwind weights: old Blade files may still use
-            // font-bold/font-extrabold/font-black, but the generated CSS stays clean.
-            fontWeight: {
-                thin: '100',
-                extralight: '200',
-                light: '300',
-                normal: '400',
-                medium: '500',
-                semibold: '500',
-                bold: '500',
-                extrabold: '600',
-                black: '600',
+                display: ['Oswald', ...defaultTheme.fontFamily.sans],
             },
 
             colors: {
