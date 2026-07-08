@@ -1,7 +1,8 @@
 @php
     $initialName = old('name', '');
-    $initialSlug = old('slug', '');
     $initialPreview = null;
+    $initialParentId = (string) old('parent_id', $category->parent_id ?? '');
+    $initialIsFeatured = filter_var(old('is_featured', false), FILTER_VALIDATE_BOOLEAN);
 @endphp
 
 <form
@@ -9,7 +10,7 @@
     enctype="multipart/form-data"
     action="{{ route('admin.categories.store') }}"
     class="space-y-6"
-    x-data="categoryCreateForm(@js(['name' => $initialName, 'slug' => $initialSlug, 'preview' => $initialPreview]))"
+    x-data="categoryCreateForm(@js(['name' => $initialName, 'preview' => $initialPreview, 'parentId' => $initialParentId, 'isFeatured' => $initialIsFeatured]))"
 >
     @csrf
 
@@ -28,7 +29,7 @@
         <div class="space-y-6">
             <x-admin.section-card
                 title="Add New Category"
-                description="Create the category with only the essential storefront information. More advanced content, filters, SEO, and page blocks can be configured later from Edit Category."
+                description="Create the category with only the essential storefront information. Only the most important fields are shown. The slug is generated automatically from the category name."
             >
                 <div class="grid gap-5 md:grid-cols-2">
                     <label class="admin-label md:col-span-2">
@@ -47,25 +48,17 @@
                         <small class="font-normal text-slate-500">This is the category title customers will see.</small>
                     </label>
 
-                    <label class="admin-label md:col-span-2">
-                        Slug
-                        <input
-                            class="admin-input font-mono"
-                            name="slug"
-                            x-model="slug"
-                            x-on:input="slugTouched = true"
-                            value="{{ $initialSlug }}"
-                            maxlength="180"
-                            pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-                            placeholder="baseball-jerseys"
-                            autocomplete="off"
-                        >
-                        <small class="font-normal text-slate-500">Generated automatically from the name. You can edit it before saving.</small>
-                    </label>
+                    <div class="md:col-span-2 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                        <p class="text-xs font-black uppercase tracking-[0.18em] text-brand-blue">Auto URL</p>
+                        <p class="mt-2 break-all font-mono text-sm font-bold text-slate-800">
+                            /category/<span x-text="slug || 'category-name'"></span>
+                        </p>
+                        <p class="mt-2 text-xs leading-5 text-slate-500">The slug is generated automatically from the category name. If it already exists, the system adds a number.</p>
+                    </div>
 
                     <label class="admin-label">
                         Parent category
-                        <select class="admin-input" name="parent_id">
+                        <select class="admin-input" name="parent_id" x-model="parentId">
                             <option value="">None — create as a parent category</option>
                             @foreach($parents as $parent)
                                 <option value="{{ $parent->id }}" @selected((string) old('parent_id') === (string) $parent->id)>
@@ -101,7 +94,7 @@
 
             <x-admin.section-card
                 title="Category Thumbnail"
-                description="Upload the main image used on category cards. The same image is used as a safe fallback on the category page until separate banners are added later."
+                description="Upload the main image used on category cards. This image is also used on homepage category sections, including Popular Custom Sportswear, when the category is a sport category or under a sport category."
             >
                 <div class="grid gap-5 md:grid-cols-[190px_minmax(0,1fr)] md:items-start">
                     <div class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
@@ -168,12 +161,13 @@
                         </span>
                     </label>
 
-                    <label class="flex items-start gap-3 rounded-2xl border border-slate-200 p-4">
+                    <label class="flex items-start gap-3 rounded-2xl border border-slate-200 p-4" x-bind:class="parentId !== '' ? 'bg-slate-50 opacity-75' : ''">
                         <input type="hidden" name="is_featured" value="0">
-                        <input class="mt-1" type="checkbox" name="is_featured" value="1" @checked(old('is_featured', false))>
+                        <input class="mt-1" type="checkbox" name="is_featured" value="1" x-model="isFeatured" x-bind:disabled="parentId !== ''">
                         <span>
-                            <strong class="block text-sm">Featured sections</strong>
-                            <small class="mt-1 block text-xs leading-5 text-slate-500">Prioritize this category in homepage and featured-category areas.</small>
+                            <strong class="block text-sm">Featured homepage category</strong>
+                            <small class="mt-1 block text-xs leading-5 text-slate-500">Only top-level parent categories can be selected for the homepage “What are you looking for?” section.</small>
+                            <small class="mt-1 block text-xs font-bold leading-5 text-amber-700" x-show="parentId !== ''">Select “None — create as a parent category” above to make this category eligible.</small>
                         </span>
                     </label>
 
@@ -194,7 +188,7 @@
                 </label>
 
                 <div class="mt-4 rounded-2xl bg-blue-50 p-4 text-xs leading-5 text-slate-600">
-                    Advanced media, SEO, filters, page blocks, FAQs, and product assignments remain available after creation from the Edit Category page.
+                    Slug is automatic. Extra media, custom schema, and canonical URL fields are not needed in the simplified category editor.
                 </div>
             </x-admin.section-card>
         </aside>
@@ -211,11 +205,16 @@
 function categoryCreateForm(initial) {
     return {
         name: initial.name || '',
-        slug: initial.slug || '',
-        slugTouched: Boolean(initial.slug),
+        slug: '',
         preview: initial.preview || null,
+        parentId: initial.parentId || '',
+        isFeatured: Boolean(initial.isFeatured),
+        init() {
+            this.updateSlug();
+            if (this.parentId !== '') this.isFeatured = false;
+            this.$watch('parentId', value => { if (value !== '') this.isFeatured = false; });
+        },
         updateSlug() {
-            if (this.slugTouched) return;
             this.slug = this.name
                 .toLowerCase()
                 .trim()

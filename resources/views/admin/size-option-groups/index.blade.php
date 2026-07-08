@@ -1,10 +1,18 @@
+@php
+    $sizeRouteContext = $customizationContext ?? (request()->filled('customization') ? request('customization') : null);
+    $sizeRouteQuery = $sizeRouteContext ? ['customization' => $sizeRouteContext] : [];
+@endphp
+
 <x-layouts.admin title="Size Options">
     <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p class="max-w-3xl text-sm leading-6 text-slate-500">Manage reusable Male, Female, Youth, Kids, Unisex, and custom size groups with size options and measurement charts.</p>
-        <a href="{{ route('admin.size-option-groups.create') }}" class="btn btn-red">+ Add Size Group</a>
+        <p class="max-w-3xl text-sm leading-6 text-slate-500">Manage one shared size-chart system for every customization section. These reusable Male, Female, Youth, Kids, Unisex, and custom size groups are used across products.</p>
+        <a href="{{ route('admin.size-option-groups.create', $sizeRouteQuery) }}" class="btn btn-red">+ Add Size Group</a>
     </div>
 
     <form class="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card md:grid-cols-[minmax(0,1fr)_240px_auto]" method="GET">
+        @if($sizeRouteContext)
+            <input type="hidden" name="customization" value="{{ $sizeRouteContext }}">
+        @endif
         <input class="admin-input mt-0" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Search size group">
         <select class="admin-input mt-0" name="audience">
             <option value="">All types</option>
@@ -30,8 +38,8 @@
                             <td class="px-5 py-4">{{ filled($group->chart_html) ? 'Formatted content' : ($group->chartImageUrl() ? 'Image configured' : '—') }}</td>
                             <td class="px-5 py-4">{{ $group->product_groups_count }}</td>
                             <td class="px-5 py-4"><div class="admin-row-actions">
-                                <a class="admin-row-action border-slate-200" href="{{ route('admin.size-option-groups.edit', $group) }}">Edit</a>
-                                <form method="POST" action="{{ route('admin.size-option-groups.destroy', $group) }}" onsubmit="return confirm('Delete this size option group? Existing products keep their saved size data.');">@csrf @method('DELETE')<button class="admin-row-action border-red-200 text-red-700 hover:bg-red-50">Delete</button></form>
+                                <a class="admin-row-action border-slate-200" href="{{ route('admin.size-option-groups.edit', array_merge(['sizeOptionGroup' => $group], $sizeRouteQuery)) }}">Edit</a>
+                                <form method="POST" action="{{ route('admin.size-option-groups.destroy', array_merge(['sizeOptionGroup' => $group], $sizeRouteQuery)) }}" onsubmit="return confirm('Delete this size option group? Existing products keep their saved size data.');">@csrf @method('DELETE')<button class="admin-row-action border-red-200 text-red-700 hover:bg-red-50">Delete</button></form>
                             </div></td>
                         </tr>
                     @empty

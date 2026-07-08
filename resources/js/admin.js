@@ -1008,28 +1008,30 @@ window.adminProductForm = (initial = {}) => ({
         const direct = Object.entries(this.jerseyCustomizationTypes)
             .find(([type, label]) => type === normalized || String(label).trim().toLowerCase() === plain)?.[0];
         if (direct) return direct;
+        if (/\bsize\b/.test(plain)) return '';
         if (/shorts?.*colou?r|colou?r.*shorts?/.test(plain)) return 'shorts_color';
         if (/shorts?.*(fabric|material)|(fabric|material).*shorts?/.test(plain)) return 'shorts_fabric';
-        if (/shorts?.*size|size.*shorts?/.test(plain)) return 'shorts_size';
+
         if (/shorts?.*pocket|pocket.*shorts?/.test(plain)) return 'shorts_pocket_option';
         if (/uniform.*type|type.*uniform/.test(plain)) return 'uniform_type';
         if (/reversible|standard/.test(plain) && /uniform/.test(plain)) return 'uniform_style';
         if (/uniform.*neck|neck.*uniform|uniform.*collar|collar.*uniform/.test(plain)) return 'uniform_neckline';
         if (/uniform.*sleeve|sleeve.*uniform/.test(plain)) return 'uniform_sleeve';
-        if (/uniform.*size|size.*uniform/.test(plain)) return 'uniform_size';
+
         if (/uniform.*pocket|pocket.*uniform/.test(plain)) return 'uniform_pocket';
         if (/pants?.*colou?r|colou?r.*pants?/.test(plain)) return 'pants_color';
         if (/pants?.*(fabric|material)|(fabric|material).*pants?/.test(plain)) return 'pants_fabric';
         if (/calf|pants?.*style|style.*pants?/.test(plain)) return 'pants_calf_style';
-        if (/pants?.*size|size.*pants?/.test(plain)) return 'pants_size';
+
         if (/quarter[-\s_]*zip.*colou?r|colou?r.*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_color';
+        if (/quarter[-\s_]*zip.*(fabric|material)|(fabric|material).*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_fabric';
         if (/quarter[-\s_]*zip.*zipper|zipper.*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_zipper';
         if (/quarter[-\s_]*zip.*sleeve|sleeve.*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_sleeve';
-        if (/quarter[-\s_]*zip.*size|size.*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_size';
+
         if (/tank[-\s_]*top.*colou?r|colou?r.*tank[-\s_]*top/.test(plain)) return 'tank_top_color';
         if (/tank[-\s_]*top.*(fabric|material)|(fabric|material).*tank[-\s_]*top/.test(plain)) return 'tank_top_fabric';
         if (/tank[-\s_]*top.*style|style.*tank[-\s_]*top/.test(plain)) return 'tank_top_style';
-        if (/tank[-\s_]*top.*size|size.*tank[-\s_]*top/.test(plain)) return 'tank_top_size';
+
         if (/compression.*wear.*colou?r|colou?r.*compression.*wear/.test(plain)) return 'compression_wear_color';
         if (/compression.*wear.*pattern|pattern.*compression.*wear/.test(plain)) return 'compression_wear_pattern';
         if (/socks?.*colou?r|colou?r.*socks?/.test(plain)) return 'socks_color';

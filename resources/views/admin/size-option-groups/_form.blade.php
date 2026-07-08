@@ -8,7 +8,10 @@
 @endphp
 
 <div class="space-y-6">
-    <x-admin.section-card title="Size Group" description="Create one reusable size group for Male, Female, Youth, Kids, Unisex, or another product audience.">
+    @if(request()->filled('customization'))
+        <input type="hidden" name="_customization_context" value="{{ request('customization') }}">
+    @endif
+    <x-admin.section-card title="Size Group" description="Create one reusable size group that can be used by any customization section and any product audience.">
         <div class="grid gap-5 md:grid-cols-2">
             <label class="admin-label">Name
                 <input class="admin-input" name="name" value="{{ old('name', $group->name) }}" maxlength="160" placeholder="Example: Adult Male" required>
@@ -84,7 +87,7 @@
     </x-admin.section-card>
 
     <div class="sticky bottom-3 z-30 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-soft backdrop-blur sm:bottom-4 sm:flex-row sm:justify-end">
-        <a class="btn btn-white" href="{{ route('admin.size-option-groups.index') }}">Cancel</a>
+        <a class="btn btn-white" href="{{ route('admin.size-option-groups.index', request()->filled('customization') ? ['customization' => request('customization')] : []) }}">Cancel</a>
         <button class="btn btn-red">{{ $isEdit ? 'Update Size Group' : 'Create Size Group' }}</button>
     </div>
 </div>

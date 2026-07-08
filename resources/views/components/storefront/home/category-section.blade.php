@@ -7,7 +7,7 @@
             <h2>What Are You Looking For?</h2>
             <p>Start with an admin-managed category and find the right product faster.</p>
         </div>
-        <div class="grid-3">
+        <div class="home-featured-category-grid">
             @forelse($categories as $category)
                 <x-storefront.category-card :category="$category" />
             @empty

@@ -50,6 +50,7 @@ enum JerseyCustomizationType: string
     case TshirtNeck = 'tshirt_neck';
 
     case QuarterZipColor = 'quarter_zip_color';
+    case QuarterZipFabric = 'quarter_zip_fabric';
     case QuarterZipZipper = 'quarter_zip_zipper';
     case QuarterZipSleeve = 'quarter_zip_sleeve';
     case QuarterZipSize = 'quarter_zip_size';
@@ -106,6 +107,7 @@ enum JerseyCustomizationType: string
             self::TshirtSleeve => 'T-Shirt Sleeve',
             self::TshirtNeck => 'T-Shirt Neck',
             self::QuarterZipColor => 'Quarter-Zip Color',
+            self::QuarterZipFabric => 'Quarter-Zip Fabric',
             self::QuarterZipZipper => 'Quarter-Zip Zipper',
             self::QuarterZipSleeve => 'Quarter-Zip Sleeves',
             self::QuarterZipSize => 'Quarter-Zip Size',
@@ -161,6 +163,7 @@ enum JerseyCustomizationType: string
             self::TshirtSleeve,
             self::TshirtNeck => 'tshirt',
             self::QuarterZipColor,
+            self::QuarterZipFabric,
             self::QuarterZipZipper,
             self::QuarterZipSleeve,
             self::QuarterZipSize => 'quarter_zip',
@@ -214,10 +217,19 @@ enum JerseyCustomizationType: string
 
     public function menuNumber(): string
     {
-        $index = collect(self::typesForGroup($this->group()))
+        if ($this->isSizeChartType()) {
+            return self::sizeOptionMenuNumberForGroup($this->group());
+        }
+
+        $index = collect(self::menuTypesForGroup($this->group()))
             ->search(fn (self $type): bool => $type === $this);
 
         return $this->groupNumber().'.'.(((int) $index) + 1);
+    }
+
+    public function isSizeChartType(): bool
+    {
+        return in_array($this, self::sizeChartTypes(), true);
     }
 
     public function productCode(): string
@@ -286,6 +298,7 @@ enum JerseyCustomizationType: string
             self::TshirtSleeve => 'Example: Short Sleeve',
             self::TshirtNeck => 'Example: Crew Neck',
             self::QuarterZipColor => 'Example: Athletic Navy',
+            self::QuarterZipFabric => 'Example: Performance Fleece',
             self::QuarterZipZipper => 'Example: Contrast Quarter Zipper',
             self::QuarterZipSleeve => 'Example: Raglan Long Sleeve',
             self::QuarterZipSize => 'Example: Adult Large',
@@ -341,6 +354,7 @@ enum JerseyCustomizationType: string
             self::TshirtSleeve => 'Add T-shirt sleeve choices such as short sleeve, long sleeve, or sleeveless.',
             self::TshirtNeck => 'Add neck choices such as crew neck, V-neck, or round neck.',
             self::QuarterZipColor => 'Add common quarter-zip color choices with exact color values for product configuration.',
+            self::QuarterZipFabric => 'Add simple quarter-zip fabric choices with short details such as fleece, interlock, or lightweight performance fabric.',
             self::QuarterZipZipper => 'Add zipper choices for quarter-zip products, such as matching zipper, contrast zipper, or hidden zipper.',
             self::QuarterZipSleeve => 'Add quarter-zip sleeve choices such as long sleeve, raglan sleeve, or contrast sleeve.',
             self::QuarterZipSize => 'Add quarter-zip-specific size values only when they are different from the main Size Options master data.',
@@ -376,6 +390,7 @@ enum JerseyCustomizationType: string
             self::HoodieFabric,
             self::PoloFabric,
             self::TshirtFabric,
+            self::QuarterZipFabric,
             self::TankTopFabric,
             self::SocksMaterialConstruction => 'Optional fabric texture image',
             self::SleevesAndCuffs,
@@ -431,6 +446,7 @@ enum JerseyCustomizationType: string
             self::HoodieFabric,
             self::PoloFabric,
             self::TshirtFabric,
+            self::QuarterZipFabric,
             self::TankTopFabric,
             self::SocksMaterialConstruction => 'Optional. Add a texture or material close-up for this fabric.',
             self::SleevesAndCuffs,
@@ -486,6 +502,7 @@ enum JerseyCustomizationType: string
             self::HoodieFabric,
             self::PoloFabric,
             self::TshirtFabric,
+            self::QuarterZipFabric,
             self::TankTopFabric,
             self::SocksMaterialConstruction => 'Choose fabric image',
             self::SleevesAndCuffs,
@@ -527,6 +544,45 @@ enum JerseyCustomizationType: string
         return collect(self::cases())
             ->mapWithKeys(static fn (self $type): array => [$type->value => $type->label()])
             ->all();
+    }
+
+    /** @return array<string, string> */
+    public static function masterDataOptions(): array
+    {
+        return collect(self::cases())
+            ->reject(static fn (self $type): bool => $type->isSizeChartType())
+            ->mapWithKeys(static fn (self $type): array => [$type->value => $type->label()])
+            ->all();
+    }
+
+    /** @return array<int, self> */
+    public static function sizeChartTypes(): array
+    {
+        return [
+            self::ShortsSize,
+            self::UniformSize,
+            self::PantsSize,
+            self::HoodieSize,
+            self::QuarterZipSize,
+            self::TankTopSize,
+        ];
+    }
+
+    /** @return array<int, self> */
+    public static function menuTypesForGroup(string $group): array
+    {
+        return collect(self::typesForGroup($group))
+            ->reject(static fn (self $type): bool => $type->isSizeChartType())
+            ->values()
+            ->all();
+    }
+
+    public static function sizeOptionMenuNumberForGroup(string $group): string
+    {
+        $firstType = collect(self::typesForGroup($group))->first();
+        $groupNumber = $firstType instanceof self ? $firstType->groupNumber() : '1';
+
+        return $groupNumber.'.'.(count(self::menuTypesForGroup($group)) + 1);
     }
 
     /** @return array<int, self> */
@@ -585,6 +641,7 @@ enum JerseyCustomizationType: string
             ],
             'quarter_zip' => [
                 self::QuarterZipColor,
+                self::QuarterZipFabric,
                 self::QuarterZipZipper,
                 self::QuarterZipSleeve,
                 self::QuarterZipSize,
@@ -612,17 +669,17 @@ enum JerseyCustomizationType: string
     public static function menuGroups(): array
     {
         return [
-            'jersey' => ['number' => '1.1', 'label' => 'Jersey Customization', 'types' => self::typesForGroup('jersey')],
-            'shorts' => ['number' => '1.2', 'label' => 'Shorts Customization', 'types' => self::typesForGroup('shorts')],
-            'uniform' => ['number' => '1.3', 'label' => 'Uniform Customization', 'types' => self::typesForGroup('uniform')],
-            'pants' => ['number' => '1.4', 'label' => 'Pants Customization', 'types' => self::typesForGroup('pants')],
-            'hoodie' => ['number' => '1.5', 'label' => 'Hoodie Customization', 'types' => self::typesForGroup('hoodie')],
-            'polo' => ['number' => '1.6', 'label' => 'Polo Customization', 'types' => self::typesForGroup('polo')],
-            'tshirt' => ['number' => '1.7', 'label' => 'T-Shirt Customization', 'types' => self::typesForGroup('tshirt')],
-            'quarter_zip' => ['number' => '1.8', 'label' => 'Quarter-Zip Customization', 'types' => self::typesForGroup('quarter_zip')],
-            'tank_top' => ['number' => '1.9', 'label' => 'Tank Top Customization', 'types' => self::typesForGroup('tank_top')],
-            'compression_wear' => ['number' => '1.10', 'label' => 'Compression Wear Customization', 'types' => self::typesForGroup('compression_wear')],
-            'socks' => ['number' => '1.11', 'label' => 'Socks Customization', 'types' => self::typesForGroup('socks')],
+            'jersey' => ['number' => '1.1', 'label' => 'Jersey Customization', 'types' => self::menuTypesForGroup('jersey')],
+            'shorts' => ['number' => '1.2', 'label' => 'Shorts Customization', 'types' => self::menuTypesForGroup('shorts')],
+            'uniform' => ['number' => '1.3', 'label' => 'Uniform Customization', 'types' => self::menuTypesForGroup('uniform')],
+            'pants' => ['number' => '1.4', 'label' => 'Pants Customization', 'types' => self::menuTypesForGroup('pants')],
+            'hoodie' => ['number' => '1.5', 'label' => 'Hoodie Customization', 'types' => self::menuTypesForGroup('hoodie')],
+            'polo' => ['number' => '1.6', 'label' => 'Polo Customization', 'types' => self::menuTypesForGroup('polo')],
+            'tshirt' => ['number' => '1.7', 'label' => 'T-Shirt Customization', 'types' => self::menuTypesForGroup('tshirt')],
+            'quarter_zip' => ['number' => '1.8', 'label' => 'Quarter-Zip Customization', 'types' => self::menuTypesForGroup('quarter_zip')],
+            'tank_top' => ['number' => '1.9', 'label' => 'Tank Top Customization', 'types' => self::menuTypesForGroup('tank_top')],
+            'compression_wear' => ['number' => '1.10', 'label' => 'Compression Wear Customization', 'types' => self::menuTypesForGroup('compression_wear')],
+            'socks' => ['number' => '1.11', 'label' => 'Socks Customization', 'types' => self::menuTypesForGroup('socks')],
         ];
     }
 
@@ -636,6 +693,7 @@ enum JerseyCustomizationType: string
             self::HoodieFabric,
             self::PoloFabric,
             self::TshirtFabric,
+            self::QuarterZipFabric,
             self::TankTopFabric,
             self::SocksMaterialConstruction,
         ];

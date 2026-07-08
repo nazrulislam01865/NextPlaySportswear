@@ -78,7 +78,7 @@ class CategoryController extends Controller
             'analytics' => [
                 'total' => Category::query()->count(),
                 'active' => Category::query()->where('status', 'active')->where('is_active', true)->count(),
-                'featured' => Category::query()->where('is_featured', true)->count(),
+                'featured' => Category::query()->whereNull('parent_id')->where('is_featured', true)->count(),
                 'empty' => Category::query()->doesntHave('products')->count(),
                 'max_depth' => (int) Category::query()->max('depth'),
             ],
@@ -116,9 +116,15 @@ class CategoryController extends Controller
             $this->treeService->assertValidParent(new Category(), $payload['parent_id'] ?? null);
             $category = Category::query()->create($payload);
             $this->mediaService->sync($category, $request);
-            $this->syncFilters($category, $request->validated('filter_settings', []));
-            $this->syncContentBlocks($category, $request);
-            $this->syncFaqs($category, $request->validated('faqs', []));
+            if ($request->has('filter_settings')) {
+                $this->syncFilters($category, $request->validated('filter_settings', []));
+            }
+            if ($request->has('content_blocks')) {
+                $this->syncContentBlocks($category, $request);
+            }
+            if ($request->has('faqs')) {
+                $this->syncFaqs($category, $request->validated('faqs', []));
+            }
             $this->treeService->rebuildClosure();
 
             return $category;
@@ -144,9 +150,15 @@ class CategoryController extends Controller
             $this->treeService->assertValidParent($category, $payload['parent_id'] ?? null);
             $category->update($payload);
             $this->mediaService->sync($category, $request);
-            $this->syncFilters($category, $request->validated('filter_settings', []));
-            $this->syncContentBlocks($category, $request);
-            $this->syncFaqs($category, $request->validated('faqs', []));
+            if ($request->has('filter_settings')) {
+                $this->syncFilters($category, $request->validated('filter_settings', []));
+            }
+            if ($request->has('content_blocks')) {
+                $this->syncContentBlocks($category, $request);
+            }
+            if ($request->has('faqs')) {
+                $this->syncFaqs($category, $request->validated('faqs', []));
+            }
 
             if ($oldSlug !== $category->slug) {
                 UrlRedirect::query()->updateOrCreate(
@@ -287,14 +299,17 @@ class CategoryController extends Controller
         $payload['description_html'] = $sanitizedHtml;
         $payload['display_type'] = $data['category_type'] === 'sport' ? 'sport' : 'collection';
         $payload['is_active'] = $data['status'] === 'active';
+        $payload['is_featured'] = empty($payload['parent_id']) && (bool) ($payload['is_featured'] ?? false);
         $payload['image_url'] = $category?->image_url ?? (string) ($data['image_url'] ?? '');
         $payload['image_alt'] = filled($data['image_alt'] ?? null) ? $data['image_alt'] : $data['name'];
         $payload['thumbnail_alt'] = filled($data['thumbnail_alt'] ?? null) ? $data['thumbnail_alt'] : $data['name'];
         $payload['highlights'] = collect(preg_split('/\r\n|\r|\n/', (string) ($data['highlights_text'] ?? '')))
             ->map(fn ($value) => trim((string) $value))->filter()->values()->all();
-        $payload['schema_json'] = filled($data['schema_json_text'] ?? null)
-            ? json_decode($data['schema_json_text'], true, 512, JSON_THROW_ON_ERROR)
-            : null;
+        if (array_key_exists('schema_json_text', $data)) {
+            $payload['schema_json'] = filled($data['schema_json_text'] ?? null)
+                ? json_decode($data['schema_json_text'], true, 512, JSON_THROW_ON_ERROR)
+                : null;
+        }
         $payload['created_by'] = $category?->created_by ?? auth()->id();
         $payload['updated_by'] = auth()->id();
 

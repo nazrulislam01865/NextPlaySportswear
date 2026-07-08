@@ -37,6 +37,14 @@
                         <span>{{ $link['label'] }}</span>
                     </a>
                 @endforeach
+
+                <a
+                    href="{{ route('admin.size-option-groups.index', ['customization' => $type->group()]) }}"
+                    class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-600 transition hover:border-brand-blue hover:text-brand-blue"
+                >
+                    <span>{{ \App\Enums\JerseyCustomizationType::sizeOptionMenuNumberForGroup($type->group()) }}</span>
+                    <span>Size Options</span>
+                </a>
             </div>
         </div>
 

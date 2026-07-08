@@ -480,7 +480,7 @@ class ProductController extends Controller
             'product' => $product,
             'categoryOptions' => $this->categoryTreeService->flatOptions(),
             'catalogAttributes' => CatalogAttribute::query()->active()->with(['values' => fn ($query) => $query->active()->orderBy('sort_order')])->ordered()->get(),
-            'jerseyCustomizationTypes' => JerseyCustomizationType::options(),
+            'jerseyCustomizationTypes' => JerseyCustomizationType::masterDataOptions(),
             'jerseyCustomizationOptions' => $jerseyCustomizationOptions,
             'sizeOptionGroups' => $sizeOptionGroups,
             'shippingMethodOptions' => $shippingMethodOptions,

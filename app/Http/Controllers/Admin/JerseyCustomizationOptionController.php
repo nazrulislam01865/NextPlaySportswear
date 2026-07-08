@@ -27,9 +27,15 @@ class JerseyCustomizationOptionController extends Controller
         );
     }
 
-    public function typeIndex(Request $request, string $type): View
+    public function typeIndex(Request $request, string $type): View|RedirectResponse
     {
         $selectedType = $this->resolveType($type);
+
+        if ($selectedType->isSizeChartType()) {
+            return redirect()->route('admin.size-option-groups.index', [
+                'customization' => $selectedType->group(),
+            ]);
+        }
 
         $query = JerseyCustomizationOption::query()
             ->where('type', $selectedType->value)
@@ -66,7 +72,7 @@ class JerseyCustomizationOptionController extends Controller
                 'is_active' => true,
                 'sort_order' => 0,
             ]),
-            'types' => JerseyCustomizationType::options(),
+            'types' => JerseyCustomizationType::masterDataOptions(),
         ]);
     }
 
@@ -95,7 +101,7 @@ class JerseyCustomizationOptionController extends Controller
 
         return view('admin.jersey-customization-options.edit', [
             'option' => $jerseyCustomizationOption,
-            'types' => JerseyCustomizationType::options(),
+            'types' => JerseyCustomizationType::masterDataOptions(),
         ]);
     }
 
@@ -146,7 +152,7 @@ class JerseyCustomizationOptionController extends Controller
     /** @return array<int, array{number: string, type: JerseyCustomizationType, label: string}> */
     private function typeLinks(JerseyCustomizationType $selectedType): array
     {
-        return collect(JerseyCustomizationType::typesForGroup($selectedType->group()))
+        return collect(JerseyCustomizationType::menuTypesForGroup($selectedType->group()))
             ->map(static fn (JerseyCustomizationType $type): array => [
                 'number' => $type->menuNumber(),
                 'type' => $type,

@@ -38,13 +38,13 @@
     @csrf
     @if($method !== 'POST') @method($method) @endif
 
-    <x-admin.section-card title="Slide Image" description="Upload an optimized banner image or use a secure remote image URL. Uploaded images take priority.">
+    <x-admin.section-card title="Slide Image" description="Upload an optimized 2048×768 px banner image or use a secure remote image URL. Uploaded images take priority.">
         <div class="grid gap-6 xl:grid-cols-[1fr_360px]">
             <div class="grid gap-5 sm:grid-cols-2">
                 <label class="admin-label sm:col-span-2">
                     Upload image
                     <input type="file" name="image_file" accept=".jpg,.jpeg,.png,.webp,.avif,image/jpeg,image/png,image/webp,image/avif" class="admin-input h-auto py-3" x-on:change="previewFile($event)">
-                    <span class="mt-2 block text-xs font-medium leading-5 text-slate-500">Landscape image, minimum 800×350 pixels. JPG, PNG, WebP or AVIF, maximum 10 MB.</span>
+                    <span class="mt-2 block text-xs font-medium leading-5 text-slate-500">Required banner size: 2048×768 pixels. JPG, PNG, WebP or AVIF, maximum 10 MB.</span>
                 </label>
 
                 <label class="admin-label sm:col-span-2">

@@ -6,6 +6,7 @@ use App\Http\Controllers\Storefront\Account\PaymentMethodController;
 use App\Http\Controllers\Storefront\Account\ProfileController;
 use App\Http\Controllers\Storefront\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Storefront\Auth\RegisteredUserController;
+use App\Http\Controllers\Storefront\BulkQuoteController;
 use App\Http\Controllers\Storefront\CartController;
 use App\Http\Controllers\Storefront\ContactController;
 use App\Http\Controllers\Storefront\ContentPageController;
@@ -30,6 +31,10 @@ Route::get('/size-guide', [ContentPageController::class, 'sizeGuide'])->name('si
 Route::get('/artwork-guidelines', [ContentPageController::class, 'artworkGuidelines'])->name('artwork-guidelines');
 Route::get('/customization-guide', [ContentPageController::class, 'customizationGuide'])->name('customization-guide');
 Route::get('/bulk-team-ordering', [ContentPageController::class, 'bulkOrdering'])->name('bulk-ordering');
+Route::get('/bulk-quote', [BulkQuoteController::class, 'create'])->name('quote.request');
+Route::post('/bulk-quote', [BulkQuoteController::class, 'store'])
+    ->middleware('throttle:4,1')
+    ->name('quote.request.store');
 Route::get('/shipping-delivery', [ContentPageController::class, 'shipping'])->name('shipping');
 Route::get('/returns-refunds-exchanges', [ContentPageController::class, 'returns'])->name('returns');
 Route::get('/payment-information', [ContentPageController::class, 'payment'])->name('payment-information');
@@ -253,12 +258,7 @@ Route::get('/products/search-suggestions', [ProductController::class, 'suggestio
 Route::get('/product/{slug}', [ProductController::class, 'show'])->name('products.show');
 Route::get('/products/{slug}', [ProductController::class, 'show'])->name('products.show.legacy');
 
-Route::get('/quote-request', function () {
-    return view('storefront.placeholder', [
-        'title' => 'Quote Request',
-        'message' => 'Quote request page will be created in the next step.',
-    ]);
-})->name('quote.request');
+Route::permanentRedirect('/quote-request', '/bulk-quote');
 
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 Route::post('/cart/items', [CartController::class, 'store'])->name('cart.items.store');

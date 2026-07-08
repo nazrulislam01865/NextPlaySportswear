@@ -21,6 +21,7 @@ class HomePageService
             'categories' => $this->categories(),
             'buyerPaths' => $this->buyerPaths(),
             'featuredProducts' => $this->featuredProducts(),
+            'popularSportsCategories' => $this->popularSportsCategories(),
             'sports' => $this->sports(),
             'processSteps' => $this->processSteps(),
             'faqs' => $this->faqs(),
@@ -45,7 +46,7 @@ class HomePageService
     private function categories(): array
     {
         return collect($this->categoryCatalog->collections())
-            ->sortByDesc(fn (array $category): bool => (bool) ($category['is_featured'] ?? false))
+            ->filter(fn (array $category): bool => (bool) ($category['is_featured'] ?? false))
             ->take(6)
             ->values()
             ->all();
@@ -84,6 +85,14 @@ class HomePageService
     private function featuredProducts(): array
     {
         return collect($this->productCatalog->featured())
+            ->take(8)
+            ->values()
+            ->all();
+    }
+
+    private function popularSportsCategories(): array
+    {
+        return collect($this->categoryCatalog->popularSportswearCategories())
             ->take(8)
             ->values()
             ->all();

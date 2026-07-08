@@ -24,7 +24,7 @@ class JerseyCustomizationOptionRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:160'],
-            'type' => ['required', Rule::enum(JerseyCustomizationType::class)],
+            'type' => ['required', Rule::in(array_keys(JerseyCustomizationType::masterDataOptions()))],
             'slug' => [
                 'required',
                 'string',

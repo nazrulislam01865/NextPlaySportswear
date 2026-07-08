@@ -4,7 +4,7 @@
         <x-storefront.home.hero />
         <x-storefront.home.category-section :categories="$categories" />
         <x-storefront.home.buyer-paths :buyer-paths="$buyerPaths ?? []" />
-        <x-storefront.home.popular-categories />
+        <x-storefront.home.popular-categories :categories="$popularSportsCategories ?? []" />
         <x-storefront.home.design-jersey />
         <x-storefront.home.bulk-order />
         <x-storefront.home.process :steps="$processSteps" />

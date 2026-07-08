@@ -70,6 +70,32 @@ class CategoryCatalogService
         return $categories->map(fn (Category $category) => $this->categoryData($category))->all();
     }
 
+    public function popularSportswearCategories(int $limit = 8): array
+    {
+        $categories = Category::query()
+            ->storefrontReachable()
+            ->where(function (Builder $query): void {
+                $query->where('category_type', 'sport')
+                    ->orWhereHas('parent', fn (Builder $parent): Builder => $parent->where('category_type', 'sport'))
+                    ->orWhereExists(function ($subquery): void {
+                        $subquery->selectRaw('1')
+                            ->from('category_closure as sport_cc')
+                            ->join('categories as sport_parent', 'sport_parent.id', '=', 'sport_cc.ancestor_id')
+                            ->whereColumn('sport_cc.descendant_id', 'categories.id')
+                            ->where('sport_cc.depth', '>', 0)
+                            ->where('sport_parent.category_type', 'sport')
+                            ->whereNull('sport_parent.deleted_at');
+                    });
+            })
+            ->ordered()
+            ->limit($limit)
+            ->get();
+
+        $this->attachProductCounts($categories);
+
+        return $categories->map(fn (Category $category) => $this->categoryData($category))->all();
+    }
+
     public function filterTags(): array
     {
         return [

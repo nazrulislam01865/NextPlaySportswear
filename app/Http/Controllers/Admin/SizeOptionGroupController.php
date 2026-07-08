@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\JerseyCustomizationType;
 use App\Enums\SizeAudience;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SizeOptionGroupRequest;
@@ -36,6 +37,7 @@ class SizeOptionGroupController extends Controller
             'groups' => $query->ordered()->paginate(30)->withQueryString(),
             'audiences' => SizeAudience::options(),
             'filters' => $request->only(['q', 'audience']),
+            'customizationContext' => $this->customizationContext($request),
         ]);
     }
 
@@ -51,7 +53,7 @@ class SizeOptionGroupController extends Controller
     {
         $group = $this->service->create($request);
 
-        return redirect()->route('admin.size-option-groups.edit', $group)
+        return redirect()->route('admin.size-option-groups.edit', $this->routeParameters($group, $request))
             ->with('status', 'Size option group created successfully.');
     }
 
@@ -69,15 +71,36 @@ class SizeOptionGroupController extends Controller
     {
         $group = $this->service->update($sizeOptionGroup, $request);
 
-        return redirect()->route('admin.size-option-groups.edit', $group)
+        return redirect()->route('admin.size-option-groups.edit', $this->routeParameters($group, $request))
             ->with('status', 'Size option group updated successfully.');
     }
 
-    public function destroy(SizeOptionGroup $sizeOptionGroup): RedirectResponse
+    public function destroy(Request $request, SizeOptionGroup $sizeOptionGroup): RedirectResponse
     {
         $this->service->delete($sizeOptionGroup);
 
-        return redirect()->route('admin.size-option-groups.index')
-            ->with('status', 'Size option group deleted successfully.');
+        $context = $this->customizationContext($request);
+
+        return redirect()->route(
+            'admin.size-option-groups.index',
+            $context ? ['customization' => $context] : []
+        )->with('status', 'Size option group deleted successfully.');
+    }
+
+    /** @return array<int|string, mixed> */
+    private function routeParameters(SizeOptionGroup $group, Request $request): array
+    {
+        $context = $this->customizationContext($request);
+
+        return $context
+            ? ['sizeOptionGroup' => $group, 'customization' => $context]
+            : ['sizeOptionGroup' => $group];
+    }
+
+    private function customizationContext(Request $request): ?string
+    {
+        $context = (string) ($request->query('customization') ?: $request->input('_customization_context'));
+
+        return array_key_exists($context, JerseyCustomizationType::menuGroups()) ? $context : null;
     }
 }

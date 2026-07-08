@@ -42,8 +42,8 @@
                     src="{{ $slide['image'] }}"
                     alt="{{ $slide['alt'] }}"
                     style="object-position: {{ str_replace('-', ' ', $slide['image_focal_position']) }}"
-                    width="1600"
-                    height="700"
+                    width="2048"
+                    height="768"
                 >
                 <div class="promo-overlay" style="background: {{ $slide['overlay_rgba'] }}"></div>
 

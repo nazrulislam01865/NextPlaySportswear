@@ -43,20 +43,29 @@ class CategoryOperationsController extends Controller
             'hide_from_menu' => ['is_visible_in_menu' => false],
         };
 
-        $updated = DB::transaction(function () use ($ids, $payload): int {
-            return Category::query()
+        $updated = DB::transaction(function () use ($ids, $payload, $action): int {
+            $query = Category::query()
                 ->whereIn('id', $ids)
-                ->lockForUpdate()
-                ->update(array_merge($payload, [
-                    'updated_by' => auth()->id(),
-                    'updated_at' => now(),
-                ]));
+                ->lockForUpdate();
+
+            if ($action === 'feature') {
+                $query->whereNull('parent_id');
+            }
+
+            return $query->update(array_merge($payload, [
+                'updated_by' => auth()->id(),
+                'updated_at' => now(),
+            ]));
         });
 
         $this->treeService->flushCache();
         $this->navigationService->flushCache();
 
-        return back()->with('status', "{$updated} category records updated.");
+        $message = $action === 'feature'
+            ? "{$updated} parent category records marked as featured. Child categories are not eligible for the homepage featured section."
+            : "{$updated} category records updated.";
+
+        return back()->with('status', $message);
     }
 
     public function ordering(): View
@@ -239,7 +248,10 @@ class CategoryOperationsController extends Controller
                     ]);
                 }
                 $this->treeService->assertValidParent($category, $parentId ?: null);
-                $category->update(['parent_id' => $parentId ?: null]);
+                $category->update([
+                    'parent_id' => $parentId ?: null,
+                    'is_featured' => $parentId ? false : $category->is_featured,
+                ]);
             }
 
             $this->treeService->rebuildClosure();

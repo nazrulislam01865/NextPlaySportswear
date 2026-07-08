@@ -99,6 +99,11 @@
 
                         $activeCustomizationTypeEnum = \App\Enums\JerseyCustomizationType::tryFrom((string) $activeCustomizationType);
                         $activeCustomizationGroup = $activeCustomizationTypeEnum?->group();
+                        $activeSizeCustomizationGroup = request()->query('customization', 'jersey');
+
+                        if (! array_key_exists((string) $activeSizeCustomizationGroup, $customizationMenuGroups)) {
+                            $activeSizeCustomizationGroup = 'jersey';
+                        }
                     @endphp
                     <x-admin.sidebar-group
                         label="Master Data"
@@ -107,7 +112,7 @@
                     >
                         @if($canAdmin('customization.view'))
                         @foreach($customizationMenuGroups as $groupKey => $customizationGroup)
-                            @php($isCurrentCustomizationGroup = ($isCustomizationActive && $activeCustomizationGroup === $groupKey) || ($isSizeOptionActive && $groupKey === 'jersey'))
+                            @php($isCurrentCustomizationGroup = ($isCustomizationActive && $activeCustomizationGroup === $groupKey) || ($isSizeOptionActive && $activeSizeCustomizationGroup === $groupKey))
                             <details class="space-y-1" data-sidebar-disclosure data-sidebar-nested-disclosure @if($isCurrentCustomizationGroup) open @endif>
                                 <summary
                                     class="flex min-h-10 w-full min-w-0 cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-black text-slate-400 transition hover:bg-white/10 hover:text-white"
@@ -137,21 +142,20 @@
                                         </a>
                                     @endforeach
 
-                                    @if($groupKey === 'jersey')
-                                        @php($sizeOptionMenuNumber = $customizationGroup['number'].'.'.(count($customizationGroup['types']) + 1))
-                                        <a
-                                            href="{{ route('admin.size-option-groups.index') }}"
-                                            @if($isSizeOptionActive) data-sidebar-active="true" @endif
-                                            @class([
-                                                'flex min-h-9 min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold transition',
-                                                'bg-brand-red text-white' => $isSizeOptionActive,
-                                                'text-slate-400 hover:bg-white/10 hover:text-white' => ! $isSizeOptionActive,
-                                            ])
-                                        >
-                                            <span class="shrink-0 text-[10px] opacity-80">{{ $sizeOptionMenuNumber }}</span>
-                                            <span class="min-w-0 truncate">Size Options</span>
-                                        </a>
-                                    @endif
+                                    @php($sizeOptionMenuNumber = \App\Enums\JerseyCustomizationType::sizeOptionMenuNumberForGroup($groupKey))
+                                    @php($isCurrentSizeOptionLink = $isSizeOptionActive && $activeSizeCustomizationGroup === $groupKey)
+                                    <a
+                                        href="{{ route('admin.size-option-groups.index', ['customization' => $groupKey]) }}"
+                                        @if($isCurrentSizeOptionLink) data-sidebar-active="true" @endif
+                                        @class([
+                                            'flex min-h-9 min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold transition',
+                                            'bg-brand-red text-white' => $isCurrentSizeOptionLink,
+                                            'text-slate-400 hover:bg-white/10 hover:text-white' => ! $isCurrentSizeOptionLink,
+                                        ])
+                                    >
+                                        <span class="shrink-0 text-[10px] opacity-80">{{ $sizeOptionMenuNumber }}</span>
+                                        <span class="min-w-0 truncate">Size Options</span>
+                                    </a>
                                 </div>
                             </details>
                         @endforeach

@@ -27,6 +27,15 @@ class Category extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected static function booted(): void
+    {
+        static::saving(function (Category $category): void {
+            if ($category->parent_id !== null) {
+                $category->is_featured = false;
+            }
+        });
+    }
+
     protected function casts(): array
     {
         return [

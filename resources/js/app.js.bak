@@ -880,6 +880,7 @@ window.adminProductForm = (initial = {}) => ({
             .find(([type, label]) => type === normalized || String(label).trim().toLowerCase() === plain)?.[0];
         if (direct) return direct;
         if (/quarter[-\s_]*zip.*colou?r|colou?r.*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_color';
+        if (/quarter[-\s_]*zip.*(fabric|material)|(fabric|material).*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_fabric';
         if (/quarter[-\s_]*zip.*zipper|zipper.*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_zipper';
         if (/quarter[-\s_]*zip.*sleeve|sleeve.*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_sleeve';
         if (/quarter[-\s_]*zip.*size|size.*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_size';

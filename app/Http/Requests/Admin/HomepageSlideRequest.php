@@ -22,7 +22,7 @@ class HomepageSlideRequest extends FormRequest
             'title' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
 
-            'image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:10240', 'dimensions:min_width=800,min_height=350,max_width=8000,max_height=5000'],
+            'image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:10240', 'dimensions:width=2048,height=768'],
             'image_url' => ['nullable', 'url:http,https', 'max:2048'],
             'image_alt' => ['nullable', 'string', 'max:255'],
             'remove_image' => ['nullable', 'boolean'],

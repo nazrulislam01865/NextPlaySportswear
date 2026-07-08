@@ -9,7 +9,7 @@
         $stats = [
             ['label' => 'Total Categories', 'value' => $analytics['total'], 'note' => 'All catalog nodes', 'icon' => 'tree', 'tone' => 'slate'],
             ['label' => 'Active', 'value' => $analytics['active'], 'note' => 'Published and available', 'icon' => 'check', 'tone' => 'blue'],
-            ['label' => 'Featured', 'value' => $analytics['featured'], 'note' => 'Homepage/category promotion', 'icon' => 'star', 'tone' => 'slate'],
+            ['label' => 'Featured', 'value' => $analytics['featured'], 'note' => 'Homepage parent categories', 'icon' => 'star', 'tone' => 'slate'],
             ['label' => 'Empty', 'value' => $analytics['empty'], 'note' => 'No direct product assignment', 'icon' => 'folder', 'tone' => 'amber'],
             ['label' => 'Tree Depth', 'value' => $analytics['max_depth'], 'note' => 'Maximum current level', 'icon' => 'chart', 'tone' => 'violet'],
         ];
@@ -216,7 +216,7 @@
                 <option value="activate">Activate</option>
                 <option value="deactivate">Deactivate</option>
                 <option value="archive">Archive</option>
-                <option value="feature">Mark featured</option>
+                <option value="feature">Mark featured parent category</option>
                 <option value="unfeature">Remove featured</option>
                 <option value="show_in_menu">Show in menu</option>
                 <option value="hide_from_menu">Hide from menu</option>
@@ -231,7 +231,7 @@
             </button>
 
             <span class="category-bulk-note">
-                Bulk changes are validated and recorded server-side.
+                Only parent categories can be marked featured for the homepage section.
             </span>
         </form>
 

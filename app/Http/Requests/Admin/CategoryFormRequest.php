@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin;
 use Illuminate\Foundation\Http\FormRequest;
 use App\Rules\SafePublicUrl;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class CategoryFormRequest extends FormRequest
 {
@@ -21,7 +22,7 @@ class CategoryFormRequest extends FormRequest
             'parent_id' => ['nullable', 'integer', 'exists:categories,id', Rule::notIn(array_filter([$categoryId]))],
             'name' => ['required', 'string', 'max:160'],
             'menu_label' => ['nullable', 'string', 'max:160'],
-            'slug' => [$this->isMethod('post') ? 'nullable' : 'required', 'string', 'max:180', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', Rule::unique('categories', 'slug')->ignore($categoryId)],
+            'slug' => ['nullable', 'string', 'max:180', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
             'display_mode' => ['nullable', Rule::in(['default', 'subcategories', 'content'])],
             'publish_now' => ['nullable', 'boolean'],
             'category_type' => ['required', Rule::in(['standard', 'sport', 'collection', 'apparel', 'accessory', 'promotional', 'sale', 'new-arrival', 'navigation-only'])],
@@ -122,10 +123,19 @@ class CategoryFormRequest extends FormRequest
             'robots_follow' => true,
         ];
 
+        $nameForSlug = trim((string) $this->input('name', ''));
+        if ($nameForSlug !== '') {
+            $payload['slug'] = Str::limit(Str::slug($nameForSlug) ?: 'category', 180, '');
+        }
+
         foreach ($booleanFields as $field) {
             $payload[$field] = $this->isMethod('post') && ! $this->has($field)
                 ? ($createDefaults[$field] ?? false)
                 : $this->boolean($field);
+        }
+
+        if ($this->filled('parent_id')) {
+            $payload['is_featured'] = false;
         }
 
         if ($this->isMethod('post')) {
@@ -151,27 +161,33 @@ class CategoryFormRequest extends FormRequest
             ]);
         }
 
-        $payload['filter_settings'] = collect($this->input('filter_settings', []))
-            ->map(function ($setting): array {
-                $setting = is_array($setting) ? $setting : [];
-                $setting['enabled'] = filter_var($setting['enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
-                $setting['is_expanded'] = filter_var($setting['is_expanded'] ?? false, FILTER_VALIDATE_BOOLEAN);
-                return $setting;
-            })->all();
+        if ($this->has('filter_settings')) {
+            $payload['filter_settings'] = collect($this->input('filter_settings', []))
+                ->map(function ($setting): array {
+                    $setting = is_array($setting) ? $setting : [];
+                    $setting['enabled'] = filter_var($setting['enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                    $setting['is_expanded'] = filter_var($setting['is_expanded'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                    return $setting;
+                })->all();
+        }
 
-        $payload['content_blocks'] = collect($this->input('content_blocks', []))
-            ->map(function ($block): array {
-                $block = is_array($block) ? $block : [];
-                $block['is_active'] = filter_var($block['is_active'] ?? false, FILTER_VALIDATE_BOOLEAN);
-                return $block;
-            })->values()->all();
+        if ($this->has('content_blocks')) {
+            $payload['content_blocks'] = collect($this->input('content_blocks', []))
+                ->map(function ($block): array {
+                    $block = is_array($block) ? $block : [];
+                    $block['is_active'] = filter_var($block['is_active'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                    return $block;
+                })->values()->all();
+        }
 
-        $payload['faqs'] = collect($this->input('faqs', []))
-            ->map(function ($faq): array {
-                $faq = is_array($faq) ? $faq : [];
-                $faq['is_active'] = filter_var($faq['is_active'] ?? false, FILTER_VALIDATE_BOOLEAN);
-                return $faq;
-            })->values()->all();
+        if ($this->has('faqs')) {
+            $payload['faqs'] = collect($this->input('faqs', []))
+                ->map(function ($faq): array {
+                    $faq = is_array($faq) ? $faq : [];
+                    $faq['is_active'] = filter_var($faq['is_active'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                    return $faq;
+                })->values()->all();
+        }
 
         $this->merge($payload);
     }

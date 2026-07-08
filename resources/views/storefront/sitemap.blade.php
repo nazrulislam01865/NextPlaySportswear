@@ -3,6 +3,8 @@
     <url><loc>{{ route('home') }}</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
     <url><loc>{{ route('categories.index') }}</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
     <url><loc>{{ route('products.index') }}</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+    <url><loc>{{ route('quote.request') }}</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+    <url><loc>{{ route('bulk-ordering') }}</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
     @foreach($categories as $category)
         <url><loc>{{ route('categories.show', $category->slug) }}</loc><lastmod>{{ $category->updated_at?->toAtomString() }}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
     @endforeach
