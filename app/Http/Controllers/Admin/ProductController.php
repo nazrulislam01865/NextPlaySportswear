@@ -458,6 +458,8 @@ class ProductController extends Controller
                 'slug' => $group->slug,
                 'audience' => $group->audience->value,
                 'audience_label' => $group->audience->label(),
+                'customization_group' => $group->customization_group,
+                'customization_group_label' => JerseyCustomizationType::menuGroups()[$group->customization_group]['label'] ?? 'Product Customization',
                 'description_html' => $group->description_html,
                 'sizes' => $group->sizes->pluck('label')->values()->all(),
                 'chart_enabled' => filled($group->chart_html) || filled($group->chartImageUrl()),

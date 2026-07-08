@@ -2,24 +2,30 @@
     use App\Enums\SizeAudience;
 
     $isEdit = $group->exists;
+    $context = $customizationContext ?? old('customization_group', $group->customization_group ?: request('customization', 'jersey'));
+    $label = $customizationLabel ?? 'Product Customization';
     $initialSizes = $group->relationLoaded('sizes')
         ? $group->sizes->map(fn ($size) => ['label' => $size->label, 'code' => $size->code, 'is_active' => true, 'sort_order' => $size->sort_order])->values()->all()
         : [['label' => '', 'code' => '', 'is_active' => true, 'sort_order' => 0]];
 @endphp
 
 <div class="space-y-6">
-    @if(request()->filled('customization'))
-        <input type="hidden" name="_customization_context" value="{{ request('customization') }}">
-    @endif
-    <x-admin.section-card title="Size Group" description="Create one reusable size group that can be used by any customization section and any product audience.">
+    <input type="hidden" name="_customization_context" value="{{ $context }}">
+    <input type="hidden" name="customization_group" value="{{ $context }}">
+
+    <div class="rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 text-sm font-semibold text-blue-900">
+        You are editing size options for <span class="font-black">{{ $label }}</span>. These sizes will not be mixed with other clothing groups.
+    </div>
+
+    <x-admin.section-card title="Size Group" description="Create a reusable size group only for this clothing/customization section.">
         <div class="grid gap-5 md:grid-cols-2">
             <label class="admin-label">Name
                 <input class="admin-input" name="name" value="{{ old('name', $group->name) }}" maxlength="160" placeholder="Example: Adult Male" required>
             </label>
             <label class="admin-label">Type
                 <select class="admin-input" name="audience" required>
-                    @foreach($audiences as $value => $label)
-                        <option value="{{ $value }}" @selected(old('audience', $group->audience?->value ?? SizeAudience::Unisex->value) === $value)>{{ $label }}</option>
+                    @foreach($audiences as $value => $optionLabel)
+                        <option value="{{ $value }}" @selected(old('audience', $group->audience?->value ?? SizeAudience::Unisex->value) === $value)>{{ $optionLabel }}</option>
                     @endforeach
                 </select>
             </label>
@@ -30,7 +36,7 @@
         </div>
     </x-admin.section-card>
 
-    <x-admin.section-card title="Size Options" description="These sizes become available when the group is added to a product.">
+    <x-admin.section-card title="Size Options" description="These sizes become available only when this group is added to a product.">
         <x-admin.size-option-rows name="sizes" :sizes="$initialSizes" />
     </x-admin.section-card>
 
@@ -87,7 +93,7 @@
     </x-admin.section-card>
 
     <div class="sticky bottom-3 z-30 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-soft backdrop-blur sm:bottom-4 sm:flex-row sm:justify-end">
-        <a class="btn btn-white" href="{{ route('admin.size-option-groups.index', request()->filled('customization') ? ['customization' => request('customization')] : []) }}">Cancel</a>
+        <a class="btn btn-white" href="{{ route('admin.size-option-groups.index', ['customization' => $context]) }}">Cancel</a>
         <button class="btn btn-red">{{ $isEdit ? 'Update Size Group' : 'Create Size Group' }}</button>
     </div>
 </div>

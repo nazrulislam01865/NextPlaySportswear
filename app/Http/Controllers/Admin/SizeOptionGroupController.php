@@ -21,7 +21,11 @@ class SizeOptionGroupController extends Controller
 
     public function index(Request $request): View
     {
-        $query = SizeOptionGroup::query()->with('sizes')->withCount(['sizes', 'productGroups']);
+        $context = $this->customizationContext($request) ?? 'jersey';
+        $query = SizeOptionGroup::query()
+            ->forCustomizationGroup($context)
+            ->with('sizes')
+            ->withCount(['sizes', 'productGroups']);
 
         if ($search = trim((string) $request->query('q'))) {
             $query->where(fn (Builder $builder) => $builder
@@ -37,15 +41,24 @@ class SizeOptionGroupController extends Controller
             'groups' => $query->ordered()->paginate(30)->withQueryString(),
             'audiences' => SizeAudience::options(),
             'filters' => $request->only(['q', 'audience']),
-            'customizationContext' => $this->customizationContext($request),
+            'customizationContext' => $context,
+            'customizationLabel' => $this->customizationLabel($context),
         ]);
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
+        $context = $this->customizationContext($request) ?? 'jersey';
+
         return view('admin.size-option-groups.create', [
-            'group' => new SizeOptionGroup(['audience' => SizeAudience::Unisex, 'is_active' => true]),
+            'group' => new SizeOptionGroup([
+                'customization_group' => $context,
+                'audience' => SizeAudience::Unisex,
+                'is_active' => true,
+            ]),
             'audiences' => SizeAudience::options(),
+            'customizationContext' => $context,
+            'customizationLabel' => $this->customizationLabel($context),
         ]);
     }
 
@@ -57,13 +70,16 @@ class SizeOptionGroupController extends Controller
             ->with('status', 'Size option group created successfully.');
     }
 
-    public function edit(SizeOptionGroup $sizeOptionGroup): View
+    public function edit(Request $request, SizeOptionGroup $sizeOptionGroup): View
     {
         $sizeOptionGroup->load('sizes');
+        $context = (string) ($sizeOptionGroup->customization_group ?: 'jersey');
 
         return view('admin.size-option-groups.edit', [
             'group' => $sizeOptionGroup,
             'audiences' => SizeAudience::options(),
+            'customizationContext' => $context,
+            'customizationLabel' => $this->customizationLabel($context),
         ]);
     }
 
@@ -77,30 +93,30 @@ class SizeOptionGroupController extends Controller
 
     public function destroy(Request $request, SizeOptionGroup $sizeOptionGroup): RedirectResponse
     {
+        $context = (string) ($sizeOptionGroup->customization_group ?: 'jersey');
         $this->service->delete($sizeOptionGroup);
 
-        $context = $this->customizationContext($request);
-
-        return redirect()->route(
-            'admin.size-option-groups.index',
-            $context ? ['customization' => $context] : []
-        )->with('status', 'Size option group deleted successfully.');
+        return redirect()->route('admin.size-option-groups.index', ['customization' => $context])
+            ->with('status', 'Size option group deleted successfully.');
     }
 
     /** @return array<int|string, mixed> */
     private function routeParameters(SizeOptionGroup $group, Request $request): array
     {
-        $context = $this->customizationContext($request);
+        $context = (string) ($group->customization_group ?: 'jersey');
 
-        return $context
-            ? ['sizeOptionGroup' => $group, 'customization' => $context]
-            : ['sizeOptionGroup' => $group];
+        return ['sizeOptionGroup' => $group, 'customization' => $context];
     }
 
     private function customizationContext(Request $request): ?string
     {
-        $context = (string) ($request->query('customization') ?: $request->input('_customization_context'));
+        $context = (string) ($request->query('customization') ?: $request->input('_customization_context') ?: $request->input('customization_group'));
 
         return array_key_exists($context, JerseyCustomizationType::menuGroups()) ? $context : null;
+    }
+
+    private function customizationLabel(string $context): string
+    {
+        return JerseyCustomizationType::menuGroups()[$context]['label'] ?? 'Product Customization';
     }
 }

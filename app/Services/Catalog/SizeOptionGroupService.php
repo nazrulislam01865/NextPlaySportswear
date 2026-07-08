@@ -55,6 +55,7 @@ class SizeOptionGroupService
         return [
             'name' => $validated['name'],
             'slug' => $validated['slug'],
+            'customization_group' => $validated['customization_group'],
             'audience' => $validated['audience'],
             'description_html' => $this->safeHtml->sanitize($validated['description_html'] ?? null),
             'chart_html' => $chartHtml,

@@ -1241,6 +1241,7 @@ window.adminProductForm = (initial = {}) => ({
         return (this.sizeOptionGroups || []).filter(group => !query
             || String(group.name || '').toLowerCase().includes(query)
             || String(group.audience_label || '').toLowerCase().includes(query)
+            || String(group.customization_group_label || '').toLowerCase().includes(query)
             || (group.sizes || []).some(size => String(size).toLowerCase().includes(query)));
     },
     isSizeGroupSelected(id) {
@@ -1255,6 +1256,7 @@ window.adminProductForm = (initial = {}) => ({
             name: String(master.name || ''),
             code: String(master.slug || ''),
             audience_label: String(master.audience_label || ''),
+            customization_group_label: String(master.customization_group_label || ''),
             description_html: String(master.description_html || ''),
             sizes: Array.isArray(master.sizes) ? [...master.sizes] : [],
             chart_enabled: Boolean(master.chart_enabled),

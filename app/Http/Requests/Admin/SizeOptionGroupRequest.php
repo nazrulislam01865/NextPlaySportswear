@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\JerseyCustomizationType;
 use App\Enums\SizeAudience;
 use App\Models\SizeOptionGroup;
 use App\Rules\SafePublicUrl;
@@ -21,10 +22,19 @@ class SizeOptionGroupRequest extends FormRequest
     public function rules(): array
     {
         $group = $this->route('sizeOptionGroup');
+        $customizationGroup = (string) $this->input('customization_group', 'jersey');
 
         return [
             'name' => ['required', 'string', 'max:160'],
-            'slug' => ['required', 'string', 'max:180', Rule::unique('size_option_groups', 'slug')->ignore($group?->getKey())],
+            'slug' => [
+                'required',
+                'string',
+                'max:180',
+                Rule::unique('size_option_groups', 'slug')
+                    ->where(fn ($query) => $query->where('customization_group', $customizationGroup))
+                    ->ignore($group?->getKey()),
+            ],
+            'customization_group' => ['required', 'string', Rule::in(array_keys(JerseyCustomizationType::menuGroups()))],
             'audience' => ['required', Rule::enum(SizeAudience::class)],
             'description_html' => ['nullable', 'string', 'max:100000'],
             'chart_html' => ['nullable', 'string', 'max:100000'],
@@ -86,6 +96,7 @@ class SizeOptionGroupRequest extends FormRequest
         $this->merge([
             'name' => trim((string) $this->input('name')),
             'slug' => Str::slug((string) $this->input('slug', $this->input('name'))),
+            'customization_group' => $this->customizationGroup($group),
             'description_html' => filled($this->input('description_html')) ? (string) $this->input('description_html') : null,
             'chart_html' => filled(strip_tags((string) $this->input('chart_html'))) ? (string) $this->input('chart_html') : null,
             'chart_image_url' => filled($this->input('chart_image_url')) ? trim((string) $this->input('chart_image_url')) : null,
@@ -94,5 +105,20 @@ class SizeOptionGroupRequest extends FormRequest
             'sort_order' => $group instanceof SizeOptionGroup ? (int) $group->sort_order : 0,
             'sizes' => $sizes,
         ]);
+    }
+
+    private function customizationGroup(mixed $group): string
+    {
+        if ($group instanceof SizeOptionGroup && array_key_exists((string) $group->customization_group, JerseyCustomizationType::menuGroups())) {
+            return (string) $group->customization_group;
+        }
+
+        $context = (string) ($this->input('_customization_context') ?: $this->input('customization_group') ?: $this->query('customization'));
+
+        if (array_key_exists($context, JerseyCustomizationType::menuGroups())) {
+            return $context;
+        }
+
+        return 'jersey';
     }
 }

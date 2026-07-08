@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Support\PublicMedia;
 
 #[Fillable([
-    'name', 'slug', 'audience', 'description_html', 'chart_html', 'chart_title', 'chart_note',
+    'name', 'slug', 'customization_group', 'audience', 'description_html', 'chart_html', 'chart_title', 'chart_note',
     'chart_columns', 'chart_rows', 'chart_image_path', 'chart_image_url',
     'is_active', 'sort_order', 'created_by', 'updated_by',
 ])]
@@ -21,11 +21,18 @@ class SizeOptionGroup extends Model
     {
         return [
             'audience' => SizeAudience::class,
+            'customization_group' => 'string',
             'chart_columns' => 'array',
             'chart_rows' => 'array',
             'is_active' => 'boolean',
             'sort_order' => 'integer',
         ];
+    }
+
+    /** @param Builder<SizeOptionGroup> $query */
+    public function scopeForCustomizationGroup(Builder $query, string $group): Builder
+    {
+        return $query->where('customization_group', $group);
     }
 
     /** @param Builder<SizeOptionGroup> $query */

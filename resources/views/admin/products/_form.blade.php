@@ -1187,7 +1187,8 @@ Lead Time:"></div>
                                 <div class="flex items-start justify-between gap-3">
                                     <div class="min-w-0">
                                         <h4 class="truncate font-black text-brand-ink" x-text="master.name"></h4>
-                                        <p class="mt-1 text-xs font-bold text-brand-blue" x-text="master.audience_label"></p>
+                                        <p class="mt-1 text-xs font-bold text-brand-blue" x-text="master.customization_group_label"></p>
+                                        <p class="mt-1 text-[11px] font-semibold text-slate-500" x-text="master.audience_label"></p>
                                     </div>
                                     <span x-show="master.chart_enabled" class="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-black text-emerald-700">Chart</span>
                                 </div>
@@ -1201,8 +1202,8 @@ Lead Time:"></div>
 
                     <div x-show="filteredSizeOptionGroups().length === 0" class="rounded-2xl border-2 border-dashed border-slate-200 p-10 text-center">
                         <p class="font-black text-brand-ink">No size option is available.</p>
-                        <p class="mt-2 text-sm text-slate-500">Create one under Master Data → Jersey Customization → Size Options first.</p>
-                        <a href="{{ route('admin.size-option-groups.index') }}" class="btn btn-white mt-5">Open Size Options</a>
+                        <p class="mt-2 text-sm text-slate-500">Create one under Master Data → the required clothing section → Size Options first.</p>
+                        <a href="{{ route('admin.size-option-groups.index', ['customization' => 'jersey']) }}" class="btn btn-white mt-5">Open Size Options</a>
                     </div>
                 </div>
 

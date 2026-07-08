@@ -1,18 +1,19 @@
 @php
-    $sizeRouteContext = $customizationContext ?? (request()->filled('customization') ? request('customization') : null);
-    $sizeRouteQuery = $sizeRouteContext ? ['customization' => $sizeRouteContext] : [];
+    $sizeRouteContext = $customizationContext ?? 'jersey';
+    $sizeRouteQuery = ['customization' => $sizeRouteContext];
 @endphp
 
 <x-layouts.admin title="Size Options">
     <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p class="max-w-3xl text-sm leading-6 text-slate-500">Manage one shared size-chart system for every customization section. These reusable Male, Female, Youth, Kids, Unisex, and custom size groups are used across products.</p>
+        <div>
+            <p class="text-xs font-black uppercase tracking-[.18em] text-brand-blue">{{ $customizationLabel ?? 'Product Customization' }}</p>
+            <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-500">Manage size-chart groups only for this clothing/customization section. Deleting or editing a size here will not affect size groups under other clothing sections.</p>
+        </div>
         <a href="{{ route('admin.size-option-groups.create', $sizeRouteQuery) }}" class="btn btn-red">+ Add Size Group</a>
     </div>
 
     <form class="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card md:grid-cols-[minmax(0,1fr)_240px_auto]" method="GET">
-        @if($sizeRouteContext)
-            <input type="hidden" name="customization" value="{{ $sizeRouteContext }}">
-        @endif
+        <input type="hidden" name="customization" value="{{ $sizeRouteContext }}">
         <input class="admin-input mt-0" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Search size group">
         <select class="admin-input mt-0" name="audience">
             <option value="">All types</option>
@@ -43,7 +44,7 @@
                             </div></td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="px-5 py-14 text-center text-slate-500">No size option groups found.</td></tr>
+                        <tr><td colspan="6" class="px-5 py-14 text-center text-slate-500">No size option groups found for {{ $customizationLabel ?? 'this section' }}.</td></tr>
                     @endforelse
                 </tbody>
             </table>
