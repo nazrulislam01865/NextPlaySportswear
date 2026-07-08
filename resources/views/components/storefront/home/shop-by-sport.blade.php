@@ -1,11 +1,16 @@
-@props(['sports' => []])
+@props(['sports' => [], 'section' => []])
+
+@php
+    $section = is_array($section) ? $section : [];
+    $text = static fn (string $key, string $fallback = ''): string => filled(data_get($section, $key)) ? (string) data_get($section, $key) : $fallback;
+@endphp
 
 <section id="sports" class="section-alt">
     <div class="container">
         <div class="section-head">
-            <span class="small-red">Find your sport</span>
-            <h2>Shop by Sport</h2>
-            <p>Active sport categories from the admin catalog appear here automatically.</p>
+            <span class="small-red">{{ $text('eyebrow', 'Find your sport') }}</span>
+            <h2>{{ $text('title', 'Shop by Sport') }}</h2>
+            @if(filled($text('description')))<p>{{ $text('description', 'Active sport categories from the admin catalog appear here automatically.') }}</p>@endif
         </div>
         <div class="grid-6">
             @forelse($sports as $sport)

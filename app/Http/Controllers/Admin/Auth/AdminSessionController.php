@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Support\AdminRbac;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -38,6 +39,8 @@ class AdminSessionController extends Controller
 
             throw ValidationException::withMessages(['email' => 'This account does not have administrator access.']);
         }
+
+        AdminRbac::syncDefaults(false);
 
         // An administrator session must never double as a customer session.
         Auth::guard('web')->logout();

@@ -1,11 +1,16 @@
-@props(['products' => []])
+@props(['products' => [], 'section' => []])
+
+@php
+    $section = is_array($section) ? $section : [];
+    $text = static fn (string $key, string $fallback = ''): string => filled(data_get($section, $key)) ? (string) data_get($section, $key) : $fallback;
+@endphp
 
 <section id="products" class="section-alt">
     <div class="container">
         <div class="section-head">
-            <span class="small-red">Shop online</span>
-            <h2>Featured Products</h2>
-            <p>Products marked as featured by the admin appear here automatically.</p>
+            <span class="small-red">{{ $text('eyebrow', 'Shop online') }}</span>
+            <h2>{{ $text('title', 'Featured Products') }}</h2>
+            @if(filled($text('description')))<p>{{ $text('description', 'Products marked as featured by the admin appear here automatically.') }}</p>@endif
         </div>
         <div class="grid-4">
             @forelse($products as $product)

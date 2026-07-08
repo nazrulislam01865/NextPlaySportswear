@@ -72,6 +72,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/notifications/{notification}/read', [\App\Http\Controllers\Admin\NotificationController::class, 'markRead'])->name('notifications.read');
         Route::post('/notifications/pusher/auth', [\App\Http\Controllers\Admin\NotificationController::class, 'pusherAuth'])->name('notifications.pusher-auth');
 
+        Route::get('/homepage', [\App\Http\Controllers\Admin\HomepageSectionController::class, 'index'])->name('homepage.sections.index');
+        Route::get('/homepage/sections/{key}', [\App\Http\Controllers\Admin\HomepageSectionController::class, 'edit'])->name('homepage.sections.edit');
+        Route::patch('/homepage/sections/{key}', [\App\Http\Controllers\Admin\HomepageSectionController::class, 'update'])->name('homepage.sections.update');
         Route::patch('/homepage-slides/{homepageSlide}/toggle', [\App\Http\Controllers\Admin\HomepageSlideController::class, 'toggle'])->name('homepage-slides.toggle');
         Route::resource('homepage-slides', \App\Http\Controllers\Admin\HomepageSlideController::class)->except('show');
 

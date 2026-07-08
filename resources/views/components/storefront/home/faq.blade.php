@@ -1,10 +1,21 @@
-@props(['faqs' => []])
+@props(['faqs' => [], 'section' => []])
+
+@php
+    $section = is_array($section) ? $section : [];
+    $text = static fn (string $key, string $fallback = ''): string => filled(data_get($section, $key)) ? (string) data_get($section, $key) : $fallback;
+    $items = collect(data_get($section, 'items', []))->map(fn ($item) => [
+        'question' => data_get($item, 'title'),
+        'answer' => data_get($item, 'description'),
+    ])->filter(fn ($item) => filled($item['question']) && filled($item['answer']))->values();
+    $faqs = $items->isNotEmpty() ? $items : collect($faqs);
+@endphp
 
 <section class="section-alt">
     <div class="container">
         <div class="section-head">
-            <span class="small-red">Help center</span>
-            <h2>Common Questions</h2>
+            <span class="small-red">{{ $text('eyebrow', 'Help center') }}</span>
+            <h2>{{ $text('title', 'Common Questions') }}</h2>
+            @if(filled($text('description')))<p>{{ $text('description') }}</p>@endif
         </div>
         <div class="faq" id="faq" data-home-faq>
             @foreach($faqs as $faq)

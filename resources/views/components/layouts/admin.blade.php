@@ -189,9 +189,27 @@
                     @endif
                 @endif
 
-                @if($canAdmin('homepage_slides.view') || $canAdmin('content.view') || $canAdmin('rural_surcharges.view') || $canAdmin('taxes.view') || $canAdmin('payment_methods.view') || $canAdmin('reports.view') || $canAdmin('settings.view'))
+                @if($canAdmin('homepage_sections.view') || $canAdmin('homepage_slides.view') || $canAdmin('content.view') || $canAdmin('rural_surcharges.view') || $canAdmin('taxes.view') || $canAdmin('payment_methods.view') || $canAdmin('reports.view') || $canAdmin('settings.view'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Store</p>
-                    @if($canAdmin('homepage_slides.view'))
+                    @if($canAdmin('homepage_sections.view'))
+                        @php($homepageDefinitions = \App\Support\HomepageSectionRegistry::orderedDefinitions())
+                        <x-admin.sidebar-group
+                            label="Homepage"
+                            icon="▧"
+                            :active="request()->routeIs('admin.homepage.*') || request()->routeIs('admin.homepage-slides.*')"
+                        >
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.homepage.sections.index')"
+                                :active="request()->routeIs('admin.homepage.sections.index')"
+                            >Overview</x-admin.sidebar-sub-link>
+                            @foreach($homepageDefinitions as $homepageDefinition)
+                                <x-admin.sidebar-sub-link
+                                    :href="route('admin.homepage.sections.edit', $homepageDefinition['key'])"
+                                    :active="request()->routeIs('admin.homepage.sections.edit', 'admin.homepage.sections.update') && request()->route('key') === $homepageDefinition['key']"
+                                >{{ $homepageDefinition['name'] }}</x-admin.sidebar-sub-link>
+                            @endforeach
+                        </x-admin.sidebar-group>
+                    @elseif($canAdmin('homepage_slides.view'))
                         <x-admin.sidebar-link :href="route('admin.homepage-slides.index')" :active="request()->routeIs('admin.homepage-slides.*')" icon="▧">Homepage Slider</x-admin.sidebar-link>
                     @endif
                     @if($canAdmin('content.view'))

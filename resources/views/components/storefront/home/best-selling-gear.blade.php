@@ -1,10 +1,16 @@
-@props(['categories' => []])
+@props(['categories' => [], 'section' => []])
+
+@php
+    $section = is_array($section) ? $section : [];
+    $text = static fn (string $key, string $fallback = ''): string => filled(data_get($section, $key)) ? (string) data_get($section, $key) : $fallback;
+@endphp
 
 <section id="gear">
     <div class="container">
         <div class="section-head">
-            <span class="small-red">Popular gear</span>
-            <h2>Best-Selling Team Gear</h2>
+            <span class="small-red">{{ $text('eyebrow', 'Popular gear') }}</span>
+            <h2>{{ $text('title', 'Best-Selling Team Gear') }}</h2>
+            @if(filled($text('description')))<p>{{ $text('description') }}</p>@endif
         </div>
         <div class="gear-list">
             @forelse($categories as $category)

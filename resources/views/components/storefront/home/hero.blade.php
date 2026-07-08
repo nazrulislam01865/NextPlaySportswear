@@ -1,18 +1,32 @@
+@props(['section' => []])
+
+@php
+    $section = is_array($section) ? $section : [];
+    $text = static fn (string $key, string $fallback = ''): string => filled(data_get($section, $key)) ? (string) data_get($section, $key) : $fallback;
+    $items = collect(data_get($section, 'items', []))->filter(fn ($item) => filled(data_get($item, 'title')))->values();
+    $image = data_get($section, 'image') ?: asset('storage/storefront/home/hero.webp');
+@endphp
+
 <section class="hero" aria-labelledby="hero-title">
     <div class="container">
         <div>
-            <div class="eyebrow">Custom sportswear USA</div>
-            <h1 id="hero-title">Custom Sportswear for Teams, Schools, Events, and Fans</h1>
-            <p>Design your own jerseys, uniforms, hoodies, caps, bags, and sports gear. Order online for regular items or request a custom quote for team and bulk orders.</p>
-            <ul class="checklist" aria-label="Key custom sportswear services">
-                <li><span class="tick" aria-hidden="true"></span>Custom names, numbers, logos, and colors</li>
-                <li><span class="tick" aria-hidden="true"></span>Team uniforms for football, baseball, basketball, soccer, and more</li>
-                <li><span class="tick" aria-hidden="true"></span>Bulk pricing available for schools, clubs, leagues, and businesses</li>
-                <li><span class="tick" aria-hidden="true"></span>Design support before production</li>
-            </ul>
+            <div class="eyebrow">{{ $text('eyebrow', 'Custom sportswear USA') }}</div>
+            <h1 id="hero-title">{{ $text('title', 'Custom Sportswear for Teams, Schools, Events, and Fans') }}</h1>
+            <p>{{ $text('description', 'Design your own jerseys, uniforms, hoodies, caps, bags, and sports gear. Order online for regular items or request a custom quote for team and bulk orders.') }}</p>
+            @if($items->isNotEmpty())
+                <ul class="checklist" aria-label="Key custom sportswear services">
+                    @foreach($items as $item)
+                        <li><span class="tick" aria-hidden="true"></span>{{ data_get($item, 'title') }}</li>
+                    @endforeach
+                </ul>
+            @endif
             <div class="hero-ctas">
-                <a class="btn btn-red" href="#jersey">Start Your Order</a>
-                <a class="btn btn-light" href="#bulk">Request Bulk Quote</a>
+                @if(filled($text('primary_label')))
+                    <a class="btn btn-red" href="{{ $text('primary_url', '#jersey') }}">{{ $text('primary_label', 'Start Your Order') }}</a>
+                @endif
+                @if(filled($text('secondary_label')))
+                    <a class="btn btn-light" href="{{ $text('secondary_url', '#bulk') }}">{{ $text('secondary_label', 'Request Bulk Quote') }}</a>
+                @endif
             </div>
             <div class="trustline">Serving teams, clubs, businesses, and event organizers across the USA.</div>
             <div class="badges" aria-label="Trust badges">
@@ -23,7 +37,7 @@
         </div>
         <div class="hero-card">
             <div class="hero-frame">
-                <img loading="eager" fetchpriority="high" decoding="async" src="{{ asset('storage/storefront/home/hero.webp') }}" alt="Custom jerseys, caps, hoodies, and sports bag arranged for a team order" width="900" height="650">
+                <img loading="eager" fetchpriority="high" decoding="async" src="{{ $image }}" alt="{{ $text('image_alt', 'Custom jerseys, caps, hoodies, and sports bag arranged for a team order') }}" width="900" height="650">
             </div>
             <div class="hero-stat"><strong>500+ Teams</strong><span>Trusted across the USA</span></div>
         </div>

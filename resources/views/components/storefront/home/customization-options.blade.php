@@ -1,20 +1,25 @@
+@props(['section' => []])
+
+@php
+    $section = is_array($section) ? $section : [];
+    $text = static fn (string $key, string $fallback = ''): string => filled(data_get($section, $key)) ? (string) data_get($section, $key) : $fallback;
+    $items = collect(data_get($section, 'items', []))->filter(fn ($item) => filled(data_get($item, 'title')))->values();
+@endphp
+
 <section>
     <div class="container">
         <div class="section-head">
-            <span class="small-red">Your details</span>
-            <h2>Make It Yours</h2>
-            <p>Choose the details that make your team or brand stand out.</p>
+            <span class="small-red">{{ $text('eyebrow', 'Your details') }}</span>
+            <h2>{{ $text('title', 'Make It Yours') }}</h2>
+            @if(filled($text('description')))<p>{{ $text('description', 'Choose the details that make your team or brand stand out.') }}</p>@endif
         </div>
         <div class="option-grid">
-            <div class="option"><div class="dot">#</div><strong>Player name and number</strong></div>
-            <div class="option"><div class="dot">◎</div><strong>Team logo placement</strong></div>
-            <div class="option"><div class="dot">◐</div><strong>Custom colors</strong></div>
-            <div class="option"><div class="dot">S</div><strong>Sublimation printing</strong></div>
-            <div class="option"><div class="dot">E</div><strong>Embroidery</strong></div>
-            <div class="option"><div class="dot">P</div><strong>Screen printing</strong></div>
-            <div class="option"><div class="dot">H</div><strong>Heat transfer</strong></div>
-            <div class="option"><div class="dot">□</div><strong>Custom packaging</strong></div>
+            @foreach($items as $item)
+                <div class="option"><div class="dot">{{ data_get($item, 'icon', '•') }}</div><strong>{{ data_get($item, 'title') }}</strong></div>
+            @endforeach
         </div>
-        <p class="home-center-action"><a class="btn btn-light" href="#jersey">Customize Yours</a></p>
+        @if(filled($text('primary_label')))
+            <p class="home-center-action"><a class="btn btn-light" href="{{ $text('primary_url', '#jersey') }}">{{ $text('primary_label', 'Customize Yours') }}</a></p>
+        @endif
     </div>
 </section>

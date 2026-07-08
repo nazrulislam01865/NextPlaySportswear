@@ -96,6 +96,8 @@ class AdminRbac
             self::permission('coupons.manage', 'Commerce', 'Manage', 'Manage Coupons', 'Create and update discounts and coupons.', 'admin.coupons.store', 131),
             self::permission('reviews.view', 'Commerce', 'View', 'View Reviews', 'Open reviews placeholder module.', 'admin.modules.show', 140),
 
+            self::permission('homepage_sections.view', 'Storefront', 'View', 'View Homepage Sections', 'Open homepage section controls.', 'admin.homepage.sections.index', 160),
+            self::permission('homepage_sections.manage', 'Storefront', 'Manage', 'Manage Homepage Sections', 'Update homepage section text, buttons, images, items, visibility and display order.', 'admin.homepage.sections.update', 161),
             self::permission('homepage_slides.view', 'Storefront', 'View', 'View Homepage Slider', 'Open homepage slide records.', 'admin.homepage-slides.index', 170),
             self::permission('homepage_slides.manage', 'Storefront', 'Manage', 'Manage Homepage Slider', 'Create, update and toggle homepage slides.', 'admin.homepage-slides.store', 171),
             self::permission('content.view', 'Storefront', 'View', 'View Content', 'Open content and navigation placeholder module.', 'admin.modules.show', 180),
@@ -130,6 +132,7 @@ class AdminRbac
             'customization.view', 'customization.manage',
             'menus.view', 'menus.manage',
             'inventory.view',
+            'homepage_sections.view', 'homepage_sections.manage',
             'homepage_slides.view', 'homepage_slides.manage',
             'content.view', 'content.manage',
         ];
@@ -145,6 +148,7 @@ class AdminRbac
         $contentAll = [
             'dashboard.view',
             'menus.view', 'menus.manage',
+            'homepage_sections.view', 'homepage_sections.manage',
             'homepage_slides.view', 'homepage_slides.manage',
             'content.view', 'content.manage',
             'shipping.view', 'shipping.manage',
@@ -326,6 +330,7 @@ class AdminRbac
             'products.view' => 'admin.products.index',
             'orders.view' => 'admin.orders.index',
             'categories.view' => 'admin.categories.index',
+            'homepage_sections.view' => 'admin.homepage.sections.index',
             'homepage_slides.view' => 'admin.homepage-slides.index',
             'coupons.view' => 'admin.coupons.index',
             'users.view' => 'admin.users.index',
@@ -380,6 +385,7 @@ class AdminRbac
             'attributes' => 'attributes',
             'menus' => 'menus',
             'coupons' => 'coupons',
+            'homepage.sections' => 'homepage_sections',
             'homepage-slides' => 'homepage_slides',
             'shipping-methods' => 'shipping',
             'rural-area-surcharges' => 'rural_surcharges',

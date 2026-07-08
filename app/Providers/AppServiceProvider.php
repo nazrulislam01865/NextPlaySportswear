@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Services\Cart\CartService;
 use App\Services\Catalog\NavigationService;
 use App\Services\Storefront\HomepageSliderService;
+use App\Services\Storefront\HomepageSectionService;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -20,6 +21,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(NavigationService::class);
         $this->app->singleton(HomepageSliderService::class);
+        $this->app->singleton(HomepageSectionService::class);
     }
 
     public function boot(): void

@@ -11,6 +11,7 @@ class HomePageService
         private readonly ProductCatalogService $productCatalog,
         private readonly NavigationService $navigation,
         private readonly HomepageSliderService $homepageSlider,
+        private readonly HomepageSectionService $homepageSections,
     ) {
     }
     public function getHomePageData(): array
@@ -18,13 +19,14 @@ class HomePageService
         return [
             'seo' => $this->seo(),
             'slides' => $this->homepageSlider->slides(),
+            'homeSections' => $this->homepageSections->sections(),
             'categories' => $this->categories(),
-            'buyerPaths' => $this->buyerPaths(),
+            'buyerPaths' => $this->sectionItems('buyer_paths'),
             'featuredProducts' => $this->featuredProducts(),
             'popularSportsCategories' => $this->popularSportsCategories(),
             'sports' => $this->sports(),
-            'processSteps' => $this->processSteps(),
-            'faqs' => $this->faqs(),
+            'processSteps' => $this->sectionItems('process'),
+            'faqs' => $this->faqItems(),
             'navigation' => $this->navigation->items('header-primary'),
             'storefrontMenus' => $this->navigation->storefrontMenus(),
         ];
@@ -48,6 +50,25 @@ class HomePageService
         return collect($this->categoryCatalog->collections())
             ->filter(fn (array $category): bool => (bool) ($category['is_featured'] ?? false))
             ->take(6)
+            ->values()
+            ->all();
+    }
+
+    private function sectionItems(string $key): array
+    {
+        $section = collect($this->homepageSections->sections())->firstWhere('key', $key);
+
+        return is_array($section) && is_array($section['items'] ?? null) ? $section['items'] : [];
+    }
+
+    private function faqItems(): array
+    {
+        return collect($this->sectionItems('faq'))
+            ->map(fn (array $item): array => [
+                'question' => (string) ($item['title'] ?? ''),
+                'answer' => (string) ($item['description'] ?? ''),
+            ])
+            ->filter(fn (array $item): bool => $item['question'] !== '' && $item['answer'] !== '')
             ->values()
             ->all();
     }
