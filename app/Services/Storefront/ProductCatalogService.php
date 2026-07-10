@@ -12,6 +12,9 @@ class ProductCatalogService
     /** @var array<int, array<string, mixed>>|null */
     private ?array $hydratedProducts = null;
 
+    /** @var array<int, array<int, array<string, mixed>>> */
+    private array $featuredProducts = [];
+
     public function all(): array
     {
         if ($this->hydratedProducts !== null) {
@@ -114,11 +117,70 @@ class ProductCatalogService
             ->all();
     }
 
-    public function featured(): array
+    public function featured(int $limit = 8): array
     {
-        $featured = collect($this->all())->where('is_featured', true)->take(8)->values();
+        $limit = max(1, min($limit, 24));
 
-        return ($featured->isNotEmpty() ? $featured : collect($this->all())->take(8))->values()->all();
+        if (array_key_exists($limit, $this->featuredProducts)) {
+            return $this->featuredProducts[$limit];
+        }
+
+        if (Schema::hasTable('products')) {
+            $cacheVersion = (int) Cache::get('catalog.category-facets.version', 1);
+            $cacheKey = 'catalog.homepage-featured.'.$cacheVersion.'.'.$limit;
+            $ttl = max(60, (int) config('catalog.category_cache_seconds', 1800));
+
+            $databaseProducts = Cache::remember(
+                $cacheKey,
+                $ttl,
+                function () use ($limit): array {
+                    $products = Product::query()
+                        ->published()
+                        ->featured()
+                        ->with($this->listingRelations())
+                        ->orderBy('sort_order')
+                        ->orderByDesc('published_at')
+                        ->limit($limit)
+                        ->get();
+
+                    if ($products->count() < $limit) {
+                        $fallback = Product::query()
+                            ->published()
+                            ->whereNotIn('id', $products->modelKeys())
+                            ->with($this->listingRelations())
+                            ->orderBy('sort_order')
+                            ->orderByDesc('published_at')
+                            ->limit($limit - $products->count())
+                            ->get();
+
+                        $products = $products->concat($fallback);
+                    }
+
+                    return $products
+                        ->map(fn (Product $product): array => $this->fromListingModel($product))
+                        ->values()
+                        ->all();
+                }
+            );
+
+            if ($databaseProducts !== []) {
+                return $this->featuredProducts[$limit] = $databaseProducts;
+            }
+        }
+
+        $fallback = collect($this->products())
+            ->map(fn (array $product): array => $this->hydrateProduct($product));
+        $featured = $fallback->where('is_featured', true)->take($limit)->values();
+
+        if ($featured->count() < $limit) {
+            $featured = $featured->concat(
+                $fallback
+                    ->reject(fn (array $product): bool => $featured->contains('slug', $product['slug']))
+                    ->take($limit - $featured->count())
+            );
+        }
+
+        return $this->featuredProducts[$limit] = $featured->values()->all();
     }
 
 

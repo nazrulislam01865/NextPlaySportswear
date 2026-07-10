@@ -141,7 +141,7 @@
                                                     <strong class="text-base text-brand-ink">{{ $size['label'] }}</strong>
                                                     <div class="grid h-11 w-32 grid-cols-[40px_1fr_40px] overflow-hidden rounded-xl border border-slate-300 bg-white">
                                                         <button type="button" class="bg-slate-100 font-black" @click="changeQuantity(@js($key), Number(quantities[@js($key)] || 0)-1)" aria-label="Decrease {{ $size['label'] }} quantity">−</button>
-                                                        <input class="min-w-0 border-0 text-center font-black" type="number" min="0" :max="config.maximum_quantity || 999" x-model.number="quantities[@js($key)]" @change="changeQuantity(@js($key), quantities[@js($key)])" aria-label="{{ $size['label'] }} quantity">
+                                                        <input class="min-w-0 border-0 text-center font-black" type="number" min="0" :max="config.maximum_quantity || 999" :value="quantities[@js($key)]" @change="changeQuantity(@js($key), $event.target.value)" aria-label="{{ $size['label'] }} quantity">
                                                         <button type="button" class="bg-slate-100 font-black" @click="changeQuantity(@js($key), Number(quantities[@js($key)] || 0)+1)" aria-label="Increase {{ $size['label'] }} quantity">+</button>
                                                     </div>
                                                 </div>
@@ -157,7 +157,7 @@
                                                     @php $key = $group['id'].':'.$size['code']; @endphp
                                                     <tr>
                                                         <td class="px-4 py-3 font-black">{{ $size['label'] }}</td>
-                                                        <td class="px-4 py-3"><div class="grid h-10 w-32 grid-cols-[36px_1fr_36px] overflow-hidden rounded-xl border border-slate-300"><button type="button" class="bg-slate-100 font-black" @click="changeQuantity(@js($key), Number(quantities[@js($key)] || 0)-1)">−</button><input class="min-w-0 border-0 text-center font-black" type="number" min="0" :max="config.maximum_quantity || 999" x-model.number="quantities[@js($key)]" @change="changeQuantity(@js($key), quantities[@js($key)])"><button type="button" class="bg-slate-100 font-black" @click="changeQuantity(@js($key), Number(quantities[@js($key)] || 0)+1)">+</button></div></td>
+                                                        <td class="px-4 py-3"><div class="grid h-10 w-32 grid-cols-[36px_1fr_36px] overflow-hidden rounded-xl border border-slate-300"><button type="button" class="bg-slate-100 font-black" @click="changeQuantity(@js($key), Number(quantities[@js($key)] || 0)-1)">−</button><input class="min-w-0 border-0 text-center font-black" type="number" min="0" :max="config.maximum_quantity || 999" :value="quantities[@js($key)]" @change="changeQuantity(@js($key), $event.target.value)"><button type="button" class="bg-slate-100 font-black" @click="changeQuantity(@js($key), Number(quantities[@js($key)] || 0)+1)">+</button></div></td>
                                                     </tr>
                                                 @endforeach
                                             </tbody>
@@ -197,7 +197,7 @@
                                                 @foreach(collect($roster['fields'] ?? [])->filter(fn ($field) => ($field['enabled'] ?? true)) as $field)
                                                     <label class="text-xs font-black uppercase tracking-[.08em] text-slate-500">
                                                         {{ $field['label'] }} @if($field['required'] ?? false)<span class="text-brand-red">*</span>@endif
-                                                        <input class="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold normal-case tracking-normal text-brand-ink" type="{{ ($field['type'] ?? 'text') === 'number' ? 'text' : 'text' }}" @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif maxlength="{{ min(120, max(1, (int) ($field['max_length'] ?? 60))) }}" x-model="row.values[@js($field['key'])]" @input="sync()" placeholder="{{ $field['label'] }}">
+                                                        <input class="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold normal-case tracking-normal text-brand-ink" type="{{ ($field['type'] ?? 'text') === 'number' ? 'text' : 'text' }}" @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif maxlength="{{ min(120, max(1, (int) ($field['max_length'] ?? 60))) }}" x-model="row.values[@js($field['key'])]" @input="sync()" @change="commitRosterField(rowIndex, @js($field), $event.target.value)" placeholder="{{ $field['label'] }}">
                                                     </label>
                                                 @endforeach
                                             </div>
@@ -294,7 +294,7 @@
                                     <h4 class="text-sm font-black text-slate-700">Shipping method</h4>
                                     <div class="mt-3 grid gap-3 sm:grid-cols-2">
                                         @foreach($product['shipping_methods'] as $method)
-                                            <button type="button" @click="shippingMethod=@js($method['id']); sync()" :class="shippingMethod === @js($method['id']) ? 'border-brand-blue bg-blue-50 ring-2 ring-blue-100' : 'border-slate-200 bg-white'" class="rounded-2xl border-2 p-4 text-left">
+                                            <button type="button" @click="chooseShippingMethod(@js($method['id']))" :class="shippingMethod === @js($method['id']) ? 'border-brand-blue bg-blue-50 ring-2 ring-blue-100' : 'border-slate-200 bg-white'" class="rounded-2xl border-2 p-4 text-left">
                                                 <span class="flex items-start justify-between gap-3"><strong class="text-sm text-brand-ink">{{ $method['label'] }}</strong><small class="shrink-0 font-black text-brand-red" x-text="shippingChargeLabel(@js($method))"></small></span>
                                                 @if(!empty($method['description']))<small class="mt-2 block text-xs leading-5 text-slate-500">{{ $method['description'] }}</small>@endif
                                                 <small class="mt-2 block text-xs font-bold text-brand-blue">Estimated transport: {{ $method['minimum_days'] }}–{{ $method['maximum_days'] }} working days</small>

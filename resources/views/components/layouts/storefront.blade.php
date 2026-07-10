@@ -114,6 +114,7 @@
 <body class="storefront-clean-ui">
     <x-storefront.topbar />
     <x-storefront.header />
+    <x-storefront.toast-center />
 
     <main>
         {{ $slot }}

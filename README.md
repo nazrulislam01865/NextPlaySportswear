@@ -75,3 +75,7 @@ ADMIN_PASSWORD="use-a-long-unique-password"
 - Raw card data must be collected only by a PCI-compliant payment provider and is never stored by NextPlay.
 - Configure a real payment provider and signature-verified webhooks before accepting live online payments.
 - Change all development/fallback administrator credentials before deployment.
+
+## Performance deployment
+
+The project uses Redis for application cache and sessions, direct Nginx delivery for public media, and long-lived browser caching for Vite assets. See [PERFORMANCE_LOADING_UPDATE.md](PERFORMANCE_LOADING_UPDATE.md) and the Nginx files under `deploy/nginx/` before production deployment.

@@ -115,7 +115,13 @@ class CartController extends Controller
 
         return redirect()
             ->route('cart.index')
-            ->with('status', 'Product added to cart. Final totals are calculated securely on the server.');
+            ->with('toast', [
+                'type' => 'success',
+                'title' => 'Added',
+                'message' => 'Your order has been added to your shopping cart.',
+                'key' => 'cart-added',
+                'duration' => 4200,
+            ]);
     }
 
     public function update(UpdateCartItemRequest $request, string $cartItem): RedirectResponse

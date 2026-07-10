@@ -2,6 +2,30 @@
 
 use Illuminate\Support\Str;
 
+$appEnvironment = (string) env('APP_ENV', 'production');
+$sessionDriver = (string) env(
+    'SESSION_DRIVER',
+    $appEnvironment === 'production' ? 'redis' : 'file'
+);
+
+$sessionConnection = env('SESSION_CONNECTION');
+
+if ($sessionDriver === 'redis') {
+    // Redis sessions use the dedicated Redis connection configured in
+    // config/database.php. This keeps session keys separate from cache keys.
+    $sessionConnection = $sessionConnection ?: 'sessions';
+} elseif ($sessionDriver === 'database') {
+    // A value such as "sessions" is a Redis connection name, not a SQL
+    // database connection. Older/local .env files may contain that combination,
+    // so fall back safely to Laravel's default SQL database connection.
+    if (! $sessionConnection || in_array($sessionConnection, ['sessions', 'cache'], true)) {
+        $sessionConnection = env('DB_CONNECTION');
+    }
+} else {
+    // File/cookie/array sessions do not use a database connection.
+    $sessionConnection = null;
+}
+
 return [
 
     /*
@@ -18,7 +42,7 @@ return [
     |
     */
 
-    'driver' => env('SESSION_DRIVER', 'database'),
+    'driver' => $sessionDriver,
 
     /*
     |--------------------------------------------------------------------------
@@ -73,7 +97,7 @@ return [
     |
     */
 
-    'connection' => env('SESSION_CONNECTION'),
+    'connection' => $sessionConnection,
 
     /*
     |--------------------------------------------------------------------------

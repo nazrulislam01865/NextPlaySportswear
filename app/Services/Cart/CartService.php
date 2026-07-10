@@ -19,6 +19,8 @@ class CartService
     private const SESSION_ITEMS_KEY = 'nextplay_cart.items';
     private const SESSION_COUPON_KEY = 'nextplay_cart.coupon_code';
 
+    private ?bool $databaseCartIsAvailable = null;
+
     public function __construct(
         private readonly ProductCatalogService $products,
         private readonly CouponService $coupons,
@@ -94,7 +96,20 @@ class CartService
 
     public function count(): int
     {
-        return (int) collect($this->items())->sum('quantity');
+        $legacyQuantity = (int) collect((array) session(self::SESSION_ITEMS_KEY, []))
+            ->sum(fn (mixed $item): int => max(0, (int) data_get($item, 'quantity', 0)));
+
+        if (! $this->databaseCartAvailable()) {
+            return $legacyQuantity;
+        }
+
+        $cart = $this->currentCart(false);
+
+        if (! $cart instanceof ShoppingCart) {
+            return $legacyQuantity;
+        }
+
+        return (int) $cart->items()->sum('quantity') + $legacyQuantity;
     }
 
     public function store(array $payload): array
@@ -374,7 +389,8 @@ class CartService
 
     private function databaseCartAvailable(): bool
     {
-        return Schema::hasTable('shopping_carts') && Schema::hasTable('shopping_cart_items');
+        return $this->databaseCartIsAvailable ??= Schema::hasTable('shopping_carts')
+            && Schema::hasTable('shopping_cart_items');
     }
 
     private function currentCart(bool $create = false): ?ShoppingCart

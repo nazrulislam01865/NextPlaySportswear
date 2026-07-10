@@ -1,10 +1,10 @@
 {
-  "_module.esm-o5A9fyoj.js": {
-    "file": "assets/module.esm-o5A9fyoj.js",
+  "_module.esm-Ppa4vhWP.js": {
+    "file": "assets/module.esm-Ppa4vhWP.js",
     "name": "module.esm"
   },
   "resources/css/admin.css": {
-    "file": "assets/admin-D-rDWrBg.css",
+    "file": "assets/admin-C20VPQHl.css",
     "name": "admin",
     "names": [
       "admin.css"
@@ -13,7 +13,7 @@
     "isEntry": true
   },
   "resources/css/storefront.css": {
-    "file": "assets/storefront-DZxTfWln.css",
+    "file": "assets/storefront-DVMHV-me.css",
     "name": "storefront",
     "names": [
       "storefront.css"
@@ -22,21 +22,21 @@
     "isEntry": true
   },
   "resources/js/admin.js": {
-    "file": "assets/admin-TDOwlFsU.js",
+    "file": "assets/admin-CUR7JsLY.js",
     "name": "admin",
     "src": "resources/js/admin.js",
     "isEntry": true,
     "imports": [
-      "_module.esm-o5A9fyoj.js"
+      "_module.esm-Ppa4vhWP.js"
     ]
   },
   "resources/js/storefront.js": {
-    "file": "assets/storefront-BEEhy1S2.js",
+    "file": "assets/storefront-tKH56NvE.js",
     "name": "storefront",
     "src": "resources/js/storefront.js",
     "isEntry": true,
     "imports": [
-      "_module.esm-o5A9fyoj.js"
+      "_module.esm-Ppa4vhWP.js"
     ]
   }
 }

@@ -4,18 +4,38 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| Ensure Laravel runtime directories exist
+|--------------------------------------------------------------------------
+|
+| Empty directories are commonly omitted when a project is copied or zipped.
+| File-backed sessions, cache, compiled views and logs must exist before the
+| framework handles a request. Creating them here keeps local, CI and fresh
+| deployments self-healing without routing any request through extra code.
+|
+*/
+$runtimeDirectories = [
+    dirname(__DIR__).'/storage/framework/cache/data',
+    dirname(__DIR__).'/storage/framework/sessions',
+    dirname(__DIR__).'/storage/framework/testing',
+    dirname(__DIR__).'/storage/framework/views',
+    dirname(__DIR__).'/storage/logs',
+    dirname(__DIR__).'/bootstrap/cache',
+];
+
+foreach ($runtimeDirectories as $runtimeDirectory) {
+    if (! is_dir($runtimeDirectory) && ! mkdir($runtimeDirectory, 0775, true) && ! is_dir($runtimeDirectory)) {
+        throw new RuntimeException(sprintf('Unable to create Laravel runtime directory: %s', $runtimeDirectory));
+    }
+}
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
-        then: function (): void {
-            Route::get('/media/{path}', \App\Http\Controllers\PublicMediaController::class)
-                ->where('path', '.*')
-                ->name('media.public');
-        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);

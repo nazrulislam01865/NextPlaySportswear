@@ -50,7 +50,7 @@
                 @endforeach
             </div>
         @else
-            <select class="mt-4 h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold" x-model="selections[@js($id)]" @change="sync()">
+            <select class="mt-4 h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold" x-model="selections[@js($id)]" @change="chooseSelect(@js($group), $event.target.value)">
                 <option value="">Select {{ $group['label'] }}</option>
                 @foreach($group['values'] as $value)<option value="{{ $value['id'] }}">{{ $value['label'] }}{{ $value['price_delta'] != 0 ? ' — '.($value['price_delta'] > 0 ? '+' : '−').'$'.number_format(abs($value['price_delta']),2).(($value['charge_type'] ?? 'per_unit') === 'fixed_order' ? ' / order' : ' / piece') : ' — Included' }}</option>@endforeach
             </select>
@@ -66,10 +66,10 @@
             @endforeach
         </div>
     @elseif($group['type'] === 'textarea')
-        <textarea x-model="inputs[@js($id)]" @input="sync()" class="mt-4 min-h-[120px] w-full rounded-xl border border-slate-300 p-4 text-sm" placeholder="{{ $group['placeholder'] }}"></textarea>
+        <textarea x-model="inputs[@js($id)]" @input="sync()" @change="commitInput(@js($group), $event.target.value)" class="mt-4 min-h-[120px] w-full rounded-xl border border-slate-300 p-4 text-sm" placeholder="{{ $group['placeholder'] }}"></textarea>
     @elseif($group['type'] === 'file')
-        <label class="mt-4 block rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center"><strong class="block text-sm">Upload {{ $group['label'] }}</strong><small class="mt-1 block text-xs text-slate-500">{{ $group['accepted_file_types'] ?: 'PDF, SVG, PNG, JPG' }} · max {{ $group['maximum_file_size_mb'] ?: 15 }} MB</small><input type="file" class="mt-4 text-sm" name="artwork_file" @change="inputs[@js($id)] = $event.target.files[0]?.name || ''; sync()"></label>
+        <label class="mt-4 block rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center"><strong class="block text-sm">Upload {{ $group['label'] }}</strong><small class="mt-1 block text-xs text-slate-500">{{ $group['accepted_file_types'] ?: 'PDF, SVG, PNG, JPG' }} · max {{ $group['maximum_file_size_mb'] ?: 15 }} MB</small><input type="file" class="mt-4 text-sm" name="artwork_file" @change="inputs[@js($id)] = $event.target.files[0]?.name || ''; sync(); if (inputs[@js($id)]) notifyCustomization('Added', @js($group['label']).concat(' has been added to your product.'), 'input:'.concat(@js($id)))"></label>
     @else
-        <input class="mt-4 h-12 w-full rounded-xl border border-slate-300 px-4 text-sm" type="{{ $group['type'] === 'number' ? 'number' : ($group['type'] === 'date' ? 'date' : 'text') }}" x-model="inputs[@js($id)]" @input="sync()" placeholder="{{ $group['placeholder'] }}">
+        <input class="mt-4 h-12 w-full rounded-xl border border-slate-300 px-4 text-sm" type="{{ $group['type'] === 'number' ? 'number' : ($group['type'] === 'date' ? 'date' : 'text') }}" x-model="inputs[@js($id)]" @input="sync()" @change="commitInput(@js($group), $event.target.value)" placeholder="{{ $group['placeholder'] }}">
     @endif
 </section>

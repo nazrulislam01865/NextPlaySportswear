@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Str;
 
+$appEnvironment = (string) env('APP_ENV', 'production');
+
 return [
 
     /*
@@ -15,7 +17,10 @@ return [
     |
     */
 
-    'default' => env('CACHE_STORE', 'database'),
+    'default' => env(
+        'CACHE_STORE',
+        $appEnvironment === 'production' ? 'redis' : 'file'
+    ),
 
     /*
     |--------------------------------------------------------------------------

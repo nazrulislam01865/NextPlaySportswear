@@ -1,0 +1,19 @@
+# Requires the Nginx Brotli filter/static modules.
+# Include this together with the Gzip snippet inside `http {}` or `server {}`.
+brotli on;
+brotli_static on;
+brotli_comp_level 5;
+brotli_min_length 1024;
+brotli_types
+    text/plain
+    text/css
+    text/xml
+    application/javascript
+    application/json
+    application/manifest+json
+    application/xml
+    application/rss+xml
+    application/atom+xml
+    image/svg+xml
+    font/ttf
+    font/otf;

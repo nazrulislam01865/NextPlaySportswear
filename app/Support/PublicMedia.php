@@ -20,10 +20,12 @@ final class PublicMedia
     public static function storedPathUrl(string $path): string
     {
         $normalized = self::normalizePath($path);
-
-        return '/media/'.collect(explode('/', $normalized))
+        $baseUrl = rtrim((string) config('filesystems.disks.public.url', '/storage'), '/');
+        $encodedPath = collect(explode('/', $normalized))
             ->map(static fn (string $segment): string => rawurlencode($segment))
             ->implode('/');
+
+        return $baseUrl.'/'.$encodedPath;
     }
 
     public static function normalizePath(string $path): string

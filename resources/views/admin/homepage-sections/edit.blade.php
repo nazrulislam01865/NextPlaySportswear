@@ -7,7 +7,7 @@
     $itemFields = $definition['item_fields'] ?? ['title', 'description'];
     $currentImage = \App\Support\PublicMedia::url($section->image_path, $section->image_url, '');
     $items = old('items', $section->items ?: ($definition['items'] ?? []));
-    $items = is_array($items) && count($items) ? array_values($items) : [[]];
+    $items = is_array($items) ? array_values($items) : [];
     $fieldLabels = [
         'icon' => 'Icon',
         'title' => ($section->key === 'faq' ? 'Question' : 'Title'),
@@ -32,9 +32,95 @@
         x-data="{
             imagePreview: @js($currentImage),
             removeImage: false,
+            itemFields: @js(array_values($itemFields)),
+            itemFieldLabels: @js($fieldLabels),
             items: @js($items),
-            addItem() { this.items.push({}); },
-            removeItem(index) { if (this.items.length > 1) this.items.splice(index, 1); },
+            draftItem: {},
+            editingIndex: null,
+            init() {
+                this.items = this.normalizeItems(this.items);
+                this.resetItemDraft();
+            },
+            blankItem() {
+                const item = {};
+                this.itemFields.forEach((field) => item[field] = '');
+                return item;
+            },
+            normalizeItem(item) {
+                const normalized = this.blankItem();
+                this.itemFields.forEach((field) => normalized[field] = String(item?.[field] ?? '').trim());
+                return normalized;
+            },
+            normalizeItems(items) {
+                return (Array.isArray(items) ? items : [])
+                    .map((item) => this.normalizeItem(item))
+                    .filter((item) => this.hasItemContent(item))
+                    .slice(0, 30);
+            },
+            hasItemContent(item) {
+                return this.itemFields.some((field) => String(item?.[field] ?? '').trim() !== '');
+            },
+            resetItemDraft() {
+                this.draftItem = this.blankItem();
+                this.editingIndex = null;
+            },
+            saveItem() {
+                const item = this.normalizeItem(this.draftItem);
+                if (!this.hasItemContent(item)) {
+                    window.alert('Enter at least one item field before adding it to the list.');
+                    return;
+                }
+                if (this.editingIndex === null && this.items.length >= 30) {
+                    window.alert('A homepage section can contain up to 30 items.');
+                    return;
+                }
+                if (this.editingIndex === null) {
+                    this.items.push(item);
+                } else {
+                    this.items.splice(this.editingIndex, 1, item);
+                }
+                this.resetItemDraft();
+            },
+            editItem(index) {
+                this.draftItem = this.normalizeItem(this.items[index] ?? {});
+                this.editingIndex = index;
+                this.$nextTick(() => this.$refs.itemEditor?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+            },
+            removeItem(index) {
+                if (!window.confirm('Remove this item from the section?')) return;
+                this.items.splice(index, 1);
+                if (this.editingIndex === index) this.resetItemDraft();
+                else if (this.editingIndex !== null && this.editingIndex > index) this.editingIndex--;
+            },
+            moveItem(index, direction) {
+                const target = index + direction;
+                if (target < 0 || target >= this.items.length) return;
+                const moved = this.items.splice(index, 1)[0];
+                this.items.splice(target, 0, moved);
+                if (this.editingIndex === index) this.editingIndex = target;
+                else if (this.editingIndex === target) this.editingIndex = index;
+            },
+            itemPrimaryValue(item, index) {
+                for (const field of ['title', 'label', 'subtitle', 'description', 'url', 'icon']) {
+                    const value = String(item?.[field] ?? '').trim();
+                    if (value) return value;
+                }
+                return `Item ${index + 1}`;
+            },
+            itemDetails(item) {
+                const primary = this.itemPrimaryValue(item, -1);
+                const details = this.itemFields
+                    .filter((field) => String(item?.[field] ?? '').trim() && String(item[field]).trim() !== primary)
+                    .map((field) => `${this.itemFieldLabels[field] ?? field}: ${String(item[field]).trim()}`)
+                    .join(' • ');
+                return details.length > 180 ? `${details.slice(0, 177)}...` : details;
+            },
+            validateItemDraft(event) {
+                if (!this.hasItemContent(this.draftItem)) return;
+                event.preventDefault();
+                window.alert('Add or update the item in the list before saving the section.');
+                this.$nextTick(() => this.$refs.itemEditor?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+            },
             previewFile(event) {
                 const file = event.target.files?.[0];
                 if (!file) return;
@@ -49,6 +135,7 @@
                 this.imagePreview = URL.createObjectURL(file);
             }
         }"
+        @submit="validateItemDraft($event)"
     >
         @csrf
         @method('PATCH')
@@ -134,30 +221,139 @@
         @endif
 
         @if($hasItems)
-            <x-admin.section-card :title="$definition['item_label'] ?? 'Items'" description="Add, remove, and reorder the simple items displayed inside this section.">
-                <div class="space-y-4">
-                    <template x-for="(item, index) in items" :key="index">
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                            <div class="mb-4 flex items-center justify-between gap-3">
-                                <h3 class="text-sm font-black text-brand-ink">Item <span x-text="index + 1"></span></h3>
-                                <button type="button" class="rounded-lg border border-red-200 px-3 py-2 text-xs font-black text-red-600 hover:bg-red-50" @click="removeItem(index)">Remove</button>
-                            </div>
-                            <div class="grid gap-4 md:grid-cols-2">
-                                @foreach($itemFields as $field)
-                                    @if($field === 'description')
-                                        <label class="admin-label md:col-span-2">{{ $fieldLabels[$field] ?? ucfirst($field) }}
-                                            <textarea class="admin-textarea" rows="3" x-model="item.{{ $field }}" :name="`items[${index}][{{ $field }}]`"></textarea>
-                                        </label>
-                                    @else
-                                        <label class="admin-label">{{ $fieldLabels[$field] ?? ucfirst($field) }}
-                                            <input type="text" class="admin-input" x-model="item.{{ $field }}" :name="`items[${index}][{{ $field }}]`">
-                                        </label>
-                                    @endif
+            <x-admin.section-card :title="$definition['item_label'] ?? 'Items'" description="Use one form to add or edit an item. Saved items stay in the compact list below instead of opening every item at once.">
+                <div class="space-y-5">
+                    @if($errors->has('items') || count($errors->get('items.*')))
+                        <div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
+                            <p>Some item information needs attention.</p>
+                            @foreach($errors->get('items.*') as $messages)
+                                @foreach($messages as $message)
+                                    <p class="mt-1 text-xs">{{ $message }}</p>
                                 @endforeach
+                            @endforeach
+                        </div>
+                    @endif
+
+                    <div x-ref="itemEditor" class="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                        <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                                <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red" x-text="editingIndex === null ? 'Add item' : `Editing item ${editingIndex + 1}`"></p>
+                                <h3 class="mt-1 text-lg font-black text-brand-ink" x-text="editingIndex === null ? 'Item information' : 'Update item information'"></h3>
+                                <p class="mt-1 text-sm font-medium text-slate-600">Complete the fields below, then add the item to the list.</p>
                             </div>
+                            <span class="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-500 shadow-sm"><span x-text="items.length"></span>/30 items</span>
+                        </div>
+
+                        <div class="grid gap-4 md:grid-cols-2">
+                            @foreach($itemFields as $field)
+                                @php
+                                    $maxLength = match($field) {
+                                        'icon' => 20,
+                                        'label' => 160,
+                                        'description' => 2000,
+                                        'url' => 2048,
+                                        default => 255,
+                                    };
+                                @endphp
+                                @if($field === 'description')
+                                    <label class="admin-label md:col-span-2">{{ $fieldLabels[$field] ?? ucfirst($field) }}
+                                        <textarea class="admin-textarea" rows="3" maxlength="{{ $maxLength }}" x-model="draftItem.{{ $field }}" placeholder="Enter {{ strtolower($fieldLabels[$field] ?? $field) }}"></textarea>
+                                    </label>
+                                @else
+                                    <label class="admin-label {{ count($itemFields) === 1 ? 'md:col-span-2' : '' }}">{{ $fieldLabels[$field] ?? ucfirst($field) }}
+                                        <input type="text" class="admin-input" maxlength="{{ $maxLength }}" x-model="draftItem.{{ $field }}" placeholder="Enter {{ strtolower($fieldLabels[$field] ?? $field) }}">
+                                    </label>
+                                @endif
+                            @endforeach
+                        </div>
+
+                        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+                            <button type="button" class="btn btn-red" @click="saveItem()" x-text="editingIndex === null ? '+ Add Item to List' : 'Update Item in List'"></button>
+                            <button type="button" class="btn btn-white" x-show="editingIndex !== null" x-cloak @click="resetItemDraft()">Cancel Editing</button>
+                            <p class="text-xs font-bold text-slate-500 sm:ml-auto">The section is saved only after you click “Update Section”.</p>
+                        </div>
+                    </div>
+
+                    <div class="overflow-hidden rounded-2xl border border-slate-200">
+                        <div class="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
+                            <div>
+                                <h3 class="text-sm font-black text-brand-ink">Added items</h3>
+                                <p class="text-xs font-medium text-slate-500">Edit, remove, or change the display order.</p>
+                            </div>
+                            <span class="text-xs font-black text-slate-500" x-text="`${items.length} item${items.length === 1 ? '' : 's'}`"></span>
+                        </div>
+
+                        <div x-show="items.length === 0" x-cloak class="bg-white px-5 py-10 text-center">
+                            <p class="text-sm font-black text-brand-ink">No items added yet</p>
+                            <p class="mt-1 text-xs font-medium text-slate-500">Use the form above to add the first item.</p>
+                        </div>
+
+                        <div x-show="items.length > 0" x-cloak class="hidden overflow-x-auto bg-white md:block">
+                            <table class="min-w-full divide-y divide-slate-200 text-left">
+                                <thead class="bg-slate-50">
+                                    <tr>
+                                        <th class="w-20 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-500">Order</th>
+                                        <th class="px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-500">Item</th>
+                                        <th class="px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-500">Details</th>
+                                        <th class="px-4 py-3 text-right text-xs font-black uppercase tracking-wider text-slate-500">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    <template x-for="(item, index) in items" :key="index">
+                                        <tr :class="editingIndex === index ? 'bg-amber-50' : 'bg-white'">
+                                            <td class="px-4 py-3">
+                                                <div class="flex items-center gap-1">
+                                                    <button type="button" class="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-sm font-black text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30" :disabled="index === 0" @click="moveItem(index, -1)" aria-label="Move item up">↑</button>
+                                                    <button type="button" class="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-sm font-black text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30" :disabled="index === items.length - 1" @click="moveItem(index, 1)" aria-label="Move item down">↓</button>
+                                                </div>
+                                            </td>
+                                            <td class="max-w-xs px-4 py-3">
+                                                <div class="flex items-center gap-3">
+                                                    <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-black text-slate-600" x-text="index + 1"></span>
+                                                    <strong class="line-clamp-2 text-sm text-brand-ink" x-text="itemPrimaryValue(item, index)"></strong>
+                                                </div>
+                                            </td>
+                                            <td class="max-w-xl px-4 py-3 text-xs font-medium leading-5 text-slate-600" x-text="itemDetails(item) || '—'"></td>
+                                            <td class="px-4 py-3">
+                                                <div class="flex justify-end gap-2">
+                                                    <button type="button" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50" @click="editItem(index)">Edit</button>
+                                                    <button type="button" class="rounded-lg border border-red-200 px-3 py-2 text-xs font-black text-red-600 hover:bg-red-50" @click="removeItem(index)">Remove</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div x-show="items.length > 0" x-cloak class="divide-y divide-slate-100 bg-white md:hidden">
+                            <template x-for="(item, index) in items" :key="index">
+                                <article class="p-4" :class="editingIndex === index ? 'bg-amber-50' : 'bg-white'">
+                                    <div class="flex items-start gap-3">
+                                        <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-black text-slate-600" x-text="index + 1"></span>
+                                        <div class="min-w-0 flex-1">
+                                            <h4 class="text-sm font-black text-brand-ink" x-text="itemPrimaryValue(item, index)"></h4>
+                                            <p class="mt-1 text-xs font-medium leading-5 text-slate-600" x-text="itemDetails(item) || 'No additional details'"></p>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3 flex flex-wrap items-center gap-2 pl-11">
+                                        <button type="button" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black text-slate-700 disabled:opacity-30" :disabled="index === 0" @click="moveItem(index, -1)">↑ Up</button>
+                                        <button type="button" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black text-slate-700 disabled:opacity-30" :disabled="index === items.length - 1" @click="moveItem(index, 1)">↓ Down</button>
+                                        <button type="button" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-black text-slate-700" @click="editItem(index)">Edit</button>
+                                        <button type="button" class="rounded-lg border border-red-200 px-3 py-2 text-xs font-black text-red-600" @click="removeItem(index)">Remove</button>
+                                    </div>
+                                </article>
+                            </template>
+                        </div>
+                    </div>
+
+                    <template x-for="(item, index) in items" :key="`hidden-${index}`">
+                        <div>
+                            <template x-for="field in itemFields" :key="`${index}-${field}`">
+                                <input type="hidden" :name="`items[${index}][${field}]`" :value="item[field] ?? ''">
+                            </template>
                         </div>
                     </template>
-                    <button type="button" class="btn btn-white" @click="addItem()">+ Add Item</button>
                 </div>
             </x-admin.section-card>
         @endif

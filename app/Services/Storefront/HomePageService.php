@@ -105,10 +105,7 @@ class HomePageService
 
     private function featuredProducts(): array
     {
-        return collect($this->productCatalog->featured())
-            ->take(8)
-            ->values()
-            ->all();
+        return $this->productCatalog->featured(8);
     }
 
     private function popularSportsCategories(): array

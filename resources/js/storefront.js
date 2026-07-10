@@ -4,6 +4,76 @@ import Alpine from 'alpinejs';
 
 window.Alpine = Alpine;
 
+window.showStorefrontToast = (payload = {}) => {
+    window.dispatchEvent(new CustomEvent('storefront-toast', {
+        detail: payload,
+    }));
+};
+
+window.storefrontToastCenter = (initialToast = null) => ({
+    toasts: [],
+    sequence: 0,
+    timers: new Map(),
+
+    init() {
+        if (initialToast) {
+            this.$nextTick(() => this.show(initialToast));
+        }
+    },
+
+    normalize(payload = {}) {
+        const isString = typeof payload === 'string';
+        const type = ['success', 'info', 'warning', 'error'].includes(payload?.type)
+            ? payload.type
+            : 'success';
+
+        return {
+            key: String(payload?.key || ''),
+            type,
+            title: String(isString ? 'Notice' : (payload?.title || (type === 'success' ? 'Added' : 'Notice'))),
+            message: String(isString ? payload : (payload?.message || 'Your change has been saved.')),
+            duration: Math.max(1400, Math.min(10000, Number(payload?.duration || 3200))),
+        };
+    },
+
+    show(payload = {}) {
+        const toast = this.normalize(payload);
+        const matching = toast.key
+            ? this.toasts.find(item => item.key === toast.key)
+            : null;
+
+        if (matching) {
+            this.dismiss(matching.id, false);
+        }
+
+        const id = ++this.sequence;
+        this.toasts.push({ ...toast, id });
+
+        while (this.toasts.length > 3) {
+            this.dismiss(this.toasts[0].id, false);
+        }
+
+        const timer = window.setTimeout(() => this.dismiss(id), toast.duration);
+        this.timers.set(id, timer);
+    },
+
+    dismiss(id, animate = true) {
+        const timer = this.timers.get(id);
+        if (timer) window.clearTimeout(timer);
+        this.timers.delete(id);
+
+        const remove = () => {
+            this.toasts = this.toasts.filter(item => item.id !== id);
+        };
+
+        if (animate) {
+            window.setTimeout(remove, 20);
+        } else {
+            remove();
+        }
+    },
+});
+
 window.productBuilder = (config = {}) => ({
     config,
     galleryIndex: 0,
@@ -69,10 +139,47 @@ window.productBuilder = (config = {}) => ({
         return (group.values || []).find(value => value.id === id);
     },
 
+    notifyCustomization(title, message, key, type = 'success') {
+        window.showStorefrontToast?.({
+            type,
+            title,
+            message,
+            key,
+            duration: 3000,
+        });
+    },
+
     choose(group, id) {
         if ((group.display_mode || 'customer') !== 'customer') return;
+
+        const previous = this.selections[group.id];
         this.selections[group.id] = id;
         this.sync();
+
+        if (id && previous !== id) {
+            const value = this.optionValue(group, id);
+            this.notifyCustomization(
+                'Added',
+                `${group.label}: ${value?.label || id} has been added to your product.`,
+                `option:${group.id}`,
+            );
+        }
+    },
+
+    chooseSelect(group, id) {
+        if ((group.display_mode || 'customer') !== 'customer') return;
+
+        this.selections[group.id] = id;
+        this.sync();
+
+        if (id) {
+            const value = this.optionValue(group, id);
+            this.notifyCustomization(
+                'Added',
+                `${group.label}: ${value?.label || id} has been added to your product.`,
+                `option:${group.id}`,
+            );
+        }
     },
 
     toggle(group, id) {
@@ -80,11 +187,30 @@ window.productBuilder = (config = {}) => ({
         const values = [...(this.multiSelections[group.id] || [])];
         const index = values.indexOf(id);
         const maximum = Math.max(1, Number(group.maximum_selections || (group.values || []).length || 1));
+        const value = this.optionValue(group, id);
 
         if (index >= 0) {
             values.splice(index, 1);
+            this.notifyCustomization(
+                'Removed',
+                `${group.label}: ${value?.label || id} has been removed from your product.`,
+                `option:${group.id}:${id}`,
+                'info',
+            );
         } else if (values.length < maximum) {
             values.push(id);
+            this.notifyCustomization(
+                'Added',
+                `${group.label}: ${value?.label || id} has been added to your product.`,
+                `option:${group.id}:${id}`,
+            );
+        } else {
+            this.notifyCustomization(
+                'Selection limit',
+                `You can select up to ${maximum} option${maximum === 1 ? '' : 's'} for ${group.label}.`,
+                `option-limit:${group.id}`,
+                'warning',
+            );
         }
 
         this.multiSelections[group.id] = values;
@@ -93,10 +219,33 @@ window.productBuilder = (config = {}) => ({
 
     changeQuantity(key, amount) {
         const maximum = Number(config.maximum_quantity || 999);
-        this.quantities[key] = Math.max(0, Math.min(maximum, Number(amount || 0)));
+        const previous = Number(this.quantities[key] || 0);
+        const next = Math.max(0, Math.min(maximum, Number(amount || 0)));
+        this.quantities[key] = next;
         this.syncProductionSpeed();
         this.syncRosterRows();
         this.sync();
+
+        if (next !== previous) {
+            const meta = this.sizeMeta(key);
+            const sizeLabel = meta?.sizeLabel || key;
+            const groupLabel = meta?.groupLabel ? `${meta.groupLabel} ` : '';
+
+            if (next > 0) {
+                this.notifyCustomization(
+                    'Added',
+                    `${groupLabel}${sizeLabel} quantity has been set to ${next}.`,
+                    `quantity:${key}`,
+                );
+            } else {
+                this.notifyCustomization(
+                    'Removed',
+                    `${groupLabel}${sizeLabel} has been removed from your product.`,
+                    `quantity:${key}`,
+                    'info',
+                );
+            }
+        }
     },
 
     totalQuantity() {
@@ -129,9 +278,20 @@ window.productBuilder = (config = {}) => ({
     },
 
     chooseProductionSpeed(id) {
-        if (!this.productionOptionsForQuantity().some(option => option.id === id)) return;
+        const option = this.productionOptionsForQuantity().find(item => item.id === id);
+        if (!option) return;
+
+        const previous = this.productionSpeed;
         this.productionSpeed = id;
         this.sync();
+
+        if (previous !== id) {
+            this.notifyCustomization(
+                'Added',
+                `Production option: ${option.label} has been added to your product.`,
+                'production-speed',
+            );
+        }
     },
 
     currentProductionSpeed() {
@@ -297,6 +457,14 @@ window.productBuilder = (config = {}) => ({
                 : `${Math.max(1, Math.round(file.size / 1024))} KB`,
         }));
         this.sync();
+
+        if (this.artworkFiles.length > 0) {
+            this.notifyCustomization(
+                'Added',
+                `${this.artworkFiles.length} artwork file${this.artworkFiles.length === 1 ? '' : 's'} has been added to your product.`,
+                'artwork-files',
+            );
+        }
     },
 
     speedLabel() {
@@ -315,6 +483,50 @@ window.productBuilder = (config = {}) => ({
 
     shippingLabel() {
         return (config.shipping_methods || []).find(item => item.id === this.shippingMethod)?.label || 'Standard shipping';
+    },
+
+    chooseShippingMethod(id) {
+        const method = (config.shipping_methods || []).find(item => item.id === id);
+        if (!method) return;
+
+        const previous = this.shippingMethod;
+        this.shippingMethod = id;
+        this.sync();
+
+        if (previous !== id) {
+            this.notifyCustomization(
+                'Added',
+                `Shipping method: ${method.label} has been added to your product.`,
+                'shipping-method',
+            );
+        }
+    },
+
+    commitInput(group, value) {
+        const normalized = String(value ?? '').trim();
+        this.inputs[group.id] = value;
+        this.sync();
+
+        if (normalized !== '') {
+            this.notifyCustomization(
+                'Added',
+                `${group.label} has been added to your product.`,
+                `input:${group.id}`,
+            );
+        }
+    },
+
+    commitRosterField(rowIndex, field, value) {
+        const normalized = String(value ?? '').trim();
+        this.sync();
+
+        if (normalized !== '') {
+            this.notifyCustomization(
+                'Added',
+                `${field.label} has been added for jersey ${Number(rowIndex) + 1}.`,
+                `roster:${rowIndex}:${field.key}`,
+            );
+        }
     },
 
     deliveryLabel() {
@@ -406,6 +618,15 @@ window.productBuilder = (config = {}) => ({
         this.rosterEnabled = Boolean(enabled);
         this.syncRosterRows();
         this.sync();
+
+        this.notifyCustomization(
+            this.rosterEnabled ? 'Added' : 'Removed',
+            this.rosterEnabled
+                ? 'Individual jersey details have been added to your product.'
+                : 'Individual jersey details have been removed from your product.',
+            'jersey-roster',
+            this.rosterEnabled ? 'success' : 'info',
+        );
     },
 
     rosterSummary() {
