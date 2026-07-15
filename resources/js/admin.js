@@ -814,28 +814,23 @@ window.adminProductForm = (initial = {}) => ({
             if (!importedRows.length) throw new Error('No usable price rows were found using the selected mapping.');
             if (importedRows.length > 200) throw new Error('A maximum of 200 price rows can be imported.');
 
-            importedRows.sort((a, b) => Number(a.minimum_quantity) - Number(b.minimum_quantity));
             importedRows.forEach((row, index) => {
                 const minimum = Number(row.minimum_quantity);
                 if (!Number.isInteger(minimum) || minimum < 1) {
-                    throw new Error(`The imported quantity at row ${index + 1} is invalid.`);
+                    row.minimum_quantity = '';
+                    row.maximum_quantity = '';
+                    return;
                 }
 
-                if (index < importedRows.length - 1) {
-                    const nextMinimum = Number(importedRows[index + 1].minimum_quantity);
-                    if (!Number.isInteger(nextMinimum) || nextMinimum <= minimum) {
-                        throw new Error('Quantity starting values must be unique and increase from one row to the next.');
-                    }
-
-                    // Make every non-final range continuous. This also repairs
-                    // spreadsheets whose explicit maximum leaves a gap or
-                    // overlaps the following starting quantity.
+                const nextMinimum = Number(importedRows[index + 1]?.minimum_quantity);
+                if (Number.isInteger(nextMinimum) && nextMinimum > minimum && String(row.maximum_quantity ?? '').trim() === '') {
                     row.maximum_quantity = nextMinimum - 1;
-                } else if (row.maximum_quantity !== '') {
-                    const maximum = Number(row.maximum_quantity);
-                    if (!Number.isInteger(maximum) || maximum < minimum) {
-                        throw new Error(`The final quantity range beginning at ${minimum} has an invalid maximum quantity.`);
-                    }
+                    return;
+                }
+
+                const maximum = Number(row.maximum_quantity);
+                if (String(row.maximum_quantity ?? '').trim() !== '' && (!Number.isInteger(maximum) || maximum < minimum)) {
+                    row.maximum_quantity = '';
                 }
             });
 
@@ -1355,6 +1350,7 @@ window.adminProductForm = (initial = {}) => ({
     formatProductionTime(minimum, maximum) {
         const min = Math.max(0, Number(minimum || 0));
         const max = Math.max(min, Number(maximum ?? min));
+        if (min === 0 && max === 0) return 'To be confirmed';
         return min === max ? `${min} ${min === 1 ? 'day' : 'days'}` : `${min}-${max} days`;
     },
     productionCellSummary(cell) {

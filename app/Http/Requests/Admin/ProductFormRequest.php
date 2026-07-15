@@ -43,11 +43,11 @@ class ProductFormRequest extends FormRequest
             'badge_label' => ['nullable', 'string', 'max:80'],
             'badge_color' => ['nullable', 'string', 'max:30'],
             'short_description' => ['nullable', 'string', 'max:1500'],
-            'description_html' => ['nullable', 'string', 'max:100000'],
-            'product_specification_text' => ['nullable', 'string', 'max:100000'],
-            'detail_information_html' => ['nullable', 'string', 'max:100000'],
-            'customization_artwork_html' => ['nullable', 'string', 'max:100000'],
-            'fulfillment_html' => ['nullable', 'string', 'max:100000'],
+            'description_html' => ['nullable', 'string'],
+            'product_specification_text' => ['nullable', 'string'],
+            'detail_information_html' => ['nullable', 'string'],
+            'customization_artwork_html' => ['nullable', 'string'],
+            'fulfillment_html' => ['nullable', 'string'],
             'base_price' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
             'compare_at_price' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'cost_price' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
@@ -111,7 +111,7 @@ class ProductFormRequest extends FormRequest
             'price_tiers.*.label' => ['nullable', 'string', 'max:120'],
             'price_tiers.*.minimum_quantity' => ['required_with:price_tiers.*.unit_price', 'nullable', 'integer', 'min:1'],
             'price_tiers.*.maximum_quantity' => ['nullable', 'integer', 'gte:price_tiers.*.minimum_quantity'],
-            'price_tiers.*.unit_price' => ['required_with:price_tiers.*.minimum_quantity', 'nullable', 'numeric', 'min:0'],
+            'price_tiers.*.unit_price' => ['nullable', 'numeric', 'min:0'],
             'price_tiers.*.compare_at_price' => ['nullable', 'numeric', 'min:0'],
             'price_tiers.*.savings_label' => ['nullable', 'string', 'max:120'],
 
@@ -123,8 +123,8 @@ class ProductFormRequest extends FormRequest
             'price_table_rows.*.*' => ['nullable', 'string', 'max:500'],
             'price_table_ranges' => ['required', 'array', 'min:1', 'max:200'],
             'price_table_ranges.*' => ['required', 'array'],
-            'price_table_ranges.*.minimum_quantity' => ['required', 'integer', 'min:1', 'max:1000000'],
-            'price_table_ranges.*.maximum_quantity' => ['nullable', 'integer', 'gte:price_table_ranges.*.minimum_quantity', 'max:1000000'],
+            'price_table_ranges.*.minimum_quantity' => ['nullable', 'integer', 'min:1', 'max:1000000'],
+            'price_table_ranges.*.maximum_quantity' => ['nullable', 'integer', 'min:1', 'max:1000000'],
             'price_table_highlight_column' => ['required', 'integer', 'min:1', 'max:19'],
             'price_table_note' => ['nullable', 'string', 'max:3000'],
 
@@ -567,38 +567,11 @@ class ProductFormRequest extends FormRequest
                 $validator->errors()->add('price_table_ranges', 'Every visible price row must have one minimum and maximum quantity range.');
             }
 
-            $previousMaximum = null;
-            $previousMinimum = null;
-            $previousWasOpenEnded = false;
-            foreach ($ranges as $index => $range) {
-                $minimum = filter_var(data_get($range, 'minimum_quantity'), FILTER_VALIDATE_INT);
-                $maximumRaw = data_get($range, 'maximum_quantity');
-                $maximum = filled($maximumRaw) ? filter_var($maximumRaw, FILTER_VALIDATE_INT) : null;
-
-                if ($index > 0 && $minimum !== false && $previousMinimum !== null && $minimum <= $previousMinimum) {
-                    $validator->errors()->add("price_table_ranges.{$index}.minimum_quantity", 'Quantity starting values must increase from one row to the next.');
-                }
-
-                if ($index > 0 && $previousWasOpenEnded) {
-                    $validator->errors()->add("price_table_ranges.{$index}.minimum_quantity", 'No row can follow an open-ended quantity row.');
-                }
-
-                if ($index > 0 && $minimum !== false && $previousMaximum !== null && $minimum !== $previousMaximum + 1) {
-                    $validator->errors()->add("price_table_ranges.{$index}.minimum_quantity", 'Quantity rows must be continuous. Start this row at '.($previousMaximum + 1).'.');
-                }
-
-                if ($maximum === null && $index < $ranges->count() - 1) {
-                    $validator->errors()->add("price_table_ranges.{$index}.maximum_quantity", 'Only the final quantity row may have no maximum quantity.');
-                }
-
-                if (! is_numeric(data_get($tiers, "{$index}.unit_price"))) {
-                    $validator->errors()->add("price_table_rows.{$index}", 'Enter a valid unit price in the highlighted price column for this row.');
-                }
-
-                $previousMaximum = $maximum === false ? null : $maximum;
-                $previousMinimum = $minimum === false ? $previousMinimum : $minimum;
-                $previousWasOpenEnded = $maximum === null;
-            }
+            // Visible price tables may be imported from the old website and can contain
+            // repeated, non-continuous, or display-only quantity rows. Do not block the
+            // whole product form because of that table structure; admins can clean it later.
+            // The storefront price table is still preserved, and live pricing is derived
+            // only from rows where a usable minimum quantity and price can be parsed.
 
             $productionHeaders = collect($this->input('production_table_headers', []))->values();
             $productionRows = collect($this->input('production_table_rows', []))->values();
@@ -625,7 +598,7 @@ class ProductFormRequest extends FormRequest
                     if ($productionTime === null) {
                         $validator->errors()->add(
                             "production_table_rows.{$rowIndex}.cells.{$columnIndex}.production_time",
-                            'Enter a valid production time such as 5 days or 5-15 days.'
+                            'Enter a valid production time such as 5 days, 5-15 days, or To be confirmed.'
                         );
                     }
                 }
@@ -781,9 +754,38 @@ class ProductFormRequest extends FormRequest
     /** @return array{minimum_quantity:int, maximum_quantity:?int}|null */
     private function parseProductionRange(string $value): ?array
     {
-        $value = trim(str_replace([',', '–', '—'], ['', '-', '-'], $value));
+        $value = html_entity_decode(trim($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $value = str_replace(["\xc2\xa0", ',', '–', '—', '−'], [' ', '', '-', '-', '-'], $value);
+        $value = preg_replace('/\b(?:pcs?|pieces?|units?|qty|quantity)\b\.?/i', '', $value) ?? $value;
+        $value = trim((string) preg_replace('/\s+/', ' ', $value));
+        $value = trim($value, " \t\n\r\0\x0B:-");
+
         if ($value === '') {
             return null;
+        }
+
+        if (preg_match('/^(?:less\s+than|under|below)\s*(\d+)$/i', $value, $match) === 1) {
+            $maximum = (int) $match[1] - 1;
+
+            return $maximum >= 1
+                ? ['minimum_quantity' => 1, 'maximum_quantity' => $maximum]
+                : null;
+        }
+
+        if (preg_match('/^(?:up\s*to|upto|max(?:imum)?|<=|≤)\s*(\d+)$/i', $value, $match) === 1) {
+            $maximum = (int) $match[1];
+
+            return $maximum >= 1
+                ? ['minimum_quantity' => 1, 'maximum_quantity' => $maximum]
+                : null;
+        }
+
+        if (preg_match('/^(?:more\s+than|greater\s+than|over|above|>|≥)\s*(\d+)$/i', $value, $match) === 1) {
+            $minimum = (int) $match[1] + 1;
+
+            return $minimum >= 1
+                ? ['minimum_quantity' => $minimum, 'maximum_quantity' => null]
+                : null;
         }
 
         if (preg_match('/^(\d+)\s*(?:-|to)\s*(\d+)$/i', $value, $match) === 1) {
@@ -795,7 +797,7 @@ class ProductFormRequest extends FormRequest
                 : null;
         }
 
-        if (preg_match('/^(\d+)\s*\+$/', $value, $match) === 1) {
+        if (preg_match('/^(?:from\s*)?(\d+)\s*(?:\+|plus|and\s+(?:above|up)|or\s+more|or\s+above)$/i', $value, $match) === 1) {
             $minimum = (int) $match[1];
 
             return $minimum >= 1
@@ -1083,7 +1085,7 @@ class ProductFormRequest extends FormRequest
             'production_table_rows.*.range.max' => 'Keep the production quantity range within 50 characters.',
             'production_table_rows.*.cells.*.price_adjustment.numeric' => 'Enter the production charge as a number.',
             'production_table_rows.*.cells.*.price_adjustment.min' => 'The production charge cannot be negative.',
-            'production_table_rows.*.cells.*.production_time.max' => 'Keep the production time within 60 characters.',
+            'production_table_rows.*.cells.*.production_time.max' => 'Keep the production time within 60 characters, for example 5-15 days or To be confirmed.',
             'production_speeds.*.maximum_quantity.gte' => 'The production quantity maximum must be greater than or equal to the minimum quantity.',
             'production_speeds.*.maximum_days.gte' => 'The production maximum days must be greater than or equal to the minimum days.',
             'faqs.*.question.max' => 'Keep the FAQ question within 500 characters.',

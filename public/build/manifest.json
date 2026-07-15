@@ -22,7 +22,7 @@
     "isEntry": true
   },
   "resources/js/admin.js": {
-    "file": "assets/admin-B2ut6igP.js",
+    "file": "assets/admin-B6RMyPq7.js",
     "name": "admin",
     "src": "resources/js/admin.js",
     "isEntry": true,
@@ -31,7 +31,7 @@
     ]
   },
   "resources/js/storefront.js": {
-    "file": "assets/storefront-tKH56NvE.js",
+    "file": "assets/storefront-aXDPikmO.js",
     "name": "storefront",
     "src": "resources/js/storefront.js",
     "isEntry": true,

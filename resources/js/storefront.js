@@ -300,8 +300,11 @@ window.productBuilder = (config = {}) => ({
     },
 
     productionTimeLabel(option) {
+        const customTime = String(option?.production_time || '').trim();
         const minimum = Math.max(0, Number(option?.minimum_days || 0));
         const maximum = Math.max(minimum, Number(option?.maximum_days ?? minimum));
+        if (customTime && minimum === 0 && maximum === 0) return customTime;
+        if (minimum === 0 && maximum === 0) return 'To be confirmed';
         return minimum === maximum
             ? `${minimum} ${minimum === 1 ? 'working day' : 'working days'}`
             : `${minimum}-${maximum} working days`;

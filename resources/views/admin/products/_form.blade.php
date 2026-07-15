@@ -244,10 +244,12 @@
                             'enabled' => (bool) $speed,
                             'description' => data_get($speed, 'description', ''),
                             'price_adjustment' => data_get($speed, 'price_adjustment', 0),
-                            'production_time' => \App\Support\ProductionTime::format(
-                                data_get($speed, 'minimum_days', 1),
-                                data_get($speed, 'maximum_days', data_get($speed, 'minimum_days', 1))
-                            ),
+                            'production_time' => ((int) data_get($speed, 'minimum_days', 1) === 0 && (int) data_get($speed, 'maximum_days', data_get($speed, 'minimum_days', 1)) === 0)
+                                ? 'To be confirmed'
+                                : \App\Support\ProductionTime::format(
+                                    data_get($speed, 'minimum_days', 1),
+                                    data_get($speed, 'maximum_days', data_get($speed, 'minimum_days', 1))
+                                ),
                             'minimum_days' => data_get($speed, 'minimum_days', 1),
                             'maximum_days' => data_get($speed, 'maximum_days', data_get($speed, 'minimum_days', 1)),
                         ];
@@ -649,7 +651,7 @@ Lead Time:"></div>
                                 <tr>
                                     <td>
                                         <input type="hidden" :name="`price_table_rows[${rIndex}][0]`" :value="row.minimum_quantity || ''">
-                                        <input class="np-table-input" type="number" min="1" :name="`price_table_ranges[${rIndex}][minimum_quantity]`" x-model.number="row.minimum_quantity" @input.debounce.250ms="recalculatePriceMaximums()" @blur="recalculatePriceMaximums()" required>
+                                        <input class="np-table-input" type="number" min="1" :name="`price_table_ranges[${rIndex}][minimum_quantity]`" x-model.number="row.minimum_quantity" @input.debounce.250ms="recalculatePriceMaximums()" @blur="recalculatePriceMaximums()">
                                     </td>
                                     <td>
                                         <input class="np-table-input" type="number" min="1" :name="`price_table_ranges[${rIndex}][maximum_quantity]`" x-model.number="row.maximum_quantity" @input.debounce.250ms="markPriceMaximumManual(row); recalculatePriceMaximums()" @blur="markPriceMaximumManual(row); recalculatePriceMaximums()" placeholder="Auto">

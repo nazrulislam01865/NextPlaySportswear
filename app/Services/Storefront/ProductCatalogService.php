@@ -629,6 +629,9 @@ class ProductCatalogService
                 'maximum_quantity' => $speed->maximum_quantity === null ? null : (int) $speed->maximum_quantity,
                 'minimum_days' => $speed->minimum_days,
                 'maximum_days' => $speed->maximum_days,
+                'production_time' => ((int) $speed->minimum_days === 0 && (int) $speed->maximum_days === 0)
+                    ? 'To be confirmed'
+                    : null,
             ])->values()->all(),
             'shipping_methods_enabled' => (bool) $product->shipping_methods_enabled,
             'shipping_methods' => $product->shipping_methods_enabled ? $product->shippingMethods->where('is_active', true)->map(function ($method): array {
