@@ -38,6 +38,14 @@
                     <x-storefront.home.featured-products :products="$featuredProducts" :section="$section" />
                     @break
 
+                @case('latest_products')
+                    <x-storefront.home.latest-products :products="$latestProducts ?? []" :section="$section" />
+                    @break
+
+                @case('best_selling_products')
+                    <x-storefront.home.best-selling-products :products="$bestSellingProducts ?? []" :section="$section" />
+                    @break
+
                 @case('best_selling_gear')
                     <x-storefront.home.best-selling-gear :categories="$categories" :section="$section" />
                     @break

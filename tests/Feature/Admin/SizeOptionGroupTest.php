@@ -45,6 +45,41 @@ class SizeOptionGroupTest extends TestCase
         $this->assertStringNotContainsString('<script', (string) $group->description_html);
     }
 
+
+    public function test_same_size_group_slug_is_stored_separately_for_sweatshirt_and_jacket(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+
+        foreach (['sweatshirt', 'jacket'] as $customizationGroup) {
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.size-option-groups.store', ['customization' => $customizationGroup]),
+                [
+                    '_customization_context' => $customizationGroup,
+                    'customization_group' => $customizationGroup,
+                    'name' => 'Adult Sizes',
+                    'audience' => SizeAudience::Unisex->value,
+                    'clear_chart_image' => '0',
+                    'sizes' => [
+                        ['label' => 'S'],
+                        ['label' => 'M'],
+                        ['label' => 'L'],
+                    ],
+                ]
+            )->assertSessionDoesntHaveErrors();
+        }
+
+        $this->assertDatabaseHas('size_option_groups', [
+            'customization_group' => 'sweatshirt',
+            'slug' => 'adult-sizes',
+        ]);
+        $this->assertDatabaseHas('size_option_groups', [
+            'customization_group' => 'jacket',
+            'slug' => 'adult-sizes',
+        ]);
+        $this->assertSame(2, SizeOptionGroup::query()->where('slug', 'adult-sizes')->count());
+    }
+
+
     public function test_formatted_chart_and_chart_image_cannot_be_submitted_together(): void
     {
         Storage::fake('public');

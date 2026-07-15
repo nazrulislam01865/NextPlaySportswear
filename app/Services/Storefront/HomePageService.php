@@ -23,6 +23,8 @@ class HomePageService
             'categories' => $this->categories(),
             'buyerPaths' => $this->sectionItems('buyer_paths'),
             'featuredProducts' => $this->featuredProducts(),
+            'latestProducts' => $this->latestProducts(),
+            'bestSellingProducts' => $this->bestSellingProducts(),
             'popularSportsCategories' => $this->popularSportsCategories(),
             'sports' => $this->sports(),
             'processSteps' => $this->sectionItems('process'),
@@ -106,6 +108,16 @@ class HomePageService
     private function featuredProducts(): array
     {
         return $this->productCatalog->featured(8);
+    }
+
+    private function latestProducts(): array
+    {
+        return $this->productCatalog->latest(4);
+    }
+
+    private function bestSellingProducts(): array
+    {
+        return $this->productCatalog->bestSelling(4);
     }
 
     private function popularSportsCategories(): array

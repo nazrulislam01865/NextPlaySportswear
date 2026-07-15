@@ -397,7 +397,12 @@ class AdminRbac
             }
         }
 
-        if (Str::startsWith($name, 'jersey-customization-options.') || Str::startsWith($name, 'size-option-groups.')) {
+        if (
+            Str::startsWith($name, 'jersey-customization-options.')
+            || Str::startsWith($name, 'training-vest-customization-options.')
+            || Str::startsWith($name, 'training-vest-size-option-groups.')
+            || Str::startsWith($name, 'size-option-groups.')
+        ) {
             return self::resourcePermission($name, 'customization');
         }
 

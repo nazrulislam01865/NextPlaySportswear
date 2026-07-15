@@ -58,6 +58,40 @@ class JerseyCustomizationOptionTest extends TestCase
         $this->assertSame('Front view', $option->primaryImage()->firstOrFail()->name);
     }
 
+
+    public function test_same_option_slug_is_stored_separately_for_sweatshirt_and_jacket(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        foreach ([
+            JerseyCustomizationType::SweatshirtColor,
+            JerseyCustomizationType::JacketColor,
+        ] as $type) {
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                [
+                    'name' => 'Black',
+                    'type' => $type->value,
+                    'color_hex' => '#000000',
+                ]
+            )->assertSessionDoesntHaveErrors();
+        }
+
+        $this->assertDatabaseHas('jersey_customization_options', [
+            'type' => JerseyCustomizationType::SweatshirtColor->value,
+            'slug' => 'black',
+        ]);
+        $this->assertDatabaseHas('jersey_customization_options', [
+            'type' => JerseyCustomizationType::JacketColor->value,
+            'slug' => 'black',
+        ]);
+        $this->assertSame(2, JerseyCustomizationOption::query()->where('slug', 'black')->count());
+    }
+
+
     public function test_color_value_is_required_only_for_color_options(): void
     {
         $admin = User::factory()->create([

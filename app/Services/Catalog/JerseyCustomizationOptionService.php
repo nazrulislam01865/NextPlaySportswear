@@ -106,8 +106,9 @@ class JerseyCustomizationOptionService
 
             if ($uploaded) {
                 $this->deleteStoredImage($imagePath);
+                $group = $option->type?->group() ?? 'product';
                 $imagePath = $uploaded->store(
-                    "catalog/jersey-customization-options/{$option->id}",
+                    "catalog/customization-options/{$group}/{$option->id}",
                     'public'
                 );
                 $storedUrl = null;

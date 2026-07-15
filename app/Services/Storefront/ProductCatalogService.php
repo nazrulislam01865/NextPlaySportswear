@@ -4,6 +4,7 @@ namespace App\Services\Storefront;
 
 use App\Models\Product;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -15,6 +16,12 @@ class ProductCatalogService
     /** @var array<int, array<int, array<string, mixed>>> */
     private array $featuredProducts = [];
 
+    /** @var array<int, array<int, array<string, mixed>>> */
+    private array $latestProducts = [];
+
+    /** @var array<int, array<int, array<string, mixed>>> */
+    private array $bestSellingProducts = [];
+
     public function all(): array
     {
         if ($this->hydratedProducts !== null) {
@@ -22,7 +29,7 @@ class ProductCatalogService
         }
 
         if (Schema::hasTable('products') && Product::query()->published()->exists()) {
-            $cacheVersion = (int) Cache::get('catalog.category-facets.version', 1);
+            $cacheVersion = $this->catalogCacheVersionSuffix();
             $cacheKey = 'catalog.product-summaries.'.$cacheVersion;
             $ttl = max(60, (int) config('catalog.category_cache_seconds', 1800));
 
@@ -126,7 +133,7 @@ class ProductCatalogService
         }
 
         if (Schema::hasTable('products')) {
-            $cacheVersion = (int) Cache::get('catalog.category-facets.version', 1);
+            $cacheVersion = $this->catalogCacheVersionSuffix();
             $cacheKey = 'catalog.homepage-featured.'.$cacheVersion.'.'.$limit;
             $ttl = max(60, (int) config('catalog.category_cache_seconds', 1800));
 
@@ -183,6 +190,148 @@ class ProductCatalogService
         return $this->featuredProducts[$limit] = $featured->values()->all();
     }
 
+    public function latest(int $limit = 4): array
+    {
+        $limit = max(1, min($limit, 24));
+
+        if (array_key_exists($limit, $this->latestProducts)) {
+            return $this->latestProducts[$limit];
+        }
+
+        if (Schema::hasTable('products')) {
+            $cacheVersion = $this->catalogCacheVersionSuffix();
+            $cacheKey = 'catalog.homepage-latest.'.$cacheVersion.'.'.$limit;
+            $ttl = max(60, (int) config('catalog.category_cache_seconds', 1800));
+
+            $databaseProducts = Cache::remember(
+                $cacheKey,
+                $ttl,
+                fn (): array => Product::query()
+                    ->published()
+                    ->with($this->listingRelations())
+                    ->orderByDesc('published_at')
+                    ->orderByDesc('created_at')
+                    ->orderByDesc('id')
+                    ->limit($limit)
+                    ->get()
+                    ->map(fn (Product $product): array => $this->fromListingModel($product))
+                    ->values()
+                    ->all()
+            );
+
+            if ($databaseProducts !== []) {
+                return $this->latestProducts[$limit] = $databaseProducts;
+            }
+        }
+
+        return $this->latestProducts[$limit] = collect($this->products())
+            ->reverse()
+            ->take($limit)
+            ->map(fn (array $product): array => $this->hydrateProduct($product))
+            ->values()
+            ->all();
+    }
+
+    public function bestSelling(int $limit = 4): array
+    {
+        $limit = max(1, min($limit, 24));
+
+        if (array_key_exists($limit, $this->bestSellingProducts)) {
+            return $this->bestSellingProducts[$limit];
+        }
+
+        if (Schema::hasTable('products')) {
+            $cacheVersion = $this->catalogCacheVersionSuffix();
+            $cacheKey = 'catalog.homepage-best-selling.'.$cacheVersion.'.'.$limit;
+            $ttl = max(60, min(600, (int) config('catalog.category_cache_seconds', 1800)));
+
+            $databaseProducts = Cache::remember(
+                $cacheKey,
+                $ttl,
+                fn (): array => $this->bestSellingFromDatabase($limit)
+            );
+
+            if ($databaseProducts !== []) {
+                return $this->bestSellingProducts[$limit] = $databaseProducts;
+            }
+        }
+
+        $fallback = collect($this->all())
+            ->sortByDesc(fn (array $product): int => (int) ($product['is_featured'] ?? false))
+            ->take($limit)
+            ->values()
+            ->all();
+
+        return $this->bestSellingProducts[$limit] = $fallback;
+    }
+
+    private function catalogCacheVersionSuffix(): string
+    {
+        $categoryVersion = (int) Cache::get('catalog.category-facets.version', 1);
+        $productVersion = (int) Cache::get(ProductCatalogCacheService::PRODUCT_VERSION_KEY, 1);
+
+        return $categoryVersion.'.'.$productVersion;
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function bestSellingFromDatabase(int $limit): array
+    {
+        $rankedIds = collect();
+
+        if (Schema::hasTable('orders') && Schema::hasTable('order_items')) {
+            $netQuantity = '(order_items.quantity - order_items.cancelled_quantity - order_items.returned_quantity)';
+
+            $rankedIds = DB::table('order_items')
+                ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                ->whereNotNull('order_items.product_id')
+                ->whereNull('orders.deleted_at')
+                ->whereIn('orders.payment_status', ['paid', 'partially_refunded'])
+                ->where('orders.status', '<>', 'cancelled')
+                ->select('order_items.product_id')
+                ->selectRaw("SUM(CASE WHEN {$netQuantity} > 0 THEN {$netQuantity} ELSE 0 END) AS sold_quantity")
+                ->groupBy('order_items.product_id')
+                ->havingRaw("SUM(CASE WHEN {$netQuantity} > 0 THEN {$netQuantity} ELSE 0 END) > 0")
+                ->orderByDesc('sold_quantity')
+                ->orderByDesc('order_items.product_id')
+                ->limit($limit)
+                ->pluck('order_items.product_id')
+                ->map(fn ($id): int => (int) $id)
+                ->values();
+        }
+
+        $productsById = $rankedIds->isEmpty()
+            ? collect()
+            : Product::query()
+                ->published()
+                ->whereIn('id', $rankedIds->all())
+                ->with($this->listingRelations())
+                ->get()
+                ->keyBy('id');
+
+        $products = $rankedIds
+            ->map(fn (int $id) => $productsById->get($id))
+            ->filter()
+            ->map(fn (Product $product): array => $this->fromListingModel($product))
+            ->values();
+
+        if ($products->count() < $limit) {
+            $excludedIds = $products->pluck('id')->all();
+            $fallback = Product::query()
+                ->published()
+                ->when($excludedIds !== [], fn ($query) => $query->whereNotIn('id', $excludedIds))
+                ->with($this->listingRelations())
+                ->orderByDesc('published_at')
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->limit($limit - $products->count())
+                ->get()
+                ->map(fn (Product $product): array => $this->fromListingModel($product));
+
+            $products = $products->concat($fallback);
+        }
+
+        return $products->take($limit)->values()->all();
+    }
 
     private function normalizeColorHex(?string $color): ?string
     {

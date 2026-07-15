@@ -106,6 +106,36 @@ Route::prefix('admin')->name('admin.')->group(function () {
         )->parameters([
             'jersey-customization-options' => 'jerseyCustomizationOption',
         ])->except('show');
+        Route::get(
+            '/training-vest-customization-options/type/{type}',
+            [\App\Http\Controllers\Admin\TrainingVestCustomizationOptionController::class, 'typeIndex']
+        )->name('training-vest-customization-options.type');
+        Route::get(
+            '/training-vest-customization-options/size-groups/create',
+            [\App\Http\Controllers\Admin\TrainingVestCustomizationOptionController::class, 'createSizeGroup']
+        )->name('training-vest-size-option-groups.create');
+        Route::post(
+            '/training-vest-customization-options/size-groups',
+            [\App\Http\Controllers\Admin\TrainingVestCustomizationOptionController::class, 'storeSizeGroup']
+        )->name('training-vest-size-option-groups.store');
+        Route::get(
+            '/training-vest-customization-options/size-groups/{trainingVestSizeOptionGroup}/edit',
+            [\App\Http\Controllers\Admin\TrainingVestCustomizationOptionController::class, 'editSizeGroup']
+        )->name('training-vest-size-option-groups.edit');
+        Route::put(
+            '/training-vest-customization-options/size-groups/{trainingVestSizeOptionGroup}',
+            [\App\Http\Controllers\Admin\TrainingVestCustomizationOptionController::class, 'updateSizeGroup']
+        )->name('training-vest-size-option-groups.update');
+        Route::delete(
+            '/training-vest-customization-options/size-groups/{trainingVestSizeOptionGroup}',
+            [\App\Http\Controllers\Admin\TrainingVestCustomizationOptionController::class, 'destroySizeGroup']
+        )->name('training-vest-size-option-groups.destroy');
+        Route::resource(
+            'training-vest-customization-options',
+            \App\Http\Controllers\Admin\TrainingVestCustomizationOptionController::class
+        )->parameters([
+            'training-vest-customization-options' => 'trainingVestCustomizationOption',
+        ])->except('show');
         Route::resource(
             'size-option-groups',
             \App\Http\Controllers\Admin\SizeOptionGroupController::class

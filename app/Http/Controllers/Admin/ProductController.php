@@ -16,6 +16,7 @@ use App\Services\Catalog\CategoryTreeService;
 use App\Services\Catalog\ProductOptionFilterSyncService;
 use App\Services\AdminNotificationService;
 use App\Services\Security\SafeHtmlService;
+use App\Services\Storefront\ProductCatalogCacheService;
 use App\Support\ProductionTime;
 use App\Support\PublicMedia;
 use Illuminate\Http\JsonResponse;
@@ -35,6 +36,7 @@ class ProductController extends Controller
         private readonly CategoryTreeService $categoryTreeService,
         private readonly ProductOptionFilterSyncService $productOptionFilterSyncService,
         private readonly AdminNotificationService $adminNotifications,
+        private readonly ProductCatalogCacheService $productCatalogCache,
     ) {
     }
 
@@ -177,7 +179,7 @@ class ProductController extends Controller
             });
 
             $count = $deletedProducts->count();
-            $this->categoryTreeService->flushCache();
+            $this->flushProductCaches();
 
             if ($count > 0) {
                 $sampleNames = $deletedProducts
@@ -221,7 +223,7 @@ class ProductController extends Controller
                 ]));
         });
 
-        $this->categoryTreeService->flushCache();
+        $this->flushProductCaches();
 
         if ($updated > 0) {
             $label = match ($action) {
@@ -278,7 +280,7 @@ class ProductController extends Controller
             return $product;
         });
 
-        $this->categoryTreeService->flushCache();
+        $this->flushProductCaches();
         $this->adminNotifications->productChanged(
             $product,
             'created',
@@ -312,7 +314,7 @@ class ProductController extends Controller
             $this->syncProductSpecifications($product, $request);
         });
 
-        $this->categoryTreeService->flushCache();
+        $this->flushProductCaches();
         $this->adminNotifications->productChanged(
             $product->fresh() ?? $product,
             'updated',
@@ -329,7 +331,7 @@ class ProductController extends Controller
         $notificationProduct->id = $product->id;
 
         $product->delete();
-        $this->categoryTreeService->flushCache();
+        $this->flushProductCaches();
         $this->adminNotifications->productChanged(
             $notificationProduct,
             'deleted',
@@ -389,7 +391,7 @@ class ProductController extends Controller
             return $copy;
         });
 
-        $this->categoryTreeService->flushCache();
+        $this->flushProductCaches();
         $this->adminNotifications->productChanged(
             $copy,
             'duplicated',
@@ -497,6 +499,47 @@ class ProductController extends Controller
         ];
     }
 
+    private function flushProductCaches(): void
+    {
+        $this->categoryTreeService->flushCache();
+        $this->productCatalogCache->flush();
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array<int, string>|null
+     */
+    private function normalizedTags(ProductFormRequest $request, array $data, ?Product $product): ?array
+    {
+        if ($request->exists('tags_text')) {
+            $rawTags = $data['tags_text'] ?? '';
+        } elseif ($request->exists('tags')) {
+            $rawTags = $data['tags'] ?? $request->input('tags', '');
+        } elseif ($request->exists('tag')) {
+            $rawTags = $request->input('tag', '');
+        } elseif ($product === null) {
+            $rawTags = '';
+        } else {
+            return null;
+        }
+
+        if (is_array($rawTags)) {
+            $items = $rawTags;
+        } else {
+            $rawText = trim((string) $rawTags);
+            $decoded = json_decode($rawText, true);
+            $items = is_array($decoded) ? $decoded : (preg_split('/[,;\r\n]+/', $rawText) ?: []);
+        }
+
+        return collect($items)
+            ->map(fn ($tag): string => trim((string) $tag))
+            ->map(fn (string $tag): string => ltrim(trim($tag), '#'))
+            ->filter()
+            ->unique(fn (string $tag): string => Str::lower($tag))
+            ->values()
+            ->all();
+    }
+
     private function productPayload(ProductFormRequest $request, ?Product $product): array
     {
         $data = $request->validated();
@@ -549,7 +592,10 @@ class ProductController extends Controller
             $payload['dimensions'] = [];
         }
 
-        $payload['tags'] = collect(explode(',', (string) ($data['tags_text'] ?? '')))->map(fn ($tag) => trim($tag))->filter()->unique()->values()->all();
+        $tags = $this->normalizedTags($request, $data, $product);
+        if ($tags !== null) {
+            $payload['tags'] = $tags;
+        }
         if (! (bool) ($payload['artwork_upload_enabled'] ?? false)) {
             $payload['artwork_upload_required'] = false;
         }

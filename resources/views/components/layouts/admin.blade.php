@@ -100,6 +100,24 @@
                         $activeCustomizationTypeEnum = \App\Enums\JerseyCustomizationType::tryFrom((string) $activeCustomizationType);
                         $activeCustomizationGroup = $activeCustomizationTypeEnum?->group();
                         $activeSizeCustomizationGroup = request()->query('customization', 'jersey');
+                        $trainingVestMenuGroups = \App\Enums\TrainingVestCustomizationType::menuGroups();
+                        $isTrainingVestCustomizationActive = request()->routeIs('admin.training-vest-customization-options.*') || request()->routeIs('admin.training-vest-size-option-groups.*');
+                        $activeTrainingVestCustomizationType = request()->route('type');
+                        $activeTrainingVestCustomizationOption = request()->route('trainingVestCustomizationOption');
+
+                        if (! $activeTrainingVestCustomizationType && $activeTrainingVestCustomizationOption instanceof \App\Models\TrainingVestCustomizationOption) {
+                            $activeTrainingVestCustomizationType = $activeTrainingVestCustomizationOption->type instanceof \App\Enums\TrainingVestCustomizationType
+                                ? $activeTrainingVestCustomizationOption->type->value
+                                : (string) $activeTrainingVestCustomizationOption->type;
+                        }
+
+                        if (! $activeTrainingVestCustomizationType && request()->routeIs('admin.training-vest-size-option-groups.*')) {
+                            $activeTrainingVestCustomizationType = \App\Enums\TrainingVestCustomizationType::Size->value;
+                        }
+
+                        if (! $activeTrainingVestCustomizationType && old('type')) {
+                            $activeTrainingVestCustomizationType = old('type');
+                        }
 
                         if (! array_key_exists((string) $activeSizeCustomizationGroup, $customizationMenuGroups)) {
                             $activeSizeCustomizationGroup = 'jersey';
@@ -108,7 +126,7 @@
                     <x-admin.sidebar-group
                         label="Master Data"
                         icon="◈"
-                        :active="$isCustomizationActive || $isSizeOptionActive || request()->routeIs('admin.shipping-methods.*')"
+                        :active="$isCustomizationActive || $isSizeOptionActive || $isTrainingVestCustomizationActive || request()->routeIs('admin.shipping-methods.*')"
                     >
                         @if($canAdmin('customization.view'))
                         @foreach($customizationMenuGroups as $groupKey => $customizationGroup)
@@ -159,13 +177,46 @@
                                 </div>
                             </details>
                         @endforeach
+
+                        @foreach($trainingVestMenuGroups as $groupKey => $trainingVestGroup)
+                            <details class="space-y-1" data-sidebar-disclosure data-sidebar-nested-disclosure @if($isTrainingVestCustomizationActive) open @endif>
+                                <summary
+                                    class="flex min-h-10 w-full min-w-0 cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-black text-slate-400 transition hover:bg-white/10 hover:text-white"
+                                    data-sidebar-disclosure-toggle
+                                >
+                                    <span class="text-[10px] text-slate-500">{{ $trainingVestGroup['number'] }}</span>
+                                    <span class="min-w-0 flex-1 truncate">{{ $trainingVestGroup['label'] }}</span>
+                                    <span class="text-[10px] transition-transform" data-sidebar-arrow>⌄</span>
+                                </summary>
+
+                                <div
+                                    class="space-y-1 pl-4"
+                                    data-sidebar-disclosure-panel
+                                >
+                                    @foreach($trainingVestGroup['types'] as $trainingVestType)
+                                        <a
+                                            href="{{ route('admin.training-vest-customization-options.type', $trainingVestType->value) }}"
+                                            @if($isTrainingVestCustomizationActive && $activeTrainingVestCustomizationType === $trainingVestType->value) data-sidebar-active="true" @endif
+                                            @class([
+                                                'flex min-h-9 min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold transition',
+                                                'bg-brand-red text-white' => $isTrainingVestCustomizationActive && $activeTrainingVestCustomizationType === $trainingVestType->value,
+                                                'text-slate-400 hover:bg-white/10 hover:text-white' => ! ($isTrainingVestCustomizationActive && $activeTrainingVestCustomizationType === $trainingVestType->value),
+                                            ])
+                                        >
+                                            <span class="shrink-0 text-[10px] opacity-80">{{ $trainingVestType->menuNumber() }}</span>
+                                            <span class="min-w-0 truncate">{{ $trainingVestType->label() }}</span>
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </details>
+                        @endforeach
                         @endif
 
                         @if($canAdmin('shipping.view'))
                             <x-admin.sidebar-sub-link
                                 :href="route('admin.shipping-methods.index')"
                                 :active="request()->routeIs('admin.shipping-methods.*')"
-                            >1.13 Shipping Methods</x-admin.sidebar-sub-link>
+                            >1.15 Shipping Methods</x-admin.sidebar-sub-link>
                         @endif
                     </x-admin.sidebar-group>
                 @endif

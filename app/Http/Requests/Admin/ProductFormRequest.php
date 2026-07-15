@@ -86,6 +86,8 @@ class ProductFormRequest extends FormRequest
             'artwork_upload_accepted_types' => ['nullable', 'string', 'max:500', 'regex:/^[a-z0-9,\s]+$/i'],
             'tax_class' => ['nullable', 'string', 'max:100'],
             'tags_text' => ['nullable', 'string', 'max:5000'],
+            'tags' => ['nullable'],
+            'tags.*' => ['nullable', 'string', 'max:250'],
             'published_at' => ['nullable', 'date'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:1000000'],
 

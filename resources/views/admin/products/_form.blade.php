@@ -365,6 +365,7 @@
                 'types' => collect($group['types'])->map(fn ($type) => [
                     'value' => $type->value,
                     'label' => $type->label(),
+                    'group' => $type->group(),
                 ])->values()->all(),
             ])
             ->values()
@@ -1176,7 +1177,13 @@ Lead Time:"></div>
                     <button type="button" class="grid h-10 w-10 place-items-center rounded-full border border-slate-200 text-xl text-slate-500" @click="closeSizeGroupPicker()" aria-label="Close">×</button>
                 </div>
 
-                <div class="border-b border-slate-200 p-4 sm:px-7">
+                <div class="grid gap-3 border-b border-slate-200 p-4 sm:grid-cols-[220px_minmax(0,1fr)] sm:px-7">
+                    <select class="admin-input mt-0" x-model="sizeGroupPickerContext">
+                        <option value="">All clothing sections</option>
+                        <template x-for="group in customizationTypeGroups" :key="group.label">
+                            <option :value="(group.types[0] && group.types[0].group) || ''" x-text="group.label"></option>
+                        </template>
+                    </select>
                     <input class="admin-input mt-0" x-model="sizeGroupPickerSearch" placeholder="Search by group, type, or size">
                 </div>
 

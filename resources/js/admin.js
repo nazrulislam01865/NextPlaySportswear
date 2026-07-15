@@ -87,6 +87,7 @@ window.adminProductForm = (initial = {}) => ({
     sizeGroups: initial.sizeGroups?.length ? initial.sizeGroups : [],
     sizeGroupPickerOpen: false,
     sizeGroupPickerSearch: '',
+    sizeGroupPickerContext: '',
     artworkUploadEnabled: Boolean(initial.artworkUploadEnabled),
     artworkUploadRequired: Boolean(initial.artworkUploadRequired),
     artworkUploadTitle: initial.artworkUploadTitle || 'Upload Custom Artwork',
@@ -1229,6 +1230,10 @@ window.adminProductForm = (initial = {}) => ({
     },
     openSizeGroupPicker() {
         this.sizeGroupPickerSearch = '';
+        const selectedGroups = [...new Set((this.optionGroups || [])
+            .map(group => this.customizationGroupForType(group.jersey_customization_type))
+            .filter(Boolean))];
+        this.sizeGroupPickerContext = selectedGroups.length === 1 ? selectedGroups[0] : '';
         this.sizeGroupPickerOpen = true;
         document.documentElement.classList.add('overflow-hidden');
     },
@@ -1236,13 +1241,24 @@ window.adminProductForm = (initial = {}) => ({
         this.sizeGroupPickerOpen = false;
         document.documentElement.classList.remove('overflow-hidden');
     },
+    customizationGroupForType(type) {
+        for (const group of this.customizationTypeGroups || []) {
+            const match = (group.types || []).find(item => item.value === type);
+            if (match) return match.group || '';
+        }
+        return '';
+    },
     filteredSizeOptionGroups() {
         const query = String(this.sizeGroupPickerSearch || '').trim().toLowerCase();
-        return (this.sizeOptionGroups || []).filter(group => !query
-            || String(group.name || '').toLowerCase().includes(query)
-            || String(group.audience_label || '').toLowerCase().includes(query)
-            || String(group.customization_group_label || '').toLowerCase().includes(query)
-            || (group.sizes || []).some(size => String(size).toLowerCase().includes(query)));
+        const context = String(this.sizeGroupPickerContext || '');
+        return (this.sizeOptionGroups || []).filter(group => {
+            if (context && String(group.customization_group || '') !== context) return false;
+            return !query
+                || String(group.name || '').toLowerCase().includes(query)
+                || String(group.audience_label || '').toLowerCase().includes(query)
+                || String(group.customization_group_label || '').toLowerCase().includes(query)
+                || (group.sizes || []).some(size => String(size).toLowerCase().includes(query));
+        });
     },
     isSizeGroupSelected(id) {
         return this.sizeGroups.some(group => Number(group.size_option_group_id || 0) === Number(id));
