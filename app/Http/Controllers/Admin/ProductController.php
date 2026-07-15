@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\ProductFormRequest;
 use App\Models\CatalogAttribute;
 use App\Models\Category;
 use App\Models\JerseyCustomizationOption;
+use App\Models\MediaLibraryImage;
 use App\Models\Product;
 use App\Models\SizeOptionGroup;
 use App\Models\ShippingMethod;
@@ -1349,19 +1350,26 @@ class ProductController extends Controller
                 // A saved upload is preserved when the URL field stays blank.
                 // Entering a URL intentionally replaces the saved upload.
                 if ($url !== '') {
-                    $this->deletePublicImage($image->path);
+                    if (! $image->media_library_image_id) {
+                        $this->deletePublicImage($image->path);
+                    }
+                    $image->media_library_image_id = null;
                     $image->path = null;
                     $image->url = $url;
                 } elseif (! filled($image->path)) {
-                    $legacyStoredPath = PublicMedia::storedPathFromUrl($image->url);
-                    if ($legacyStoredPath && Storage::disk('public')->exists($legacyStoredPath)) {
-                        // Earlier versions converted uploaded images into absolute
-                        // /storage URLs during an edit. Repair that record in place.
-                        $image->path = $legacyStoredPath;
-                        $image->url = null;
+                    if ($image->media_library_image_id && filled($image->url)) {
+                        // Media-library URL images keep their saved URL when the readonly URL field is blank.
                     } else {
-                        // A genuine remote image whose URL was cleared is removed.
-                        continue;
+                        $legacyStoredPath = PublicMedia::storedPathFromUrl($image->url);
+                        if ($legacyStoredPath && Storage::disk('public')->exists($legacyStoredPath)) {
+                            // Earlier versions converted uploaded images into absolute
+                            // /storage URLs during an edit. Repair that record in place.
+                            $image->path = $legacyStoredPath;
+                            $image->url = null;
+                        } else {
+                            // A genuine remote image whose URL was cleared is removed.
+                            continue;
+                        }
                     }
                 }
 
@@ -1370,16 +1378,37 @@ class ProductController extends Controller
                 $image->sort_order = count($orderedImageIds);
                 $image->save();
             } else {
-                if ($url === '') {
-                    continue;
-                }
+                $mediaLibraryImageId = (int) ($item['media_library_image_id'] ?? 0);
 
-                $image = $product->images()->create([
-                    'url' => $url,
-                    'alt_text' => $name,
-                    'is_primary' => false,
-                    'sort_order' => count($orderedImageIds),
-                ]);
+                if ($mediaLibraryImageId > 0) {
+                    $mediaImage = MediaLibraryImage::query()->find($mediaLibraryImageId);
+
+                    if (! $mediaImage) {
+                        throw ValidationException::withMessages([
+                            "image_urls.{$index}.media_library_image_id" => 'The selected gallery image could not be found.',
+                        ]);
+                    }
+
+                    $image = $product->images()->create([
+                        'media_library_image_id' => $mediaImage->id,
+                        'path' => $mediaImage->path,
+                        'url' => $mediaImage->url,
+                        'alt_text' => $name ?: ($mediaImage->alt_text ?: $mediaImage->name),
+                        'is_primary' => false,
+                        'sort_order' => count($orderedImageIds),
+                    ]);
+                } else {
+                    if ($url === '') {
+                        continue;
+                    }
+
+                    $image = $product->images()->create([
+                        'url' => $url,
+                        'alt_text' => $name,
+                        'is_primary' => false,
+                        'sort_order' => count($orderedImageIds),
+                    ]);
+                }
             }
 
             $keptIds[] = $image->id;
@@ -1391,11 +1420,26 @@ class ProductController extends Controller
         }
 
         foreach ($uploadedImages as $index => $uploadedImage) {
-            $path = $uploadedImage->store("products/{$product->id}", 'public');
+            $path = $uploadedImage->store('media-library/'.now()->format('Y/m'), 'public');
+            $originalName = pathinfo($uploadedImage->getClientOriginalName(), PATHINFO_FILENAME) ?: $product->name;
+            $dimensions = @getimagesize($uploadedImage->getRealPath()) ?: [];
+            $mediaImage = MediaLibraryImage::query()->create([
+                'path' => $path,
+                'name' => Str::limit($originalName, 250, ''),
+                'alt_text' => $originalName,
+                'mime_type' => $uploadedImage->getMimeType(),
+                'size_bytes' => $uploadedImage->getSize(),
+                'width' => $dimensions[0] ?? null,
+                'height' => $dimensions[1] ?? null,
+                'source' => 'product',
+                'created_by' => auth('admin')->id(),
+            ]);
+
             $image = $product->images()->create([
+                'media_library_image_id' => $mediaImage->id,
                 'path' => $path,
                 'url' => null,
-                'alt_text' => pathinfo($uploadedImage->getClientOriginalName(), PATHINFO_FILENAME) ?: $product->name,
+                'alt_text' => $originalName,
                 'is_primary' => false,
                 'sort_order' => count($orderedImageIds),
             ]);
@@ -1411,7 +1455,9 @@ class ProductController extends Controller
         $existingImages
             ->reject(fn ($image) => in_array($image->id, $keptIds, true))
             ->each(function ($image): void {
-                $this->deletePublicImage($image->path);
+                if (! $image->media_library_image_id) {
+                    $this->deletePublicImage($image->path);
+                }
                 $image->delete();
             });
 

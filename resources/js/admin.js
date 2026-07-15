@@ -52,6 +52,20 @@ window.adminProductForm = (initial = {}) => ({
     features: initial.features?.length ? initial.features : [''],
     imageUrls: initial.imageUrls?.length ? initial.imageUrls : [],
     newImagePreviews: [],
+    productImageDragging: false,
+    mediaLibraryOpen: false,
+    mediaLibraryLoading: false,
+    mediaLibraryUploadBusy: false,
+    mediaLibraryDragging: false,
+    mediaLibraryItems: [],
+    mediaLibrarySelectedIds: [],
+    mediaLibrarySearch: '',
+    mediaLibraryPage: 1,
+    mediaLibraryHasMore: false,
+    mediaLibraryError: '',
+    mediaLibraryUploadError: '',
+    mediaLibraryIndexUrl: initial.mediaLibraryIndexUrl || '/admin/media-library',
+    mediaLibraryStoreUrl: initial.mediaLibraryStoreUrl || '/admin/media-library',
     primaryImageSource: '',
     priceHeaders: initial.priceHeaders?.length ? initial.priceHeaders : ['Unit Price ($)', 'Setup Fee ($)'],
     priceHighlightColumn: Number(initial.priceHighlightColumn || 1),
@@ -206,6 +220,7 @@ window.adminProductForm = (initial = {}) => ({
         this.imageUrls = (this.imageUrls || []).map(image => ({
             client_key: image.client_key || this.clientKey(),
             existing_id: image.existing_id || '',
+            media_library_image_id: image.media_library_image_id || '',
             url: String(image.url || ''),
             preview: String(image.preview || ''),
             name: String(image.name || image.alt || ''),
@@ -450,7 +465,7 @@ window.adminProductForm = (initial = {}) => ({
     visibleSubcategories() { return this.subcategories.filter(item => String(item.parent_id) === String(this.categoryId)); },
     addFeature() { this.features.push(''); },
     addImageUrl() {
-        this.imageUrls.push({ client_key: this.clientKey(), existing_id: '', url: '', preview: '', name: '', is_primary: false });
+        this.imageUrls.push({ client_key: this.clientKey(), existing_id: '', media_library_image_id: '', url: '', preview: '', name: '', is_primary: false });
     },
     setPrimaryImage(index) {
         this.primaryImageSource = `url:${index}`;
@@ -489,24 +504,214 @@ window.adminProductForm = (initial = {}) => ({
         }
         this.syncImagePrimaryFlags();
     },
-    previewProductImages(event) {
-        this.newImagePreviews.forEach(image => URL.revokeObjectURL(image.url));
-        const files = Array.from(event.target.files || []);
+    csrfToken() {
+        return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    },
+    mediaLibraryUrl(page = 1) {
+        const url = new URL(this.mediaLibraryIndexUrl, window.location.origin);
+        url.searchParams.set('page', page);
+        if (String(this.mediaLibrarySearch || '').trim()) {
+            url.searchParams.set('q', String(this.mediaLibrarySearch || '').trim());
+        }
+        return url.toString();
+    },
+    openMediaLibrary() {
+        this.mediaLibraryOpen = true;
+        this.mediaLibrarySelectedIds = [];
+
+        if (!this.mediaLibraryItems.length && !this.mediaLibraryLoading) {
+            this.loadMediaLibrary(false);
+        }
+    },
+    closeMediaLibrary() {
+        this.mediaLibraryOpen = false;
+        this.mediaLibrarySelectedIds = [];
+        this.mediaLibraryError = '';
+        this.mediaLibraryUploadError = '';
+    },
+    async loadMediaLibrary(append = false) {
+        if (this.mediaLibraryLoading) return;
+        if (append && !this.mediaLibraryHasMore) return;
+
+        const page = append ? this.mediaLibraryPage + 1 : 1;
+        const requestSearch = String(this.mediaLibrarySearch || '').trim();
+
+        this.mediaLibraryLoading = true;
+        this.mediaLibraryError = '';
+
+        if (!append) {
+            this.mediaLibraryPage = 1;
+            this.mediaLibraryHasMore = false;
+        }
+
+        try {
+            const response = await fetch(this.mediaLibraryUrl(page), {
+                headers: { 'Accept': 'application/json' },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) throw new Error('Image gallery could not be loaded.');
+
+            const payload = await response.json();
+            const items = Array.isArray(payload.data) ? payload.data : [];
+
+            // Ignore stale search responses when the user typed a newer search term.
+            if (requestSearch !== String(this.mediaLibrarySearch || '').trim()) {
+                return;
+            }
+
+            if (append) {
+                const knownIds = new Set(this.mediaLibraryItems.map(item => Number(item.id)));
+                const freshItems = items.filter(item => !knownIds.has(Number(item.id)));
+                this.mediaLibraryItems = [...this.mediaLibraryItems, ...freshItems];
+            } else {
+                this.mediaLibraryItems = items;
+            }
+
+            this.mediaLibraryPage = Number(payload.meta?.current_page || page);
+            this.mediaLibraryHasMore = Boolean(payload.meta?.has_more);
+        } catch (error) {
+            this.mediaLibraryError = error instanceof Error ? error.message : 'Image gallery could not be loaded.';
+        } finally {
+            this.mediaLibraryLoading = false;
+        }
+    },
+    handleMediaLibraryScroll(event) {
+        const scroller = event?.target;
+        if (!scroller || this.mediaLibraryLoading || !this.mediaLibraryHasMore || !this.mediaLibraryItems.length) return;
+
+        const nearBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 220;
+        if (nearBottom) this.loadMediaLibrary(true);
+    },
+    async uploadMediaLibraryFiles(fileList) {
+        const files = Array.from(fileList || []);
+        if (!files.length) return;
+
         const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
         const invalid = files.find(file => !allowed.includes(file.type) || file.size > 5 * 1024 * 1024);
-
         if (invalid || files.length > 20) {
-            event.target.value = '';
-            this.newImagePreviews = [];
-            if (this.primaryImageSource.startsWith('upload:')) this.primaryImageSource = this.firstAvailableImageSource();
-            this.syncImagePrimaryFlags();
+            this.mediaLibraryUploadError = 'Choose up to 20 JPG, PNG, WebP, or AVIF images, each no larger than 5 MB.';
+            return;
+        }
+
+        const formData = new FormData();
+        files.forEach(file => formData.append('images[]', file));
+        this.mediaLibraryUploadBusy = true;
+        this.mediaLibraryUploadError = '';
+
+        try {
+            const response = await fetch(this.mediaLibraryStoreUrl, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': this.csrfToken(),
+                },
+                credentials: 'same-origin',
+                body: formData,
+            });
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                const message = payload.message || Object.values(payload.errors || {})?.flat?.()?.[0] || 'Images could not be uploaded to the gallery.';
+                throw new Error(message);
+            }
+
+            const items = Array.isArray(payload.data) ? payload.data : [];
+            this.mediaLibraryItems = [...items, ...this.mediaLibraryItems];
+            items.forEach(item => {
+                if (!this.mediaLibrarySelectedIds.includes(item.id)) this.mediaLibrarySelectedIds.push(item.id);
+            });
+        } catch (error) {
+            this.mediaLibraryUploadError = error instanceof Error ? error.message : 'Images could not be uploaded to the gallery.';
+        } finally {
+            this.mediaLibraryUploadBusy = false;
+            if (this.$refs.mediaLibraryUploadInput) this.$refs.mediaLibraryUploadInput.value = '';
+        }
+    },
+    dropMediaLibraryImages(event) {
+        this.mediaLibraryDragging = false;
+        this.uploadMediaLibraryFiles(event.dataTransfer?.files || []);
+    },
+    isMediaLibrarySelected(id) {
+        return this.mediaLibrarySelectedIds.includes(Number(id));
+    },
+    toggleMediaLibrarySelection(id) {
+        const imageId = Number(id);
+        if (!imageId) return;
+
+        if (this.mediaLibrarySelectedIds.includes(imageId)) {
+            this.mediaLibrarySelectedIds = this.mediaLibrarySelectedIds.filter(item => item !== imageId);
+        } else {
+            this.mediaLibrarySelectedIds.push(imageId);
+        }
+    },
+    addSelectedMediaLibraryImages() {
+        const existingMediaIds = new Set(this.imageUrls.map(image => Number(image.media_library_image_id || 0)).filter(Boolean));
+        const selectedImages = this.mediaLibraryItems.filter(image => this.mediaLibrarySelectedIds.includes(Number(image.id)));
+        let added = 0;
+
+        selectedImages.forEach(image => {
+            const imageId = Number(image.id);
+            if (!imageId || existingMediaIds.has(imageId)) return;
+
+            this.imageUrls.push({
+                client_key: this.clientKey(),
+                existing_id: '',
+                media_library_image_id: imageId,
+                url: '',
+                preview: String(image.url || ''),
+                name: String(image.alt_text || image.name || 'Gallery image'),
+                is_primary: false,
+            });
+            existingMediaIds.add(imageId);
+            added += 1;
+        });
+
+        if (!this.primaryImageSource && added > 0) {
+            this.primaryImageSource = `url:${this.imageUrls.length - added}`;
+        }
+
+        this.syncImagePrimaryFlags();
+        this.handleProgressChange();
+        this.closeMediaLibrary();
+    },
+    previewProductImages(event) {
+        this.appendProductImages(event.target.files, event.target);
+    },
+    dropProductImages(event) {
+        this.productImageDragging = false;
+        this.appendProductImages(event.dataTransfer?.files || [], this.$refs.productImageInput);
+    },
+    productImageSignature(file) {
+        return [file?.name || '', file?.size || 0, file?.lastModified || 0].join(':');
+    },
+    appendProductImages(fileList, input = null) {
+        const files = Array.from(fileList || []);
+        if (!files.length) {
+            this.syncProductImageInput();
+            return;
+        }
+
+        const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
+        const invalid = files.find(file => !allowed.includes(file.type) || file.size > 5 * 1024 * 1024);
+        const signatures = new Set(this.newImagePreviews.map(image => image.signature || this.productImageSignature(image.file)));
+        const uniqueFiles = files.filter(file => {
+            const signature = this.productImageSignature(file);
+            if (signatures.has(signature)) return false;
+            signatures.add(signature);
+            return true;
+        });
+
+        if (invalid || this.newImagePreviews.length + uniqueFiles.length > 20) {
+            this.syncProductImageInput();
             window.alert('Choose up to 20 JPG, PNG, WebP, or AVIF images, each no larger than 5 MB.');
             return;
         }
 
-        this.newImagePreviews = files.map(file => ({
+        const addedImages = uniqueFiles.map(file => ({
             client_key: this.clientKey(),
             file,
+            signature: this.productImageSignature(file),
             name: String(file.name || 'Product image').slice(0, 255),
             url: URL.createObjectURL(file),
             sizeLabel: file.size >= 1024 * 1024
@@ -514,11 +719,25 @@ window.adminProductForm = (initial = {}) => ({
                 : `${Math.max(1, Math.round(file.size / 1024))} KB`,
         }));
 
-        if (this.primaryImageSource.startsWith('upload:') || !this.primaryImageSource) {
-            this.primaryImageSource = this.newImagePreviews.length ? 'upload:0' : this.firstAvailableImageSource();
+        this.newImagePreviews.push(...addedImages);
+
+        if (!this.primaryImageSource && this.newImagePreviews.length) {
+            this.primaryImageSource = 'upload:0';
         }
+
+        this.syncProductImageInput(input);
         this.syncImagePrimaryFlags();
         this.handleProgressChange();
+    },
+    syncProductImageInput(input = null) {
+        const target = input || this.$refs.productImageInput;
+        if (!target || typeof DataTransfer === 'undefined') return;
+
+        const transfer = new DataTransfer();
+        this.newImagePreviews.forEach(image => {
+            if (image.file) transfer.items.add(image.file);
+        });
+        target.files = transfer.files;
     },
     removeProductImage(index) {
         const removed = this.newImagePreviews.splice(index, 1)[0];
@@ -530,9 +749,7 @@ window.adminProductForm = (initial = {}) => ({
             else if (selectedIndex > index) this.primaryImageSource = `upload:${selectedIndex - 1}`;
         }
 
-        const transfer = new DataTransfer();
-        this.newImagePreviews.forEach(image => transfer.items.add(image.file));
-        if (this.$refs.productImageInput) this.$refs.productImageInput.files = transfer.files;
+        this.syncProductImageInput();
         this.syncImagePrimaryFlags();
         this.handleProgressChange(false);
     },

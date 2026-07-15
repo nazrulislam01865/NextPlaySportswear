@@ -99,6 +99,7 @@ class ProductFormRequest extends FormRequest
 
             'image_urls' => ['nullable', 'array', 'max:30'],
             'image_urls.*.existing_id' => ['nullable', 'integer', 'min:1'],
+            'image_urls.*.media_library_image_id' => ['nullable', 'integer', 'exists:media_library_images,id'],
             'image_urls.*.url' => ['nullable', 'url', 'max:2048'],
             'image_urls.*.name' => ['nullable', 'string', 'max:255'],
             'image_urls.*.alt' => ['nullable', 'string', 'max:255'],

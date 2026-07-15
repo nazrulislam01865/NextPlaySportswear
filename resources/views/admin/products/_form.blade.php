@@ -100,6 +100,7 @@
             return [
                 'client_key' => filled($image['existing_id'] ?? null) ? 'existing-'.$image['existing_id'] : 'old-'.$index,
                 'existing_id' => $image['existing_id'] ?? '',
+                'media_library_image_id' => $image['media_library_image_id'] ?? ($existing?->media_library_image_id ?? ''),
                 'url' => $image['url'] ?? '',
                 'preview' => $existing?->publicUrl() ?: ($image['url'] ?? ''),
                 'name' => $image['name'] ?? ($image['alt'] ?? ''),
@@ -109,7 +110,8 @@
         : $existingProductImages->values()->map(fn ($image) => [
             'client_key' => 'existing-'.$image->id,
             'existing_id' => $image->id,
-            'url' => \App\Support\PublicMedia::storedPathFromUrl($image->url) ? '' : ($image->url ?: ''),
+            'media_library_image_id' => $image->media_library_image_id ?: '',
+            'url' => $image->media_library_image_id ? '' : (\App\Support\PublicMedia::storedPathFromUrl($image->url) ? '' : ($image->url ?: '')),
             'preview' => $image->publicUrl(),
             'name' => $image->alt_text,
             'is_primary' => $image->is_primary,
@@ -353,6 +355,8 @@
         'showInCategoryPage' => $showInCategoryPage,
         'categoryOptions' => $categorySearchOptions,
         'imageUrls' => $imageValues,
+        'mediaLibraryIndexUrl' => \Illuminate\Support\Facades\Route::has('admin.media-library.index') ? route('admin.media-library.index') : url('/admin/media-library'),
+        'mediaLibraryStoreUrl' => \Illuminate\Support\Facades\Route::has('admin.media-library.store') ? route('admin.media-library.store') : url('/admin/media-library'),
         'priceHeaders' => $priceHeaderValues,
         'pricingMode' => old('pricing_mode', 'standard'),
         'priceRows' => $priceRowValues,
@@ -562,16 +566,20 @@ Lead Time:"></div>
 
                     <input type="hidden" name="new_image_primary_index" :value="newImagePrimaryIndex()">
                     <div>
-                        <div class="mb-3 flex items-center justify-between gap-3">
+                        <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
                             <label class="admin-label mb-0">Gallery images <span class="text-brand-red">*</span></label>
-                            <button type="button" class="np-link-button" @click="addImageUrl()">↗ Add image URL</button>
+                            <div class="np-gallery-source-actions">
+                                <button type="button" class="np-secondary-button" @click="$refs.productImageInput?.click()">Upload from device</button>
+                                <button type="button" class="np-secondary-button" @click="openMediaLibrary()">Choose from image gallery</button>
+                                <button type="button" class="np-link-button" @click="addImageUrl()">↗ Add image URL</button>
+                            </div>
                         </div>
 
-                        <label class="np-upload-zone">
+                        <label class="np-upload-zone" :class="productImageDragging ? 'is-dragging' : ''" @dragenter.prevent="productImageDragging = true" @dragover.prevent="productImageDragging = true" @dragleave.prevent="productImageDragging = false" @drop.prevent="dropProductImages($event)">
                             <input x-ref="productImageInput" type="file" name="images[]" multiple accept="image/jpeg,image/png,image/webp,image/avif" @change="previewProductImages($event)">
                             <span class="np-upload-zone__icon">⇧</span>
-                            <strong>Drag and drop images here</strong>
-                            <small>PNG, JPG, WEBP up to 5MB each</small>
+                            <strong>Drag and drop device images here</strong>
+                            <small>Or click “Choose from image gallery” to reuse global gallery images. New device uploads are also saved to the gallery.</small>
                         </label>
                     </div>
 
@@ -589,6 +597,7 @@ Lead Time:"></div>
                         <template x-for="(image, index) in imageUrls" :key="image.client_key || index">
                             <article class="np-linked-image">
                                 <input type="hidden" :name="`image_urls[${index}][existing_id]`" x-model="image.existing_id">
+                                <input type="hidden" :name="`image_urls[${index}][media_library_image_id]`" x-model="image.media_library_image_id">
                                 <input type="hidden" :name="`image_urls[${index}][is_primary]`" :value="image.is_primary ? 1 : 0">
                                 <div class="np-linked-image__preview">
                                     <img x-show="image.url || image.preview" :src="image.url || image.preview" :alt="image.name || productName" x-on:error="$el.classList.add('hidden')" x-on:load="$el.classList.remove('hidden')">
@@ -596,7 +605,7 @@ Lead Time:"></div>
                                 </div>
                                 <div class="np-linked-image__fields">
                                     <input class="admin-input !mt-0" :name="`image_urls[${index}][name]`" x-model="image.name" placeholder="Image name">
-                                    <input class="admin-input !mt-2" type="url" :name="`image_urls[${index}][url]`" x-model="image.url" placeholder="https://example.com/product-image.jpg">
+                                    <input class="admin-input !mt-2" type="url" :name="`image_urls[${index}][url]`" x-model="image.url" :readonly="Boolean(image.media_library_image_id)" :placeholder="image.media_library_image_id ? 'Selected from global image gallery' : 'https://example.com/product-image.jpg'">
                                     <div class="np-linked-image__actions">
                                         <button type="button" class="np-linked-image__primary" @click="setPrimaryImage(index)" x-text="image.is_primary ? 'Primary image' : 'Make primary'"></button>
                                         <button type="button" class="np-linked-image__remove" @click="removeImageUrl(index)">Remove</button>
@@ -604,6 +613,57 @@ Lead Time:"></div>
                                 </div>
                             </article>
                         </template>
+                    </div>
+
+                    <div class="np-media-modal" x-show="mediaLibraryOpen" x-cloak @keydown.escape.window="closeMediaLibrary()">
+                        <div class="np-media-modal__backdrop" @click="closeMediaLibrary()"></div>
+                        <section class="np-media-modal__panel" role="dialog" aria-modal="true" aria-label="Global image gallery">
+                            <header class="np-media-modal__header">
+                                <div>
+                                    <h3>Global Image Gallery</h3>
+                                    <p>Select existing images or upload new reusable gallery images.</p>
+                                </div>
+                                <button type="button" class="np-media-modal__close" @click="closeMediaLibrary()" aria-label="Close image gallery">×</button>
+                            </header>
+
+                            <div class="np-media-modal__tools">
+                                <label class="np-media-search">
+                                    <span>⌕</span>
+                                    <input type="search" x-model="mediaLibrarySearch" @input.debounce.450ms="loadMediaLibrary(false)" placeholder="Search images...">
+                                </label>
+                                <label class="np-media-upload" :class="mediaLibraryDragging ? 'is-dragging' : ''" @dragenter.prevent="mediaLibraryDragging = true" @dragover.prevent="mediaLibraryDragging = true" @dragleave.prevent="mediaLibraryDragging = false" @drop.prevent="dropMediaLibraryImages($event)">
+                                    <input x-ref="mediaLibraryUploadInput" type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" @change="uploadMediaLibraryFiles($event.target.files)">
+                                    <strong x-text="mediaLibraryUploadBusy ? 'Uploading…' : 'Upload to gallery'"></strong>
+                                    <small>Drag or select reusable images</small>
+                                </label>
+                            </div>
+
+                            <p class="np-media-alert np-media-alert--error" x-show="mediaLibraryError" x-text="mediaLibraryError"></p>
+                            <p class="np-media-alert np-media-alert--error" x-show="mediaLibraryUploadError" x-text="mediaLibraryUploadError"></p>
+
+                            <div class="np-media-grid" x-ref="mediaLibraryScroller" x-show="mediaLibraryItems.length" @wheel.stop @touchmove.stop @scroll.passive="handleMediaLibraryScroll($event)">
+                                <template x-for="image in mediaLibraryItems" :key="image.id">
+                                    <button type="button" class="np-media-card" :class="isMediaLibrarySelected(image.id) ? 'is-selected' : ''" @click="toggleMediaLibrarySelection(image.id)">
+                                        <img :src="image.url" :alt="image.alt_text || image.name">
+                                        <span class="np-media-card__check">✓</span>
+                                        <strong x-text="image.name"></strong>
+                                        <small x-text="image.size_label || image.created_at || 'Gallery image'"></small>
+                                    </button>
+                                </template>
+                            </div>
+
+                            <div class="np-media-empty" x-show="!mediaLibraryLoading && !mediaLibraryItems.length">
+                                No gallery images found. Upload images above to start the global gallery.
+                            </div>
+
+                            <div class="np-media-loading" x-show="mediaLibraryLoading">Loading images…</div>
+
+                            <footer class="np-media-modal__footer">
+                                <span class="np-media-scroll-hint" x-show="mediaLibraryHasMore && !mediaLibraryLoading">Scroll down to load more images</span>
+                                <span x-text="`${mediaLibrarySelectedIds.length} selected`"></span>
+                                <button type="button" class="np-primary-button" @click="addSelectedMediaLibraryImages()" :disabled="mediaLibrarySelectedIds.length === 0">Add selected images</button>
+                            </footer>
+                        </section>
                     </div>
                 </div>
             </section>

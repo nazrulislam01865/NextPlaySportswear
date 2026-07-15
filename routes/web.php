@@ -72,6 +72,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/notifications/{notification}/read', [\App\Http\Controllers\Admin\NotificationController::class, 'markRead'])->name('notifications.read');
         Route::post('/notifications/pusher/auth', [\App\Http\Controllers\Admin\NotificationController::class, 'pusherAuth'])->name('notifications.pusher-auth');
 
+        Route::get('/media-library', [\App\Http\Controllers\Admin\MediaLibraryController::class, 'index'])->name('media-library.index');
+        Route::post('/media-library', [\App\Http\Controllers\Admin\MediaLibraryController::class, 'store'])
+            ->middleware('throttle:30,1')
+            ->name('media-library.store');
+
         Route::get('/homepage', [\App\Http\Controllers\Admin\HomepageSectionController::class, 'index'])->name('homepage.sections.index');
         Route::get('/homepage/sections/{key}', [\App\Http\Controllers\Admin\HomepageSectionController::class, 'edit'])->name('homepage.sections.edit');
         Route::patch('/homepage/sections/{key}', [\App\Http\Controllers\Admin\HomepageSectionController::class, 'update'])->name('homepage.sections.update');

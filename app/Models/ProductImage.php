@@ -8,7 +8,7 @@ use App\Support\PublicMedia;
 
 class ProductImage extends Model
 {
-    protected $fillable = ['product_id', 'path', 'url', 'alt_text', 'is_primary', 'sort_order'];
+    protected $fillable = ['product_id', 'media_library_image_id', 'path', 'url', 'alt_text', 'is_primary', 'sort_order'];
 
     protected function casts(): array
     {
@@ -18,6 +18,11 @@ class ProductImage extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function mediaLibraryImage(): BelongsTo
+    {
+        return $this->belongsTo(MediaLibraryImage::class);
     }
 
     public function publicUrl(): string
