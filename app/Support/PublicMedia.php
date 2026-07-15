@@ -20,7 +20,15 @@ final class PublicMedia
     public static function storedPathUrl(string $path): string
     {
         $normalized = self::normalizePath($path);
-        $baseUrl = rtrim((string) config('filesystems.disks.public.url', '/storage'), '/');
+        $baseUrl = rtrim((string) config('filesystems.disks.public.url', '/media'), '/');
+
+        // Cloud deployments sometimes have public/storage as a copied directory
+        // instead of a real symlink. Use the application-owned /media route for
+        // stored uploads so newly uploaded WebP/JPG/PNG images always resolve.
+        if ($baseUrl === '' || $baseUrl === '/storage') {
+            $baseUrl = '/media';
+        }
+
         $encodedPath = collect(explode('/', $normalized))
             ->map(static fn (string $segment): string => rawurlencode($segment))
             ->implode('/');

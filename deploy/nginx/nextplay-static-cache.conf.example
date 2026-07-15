@@ -13,14 +13,23 @@ location ^~ /build/ {
     log_not_found off;
 }
 
-# Keep old application-generated media URLs working without booting Laravel.
-location ~ ^/media/(.*)$ {
-    return 301 /storage/$1;
+# Uploaded/public images are served by Nginx directly when this snippet is installed.
+# The app also has a Laravel /media fallback route, so uploads still work when this
+# snippet is not installed or public/storage is not a real symlink.
+location ~* ^/media/(.+\.(?:avif|webp|png|jpe?g|gif))$ {
+    alias /var/www/nextplay/storage/app/public/$1;
+    autoindex off;
+
+    add_header Cache-Control "public, max-age=2592000" always;
+    add_header X-Content-Type-Options "nosniff" always;
+
+    access_log off;
+    log_not_found off;
 }
 
-# Uploaded/public images are served by Nginx directly, not Laravel/PHP.
-# The extension allow-list preserves the old image-only exposure policy.
-location ~* ^/storage/(.+\.(?:avif|webp|png|jpe?g|gif|svg))$ {
+# Keep older /storage URLs working for existing cached pages and manually pasted URLs.
+# The extension allow-list preserves the image-only exposure policy.
+location ~* ^/storage/(.+\.(?:avif|webp|png|jpe?g|gif))$ {
     alias /var/www/nextplay/storage/app/public/$1;
     autoindex off;
 
