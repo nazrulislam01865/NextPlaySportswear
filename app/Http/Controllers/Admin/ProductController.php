@@ -380,6 +380,12 @@ class ProductController extends Controller
                     $copy->{$relation}()->create(Arr::except($item->toArray(), ['id', 'product_id', 'created_at', 'updated_at']));
                 }
             }
+            foreach ($product->fabricPriceTables as $table) {
+                $newTable = $copy->fabricPriceTables()->create(Arr::except($table->toArray(), ['id', 'product_id', 'created_at', 'updated_at']));
+                foreach ($table->tiers as $tier) {
+                    $newTable->tiers()->create(Arr::except($tier->toArray(), ['id', 'product_fabric_price_table_id', 'created_at', 'updated_at']));
+                }
+            }
             $copy->categories()->sync($product->categories->mapWithKeys(fn ($category) => [$category->id => [
                 'is_primary' => (bool) $category->pivot->is_primary,
                 'is_featured' => (bool) $category->pivot->is_featured,
@@ -496,7 +502,7 @@ class ProductController extends Controller
     {
         return [
             'category', 'subcategory', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'sizeGroups.masterGroup',
-            'priceTiers', 'artworkMethods', 'productionSpeeds', 'shippingMethods', 'faqs',
+            'priceTiers', 'fabricPriceTables.tiers', 'artworkMethods', 'productionSpeeds', 'shippingMethods', 'faqs',
         ];
     }
 
@@ -1203,6 +1209,8 @@ class ProductController extends Controller
             }
         }
 
+        $this->syncFabricPriceTables($product, $data);
+
         $this->productOptionFilterSyncService->sync(
             $product,
             collect($data['attribute_value_ids'] ?? [])->map(fn ($id) => (int) $id)->all()
@@ -1322,6 +1330,181 @@ class ProductController extends Controller
             'starts_after_artwork_approval', 'is_quote_based', 'is_default', 'is_active',
         ]);
         $this->replaceSimpleRelation($product, 'faqs', $data['faqs'] ?? [], ['question', 'answer'], ['question', 'answer', 'is_active']);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function syncFabricPriceTables(Product $product, array $data): void
+    {
+        $product->fabricPriceTables()->delete();
+
+        $submittedTables = collect($data['fabric_price_tables'] ?? [])->filter(fn ($table) => is_array($table))->values();
+        if ($submittedTables->isEmpty()) {
+            return;
+        }
+
+        $submittedFabricKeys = collect($data['option_groups'] ?? [])
+            ->filter(fn ($group) => is_array($group) && in_array((string) ($group['jersey_customization_type'] ?? ''), JerseyCustomizationType::fabricTypeValues(), true))
+            ->flatMap(fn ($group) => collect($group['values'] ?? [])->filter(fn ($value) => is_array($value))->map(fn ($value) => $this->fabricPriceKeyFromInput($value)))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        foreach ($submittedTables as $sortOrder => $tableData) {
+            if (! filter_var($tableData['has_custom_pricing'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                continue;
+            }
+
+            $fabricKey = trim((string) ($tableData['fabric_key'] ?? '')) ?: $this->fabricPriceKeyFromInput($tableData);
+            if ($fabricKey === '') {
+                continue;
+            }
+
+            if ($submittedFabricKeys !== [] && ! in_array($fabricKey, $submittedFabricKeys, true)) {
+                continue;
+            }
+
+            $normalized = $this->normalizeFabricPriceTableInput($tableData);
+            if ($normalized['tiers'] === []) {
+                continue;
+            }
+
+            $table = $product->fabricPriceTables()->create([
+                'jersey_customization_option_id' => filled($tableData['jersey_customization_option_id'] ?? null) ? (int) $tableData['jersey_customization_option_id'] : null,
+                'fabric_key' => $fabricKey,
+                'fabric_code' => filled($tableData['fabric_code'] ?? null) ? trim((string) $tableData['fabric_code']) : null,
+                'fabric_label' => filled($tableData['fabric_label'] ?? null) ? trim((string) $tableData['fabric_label']) : Str::headline(str_replace(['master:', 'code:'], '', $fabricKey)),
+                'price_table_headers' => $normalized['headers'],
+                'price_table_rows' => $normalized['rows'],
+                'price_table_ranges' => $normalized['ranges'],
+                'price_table_highlight_column' => $normalized['highlight_column'],
+                'price_table_note' => filled($tableData['price_table_note'] ?? null) ? trim((string) $tableData['price_table_note']) : null,
+                'is_active' => true,
+                'sort_order' => $sortOrder,
+            ]);
+
+            foreach ($normalized['tiers'] as $tierSortOrder => $tierData) {
+                $table->tiers()->create(array_merge($tierData, ['sort_order' => $tierSortOrder]));
+            }
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $value
+     */
+    private function fabricPriceKeyFromInput(array $value): string
+    {
+        $masterId = (int) ($value['jersey_customization_option_id'] ?? 0);
+        if ($masterId > 0) {
+            return 'master:'.$masterId;
+        }
+
+        $code = trim((string) ($value['fabric_code'] ?? $value['code'] ?? $value['fabric_key'] ?? ''));
+        if ($code !== '') {
+            return 'code:'.Str::slug($code);
+        }
+
+        $label = trim((string) ($value['fabric_label'] ?? $value['label'] ?? ''));
+
+        return $label !== '' ? 'code:'.Str::slug($label) : '';
+    }
+
+    /**
+     * @param array<string, mixed> $tableData
+     * @return array{headers: array<int, string>, rows: array<int, array<int, string>>, ranges: array<int, array<string, int|null>>, highlight_column: int, tiers: array<int, array<string, mixed>>}
+     */
+    private function normalizeFabricPriceTableInput(array $tableData): array
+    {
+        $rawHeaders = collect($tableData['price_table_headers'] ?? [])
+            ->map(fn ($header) => trim((string) $header))
+            ->filter()
+            ->values();
+
+        if ($rawHeaders->isNotEmpty() && Str::lower((string) $rawHeaders->first()) === 'quantity') {
+            $rawHeaders = $rawHeaders->slice(1)->values();
+        }
+
+        if ($rawHeaders->isEmpty()) {
+            $rawHeaders = collect(['Unit Price ($)']);
+        }
+
+        $headers = $rawHeaders->prepend('Quantity')->values()->take(20)->all();
+        $highlightColumn = max(1, min((int) ($tableData['price_table_highlight_column'] ?? 1), max(count($headers) - 1, 1)));
+        $rawRows = collect($tableData['price_table_rows'] ?? [])->filter(fn ($row) => is_array($row))->values();
+        $rangesInput = collect($tableData['price_table_ranges'] ?? [])->values();
+        $rows = [];
+        $ranges = [];
+        $tiers = [];
+
+        foreach ($rawRows as $index => $row) {
+            $range = $rangesInput->get($index, []);
+            $legacyRange = $this->parseQuantityRangeFromLabel((string) ($row[0] ?? ''));
+            $minimum = (int) data_get($range, 'minimum_quantity', $legacyRange['minimum_quantity']);
+            $minimum = max($minimum, 1);
+            $maximumValue = data_get($range, 'maximum_quantity', $legacyRange['maximum_quantity']);
+            $maximum = filled($maximumValue) ? max((int) $maximumValue, $minimum) : null;
+            $cells = collect($row)->slice(1)->map(fn ($cell) => trim((string) $cell))->take(count($headers) - 1)->values()->all();
+            $cells = array_pad($cells, count($headers) - 1, '');
+            $displayRow = array_merge([$this->quantityRangeLabel($minimum, $maximum)], $cells);
+            $unitPrice = $this->parseMoney($cells[$highlightColumn - 1] ?? null);
+
+            if ($unitPrice === null) {
+                $unitPrice = collect($cells)->map(fn ($cell) => $this->parseMoney($cell))->first(fn ($amount) => $amount !== null);
+            }
+
+            $rows[] = $displayRow;
+            $ranges[] = ['minimum_quantity' => $minimum, 'maximum_quantity' => $maximum];
+
+            if ($unitPrice !== null) {
+                $tiers[] = [
+                    'label' => $displayRow[0],
+                    'minimum_quantity' => $minimum,
+                    'maximum_quantity' => $maximum,
+                    'unit_price' => $unitPrice,
+                    'compare_at_price' => null,
+                    'savings_label' => $cells[$highlightColumn] ?? null,
+                ];
+            }
+        }
+
+        return [
+            'headers' => $headers,
+            'rows' => $rows,
+            'ranges' => $ranges,
+            'highlight_column' => $highlightColumn,
+            'tiers' => $tiers,
+        ];
+    }
+
+    /**
+     * @return array{minimum_quantity: int, maximum_quantity: int|null}
+     */
+    private function parseQuantityRangeFromLabel(string $value): array
+    {
+        preg_match_all('/\d+/', str_replace(',', '', $value), $matches);
+        $numbers = collect($matches[0] ?? [])->map(fn ($number) => (int) $number)->values();
+
+        return [
+            'minimum_quantity' => $numbers->get(0) ?: 1,
+            'maximum_quantity' => str_contains($value, '+') ? null : $numbers->get(1),
+        ];
+    }
+
+    private function quantityRangeLabel(int $minimum, ?int $maximum): string
+    {
+        return $maximum ? number_format($minimum).'-'.number_format($maximum) : number_format($minimum).'+';
+    }
+
+    private function parseMoney(mixed $value): ?float
+    {
+        $clean = preg_replace('/[^0-9.\-]/', '', (string) $value);
+        if ($clean === '' || $clean === '-' || $clean === '.') {
+            return null;
+        }
+
+        return round((float) $clean, 2);
     }
 
     private function parseChartRows(string $value, int $columnCount): array

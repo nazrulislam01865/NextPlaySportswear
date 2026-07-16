@@ -240,7 +240,7 @@
                     @endif
                 @endif
 
-                @if($canAdmin('homepage_sections.view') || $canAdmin('homepage_slides.view') || $canAdmin('content.view') || $canAdmin('rural_surcharges.view') || $canAdmin('taxes.view') || $canAdmin('payment_methods.view') || $canAdmin('reports.view') || $canAdmin('settings.view'))
+                @if($canAdmin('homepage_sections.view') || $canAdmin('homepage_slides.view') || $canAdmin('content.view') || $canAdmin('newsletters.view') || $canAdmin('rural_surcharges.view') || $canAdmin('taxes.view') || $canAdmin('payment_methods.view') || $canAdmin('reports.view') || $canAdmin('settings.view'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Store</p>
                     @if($canAdmin('homepage_sections.view'))
                         @php($homepageDefinitions = \App\Support\HomepageSectionRegistry::orderedDefinitions())
@@ -265,6 +265,9 @@
                     @endif
                     @if($canAdmin('content.view'))
                         <x-admin.sidebar-link :href="route('admin.modules.show', 'content')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'content'" icon="✎">Content & Navigation</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('newsletters.view'))
+                        <x-admin.sidebar-link :href="route('admin.newsletter-subscribers.index')" :active="request()->routeIs('admin.newsletter-subscribers.*')" icon="@">Newsletter Emails</x-admin.sidebar-link>
                     @endif
                     @if($canAdmin('rural_surcharges.view'))
                         <x-admin.sidebar-link :href="route('admin.rural-area-surcharges.index')" :active="request()->routeIs('admin.rural-area-surcharges.*')" icon="⌁">Rural Surcharges</x-admin.sidebar-link>

@@ -108,6 +108,8 @@ class AdminRbac
             self::permission('rural_surcharges.manage', 'Storefront', 'Manage', 'Manage Rural Surcharges', 'Create and update rural area surcharges.', 'admin.rural-area-surcharges.store', 201),
             self::permission('payment_methods.view', 'Storefront', 'View', 'View Payment Methods', 'Open payment method records and payment placeholder modules.', 'admin.payment-methods.index', 210),
             self::permission('payment_methods.manage', 'Storefront', 'Manage', 'Manage Payment Methods', 'Create and update payment methods.', 'admin.payment-methods.store', 211),
+            self::permission('newsletters.view', 'Storefront', 'View', 'View Newsletter Subscribers', 'Open homepage newsletter subscriber emails and export filtered subscriber lists.', 'admin.newsletter-subscribers.index', 215),
+            self::permission('newsletters.manage', 'Storefront', 'Manage', 'Manage Newsletter Subscribers', 'Manage newsletter subscriber records and exports.', 'admin.newsletter-subscribers.export', 216),
             self::permission('taxes.view', 'Storefront', 'View', 'View Taxes', 'Open taxes placeholder module.', 'admin.modules.show', 220),
 
             self::permission('reports.view', 'Reports', 'View', 'View Reports', 'Open report placeholder module and report dashboard links.', 'admin.modules.show', 250),
@@ -135,6 +137,7 @@ class AdminRbac
             'homepage_sections.view', 'homepage_sections.manage',
             'homepage_slides.view', 'homepage_slides.manage',
             'content.view', 'content.manage',
+            'newsletters.view', 'newsletters.manage',
         ];
 
         $commerceAll = [
@@ -154,6 +157,7 @@ class AdminRbac
             'shipping.view', 'shipping.manage',
             'rural_surcharges.view', 'rural_surcharges.manage',
             'payment_methods.view', 'payment_methods.manage',
+            'newsletters.view', 'newsletters.manage',
         ];
 
         $adminAllExceptProtected = collect(self::permissions())
@@ -390,6 +394,7 @@ class AdminRbac
             'shipping-methods' => 'shipping',
             'rural-area-surcharges' => 'rural_surcharges',
             'payment-methods' => 'payment_methods',
+            'newsletter-subscribers' => 'newsletters',
             'users' => 'users',
         ] as $routePrefix => $permissionPrefix) {
             if (Str::startsWith($name, $routePrefix.'.')) {

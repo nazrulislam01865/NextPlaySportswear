@@ -146,6 +146,11 @@ class Product extends Model
         return $this->hasMany(ProductPriceTier::class)->orderBy('minimum_quantity');
     }
 
+    public function fabricPriceTables(): HasMany
+    {
+        return $this->hasMany(ProductFabricPriceTable::class)->orderBy('sort_order')->orderBy('fabric_label');
+    }
+
     public function artworkMethods(): HasMany
     {
         return $this->hasMany(ProductArtworkMethod::class)->orderBy('sort_order');

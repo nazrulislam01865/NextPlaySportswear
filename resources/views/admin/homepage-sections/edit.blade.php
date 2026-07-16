@@ -9,12 +9,12 @@
     $items = old('items', $section->items ?: ($definition['items'] ?? []));
     $items = is_array($items) ? array_values($items) : [];
     $fieldLabels = [
-        'icon' => 'Icon',
-        'title' => ($section->key === 'faq' ? 'Question' : 'Title'),
-        'subtitle' => 'Small text',
-        'description' => ($section->key === 'faq' ? 'Answer' : 'Description'),
+        'icon' => $section->key === 'testimonials' ? 'Initials' : 'Icon',
+        'title' => ($section->key === 'faq' ? 'Question' : ($section->key === 'testimonials' ? 'Customer name' : 'Title')),
+        'subtitle' => $section->key === 'testimonials' ? 'Team / organization / location' : 'Small text',
+        'description' => ($section->key === 'faq' ? 'Answer' : ($section->key === 'testimonials' ? 'Customer quote' : 'Description')),
         'url' => 'Link',
-        'label' => 'Link label',
+        'label' => $section->key === 'testimonials' ? 'Story tag' : 'Link label',
     ];
 @endphp
 

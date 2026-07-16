@@ -52,6 +52,7 @@ class HomepageSectionService
 
         $rows = HomepageSection::query()
             ->active()
+            ->whereNotIn('key', HomepageSectionRegistry::retiredKeys())
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get()
@@ -69,7 +70,7 @@ class HomepageSectionService
             $sections[] = HomepageSectionRegistry::mergeForView($key, $row);
         }
 
-        $customRows = $rows->reject(fn (HomepageSection $row, string $key): bool => HomepageSectionRegistry::definition($key) !== null);
+        $customRows = $rows->reject(fn (HomepageSection $row, string $key): bool => HomepageSectionRegistry::definition($key) !== null || HomepageSectionRegistry::isRetired((string) $key));
         foreach ($customRows as $row) {
             if ($row->is_active) {
                 $sections[] = HomepageSectionRegistry::mergeForView((string) $row->key, $row);

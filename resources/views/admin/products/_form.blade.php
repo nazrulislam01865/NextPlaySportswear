@@ -184,6 +184,96 @@
             'is_default' => $value->is_default, 'is_active' => true,
         ])->values()->all(),
     ])->values()->all() : []);
+    $fabricPriceTableValues = [];
+    $submittedFabricPriceTables = old('fabric_price_tables');
+    if (is_array($submittedFabricPriceTables)) {
+        $fabricPriceTableValues = collect($submittedFabricPriceTables)
+            ->filter(fn ($table) => is_array($table))
+            ->mapWithKeys(function ($table) use ($priceHeaderValues, $priceRowValues) {
+                $fabricKey = trim((string) ($table['fabric_key'] ?? ''));
+                if ($fabricKey === '') {
+                    return [];
+                }
+
+                $headers = collect($table['price_table_headers'] ?? [])->values();
+                if ($headers->isNotEmpty() && trim((string) $headers->first()) === 'Quantity') {
+                    $headers = $headers->slice(1)->values();
+                }
+                $headers = $headers->map(fn ($header) => trim((string) $header))->filter()->values()->all() ?: $priceHeaderValues;
+                $rows = collect($table['price_table_rows'] ?? [])->values();
+                $ranges = collect($table['price_table_ranges'] ?? [])->values();
+                $rowValues = $rows->map(function ($row, $index) use ($ranges, $headers) {
+                    $row = is_array($row) ? $row : [];
+                    $range = $ranges->get($index, []);
+                    $cells = collect($row)->slice(1)->values()->take(count($headers))->all();
+
+                    return [
+                        'minimum_quantity' => data_get($range, 'minimum_quantity', 1),
+                        'maximum_quantity' => data_get($range, 'maximum_quantity'),
+                        'cells' => array_pad($cells, count($headers), ''),
+                    ];
+                })->values()->all() ?: $priceRowValues;
+
+                return [$fabricKey => [
+                    'fabric_key' => $fabricKey,
+                    'jersey_customization_option_id' => $table['jersey_customization_option_id'] ?? '',
+                    'fabric_code' => $table['fabric_code'] ?? '',
+                    'fabric_label' => $table['fabric_label'] ?? '',
+                    'has_custom_pricing' => filter_var($table['has_custom_pricing'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                    'headers' => $headers,
+                    'rows' => $rowValues,
+                    'highlight_column' => (int) ($table['price_table_highlight_column'] ?? 1),
+                    'note' => $table['price_table_note'] ?? '',
+                ]];
+            })
+            ->all();
+    } elseif ($product->relationLoaded('fabricPriceTables')) {
+        $fabricPriceTableValues = $product->fabricPriceTables
+            ->where('is_active', true)
+            ->mapWithKeys(function ($table) use ($parseLegacyQuantityRange, $priceHeaderValues, $priceRowValues) {
+                $headers = collect($table->price_table_headers ?? [])->values();
+                if ($headers->isNotEmpty() && trim((string) $headers->first()) === 'Quantity') {
+                    $headers = $headers->slice(1)->values();
+                }
+                $headers = $headers->map(fn ($header) => trim((string) $header))->filter()->values()->all() ?: $priceHeaderValues;
+                $storedRows = collect($table->price_table_rows ?? [])->values();
+                $storedRanges = collect($table->price_table_ranges ?? [])->values();
+                $tiers = $table->relationLoaded('tiers') ? $table->tiers->values() : collect();
+                if ($storedRows->isEmpty() && $tiers->isNotEmpty()) {
+                    $storedRows = $tiers->map(fn ($tier) => [
+                        $tier->maximum_quantity ? $tier->minimum_quantity.'-'.$tier->maximum_quantity : $tier->minimum_quantity.'+',
+                        '$'.number_format((float) $tier->unit_price, 2),
+                        $tier->savings_label ?: '',
+                    ])->values();
+                }
+                $rows = $storedRows->map(function ($row, $index) use ($storedRanges, $tiers, $parseLegacyQuantityRange, $headers) {
+                    $row = is_array($row) ? $row : [];
+                    $range = $storedRanges->get($index);
+                    $tier = $tiers->get($index);
+                    $legacyRange = $parseLegacyQuantityRange($row[0] ?? '');
+                    $cells = collect($row)->slice(1)->values()->take(count($headers))->all();
+
+                    return [
+                        'minimum_quantity' => data_get($range, 'minimum_quantity', $tier?->minimum_quantity ?? $legacyRange['minimum_quantity']),
+                        'maximum_quantity' => data_get($range, 'maximum_quantity', $tier?->maximum_quantity ?? $legacyRange['maximum_quantity']),
+                        'cells' => array_pad($cells, count($headers), ''),
+                    ];
+                })->values()->all() ?: $priceRowValues;
+
+                return [$table->fabric_key => [
+                    'fabric_key' => $table->fabric_key,
+                    'jersey_customization_option_id' => $table->jersey_customization_option_id,
+                    'fabric_code' => $table->fabric_code,
+                    'fabric_label' => $table->fabric_label,
+                    'has_custom_pricing' => true,
+                    'headers' => $headers,
+                    'rows' => $rows,
+                    'highlight_column' => (int) ($table->price_table_highlight_column ?: 1),
+                    'note' => $table->price_table_note ?: '',
+                ]];
+            })
+            ->all();
+    }
     $submittedSizeValues = old('size_groups');
     $sizeValues = is_array($submittedSizeValues)
         ? collect($submittedSizeValues)->map(fn ($group) => array_merge([
@@ -364,6 +454,8 @@
         'pricingMode' => old('pricing_mode', 'standard'),
         'priceRows' => $priceRowValues,
         'priceHighlightColumn' => (int) old('price_table_highlight_column', $product->price_table_highlight_column ?? 1),
+        'fabricPriceTables' => $fabricPriceTableValues,
+        'fabricCustomizationTypes' => \App\Enums\JerseyCustomizationType::fabricTypeValues(),
         'optionGroups' => $optionValues,
         'optionGroupErrors' => $optionGroupValidationErrors,
         'jerseyCustomizationTypes' => $jerseyCustomizationTypes,
@@ -410,11 +502,445 @@
         'minimum_quantity' => 'price_table_ranges.0.minimum_quantity',
         'maximum_quantity' => 'price_table_ranges.0.maximum_quantity',
         'price_tiers.0.unit_price' => 'price_table_rows.0.1',
+        'fabric_price_tables' => 'option_groups',
     ];
 @endphp
 
+@once
+<script>
+window.adminProductFormFabric = function (initial = {}) {
+    const baseFactory = window.adminProductForm;
+    const form = baseFactory ? baseFactory(initial) : {};
+    const baseInit = form.init || function () {};
+    const baseSelectMasterItem = form.selectMasterItem || null;
+    const baseAddOptionValue = form.addOptionValue || null;
+    const baseImportPriceTable = form.importPriceTable || null;
+    const basePreparePriceImportMapping = form.preparePriceImportMapping || null;
+    const baseClosePriceImportMapping = form.closePriceImportMapping || null;
+    const baseApplyPriceImportMapping = form.applyPriceImportMapping || null;
 
-<form method="POST" enctype="multipart/form-data" action="{{ $isEdit ? route('admin.products.update', $product) : route('admin.products.store') }}" class="np-product-form" data-validation-errors='@json($validationErrorMessages)' data-validation-field-aliases='@json($validationFieldAliases)' x-data="adminProductForm(@js($initial))" x-init="init()" @submit="syncProductImageInput()" @dragover.window="preventFileDropNavigation($event)" @drop.window="preventFileDropNavigation($event)" @input.debounce.300ms="handleProgressChange(false)" @change.debounce.300ms="handleProgressChange(false)" @admin-rich-editor-updated.window="if ($event.detail.name === 'description_html') { descriptionHtml = $event.detail.value; } handleProgressChange(false);">
+    return Object.assign(form, {
+        fabricPriceTables: initial.fabricPriceTables || {},
+        fabricCustomizationTypes: initial.fabricCustomizationTypes || [],
+        priceImportTargetTable: null,
+        priceImportTargetLabel: '',
+        priceImportTargetMode: 'product',
+        fabricPriceImportTargetKey: '',
+        fabricPriceImportTargetGroupIndex: null,
+        fabricPriceImportTargetValueIndex: null,
+        init() {
+            baseInit.call(this);
+            (this.optionGroups || []).forEach((group) => {
+                (group.values || []).forEach((value) => this.ensureFabricPricing(value, group));
+            });
+        },
+        isFabricGroup(group) {
+            return this.fabricCustomizationTypes.includes(group?.jersey_customization_type || '');
+        },
+        priceImportDialogTitle() {
+            return this.priceImportTargetTable
+                ? `Map the ${this.priceImportTargetLabel || 'fabric'} price table`
+                : 'Map the uploaded price table';
+        },
+        priceImportDialogDescription() {
+            return this.priceImportTargetTable
+                ? 'Import this spreadsheet into the selected fabric only. It will replace this fabric price table, not the default product price table.'
+                : 'No predefined Excel structure is required. Select how this spreadsheet should become the customer-visible price table.';
+        },
+        isImportingFabricTable(table) {
+            const activeTable = this.resolvePriceImportTargetTable();
+            return Boolean(this.priceImportBusy && activeTable && activeTable === table);
+        },
+        resolveFabricPriceTableByKey(fabricKey) {
+            const key = String(fabricKey || '').trim();
+            if (key === '') {
+                return null;
+            }
+
+            for (const group of (this.optionGroups || [])) {
+                for (const value of (group.values || [])) {
+                    if (! value?.fabric_price_table) {
+                        continue;
+                    }
+
+                    const valueKey = String(value.fabric_price_table.fabric_key || this.fabricPriceKey(value) || '').trim();
+                    if (valueKey === key) {
+                        return value.fabric_price_table;
+                    }
+                }
+            }
+
+            return null;
+        },
+        resolveFabricPriceTableByPosition(groupIndex, valueIndex) {
+            const gIndex = Number(groupIndex);
+            const vIndex = Number(valueIndex);
+            if (! Number.isInteger(gIndex) || ! Number.isInteger(vIndex)) {
+                return null;
+            }
+            return this.optionGroups?.[gIndex]?.values?.[vIndex]?.fabric_price_table || null;
+        },
+        hasRememberedFabricImportTarget() {
+            return this.priceImportTargetMode === 'fabric'
+                || String(this.fabricPriceImportTargetKey || '').trim() !== ''
+                || this.fabricPriceImportTargetGroupIndex !== null
+                || this.fabricPriceImportTargetValueIndex !== null;
+        },
+        resolvePriceImportTargetTable() {
+            if (! this.hasRememberedFabricImportTarget()) {
+                return null;
+            }
+
+            const positionedTarget = this.resolveFabricPriceTableByPosition(
+                this.fabricPriceImportTargetGroupIndex,
+                this.fabricPriceImportTargetValueIndex,
+            );
+            const keyTarget = this.resolveFabricPriceTableByKey(this.fabricPriceImportTargetKey);
+
+            return positionedTarget || keyTarget || this.priceImportTargetTable || null;
+        },
+        rememberPriceImportTarget(targetTable = null, targetLabel = '', fabricKey = '', groupIndex = null, valueIndex = null) {
+            this.priceImportTargetTable = targetTable || null;
+            this.priceImportTargetLabel = targetLabel || '';
+            this.priceImportTargetMode = targetTable ? 'fabric' : 'product';
+            this.fabricPriceImportTargetKey = targetTable ? String(fabricKey || targetTable.fabric_key || '').trim() : '';
+            this.fabricPriceImportTargetGroupIndex = targetTable && groupIndex !== null ? Number(groupIndex) : null;
+            this.fabricPriceImportTargetValueIndex = targetTable && valueIndex !== null ? Number(valueIndex) : null;
+        },
+        preparePriceImportMapping(matrix, fileName, targetTable = null, targetLabel = '') {
+            const rememberedFabricTarget = this.hasRememberedFabricImportTarget()
+                ? {
+                    table: this.resolvePriceImportTargetTable(),
+                    label: this.priceImportTargetLabel,
+                    key: this.fabricPriceImportTargetKey,
+                    groupIndex: this.fabricPriceImportTargetGroupIndex,
+                    valueIndex: this.fabricPriceImportTargetValueIndex,
+                }
+                : null;
+
+            if (targetTable) {
+                this.rememberPriceImportTarget(targetTable, targetLabel, targetTable.fabric_key || '', this.fabricPriceImportTargetGroupIndex, this.fabricPriceImportTargetValueIndex);
+            } else if (! rememberedFabricTarget) {
+                this.rememberPriceImportTarget(null, '');
+            }
+
+            const activeTarget = this.resolvePriceImportTargetTable();
+            const activeLabel = activeTarget ? (this.priceImportTargetLabel || targetLabel || 'fabric') : '';
+
+            if (basePreparePriceImportMapping) {
+                const result = basePreparePriceImportMapping.call(this, matrix, fileName, activeTarget, activeLabel);
+
+                // Older compiled admin.js builds ignore the target arguments and reset the import target.
+                // Restore the fabric target immediately so Generate can never fall back to the main table.
+                if (activeTarget) {
+                    this.rememberPriceImportTarget(
+                        activeTarget,
+                        activeLabel,
+                        this.fabricPriceImportTargetKey || activeTarget.fabric_key || '',
+                        this.fabricPriceImportTargetGroupIndex,
+                        this.fabricPriceImportTargetValueIndex,
+                    );
+                }
+
+                return result;
+            }
+        },
+        closePriceImportMapping() {
+            if (baseClosePriceImportMapping) {
+                baseClosePriceImportMapping.call(this);
+            } else {
+                this.priceImportMappingOpen = false;
+                this.priceImportMappingError = '';
+            }
+            this.rememberPriceImportTarget(null, '');
+        },
+        importPriceTable(event, targetTable = null, targetLabel = '') {
+            if (targetTable) {
+                this.rememberPriceImportTarget(
+                    targetTable,
+                    targetLabel,
+                    this.fabricPriceImportTargetKey || targetTable.fabric_key || '',
+                    this.fabricPriceImportTargetGroupIndex,
+                    this.fabricPriceImportTargetValueIndex,
+                );
+                targetTable.import_status = '';
+                targetTable.import_error = '';
+            } else {
+                this.rememberPriceImportTarget(null, '');
+            }
+            if (baseImportPriceTable) {
+                return baseImportPriceTable.call(this, event, targetTable, targetLabel);
+            }
+        },
+        importFabricPriceTable(event, table, label = '', fabricKey = '', groupIndex = null, valueIndex = null) {
+            if (! table) {
+                return;
+            }
+            const resolvedKey = String(fabricKey || table.fabric_key || '').trim();
+            if (resolvedKey !== '') {
+                table.fabric_key = resolvedKey;
+            }
+            table.has_custom_pricing = true;
+            this.rememberPriceImportTarget(table, label, resolvedKey, groupIndex, valueIndex);
+            return this.importPriceTable(event, table, label);
+        },
+        applyPriceImportMapping() {
+            const targetTable = this.resolvePriceImportTargetTable();
+            if (! targetTable) {
+                if (this.hasRememberedFabricImportTarget()) {
+                    this.priceImportMappingError = 'The selected fabric price table could not be found. Close this import window and click Import Excel from the fabric row again.';
+                    return;
+                }
+                if (baseApplyPriceImportMapping) {
+                    return baseApplyPriceImportMapping.call(this);
+                }
+                return;
+            }
+
+            this.priceImportMappingError = '';
+            try {
+                const dataRows = this.priceImportMatrix
+                    .slice(Number(this.priceImportHeaderRowIndex) + 1)
+                    .filter(row => row.some(cell => String(cell ?? '').trim() !== ''));
+                if (!dataRows.length) throw new Error('No data rows were found below the selected header row.');
+
+                let rangeColumn = null;
+                let minColumn = null;
+                let maxColumn = null;
+                if (this.priceImportQuantityMode === 'range') {
+                    rangeColumn = Number(this.priceImportQuantityColumn);
+                    if (!Number.isInteger(rangeColumn)) throw new Error('Choose the column that contains quantity ranges.');
+                } else {
+                    minColumn = Number(this.priceImportMinColumn);
+                    maxColumn = this.priceImportMaxColumn === '' ? null : Number(this.priceImportMaxColumn);
+                    if (!Number.isInteger(minColumn)) throw new Error('Choose the minimum quantity column.');
+                    if (maxColumn !== null && !Number.isInteger(maxColumn)) throw new Error('Choose a valid maximum quantity column.');
+                    if (maxColumn !== null && maxColumn === minColumn) throw new Error('Minimum and maximum quantity must use different columns.');
+                }
+
+                const mappedQuantity = new Set(
+                    this.priceImportQuantityMode === 'range'
+                        ? [String(rangeColumn)]
+                        : [String(minColumn), ...(maxColumn === null ? [] : [String(maxColumn)])],
+                );
+                const valueIndexes = this.priceImportIncludedColumns
+                    .map(Number)
+                    .filter(index => Number.isInteger(index) && !mappedQuantity.has(String(index)));
+                if (!valueIndexes.length) throw new Error('Select at least one storefront price-table column.');
+                if (valueIndexes.length > 19) throw new Error('A maximum of 19 storefront columns can be imported.');
+
+                const primaryIndex = Number(this.priceImportPrimaryPriceColumn);
+                if (!valueIndexes.includes(primaryIndex)) throw new Error('Choose a primary live price column from the selected storefront columns.');
+
+                const importedRows = [];
+                dataRows.forEach((row, sourceIndex) => {
+                    const values = valueIndexes.map(index => String(row[index] ?? '').trim());
+                    const quantityRaw = this.priceImportQuantityMode === 'range'
+                        ? String(row[rangeColumn] ?? '').trim()
+                        : String(row[minColumn] ?? '').trim();
+                    if (quantityRaw === '' && values.every(value => value === '')) return;
+
+                    let range;
+                    if (this.priceImportQuantityMode === 'range') {
+                        range = this.parseQuantityRange(row[rangeColumn]);
+                    } else {
+                        const minimum = this.spreadsheetInteger(row[minColumn]);
+                        const maximum = maxColumn === null ? '' : this.spreadsheetInteger(row[maxColumn], { allowBlank: true });
+                        if (!Number.isInteger(minimum)) throw new Error(`Spreadsheet row ${Number(this.priceImportHeaderRowIndex) + sourceIndex + 2} has an invalid minimum quantity.`);
+                        if (maximum !== '' && (!Number.isInteger(maximum) || maximum < minimum)) {
+                            throw new Error(`Spreadsheet row ${Number(this.priceImportHeaderRowIndex) + sourceIndex + 2} has an invalid maximum quantity.`);
+                        }
+                        range = { minimum_quantity: minimum, maximum_quantity: maximum };
+                    }
+
+                    if (values.every(value => value === '')) {
+                        throw new Error(`Spreadsheet row ${Number(this.priceImportHeaderRowIndex) + sourceIndex + 2} has a quantity but no selected storefront values.`);
+                    }
+                    importedRows.push({ ...range, cells: values });
+                });
+
+                if (!importedRows.length) throw new Error('No usable price rows were found using the selected mapping.');
+                if (importedRows.length > 200) throw new Error('A maximum of 200 price rows can be imported.');
+
+                importedRows.forEach((row, index) => {
+                    const minimum = Number(row.minimum_quantity);
+                    if (!Number.isInteger(minimum) || minimum < 1) {
+                        row.minimum_quantity = '';
+                        row.maximum_quantity = '';
+                        return;
+                    }
+
+                    const nextMinimum = Number(importedRows[index + 1]?.minimum_quantity);
+                    if (Number.isInteger(nextMinimum) && nextMinimum > minimum && String(row.maximum_quantity ?? '').trim() === '') {
+                        row.maximum_quantity = nextMinimum - 1;
+                        return;
+                    }
+
+                    const maximum = Number(row.maximum_quantity);
+                    if (String(row.maximum_quantity ?? '').trim() !== '' && (!Number.isInteger(maximum) || maximum < minimum)) {
+                        row.maximum_quantity = '';
+                    }
+                });
+
+                const importedHeaders = valueIndexes.map(index => this.priceImportHeaders[index]);
+                const importedHighlightColumn = valueIndexes.indexOf(primaryIndex) + 1;
+                const statusMessage = `${importedRows.length} row${importedRows.length === 1 ? '' : 's'} and ${importedHeaders.length} column${importedHeaders.length === 1 ? '' : 's'} generated from ${this.priceImportFileName}. Quantity maximums were completed automatically from the next row's starting quantity.`;
+
+                targetTable.headers = importedHeaders;
+                targetTable.rows = importedRows.map(row => ({
+                    minimum_quantity: row.minimum_quantity,
+                    maximum_quantity: row.maximum_quantity,
+                    maximum_quantity_auto: String(row.maximum_quantity ?? '').trim() === '',
+                    cells: Array.isArray(row.cells) ? row.cells.slice() : [],
+                }));
+                targetTable.highlight_column = importedHighlightColumn;
+                targetTable.has_custom_pricing = true;
+                targetTable.import_status = statusMessage;
+                targetTable.import_error = '';
+                this.normalizeFabricPriceTable(targetTable);
+                this.closePriceImportMapping();
+            } catch (error) {
+                this.priceImportMappingError = error instanceof Error ? error.message : 'The selected spreadsheet mapping could not be applied.';
+                const failedTargetTable = this.resolvePriceImportTargetTable();
+                if (failedTargetTable) {
+                    failedTargetTable.import_error = this.priceImportMappingError;
+                }
+            }
+        },
+        fabricPriceKey(value) {
+            const masterId = Number(value?.jersey_customization_option_id || 0);
+            if (masterId > 0) {
+                return `master:${masterId}`;
+            }
+            const code = String(value?.code || value?.label || '').trim().toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+            return code ? `code:${code}` : '';
+        },
+        cloneDefaultFabricRows(headers = null) {
+            const sourceHeaders = Array.isArray(headers) && headers.length ? headers : (this.priceHeaders || []);
+            return (this.priceRows || []).map((row, index) => {
+                const copiedCells = Array.isArray(row.cells) ? row.cells.slice(0, sourceHeaders.length) : [];
+                return {
+                    minimum_quantity: row.minimum_quantity || (index === 0 ? 1 : ''),
+                    maximum_quantity: row.maximum_quantity || '',
+                    maximum_quantity_auto: true,
+                    cells: copiedCells.concat(Array(Math.max(sourceHeaders.length - copiedCells.length, 0)).fill('')),
+                };
+            });
+        },
+        fabricPriceTableTemplate(value) {
+            const key = this.fabricPriceKey(value);
+            const saved = key && this.fabricPriceTables ? this.fabricPriceTables[key] : null;
+            const headers = Array.isArray(saved?.headers) && saved.headers.length ? saved.headers.slice() : (this.priceHeaders || []).slice();
+            const rows = Array.isArray(saved?.rows) && saved.rows.length
+                ? saved.rows.map((row, index) => ({
+                    minimum_quantity: row.minimum_quantity || (index === 0 ? 1 : ''),
+                    maximum_quantity: row.maximum_quantity || '',
+                    maximum_quantity_auto: true,
+                    cells: Array.isArray(row.cells) ? row.cells.slice(0, headers.length).concat(Array(Math.max(headers.length - row.cells.length, 0)).fill('')) : Array(headers.length).fill(''),
+                }))
+                : this.cloneDefaultFabricRows(headers);
+
+            return {
+                fabric_key: key,
+                has_custom_pricing: Boolean(saved?.has_custom_pricing),
+                headers: headers.length ? headers : ['Unit Price ($)'],
+                rows: rows.length ? rows : [{minimum_quantity: 1, maximum_quantity: '', maximum_quantity_auto: true, cells: Array(headers.length || 1).fill('')}],
+                highlight_column: Number(saved?.highlight_column || this.priceHighlightColumn || 1),
+                note: saved?.note || '',
+                import_status: '',
+                import_error: '',
+            };
+        },
+        ensureFabricPricing(value, group) {
+            if (! this.isFabricGroup(group)) {
+                return;
+            }
+            const key = this.fabricPriceKey(value);
+            if (! value.fabric_price_table || value.fabric_price_table.fabric_key !== key) {
+                value.fabric_price_table = this.fabricPriceTableTemplate(value);
+            }
+            value.fabric_price_table.fabric_key = key;
+            this.normalizeFabricPriceTable(value.fabric_price_table);
+        },
+        normalizeFabricPriceTable(table) {
+            table.headers = Array.isArray(table.headers) && table.headers.length ? table.headers : ['Unit Price ($)'];
+            table.rows = Array.isArray(table.rows) && table.rows.length ? table.rows : [{minimum_quantity: 1, maximum_quantity: '', maximum_quantity_auto: true, cells: []}];
+            table.import_status = table.import_status || '';
+            table.import_error = table.import_error || '';
+            table.rows.forEach((row, index) => {
+                row.minimum_quantity = row.minimum_quantity || (index === 0 ? 1 : '');
+                row.maximum_quantity = row.maximum_quantity || '';
+                row.maximum_quantity_auto = row.maximum_quantity_auto !== false;
+                row.cells = Array.isArray(row.cells) ? row.cells : [];
+                while (row.cells.length < table.headers.length) { row.cells.push(''); }
+                if (row.cells.length > table.headers.length) { row.cells.splice(table.headers.length); }
+            });
+            this.recalculateFabricPriceMaximums(table);
+        },
+        addFabricPriceHeader(table) {
+            table.headers.push('Extra Fee ($)');
+            table.rows.forEach((row) => row.cells.push(''));
+        },
+        removeFabricPriceHeader(table, index) {
+            if (table.headers.length <= 1) {
+                return;
+            }
+            table.headers.splice(index, 1);
+            table.rows.forEach((row) => row.cells.splice(index, 1));
+            table.highlight_column = Math.min(Number(table.highlight_column || 1), table.headers.length);
+        },
+        addFabricPriceRow(table) {
+            const previous = table.rows[table.rows.length - 1] || {minimum_quantity: 1};
+            const nextMinimum = Math.max(Number(previous.maximum_quantity || previous.minimum_quantity || 0) + 1, 1);
+            table.rows.push({minimum_quantity: nextMinimum, maximum_quantity: '', maximum_quantity_auto: true, cells: Array(table.headers.length).fill('')});
+            this.recalculateFabricPriceMaximums(table);
+        },
+        removeFabricPriceRow(table, index) {
+            if (table.rows.length <= 1) {
+                return;
+            }
+            table.rows.splice(index, 1);
+            this.recalculateFabricPriceMaximums(table);
+        },
+        recalculateFabricPriceMaximums(table) {
+            table.rows.forEach((row, index) => {
+                if (row.maximum_quantity_auto === false) {
+                    return;
+                }
+                const next = table.rows[index + 1];
+                row.maximum_quantity = next && Number(next.minimum_quantity) > 1 ? Number(next.minimum_quantity) - 1 : '';
+            });
+        },
+        markFabricPriceMaximumManual(row) {
+            row.maximum_quantity_auto = false;
+        },
+        selectMasterItem(item) {
+            if (baseSelectMasterItem) {
+                const group = this.activeMasterItemGroup();
+                baseSelectMasterItem.call(this, item);
+                if (group) {
+                    const added = (group.values || []).find((value) => Number(value.jersey_customization_option_id || 0) === Number(item.id || 0));
+                    if (added) { this.ensureFabricPricing(added, group); }
+                }
+                return;
+            }
+        },
+        addOptionValue(group) {
+            if (baseAddOptionValue) {
+                baseAddOptionValue.call(this, group);
+                const added = group.values?.[group.values.length - 1];
+                if (added) { this.ensureFabricPricing(added, group); }
+            }
+        },
+    });
+};
+</script>
+@endonce
+
+
+<form method="POST" enctype="multipart/form-data" action="{{ $isEdit ? route('admin.products.update', $product) : route('admin.products.store') }}" class="np-product-form" data-validation-errors='@json($validationErrorMessages)' data-validation-field-aliases='@json($validationFieldAliases)' x-data="adminProductFormFabric(@js($initial))" x-init="init()" @submit="syncProductImageInput()" @dragover.window="preventFileDropNavigation($event)" @drop.window="preventFileDropNavigation($event)" @input.debounce.300ms="handleProgressChange(false)" @change.debounce.300ms="handleProgressChange(false)" @admin-rich-editor-updated.window="if ($event.detail.name === 'description_html') { descriptionHtml = $event.detail.value; } handleProgressChange(false);">
     @csrf
     @if($isEdit) @method('PUT') @endif
 
@@ -1046,8 +1572,8 @@ Lead Time:"></div>
             <div class="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-5 sm:px-7">
                 <div>
                     <p class="text-[10px] font-black uppercase tracking-[.14em] text-brand-blue">Flexible spreadsheet import</p>
-                    <h2 id="price-import-mapping-title" class="mt-1 text-2xl font-black text-brand-ink">Map the uploaded price table</h2>
-                    <p class="mt-2 text-sm leading-6 text-slate-500">No predefined Excel structure is required. Select how this spreadsheet should become the customer-visible price table.</p>
+                    <h2 id="price-import-mapping-title" class="mt-1 text-2xl font-black text-brand-ink" x-text="priceImportDialogTitle()">Map the uploaded price table</h2>
+                    <p class="mt-2 text-sm leading-6 text-slate-500" x-text="priceImportDialogDescription()">No predefined Excel structure is required. Select how this spreadsheet should become the customer-visible price table.</p>
                     <p class="mt-1 text-xs font-bold text-slate-400" x-text="priceImportFileName"></p>
                 </div>
                 <button type="button" class="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-slate-200 text-xl text-slate-500 hover:bg-slate-50" @click="closePriceImportMapping()" aria-label="Close">×</button>
@@ -1174,7 +1700,7 @@ Lead Time:"></div>
 
             <div class="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end sm:px-7">
                 <button type="button" class="btn btn-white" @click="closePriceImportMapping()">Cancel</button>
-                <button type="button" class="btn btn-red" @click="applyPriceImportMapping()">Generate Price Table</button>
+                <button type="button" class="btn btn-red" @click="applyPriceImportMapping()" x-text="priceImportTargetTable ? 'Generate Fabric Price Table' : 'Generate Price Table'">Generate Price Table</button>
             </div>
         </div>
     </div>

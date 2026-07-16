@@ -8,6 +8,19 @@ use Illuminate\Support\Str;
 
 final class HomepageSectionRegistry
 {
+    private const RETIRED_KEYS = ['customization_options'];
+
+    /** @return array<int, string> */
+    public static function retiredKeys(): array
+    {
+        return self::RETIRED_KEYS;
+    }
+
+    public static function isRetired(string $key): bool
+    {
+        return in_array($key, self::RETIRED_KEYS, true);
+    }
+
     /** @return array<string, array<string, mixed>> */
     public static function definitions(): array
     {
@@ -201,30 +214,6 @@ final class HomepageSectionRegistry
                 'fields' => ['text'],
             ],
             [
-                'key' => 'customization_options',
-                'name' => 'Customization Options',
-                'component' => 'customization_options',
-                'sort_order' => 120,
-                'eyebrow' => 'Your details',
-                'title' => 'Make It Yours',
-                'description' => 'Choose the details that make your team or brand stand out.',
-                'primary_label' => 'Customize Yours',
-                'primary_url' => '#jersey',
-                'items' => [
-                    ['icon' => '#', 'title' => 'Player name and number'],
-                    ['icon' => '◎', 'title' => 'Team logo placement'],
-                    ['icon' => '◐', 'title' => 'Custom colors'],
-                    ['icon' => 'S', 'title' => 'Sublimation printing'],
-                    ['icon' => 'E', 'title' => 'Embroidery'],
-                    ['icon' => 'P', 'title' => 'Screen printing'],
-                    ['icon' => 'H', 'title' => 'Heat transfer'],
-                    ['icon' => '□', 'title' => 'Custom packaging'],
-                ],
-                'fields' => ['text', 'buttons', 'items'],
-                'item_label' => 'Options',
-                'item_fields' => ['icon', 'title'],
-            ],
-            [
                 'key' => 'why_choose',
                 'name' => 'Why Choose Us',
                 'component' => 'why_choose',
@@ -278,21 +267,24 @@ final class HomepageSectionRegistry
                 'name' => 'Testimonials',
                 'component' => 'testimonials',
                 'sort_order' => 160,
-                'eyebrow' => 'Customer words',
-                'title' => 'What Teams and Customers Say',
-                'primary_label' => 'View Product',
-                'primary_url' => '/products',
+                'eyebrow' => 'Real teams. Real feedback.',
+                'title' => 'Made for teams who want to look the part.',
+                'description' => 'See how clubs, schools, businesses, and event teams use NextPlay for custom sportswear, team uniforms, event kits, and bulk orders.',
+                'primary_label' => 'Read all testimonials',
+                'primary_url' => '/testimonials',
+                'secondary_label' => 'Share your experience',
+                'secondary_url' => '/contact-us?topic=testimonial',
                 'items' => [
-                    ['title' => 'Jason Miller', 'subtitle' => 'River Valley Baseball Club · Ohio, USA', 'description' => 'The jerseys came out clean and the ordering process was simple. We shared our team logo and size list, and the team helped us prepare the final order.'],
-                    ['title' => 'Emily Carter', 'subtitle' => 'Community Run Event · Texas, USA', 'description' => 'We needed shirts and bags for a weekend event. The quote was clear, and they asked the right questions before moving ahead.'],
-                    ['title' => 'Marcus Reed', 'subtitle' => 'Northside High Boosters · Georgia, USA', 'description' => 'Good option for our school spirit wear. The hoodie colors matched what we requested, and the design proof helped a lot.'],
-                    ['title' => 'Olivia Grant', 'subtitle' => 'Grant Family Dental · Arizona, USA', 'description' => 'Ordering caps for our business team was easy. We had a few logo questions, and they helped us clean that up before production.'],
-                    ['title' => 'Daniel Ruiz', 'subtitle' => 'South Bay FC · California, USA', 'description' => 'The soccer kits looked sharp. Not overcomplicated. We sent names, numbers, and sizes, then reviewed the mockup.'],
-                    ['title' => 'Lauren Brooks', 'subtitle' => 'Lakeview Youth League · Florida, USA', 'description' => 'We used them for a league order. The bulk quote made more sense than ordering every piece one by one.'],
+                    ['icon' => 'JM', 'title' => 'Jason Miller', 'subtitle' => 'River Valley Baseball Club · Ohio, USA', 'description' => 'The jerseys came out clean and the ordering process was simple. We shared our team logo and size list, and the team helped us prepare the final order.', 'label' => 'Jerseys'],
+                    ['icon' => 'EC', 'title' => 'Emily Carter', 'subtitle' => 'Community Run Event · Texas, USA', 'description' => 'We needed shirts and bags for a weekend event. The quote was clear, and they asked the right questions before moving ahead.', 'label' => 'Event kits'],
+                    ['icon' => 'MR', 'title' => 'Marcus Reed', 'subtitle' => 'Northside High Boosters · Georgia, USA', 'description' => 'Good option for our school spirit wear. The hoodie colors matched what we requested, and the design proof helped a lot.', 'label' => 'Artwork'],
+                    ['icon' => 'OG', 'title' => 'Olivia Grant', 'subtitle' => 'Grant Family Dental · Arizona, USA', 'description' => 'Ordering caps for our business team was easy. We had a few logo questions, and they helped us clean that up before production.', 'label' => 'Caps'],
+                    ['icon' => 'DR', 'title' => 'Daniel Ruiz', 'subtitle' => 'South Bay FC · California, USA', 'description' => 'The soccer kits looked sharp. Not overcomplicated. We sent names, numbers, and sizes, then reviewed the mockup.', 'label' => 'Football kits'],
+                    ['icon' => 'LB', 'title' => 'Lauren Brooks', 'subtitle' => 'Lakeview Youth League · Florida, USA', 'description' => 'We used them for a league order. The bulk quote made more sense than ordering every piece one by one.', 'label' => 'Bulk order'],
                 ],
                 'fields' => ['text', 'buttons', 'items'],
                 'item_label' => 'Testimonials',
-                'item_fields' => ['title', 'subtitle', 'description'],
+                'item_fields' => ['icon', 'title', 'subtitle', 'description', 'label'],
             ],
             [
                 'key' => 'faq',
@@ -356,6 +348,10 @@ final class HomepageSectionRegistry
         if (! Schema::hasTable('homepage_sections')) {
             return;
         }
+
+        HomepageSection::query()
+            ->whereIn('key', self::RETIRED_KEYS)
+            ->delete();
 
         foreach (self::orderedDefinitions() as $definition) {
             HomepageSection::query()->firstOrCreate(

@@ -4,6 +4,7 @@ namespace App\Services\Storefront;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductFabricPriceTable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator as ArrayLengthAwarePaginator;
@@ -526,7 +527,7 @@ class ProductCatalogService
     public function findBySlug(string $slug): ?array
     {
         if (Schema::hasTable('products')) {
-            $query = Product::query()->with(['category', 'subcategory', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'priceTiers', 'artworkMethods', 'productionSpeeds', 'shippingMethods', 'faqs']);
+            $query = Product::query()->with(['category', 'subcategory', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'priceTiers', 'fabricPriceTables.tiers', 'artworkMethods', 'productionSpeeds', 'shippingMethods', 'faqs']);
             $isAdminPreview = auth('admin')->check() || (auth()->user()?->isAdmin() ?? false);
 
             if (! $isAdminPreview) {
@@ -978,6 +979,8 @@ class ProductCatalogService
             $gallery[] = ['url' => asset('images/product-placeholder.svg'), 'alt' => $product->name];
         }
 
+        $fabricPriceTables = $this->fabricPriceTablesForProduct($product);
+
         $optionGroups = $product->optionGroups
             ->where('is_active', true)
             ->filter(fn ($group) => ($group->display_mode ?: 'customer') !== 'hidden')
@@ -1009,6 +1012,7 @@ class ProductCatalogService
                     'charge_type' => $value->charge_type ?: 'per_unit',
                     'stock_quantity' => $value->stock_quantity,
                     'default' => $value->is_default,
+                    'fabric_price_table' => $this->fabricPriceTableForOptionValue($value, $fabricPriceTables),
                 ])->values()->all(),
             ])->values()->all();
 
@@ -1176,6 +1180,7 @@ class ProductCatalogService
                 'highlight_column' => $product->price_table_highlight_column,
                 'note' => $product->price_table_note,
             ],
+            'fabric_price_tables' => array_values($fabricPriceTables),
             'faqs' => $product->faqs->where('is_active', true)->map(fn ($faq) => ['question' => $faq->question, 'answer' => $faq->answer])->values()->all(),
             'meta_title' => $product->meta_title,
             'meta_description' => $product->meta_description,
@@ -1187,6 +1192,90 @@ class ProductCatalogService
             'robots' => ($product->robots_index ? 'index' : 'noindex').', '.($product->robots_follow ? 'follow' : 'nofollow'),
             'custom_schema' => $product->schema_json,
             'url' => route('products.show', $product->slug),
+        ];
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function fabricPriceTablesForProduct(Product $product): array
+    {
+        if (! $product->relationLoaded('fabricPriceTables')) {
+            return [];
+        }
+
+        return $product->fabricPriceTables
+            ->where('is_active', true)
+            ->mapWithKeys(function (ProductFabricPriceTable $table): array {
+                $formatted = $this->formatFabricPriceTable($table);
+                $keys = [$table->fabric_key => $formatted];
+
+                if ($table->jersey_customization_option_id) {
+                    $keys['master:'.$table->jersey_customization_option_id] = $formatted;
+                }
+
+                if (filled($table->fabric_code)) {
+                    $keys['code:'.Str::slug((string) $table->fabric_code)] = $formatted;
+                }
+
+                return $keys;
+            })
+            ->all();
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $fabricPriceTables
+     */
+    private function fabricPriceTableForOptionValue($value, array $fabricPriceTables): ?array
+    {
+        $keys = collect([
+            $value->jersey_customization_option_id ? 'master:'.$value->jersey_customization_option_id : null,
+            filled($value->code) ? 'code:'.Str::slug((string) $value->code) : null,
+            filled($value->label) ? 'code:'.Str::slug((string) $value->label) : null,
+        ])->filter()->values();
+
+        foreach ($keys as $key) {
+            if (isset($fabricPriceTables[$key])) {
+                return $fabricPriceTables[$key];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formatFabricPriceTable(ProductFabricPriceTable $table): array
+    {
+        $priceTiers = $table->tiers->map(fn ($tier) => [
+            'label' => $tier->label ?: $tier->minimum_quantity . ($tier->maximum_quantity ? '–'.$tier->maximum_quantity : '+'),
+            'min' => (int) $tier->minimum_quantity,
+            'max' => $tier->maximum_quantity === null ? null : (int) $tier->maximum_quantity,
+            'unit' => (float) $tier->unit_price,
+            'compare_at' => $tier->compare_at_price ? (float) $tier->compare_at_price : null,
+            'savings_label' => $tier->savings_label,
+        ])->values()->all();
+
+        $rows = collect($table->price_table_rows ?? [])->values();
+        if ($rows->isEmpty()) {
+            $rows = collect($priceTiers)->map(fn ($tier) => [
+                (string) ($tier['label'] ?? $tier['min']),
+                '$'.number_format((float) $tier['unit'], 2),
+                $tier['savings_label'] ?: '—',
+            ]);
+        }
+
+        return [
+            'key' => $table->fabric_key,
+            'fabric_id' => $table->jersey_customization_option_id,
+            'fabric_code' => $table->fabric_code,
+            'label' => $table->fabric_label,
+            'headers' => $table->price_table_headers ?: ['Quantity', 'Unit Price', 'Savings'],
+            'rows' => $rows->values()->all(),
+            'highlight_column' => (int) ($table->price_table_highlight_column ?: 1),
+            'note' => $table->price_table_note,
+            'price_tiers' => $priceTiers,
         ];
     }
 

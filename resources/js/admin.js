@@ -88,6 +88,8 @@ window.adminProductForm = (initial = {}) => ({
     priceImportIncludedColumns: [],
     priceImportPrimaryPriceColumn: '',
     priceImportMappingError: '',
+    priceImportTargetTable: null,
+    priceImportTargetLabel: '',
     pricingMode: initial.pricingMode || 'standard',
     priceRows: initial.priceRows?.length ? initial.priceRows : [{ minimum_quantity: 1, maximum_quantity: '', cells: ['0.00', '0.00'] }],
     optionGroups: initial.optionGroups?.length ? initial.optionGroups : [],
@@ -1016,18 +1018,35 @@ window.adminProductForm = (initial = {}) => ({
         this.priceImportPrimaryPriceColumn = primary >= 0 ? String(primary) : (this.priceImportIncludedColumns[0] || '');
         this.priceImportMappingError = '';
     },
-    preparePriceImportMapping(matrix, fileName) {
+    preparePriceImportMapping(matrix, fileName, targetTable = null, targetLabel = '') {
         const rows = this.spreadsheetRows(matrix);
         if (rows.length < 2) throw new Error('The spreadsheet must contain a header row and at least one data row.');
         if (rows.length > 501) throw new Error('A maximum of 500 spreadsheet rows can be reviewed at once.');
         this.priceImportMatrix = rows;
         this.priceImportFileName = fileName;
+        this.priceImportTargetTable = targetTable || null;
+        this.priceImportTargetLabel = targetLabel || '';
         this.setupPriceImportMapping(this.detectSpreadsheetHeaderRow(rows));
         this.priceImportMappingOpen = true;
+    },
+    priceImportDialogTitle() {
+        return this.priceImportTargetTable
+            ? `Map the ${this.priceImportTargetLabel || 'fabric'} price table`
+            : 'Map the uploaded price table';
+    },
+    priceImportDialogDescription() {
+        return this.priceImportTargetTable
+            ? 'Import this spreadsheet into the selected fabric only. It will replace this fabric price table, not the default product price table.'
+            : 'No predefined Excel structure is required. Select how this spreadsheet should become the customer-visible price table.';
+    },
+    isImportingFabricTable(table) {
+        return this.priceImportBusy && this.priceImportTargetTable === table;
     },
     closePriceImportMapping() {
         this.priceImportMappingOpen = false;
         this.priceImportMappingError = '';
+        this.priceImportTargetTable = null;
+        this.priceImportTargetLabel = '';
     },
     applyPriceImportMapping() {
         this.priceImportMappingError = '';
@@ -1115,12 +1134,36 @@ window.adminProductForm = (initial = {}) => ({
                 }
             });
 
-            this.priceHeaders = valueIndexes.map(index => this.priceImportHeaders[index]);
-            this.priceRows = importedRows;
-            this.priceHighlightColumn = valueIndexes.indexOf(primaryIndex) + 1;
-            this.normalizePriceRows();
-            this.priceImportStatus = `${this.priceRows.length} row${this.priceRows.length === 1 ? '' : 's'} and ${this.priceHeaders.length} column${this.priceHeaders.length === 1 ? '' : 's'} generated from ${this.priceImportFileName}. Quantity maximums were completed automatically from the next row's starting quantity.`;
-            this.priceImportError = '';
+            const importedHeaders = valueIndexes.map(index => this.priceImportHeaders[index]);
+            const importedHighlightColumn = valueIndexes.indexOf(primaryIndex) + 1;
+            const targetTable = this.priceImportTargetTable;
+            const statusMessage = `${importedRows.length} row${importedRows.length === 1 ? '' : 's'} and ${importedHeaders.length} column${importedHeaders.length === 1 ? '' : 's'} generated from ${this.priceImportFileName}. Quantity maximums were completed automatically from the next row's starting quantity.`;
+
+            if (targetTable) {
+                targetTable.headers = importedHeaders;
+                targetTable.rows = importedRows.map(row => ({
+                    minimum_quantity: row.minimum_quantity,
+                    maximum_quantity: row.maximum_quantity,
+                    maximum_quantity_auto: String(row.maximum_quantity ?? '').trim() === '',
+                    cells: Array.isArray(row.cells) ? row.cells.slice() : [],
+                }));
+                targetTable.highlight_column = importedHighlightColumn;
+                targetTable.has_custom_pricing = true;
+                targetTable.import_status = statusMessage;
+                targetTable.import_error = '';
+                if (typeof this.normalizeFabricPriceTable === 'function') {
+                    this.normalizeFabricPriceTable(targetTable);
+                }
+                this.priceImportStatus = '';
+                this.priceImportError = '';
+            } else {
+                this.priceHeaders = importedHeaders;
+                this.priceRows = importedRows;
+                this.priceHighlightColumn = importedHighlightColumn;
+                this.normalizePriceRows();
+                this.priceImportStatus = statusMessage;
+                this.priceImportError = '';
+            }
             this.closePriceImportMapping();
         } catch (error) {
             this.priceImportMappingError = error instanceof Error ? error.message : 'The selected spreadsheet mapping could not be applied.';
@@ -1158,13 +1201,19 @@ window.adminProductForm = (initial = {}) => ({
         if (row.some(value => value !== '') || rows.length === 0) rows.push(row);
         return rows;
     },
-    async importPriceTable(event) {
+    async importPriceTable(event, targetTable = null, targetLabel = '') {
         const file = event.target.files?.[0];
         if (!file) return;
         this.priceImportBusy = true;
         this.priceImportStatus = '';
         this.priceImportError = '';
         this.priceImportMappingError = '';
+        this.priceImportTargetTable = targetTable || null;
+        this.priceImportTargetLabel = targetLabel || '';
+        if (targetTable) {
+            targetTable.import_status = '';
+            targetTable.import_error = '';
+        }
 
         try {
             if (file.size > 5 * 1024 * 1024) throw new Error('The spreadsheet must not exceed 5 MB.');
@@ -1173,13 +1222,20 @@ window.adminProductForm = (initial = {}) => ({
             const matrix = extension === 'csv'
                 ? this.parseCsvMatrix(await file.text())
                 : await readSheet(file);
-            this.preparePriceImportMapping(matrix, file.name);
+            this.preparePriceImportMapping(matrix, file.name, targetTable, targetLabel);
         } catch (error) {
-            this.priceImportError = error instanceof Error ? error.message : 'The price table could not be imported.';
+            const message = error instanceof Error ? error.message : 'The price table could not be imported.';
+            if (targetTable) targetTable.import_error = message;
+            else this.priceImportError = message;
         } finally {
             this.priceImportBusy = false;
             event.target.value = '';
         }
+    },
+    importFabricPriceTable(event, table, label = '') {
+        if (!table) return;
+        table.has_custom_pricing = true;
+        return this.importPriceTable(event, table, label);
     },
     addPriceHeader() { this.priceHeaders.push('New Column'); this.normalizePriceRows(); },
     removePriceHeader(index) {

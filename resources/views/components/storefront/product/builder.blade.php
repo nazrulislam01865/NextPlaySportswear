@@ -15,6 +15,7 @@
         'shipping_methods' => $product['shipping_methods'] ?? [],
         'jersey_roster' => $product['jersey_roster'] ?? ['enabled' => false, 'optional' => true, 'fields' => []],
         'price_tiers' => $product['price_tiers'] ?? [],
+        'price_table' => $product['price_table'] ?? [],
     ];
 
     $allGroups = collect($product['option_groups'] ?? []);
@@ -27,8 +28,84 @@
     $stepNumber = 1;
 @endphp
 
+@once
+<script>
+window.productBuilderFabricPricing = function (config = {}) {
+    const baseFactory = window.productBuilder;
+    const builder = baseFactory ? baseFactory(config) : {};
+    const baseSync = builder.sync || function () {};
+
+    return Object.assign(builder, {
+        selectedPricedFabricValue() {
+            for (const group of (config.option_groups || [])) {
+                if (group.display_mode === 'hidden') continue;
+
+                if (group.type === 'checkbox') {
+                    const selected = this.multiSelections?.[group.id] || [];
+                    for (const valueId of selected) {
+                        const value = (group.values || []).find((candidate) => candidate.id === valueId);
+                        if (value?.fabric_price_table?.price_tiers?.length) {
+                            return value;
+                        }
+                    }
+                    continue;
+                }
+
+                const value = this.optionValue ? this.optionValue(group, this.selections?.[group.id]) : null;
+                if (value?.fabric_price_table?.price_tiers?.length) {
+                    return value;
+                }
+            }
+
+            return null;
+        },
+        activePriceTable() {
+            const fabricValue = this.selectedPricedFabricValue();
+            if (fabricValue?.fabric_price_table?.rows?.length) {
+                return fabricValue.fabric_price_table;
+            }
+
+            return config.price_table || null;
+        },
+        activePriceTiers() {
+            const fabricValue = this.selectedPricedFabricValue();
+            if (fabricValue?.fabric_price_table?.price_tiers?.length) {
+                return fabricValue.fabric_price_table.price_tiers;
+            }
+
+            return config.price_tiers || [];
+        },
+        priceTableSourceLabel() {
+            const fabricValue = this.selectedPricedFabricValue();
+            return fabricValue?.fabric_price_table?.label ? `${fabricValue.fabric_price_table.label} fabric price` : '';
+        },
+        notifyPriceTableChange() {
+            window.dispatchEvent(new CustomEvent('product-price-table-updated', {
+                detail: {
+                    table: this.activePriceTable() || config.price_table || {},
+                    label: this.priceTableSourceLabel(),
+                },
+            }));
+        },
+        tierPrice() {
+            const quantity = Math.max(this.totalQuantity ? this.totalQuantity() : 1, Number(config.minimum_quantity || 1));
+            const tier = (this.activePriceTiers() || []).find((candidate) => {
+                return quantity >= Number(candidate.min || 1) && (candidate.max === null || candidate.max === undefined || quantity <= Number(candidate.max));
+            });
+
+            return Number(tier?.unit ?? config.base_price ?? 0);
+        },
+        sync() {
+            baseSync.call(this);
+            this.notifyPriceTableChange();
+        },
+    });
+};
+</script>
+@endonce
+
 <section id="configure-product" class="section-padding bg-slate-100" aria-labelledby="configure-product-heading">
-    <div class="site-container" x-data="productBuilder(@js($builderConfig))" x-init="init()" @keydown.escape.window="closeSizeChart()">
+    <div class="site-container" x-data="productBuilderFabricPricing(@js($builderConfig))" x-init="init()" @keydown.escape.window="closeSizeChart()">
         <div class="max-w-3xl">
             <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">Product configuration</p>
             <h2 id="configure-product-heading" class="mt-1 font-display text-3xl font-bold uppercase leading-tight tracking-tight text-brand-ink sm:text-5xl">Configure This Product</h2>

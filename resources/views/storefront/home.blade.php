@@ -54,9 +54,6 @@
                     <x-storefront.home.shop-by-sport :sports="$sports" :section="$section" />
                     @break
 
-                @case('customization_options')
-                    <x-storefront.home.customization-options :section="$section" />
-                    @break
 
                 @case('why_choose')
                     <x-storefront.home.why-choose :section="$section" />
@@ -83,5 +80,7 @@
                     @break
             @endswitch
         @endforeach
+
+        <x-storefront.home.newsletter-signup />
     </div>
 </x-layouts.storefront>

@@ -686,7 +686,7 @@ class CartService
         );
         $configuredQuantity = (int) collect($customization['configuration']['quantities'] ?? [])->sum();
         $quantity = $this->sanitizeQuantity($configuredQuantity > 0 ? $configuredQuantity : (int) ($item['quantity'] ?? 1), $product);
-        $unitPrice = $this->unitPriceForQuantity($product, $quantity);
+        $unitPrice = $this->unitPriceForQuantity($product, $quantity, $customization);
         $customizationUnitPrice = $this->customizationUnitPrice($product, $customization, $quantity);
 
         return array_merge($item, [
@@ -983,14 +983,44 @@ class CartService
         return sha1($slug.'|'.json_encode($customization, JSON_THROW_ON_ERROR));
     }
 
-    private function unitPriceForQuantity(array $product, int $quantity): float
+    private function unitPriceForQuantity(array $product, int $quantity, ?array $customization = null): float
     {
-        $tier = collect($product['price_tiers'] ?? [])->first(function (array $tier) use ($quantity): bool {
+        $tiers = $this->selectedFabricPriceTiers($product, $customization ?? []) ?: ($product['price_tiers'] ?? []);
+        $tier = collect($tiers)->first(function (array $tier) use ($quantity): bool {
             return $quantity >= (int) ($tier['min'] ?? 1)
                 && (($tier['max'] ?? null) === null || $quantity <= (int) $tier['max']);
         });
 
         return round((float) ($tier['unit'] ?? $product['base_price'] ?? 0), 2);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function selectedFabricPriceTiers(array $product, array $customization): array
+    {
+        $configuration = $customization['configuration'] ?? [];
+        $groups = collect($product['option_groups'] ?? [])->keyBy('id');
+
+        foreach ((array) ($configuration['selections'] ?? []) as $groupId => $valueId) {
+            $value = collect($groups->get($groupId)['values'] ?? [])->firstWhere('id', $valueId);
+            $tiers = data_get($value, 'fabric_price_table.price_tiers', []);
+            if (is_array($tiers) && $tiers !== []) {
+                return $tiers;
+            }
+        }
+
+        foreach ((array) ($configuration['multi_selections'] ?? []) as $groupId => $valueIds) {
+            $values = collect($groups->get($groupId)['values'] ?? [])->keyBy('id');
+            foreach ((array) $valueIds as $valueId) {
+                $tiers = data_get($values->get($valueId), 'fabric_price_table.price_tiers', []);
+                if (is_array($tiers) && $tiers !== []) {
+                    return $tiers;
+                }
+            }
+        }
+
+        return [];
     }
 
     private function customizationUnitPrice(array $product, array $customization, int $quantity): float

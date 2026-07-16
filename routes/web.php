@@ -13,6 +13,7 @@ use App\Http\Controllers\Storefront\ContentPageController;
 use App\Http\Controllers\Storefront\CategoryController;
 use App\Http\Controllers\Storefront\Checkout\CheckoutController;
 use App\Http\Controllers\Storefront\HomeController;
+use App\Http\Controllers\Storefront\NewsletterController;
 use App\Http\Controllers\Storefront\OrderController;
 use App\Http\Controllers\Storefront\ProductController;
 use Illuminate\Support\Facades\Route;
@@ -27,7 +28,11 @@ Route::get('/contact-us', [ContactController::class, 'index'])->name('contact');
 Route::post('/contact-us', [ContactController::class, 'store'])
     ->middleware('throttle:contact')
     ->name('contact.store');
+Route::post('/newsletter', [NewsletterController::class, 'store'])
+    ->middleware('throttle:6,1')
+    ->name('newsletter.store');
 Route::get('/help-center', [ContentPageController::class, 'faq'])->name('faq');
+Route::get('/testimonials', [ContentPageController::class, 'testimonials'])->name('testimonials.index');
 Route::get('/how-to-order', [ContentPageController::class, 'howToOrder'])->name('how-to-order');
 Route::get('/size-guide', [ContentPageController::class, 'sizeGuide'])->name('size-guide');
 Route::get('/artwork-guidelines', [ContentPageController::class, 'artworkGuidelines'])->name('artwork-guidelines');
@@ -73,6 +78,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/notifications/read-all', [\App\Http\Controllers\Admin\NotificationController::class, 'markAllRead'])->name('notifications.read-all');
         Route::post('/notifications/{notification}/read', [\App\Http\Controllers\Admin\NotificationController::class, 'markRead'])->name('notifications.read');
         Route::post('/notifications/pusher/auth', [\App\Http\Controllers\Admin\NotificationController::class, 'pusherAuth'])->name('notifications.pusher-auth');
+
+        Route::get('/newsletter-subscribers', [\App\Http\Controllers\Admin\NewsletterSubscriberController::class, 'index'])->name('newsletter-subscribers.index');
+        Route::get('/newsletter-subscribers/export', [\App\Http\Controllers\Admin\NewsletterSubscriberController::class, 'export'])->name('newsletter-subscribers.export');
 
         Route::get('/media-library', [\App\Http\Controllers\Admin\MediaLibraryController::class, 'index'])->name('media-library.index');
         Route::post('/media-library', [\App\Http\Controllers\Admin\MediaLibraryController::class, 'store'])

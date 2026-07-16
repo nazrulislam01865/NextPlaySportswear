@@ -25,6 +25,7 @@ class HomepageSectionController extends Controller
         HomepageSectionRegistry::ensureRows(auth('admin')->id());
 
         $sections = HomepageSection::query()
+            ->whereNotIn('key', HomepageSectionRegistry::retiredKeys())
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get()
@@ -68,8 +69,13 @@ class HomepageSectionController extends Controller
 
     private function sectionForKey(string $key): HomepageSection
     {
+        abort_if(HomepageSectionRegistry::isRetired($key), 404);
+
         HomepageSectionRegistry::ensureRows(auth('admin')->id());
 
-        return HomepageSection::query()->where('key', $key)->firstOrFail();
+        return HomepageSection::query()
+            ->whereNotIn('key', HomepageSectionRegistry::retiredKeys())
+            ->where('key', $key)
+            ->firstOrFail();
     }
 }

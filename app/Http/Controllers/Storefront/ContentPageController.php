@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
+use App\Services\Storefront\HomepageSectionService;
 use Illuminate\View\View;
 
 class ContentPageController extends Controller
@@ -38,6 +39,31 @@ class ContentPageController extends Controller
         ];
 
         return view('storefront.content.faq', compact('categories'));
+    }
+
+
+    public function testimonials(HomepageSectionService $homepageSections): View
+    {
+        $section = collect($homepageSections->sections())->firstWhere('key', 'testimonials') ?? [];
+
+        $items = collect(data_get($section, 'items', []))
+            ->filter(fn ($item): bool => filled(data_get($item, 'title')) || filled(data_get($item, 'description')))
+            ->values()
+            ->all();
+
+        return view('storefront.content.testimonials', [
+            'section' => is_array($section) ? $section : [],
+            'items' => $items,
+            'seo' => [
+                'title' => 'Customer Testimonials | ' . config('storefront.name'),
+                'description' => 'Read customer testimonials from teams, schools, clubs, businesses, and event organizers who use NextPlay Sportswear for custom uniforms and bulk orders.',
+                'robots' => 'index, follow',
+                'canonical' => route('testimonials.index'),
+                'og_title' => 'Customer Testimonials | ' . config('storefront.name'),
+                'og_description' => 'Stories from teams and organizations helped by NextPlay Sportswear.',
+                'schema_type' => 'CollectionPage',
+            ],
+        ]);
     }
 
     public function howToOrder(): View
