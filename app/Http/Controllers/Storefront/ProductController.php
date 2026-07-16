@@ -7,7 +7,6 @@ use App\Services\Storefront\ProductCatalogService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
@@ -20,12 +19,18 @@ class ProductController extends Controller
     {
         $query = $request->string('q')->trim()->toString();
         $tag = trim((string) $request->query('tag', ''));
-        $products = $this->productCatalogService->search($query, $tag);
+        $selectedCategoryIds = $this->productCatalogService->normalizeCategoryFilterIds((array) $request->query('categories', []));
+        $products = $this->productCatalogService->searchPaginated($query, $tag, $selectedCategoryIds);
+        $categoryFilters = $this->productCatalogService->categoryFilterTree($selectedCategoryIds);
+        $hasFilters = filled($query) || filled($tag) || $selectedCategoryIds !== [];
 
         return view('storefront.products.index', [
             'products' => $products,
             'query' => $query,
             'tag' => $tag,
+            'selectedCategoryIds' => $selectedCategoryIds,
+            'categoryFilters' => $categoryFilters,
+            'hasFilters' => $hasFilters,
             'seo' => [
                 'title' => filled($tag)
                     ? 'Products tagged '.$tag.' | '.config('storefront.name')
@@ -47,24 +52,7 @@ class ProductController extends Controller
             return response()->json(['data' => []]);
         }
 
-        $needle = Str::lower($query);
-
-        $suggestions = collect($this->productCatalogService->all())
-            ->filter(function (array $product) use ($needle): bool {
-                $searchText = collect([
-                    $product['title'] ?? '',
-                    $product['short_title'] ?? '',
-                    $product['slug'] ?? '',
-                    $product['sku'] ?? '',
-                    $product['category'] ?? '',
-                    $product['subcategory'] ?? '',
-                    $product['sport'] ?? '',
-                    implode(' ', $product['tags'] ?? []),
-                ])->filter()->implode(' ');
-
-                return Str::contains(Str::lower($searchText), $needle);
-            })
-            ->take(8)
+        $suggestions = collect($this->productCatalogService->suggestions($query, 8))
             ->map(fn (array $product): array => [
                 'title' => (string) ($product['title'] ?? ''),
                 'sku' => (string) ($product['sku'] ?? ''),

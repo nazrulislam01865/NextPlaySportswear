@@ -2,7 +2,11 @@
 
 namespace App\Services\Storefront;
 
+use App\Models\Category;
 use App\Models\Product;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator as ArrayLengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -21,6 +25,11 @@ class ProductCatalogService
 
     /** @var array<int, array<int, array<string, mixed>>> */
     private array $bestSellingProducts = [];
+
+    /** @var array<int, array<int>> */
+    private array $runtimeExpandedCategoryFilterIds = [];
+
+    private ?\Illuminate\Support\Collection $runtimeCategoryFilterParentRows = null;
 
     public function all(): array
     {
@@ -51,9 +60,93 @@ class ProductCatalogService
             ->all();
     }
 
-    public function search(?string $query = null, ?string $tag = null): array
+    public function search(?string $query = null, ?string $tag = null, ?array $categoryIds = null): array
+    {
+        return $this->filteredFallbackProducts($query, $tag, $categoryIds ?? [])->values()->all();
+    }
+
+    /**
+     * @param array<int, int|string>|null $categoryIds
+     */
+    public function searchPaginated(?string $query = null, ?string $tag = null, ?array $categoryIds = null, ?int $perPage = null): LengthAwarePaginator
+    {
+        $perPage = $this->listingPageSize($perPage);
+        $selectedCategoryIds = $this->normalizeCategoryFilterIds($categoryIds ?? []);
+
+        if (Schema::hasTable('products') && Product::query()->published()->exists()) {
+            $products = Product::query()
+                ->published()
+                ->with($this->listingRelations());
+
+            $this->applyProductSearchFilters($products, $query, $tag);
+            $this->applyProductCategoryFilters($products, $selectedCategoryIds);
+            $this->applyProductListingSort($products);
+
+            $paginator = $products->paginate($perPage)->withQueryString();
+            $paginator->through(fn (Product $product): array => $this->fromListingModel($product));
+
+            return $paginator;
+        }
+
+        return $this->paginateArray($this->filteredFallbackProducts($query, $tag, $selectedCategoryIds), $perPage);
+    }
+
+    public function suggestions(string $query, int $limit = 8): array
+    {
+        $query = trim($query);
+        $limit = max(1, min($limit, 12));
+
+        if ($query === '') {
+            return [];
+        }
+
+        if (Schema::hasTable('products') && Product::query()->published()->exists()) {
+            $products = Product::query()
+                ->published()
+                ->with($this->listingRelations());
+
+            $this->applyProductSearchFilters($products, $query, null);
+            $this->applyProductListingSort($products);
+
+            return $products
+                ->limit($limit)
+                ->get()
+                ->map(fn (Product $product): array => $this->fromListingModel($product))
+                ->values()
+                ->all();
+        }
+
+        return $this->filteredFallbackProducts($query, null)
+            ->take($limit)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param array<int, int|string> $categoryIds
+     */
+    private function filteredFallbackProducts(?string $query = null, ?string $tag = null, array $categoryIds = []): \Illuminate\Support\Collection
     {
         $products = collect($this->all());
+        $selectedCategoryIds = $this->normalizeCategoryFilterIds($categoryIds);
+        $selectedCategoryLabels = $this->labelsForCategoryIds($selectedCategoryIds);
+
+        if ($selectedCategoryLabels !== []) {
+            $products = $products->filter(function (array $product) use ($selectedCategoryLabels): bool {
+                $productLabels = collect([
+                    $product['category'] ?? null,
+                    $product['subcategory'] ?? null,
+                    $product['category_slug'] ?? null,
+                    $product['subcategory_slug'] ?? null,
+                    $product['sport'] ?? null,
+                ])->merge(collect($product['categories'] ?? [])->flatMap(fn ($category) => [
+                    $category['name'] ?? null,
+                    $category['slug'] ?? null,
+                ]))->filter()->map(fn ($value): string => Str::lower(trim((string) $value)));
+
+                return $productLabels->intersect($selectedCategoryLabels)->isNotEmpty();
+            });
+        }
 
         if (filled($tag)) {
             $tagNeedle = Str::lower(trim((string) $tag));
@@ -69,15 +162,365 @@ class ProductCatalogService
             $needle = Str::lower((string) $query);
 
             $products = $products->filter(function (array $product) use ($needle): bool {
-                return Str::contains(Str::lower($product['title']), $needle)
-                    || Str::contains(Str::lower($product['category']), $needle)
-                    || Str::contains(Str::lower(implode(' ', $product['tags'])), $needle)
-                    || Str::contains(Str::lower($product['sport']), $needle)
-                    || Str::contains(Str::lower($product['sku']), $needle);
+                return Str::contains(Str::lower($product['title'] ?? ''), $needle)
+                    || Str::contains(Str::lower($product['short_title'] ?? ''), $needle)
+                    || Str::contains(Str::lower($product['category'] ?? ''), $needle)
+                    || Str::contains(Str::lower($product['subcategory'] ?? ''), $needle)
+                    || Str::contains(Str::lower(implode(' ', $product['tags'] ?? [])), $needle)
+                    || Str::contains(Str::lower($product['sport'] ?? ''), $needle)
+                    || Str::contains(Str::lower($product['sku'] ?? ''), $needle);
             });
         }
 
-        return $products->values()->all();
+        return $products->values();
+    }
+
+    /**
+     * Builds the parent → child category filter used on the all-products page.
+     *
+     * @param array<int, int|string> $selectedCategoryIds
+     * @return array<int, array<string, mixed>>
+     */
+    public function categoryFilterTree(array $selectedCategoryIds = []): array
+    {
+        if (! Schema::hasTable('categories') || ! Schema::hasTable('products')) {
+            return [];
+        }
+
+        $selectedCategoryIds = $this->normalizeCategoryFilterIds($selectedCategoryIds);
+        $cacheVersion = (int) Cache::get('catalog.category-facets.version', 1);
+        $cacheKey = 'catalog.products.category-filter-tree.'.$this->catalogCacheVersionSuffix();
+        $ttl = max(60, (int) config('catalog.facets_cache_seconds', 300));
+
+        $tree = Cache::remember($cacheKey, $ttl, function (): array {
+            $parents = Category::query()
+                ->storefrontReachable()
+                ->whereNull('parent_id')
+                ->with(['children' => fn ($query) => $query->storefrontReachable()->ordered()])
+                ->ordered()
+                ->get();
+
+            return $parents
+                ->map(function (Category $parent): array {
+                    $children = $parent->children
+                        ->map(function (Category $child): array {
+                            return [
+                                'id' => (int) $child->id,
+                                'label' => $child->name,
+                                'slug' => $child->slug,
+                                'count' => $this->countProductsForCategoryFilter((int) $child->id),
+                            ];
+                        })
+                        ->filter(fn (array $child): bool => $child['count'] > 0)
+                        ->values()
+                        ->all();
+
+                    return [
+                        'id' => (int) $parent->id,
+                        'label' => $parent->name,
+                        'slug' => $parent->slug,
+                        'count' => $this->countProductsForCategoryFilter((int) $parent->id),
+                        'children' => $children,
+                    ];
+                })
+                ->filter(fn (array $parent): bool => $parent['count'] > 0 || $parent['children'] !== [])
+                ->values()
+                ->all();
+        });
+
+        return collect($tree)
+            ->map(function (array $parent) use ($selectedCategoryIds): array {
+                $parent['selected'] = in_array((int) $parent['id'], $selectedCategoryIds, true);
+                $parent['children'] = collect($parent['children'] ?? [])
+                    ->map(function (array $child) use ($selectedCategoryIds): array {
+                        $child['selected'] = in_array((int) $child['id'], $selectedCategoryIds, true);
+
+                        return $child;
+                    })
+                    ->values()
+                    ->all();
+                $parent['has_selected_child'] = collect($parent['children'])->contains(fn (array $child): bool => (bool) ($child['selected'] ?? false));
+
+                return $parent;
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param array<int, int|string> $categoryIds
+     * @return array<int>
+     */
+    public function normalizeCategoryFilterIds(array $categoryIds): array
+    {
+        $ids = collect($categoryIds)
+            ->flatMap(function ($value): array {
+                if (is_array($value)) {
+                    return $value;
+                }
+
+                return explode(',', (string) $value);
+            })
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($ids === [] || ! Schema::hasTable('categories')) {
+            return $ids;
+        }
+
+        return Category::query()
+            ->storefrontReachable()
+            ->whereIn('id', $ids)
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param array<int, int> $selectedCategoryIds
+     */
+    private function applyProductCategoryFilters(Builder $products, array $selectedCategoryIds): void
+    {
+        if ($selectedCategoryIds === []) {
+            return;
+        }
+
+        $filterCategoryIds = $this->expandedCategoryFilterIds($selectedCategoryIds);
+
+        if ($filterCategoryIds === []) {
+            return;
+        }
+
+        $this->whereProductsMatchAnyCategory($products, $filterCategoryIds);
+    }
+
+    private function countProductsForCategoryFilter(int $categoryId): int
+    {
+        $categoryIds = $this->expandedCategoryFilterIds([$categoryId]);
+
+        if ($categoryIds === []) {
+            return 0;
+        }
+
+        $query = Product::query()->published();
+        $this->whereProductsMatchAnyCategory($query, $categoryIds);
+
+        return (int) $query
+            ->select('products.id')
+            ->distinct()
+            ->count('products.id');
+    }
+
+    /**
+     * Keeps the category-filter product query and the category-count query identical.
+     * A product can belong through the legacy category_id/subcategory_id columns
+     * or through the category_product pivot table, so every path must be checked.
+     *
+     * @param array<int, int> $categoryIds
+     */
+    private function whereProductsMatchAnyCategory(Builder $products, array $categoryIds): Builder
+    {
+        $categoryIds = collect($categoryIds)
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($categoryIds === []) {
+            return $products->whereRaw('1 = 0');
+        }
+
+        return $products->where(function (Builder $builder) use ($categoryIds): void {
+            $builder->whereIn('products.category_id', $categoryIds)
+                ->orWhereIn('products.subcategory_id', $categoryIds);
+
+            if (Schema::hasTable('category_product')) {
+                $builder->orWhereHas('categories', fn (Builder $categoryQuery) => $categoryQuery->whereIn('categories.id', $categoryIds));
+            }
+        });
+    }
+
+    /**
+     * @param array<int, int> $categoryIds
+     * @return array<int>
+     */
+    private function expandedCategoryFilterIds(array $categoryIds): array
+    {
+        $ids = collect($categoryIds)
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($ids === [] || ! Schema::hasTable('categories')) {
+            return $ids;
+        }
+
+        if (count($ids) === 1 && isset($this->runtimeExpandedCategoryFilterIds[$ids[0]])) {
+            return $this->runtimeExpandedCategoryFilterIds[$ids[0]];
+        }
+
+        $expanded = collect($ids);
+
+        if (Schema::hasTable('category_closure')) {
+            $expanded = $expanded->merge(DB::table('category_closure')
+                ->whereIn('ancestor_id', $ids)
+                ->pluck('descendant_id')
+                ->map(fn ($id): int => (int) $id));
+        }
+
+        $parentRows = $this->categoryFilterParentRows();
+        $frontier = $ids;
+
+        do {
+            $children = $parentRows
+                ->whereIn('parent_id', $frontier)
+                ->pluck('id')
+                ->map(fn ($id): int => (int) $id)
+                ->diff($expanded)
+                ->values()
+                ->all();
+
+            if ($children === []) {
+                break;
+            }
+
+            $expanded = $expanded->merge($children);
+            $frontier = $children;
+        } while (true);
+
+        $expandedIds = $expanded
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($expandedIds !== []) {
+            $expandedIds = Category::query()
+                ->storefrontReachable()
+                ->whereIn('id', $expandedIds)
+                ->pluck('id')
+                ->map(fn ($id): int => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        if (count($ids) === 1) {
+            $this->runtimeExpandedCategoryFilterIds[$ids[0]] = $expandedIds;
+        }
+
+        return $expandedIds;
+    }
+
+    private function categoryFilterParentRows(): \Illuminate\Support\Collection
+    {
+        if ($this->runtimeCategoryFilterParentRows !== null) {
+            return $this->runtimeCategoryFilterParentRows;
+        }
+
+        $cacheKey = 'catalog.products.category-filter-parent-rows.'.$this->catalogCacheVersionSuffix();
+        $ttl = max(60, (int) config('catalog.category_cache_seconds', 1800));
+
+        $rows = Cache::remember($cacheKey, $ttl, fn (): array => Category::query()
+            ->storefrontReachable()
+            ->select(['id', 'parent_id'])
+            ->get()
+            ->map(fn (Category $category): array => [
+                'id' => (int) $category->id,
+                'parent_id' => $category->parent_id ? (int) $category->parent_id : null,
+            ])
+            ->all());
+
+        return $this->runtimeCategoryFilterParentRows = collect($rows);
+    }
+
+    /**
+     * @param array<int, int> $categoryIds
+     * @return array<int, string>
+     */
+    private function labelsForCategoryIds(array $categoryIds): array
+    {
+        if ($categoryIds === [] || ! Schema::hasTable('categories')) {
+            return [];
+        }
+
+        return Category::query()
+            ->storefrontReachable()
+            ->whereIn('id', $this->expandedCategoryFilterIds($categoryIds))
+            ->get(['name', 'slug'])
+            ->flatMap(fn (Category $category): array => [$category->name, $category->slug])
+            ->filter()
+            ->map(fn ($label): string => Str::lower(trim((string) $label)))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function applyProductSearchFilters(Builder $products, ?string $query = null, ?string $tag = null): void
+    {
+        if (filled($tag)) {
+            $tagNeedle = trim((string) $tag);
+            $tagLike = '%'.Str::lower($tagNeedle).'%';
+
+            $products->where(function (Builder $builder) use ($tagNeedle, $tagLike): void {
+                $builder->whereJsonContains('products.tags', $tagNeedle)
+                    ->orWhere('products.tags', 'like', $tagLike)
+                    ->orWhere('products.badge_label', 'like', $tagLike);
+            });
+        }
+
+        if (filled($query)) {
+            $needle = trim((string) $query);
+            $like = '%'.$needle.'%';
+
+            $products->where(function (Builder $builder) use ($like): void {
+                $builder->where('products.name', 'like', $like)
+                    ->orWhere('products.sku', 'like', $like)
+                    ->orWhere('products.brand', 'like', $like)
+                    ->orWhere('products.product_type', 'like', $like)
+                    ->orWhere('products.short_description', 'like', $like)
+                    ->orWhere('products.tags', 'like', $like)
+                    ->orWhereHas('category', fn (Builder $categoryQuery) => $categoryQuery->where('name', 'like', $like))
+                    ->orWhereHas('subcategory', fn (Builder $categoryQuery) => $categoryQuery->where('name', 'like', $like))
+                    ->orWhereHas('categories', fn (Builder $categoryQuery) => $categoryQuery->where('categories.name', 'like', $like));
+            });
+        }
+    }
+
+    private function applyProductListingSort(Builder $products): void
+    {
+        $products
+            ->orderBy('products.sort_order')
+            ->orderByDesc('products.is_featured')
+            ->orderByDesc('products.published_at')
+            ->orderBy('products.name')
+            ->orderByDesc('products.id');
+    }
+
+    private function listingPageSize(?int $perPage = null): int
+    {
+        $perPage ??= (int) config('catalog.products_page_size', config('catalog.category_page_size', 24));
+
+        return max(1, min($perPage, 60));
+    }
+
+    private function paginateArray(\Illuminate\Support\Collection $products, int $perPage): LengthAwarePaginator
+    {
+        $page = max(1, (int) request()->query('page', 1));
+        $items = $products->forPage($page, $perPage)->values();
+
+        return new ArrayLengthAwarePaginator($items, $products->count(), $perPage, $page, [
+            'path' => request()->url(),
+            'query' => request()->query(),
+        ]);
     }
 
     public function findBySlug(string $slug): ?array
@@ -384,10 +827,7 @@ class ProductCatalogService
             ->unique(fn ($category) => $category->id)
             ->values();
 
-        $firstTier = $product->relationLoaded('priceTiers')
-            ? $product->priceTiers->sortBy('minimum_quantity')->first()
-            : null;
-        $unitPrice = $firstTier?->unit_price ?? $product->base_price;
+        $unitPrice = $this->displayUnitPrice($product);
 
         $detailInformation = $this->normalizeDetailInformation($product->specifications ?? []);
         $summaryDetailInformation = $this->summaryDetailInformation($detailInformation, $product);
@@ -400,7 +840,7 @@ class ProductCatalogService
             'short_title' => $product->name,
             'summary' => $product->short_description ?: str(strip_tags((string) $product->description_html))->limit(130)->toString(),
             'description' => strip_tags((string) $product->description_html),
-            'price' => 'From $'.number_format((float) $unitPrice, 2),
+            'price' => $this->formatDisplayPrice($unitPrice),
             'base_price' => (float) $product->base_price,
             'currency' => $product->currency,
             'minimum_quantity' => $product->minimum_quantity,
@@ -449,6 +889,82 @@ class ProductCatalogService
             'images',
             'priceTiers',
         ];
+    }
+
+    private function displayUnitPrice(Product $product, ?array $priceTiers = null): float
+    {
+        if ($priceTiers !== null) {
+            $lastTier = collect($priceTiers)
+                ->filter(fn (array $tier): bool => is_numeric($tier['unit'] ?? null))
+                ->sortBy(fn (array $tier): int => (int) ($tier['min'] ?? 0))
+                ->last();
+
+            if (is_array($lastTier)) {
+                return (float) $lastTier['unit'];
+            }
+        } elseif ($product->relationLoaded('priceTiers')) {
+            $lastTier = $product->priceTiers
+                ->filter(fn ($tier): bool => is_numeric($tier->unit_price))
+                ->sortBy('minimum_quantity')
+                ->last();
+
+            if ($lastTier) {
+                return (float) $lastTier->unit_price;
+            }
+        }
+
+        $priceFromTable = $this->priceFromLastVisiblePriceRow($product);
+
+        return $priceFromTable ?? (float) $product->base_price;
+    }
+
+    private function priceFromLastVisiblePriceRow(Product $product): ?float
+    {
+        $rows = collect($product->price_table_rows ?? [])
+            ->filter(fn ($row): bool => is_array($row) && count($row) > 1)
+            ->values();
+
+        if ($rows->isEmpty()) {
+            return null;
+        }
+
+        $lastRow = array_values($rows->last());
+        $preferredColumn = (int) ($product->price_table_highlight_column ?? 1);
+        $price = $this->parseDisplayMoney($lastRow[$preferredColumn] ?? null);
+
+        if ($price !== null) {
+            return $price;
+        }
+
+        foreach (array_slice($lastRow, 1) as $cell) {
+            $price = $this->parseDisplayMoney($cell);
+
+            if ($price !== null) {
+                return $price;
+            }
+        }
+
+        return null;
+    }
+
+    private function parseDisplayMoney(mixed $value): ?float
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/-?\d+(?:,\d{3})*(?:\.\d+)?|-?\d+(?:\.\d+)?/', $value, $match) !== 1) {
+            return null;
+        }
+
+        return (float) str_replace(',', '', $match[0]);
+    }
+
+    private function formatDisplayPrice(float $unitPrice): string
+    {
+        return 'From $'.number_format($unitPrice, 2);
     }
 
     public function fromModel(Product $product): array
@@ -547,7 +1063,7 @@ class ProductCatalogService
             'detail_information_html' => $product->detail_information_html,
             'customization_artwork_html' => $product->customization_artwork_html,
             'fulfillment_html' => $product->fulfillment_html,
-            'price' => 'From $'.number_format((float) $priceTiers[0]['unit'], 2),
+            'price' => $this->formatDisplayPrice($this->displayUnitPrice($product, $priceTiers)),
             'base_price' => (float) $product->base_price,
             'compare_at_price' => $product->compare_at_price ? (float) $product->compare_at_price : null,
             'currency' => $product->currency,

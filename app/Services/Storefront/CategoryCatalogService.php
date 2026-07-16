@@ -217,7 +217,8 @@ class CategoryCatalogService
                 ->orderBy('products.name'),
         };
 
-        $paginator = $query->paginate(config('catalog.category_page_size', 24))->withQueryString();
+        $perPage = max(1, min((int) config('catalog.category_page_size', 24), 60));
+        $paginator = $query->paginate($perPage)->withQueryString();
         $paginator->through(fn (Product $product): array => $this->productCatalogService->fromListingModel($product));
 
         return $paginator;

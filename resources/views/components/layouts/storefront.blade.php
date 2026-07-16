@@ -110,6 +110,48 @@
     @endforeach
 
     @vite(['resources/css/storefront.css', 'resources/js/storefront.js'])
+
+    <style>
+        img.np-image-placeholder-active,
+        img[src*="product-placeholder.svg"] {
+            box-sizing: border-box !important;
+            object-fit: contain !important;
+            object-position: center center !important;
+            background: #f3f6fb !important;
+            padding: clamp(0.5rem, 4%, 2rem) !important;
+        }
+    </style>
+
+    <script>
+        window.NextPlayImagePlaceholder = @json(asset('images/product-placeholder.svg'));
+
+        window.nextPlayUseImagePlaceholder = function (image, fallbackSrc) {
+            if (! image || String(image.tagName || '').toLowerCase() !== 'img') {
+                return;
+            }
+
+            const fallback = fallbackSrc || image.getAttribute('data-fallback-src') || window.NextPlayImagePlaceholder;
+            const current = image.currentSrc || image.getAttribute('src') || '';
+
+            if (! fallback || current === fallback || current.endsWith('/images/product-placeholder.svg')) {
+                return;
+            }
+
+            image.removeAttribute('srcset');
+            image.setAttribute('src', fallback);
+            image.classList.add('np-image-placeholder-active');
+        };
+
+        document.addEventListener('error', function (event) {
+            window.nextPlayUseImagePlaceholder(event.target);
+        }, true);
+
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('img[src*="product-placeholder.svg"]').forEach(function (image) {
+                image.classList.add('np-image-placeholder-active');
+            });
+        });
+    </script>
 </head>
 <body class="storefront-clean-ui">
     <x-storefront.topbar />

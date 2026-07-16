@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', HomeController::class)->name('home');
 Route::get('/sitemap.xml', \App\Http\Controllers\Storefront\SitemapController::class)->name('sitemap');
 
+Route::get('/media/{path}', [\App\Http\Controllers\PublicMediaController::class, 'show'])->where('path', '.*')->name('media.public');
+
 Route::get('/about-us', [ContentPageController::class, 'about'])->name('about');
 Route::get('/contact-us', [ContactController::class, 'index'])->name('contact');
 Route::post('/contact-us', [ContactController::class, 'store'])
