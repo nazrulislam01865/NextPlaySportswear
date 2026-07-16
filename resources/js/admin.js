@@ -1587,7 +1587,13 @@ window.adminProductForm = (initial = {}) => ({
 window.productSpecificationEditor = (initial = '', autoValues = {}) => ({
     value: String(initial || ''),
     autoValues: autoValues || {},
-    knownLabels: ['SKU', 'Product Type', 'Fabric', 'Fit', 'Customization', 'Size Range', 'MOQ', 'Lead Time'],
+    templateLabels: ['SKU', 'Product Type', 'Fabric', 'Fit', 'Customization', 'Size Range', 'MOQ', 'Lead Time'],
+    fabricLikeLabels: ['Fabric', 'Material', 'Materials', 'Metarial', 'Metarials', 'Meterial', 'Meterials'],
+    knownLabels: [
+        'SKU', 'Product Type', 'Fabric', 'Material', 'Materials', 'Metarial', 'Metarials', 'Meterial', 'Meterials', 'Fabric GSM', 'GSM', 'Width', 'Fit',
+        'Customization', 'Imprint Method', 'Attachment', 'Size Range', 'MOQ', 'Lead Time',
+        'Shipping Time', 'Usage', 'Standard Length',
+    ],
     aliases: {
         'sku': 'SKU',
         'style no': 'SKU',
@@ -1595,12 +1601,24 @@ window.productSpecificationEditor = (initial = '', autoValues = {}) => ({
         'product type': 'Product Type',
         'product': 'Product Type',
         'fabric': 'Fabric',
-        'material': 'Fabric',
+        'fabric gsm': 'Fabric GSM',
+        'fabric weight': 'Fabric GSM',
+        'gsm': 'GSM',
+        'material': 'Material',
+        'materials': 'Materials',
+        'metarial': 'Metarial',
+        'metarials': 'Metarials',
+        'meterial': 'Meterial',
+        'meterials': 'Meterials',
         'fit': 'Fit',
+        'width': 'Width',
         'customization': 'Customization',
         'customisation': 'Customization',
         'printing': 'Customization',
         'print method': 'Customization',
+        'imprint method': 'Imprint Method',
+        'decoration': 'Customization',
+        'attachment': 'Attachment',
         'size range': 'Size Range',
         'sizes': 'Size Range',
         'size': 'Size Range',
@@ -1610,9 +1628,12 @@ window.productSpecificationEditor = (initial = '', autoValues = {}) => ({
         'lead time': 'Lead Time',
         'lead-time': 'Lead Time',
         'production time': 'Lead Time',
+        'shipping time': 'Shipping Time',
+        'usage': 'Usage',
+        'standard length': 'Standard Length',
     },
     get template() {
-        return this.knownLabels.map((label) => `${label}:`).join('\n');
+        return this.templateLabels.map((label) => `${label}:`).join('\n');
     },
     init() {
         if (!this.value.trim()) {
@@ -1804,8 +1825,13 @@ window.productSpecificationEditor = (initial = '', autoValues = {}) => ({
         const manualRows = new Map(
             this.rowsFromText(this.value).map((row) => [row.label, row.value])
         );
+        const fabricDisplayLabel = this.fabricLikeLabels.find((label) => String(manualRows.get(label) || '').trim()) || 'Fabric';
+        const orderedLabels = this.knownLabels.map((label) => label === 'Fabric' ? fabricDisplayLabel : label)
+            .filter((label, index, labels) => labels.indexOf(label) === index);
 
-        const rows = this.knownLabels.map((label) => {
+        const rows = orderedLabels.map((label) => {
+            if (this.fabricLikeLabels.includes(label) && label !== fabricDisplayLabel) return null;
+
             const manualValue = String(manualRows.get(label) || '').trim();
             const finalValue = manualValue || String(this.autoValues[label] || '').trim();
 
@@ -1815,7 +1841,7 @@ window.productSpecificationEditor = (initial = '', autoValues = {}) => ({
         }).filter(Boolean);
 
         manualRows.forEach((value, label) => {
-            if (!this.knownLabels.includes(label) && String(value || '').trim()) {
+            if (!orderedLabels.includes(label) && String(value || '').trim()) {
                 rows.push({ label, value: String(value).trim() });
             }
         });

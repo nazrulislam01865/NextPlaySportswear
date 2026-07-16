@@ -676,7 +676,10 @@ class ProductCatalogService
 
     private function summaryDetailInformation(array $detailInformation, Product $product): array
     {
-        $labels = ['SKU', 'Product Type', 'Fabric', 'Fit', 'Size Range', 'MOQ', 'Lead Time'];
+        $fabricLikeLabels = ['Fabric', 'Material', 'Materials', 'Metarial', 'Metarials', 'Meterial', 'Meterials'];
+        $fabricDisplayLabel = collect($fabricLikeLabels)
+            ->first(fn (string $label): bool => trim((string) ($detailInformation[$label] ?? '')) !== '') ?: 'Fabric';
+        $labels = ['SKU', 'Product Type', $fabricDisplayLabel, 'Fabric GSM', 'GSM', 'Width', 'Fit', 'Customization', 'Imprint Method', 'Attachment', 'Size Range', 'MOQ', 'Lead Time', 'Shipping Time', 'Usage', 'Standard Length'];
         $fallbacks = [
             'SKU' => $product->sku,
             'Product Type' => $product->product_type,
@@ -724,7 +727,7 @@ class ProductCatalogService
 
     private function parseDetailInformationText(string $text): array
     {
-        $knownLabels = ['SKU', 'Product Type', 'Fabric', 'Fit', 'Customization', 'Size Range', 'MOQ', 'Lead Time'];
+        $knownLabels = ['SKU', 'Product Type', 'Fabric', 'Material', 'Materials', 'Metarial', 'Metarials', 'Meterial', 'Meterials', 'Fabric GSM', 'GSM', 'Width', 'Fit', 'Customization', 'Imprint Method', 'Attachment', 'Size Range', 'MOQ', 'Lead Time', 'Shipping Time', 'Usage', 'Standard Length'];
         $rows = [];
         $lines = collect(preg_split('/\r\n|\r|\n/', $text) ?: [])
             ->map(fn ($line) => $this->cleanDetailInformationText($line))
@@ -795,16 +798,41 @@ class ProductCatalogService
 
         return [
             'sku' => 'SKU',
+            'style no' => 'SKU',
+            'style number' => 'SKU',
             'product type' => 'Product Type',
+            'product' => 'Product Type',
             'fabric' => 'Fabric',
+            'fabric gsm' => 'Fabric GSM',
+            'fabric weight' => 'Fabric GSM',
+            'gsm' => 'GSM',
+            'material' => 'Material',
+            'materials' => 'Materials',
+            'metarial' => 'Metarial',
+            'metarials' => 'Metarials',
+            'meterial' => 'Meterial',
+            'meterials' => 'Meterials',
             'fit' => 'Fit',
+            'width' => 'Width',
             'customization' => 'Customization',
             'customisation' => 'Customization',
+            'printing' => 'Customization',
+            'print method' => 'Customization',
+            'imprint method' => 'Imprint Method',
+            'decoration' => 'Customization',
+            'attachment' => 'Attachment',
             'size range' => 'Size Range',
+            'sizes' => 'Size Range',
+            'size' => 'Size Range',
             'moq' => 'MOQ',
+            'minimum order' => 'MOQ',
+            'minimum order quantity' => 'MOQ',
             'lead time' => 'Lead Time',
             'lead-time' => 'Lead Time',
             'production time' => 'Lead Time',
+            'shipping time' => 'Shipping Time',
+            'usage' => 'Usage',
+            'standard length' => 'Standard Length',
         ][$lookup] ?? Str::headline($clean);
     }
 
@@ -824,7 +852,7 @@ class ProductCatalogService
         $product['price_tiers'] = $product['price_tiers'] ?? $this->defaultPriceTiers((float) ($product['base_price'] ?? 39));
         $product['detail_information'] = $product['detail_information'] ?? $this->defaultDetailInformation($product);
         $product['summary_detail_information'] = $product['summary_detail_information'] ?? collect($product['detail_information'] ?? [])
-            ->only(['SKU', 'Product Type', 'Fabric', 'Fit', 'Size Range', 'MOQ', 'Lead Time'])
+            ->only(['SKU', 'Product Type', 'Fabric', 'Fabric GSM', 'GSM', 'Width', 'Fit', 'Customization', 'Imprint Method', 'Attachment', 'Size Range', 'MOQ', 'Lead Time', 'Shipping Time', 'Usage', 'Standard Length'])
             ->filter(fn ($value) => filled($value))
             ->all();
         $product['details'] = $product['details'] ?? $this->legacyDetails($product);

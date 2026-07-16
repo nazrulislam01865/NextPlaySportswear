@@ -24,7 +24,6 @@
         ? $product->attributeValues->reject(fn($value) => $dynamicCatalogAttributeIds->contains((int) $value->attribute_id))->pluck('id')->all()
         : [];
     $selectedAttributeValueIds = collect(old('attribute_value_ids', $persistedManualAttributeValueIds))->map(fn($id)=>(int)$id)->all();
-    $productSpecificationLabels = ['SKU', 'Product Type', 'Fabric', 'Fit', 'Customization', 'Size Range', 'MOQ', 'Lead Time'];
     $storedSpecificationRows = collect($product->specifications ?? [])
         ->mapWithKeys(function ($value, $label) {
             if (is_array($value)) {
@@ -36,6 +35,10 @@
 
             return filled($label) && filled($value) ? [(string) $label => (string) $value] : [];
         });
+    $fabricLikeSpecificationLabels = ['Fabric', 'Material', 'Materials', 'Metarial', 'Metarials', 'Meterial', 'Meterials'];
+    $fabricSpecificationLabel = collect($fabricLikeSpecificationLabels)
+        ->first(fn ($label) => filled($storedSpecificationRows->get($label))) ?: 'Fabric';
+    $productSpecificationLabels = ['SKU', 'Product Type', $fabricSpecificationLabel, 'Fit', 'Customization', 'Size Range', 'MOQ', 'Lead Time'];
     $productSpecificationText = old('product_specification_text');
     if ($productSpecificationText === null) {
         $knownSpecificationRows = collect($productSpecificationLabels)
@@ -809,7 +812,7 @@ Lead Time:"></div>
                                     <template x-for="(row,rowIndex) in productionRows" :key="row.client_key || rowIndex">
                                         <tr>
                                             <td>
-                                                <input class="np-table-input font-black" :name="`production_table_rows[${rowIndex}][range]`" x-model="row.range" maxlength="50" placeholder="1-40">
+                                                <input class="np-table-input font-black" :name="`production_table_rows[${rowIndex}][range]`" x-model="row.range" maxlength="50" placeholder="1-40 pairs">
                                             </td>
                                             <template x-for="(cell,columnIndex) in row.cells" :key="columnIndex">
                                                 <td>
@@ -842,7 +845,7 @@ Lead Time:"></div>
                                                 <section class="np-production-range-card">
                                                     <label class="np-production-mobile-field">
                                                         <span>Quantity range</span>
-                                                        <input class="np-table-input font-black" :name="`production_table_rows[${rowIndex}][range]`" x-model="row.range" maxlength="50" placeholder="1-40">
+                                                        <input class="np-table-input font-black" :name="`production_table_rows[${rowIndex}][range]`" x-model="row.range" maxlength="50" placeholder="1-40 pairs">
                                                     </label>
 
                                                     <div class="np-production-offer-card">

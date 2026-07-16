@@ -709,7 +709,10 @@ class ProductController extends Controller
     {
         $manualRows = $this->parseProductSpecificationText($specificationText);
         $autoRows = $this->productSpecificationAutoRows($product);
-        $templateLabels = ['SKU', 'Product Type', 'Fabric', 'Fit', 'Customization', 'Size Range', 'MOQ', 'Lead Time'];
+        $fabricLikeLabels = ['Fabric', 'Material', 'Materials', 'Metarial', 'Metarials', 'Meterial', 'Meterials'];
+        $fabricDisplayLabel = collect($fabricLikeLabels)
+            ->first(fn (string $label): bool => trim((string) ($manualRows[$label] ?? '')) !== '') ?: 'Fabric';
+        $templateLabels = ['SKU', 'Product Type', $fabricDisplayLabel, 'Fit', 'Customization', 'Size Range', 'MOQ', 'Lead Time'];
         $result = [];
 
         foreach ($templateLabels as $label) {
@@ -740,7 +743,7 @@ class ProductController extends Controller
 
     private function parseProductSpecificationText(string $specificationText): array
     {
-        $knownLabels = ['SKU', 'Product Type', 'Fabric', 'Fit', 'Customization', 'Size Range', 'MOQ', 'Lead Time'];
+        $knownLabels = ['SKU', 'Product Type', 'Fabric', 'Material', 'Materials', 'Metarial', 'Metarials', 'Meterial', 'Meterials', 'Fabric GSM', 'GSM', 'Width', 'Fit', 'Customization', 'Imprint Method', 'Attachment', 'Size Range', 'MOQ', 'Lead Time', 'Shipping Time', 'Usage', 'Standard Length'];
         $rows = collect();
 
         if (str_contains($specificationText, '<')) {
@@ -863,12 +866,24 @@ class ProductController extends Controller
             'product type' => 'Product Type',
             'product' => 'Product Type',
             'fabric' => 'Fabric',
-            'material' => 'Fabric',
+            'fabric gsm' => 'Fabric GSM',
+            'fabric weight' => 'Fabric GSM',
+            'gsm' => 'GSM',
+            'material' => 'Material',
+            'materials' => 'Materials',
+            'metarial' => 'Metarial',
+            'metarials' => 'Metarials',
+            'meterial' => 'Meterial',
+            'meterials' => 'Meterials',
             'fit' => 'Fit',
+            'width' => 'Width',
             'customization' => 'Customization',
             'customisation' => 'Customization',
             'printing' => 'Customization',
             'print method' => 'Customization',
+            'imprint method' => 'Imprint Method',
+            'decoration' => 'Customization',
+            'attachment' => 'Attachment',
             'size range' => 'Size Range',
             'sizes' => 'Size Range',
             'size' => 'Size Range',
@@ -878,6 +893,9 @@ class ProductController extends Controller
             'lead time' => 'Lead Time',
             'lead-time' => 'Lead Time',
             'production time' => 'Lead Time',
+            'shipping time' => 'Shipping Time',
+            'usage' => 'Usage',
+            'standard length' => 'Standard Length',
         ];
 
         return $aliases[$lookup] ?? Str::headline($clean);

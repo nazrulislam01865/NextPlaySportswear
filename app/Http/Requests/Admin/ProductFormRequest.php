@@ -576,13 +576,11 @@ class ProductFormRequest extends FormRequest
 
             $productionHeaders = collect($this->input('production_table_headers', []))->values();
             $productionRows = collect($this->input('production_table_rows', []))->values();
-            $parsedProductionRanges = [];
-
             foreach ($productionRows as $rowIndex => $row) {
                 $rangeText = trim((string) data_get($row, 'range', ''));
                 $parsed = $this->parseProductionRange($rangeText);
                 if ($parsed === null) {
-                    $validator->errors()->add("production_table_rows.{$rowIndex}.range", 'Enter a valid quantity range such as 1-40, 41+, or 25.');
+                    $validator->errors()->add("production_table_rows.{$rowIndex}.range", 'Enter a valid quantity range such as 1-40 pairs, 100-500 pairs, >100 pairs, 41+, or 25.');
                     continue;
                 }
 
@@ -604,16 +602,10 @@ class ProductFormRequest extends FormRequest
                     }
                 }
 
-                foreach ($parsedProductionRanges as $previousIndex => $previous) {
-                    $currentMaximum = $parsed['maximum_quantity'] ?? PHP_INT_MAX;
-                    $previousMaximum = $previous['maximum_quantity'] ?? PHP_INT_MAX;
-                    if ($parsed['minimum_quantity'] <= $previousMaximum && $previous['minimum_quantity'] <= $currentMaximum) {
-                        $validator->errors()->add("production_table_rows.{$rowIndex}.range", 'Production quantity ranges cannot overlap another row.');
-                        break;
-                    }
-                }
-
-                $parsedProductionRanges[$rowIndex] = $parsed;
+                // Production rows can come from legacy/imported product pages and may
+                // intentionally contain display-style labels or broad quantity bands.
+                // Keep them editable and saveable; parsed values are still used only
+                // to create selectable production-speed records.
             }
         });
     }
@@ -757,7 +749,7 @@ class ProductFormRequest extends FormRequest
     {
         $value = html_entity_decode(trim($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $value = str_replace(["\xc2\xa0", ',', '–', '—', '−'], [' ', '', '-', '-', '-'], $value);
-        $value = preg_replace('/\b(?:pcs?|pieces?|units?|qty|quantity)\b\.?/i', '', $value) ?? $value;
+        $value = preg_replace('/\b(?:pcs?|pieces?|units?|qty|quantity|pairs?|sets?|items?|products?|garments?|shirts?|jerseys?)\b\.?/i', '', $value) ?? $value;
         $value = trim((string) preg_replace('/\s+/', ' ', $value));
         $value = trim($value, " \t\n\r\0\x0B:-");
 
@@ -773,7 +765,7 @@ class ProductFormRequest extends FormRequest
                 : null;
         }
 
-        if (preg_match('/^(?:up\s*to|upto|max(?:imum)?|<=|≤)\s*(\d+)$/i', $value, $match) === 1) {
+        if (preg_match('/^(?:up\s*to|upto|max(?:imum)?|<=|=<|≤)\s*(\d+)$/i', $value, $match) === 1) {
             $maximum = (int) $match[1];
 
             return $maximum >= 1
@@ -781,7 +773,15 @@ class ProductFormRequest extends FormRequest
                 : null;
         }
 
-        if (preg_match('/^(?:more\s+than|greater\s+than|over|above|>|≥)\s*(\d+)$/i', $value, $match) === 1) {
+        if (preg_match('/^(?:at\s+least|min(?:imum)?|>=|=>|≥)\s*(\d+)$/i', $value, $match) === 1) {
+            $minimum = (int) $match[1];
+
+            return $minimum >= 1
+                ? ['minimum_quantity' => $minimum, 'maximum_quantity' => null]
+                : null;
+        }
+
+        if (preg_match('/^(?:more\s+than|greater\s+than|over|above|>)\s*(\d+)$/i', $value, $match) === 1) {
             $minimum = (int) $match[1] + 1;
 
             return $minimum >= 1
