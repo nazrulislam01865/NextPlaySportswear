@@ -53,10 +53,13 @@ window.adminProductForm = (initial = {}) => ({
     imageUrls: initial.imageUrls?.length ? initial.imageUrls : [],
     newImagePreviews: [],
     productImageDragging: false,
+    productImageDragDepth: 0,
+    productImageUploadError: '',
     mediaLibraryOpen: false,
     mediaLibraryLoading: false,
     mediaLibraryUploadBusy: false,
     mediaLibraryDragging: false,
+    mediaLibraryDragDepth: 0,
     mediaLibraryItems: [],
     mediaLibrarySelectedIds: [],
     mediaLibrarySearch: '',
@@ -507,6 +510,55 @@ window.adminProductForm = (initial = {}) => ({
     csrfToken() {
         return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     },
+    isFileDrag(event) {
+        return Array.from(event?.dataTransfer?.types || []).includes('Files');
+    },
+    preventFileDropNavigation(event) {
+        if (this.isFileDrag(event)) {
+            event.preventDefault();
+        }
+    },
+    filesFromTransfer(dataTransfer) {
+        const transfer = dataTransfer || {};
+        const fromItems = Array.from(transfer.items || [])
+            .filter(item => item.kind === 'file')
+            .map(item => item.getAsFile())
+            .filter(Boolean);
+
+        return fromItems.length ? fromItems : Array.from(transfer.files || []);
+    },
+    imageFileExtension(file) {
+        return String(file?.name || '').split('.').pop().toLowerCase();
+    },
+    isAllowedImageFile(file) {
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
+        const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'avif'];
+        const type = String(file?.type || '').toLowerCase();
+        return allowedTypes.includes(type) || (type === '' && allowedExtensions.includes(this.imageFileExtension(file)));
+    },
+    chooseProductImages() {
+        this.$refs.productImageInput?.click();
+    },
+    startProductImageDrag(event) {
+        if (!this.isFileDrag(event)) return;
+        this.productImageDragDepth += 1;
+        this.productImageDragging = true;
+    },
+    endProductImageDrag(event) {
+        if (!this.isFileDrag(event)) return;
+        this.productImageDragDepth = Math.max(0, this.productImageDragDepth - 1);
+        this.productImageDragging = this.productImageDragDepth > 0;
+    },
+    startMediaLibraryDrag(event) {
+        if (!this.isFileDrag(event)) return;
+        this.mediaLibraryDragDepth += 1;
+        this.mediaLibraryDragging = true;
+    },
+    endMediaLibraryDrag(event) {
+        if (!this.isFileDrag(event)) return;
+        this.mediaLibraryDragDepth = Math.max(0, this.mediaLibraryDragDepth - 1);
+        this.mediaLibraryDragging = this.mediaLibraryDragDepth > 0;
+    },
     mediaLibraryUrl(page = 1) {
         const url = new URL(this.mediaLibraryIndexUrl, window.location.origin);
         url.searchParams.set('page', page);
@@ -587,8 +639,7 @@ window.adminProductForm = (initial = {}) => ({
         const files = Array.from(fileList || []);
         if (!files.length) return;
 
-        const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
-        const invalid = files.find(file => !allowed.includes(file.type) || file.size > 5 * 1024 * 1024);
+        const invalid = files.find(file => !this.isAllowedImageFile(file) || file.size > 5 * 1024 * 1024);
         if (invalid || files.length > 20) {
             this.mediaLibraryUploadError = 'Choose up to 20 JPG, PNG, WebP, or AVIF images, each no larger than 5 MB.';
             return;
@@ -629,8 +680,11 @@ window.adminProductForm = (initial = {}) => ({
         }
     },
     dropMediaLibraryImages(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.mediaLibraryDragDepth = 0;
         this.mediaLibraryDragging = false;
-        this.uploadMediaLibraryFiles(event.dataTransfer?.files || []);
+        this.uploadMediaLibraryFiles(this.filesFromTransfer(event.dataTransfer));
     },
     isMediaLibrarySelected(id) {
         return this.mediaLibrarySelectedIds.includes(Number(id));
@@ -676,11 +730,16 @@ window.adminProductForm = (initial = {}) => ({
         this.closeMediaLibrary();
     },
     previewProductImages(event) {
+        this.productImageUploadError = '';
         this.appendProductImages(event.target.files, event.target);
     },
     dropProductImages(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.productImageDragDepth = 0;
         this.productImageDragging = false;
-        this.appendProductImages(event.dataTransfer?.files || [], this.$refs.productImageInput);
+        this.productImageUploadError = '';
+        this.appendProductImages(this.filesFromTransfer(event.dataTransfer), this.$refs.productImageInput);
     },
     productImageSignature(file) {
         return [file?.name || '', file?.size || 0, file?.lastModified || 0].join(':');
@@ -692,8 +751,7 @@ window.adminProductForm = (initial = {}) => ({
             return;
         }
 
-        const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
-        const invalid = files.find(file => !allowed.includes(file.type) || file.size > 5 * 1024 * 1024);
+        const invalid = files.find(file => !this.isAllowedImageFile(file) || file.size > 5 * 1024 * 1024);
         const signatures = new Set(this.newImagePreviews.map(image => image.signature || this.productImageSignature(image.file)));
         const uniqueFiles = files.filter(file => {
             const signature = this.productImageSignature(file);
@@ -704,7 +762,8 @@ window.adminProductForm = (initial = {}) => ({
 
         if (invalid || this.newImagePreviews.length + uniqueFiles.length > 20) {
             this.syncProductImageInput();
-            window.alert('Choose up to 20 JPG, PNG, WebP, or AVIF images, each no larger than 5 MB.');
+            this.productImageUploadError = 'Choose up to 20 JPG, PNG, WebP, or AVIF images, each no larger than 5 MB.';
+            window.alert(this.productImageUploadError);
             return;
         }
 
@@ -731,13 +790,18 @@ window.adminProductForm = (initial = {}) => ({
     },
     syncProductImageInput(input = null) {
         const target = input || this.$refs.productImageInput;
-        if (!target || typeof DataTransfer === 'undefined') return;
+        if (!target) return false;
+        if (typeof DataTransfer === 'undefined') {
+            this.productImageUploadError = 'This browser cannot attach dropped files to the product form. Use the Upload from device button.';
+            return false;
+        }
 
         const transfer = new DataTransfer();
         this.newImagePreviews.forEach(image => {
             if (image.file) transfer.items.add(image.file);
         });
         target.files = transfer.files;
+        return true;
     },
     removeProductImage(index) {
         const removed = this.newImagePreviews.splice(index, 1)[0];

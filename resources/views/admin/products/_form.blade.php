@@ -414,7 +414,7 @@
 @endphp
 
 
-<form method="POST" enctype="multipart/form-data" action="{{ $isEdit ? route('admin.products.update', $product) : route('admin.products.store') }}" class="np-product-form" data-validation-errors='@json($validationErrorMessages)' data-validation-field-aliases='@json($validationFieldAliases)' x-data="adminProductForm(@js($initial))" x-init="init()" @input.debounce.300ms="handleProgressChange(false)" @change.debounce.300ms="handleProgressChange(false)" @admin-rich-editor-updated.window="if ($event.detail.name === 'description_html') { descriptionHtml = $event.detail.value; } handleProgressChange(false);">
+<form method="POST" enctype="multipart/form-data" action="{{ $isEdit ? route('admin.products.update', $product) : route('admin.products.store') }}" class="np-product-form" data-validation-errors='@json($validationErrorMessages)' data-validation-field-aliases='@json($validationFieldAliases)' x-data="adminProductForm(@js($initial))" x-init="init()" @submit="syncProductImageInput()" @dragover.window="preventFileDropNavigation($event)" @drop.window="preventFileDropNavigation($event)" @input.debounce.300ms="handleProgressChange(false)" @change.debounce.300ms="handleProgressChange(false)" @admin-rich-editor-updated.window="if ($event.detail.name === 'description_html') { descriptionHtml = $event.detail.value; } handleProgressChange(false);">
     @csrf
     @if($isEdit) @method('PUT') @endif
 
@@ -572,18 +572,32 @@ Lead Time:"></div>
                         <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
                             <label class="admin-label mb-0">Gallery images <span class="text-brand-red">*</span></label>
                             <div class="np-gallery-source-actions">
-                                <button type="button" class="np-secondary-button" @click="$refs.productImageInput?.click()">Upload from device</button>
+                                <button type="button" class="np-secondary-button" @click="chooseProductImages()">Upload from device</button>
                                 <button type="button" class="np-secondary-button" @click="openMediaLibrary()">Choose from image gallery</button>
                                 <button type="button" class="np-link-button" @click="addImageUrl()">↗ Add image URL</button>
                             </div>
                         </div>
 
-                        <label class="np-upload-zone" :class="productImageDragging ? 'is-dragging' : ''" @dragenter.prevent="productImageDragging = true" @dragover.prevent="productImageDragging = true" @dragleave.prevent="productImageDragging = false" @drop.prevent="dropProductImages($event)">
-                            <input x-ref="productImageInput" type="file" name="images[]" multiple accept="image/jpeg,image/png,image/webp,image/avif" @change="previewProductImages($event)">
+                        <input x-ref="productImageInput" class="sr-only" type="file" name="images[]" multiple accept="image/jpeg,image/png,image/webp,image/avif" @change="previewProductImages($event)">
+                        <div
+                            class="np-upload-zone"
+                            :class="productImageDragging ? 'is-dragging' : ''"
+                            role="button"
+                            tabindex="0"
+                            aria-label="Upload product images"
+                            @click="chooseProductImages()"
+                            @keydown.enter.prevent="chooseProductImages()"
+                            @keydown.space.prevent="chooseProductImages()"
+                            @dragenter.stop.prevent="startProductImageDrag($event)"
+                            @dragover.stop.prevent="productImageDragging = isFileDrag($event)"
+                            @dragleave.stop.prevent="endProductImageDrag($event)"
+                            @drop.stop.prevent="dropProductImages($event)"
+                        >
                             <span class="np-upload-zone__icon">⇧</span>
-                            <strong>Drag and drop device images here</strong>
+                            <strong x-text="productImageDragging ? 'Drop images to attach them' : 'Drag and drop device images here'"></strong>
                             <small>Or click “Choose from image gallery” to reuse global gallery images. New device uploads are also saved to the gallery.</small>
-                        </label>
+                        </div>
+                        <p class="np-media-alert np-media-alert--error mt-2" x-show="productImageUploadError" x-text="productImageUploadError" x-cloak></p>
                     </div>
 
                     <div class="np-image-grid" x-show="newImagePreviews.length" x-cloak>
@@ -634,11 +648,24 @@ Lead Time:"></div>
                                     <span>⌕</span>
                                     <input type="search" x-model="mediaLibrarySearch" @input.debounce.450ms="loadMediaLibrary(false)" placeholder="Search images...">
                                 </label>
-                                <label class="np-media-upload" :class="mediaLibraryDragging ? 'is-dragging' : ''" @dragenter.prevent="mediaLibraryDragging = true" @dragover.prevent="mediaLibraryDragging = true" @dragleave.prevent="mediaLibraryDragging = false" @drop.prevent="dropMediaLibraryImages($event)">
-                                    <input x-ref="mediaLibraryUploadInput" type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" @change="uploadMediaLibraryFiles($event.target.files)">
-                                    <strong x-text="mediaLibraryUploadBusy ? 'Uploading…' : 'Upload to gallery'"></strong>
+                                <input x-ref="mediaLibraryUploadInput" class="sr-only" type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" @change="uploadMediaLibraryFiles($event.target.files)">
+                                <div
+                                    class="np-media-upload"
+                                    :class="mediaLibraryDragging ? 'is-dragging' : ''"
+                                    role="button"
+                                    tabindex="0"
+                                    aria-label="Upload images to gallery"
+                                    @click="$refs.mediaLibraryUploadInput?.click()"
+                                    @keydown.enter.prevent="$refs.mediaLibraryUploadInput?.click()"
+                                    @keydown.space.prevent="$refs.mediaLibraryUploadInput?.click()"
+                                    @dragenter.stop.prevent="startMediaLibraryDrag($event)"
+                                    @dragover.stop.prevent="mediaLibraryDragging = isFileDrag($event)"
+                                    @dragleave.stop.prevent="endMediaLibraryDrag($event)"
+                                    @drop.stop.prevent="dropMediaLibraryImages($event)"
+                                >
+                                    <strong x-text="mediaLibraryUploadBusy ? 'Uploading…' : (mediaLibraryDragging ? 'Drop images to upload' : 'Upload to gallery')"></strong>
                                     <small>Drag or select reusable images</small>
-                                </label>
+                                </div>
                             </div>
 
                             <p class="np-media-alert np-media-alert--error" x-show="mediaLibraryError" x-text="mediaLibraryError"></p>

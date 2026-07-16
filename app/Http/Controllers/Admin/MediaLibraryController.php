@@ -42,7 +42,7 @@ class MediaLibraryController extends Controller
     {
         $request->validate([
             'images' => ['required', 'array', 'max:20'],
-            'images.*' => ['required', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:5120'],
+            'images.*' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,avif', 'mimetypes:image/jpeg,image/png,image/webp,image/avif', 'max:5120'],
         ]);
 
         $images = collect($request->file('images', []))->map(function ($uploadedImage): array {
