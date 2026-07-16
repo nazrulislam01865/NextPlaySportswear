@@ -709,15 +709,16 @@ class ProductController extends Controller
     {
         $manualRows = $this->parseProductSpecificationText($specificationText);
         $autoRows = $this->productSpecificationAutoRows($product);
-        $fabricLikeLabels = ['Fabric', 'Material', 'Materials', 'Metarial', 'Metarials', 'Meterial', 'Meterials'];
-        $fabricDisplayLabel = collect($fabricLikeLabels)
-            ->first(fn (string $label): bool => trim((string) ($manualRows[$label] ?? '')) !== '') ?: 'Fabric';
+        $fabricLikeLabels = $this->fabricLikeSpecificationLabels();
+        $fabricDisplayLabel = $this->preferredFabricSpecificationLabel($manualRows);
         $templateLabels = ['SKU', 'Product Type', $fabricDisplayLabel, 'Fit', 'Customization', 'Size Range', 'MOQ', 'Lead Time'];
         $result = [];
 
         foreach ($templateLabels as $label) {
-            $manualValue = trim((string) ($manualRows[$label] ?? ''));
-            $autoValue = trim((string) ($autoRows[$label] ?? ''));
+            $manualValue = $this->specificationValueForLabel($manualRows, $label);
+            $autoValue = $this->isFabricLikeSpecificationLabel($label)
+                ? trim((string) ($autoRows['Fabric'] ?? ''))
+                : trim((string) ($autoRows[$label] ?? ''));
             $finalValue = $manualValue !== '' ? $manualValue : $autoValue;
 
             if ($finalValue !== '') {
@@ -726,19 +727,66 @@ class ProductController extends Controller
         }
 
         foreach ($manualRows as $label => $value) {
+            $label = trim((string) $label);
+            $value = trim((string) $value);
+
+            if ($label === '' || $value === '') {
+                continue;
+            }
+
             if (in_array($label, $templateLabels, true)) {
                 continue;
             }
 
-            $label = trim((string) $label);
-            $value = trim((string) $value);
-
-            if ($label !== '' && $value !== '') {
-                $result[$label] = $value;
+            // Fabric, Material, Materials and common misspellings are the same specification slot.
+            // Keep the user's chosen label, but never append another fabric-like row later.
+            if ($this->isFabricLikeSpecificationLabel($label)) {
+                continue;
             }
+
+            $result[$label] = $value;
         }
 
         return collect($result)->take(100)->all();
+    }
+
+    private function fabricLikeSpecificationLabels(): array
+    {
+        return ['Fabric', 'Material', 'Materials', 'Metarial', 'Metarials', 'Meterial', 'Meterials'];
+    }
+
+    private function isFabricLikeSpecificationLabel(?string $label): bool
+    {
+        return in_array($this->normalizeSpecificationLabel($label), $this->fabricLikeSpecificationLabels(), true);
+    }
+
+    private function preferredFabricSpecificationLabel(array $rows): string
+    {
+        foreach ($this->fabricLikeSpecificationLabels() as $label) {
+            if (trim((string) ($rows[$label] ?? '')) !== '') {
+                return $label;
+            }
+        }
+
+        return 'Fabric';
+    }
+
+    private function specificationValueForLabel(array $rows, string $label): string
+    {
+        $value = trim((string) ($rows[$label] ?? ''));
+
+        if ($value !== '' || ! $this->isFabricLikeSpecificationLabel($label)) {
+            return $value;
+        }
+
+        foreach ($this->fabricLikeSpecificationLabels() as $fabricLikeLabel) {
+            $value = trim((string) ($rows[$fabricLikeLabel] ?? ''));
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return '';
     }
 
     private function parseProductSpecificationText(string $specificationText): array

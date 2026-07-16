@@ -225,3 +225,28 @@
 #76 /Applications/XAMPP/xamppfiles/htdocs/laravel/sportswear-ecommerce/vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php(23): require_once('/Applications/X...')
 #77 {main}
 "} 
+[2026-07-16 06:44:18] production.ERROR: Class "DOMDocument" not found {"exception":"[object] (Error(code: 0): Class \"DOMDocument\" not found at /mnt/data/archive4/vendor/nunomaduro/termwind/src/HtmlRenderer.php:32)
+[stacktrace]
+#0 /mnt/data/archive4/vendor/nunomaduro/termwind/src/HtmlRenderer.php(24): Termwind\\HtmlRenderer->parse()
+#1 /mnt/data/archive4/vendor/nunomaduro/termwind/src/Functions.php(41): Termwind\\HtmlRenderer->render()
+#2 /mnt/data/archive4/vendor/laravel/framework/src/Illuminate/Console/View/Components/Component.php(51): Termwind\\render()
+#3 /mnt/data/archive4/vendor/laravel/framework/src/Illuminate/Console/View/Components/Line.php(54): Illuminate\\Console\\View\\Components\\Component->renderView()
+#4 /mnt/data/archive4/vendor/laravel/framework/src/Illuminate/Console/View/Components/Info.php(18): Illuminate\\Console\\View\\Components\\Line->render()
+#5 /mnt/data/archive4/vendor/laravel/framework/src/Illuminate/Console/View/Components/Factory.php(59): Illuminate\\Console\\View\\Components\\Info->render()
+#6 /mnt/data/archive4/vendor/laravel/framework/src/Illuminate/Foundation/Console/OptimizeClearCommand.php(35): Illuminate\\Console\\View\\Components\\Factory->__call()
+#7 /mnt/data/archive4/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(36): Illuminate\\Foundation\\Console\\OptimizeClearCommand->handle()
+#8 /mnt/data/archive4/vendor/laravel/framework/src/Illuminate/Container/Util.php(43): Illuminate\\Container\\BoundMethod::{closure:Illuminate\\Container\\BoundMethod::call():35}()
+#9 /mnt/data/archive4/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure()
+#10 /mnt/data/archive4/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod()
+#11 /mnt/data/archive4/vendor/laravel/framework/src/Illuminate/Container/Container.php(799): Illuminate\\Container\\BoundMethod::call()
+#12 /mnt/data/archive4/vendor/laravel/framework/src/Illuminate/Console/Command.php(280): Illuminate\\Container\\Container->call()
+#13 /mnt/data/archive4/vendor/symfony/console/Command/Command.php(284): Illuminate\\Console\\Command->execute()
+#14 /mnt/data/archive4/vendor/laravel/framework/src/Illuminate/Console/Command.php(249): Symfony\\Component\\Console\\Command\\Command->run()
+#15 /mnt/data/archive4/vendor/symfony/console/Application.php(1144): Illuminate\\Console\\Command->run()
+#16 /mnt/data/archive4/vendor/symfony/console/Application.php(379): Symfony\\Component\\Console\\Application->doRunCommand()
+#17 /mnt/data/archive4/vendor/symfony/console/Application.php(218): Symfony\\Component\\Console\\Application->doRun()
+#18 /mnt/data/archive4/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(198): Symfony\\Component\\Console\\Application->run()
+#19 /mnt/data/archive4/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1235): Illuminate\\Foundation\\Console\\Kernel->handle()
+#20 /mnt/data/archive4/artisan(16): Illuminate\\Foundation\\Application->handleCommand()
+#21 {main}
+"} 

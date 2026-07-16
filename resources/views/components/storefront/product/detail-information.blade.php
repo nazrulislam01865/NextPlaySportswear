@@ -1,13 +1,18 @@
 @props(['product' => []])
 
 @php
-    $summaryLabels = ['SKU', 'Product Type', 'Fabric', 'Fit', 'Size Range', 'MOQ', 'Lead Time'];
-    $detailInformation = collect($product['summary_detail_information'] ?? [])
+    $fabricLikeSummaryLabels = ['Fabric', 'Material', 'Materials', 'Metarial', 'Metarials', 'Meterial', 'Meterials'];
+    $summaryRows = collect($product['summary_detail_information'] ?? []);
+    $fullRows = collect($product['detail_information'] ?? []);
+    $fabricSummaryLabel = collect($fabricLikeSummaryLabels)
+        ->first(fn ($label) => filled($summaryRows->get($label)) || filled($fullRows->get($label))) ?: 'Fabric';
+    $summaryLabels = ['SKU', 'Product Type', $fabricSummaryLabel, 'Fit', 'Size Range', 'MOQ', 'Lead Time'];
+    $detailInformation = $summaryRows
         ->only($summaryLabels)
         ->filter(fn ($value, $label) => filled($label) && filled($value));
 
     if ($detailInformation->isEmpty()) {
-        $detailInformation = collect($product['detail_information'] ?? [])
+        $detailInformation = $fullRows
             ->only($summaryLabels)
             ->filter(fn ($value, $label) => filled($label) && filled($value));
     }

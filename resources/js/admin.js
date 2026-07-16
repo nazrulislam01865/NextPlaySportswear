@@ -1790,7 +1790,7 @@ window.productSpecificationEditor = (initial = '', autoValues = {}) => ({
             if (!label) return;
 
             const value = this.cleanText(row.value || '');
-            const key = label.toLowerCase();
+            const key = this.isFabricLikeLabel(label) ? 'fabric-like' : label.toLowerCase();
 
             if (!map.has(key) || value) {
                 map.set(key, { label, value });
@@ -1814,6 +1814,9 @@ window.productSpecificationEditor = (initial = '', autoValues = {}) => ({
     isHeaderLabel(value = '') {
         return ['detail', 'information'].includes(String(value).trim().toLowerCase());
     },
+    isFabricLikeLabel(label = '') {
+        return this.fabricLikeLabels.includes(this.normalizeLabel(label));
+    },
     cleanText(value = '') {
         return String(value)
             .replace(/\u00a0/g, ' ')
@@ -1833,7 +1836,10 @@ window.productSpecificationEditor = (initial = '', autoValues = {}) => ({
             if (this.fabricLikeLabels.includes(label) && label !== fabricDisplayLabel) return null;
 
             const manualValue = String(manualRows.get(label) || '').trim();
-            const finalValue = manualValue || String(this.autoValues[label] || '').trim();
+            const autoValue = this.isFabricLikeLabel(label)
+                ? String(this.autoValues[label] || this.autoValues.Fabric || '').trim()
+                : String(this.autoValues[label] || '').trim();
+            const finalValue = manualValue || autoValue;
 
             if (!finalValue) return null;
 

@@ -676,9 +676,7 @@ class ProductCatalogService
 
     private function summaryDetailInformation(array $detailInformation, Product $product): array
     {
-        $fabricLikeLabels = ['Fabric', 'Material', 'Materials', 'Metarial', 'Metarials', 'Meterial', 'Meterials'];
-        $fabricDisplayLabel = collect($fabricLikeLabels)
-            ->first(fn (string $label): bool => trim((string) ($detailInformation[$label] ?? '')) !== '') ?: 'Fabric';
+        $fabricDisplayLabel = $this->preferredFabricDetailLabel($detailInformation);
         $labels = ['SKU', 'Product Type', $fabricDisplayLabel, 'Fabric GSM', 'GSM', 'Width', 'Fit', 'Customization', 'Imprint Method', 'Attachment', 'Size Range', 'MOQ', 'Lead Time', 'Shipping Time', 'Usage', 'Standard Length'];
         $fallbacks = [
             'SKU' => $product->sku,
@@ -690,7 +688,11 @@ class ProductCatalogService
 
         return collect($labels)
             ->mapWithKeys(function (string $label) use ($detailInformation, $fallbacks): array {
-                $value = trim((string) ($detailInformation[$label] ?? ($fallbacks[$label] ?? '')));
+                $value = $this->detailValueForLabel($detailInformation, $label);
+
+                if ($value === '' && isset($fallbacks[$label])) {
+                    $value = trim((string) $fallbacks[$label]);
+                }
 
                 return $value !== '' ? [$label => $value] : [];
             })
@@ -719,10 +721,83 @@ class ProductCatalogService
             $rows->map(fn ($value, $label) => $label.': '.$value)->implode(PHP_EOL)
         );
 
-        return collect($parsedRows ?: $rows->all())
+        return $this->orderedDetailInformationRows(collect($parsedRows ?: $rows->all())
             ->filter(fn ($value, $label) => filled($label) && filled($value))
-            ->take(100)
-            ->all();
+            ->all());
+    }
+
+    private function orderedDetailInformationRows(array $rows): array
+    {
+        $fabricDisplayLabel = $this->preferredFabricDetailLabel($rows);
+        $orderedLabels = ['SKU', 'Product Type', $fabricDisplayLabel, 'Fabric GSM', 'GSM', 'Width', 'Fit', 'Customization', 'Imprint Method', 'Attachment', 'Size Range', 'MOQ', 'Lead Time', 'Shipping Time', 'Usage', 'Standard Length'];
+        $result = [];
+
+        foreach ($orderedLabels as $label) {
+            $value = $this->detailValueForLabel($rows, $label);
+            if ($value !== '') {
+                $result[$label] = $value;
+            }
+        }
+
+        foreach ($rows as $label => $value) {
+            $label = trim((string) $label);
+            $value = trim((string) $value);
+
+            if ($label === '' || $value === '') {
+                continue;
+            }
+
+            if (isset($result[$label]) || in_array($label, $orderedLabels, true)) {
+                continue;
+            }
+
+            if ($this->isFabricLikeDetailLabel($label)) {
+                continue;
+            }
+
+            $result[$label] = $value;
+        }
+
+        return collect($result)->take(100)->all();
+    }
+
+    private function fabricLikeDetailLabels(): array
+    {
+        return ['Fabric', 'Material', 'Materials', 'Metarial', 'Metarials', 'Meterial', 'Meterials'];
+    }
+
+    private function isFabricLikeDetailLabel(?string $label): bool
+    {
+        return in_array($this->normalizeDetailLabel($label), $this->fabricLikeDetailLabels(), true);
+    }
+
+    private function preferredFabricDetailLabel(array $rows): string
+    {
+        foreach ($this->fabricLikeDetailLabels() as $label) {
+            if (trim((string) ($rows[$label] ?? '')) !== '') {
+                return $label;
+            }
+        }
+
+        return 'Fabric';
+    }
+
+    private function detailValueForLabel(array $rows, string $label): string
+    {
+        $value = trim((string) ($rows[$label] ?? ''));
+
+        if ($value !== '' || ! $this->isFabricLikeDetailLabel($label)) {
+            return $value;
+        }
+
+        foreach ($this->fabricLikeDetailLabels() as $fabricLikeLabel) {
+            $value = trim((string) ($rows[$fabricLikeLabel] ?? ''));
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return '';
     }
 
     private function parseDetailInformationText(string $text): array
@@ -851,8 +926,9 @@ class ProductCatalogService
         $product['size_chart'] = $product['size_chart'] ?? $this->defaultSizeChart($product);
         $product['price_tiers'] = $product['price_tiers'] ?? $this->defaultPriceTiers((float) ($product['base_price'] ?? 39));
         $product['detail_information'] = $product['detail_information'] ?? $this->defaultDetailInformation($product);
+        $fallbackFabricLabel = $this->preferredFabricDetailLabel($product['detail_information'] ?? []);
         $product['summary_detail_information'] = $product['summary_detail_information'] ?? collect($product['detail_information'] ?? [])
-            ->only(['SKU', 'Product Type', 'Fabric', 'Fabric GSM', 'GSM', 'Width', 'Fit', 'Customization', 'Imprint Method', 'Attachment', 'Size Range', 'MOQ', 'Lead Time', 'Shipping Time', 'Usage', 'Standard Length'])
+            ->only(['SKU', 'Product Type', $fallbackFabricLabel, 'Fabric GSM', 'GSM', 'Width', 'Fit', 'Customization', 'Imprint Method', 'Attachment', 'Size Range', 'MOQ', 'Lead Time', 'Shipping Time', 'Usage', 'Standard Length'])
             ->filter(fn ($value) => filled($value))
             ->all();
         $product['details'] = $product['details'] ?? $this->legacyDetails($product);
