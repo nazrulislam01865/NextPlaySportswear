@@ -5,6 +5,7 @@ namespace App\Services\Storefront;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductFabricPriceTable;
+use App\Support\PriceTableShipping;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator as ArrayLengthAwarePaginator;
@@ -1042,6 +1043,15 @@ class ProductCatalogService
             return $row;
         })->values()->all();
 
+        $priceTableHeaders = $product->price_table_headers ?: ['Quantity', 'Unit Price', 'Savings'];
+        $priceTablePayload = [
+            'headers' => $priceTableHeaders,
+            'rows' => $visiblePriceRows,
+            'highlight_column' => $product->price_table_highlight_column,
+            'note' => $product->price_table_note,
+            'price_tiers' => $priceTiers,
+        ];
+
         $primaryCategory = $product->category ?: $product->subcategory;
         $primaryCategory ??= $product->relationLoaded('categories')
             ? ($product->categories->firstWhere('pivot.is_primary', true) ?? $product->categories->first())
@@ -1154,18 +1164,31 @@ class ProductCatalogService
                     : null,
             ])->values()->all(),
             'shipping_methods_enabled' => (bool) $product->shipping_methods_enabled,
-            'shipping_methods' => $product->shipping_methods_enabled ? $product->shippingMethods->where('is_active', true)->map(function ($method): array {
-                $isMasterMethod = $method->charge_type === 'master_method';
+            'shipping_methods' => $product->shipping_methods_enabled ? $product->shippingMethods->where('is_active', true)->map(function ($method) use ($priceTableHeaders): array {
+                $chargeType = $method->charge_type ?: 'per_unit';
+                $isMasterMethod = $chargeType === 'master_method';
+                $priceTableColumn = PriceTableShipping::columnIndex((array) $priceTableHeaders, (string) $method->name, (string) $method->code);
+
+                // Master shipping records only provide the customer-facing name and
+                // day range. Their price must come from the matching product/fabric
+                // price-table column. Older saved products may still have legacy
+                // price_adjustment values, so force master-linked methods to use the
+                // price table and never expose those stale legacy charges.
+                $usesPriceTable = (bool) $method->shipping_method_id || $chargeType === 'price_table' || $priceTableColumn !== null;
 
                 return [
                     'id' => $method->code,
                     'label' => $method->name,
                     'description' => $method->description,
-                    'price_delta' => $isMasterMethod ? (float) ($method->base_price ?? $method->price_adjustment) : (float) $method->price_adjustment,
-                    'base_price' => $isMasterMethod ? (float) ($method->base_price ?? $method->price_adjustment) : 0,
-                    'per_item_price' => $isMasterMethod ? (float) ($method->per_item_price ?? 0) : 0,
+                    'price_source' => $usesPriceTable ? 'price_table' : 'legacy',
+                    'requires_price_table' => $usesPriceTable,
+                    'price_table_column' => $priceTableColumn,
+                    'price_table_header' => $priceTableColumn !== null ? ($priceTableHeaders[$priceTableColumn] ?? null) : null,
+                    'price_delta' => $usesPriceTable ? 0.0 : ($isMasterMethod ? (float) ($method->base_price ?? $method->price_adjustment) : (float) $method->price_adjustment),
+                    'base_price' => $usesPriceTable ? 0.0 : ($isMasterMethod ? (float) ($method->base_price ?? $method->price_adjustment) : 0.0),
+                    'per_item_price' => $usesPriceTable ? 0.0 : ($isMasterMethod ? (float) ($method->per_item_price ?? 0) : 0.0),
                     'free_shipping_minimum' => $method->free_shipping_minimum !== null ? (float) $method->free_shipping_minimum : null,
-                    'charge_type' => $isMasterMethod ? 'master_method' : ($method->charge_type ?: 'per_unit'),
+                    'charge_type' => $usesPriceTable ? 'price_table' : ($isMasterMethod ? 'master_method' : $chargeType),
                     'charge_application' => $method->charge_application,
                     'minimum_days' => $method->minimum_days,
                     'maximum_days' => $method->maximum_days,
@@ -1174,12 +1197,7 @@ class ProductCatalogService
                 ];
             })->values()->all() : [],
             'price_tiers' => $priceTiers,
-            'price_table' => [
-                'headers' => $product->price_table_headers ?: ['Quantity', 'Unit Price', 'Savings'],
-                'rows' => $visiblePriceRows,
-                'highlight_column' => $product->price_table_highlight_column,
-                'note' => $product->price_table_note,
-            ],
+            'price_table' => $priceTablePayload,
             'fabric_price_tables' => array_values($fabricPriceTables),
             'faqs' => $product->faqs->where('is_active', true)->map(fn ($faq) => ['question' => $faq->question, 'answer' => $faq->answer])->values()->all(),
             'meta_title' => $product->meta_title,

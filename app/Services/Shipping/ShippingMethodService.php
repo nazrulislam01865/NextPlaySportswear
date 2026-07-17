@@ -5,6 +5,7 @@ namespace App\Services\Shipping;
 use App\Models\Product;
 use App\Models\ProductShippingMethod;
 use App\Models\ShippingMethod;
+use App\Support\PriceTableShipping;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
@@ -118,14 +119,26 @@ class ShippingMethodService
                 continue;
             }
 
-            if ($method->shipping_method_id && filled($method->charge_application)) {
-                $charge = (float) ($method->price_adjustment ?? $method->base_price ?? 0);
-                $amount = match ((string) $method->charge_application) {
-                    'included' => 0.00,
-                    'per_item' => $charge * $quantity,
-                    default => $charge,
-                };
-            } elseif ($method->charge_type === 'master_method' || $method->shipping_method_id) {
+            $usesPriceTable = (bool) $method->shipping_method_id || $method->charge_type === 'price_table';
+            $priceStatus = 'priced';
+
+            if ($usesPriceTable) {
+                $perUnitRate = PriceTableShipping::perUnitRate(
+                    (array) ($product->price_table_headers ?? []),
+                    (array) ($product->price_table_rows ?? []),
+                    [],
+                    $quantity,
+                    (string) $method->name,
+                    (string) $method->code
+                );
+
+                if ($perUnitRate === null) {
+                    $amount = 0.00;
+                    $priceStatus = 'contact_us';
+                } else {
+                    $amount = $perUnitRate * $quantity;
+                }
+            } elseif ($method->charge_type === 'master_method') {
                 $basePrice = (float) ($method->base_price ?? $method->price_adjustment ?? 0);
                 $perItemPrice = (float) ($method->per_item_price ?? 0);
                 $lineSubtotal = (float) (($item['line_subtotal'] ?? 0) + ($item['customization_total'] ?? 0));
@@ -152,6 +165,7 @@ class ShippingMethodService
                 'charge_type' => $method->charge_type,
                 'quantity' => $quantity,
                 'amount' => $amount,
+                'price_status' => $priceStatus,
                 'minimum_days' => (int) $method->minimum_days,
                 'maximum_days' => (int) $method->maximum_days,
             ];

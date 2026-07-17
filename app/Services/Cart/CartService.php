@@ -9,6 +9,7 @@ use App\Models\ShoppingCartItem;
 use App\Models\User;
 use App\Services\Discounts\CouponService;
 use App\Services\Storefront\ProductCatalogService;
+use App\Support\PriceTableShipping;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -999,28 +1000,70 @@ class CartService
      */
     private function selectedFabricPriceTiers(array $product, array $customization): array
     {
+        $table = $this->selectedFabricPriceTable($product, $customization);
+        $tiers = data_get($table, 'price_tiers', []);
+
+        return is_array($tiers) ? $tiers : [];
+    }
+
+    private function selectedFabricPriceTable(array $product, array $customization): ?array
+    {
         $configuration = $customization['configuration'] ?? [];
         $groups = collect($product['option_groups'] ?? [])->keyBy('id');
 
         foreach ((array) ($configuration['selections'] ?? []) as $groupId => $valueId) {
             $value = collect($groups->get($groupId)['values'] ?? [])->firstWhere('id', $valueId);
-            $tiers = data_get($value, 'fabric_price_table.price_tiers', []);
-            if (is_array($tiers) && $tiers !== []) {
-                return $tiers;
+            $table = data_get($value, 'fabric_price_table');
+            if (is_array($table) && (! empty($table['rows']) || ! empty($table['price_tiers']))) {
+                return $table;
             }
         }
 
         foreach ((array) ($configuration['multi_selections'] ?? []) as $groupId => $valueIds) {
             $values = collect($groups->get($groupId)['values'] ?? [])->keyBy('id');
             foreach ((array) $valueIds as $valueId) {
-                $tiers = data_get($values->get($valueId), 'fabric_price_table.price_tiers', []);
-                if (is_array($tiers) && $tiers !== []) {
-                    return $tiers;
+                $table = data_get($values->get($valueId), 'fabric_price_table');
+                if (is_array($table) && (! empty($table['rows']) || ! empty($table['price_tiers']))) {
+                    return $table;
                 }
             }
         }
 
-        return [];
+        return null;
+    }
+
+    private function shippingPriceTable(array $product, array $customization): array
+    {
+        $fabricTable = $this->selectedFabricPriceTable($product, $customization);
+        if (is_array($fabricTable)) {
+            return [
+                'headers' => (array) ($fabricTable['headers'] ?? []),
+                'rows' => (array) ($fabricTable['rows'] ?? []),
+                'price_tiers' => (array) ($fabricTable['price_tiers'] ?? []),
+            ];
+        }
+
+        $table = (array) ($product['price_table'] ?? []);
+
+        return [
+            'headers' => (array) ($table['headers'] ?? []),
+            'rows' => (array) ($table['rows'] ?? []),
+            'price_tiers' => (array) ($table['price_tiers'] ?? ($product['price_tiers'] ?? [])),
+        ];
+    }
+
+    private function shippingPerUnitFromPriceTable(array $product, array $customization, array $shipping, int $quantity): ?float
+    {
+        $table = $this->shippingPriceTable($product, $customization);
+
+        return PriceTableShipping::perUnitRate(
+            (array) ($table['headers'] ?? []),
+            (array) ($table['rows'] ?? []),
+            (array) ($table['price_tiers'] ?? []),
+            $quantity,
+            (string) ($shipping['label'] ?? ''),
+            (string) ($shipping['id'] ?? '')
+        );
     }
 
     private function customizationUnitPrice(array $product, array $customization, int $quantity): float
@@ -1063,7 +1106,13 @@ class CartService
 
         $shipping = collect($product['shipping_methods'] ?? [])->firstWhere('id', $configuration['shipping_method'] ?? null);
         if ($shipping) {
-            if (($shipping['charge_type'] ?? 'per_unit') === 'master_method') {
+            $tableRate = $this->shippingPerUnitFromPriceTable($product, $customization, $shipping, $quantity);
+            if ($tableRate !== null) {
+                $perUnit += $tableRate;
+            } elseif (($shipping['price_source'] ?? null) === 'price_table' || ($shipping['requires_price_table'] ?? false) || ($shipping['charge_type'] ?? null) === 'price_table') {
+                // No matching price-table column was found for the selected method.
+                // Keep the amount unpriced instead of falling back to legacy master data.
+            } elseif (($shipping['charge_type'] ?? 'per_unit') === 'master_method') {
                 $base = (float) ($shipping['base_price'] ?? $shipping['price_delta'] ?? 0);
                 $perItem = (float) ($shipping['per_item_price'] ?? 0);
                 $fixedOrder += max(0, $base - $perItem);
@@ -1072,7 +1121,7 @@ class CartService
                 $amount = (float) ($shipping['price_delta'] ?? 0);
                 if (($shipping['charge_type'] ?? 'per_unit') === 'fixed_order') {
                     $fixedOrder += $amount;
-                } elseif (($shipping['charge_type'] ?? 'per_unit') !== 'included') {
+                } elseif (! in_array(($shipping['charge_type'] ?? 'per_unit'), ['included', 'price_table'], true)) {
                     $perUnit += $amount;
                 }
             }

@@ -19,17 +19,10 @@ class ShippingMethodRequest extends FormRequest
         $name = trim((string) $this->input('name'));
         $code = trim((string) ($this->input('code') ?: Str::slug($name)));
 
-        $chargeApplication = (string) ($this->input('charge_application') ?: 'per_order');
-        if (! array_key_exists($chargeApplication, ShippingMethod::chargeApplicationOptions())) {
-            $chargeApplication = 'per_order';
-        }
-
-        $chargeAmount = $this->input('charge_amount');
-        $chargeAmount = $chargeAmount === '' || $chargeAmount === null ? 0 : max(0, (float) $chargeAmount);
-
-        if ($chargeApplication === 'included') {
-            $chargeAmount = 0;
-        }
+        // Shipping master data now controls only the method name and transit days.
+        // Product/fabric price tables provide the live per-piece shipping charge.
+        $chargeApplication = 'included';
+        $chargeAmount = 0;
 
         $this->merge([
             'name' => $name,
@@ -65,8 +58,8 @@ class ShippingMethodRequest extends FormRequest
             'name' => ['required', 'string', 'max:160'],
             'code' => ['required', 'string', 'max:160', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', Rule::unique('shipping_methods', 'code')->ignore($id)],
             'description' => ['nullable', 'string', 'max:2000'],
-            'charge_amount' => ['required', 'numeric', 'min:0', 'max:999999.99'],
-            'charge_application' => ['required', Rule::in(array_keys(ShippingMethod::chargeApplicationOptions()))],
+            'charge_amount' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'charge_application' => ['nullable', Rule::in(array_keys(ShippingMethod::chargeApplicationOptions()))],
             'base_price' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'per_item_price' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'free_shipping_minimum' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],

@@ -39,7 +39,20 @@ final class PublicMedia
     public static function normalizePath(string $path): string
     {
         $path = str_replace('\\', '/', trim($path));
+
+        if (preg_match('#^https?://#i', $path)) {
+            $path = (string) parse_url($path, PHP_URL_PATH);
+        }
+
         $path = preg_replace('#/+#', '/', $path) ?: '';
+        $path = ltrim($path, '/');
+
+        foreach (['storage/app/public/', 'public/storage/', 'storage/', 'media/'] as $prefix) {
+            if (str_starts_with($path, $prefix)) {
+                $path = Str::after($path, $prefix);
+                break;
+            }
+        }
 
         return ltrim($path, '/');
     }

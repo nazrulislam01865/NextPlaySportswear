@@ -4,29 +4,36 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\MediaLibraryImage;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Support\PublicMedia;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\View\View;
 
 class MediaLibraryController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): JsonResponse|View
     {
-        $search = trim((string) $request->query('q', ''));
+        $query = $this->galleryQuery($request);
 
-        $query = MediaLibraryImage::query()->latest('id');
-
-        if ($search !== '') {
-            $query->where(function ($builder) use ($search): void {
-                $builder->where('name', 'like', "%{$search}%")
-                    ->orWhere('alt_text', 'like', "%{$search}%");
-            });
+        if (! $this->shouldReturnJson($request)) {
+            return view('admin.media-library.index', [
+                'totalImages' => (clone $query)->count(),
+                'latestImage' => (clone $query)->latest('id')->first(),
+            ]);
         }
 
-        $images = $query->paginate(30);
+        $perPage = max(6, min(48, (int) $request->query('per_page', 18)));
+        $images = $query->paginate($perPage);
+        $payloadImages = $images->getCollection()
+            ->map(fn (MediaLibraryImage $image): ?array => $this->imagePayload($image))
+            ->filter()
+            ->values();
 
         return response()->json([
-            'data' => $images->getCollection()->map(fn (MediaLibraryImage $image): array => $this->imagePayload($image))->values(),
+            'data' => $payloadImages,
             'meta' => [
                 'current_page' => $images->currentPage(),
                 'has_more' => $images->hasMorePages(),
@@ -62,7 +69,16 @@ class MediaLibraryController extends Controller
                 'created_by' => auth('admin')->id(),
             ]);
 
-            return $this->imagePayload($image);
+            return $this->imagePayload($image) ?? [
+                'id' => $image->id,
+                'name' => $image->name,
+                'alt_text' => $image->alt_text,
+                'url' => $image->publicUrl(),
+                'size_label' => $image->sizeLabel(),
+                'width' => $image->width,
+                'height' => $image->height,
+                'created_at' => optional($image->created_at)->format('M j, Y'),
+            ];
         })->values();
 
         return response()->json([
@@ -71,13 +87,63 @@ class MediaLibraryController extends Controller
         ], 201);
     }
 
-    private function imagePayload(MediaLibraryImage $image): array
+    private function shouldReturnJson(Request $request): bool
     {
+        return $request->expectsJson()
+            || $request->wantsJson()
+            || $request->ajax()
+            || $request->query->has('page')
+            || $request->query->has('q');
+    }
+
+    private function galleryQuery(Request $request): Builder
+    {
+        $search = trim((string) $request->query('q', ''));
+
+        $query = MediaLibraryImage::query()
+            ->where(function (Builder $builder): void {
+                $builder->where(function (Builder $source): void {
+                    $source->whereNotNull('path')
+                        ->whereRaw("TRIM(COALESCE(path, '')) <> ''")
+                            ->where('path', 'not like', '%product-placeholder.svg%');
+                })->orWhere(function (Builder $source): void {
+                    $source->whereNotNull('url')
+                        ->whereRaw("TRIM(COALESCE(url, '')) <> ''")
+                        ->where('url', 'not like', '%product-placeholder.svg%');
+                });
+            })
+            ->latest('id');
+
+        if ($search !== '') {
+            $query->where(function (Builder $builder) use ($search): void {
+                $builder->where('name', 'like', "%{$search}%")
+                    ->orWhere('alt_text', 'like', "%{$search}%");
+            });
+        }
+
+        return $query;
+    }
+
+    private function imagePayload(MediaLibraryImage $image): ?array
+    {
+        if (filled($image->path)) {
+            $storedPath = PublicMedia::normalizePath((string) $image->path);
+            if ($storedPath === '' || ! Storage::disk('public')->exists($storedPath)) {
+                return null;
+            }
+        }
+
+        $url = $image->publicUrl();
+
+        if (! filled($url) || str_contains((string) $url, 'product-placeholder.svg')) {
+            return null;
+        }
+
         return [
             'id' => $image->id,
             'name' => $image->name,
             'alt_text' => $image->alt_text,
-            'url' => $image->publicUrl(),
+            'url' => $url,
             'size_label' => $image->sizeLabel(),
             'width' => $image->width,
             'height' => $image->height,

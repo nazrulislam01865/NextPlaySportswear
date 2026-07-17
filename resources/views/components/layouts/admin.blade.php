@@ -63,6 +63,7 @@
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Catalog</p>
                     @if($canAdmin('products.view'))
                         <x-admin.sidebar-link :href="route('admin.products.index')" :active="request()->routeIs('admin.products.*')" icon="◇">Products</x-admin.sidebar-link>
+                        <x-admin.sidebar-link :href="route('admin.media-library.index')" :active="request()->routeIs('admin.media-library.*')" icon="▧">Image Gallery</x-admin.sidebar-link>
                     @endif
                     @if($canAdmin('categories.view'))
                         <x-admin.sidebar-link :href="route('admin.categories.index')" :active="request()->routeIs('admin.categories.*')" icon="⌘">Categories</x-admin.sidebar-link>

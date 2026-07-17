@@ -11,8 +11,10 @@ return new class extends Migration
         if (! Schema::hasTable('product_fabric_price_tables')) {
             Schema::create('product_fabric_price_tables', function (Blueprint $table): void {
                 $table->id();
-                $table->foreignId('product_id')->constrained()->cascadeOnDelete();
-                $table->foreignId('jersey_customization_option_id')->nullable()->constrained('jersey_customization_options')->nullOnDelete();
+                $table->foreignId('product_id')->index();
+                $table->foreign('product_id', 'pfpt_product_fk')->references('id')->on('products')->cascadeOnDelete();
+                $table->unsignedBigInteger('jersey_customization_option_id')->nullable();
+                $table->foreign('jersey_customization_option_id', 'pfpt_option_fk')->references('id')->on('jersey_customization_options')->nullOnDelete();
                 $table->string('fabric_key', 220);
                 $table->string('fabric_code', 180)->nullable();
                 $table->string('fabric_label', 180);

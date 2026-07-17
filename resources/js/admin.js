@@ -67,6 +67,7 @@ window.adminProductForm = (initial = {}) => ({
     mediaLibraryHasMore: false,
     mediaLibraryError: '',
     mediaLibraryUploadError: '',
+    mediaLibraryLastScrollLoadAt: 0,
     mediaLibraryIndexUrl: initial.mediaLibraryIndexUrl || '/admin/media-library',
     mediaLibraryStoreUrl: initial.mediaLibraryStoreUrl || '/admin/media-library',
     primaryImageSource: '',
@@ -564,6 +565,9 @@ window.adminProductForm = (initial = {}) => ({
     mediaLibraryUrl(page = 1) {
         const url = new URL(this.mediaLibraryIndexUrl, window.location.origin);
         url.searchParams.set('page', page);
+        // Keep the product picker fast and readable. It should load one fixed-size page
+        // first, then load more only when the admin scrolls or clicks Load more.
+        url.searchParams.set('per_page', 12);
         if (String(this.mediaLibrarySearch || '').trim()) {
             url.searchParams.set('q', String(this.mediaLibrarySearch || '').trim());
         }
@@ -583,7 +587,7 @@ window.adminProductForm = (initial = {}) => ({
         this.mediaLibraryError = '';
         this.mediaLibraryUploadError = '';
     },
-    async loadMediaLibrary(append = false) {
+    async loadMediaLibrary(append = false, options = {}) {
         if (this.mediaLibraryLoading) return;
         if (append && !this.mediaLibraryHasMore) return;
 
@@ -607,23 +611,40 @@ window.adminProductForm = (initial = {}) => ({
             if (!response.ok) throw new Error('Image gallery could not be loaded.');
 
             const payload = await response.json();
-            const items = Array.isArray(payload.data) ? payload.data : [];
+            const items = (Array.isArray(payload.data) ? payload.data : []).filter(item => String(item?.url || '').trim() && !String(item.url || '').includes('product-placeholder.svg'));
 
             // Ignore stale search responses when the user typed a newer search term.
             if (requestSearch !== String(this.mediaLibrarySearch || '').trim()) {
                 return;
             }
 
+            let firstFreshId = null;
+
             if (append) {
                 const knownIds = new Set(this.mediaLibraryItems.map(item => Number(item.id)));
                 const freshItems = items.filter(item => !knownIds.has(Number(item.id)));
+                firstFreshId = freshItems[0]?.id || null;
                 this.mediaLibraryItems = [...this.mediaLibraryItems, ...freshItems];
             } else {
                 this.mediaLibraryItems = items;
+                this.$nextTick(() => {
+                    const scroller = this.$refs.mediaLibraryScroller;
+                    if (scroller) scroller.scrollTop = 0;
+                });
             }
 
             this.mediaLibraryPage = Number(payload.meta?.current_page || page);
             this.mediaLibraryHasMore = Boolean(payload.meta?.has_more);
+
+            if (append && options?.scrollToNew && firstFreshId) {
+                this.$nextTick(() => {
+                    const scroller = this.$refs.mediaLibraryScroller;
+                    const nextCard = scroller?.querySelector(`[data-media-id="${firstFreshId}"]`);
+                    if (nextCard) {
+                        nextCard.scrollIntoView({ block: 'start', inline: 'nearest' });
+                    }
+                });
+            }
         } catch (error) {
             this.mediaLibraryError = error instanceof Error ? error.message : 'Image gallery could not be loaded.';
         } finally {
@@ -634,8 +655,21 @@ window.adminProductForm = (initial = {}) => ({
         const scroller = event?.target;
         if (!scroller || this.mediaLibraryLoading || !this.mediaLibraryHasMore || !this.mediaLibraryItems.length) return;
 
-        const nearBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 220;
-        if (nearBottom) this.loadMediaLibrary(true);
+        const nearBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 180;
+        const now = Date.now();
+        if (nearBottom && now - this.mediaLibraryLastScrollLoadAt > 700) {
+            this.mediaLibraryLastScrollLoadAt = now;
+            this.loadMediaLibrary(true, { scrollToNew: false });
+        }
+    },
+    checkMediaLibraryAutoLoad() {
+        this.$nextTick(() => {
+            const scroller = this.$refs.mediaLibraryScroller;
+            if (!this.mediaLibraryOpen || !scroller || this.mediaLibraryLoading || !this.mediaLibraryHasMore || !this.mediaLibraryItems.length) return;
+
+            const canScroll = scroller.scrollHeight > scroller.clientHeight + 24;
+            if (!canScroll) this.loadMediaLibrary(true);
+        });
     },
     async uploadMediaLibraryFiles(fileList) {
         const files = Array.from(fileList || []);
@@ -669,10 +703,11 @@ window.adminProductForm = (initial = {}) => ({
                 throw new Error(message);
             }
 
-            const items = Array.isArray(payload.data) ? payload.data : [];
+            const items = (Array.isArray(payload.data) ? payload.data : []).filter(item => String(item?.url || '').trim() && !String(item.url || '').includes('product-placeholder.svg'));
             this.mediaLibraryItems = [...items, ...this.mediaLibraryItems];
             items.forEach(item => {
-                if (!this.mediaLibrarySelectedIds.includes(item.id)) this.mediaLibrarySelectedIds.push(item.id);
+                const imageId = Number(item.id);
+                if (imageId && !this.mediaLibrarySelectedIds.includes(imageId)) this.mediaLibrarySelectedIds.push(imageId);
             });
         } catch (error) {
             this.mediaLibraryUploadError = error instanceof Error ? error.message : 'Images could not be uploaded to the gallery.';
@@ -2516,6 +2551,178 @@ window.productBuilder = (config = {}) => ({
 
         this.sync();
         return true;
+    },
+});
+
+
+window.adminMediaLibraryManager = (initial = {}) => ({
+    indexUrl: initial.indexUrl || '/admin/media-library',
+    storeUrl: initial.storeUrl || '/admin/media-library',
+    totalImages: Number(initial.totalImages || 0),
+    items: [],
+    selectedIds: [],
+    search: '',
+    page: 1,
+    hasMore: false,
+    loading: false,
+    uploadBusy: false,
+    dragging: false,
+    dragDepth: 0,
+    error: '',
+    uploadError: '',
+    init() {
+        this.load(false);
+    },
+    csrfToken() {
+        return document.querySelector('meta[name="csrf-token"]')?.content || '';
+    },
+    imageFileExtension(file) {
+        return String(file?.name || '').split('.').pop().toLowerCase();
+    },
+    isAllowedImageFile(file) {
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
+        const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'avif'];
+        const type = String(file?.type || '').toLowerCase();
+        return allowedTypes.includes(type) || (type === '' && allowedExtensions.includes(this.imageFileExtension(file)));
+    },
+    isFileDrag(event) {
+        return Array.from(event?.dataTransfer?.types || []).includes('Files');
+    },
+    filesFromTransfer(dataTransfer) {
+        const transfer = dataTransfer || {};
+        const fromItems = Array.from(transfer.items || [])
+            .filter(item => item.kind === 'file')
+            .map(item => item.getAsFile())
+            .filter(Boolean);
+
+        return fromItems.length ? fromItems : Array.from(transfer.files || []);
+    },
+    startDrag(event) {
+        if (!this.isFileDrag(event)) return;
+        this.dragDepth += 1;
+        this.dragging = true;
+    },
+    endDrag(event) {
+        if (!this.isFileDrag(event)) return;
+        this.dragDepth = Math.max(0, this.dragDepth - 1);
+        this.dragging = this.dragDepth > 0;
+    },
+    drop(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.dragDepth = 0;
+        this.dragging = false;
+        this.upload(this.filesFromTransfer(event.dataTransfer));
+    },
+    url(page = 1) {
+        const url = new URL(this.indexUrl, window.location.origin);
+        url.searchParams.set('page', page);
+        url.searchParams.set('per_page', 24);
+        if (String(this.search || '').trim()) {
+            url.searchParams.set('q', String(this.search || '').trim());
+        }
+        return url.toString();
+    },
+    async load(append = false) {
+        if (this.loading) return;
+        if (append && !this.hasMore) return;
+
+        const nextPage = append ? this.page + 1 : 1;
+        const requestSearch = String(this.search || '').trim();
+        this.loading = true;
+        this.error = '';
+
+        if (!append) {
+            this.page = 1;
+            this.hasMore = false;
+        }
+
+        try {
+            const response = await fetch(this.url(nextPage), {
+                headers: { 'Accept': 'application/json' },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) throw new Error('Image gallery could not be loaded.');
+
+            const payload = await response.json();
+            const freshItems = (Array.isArray(payload.data) ? payload.data : []).filter(item => String(item?.url || '').trim() && !String(item.url || '').includes('product-placeholder.svg'));
+
+            if (requestSearch !== String(this.search || '').trim()) return;
+
+            if (append) {
+                const knownIds = new Set(this.items.map(item => Number(item.id)));
+                this.items = [...this.items, ...freshItems.filter(item => !knownIds.has(Number(item.id)))];
+            } else {
+                this.items = freshItems;
+            }
+
+            this.page = Number(payload.meta?.current_page || nextPage);
+            this.hasMore = Boolean(payload.meta?.has_more);
+        } catch (error) {
+            this.error = error instanceof Error ? error.message : 'Image gallery could not be loaded.';
+        } finally {
+            this.loading = false;
+        }
+    },
+    handleScroll(event) {
+        const scroller = event?.target;
+        if (!scroller || this.loading || !this.hasMore || !this.items.length) return;
+
+        const nearBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 260;
+        if (nearBottom) this.load(true);
+    },
+    fillScrollableArea() {
+        this.$nextTick(() => {
+            const scroller = this.$refs.scroller;
+            if (!scroller || this.loading || !this.hasMore || !this.items.length) return;
+
+            const canScroll = scroller.scrollHeight > scroller.clientHeight + 24;
+            if (!canScroll) this.load(true);
+        });
+    },
+    async upload(fileList) {
+        const files = Array.from(fileList || []);
+        if (!files.length) return;
+
+        const invalid = files.find(file => !this.isAllowedImageFile(file) || file.size > 5 * 1024 * 1024);
+        if (invalid || files.length > 20) {
+            this.uploadError = 'Choose up to 20 JPG, PNG, WebP, or AVIF images, each no larger than 5 MB.';
+            return;
+        }
+
+        const formData = new FormData();
+        files.forEach(file => formData.append('images[]', file));
+        this.uploadBusy = true;
+        this.uploadError = '';
+
+        try {
+            const response = await fetch(this.storeUrl, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': this.csrfToken(),
+                },
+                credentials: 'same-origin',
+                body: formData,
+            });
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                const message = payload.message || Object.values(payload.errors || {})?.flat?.()?.[0] || 'Images could not be uploaded to the gallery.';
+                throw new Error(message);
+            }
+
+            const freshItems = (Array.isArray(payload.data) ? payload.data : []).filter(item => String(item?.url || '').trim() && !String(item.url || '').includes('product-placeholder.svg'));
+            const knownIds = new Set(this.items.map(item => Number(item.id)));
+            this.items = [...freshItems.filter(item => !knownIds.has(Number(item.id))), ...this.items];
+            this.totalImages += freshItems.length;
+        } catch (error) {
+            this.uploadError = error instanceof Error ? error.message : 'Images could not be uploaded to the gallery.';
+        } finally {
+            this.uploadBusy = false;
+            if (this.$refs.uploadInput) this.$refs.uploadInput.value = '';
+        }
     },
 });
 

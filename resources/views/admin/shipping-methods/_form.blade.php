@@ -3,9 +3,6 @@
     $isActive = old('is_active') !== null ? filter_var(old('is_active'), FILTER_VALIDATE_BOOLEAN) : (bool) ($method->is_active ?? true);
     $isDefault = old('is_default') !== null ? filter_var(old('is_default'), FILTER_VALIDATE_BOOLEAN) : (bool) ($method->is_default ?? false);
     $startsAfterArtwork = old('starts_after_artwork_approval') !== null ? filter_var(old('starts_after_artwork_approval'), FILTER_VALIDATE_BOOLEAN) : (bool) ($method->starts_after_artwork_approval ?? true);
-    $chargeApplicationOptions = \App\Models\ShippingMethod::chargeApplicationOptions();
-    $currentChargeApplication = old('charge_application', $method->chargeApplication());
-    $currentChargeAmount = old('charge_amount', $method->effectiveChargeAmount());
 @endphp
 
 <form method="POST" action="{{ $action }}" class="space-y-6">
@@ -30,22 +27,11 @@
         </div>
     </x-admin.section-card>
 
-    <x-admin.section-card title="Pricing Rule" description="Set one extra shipping charge and choose how the system should apply it.">
-        <div class="grid gap-5 md:grid-cols-2">
-            <label class="admin-label">
-                Extra charge
-                <input type="number" name="charge_amount" value="{{ $currentChargeAmount }}" class="admin-input" min="0" max="999999.99" step="0.01" placeholder="0.00" required>
-                <span class="mt-2 block text-xs font-medium text-slate-500">Use 0 when this shipping method is included/free.</span>
-            </label>
-            <label class="admin-label">
-                How it will apply
-                <select name="charge_application" class="admin-input" required>
-                    @foreach($chargeApplicationOptions as $value => $label)
-                        <option value="{{ $value }}" @selected($currentChargeApplication === $value)>{{ $label }}</option>
-                    @endforeach
-                </select>
-                <span class="mt-2 block text-xs font-medium text-slate-500">Example: per order charges once, per item charges by ordered quantity.</span>
-            </label>
+    <x-admin.section-card title="Pricing Source" description="Shipping prices are not set in master data anymore.">
+        <input type="hidden" name="charge_amount" value="0">
+        <input type="hidden" name="charge_application" value="included">
+        <div class="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold leading-6 text-blue-800">
+            This master record controls only the shipping method name and transit days. The customer price is read from each product price table, using columns such as <strong>Est. Standard Shipping</strong>, <strong>Normal Shipping</strong>, <strong>Est. Urgent Shipping</strong>, <strong>Express Shipping</strong>, or <strong>Remote Area Surcharge</strong>.
         </div>
     </x-admin.section-card>
 

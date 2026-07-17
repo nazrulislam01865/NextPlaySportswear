@@ -1,6 +1,6 @@
 <x-layouts.admin title="Shipping Method Master Data" subtitle="Create reusable shipping methods and assign them from the product add/edit page.">
     <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p class="max-w-3xl text-sm font-medium leading-6 text-slate-500">Manage the shipping options that products can use. Each method has one clean extra-charge rule, a delivery estimate, and status controls.</p>
+        <p class="max-w-3xl text-sm font-medium leading-6 text-slate-500">Manage the shipping options that products can use. Each method controls the customer-facing name, delivery estimate, and status. Product price tables provide the shipping charge.</p>
         <a href="{{ route('admin.shipping-methods.create') }}" class="btn btn-red">+ Add Shipping Method</a>
     </div>
 
@@ -10,7 +10,7 @@
                 <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                     <tr>
                         <th class="px-5 py-4">Method</th>
-                        <th class="px-5 py-4">Extra charge</th>
+                        <th class="px-5 py-4">Price source</th>
                         <th class="px-5 py-4">Estimate</th>
                         <th class="px-5 py-4">Status</th>
                         <th class="px-5 py-4 text-right">Actions</th>
@@ -18,10 +18,6 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($methods as $method)
-                        @php
-                            $chargeAmount = $method->effectiveChargeAmount();
-                            $chargeText = $chargeAmount > 0 ? '$'.number_format($chargeAmount, 2) : 'Included';
-                        @endphp
                         <tr>
                             <td class="px-5 py-4">
                                 <strong class="block font-semibold text-brand-ink">{{ $method->name }}</strong>
@@ -29,8 +25,8 @@
                                 @if($method->description)<p class="mt-1 max-w-sm text-xs font-normal leading-5 text-slate-500">{{ $method->description }}</p>@endif
                             </td>
                             <td class="px-5 py-4 text-slate-700">
-                                <strong>{{ $chargeText }}</strong>
-                                <span class="block text-xs font-medium text-slate-500">{{ $method->chargeApplicationLabel() }}</span>
+                                <strong>Product price table</strong>
+                                <span class="block max-w-xs text-xs font-medium leading-5 text-slate-500">Matches Standard/Normal, Urgent/Express, or Remote shipping columns.</span>
                             </td>
                             <td class="px-5 py-4 font-medium text-slate-700">
                                 {{ $method->minimum_days }}–{{ $method->maximum_days }} business days

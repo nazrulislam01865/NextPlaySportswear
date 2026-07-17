@@ -43,7 +43,15 @@ return new class extends Migration
             DB::table('product_images')
                 ->whereNull('media_library_image_id')
                 ->where(function ($query): void {
-                    $query->whereNotNull('path')->orWhereNotNull('url');
+                    $query->where(function ($source): void {
+                        $source->whereNotNull('path')
+                            ->whereRaw("TRIM(COALESCE(path, '')) <> ''")
+                            ->where('path', 'not like', '%product-placeholder.svg%');
+                    })->orWhere(function ($source): void {
+                        $source->whereNotNull('url')
+                            ->whereRaw("TRIM(COALESCE(url, '')) <> ''")
+                            ->where('url', 'not like', '%product-placeholder.svg%');
+                    });
                 })
                 ->orderBy('id')
                 ->chunkById(100, function ($images): void {

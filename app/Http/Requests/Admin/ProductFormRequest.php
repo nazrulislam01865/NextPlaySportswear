@@ -244,7 +244,7 @@ class ProductFormRequest extends FormRequest
             'shipping_methods.*.base_price' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'shipping_methods.*.per_item_price' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'shipping_methods.*.free_shipping_minimum' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
-            'shipping_methods.*.charge_type' => ['nullable', Rule::in(['included', 'per_unit', 'fixed_order', 'master_method'])],
+            'shipping_methods.*.charge_type' => ['nullable', Rule::in(['included', 'per_unit', 'fixed_order', 'master_method', 'price_table'])],
             'shipping_methods.*.charge_application' => ['nullable', Rule::in(array_keys(ShippingMethod::chargeApplicationOptions()))],
             'shipping_methods.*.minimum_days' => ['nullable', 'integer', 'min:0', 'max:3650'],
             'shipping_methods.*.maximum_days' => ['nullable', 'integer', 'gte:shipping_methods.*.minimum_days', 'max:3650'],
@@ -661,25 +661,20 @@ class ProductFormRequest extends FormRequest
                 return null;
             }
 
-            $chargeApplication = method_exists($method, 'chargeApplication') ? $method->chargeApplication() : (string) ($method->charge_application ?? 'per_order');
-            $chargeAmount = method_exists($method, 'effectiveChargeAmount') ? $method->effectiveChargeAmount() : (float) ($method->charge_amount ?? $method->base_price ?? 0);
-            $chargeType = match ($chargeApplication) {
-                'included' => 'included',
-                'per_item' => 'per_unit',
-                default => 'fixed_order',
-            };
-
             return [
                 'shipping_method_id' => $method->id,
                 'name' => $method->name,
                 'code' => $method->code,
                 'description' => $method->description,
-                'price_adjustment' => $chargeType === 'included' ? 0 : (float) $chargeAmount,
-                'base_price' => $chargeType === 'fixed_order' ? (float) $chargeAmount : 0,
-                'per_item_price' => $chargeType === 'per_unit' ? (float) $chargeAmount : 0,
+                // Shipping master data now controls only the customer-facing method
+                // name and transit days. The live charge comes from matching product
+                // price-table columns such as Standard/Normal Shipping or Urgent/Express Shipping.
+                'price_adjustment' => 0,
+                'base_price' => 0,
+                'per_item_price' => 0,
                 'free_shipping_minimum' => null,
-                'charge_type' => $chargeType,
-                'charge_application' => $chargeApplication,
+                'charge_type' => 'price_table',
+                'charge_application' => 'per_item',
                 'minimum_days' => (int) ($method->minimum_days ?? 1),
                 'maximum_days' => (int) ($method->maximum_days ?? ($method->minimum_days ?? 1)),
                 'starts_after_artwork_approval' => (bool) ($method->starts_after_artwork_approval ?? true),

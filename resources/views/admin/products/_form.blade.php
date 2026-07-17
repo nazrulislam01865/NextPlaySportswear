@@ -1194,28 +1194,31 @@ Lead Time:"></div>
                                 </div>
                             </div>
 
-                            <p class="np-media-alert np-media-alert--error" x-show="mediaLibraryError" x-text="mediaLibraryError"></p>
-                            <p class="np-media-alert np-media-alert--error" x-show="mediaLibraryUploadError" x-text="mediaLibraryUploadError"></p>
+                            <div class="np-media-modal__body">
+                                <p class="np-media-alert np-media-alert--error" x-show="mediaLibraryError" x-text="mediaLibraryError"></p>
+                                <p class="np-media-alert np-media-alert--error" x-show="mediaLibraryUploadError" x-text="mediaLibraryUploadError"></p>
 
-                            <div class="np-media-grid" x-ref="mediaLibraryScroller" x-show="mediaLibraryItems.length" @wheel.stop @touchmove.stop @scroll.passive="handleMediaLibraryScroll($event)">
-                                <template x-for="image in mediaLibraryItems" :key="image.id">
-                                    <button type="button" class="np-media-card" :class="isMediaLibrarySelected(image.id) ? 'is-selected' : ''" @click="toggleMediaLibrarySelection(image.id)">
-                                        <img :src="image.url" :alt="image.alt_text || image.name">
-                                        <span class="np-media-card__check">✓</span>
-                                        <strong x-text="image.name"></strong>
-                                        <small x-text="image.size_label || image.created_at || 'Gallery image'"></small>
-                                    </button>
-                                </template>
+                                <div class="np-media-grid" x-ref="mediaLibraryScroller" x-show="mediaLibraryItems.length" @wheel.stop @touchmove.stop @scroll.passive="handleMediaLibraryScroll($event)">
+                                    <template x-for="image in mediaLibraryItems" :key="image.id">
+                                        <button type="button" class="np-media-card" :data-media-id="image.id" x-show="!image.broken" :class="isMediaLibrarySelected(image.id) ? 'is-selected' : ''" @click="toggleMediaLibrarySelection(image.id)">
+                                            <img :src="image.url" :alt="image.alt_text || image.name" loading="lazy" x-on:error="image.broken = true">
+                                            <span class="np-media-card__check">✓</span>
+                                            <strong x-text="image.name || 'Gallery image'"></strong>
+                                            <small x-text="image.size_label || image.created_at || 'Gallery image'"></small>
+                                        </button>
+                                    </template>
+                                </div>
+
+                                <div class="np-media-empty" x-show="!mediaLibraryLoading && !mediaLibraryItems.length">
+                                    No gallery images found. Upload images above to start the global gallery.
+                                </div>
+
+                                <div class="np-media-loading" x-show="mediaLibraryLoading">Loading images…</div>
                             </div>
-
-                            <div class="np-media-empty" x-show="!mediaLibraryLoading && !mediaLibraryItems.length">
-                                No gallery images found. Upload images above to start the global gallery.
-                            </div>
-
-                            <div class="np-media-loading" x-show="mediaLibraryLoading">Loading images…</div>
 
                             <footer class="np-media-modal__footer">
-                                <span class="np-media-scroll-hint" x-show="mediaLibraryHasMore && !mediaLibraryLoading">Scroll down to load more images</span>
+                                <span class="np-media-scroll-hint" x-show="mediaLibraryHasMore && !mediaLibraryLoading">Scroll inside the gallery or click Load more to show the next images</span>
+                                <button type="button" class="np-secondary-button" x-show="mediaLibraryHasMore && !mediaLibraryLoading" @click="loadMediaLibrary(true, { scrollToNew: true })">Load more</button>
                                 <span x-text="`${mediaLibrarySelectedIds.length} selected`"></span>
                                 <button type="button" class="np-primary-button" @click="addSelectedMediaLibraryImages()" :disabled="mediaLibrarySelectedIds.length === 0">Add selected images</button>
                             </footer>
@@ -1432,7 +1435,7 @@ Lead Time:"></div>
                                 <input type="checkbox" x-model="shippingMethodsEnabled" class="h-4 w-4 rounded border-slate-300 text-brand-red">
                                 <span>Show shipping methods on product page</span>
                             </label>
-                            <p class="min-w-0 text-xs font-medium leading-5 text-slate-500 md:text-right">Select reusable shipping methods from Master Data. Selected cards will appear for this product.</p>
+                            <p class="min-w-0 text-xs font-medium leading-5 text-slate-500 md:text-right">Select reusable shipping methods from Master Data. Names and days come from master data; prices come from this product price table shipping columns.</p>
                         </div>
 
                         <div x-show="shippingMethodsEnabled" class="mt-4" x-cloak>
@@ -1442,10 +1445,7 @@ Lead Time:"></div>
                                         @php
                                             $isSelectedShipping = $selectedShippingCodes->contains($shippingMethod->code);
                                             $isDefaultShipping = $defaultShippingCode === $shippingMethod->code;
-                                            $chargeAmount = $shippingMethod->effectiveChargeAmount();
-                                            $shippingPriceText = $chargeAmount > 0
-                                                ? '$'.number_format($chargeAmount, 2).' · '.$shippingMethod->chargeApplicationLabel()
-                                                : 'Included / no extra charge';
+                                            $shippingPriceText = 'Price from product price table';
                                         @endphp
                                         <article @class([
                                             'flex h-full flex-col justify-between rounded-2xl border bg-white p-4 transition',

@@ -310,11 +310,254 @@ window.productBuilder = (config = {}) => ({
             : `${minimum}-${maximum} working days`;
     },
 
+    dayRangeLabel(minimum = 0, maximum = 0, unit = 'days') {
+        const min = Math.max(0, Number(minimum || 0));
+        const max = Math.max(min, Number(maximum ?? min));
+        if (min === 0 && max === 0) return 'To be confirmed';
+        const suffix = unit ? ` ${unit}` : '';
+        return min === max ? `${min}${suffix}` : `${min}–${max}${suffix}`;
+    },
+
+    productionDaysOnlyLabel(option = null) {
+        const selected = option || this.currentProductionSpeed();
+        const customTime = String(selected?.production_time || '').trim();
+        const minimum = Math.max(0, Number(selected?.minimum_days || 0));
+        const maximum = Math.max(minimum, Number(selected?.maximum_days ?? minimum));
+        if (customTime && minimum === 0 && maximum === 0) return customTime;
+        return this.dayRangeLabel(minimum, maximum, 'days');
+    },
+
+    shippingDaysOnlyLabel(method = null) {
+        const selected = method || (config.shipping_methods || []).find(item => item.id === this.shippingMethod);
+        return this.dayRangeLabel(selected?.minimum_days, selected?.maximum_days, 'days');
+    },
+
+    totalDeliveryDaysLabel(method = null) {
+        const speed = this.currentProductionSpeed();
+        const shipping = method || (config.shipping_methods || []).find(item => item.id === this.shippingMethod);
+        const productionMin = Math.max(0, Number(speed?.minimum_days || 0));
+        const productionMax = Math.max(productionMin, Number(speed?.maximum_days ?? productionMin));
+        const shippingMin = Math.max(0, Number(shipping?.minimum_days || 0));
+        const shippingMax = Math.max(shippingMin, Number(shipping?.maximum_days ?? shippingMin));
+
+        if ((productionMin + productionMax + shippingMin + shippingMax) === 0) {
+            return 'To be confirmed';
+        }
+
+        return this.dayRangeLabel(productionMin + shippingMin, productionMax + shippingMax, 'days');
+    },
+
+    selectedFabricPriceTable() {
+        for (const group of (config.option_groups || [])) {
+            if (['image', 'swatch', 'buttons', 'select'].includes(group.type)) {
+                const table = this.optionValue(group, this.selections[group.id])?.fabric_price_table;
+                if (table && ((table.rows || []).length || (table.price_tiers || []).length)) return table;
+            }
+
+            if (group.type === 'checkbox') {
+                for (const id of (this.multiSelections[group.id] || [])) {
+                    const table = this.optionValue(group, id)?.fabric_price_table;
+                    if (table && ((table.rows || []).length || (table.price_tiers || []).length)) return table;
+                }
+            }
+        }
+
+        return null;
+    },
+
+    activePriceTable() {
+        const fabricTable = this.selectedFabricPriceTable();
+        if (fabricTable) return fabricTable;
+        return {
+            ...(config.price_table || {}),
+            price_tiers: config.price_table?.price_tiers || config.price_tiers || [],
+        };
+    },
+
+    activePriceTiers() {
+        return this.activePriceTable()?.price_tiers || config.price_tiers || [];
+    },
+
+    normalizePriceText(value) {
+        return String(value || '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    },
+
+    parseDisplayMoney(value) {
+        const text = String(value ?? '').trim();
+        if (!text) return null;
+        if (/^(free|included)$/i.test(text)) return 0;
+        const match = text.match(/-?\d[\d,]*(?:\.\d+)?/);
+        return match ? Number(match[0].replace(/,/g, '')) : null;
+    },
+
+    parseQuantityRangeFromLabel(value) {
+        let text = String(value ?? '')
+            .replace(/[\u2013\u2014\u2212]/g, '-')
+            .replace(/,/g, '')
+            .replace(/\b(pcs?|pieces?|units?|qty|quantity|pairs?|sets?|items?|products?|garments?|shirts?|jerseys?|kits?)\b\.?/gi, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .replace(/^[\s:~-]+|[\s:~-]+$/g, '');
+
+        if (!text) return { min: null, max: null };
+
+        let match = text.match(/^(\d+)\s*(?:-|to)\s*(\d+)$/i);
+        if (match) return { min: Number(match[1]), max: Number(match[2]) };
+
+        match = text.match(/^(?:more\s+than|greater\s+than|over|above|>)\s*(\d+)$/i);
+        if (match) return { min: Number(match[1]) + 1, max: null };
+
+        match = text.match(/^(?:up\s*to|upto|max(?:imum)?|<=|=<|≤)\s*(\d+)$/i);
+        if (match) return { min: 1, max: Number(match[1]) };
+
+        match = text.match(/^(?:at\s+least|min(?:imum)?|>=|=>|≥)?\s*(\d+)\s*(?:\+|plus|and\s+(?:above|up)|or\s+more|or\s+above)?$/i);
+        if (match) return { min: Number(match[1]), max: null };
+
+        return { min: null, max: null };
+    },
+
+    priceTableRanges(table = this.activePriceTable()) {
+        const rows = (table?.rows || []).filter(Array.isArray);
+        const tiers = table?.price_tiers || [];
+        const ranges = rows.map((row, index) => {
+            const tier = tiers[index] || {};
+            let min = tier.min ?? tier.minimum_quantity ?? null;
+            let max = tier.max ?? tier.maximum_quantity ?? null;
+
+            min = min === '' || min === null || min === undefined ? null : Number(min);
+            max = max === '' || max === null || max === undefined ? null : Number(max);
+
+            if (!Number.isFinite(min) || min < 1) {
+                const parsed = this.parseQuantityRangeFromLabel(row?.[0]);
+                min = parsed.min;
+                max = parsed.max;
+            }
+
+            return { min, max };
+        });
+
+        ranges.forEach((range, index) => {
+            if (!Number.isFinite(range.min)) return;
+            const next = ranges.slice(index + 1).find(item => Number.isFinite(item.min) && item.min > range.min);
+            if (next && (!Number.isFinite(range.max) || range.max <= range.min)) range.max = next.min - 1;
+            if (!next && Number.isFinite(range.max) && range.max <= range.min) range.max = null;
+        });
+
+        return ranges;
+    },
+
+    priceTableRowIndexForQuantity(table = this.activePriceTable(), quantity = this.effectiveProductionQuantity()) {
+        const ranges = this.priceTableRanges(table);
+        const qty = Math.max(1, Number(quantity || 1));
+        let fallback = -1;
+
+        for (let index = 0; index < ranges.length; index += 1) {
+            const range = ranges[index];
+            if (!Number.isFinite(range.min)) continue;
+            if (qty >= range.min && (!Number.isFinite(range.max) || qty <= range.max)) return index;
+            if (qty >= range.min) fallback = index;
+        }
+
+        return fallback >= 0 ? fallback : (ranges.length ? 0 : -1);
+    },
+
+    shippingMethodCategory(method) {
+        const text = this.normalizePriceText(`${method?.label || ''} ${method?.id || ''}`);
+        if (/\b(remote|rural|outlying)\b/.test(text)) return 'remote';
+        // Rush/event-review methods must not borrow urgent/express pricing unless
+        // the price table has a dedicated Rush column. They should show Contact us.
+        if (/\b(urgent|express|expedited|emergency|priority|fast|rapid)\b/.test(text)) return 'urgent';
+        if (/\b(standard|normal|regular|economy|basic|default)\b/.test(text)) return 'standard';
+        return null;
+    },
+
+    shippingHeaderMatchesCategory(header, category) {
+        if (category === 'remote') return /\b(remote|rural|outlying)\b/.test(header);
+        if (category === 'urgent') return /\b(urgent|express|expedited|emergency|priority|fast|rapid)\b/.test(header);
+        if (category === 'standard') return /\b(standard|normal|regular|economy|basic|default)\b/.test(header);
+        return false;
+    },
+
+    isShippingPriceHeader(header) {
+        const text = this.normalizePriceText(header);
+        if (!text) return false;
+        if (/\b(total est|total cost|cost per|cost piece|price per|product price)\b/.test(text)) return false;
+        return /\b(shipping|shipment|delivery|freight|surcharge)\b/.test(text);
+    },
+
+    shippingColumnIndex(method, table = this.activePriceTable()) {
+        const headers = table?.headers || [];
+        const category = this.shippingMethodCategory(method);
+        const methodWords = this.normalizePriceText(`${method?.label || ''} ${method?.id || ''}`)
+            .split(' ')
+            .filter(word => word.length >= 3 && !['shipping', 'delivery', 'method', 'service', 'option', 'est', 'estimated', 'and', 'the'].includes(word));
+        const columns = headers
+            .map((header, index) => ({ index, header: this.normalizePriceText(header) }))
+            .filter(item => item.index > 0 && this.isShippingPriceHeader(item.header));
+
+        for (const column of columns) {
+            const matchedWords = methodWords.filter(word => (` ${column.header} `).includes(` ${word} `));
+            if (matchedWords.length && (matchedWords.length === methodWords.length || column.header.includes(' shipping') || column.header.includes(' shipment') || column.header.includes(' delivery'))) {
+                return column.index;
+            }
+        }
+
+        if (category) {
+            const categorized = columns.find(column => this.shippingHeaderMatchesCategory(column.header, category));
+            if (categorized) return categorized.index;
+
+            if (category === 'standard') {
+                const generic = columns.filter(column => !this.shippingHeaderMatchesCategory(column.header, 'urgent') && !this.shippingHeaderMatchesCategory(column.header, 'remote'));
+                if (generic.length === 1) return generic[0].index;
+            }
+        }
+
+        if (columns.length === 1 && category === 'standard') {
+            const only = columns[0];
+            if (!this.shippingHeaderMatchesCategory(only.header, 'urgent') && !this.shippingHeaderMatchesCategory(only.header, 'remote')) {
+                return only.index;
+            }
+        }
+        return null;
+    },
+
+    shippingUsesPriceTable(method) {
+        return method?.price_source === 'price_table'
+            || method?.charge_type === 'price_table'
+            || method?.requires_price_table === true;
+    },
+
+    shippingTableRate(method) {
+        if (!method) return null;
+
+        const quantity = this.totalQuantity();
+        if (quantity <= 0) return null;
+
+        const table = this.activePriceTable();
+        const column = this.shippingColumnIndex(method, table);
+        const rowIndex = this.priceTableRowIndexForQuantity(table, quantity);
+        const row = rowIndex >= 0 ? (table?.rows || [])[rowIndex] : null;
+        if (column === null || !row) return null;
+        return this.parseDisplayMoney(row[column]);
+    },
+
     tierPrice() {
         const quantity = Math.max(this.totalQuantity(), Number(config.minimum_quantity || 1));
-        const tier = (config.price_tiers || []).find(item => quantity >= Number(item.min)
+        const table = this.activePriceTable();
+        const rowIndex = this.priceTableRowIndexForQuantity(table, quantity);
+        const tier = rowIndex >= 0 ? (this.activePriceTiers()[rowIndex] || null) : null;
+
+        if (tier && tier.unit !== null && tier.unit !== undefined && tier.unit !== '') {
+            return Number(tier.unit || 0);
+        }
+
+        const fallbackTier = (config.price_tiers || []).find(item => quantity >= Number(item.min)
             && (item.max === null || item.max === '' || quantity <= Number(item.max)));
-        return Number(tier?.unit ?? config.base_price ?? 0);
+        return Number(fallbackTier?.unit ?? config.base_price ?? 0);
     },
 
     applyPricedValue(breakdown, value) {
@@ -344,7 +587,14 @@ window.productBuilder = (config = {}) => ({
 
         const shipping = (config.shipping_methods || []).find(item => item.id === this.shippingMethod);
         if (shipping) {
-            if (shipping.charge_type === 'master_method') {
+            const tableRate = this.shippingTableRate(shipping);
+            if (tableRate !== null) {
+                breakdown.perUnit += tableRate;
+                breakdown.shippingPerUnit += tableRate;
+            } else if (this.shippingUsesPriceTable(shipping)) {
+                // No matching price-table column exists for this method. Master
+                // shipping methods should not fall back to stale saved prices.
+            } else if (shipping.charge_type === 'master_method') {
                 const base = Number(shipping.base_price || shipping.price_delta || 0);
                 const perItem = Number(shipping.per_item_price || 0);
                 if (base || perItem) {
@@ -359,7 +609,7 @@ window.productBuilder = (config = {}) => ({
                 if (shipping.charge_type === 'fixed_order') {
                     breakdown.fixed += amount;
                     breakdown.shippingFixed += amount;
-                } else if (shipping.charge_type !== 'included') {
+                } else if (!['included', 'price_table'].includes(shipping.charge_type)) {
                     breakdown.perUnit += amount;
                     breakdown.shippingPerUnit += amount;
                 }
@@ -546,6 +796,20 @@ window.productBuilder = (config = {}) => ({
     },
 
     shippingChargeLabel(method) {
+        if (this.shippingUsesPriceTable(method) && this.totalQuantity() <= 0) {
+            return 'Select quantity first';
+        }
+
+        const tableRate = this.shippingTableRate(method);
+        if (tableRate !== null) {
+            if (!tableRate) return 'Included';
+            return `${tableRate > 0 ? '+' : '−'}${this.money(Math.abs(tableRate))} / piece`;
+        }
+
+        if (this.shippingUsesPriceTable(method)) {
+            return 'Contact us for price';
+        }
+
         if (method?.charge_type === 'master_method') {
             const base = Number(method?.base_price || method?.price_delta || 0);
             const perItem = Number(method?.per_item_price || 0);

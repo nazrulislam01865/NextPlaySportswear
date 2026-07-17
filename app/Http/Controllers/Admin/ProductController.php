@@ -1325,7 +1325,7 @@ class ProductController extends Controller
             'minimum_days', 'maximum_days', 'is_active',
         ]);
         $this->replaceSimpleRelation($product, 'shippingMethods', $data['shipping_methods'] ?? [], ['name', 'code'], [
-            'shipping_method_id', 'name', 'code', 'description', 'price_adjustment', 'charge_type', 'base_price',
+            'shipping_method_id', 'name', 'code', 'description', 'price_adjustment', 'charge_type', 'charge_application', 'base_price',
             'per_item_price', 'free_shipping_minimum', 'minimum_days', 'maximum_days',
             'starts_after_artwork_approval', 'is_quote_based', 'is_default', 'is_active',
         ]);

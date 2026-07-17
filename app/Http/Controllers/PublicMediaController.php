@@ -53,6 +53,14 @@ class PublicMediaController extends Controller
     {
         $path = str_replace('\\', '/', trim(rawurldecode($path)));
         $path = preg_replace('#/+#', '/', $path) ?: '';
+        $path = ltrim($path, '/');
+
+        foreach (['storage/app/public/', 'public/storage/', 'storage/', 'media/'] as $prefix) {
+            if (str_starts_with($path, $prefix)) {
+                $path = \Illuminate\Support\Str::after($path, $prefix);
+                break;
+            }
+        }
 
         return ltrim($path, '/');
     }
