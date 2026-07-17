@@ -40,7 +40,21 @@ class AppServiceProvider extends ServiceProvider
         });
 
         View::composer('components.storefront.header', function ($view): void {
-            $view->with('cartItemCount', app(CartService::class)->count());
+            $cartService = app(CartService::class);
+            $cartSummary = $cartService->summary();
+            $cartItems = collect($cartSummary['items'] ?? [])->values();
+
+            $view->with('cartItemCount', (int) ($cartSummary['quantity'] ?? 0));
+            $view->with('headerCart', [
+                'items' => $cartItems->take(4)->all(),
+                'total_items' => $cartItems->count(),
+                'remaining_items' => max(0, $cartItems->count() - 4),
+                'quantity' => (int) ($cartSummary['quantity'] ?? 0),
+                'subtotal' => (float) ($cartSummary['subtotal'] ?? 0),
+                'total' => (float) ($cartSummary['total'] ?? 0),
+                'is_empty' => (bool) ($cartSummary['is_empty'] ?? true),
+                'checkout_ready' => (bool) ($cartSummary['checkout_ready'] ?? false),
+            ]);
             $view->with('storefrontMenus', app(NavigationService::class)->storefrontMenus());
         });
 

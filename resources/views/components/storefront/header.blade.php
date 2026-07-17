@@ -1,3 +1,17 @@
+@php
+    $headerCart = $headerCart ?? [
+        'items' => [],
+        'total_items' => 0,
+        'remaining_items' => 0,
+        'quantity' => 0,
+        'subtotal' => 0,
+        'total' => 0,
+        'is_empty' => true,
+        'checkout_ready' => false,
+    ];
+    $cartItemCount = (int) ($cartItemCount ?? ($headerCart['quantity'] ?? 0));
+@endphp
+
 <header
     x-data="{ open: false }"
     x-effect="document.documentElement.classList.toggle('overflow-hidden', open)"
@@ -59,13 +73,83 @@
                 <a href="{{ route('login') }}" class="btn btn-white hidden xl:inline-flex">Login</a>
             @endif
 
-            <a href="{{ route('cart.index') }}" class="storefront-cart-button relative inline-flex min-h-10 items-center justify-center gap-1 rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm font-extrabold text-slate-900 sm:min-h-11" aria-label="Shopping cart{{ ($cartItemCount ?? 0) > 0 ? ', ' . $cartItemCount . ' items' : '' }}">
-                <span class="cart-label">Cart</span>
-                <svg class="sm:hidden" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="20" r="1"></circle><circle cx="19" cy="20" r="1"></circle><path d="M3 4h2l2.7 11.1a2 2 0 0 0 2 1.5h7.7a2 2 0 0 0 2-1.6L21 8H6"></path></svg>
-                @if (($cartItemCount ?? 0) > 0)
-                    <span class="rounded-full bg-brand-red px-2 py-0.5 text-xs font-black text-white">{{ $cartItemCount }}</span>
-                @endif
-            </a>
+            <div class="storefront-cart-hover relative">
+                <a
+                    href="{{ route('cart.index') }}"
+                    class="storefront-cart-icon-button storefront-cart-button relative inline-grid h-10 w-10 place-items-center rounded-xl border border-slate-300 bg-slate-50 text-slate-900 transition hover:border-brand-blue hover:bg-blue-50 hover:text-brand-blue sm:h-11 sm:w-11"
+                    aria-label="Shopping cart{{ $cartItemCount > 0 ? ', ' . $cartItemCount . ' items' : '' }}"
+                >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="9" cy="20" r="1.5"></circle>
+                        <circle cx="19" cy="20" r="1.5"></circle>
+                        <path d="M3 4h2l2.7 11.1a2 2 0 0 0 2 1.5h7.7a2 2 0 0 0 2-1.6L21 8H6"></path>
+                    </svg>
+                    @if ($cartItemCount > 0)
+                        <span class="storefront-cart-count-badge absolute -right-1.5 -top-1.5 min-w-[22px] rounded-full bg-brand-red px-1.5 py-0.5 text-center text-[11px] font-black leading-4 text-white shadow-sm">{{ $cartItemCount > 99 ? '99+' : $cartItemCount }}</span>
+                    @endif
+                </a>
+
+                <div class="storefront-cart-preview absolute right-0 top-[calc(100%+0.7rem)] z-[80] hidden w-[360px] max-w-[calc(100vw-1.25rem)] rounded-[22px] border border-slate-200 bg-white text-left shadow-2xl" role="region" aria-label="Cart preview">
+                    <span class="storefront-cart-preview-arrow" aria-hidden="true"></span>
+                    <div class="border-b border-slate-100 px-4 py-3">
+                        <div class="flex items-center justify-between gap-3">
+                            <p class="text-sm font-black uppercase tracking-[.14em] text-brand-ink">Cart Preview</p>
+                            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">{{ $cartItemCount }} item{{ $cartItemCount === 1 ? '' : 's' }}</span>
+                        </div>
+                    </div>
+
+                    @if (! empty($headerCart['items']))
+                        <div class="max-h-[340px] overflow-y-auto p-3">
+                            @foreach ($headerCart['items'] as $item)
+                                @php
+                                    $previewProduct = (array) ($item['product'] ?? []);
+                                    $previewTitle = $previewProduct['short_title'] ?? $previewProduct['title'] ?? 'Configured product';
+                                    $previewImage = $previewProduct['image'] ?? null;
+                                    $previewUrl = $previewProduct['url'] ?? route('cart.index');
+                                @endphp
+                                <a href="{{ $previewUrl }}" class="storefront-mini-cart-item flex gap-3 rounded-2xl p-2 transition hover:bg-slate-50">
+                                    <span class="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 bg-white">
+                                        @if ($previewImage)
+                                            <img src="{{ $previewImage }}" alt="{{ $previewProduct['alt'] ?? $previewTitle }}" class="h-full w-full object-contain p-1" loading="lazy">
+                                        @else
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-300" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 16 5-5 4 4 2-2 7 7"></path></svg>
+                                        @endif
+                                    </span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block truncate text-sm font-black leading-5 text-brand-ink">{{ $previewTitle }}</span>
+                                        <span class="mt-1 block text-xs font-bold text-slate-500">Qty {{ (int) ($item['quantity'] ?? 0) }} · ${{ number_format((float) ($item['unit_price'] ?? 0), 2) }} each</span>
+                                        <span class="mt-1 block text-sm font-black text-brand-red">${{ number_format((float) ($item['line_total'] ?? 0), 2) }}</span>
+                                    </span>
+                                </a>
+                            @endforeach
+
+                            @if (($headerCart['remaining_items'] ?? 0) > 0)
+                                <p class="px-2 pb-1 pt-2 text-xs font-black text-slate-500">+ {{ $headerCart['remaining_items'] }} more cart item{{ (int) $headerCart['remaining_items'] === 1 ? '' : 's' }}</p>
+                            @endif
+                        </div>
+
+                        <div class="border-t border-slate-100 p-4">
+                            <div class="mb-3 flex items-center justify-between gap-4">
+                                <span class="text-sm font-bold text-slate-500">Estimated total</span>
+                                <span class="text-lg font-black text-brand-ink">${{ number_format((float) ($headerCart['total'] ?? 0), 2) }}</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <a href="{{ route('cart.index') }}" class="btn btn-white w-full text-xs">View Cart</a>
+                                <a href="{{ route('checkout.index') }}" class="btn btn-red w-full text-xs {{ ($headerCart['checkout_ready'] ?? false) ? '' : 'pointer-events-none opacity-50' }}">Checkout</a>
+                            </div>
+                        </div>
+                    @else
+                        <div class="p-5 text-center">
+                            <div class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-slate-50 text-slate-400">
+                                <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"></circle><circle cx="19" cy="20" r="1.5"></circle><path d="M3 4h2l2.7 11.1a2 2 0 0 0 2 1.5h7.7a2 2 0 0 0 2-1.6L21 8H6"></path></svg>
+                            </div>
+                            <p class="mt-3 text-base font-black text-brand-ink">Your cart is empty</p>
+                            <p class="mt-1 text-sm font-semibold leading-6 text-slate-500">Add products to see them here instantly.</p>
+                            <a href="{{ route('products.index') }}" class="btn btn-red mt-4 w-full text-xs">Start Shopping</a>
+                        </div>
+                    @endif
+                </div>
+            </div>
 
             <button
                 type="button"

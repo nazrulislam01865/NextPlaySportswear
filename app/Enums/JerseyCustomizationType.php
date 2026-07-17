@@ -61,6 +61,7 @@ enum JerseyCustomizationType: string
     case TankTopSize = 'tank_top_size';
 
     case CompressionWearColor = 'compression_wear_color';
+    case CompressionWearMaterials = 'compression_wear_materials';
     case CompressionWearPattern = 'compression_wear_pattern';
 
     case SocksColor = 'socks_color';
@@ -138,6 +139,7 @@ enum JerseyCustomizationType: string
             self::TankTopStyle => 'Tank Top Style',
             self::TankTopSize => 'Tank Top Size',
             self::CompressionWearColor => 'Compression Wear Color',
+            self::CompressionWearMaterials => 'Compression Wear Materials',
             self::CompressionWearPattern => 'Compression Wear Pattern',
             self::SocksColor => 'Socks Color',
             self::SocksPattern => 'Socks Pattern',
@@ -214,6 +216,7 @@ enum JerseyCustomizationType: string
             self::TankTopStyle,
             self::TankTopSize => 'tank_top',
             self::CompressionWearColor,
+            self::CompressionWearMaterials,
             self::CompressionWearPattern => 'compression_wear',
             self::SocksColor,
             self::SocksPattern,
@@ -375,6 +378,7 @@ enum JerseyCustomizationType: string
             self::TankTopStyle => 'Example: Racerback Tank',
             self::TankTopSize => 'Example: Adult Medium',
             self::CompressionWearColor => 'Example: Black',
+            self::CompressionWearMaterials => 'Example: 4-Way Stretch Polyester Spandex',
             self::CompressionWearPattern => 'Example: Hex Pattern',
             self::SocksColor => 'Example: White / Royal Blue',
             self::SocksPattern => 'Example: Striped Crew Socks',
@@ -451,6 +455,7 @@ enum JerseyCustomizationType: string
             self::TankTopStyle => 'Add tank top style choices such as racerback, classic athletic cut, or reversible tank.',
             self::TankTopSize => 'Add tank top-specific size values only when they are different from the main Size Options master data.',
             self::CompressionWearColor => 'Add common compression wear color choices with exact color values for product configuration.',
+            self::CompressionWearMaterials => 'Add compression wear material choices with short details, such as polyester spandex, nylon spandex, mesh panels, or moisture-wicking blends.',
             self::CompressionWearPattern => 'Add compression wear pattern choices such as solid, camo, hex, stripe, or gradient.',
             self::SocksColor => 'Add common socks color choices with exact color values for product configuration.',
             self::SocksPattern => 'Add socks pattern choices such as solid, striped, crew stripe, or gradient.',
@@ -502,6 +507,7 @@ enum JerseyCustomizationType: string
             self::TshirtFabric,
             self::QuarterZipFabric,
             self::TankTopFabric,
+            self::CompressionWearMaterials,
             self::SocksMaterialConstruction,
             self::SweatshirtFabric,
             self::JacketOuterFabric,
@@ -578,6 +584,7 @@ enum JerseyCustomizationType: string
             self::TshirtFabric,
             self::QuarterZipFabric,
             self::TankTopFabric,
+            self::CompressionWearMaterials,
             self::SocksMaterialConstruction,
             self::SweatshirtFabric,
             self::JacketOuterFabric,
@@ -654,6 +661,7 @@ enum JerseyCustomizationType: string
             self::TshirtFabric,
             self::QuarterZipFabric,
             self::TankTopFabric,
+            self::CompressionWearMaterials,
             self::SocksMaterialConstruction,
             self::SweatshirtFabric,
             self::JacketOuterFabric,
@@ -824,6 +832,7 @@ enum JerseyCustomizationType: string
             ],
             'compression_wear' => [
                 self::CompressionWearColor,
+                self::CompressionWearMaterials,
                 self::CompressionWearPattern,
             ],
             'socks' => [
@@ -891,6 +900,7 @@ enum JerseyCustomizationType: string
             self::TshirtFabric,
             self::QuarterZipFabric,
             self::TankTopFabric,
+            self::CompressionWearMaterials,
             self::SocksMaterialConstruction,
             self::SweatshirtFabric,
             self::JacketOuterFabric,

@@ -889,6 +889,7 @@ window.adminProductForm = (initial = {}) => ({
         if (/tank[-\s_]*top.*style|style.*tank[-\s_]*top/.test(plain)) return 'tank_top_style';
         if (/tank[-\s_]*top.*size|size.*tank[-\s_]*top/.test(plain)) return 'tank_top_size';
         if (/compression.*wear.*colou?r|colou?r.*compression.*wear/.test(plain)) return 'compression_wear_color';
+        if (/compression.*wear.*(material|fabric)|(material|fabric).*compression.*wear/.test(plain)) return 'compression_wear_materials';
         if (/compression.*wear.*pattern|pattern.*compression.*wear/.test(plain)) return 'compression_wear_pattern';
         if (/socks?.*colou?r|colou?r.*socks?/.test(plain)) return 'socks_color';
         if (/socks?.*pattern|pattern.*socks?/.test(plain)) return 'socks_pattern';
