@@ -29,6 +29,10 @@ class HomepageSectionRequest extends FormRequest
             'image_url' => ['nullable', 'string', 'max:2048', new SafePublicUrl()],
             'image_alt' => ['nullable', 'string', 'max:255'],
             'remove_image' => ['nullable', 'boolean'],
+            'mobile_image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:10240'],
+            'mobile_image_url' => ['nullable', 'string', 'max:2048', new SafePublicUrl()],
+            'mobile_image_alt' => ['nullable', 'string', 'max:255'],
+            'remove_mobile_image' => ['nullable', 'boolean'],
             'items' => ['nullable', 'array', 'max:30'],
             'items.*.icon' => ['nullable', 'string', 'max:20'],
             'items.*.title' => ['nullable', 'string', 'max:255'],
@@ -36,6 +40,7 @@ class HomepageSectionRequest extends FormRequest
             'items.*.description' => ['nullable', 'string', 'max:2000'],
             'items.*.url' => ['nullable', 'string', 'max:2048', new SafePublicUrl()],
             'items.*.label' => ['nullable', 'string', 'max:160'],
+            'items.*.category_id' => ['nullable', 'integer', 'distinct', 'exists:categories,id'],
             'is_active' => ['nullable', 'boolean'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:1000000'],
         ];
@@ -46,9 +51,11 @@ class HomepageSectionRequest extends FormRequest
         $this->merge([
             'is_active' => $this->boolean('is_active'),
             'remove_image' => $this->boolean('remove_image'),
+            'remove_mobile_image' => $this->boolean('remove_mobile_image'),
             'primary_url' => trim((string) $this->input('primary_url', '')) ?: null,
             'secondary_url' => trim((string) $this->input('secondary_url', '')) ?: null,
             'image_url' => trim((string) $this->input('image_url', '')) ?: null,
+            'mobile_image_url' => trim((string) $this->input('mobile_image_url', '')) ?: null,
         ]);
     }
 
@@ -74,9 +81,9 @@ class HomepageSectionRequest extends FormRequest
     /** @return array<string, mixed> */
     public function payload(): array
     {
-        $data = $this->safe()->except(['image_file', 'image_url', 'remove_image']);
+        $data = $this->safe()->except(['image_file', 'image_url', 'remove_image', 'mobile_image_file', 'mobile_image_url', 'remove_mobile_image']);
 
-        foreach (['eyebrow', 'title', 'description', 'primary_label', 'primary_url', 'secondary_label', 'secondary_url', 'image_alt'] as $field) {
+        foreach (['eyebrow', 'title', 'description', 'primary_label', 'primary_url', 'secondary_label', 'secondary_url', 'image_alt', 'mobile_image_alt'] as $field) {
             if (array_key_exists($field, $data) && is_string($data[$field])) {
                 $data[$field] = trim(strip_tags($data[$field])) ?: null;
             }
@@ -105,6 +112,11 @@ class HomepageSectionRequest extends FormRequest
                 if ($value !== '') {
                     $row[$field] = $value;
                 }
+            }
+
+            $categoryId = (int) ($item['category_id'] ?? 0);
+            if ($categoryId > 0) {
+                $row['category_id'] = $categoryId;
             }
 
             if ($row !== []) {

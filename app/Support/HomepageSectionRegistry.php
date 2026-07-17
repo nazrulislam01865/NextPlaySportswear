@@ -48,6 +48,9 @@ final class HomepageSectionRegistry
                 'image_path' => null,
                 'image_url' => '/storage/storefront/home/hero.webp',
                 'image_alt' => 'Custom jerseys, caps, hoodies, and sports bag arranged for a team order',
+                'mobile_image_path' => null,
+                'mobile_image_url' => null,
+                'mobile_image_alt' => 'Custom sportswear mobile hero banner',
                 'items' => [
                     ['title' => 'Custom names, numbers, logos, and colors'],
                     ['title' => 'Team uniforms for football, baseball, basketball, soccer, and more'],
@@ -65,8 +68,10 @@ final class HomepageSectionRegistry
                 'sort_order' => 30,
                 'eyebrow' => 'Find it fast',
                 'title' => 'What Are You Looking For?',
-                'description' => 'Start with an admin-managed category and find the right product faster.',
-                'fields' => ['text'],
+                'description' => 'Start with admin-selected categories, subcategories, or sub-subcategories and find the right product faster.',
+                'fields' => ['text', 'items'],
+                'item_label' => 'Homepage Categories',
+                'item_fields' => ['category_id'],
             ],
             [
                 'key' => 'buyer_paths',
@@ -93,8 +98,10 @@ final class HomepageSectionRegistry
                 'sort_order' => 50,
                 'eyebrow' => 'Most requested',
                 'title' => 'Popular Custom Sportswear Categories',
-                'description' => 'Our most requested sport categories and subcategories for teams, events, and fan gear.',
-                'fields' => ['text'],
+                'description' => 'Our most requested sport categories, subcategories, and sub-subcategories for teams, events, and fan gear.',
+                'fields' => ['text', 'items'],
+                'item_label' => 'Popular Categories',
+                'item_fields' => ['category_id'],
             ],
             [
                 'key' => 'design_jersey',
@@ -201,7 +208,9 @@ final class HomepageSectionRegistry
                 'eyebrow' => 'Popular gear',
                 'title' => 'Best-Selling Team Gear',
                 'description' => '',
-                'fields' => ['text'],
+                'fields' => ['text', 'items'],
+                'item_label' => 'Best-Selling Gear Categories',
+                'item_fields' => ['category_id'],
             ],
             [
                 'key' => 'shop_by_sport',
@@ -210,8 +219,10 @@ final class HomepageSectionRegistry
                 'sort_order' => 110,
                 'eyebrow' => 'Find your sport',
                 'title' => 'Shop by Sport',
-                'description' => 'Active sport categories from the admin catalog appear here automatically.',
-                'fields' => ['text'],
+                'description' => 'Choose sport categories, subcategories, or sub-subcategories from the admin catalog, or let this section load automatically.',
+                'fields' => ['text', 'items'],
+                'item_label' => 'Sport Categories',
+                'item_fields' => ['category_id'],
             ],
             [
                 'key' => 'why_choose',
@@ -376,6 +387,9 @@ final class HomepageSectionRegistry
             'image_path' => self::nullableString($definition['image_path'] ?? null),
             'image_url' => self::nullableString($definition['image_url'] ?? null),
             'image_alt' => self::nullableString($definition['image_alt'] ?? null),
+            'mobile_image_path' => self::nullableString($definition['mobile_image_path'] ?? null),
+            'mobile_image_url' => self::nullableString($definition['mobile_image_url'] ?? null),
+            'mobile_image_alt' => self::nullableString($definition['mobile_image_alt'] ?? null),
             'items' => $definition['items'] ?? null,
             'is_active' => true,
             'sort_order' => (int) ($definition['sort_order'] ?? 0),
@@ -401,6 +415,8 @@ final class HomepageSectionRegistry
         $merged['is_active'] = (bool) ($merged['is_active'] ?? true);
         $merged['sort_order'] = (int) ($merged['sort_order'] ?? ($definition['sort_order'] ?? 0));
         $merged['image'] = PublicMedia::url($merged['image_path'] ?? null, $merged['image_url'] ?? null, null);
+        $merged['mobile_image'] = PublicMedia::url($merged['mobile_image_path'] ?? null, $merged['mobile_image_url'] ?? null, null);
+        $merged['mobile_image_alt'] = self::nullableString($merged['mobile_image_alt'] ?? null) ?: ($merged['image_alt'] ?? null);
 
         return $merged;
     }

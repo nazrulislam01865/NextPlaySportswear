@@ -96,6 +96,36 @@ class CategoryCatalogService
         return $categories->map(fn (Category $category) => $this->categoryData($category))->all();
     }
 
+
+    /** @param array<int, int|string> $ids */
+    public function categoriesByIds(array $ids, int $limit = 12): array
+    {
+        $orderedIds = collect($ids)
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->take(max(1, $limit))
+            ->values();
+
+        if ($orderedIds->isEmpty()) {
+            return [];
+        }
+
+        $categories = Category::query()
+            ->storefrontReachable()
+            ->whereIn('id', $orderedIds->all())
+            ->get()
+            ->keyBy('id');
+
+        $ordered = $orderedIds
+            ->map(fn (int $id) => $categories->get($id))
+            ->filter();
+
+        $this->attachProductCounts($ordered);
+
+        return $ordered->map(fn (Category $category) => $this->categoryData($category))->values()->all();
+    }
+
     public function filterTags(): array
     {
         return [

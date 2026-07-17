@@ -1,6 +1,7 @@
 @php
     $isEdit = $slide->exists;
     $currentImage = \App\Support\PublicMedia::url($slide->image_path, $slide->image_url, '');
+    $currentMobileImage = \App\Support\PublicMedia::url($slide->mobile_image_path, $slide->mobile_image_url, '');
     $checked = static fn (string $field, bool $default = false): bool => old($field) !== null
         ? filter_var(old($field), FILTER_VALIDATE_BOOLEAN)
         : (bool) ($slide->{$field} ?? $default);
@@ -14,9 +15,12 @@
     x-data="{
         imageUrl: @js(old('image_url', $slide->image_url)),
         imagePreview: @js($currentImage),
+        mobileImageUrl: @js(old('mobile_image_url', $slide->mobile_image_url)),
+        mobileImagePreview: @js($currentMobileImage),
         removeImage: @js($checked('remove_image')),
+        removeMobileImage: @js($checked('remove_mobile_image')),
         showContent: @js($checked('show_content', true)),
-        previewFile(event) {
+        previewFile(event, target = 'desktop') {
             const file = event.target.files?.[0];
             if (!file) return;
             const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
@@ -25,11 +29,22 @@
                 window.alert('Choose a JPG, PNG, WebP, or AVIF image no larger than 10 MB.');
                 return;
             }
+            if (target === 'mobile') {
+                if (String(this.mobileImagePreview).startsWith('blob:')) URL.revokeObjectURL(this.mobileImagePreview);
+                this.removeMobileImage = false;
+                this.mobileImagePreview = URL.createObjectURL(file);
+                return;
+            }
             if (String(this.imagePreview).startsWith('blob:')) URL.revokeObjectURL(this.imagePreview);
             this.removeImage = false;
             this.imagePreview = URL.createObjectURL(file);
         },
-        previewUrl() {
+        previewUrl(target = 'desktop') {
+            if (target === 'mobile') {
+                if (!String(this.mobileImagePreview).startsWith('blob:')) this.mobileImagePreview = this.mobileImageUrl;
+                this.removeMobileImage = false;
+                return;
+            }
             if (!String(this.imagePreview).startsWith('blob:')) this.imagePreview = this.imageUrl;
             this.removeImage = false;
         }
@@ -38,51 +53,97 @@
     @csrf
     @if($method !== 'POST') @method($method) @endif
 
-    <x-admin.section-card title="Slide Image" description="Upload an optimized 2048×768 px banner image or use a secure remote image URL. Uploaded images take priority.">
+    <x-admin.section-card title="Responsive Banner Images" description="Desktop/tablet banners should use an 8:3 ratio. Recommended: 2560×960 px. Alternative: 1920×720 px. Add a separate mobile image so important content is not cropped on small screens.">
         <div class="grid gap-6 xl:grid-cols-[1fr_360px]">
-            <div class="grid gap-5 sm:grid-cols-2">
-                <label class="admin-label sm:col-span-2">
-                    Upload image
-                    <input type="file" name="image_file" accept=".jpg,.jpeg,.png,.webp,.avif,image/jpeg,image/png,image/webp,image/avif" class="admin-input h-auto py-3" x-on:change="previewFile($event)">
-                    <span class="mt-2 block text-xs font-medium leading-5 text-slate-500">Required banner size: 2048×768 pixels. JPG, PNG, WebP or AVIF, maximum 10 MB.</span>
-                </label>
+            <div class="space-y-6">
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                    <h3 class="text-sm font-black uppercase tracking-[.16em] text-brand-ink">Desktop / tablet image</h3>
+                    <p class="mt-1 text-xs font-semibold leading-5 text-slate-500">Required ratio: 8:3. Recommended size: 2560×960 px. Alternative: 1920×720 px. Image uses object-fit: cover on the frontend.</p>
+                    <div class="mt-5 grid gap-5 sm:grid-cols-2">
+                        <label class="admin-label sm:col-span-2">
+                            Upload desktop banner
+                            <input type="file" name="image_file" accept=".jpg,.jpeg,.png,.webp,.avif,image/jpeg,image/png,image/webp,image/avif" class="admin-input h-auto py-3" x-on:change="previewFile($event, 'desktop')">
+                        </label>
 
-                <label class="admin-label sm:col-span-2">
-                    Or image URL
-                    <input type="url" name="image_url" x-model="imageUrl" x-on:input.debounce.400ms="previewUrl()" value="{{ old('image_url', $slide->image_url) }}" class="admin-input" placeholder="https://example.com/banner.webp" maxlength="2048">
-                </label>
+                        <label class="admin-label sm:col-span-2">
+                            Or desktop image URL
+                            <input type="url" name="image_url" x-model="imageUrl" x-on:input.debounce.400ms="previewUrl('desktop')" value="{{ old('image_url', $slide->image_url) }}" class="admin-input" placeholder="https://example.com/banner-2560x960.webp" maxlength="2048">
+                        </label>
 
-                <label class="admin-label sm:col-span-2">
-                    Image alt text
-                    <input type="text" name="image_alt" value="{{ old('image_alt', $slide->image_alt) }}" class="admin-input" maxlength="255" placeholder="Describe the image for accessibility and SEO">
-                </label>
+                        <label class="admin-label sm:col-span-2">
+                            Desktop image alt text
+                            <input type="text" name="image_alt" value="{{ old('image_alt', $slide->image_alt) }}" class="admin-input" maxlength="255" placeholder="Describe the banner image for accessibility and SEO">
+                        </label>
 
-                <label class="admin-label">
-                    Image focal point
-                    <select name="image_focal_position" class="admin-input">
-                        @foreach(['center' => 'Center', 'top' => 'Top', 'bottom' => 'Bottom', 'left' => 'Left', 'right' => 'Right', 'top-left' => 'Top left', 'top-right' => 'Top right', 'bottom-left' => 'Bottom left', 'bottom-right' => 'Bottom right'] as $value => $label)
-                            <option value="{{ $value }}" @selected(old('image_focal_position', $slide->image_focal_position ?: 'center') === $value)>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </label>
+                        <label class="admin-label">
+                            Image focal point
+                            <select name="image_focal_position" class="admin-input">
+                                @foreach(['center' => 'Center', 'top' => 'Top', 'bottom' => 'Bottom', 'left' => 'Left', 'right' => 'Right', 'top-left' => 'Top left', 'top-right' => 'Top right', 'bottom-left' => 'Bottom left', 'bottom-right' => 'Bottom right'] as $value => $label)
+                                    <option value="{{ $value }}" @selected(old('image_focal_position', $slide->image_focal_position ?: 'center') === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </label>
 
-                @if($isEdit && $currentImage)
-                    <label class="flex items-center gap-3 self-end rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">
-                        <input type="hidden" name="remove_image" value="0">
-                        <input type="checkbox" name="remove_image" value="1" x-model="removeImage" x-on:change="if (removeImage) { imageUrl = ''; imagePreview = ''; }" class="h-4 w-4 rounded border-red-300 text-brand-red">
-                        Remove existing image
-                    </label>
-                @else
-                    <input type="hidden" name="remove_image" value="0">
-                @endif
+                        @if($isEdit && $currentImage)
+                            <label class="flex items-center gap-3 self-end rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">
+                                <input type="hidden" name="remove_image" value="0">
+                                <input type="checkbox" name="remove_image" value="1" x-model="removeImage" x-on:change="if (removeImage) { imageUrl = ''; imagePreview = ''; }" class="h-4 w-4 rounded border-red-300 text-brand-red">
+                                Remove desktop image
+                            </label>
+                        @else
+                            <input type="hidden" name="remove_image" value="0">
+                        @endif
+                    </div>
+                </div>
+
+                <div class="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+                    <h3 class="text-sm font-black uppercase tracking-[.16em] text-brand-ink">Mobile image</h3>
+                    <p class="mt-1 text-xs font-semibold leading-5 text-slate-600">Optional but recommended. Use 1080×1350 px, or 1080×1080 px when a square crop is safer. Keep important content near the center.</p>
+                    <div class="mt-5 grid gap-5 sm:grid-cols-2">
+                        <label class="admin-label sm:col-span-2">
+                            Upload mobile banner
+                            <input type="file" name="mobile_image_file" accept=".jpg,.jpeg,.png,.webp,.avif,image/jpeg,image/png,image/webp,image/avif" class="admin-input h-auto py-3" x-on:change="previewFile($event, 'mobile')">
+                        </label>
+
+                        <label class="admin-label sm:col-span-2">
+                            Or mobile image URL
+                            <input type="url" name="mobile_image_url" x-model="mobileImageUrl" x-on:input.debounce.400ms="previewUrl('mobile')" value="{{ old('mobile_image_url', $slide->mobile_image_url) }}" class="admin-input" placeholder="https://example.com/banner-mobile.webp" maxlength="2048">
+                        </label>
+
+                        <label class="admin-label sm:col-span-2">
+                            Mobile image alt text
+                            <input type="text" name="mobile_image_alt" value="{{ old('mobile_image_alt', $slide->mobile_image_alt) }}" class="admin-input" maxlength="255" placeholder="Optional. Defaults to desktop alt text if blank.">
+                        </label>
+
+                        @if($isEdit && $currentMobileImage)
+                            <label class="flex items-center gap-3 self-end rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800 sm:col-span-2">
+                                <input type="hidden" name="remove_mobile_image" value="0">
+                                <input type="checkbox" name="remove_mobile_image" value="1" x-model="removeMobileImage" x-on:change="if (removeMobileImage) { mobileImageUrl = ''; mobileImagePreview = ''; }" class="h-4 w-4 rounded border-red-300 text-brand-red">
+                                Remove mobile image
+                            </label>
+                        @else
+                            <input type="hidden" name="remove_mobile_image" value="0">
+                        @endif
+                    </div>
+                </div>
             </div>
 
-            <div class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
-                <div class="aspect-[16/7] min-h-[190px]" x-show="!removeImage && imagePreview">
-                    <img :src="imagePreview" alt="Slide image preview" class="h-full w-full object-cover" x-on:error="$el.style.display='none'" x-on:load="$el.style.display='block'">
+            <div class="space-y-4">
+                <div class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+                    <div class="" style="aspect-ratio: 8 / 3; min-height: 150px;" x-show="!removeImage && imagePreview">
+                        <img :src="imagePreview" alt="Desktop banner preview" class="h-full w-full object-cover" x-on:error="$el.style.display='none'" x-on:load="$el.style.display='block'">
+                    </div>
+                    <div class="grid place-items-center p-6 text-center text-sm font-bold text-slate-500" style="min-height: 150px;" x-show="removeImage || !imagePreview">
+                        Desktop preview will appear here
+                    </div>
                 </div>
-                <div class="grid min-h-[190px] place-items-center p-6 text-center text-sm font-bold text-slate-500" x-show="removeImage || !imagePreview">
-                    Image preview will appear here
+                <div class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+                    <div class="" style="aspect-ratio: 4 / 5; min-height: 220px;" x-show="!removeMobileImage && mobileImagePreview">
+                        <img :src="mobileImagePreview" alt="Mobile banner preview" class="h-full w-full object-cover" x-on:error="$el.style.display='none'" x-on:load="$el.style.display='block'">
+                    </div>
+                    <div class="grid place-items-center p-6 text-center text-sm font-bold text-slate-500" style="min-height: 220px;" x-show="removeMobileImage || !mobileImagePreview">
+                        Mobile preview will appear here
+                    </div>
                 </div>
             </div>
         </div>

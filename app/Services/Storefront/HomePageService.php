@@ -26,6 +26,7 @@ class HomePageService
             'latestProducts' => $this->latestProducts(),
             'bestSellingProducts' => $this->bestSellingProducts(),
             'popularSportsCategories' => $this->popularSportsCategories(),
+            'bestSellingGearCategories' => $this->bestSellingGearCategories(),
             'sports' => $this->sports(),
             'processSteps' => $this->sectionItems('process'),
             'faqs' => $this->faqItems(),
@@ -48,6 +49,11 @@ class HomePageService
     }
 
     private function categories(): array
+    {
+        return $this->categoriesForSection('categories', fn (): array => $this->automaticFeaturedCategories(), 6);
+    }
+
+    private function automaticFeaturedCategories(): array
     {
         return collect($this->categoryCatalog->collections())
             ->filter(fn (array $category): bool => (bool) ($category['is_featured'] ?? false))
@@ -122,16 +128,48 @@ class HomePageService
 
     private function popularSportsCategories(): array
     {
-        return collect($this->categoryCatalog->popularSportswearCategories())
+        return $this->categoriesForSection('popular_categories', fn (): array => collect($this->categoryCatalog->popularSportswearCategories())
             ->take(8)
             ->values()
-            ->all();
+            ->all(), 8);
+    }
+
+    private function bestSellingGearCategories(): array
+    {
+        return $this->categoriesForSection('best_selling_gear', fn (): array => $this->automaticFeaturedCategories(), 8);
     }
 
     private function sports(): array
     {
-        return collect($this->categoryCatalog->sports())
+        return $this->categoriesForSection('shop_by_sport', fn (): array => collect($this->categoryCatalog->sports())
             ->take(10)
+            ->values()
+            ->all(), 10);
+    }
+
+    private function categoriesForSection(string $key, callable $fallback, int $limit): array
+    {
+        $ids = $this->categoryIdsForSection($key);
+
+        if ($ids !== []) {
+            $selected = $this->categoryCatalog->categoriesByIds($ids, $limit);
+
+            if ($selected !== []) {
+                return $selected;
+            }
+        }
+
+        return $fallback();
+    }
+
+    /** @return array<int, int> */
+    private function categoryIdsForSection(string $key): array
+    {
+        return collect($this->sectionItems($key))
+            ->pluck('category_id')
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
             ->values()
             ->all();
     }

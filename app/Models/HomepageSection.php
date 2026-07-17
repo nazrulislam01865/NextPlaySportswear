@@ -14,7 +14,8 @@ class HomepageSection extends Model
     protected $fillable = [
         'key', 'name', 'eyebrow', 'title', 'description', 'primary_label',
         'primary_url', 'secondary_label', 'secondary_url', 'image_path', 'image_url',
-        'image_alt', 'items', 'is_active', 'sort_order', 'created_by', 'updated_by',
+        'image_alt', 'mobile_image_path', 'mobile_image_url', 'mobile_image_alt',
+        'items', 'is_active', 'sort_order', 'created_by', 'updated_by',
     ];
 
     protected function casts(): array

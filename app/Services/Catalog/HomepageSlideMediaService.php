@@ -12,6 +12,8 @@ class HomepageSlideMediaService
     {
         $uploaded = $request->file('image_file');
         $imageUrl = trim((string) $request->input('image_url', ''));
+        $mobileUploaded = $request->file('mobile_image_file');
+        $mobileImageUrl = trim((string) $request->input('mobile_image_url', ''));
 
         if ($request->boolean('remove_image')) {
             $this->deletePath($slide->image_path);
@@ -29,12 +31,29 @@ class HomepageSlideMediaService
             $slide->image_url = $imageUrl;
         }
 
+        if ($request->boolean('remove_mobile_image')) {
+            $this->deletePath($slide->mobile_image_path);
+            $slide->mobile_image_path = null;
+            $slide->mobile_image_url = null;
+        }
+
+        if ($mobileUploaded) {
+            $this->deletePath($slide->mobile_image_path);
+            $slide->mobile_image_path = $mobileUploaded->store("homepage/slides/{$slide->id}/mobile", 'public');
+            $slide->mobile_image_url = null;
+        } elseif ($mobileImageUrl !== '') {
+            $this->deletePath($slide->mobile_image_path);
+            $slide->mobile_image_path = null;
+            $slide->mobile_image_url = $mobileImageUrl;
+        }
+
         $slide->save();
     }
 
     public function deleteAll(HomepageSlide $slide): void
     {
         $this->deletePath($slide->image_path);
+        $this->deletePath($slide->mobile_image_path);
     }
 
     private function deletePath(?string $path): void

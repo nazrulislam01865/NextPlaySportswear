@@ -22,10 +22,14 @@ class HomepageSlideRequest extends FormRequest
             'title' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
 
-            'image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:10240', 'dimensions:width=2048,height=768'],
+            'image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:10240', 'dimensions:ratio=8/3'],
             'image_url' => ['nullable', 'url:http,https', 'max:2048'],
             'image_alt' => ['nullable', 'string', 'max:255'],
             'remove_image' => ['nullable', 'boolean'],
+            'mobile_image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:10240'],
+            'mobile_image_url' => ['nullable', 'url:http,https', 'max:2048'],
+            'mobile_image_alt' => ['nullable', 'string', 'max:255'],
+            'remove_mobile_image' => ['nullable', 'boolean'],
             'image_focal_position' => ['required', Rule::in(['center', 'top', 'bottom', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right'])],
 
             'show_content' => ['nullable', 'boolean'],
@@ -60,7 +64,7 @@ class HomepageSlideRequest extends FormRequest
     {
         $booleanFields = [
             'show_content', 'show_eyebrow', 'show_title', 'show_description',
-            'show_primary_button', 'show_secondary_button', 'is_active', 'remove_image',
+            'show_primary_button', 'show_secondary_button', 'is_active', 'remove_image', 'remove_mobile_image',
         ];
 
         $payload = [];
@@ -70,6 +74,7 @@ class HomepageSlideRequest extends FormRequest
 
         $payload['overlay_color'] = strtoupper(trim((string) $this->input('overlay_color', '#0D2545')));
         $payload['image_url'] = trim((string) $this->input('image_url', '')) ?: null;
+        $payload['mobile_image_url'] = trim((string) $this->input('mobile_image_url', '')) ?: null;
         $payload['primary_url'] = trim((string) $this->input('primary_url', '')) ?: null;
         $payload['secondary_url'] = trim((string) $this->input('secondary_url', '')) ?: null;
 

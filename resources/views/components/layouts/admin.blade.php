@@ -31,12 +31,12 @@
     x-effect="document.documentElement.classList.toggle('overflow-hidden', sidebarOpen)"
     @keydown.escape.window="sidebarOpen = false"
 >
-    <div class="min-h-screen lg:grid lg:grid-cols-[256px_minmax(0,1fr)] lg:items-start">
+    <div class="min-h-screen lg:grid lg:grid-cols-[var(--admin-sidebar-width,256px)_minmax(0,1fr)] lg:items-start" data-admin-shell>
         <div x-cloak x-show="sidebarOpen" x-transition.opacity class="fixed inset-0 z-40 bg-slate-950/60 lg:hidden" @click="sidebarOpen = false" aria-hidden="true"></div>
 
         <aside
             id="admin-sidebar"
-            class="fixed inset-y-0 left-0 z-50 flex h-screen max-h-screen w-[min(86vw,256px)] -translate-x-full flex-col overflow-hidden bg-brand-dark text-white shadow-2xl transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:w-[256px] lg:translate-x-0 lg:self-start lg:shadow-none"
+            class="fixed inset-y-0 left-0 z-50 flex h-screen max-h-screen w-[min(86vw,var(--admin-sidebar-width,256px))] -translate-x-full flex-col overflow-hidden bg-brand-dark text-white shadow-2xl transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:w-[var(--admin-sidebar-width,256px)] lg:translate-x-0 lg:self-start lg:shadow-none"
             :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
             aria-label="Admin navigation"
         >
@@ -136,9 +136,11 @@
                                 <summary
                                     class="flex min-h-10 w-full min-w-0 cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-black text-slate-400 transition hover:bg-white/10 hover:text-white"
                                     data-sidebar-disclosure-toggle
+                                    aria-label="{{ $customizationGroup['label'] }}"
+                                    data-sidebar-tooltip="{{ $customizationGroup['label'] }}"
                                 >
                                     <span class="text-[10px] text-slate-500">{{ $customizationGroup['number'] }}</span>
-                                    <span class="min-w-0 flex-1 truncate">{{ $customizationGroup['label'] }}</span>
+                                    <span class="min-w-0 flex-1 truncate" data-sidebar-label>{{ $customizationGroup['label'] }}</span>
                                     <span class="text-[10px] transition-transform" data-sidebar-arrow>⌄</span>
                                 </summary>
 
@@ -149,6 +151,8 @@
                                     @foreach($customizationGroup['types'] as $customizationType)
                                         <a
                                             href="{{ route('admin.jersey-customization-options.type', $customizationType->value) }}"
+                                            aria-label="{{ $customizationType->label() }}"
+                                            data-sidebar-tooltip="{{ $customizationType->label() }}"
                                             @if($isCustomizationActive && $activeCustomizationType === $customizationType->value) data-sidebar-active="true" @endif
                                             @class([
                                                 'flex min-h-9 min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold transition',
@@ -157,7 +161,7 @@
                                             ])
                                         >
                                             <span class="shrink-0 text-[10px] opacity-80">{{ $customizationType->menuNumber() }}</span>
-                                            <span class="min-w-0 truncate">{{ $customizationType->label() }}</span>
+                                            <span class="min-w-0 truncate" data-sidebar-label>{{ $customizationType->label() }}</span>
                                         </a>
                                     @endforeach
 
@@ -165,6 +169,8 @@
                                     @php($isCurrentSizeOptionLink = $isSizeOptionActive && $activeSizeCustomizationGroup === $groupKey)
                                     <a
                                         href="{{ route('admin.size-option-groups.index', ['customization' => $groupKey]) }}"
+                                        aria-label="Size Options"
+                                        data-sidebar-tooltip="Size Options"
                                         @if($isCurrentSizeOptionLink) data-sidebar-active="true" @endif
                                         @class([
                                             'flex min-h-9 min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold transition',
@@ -173,7 +179,7 @@
                                         ])
                                     >
                                         <span class="shrink-0 text-[10px] opacity-80">{{ $sizeOptionMenuNumber }}</span>
-                                        <span class="min-w-0 truncate">Size Options</span>
+                                        <span class="min-w-0 truncate" data-sidebar-label>Size Options</span>
                                     </a>
                                 </div>
                             </details>
@@ -184,9 +190,11 @@
                                 <summary
                                     class="flex min-h-10 w-full min-w-0 cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-black text-slate-400 transition hover:bg-white/10 hover:text-white"
                                     data-sidebar-disclosure-toggle
+                                    aria-label="{{ $trainingVestGroup['label'] }}"
+                                    data-sidebar-tooltip="{{ $trainingVestGroup['label'] }}"
                                 >
                                     <span class="text-[10px] text-slate-500">{{ $trainingVestGroup['number'] }}</span>
-                                    <span class="min-w-0 flex-1 truncate">{{ $trainingVestGroup['label'] }}</span>
+                                    <span class="min-w-0 flex-1 truncate" data-sidebar-label>{{ $trainingVestGroup['label'] }}</span>
                                     <span class="text-[10px] transition-transform" data-sidebar-arrow>⌄</span>
                                 </summary>
 
@@ -197,6 +205,8 @@
                                     @foreach($trainingVestGroup['types'] as $trainingVestType)
                                         <a
                                             href="{{ route('admin.training-vest-customization-options.type', $trainingVestType->value) }}"
+                                            aria-label="{{ $trainingVestType->label() }}"
+                                            data-sidebar-tooltip="{{ $trainingVestType->label() }}"
                                             @if($isTrainingVestCustomizationActive && $activeTrainingVestCustomizationType === $trainingVestType->value) data-sidebar-active="true" @endif
                                             @class([
                                                 'flex min-h-9 min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold transition',
@@ -205,7 +215,7 @@
                                             ])
                                         >
                                             <span class="shrink-0 text-[10px] opacity-80">{{ $trainingVestType->menuNumber() }}</span>
-                                            <span class="min-w-0 truncate">{{ $trainingVestType->label() }}</span>
+                                            <span class="min-w-0 truncate" data-sidebar-label>{{ $trainingVestType->label() }}</span>
                                         </a>
                                     @endforeach
                                 </div>
@@ -309,6 +319,18 @@
                     <button class="min-h-11 w-full rounded-xl border border-white/15 px-4 py-2.5 text-left text-sm font-bold hover:bg-white/10">Sign out</button>
                 </form>
             </div>
+
+            <div
+                class="admin-sidebar-resizer hidden lg:block"
+                data-admin-sidebar-resizer
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize admin menu"
+                aria-valuemin="220"
+                aria-valuemax="380"
+                aria-valuenow="256"
+                tabindex="0"
+            ></div>
         </aside>
 
         <div class="min-w-0">

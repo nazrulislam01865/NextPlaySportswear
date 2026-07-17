@@ -127,7 +127,7 @@ class HomepageSlideController extends Controller
     private function payload(HomepageSlideRequest $request): array
     {
         $payload = Arr::except($request->validated(), [
-            'image_file', 'remove_image',
+            'image_file', 'remove_image', 'mobile_image_file', 'remove_mobile_image',
         ]);
 
         foreach ([
@@ -139,7 +139,7 @@ class HomepageSlideController extends Controller
             }
         }
 
-        unset($payload['image_url']); // Media service owns image source changes.
+        unset($payload['image_url'], $payload['mobile_image_url']); // Media service owns image source changes.
 
         return $payload;
     }

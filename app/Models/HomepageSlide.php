@@ -14,7 +14,7 @@ class HomepageSlide extends Model
 
     protected $fillable = [
         'eyebrow', 'title', 'description', 'image_path', 'image_url', 'image_alt',
-        'image_focal_position', 'show_content', 'show_eyebrow', 'show_title',
+        'mobile_image_path', 'mobile_image_url', 'mobile_image_alt', 'image_focal_position', 'show_content', 'show_eyebrow', 'show_title',
         'show_description', 'show_primary_button', 'primary_label', 'primary_url',
         'primary_target', 'show_secondary_button', 'secondary_label', 'secondary_url',
         'secondary_target', 'content_position', 'text_alignment', 'text_theme',

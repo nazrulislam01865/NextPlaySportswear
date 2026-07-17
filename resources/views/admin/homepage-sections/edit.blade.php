@@ -6,8 +6,19 @@
     $hasItems = in_array('items', $fields, true);
     $itemFields = $definition['item_fields'] ?? ['title', 'description'];
     $currentImage = \App\Support\PublicMedia::url($section->image_path, $section->image_url, '');
+    $currentMobileImage = \App\Support\PublicMedia::url($section->mobile_image_path, $section->mobile_image_url, '');
     $items = old('items', $section->items ?: ($definition['items'] ?? []));
     $items = is_array($items) ? array_values($items) : [];
+    $categoryOptionRows = collect($categoryOptions ?? [])->map(fn ($option) => [
+        'id' => (string) ($option['id'] ?? ''),
+        'label' => (string) ($option['label'] ?? ''),
+        'display_label' => (string) ($option['display_label'] ?? $option['label'] ?? ''),
+        'path' => (string) ($option['path'] ?? $option['label'] ?? ''),
+        'level' => (string) ($option['level'] ?? 'category'),
+        'level_label' => (string) ($option['level_label'] ?? $option['type'] ?? 'Category'),
+        'depth' => (int) ($option['depth'] ?? 0),
+    ])->filter(fn ($option) => $option['id'] !== '' && $option['display_label'] !== '')->values()->all();
+    $categoryOptions = collect($categoryOptionRows)->mapWithKeys(fn ($option) => [$option['id'] => $option['display_label']])->all();
     $fieldLabels = [
         'icon' => $section->key === 'testimonials' ? 'Initials' : 'Icon',
         'title' => ($section->key === 'faq' ? 'Question' : ($section->key === 'testimonials' ? 'Customer name' : 'Title')),
@@ -15,6 +26,7 @@
         'description' => ($section->key === 'faq' ? 'Answer' : ($section->key === 'testimonials' ? 'Customer quote' : 'Description')),
         'url' => 'Link',
         'label' => $section->key === 'testimonials' ? 'Story tag' : 'Link label',
+        'category_id' => 'Category / Subcategory / Sub-subcategory',
     ];
 @endphp
 
@@ -31,9 +43,15 @@
         class="space-y-6"
         x-data="{
             imagePreview: @js($currentImage),
+            mobileImagePreview: @js($currentMobileImage),
             removeImage: false,
+            removeMobileImage: false,
             itemFields: @js(array_values($itemFields)),
             itemFieldLabels: @js($fieldLabels),
+            categoryOptions: @js($categoryOptions),
+            categoryOptionList: @js($categoryOptionRows),
+            categorySearch: '',
+            categoryLevelFilter: 'all',
             items: @js($items),
             draftItem: {},
             editingIndex: null,
@@ -48,7 +66,14 @@
             },
             normalizeItem(item) {
                 const normalized = this.blankItem();
-                this.itemFields.forEach((field) => normalized[field] = String(item?.[field] ?? '').trim());
+                this.itemFields.forEach((field) => {
+                    if (field === 'category_id') {
+                        const value = parseInt(item?.[field] ?? 0, 10);
+                        normalized[field] = Number.isFinite(value) && value > 0 ? String(value) : '';
+                        return;
+                    }
+                    normalized[field] = String(item?.[field] ?? '').trim();
+                });
                 return normalized;
             },
             normalizeItems(items) {
@@ -63,6 +88,28 @@
             resetItemDraft() {
                 this.draftItem = this.blankItem();
                 this.editingIndex = null;
+                this.categorySearch = '';
+                this.categoryLevelFilter = 'all';
+            },
+            selectCategory(option) {
+                this.draftItem.category_id = String(option?.id ?? '');
+                this.categorySearch = '';
+            },
+            selectedCategoryOption() {
+                const categoryId = String(this.draftItem?.category_id ?? '').trim();
+                if (!categoryId) return null;
+                return this.categoryOptionList.find((option) => String(option.id) === categoryId) ?? null;
+            },
+            filteredCategoryOptions() {
+                const search = String(this.categorySearch ?? '').trim().toLowerCase();
+                return this.categoryOptionList
+                    .filter((option) => this.categoryLevelFilter === 'all' || option.level === this.categoryLevelFilter)
+                    .filter((option) => {
+                        if (!search) return true;
+                        return [option.label, option.display_label, option.path, option.level_label]
+                            .some((value) => String(value ?? '').toLowerCase().includes(search));
+                    })
+                    .slice(0, 120);
             },
             saveItem() {
                 const item = this.normalizeItem(this.draftItem);
@@ -100,7 +147,17 @@
                 if (this.editingIndex === index) this.editingIndex = target;
                 else if (this.editingIndex === target) this.editingIndex = index;
             },
+            categoryOptionFor(categoryId) {
+                const id = String(categoryId ?? '').trim();
+                if (!id) return null;
+                return this.categoryOptionList.find((option) => String(option.id) === id) ?? null;
+            },
             itemPrimaryValue(item, index) {
+                const categoryId = String(item?.category_id ?? '').trim();
+                const categoryOption = this.categoryOptionFor(categoryId);
+                if (categoryOption) {
+                    return categoryOption.display_label || categoryOption.label || this.categoryOptions?.[categoryId];
+                }
                 for (const field of ['title', 'label', 'subtitle', 'description', 'url', 'icon']) {
                     const value = String(item?.[field] ?? '').trim();
                     if (value) return value;
@@ -111,7 +168,15 @@
                 const primary = this.itemPrimaryValue(item, -1);
                 const details = this.itemFields
                     .filter((field) => String(item?.[field] ?? '').trim() && String(item[field]).trim() !== primary)
-                    .map((field) => `${this.itemFieldLabels[field] ?? field}: ${String(item[field]).trim()}`)
+                    .map((field) => {
+                        if (field === 'category_id') {
+                            const option = this.categoryOptionFor(item[field]);
+                            const label = option?.path || this.categoryOptions?.[String(item[field]).trim()] || String(item[field]).trim();
+                            const level = option?.level_label ? ` (${option.level_label})` : '';
+                            return `${this.itemFieldLabels[field] ?? field}: ${label}${level}`;
+                        }
+                        return `${this.itemFieldLabels[field] ?? field}: ${String(item[field]).trim()}`;
+                    })
                     .join(' • ');
                 return details.length > 180 ? `${details.slice(0, 177)}...` : details;
             },
@@ -121,13 +186,19 @@
                 window.alert('Add or update the item in the list before saving the section.');
                 this.$nextTick(() => this.$refs.itemEditor?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
             },
-            previewFile(event) {
+            previewFile(event, target = 'desktop') {
                 const file = event.target.files?.[0];
                 if (!file) return;
                 const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
                 if (!allowed.includes(file.type) || file.size > 10 * 1024 * 1024) {
                     event.target.value = '';
                     window.alert('Choose a JPG, PNG, WebP, or AVIF image no larger than 10 MB.');
+                    return;
+                }
+                if (target === 'mobile') {
+                    if (String(this.mobileImagePreview).startsWith('blob:')) URL.revokeObjectURL(this.mobileImagePreview);
+                    this.removeMobileImage = false;
+                    this.mobileImagePreview = URL.createObjectURL(file);
                     return;
                 }
                 if (String(this.imagePreview).startsWith('blob:')) URL.revokeObjectURL(this.imagePreview);
@@ -198,23 +269,45 @@
         @endif
 
         @if($hasImage)
-            <x-admin.section-card title="Section Image" description="Upload one image for this section or use an existing secure image URL.">
-                <div class="grid gap-5 lg:grid-cols-[280px_1fr]">
-                    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
-                        <template x-if="imagePreview && !removeImage"><img :src="imagePreview" alt="Current section image" class="h-56 w-full object-cover"></template>
-                        <div x-show="!imagePreview || removeImage" class="grid h-56 place-items-center text-sm font-bold text-slate-500">No image selected</div>
-                    </div>
+            <x-admin.section-card title="Responsive Section Images" description="For the homepage hero banner, use an 8:3 desktop/tablet image such as 2560×960 px and optionally add a separate mobile image such as 1080×1350 px.">
+                <div class="grid gap-5 lg:grid-cols-[300px_1fr]">
                     <div class="space-y-4">
-                        <label class="admin-label">Upload image<input type="file" name="image_file" accept="image/jpeg,image/png,image/webp,image/avif" class="admin-input @error('image_file') border-red-400 @enderror" @change="previewFile($event)"></label>
-                        @error('image_file')<span class="block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
-                        <label class="admin-label">Image URL<input type="text" name="image_url" value="{{ old('image_url', $section->image_url) }}" class="admin-input @error('image_url') border-red-400 @enderror" maxlength="2048" placeholder="https://... or /storage/..."></label>
-                        @error('image_url')<span class="block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
-                        <label class="admin-label">Alt text<input type="text" name="image_alt" value="{{ old('image_alt', $section->image_alt) }}" class="admin-input" maxlength="255" placeholder="Describe the image"></label>
-                        <label class="inline-flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-black text-red-700">
-                            <input type="hidden" name="remove_image" value="0">
-                            <input type="checkbox" name="remove_image" value="1" x-model="removeImage" class="h-4 w-4 rounded border-red-300 text-red-600">
-                            Remove current image
-                        </label>
+                        <div class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+                            <template x-if="imagePreview && !removeImage"><img :src="imagePreview" alt="Current desktop section image" class="w-full object-cover" style="aspect-ratio: 8 / 3;"></template>
+                            <div x-show="!imagePreview || removeImage" class="grid h-40 place-items-center text-sm font-bold text-slate-500">No desktop image selected</div>
+                        </div>
+                        <div class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+                            <template x-if="mobileImagePreview && !removeMobileImage"><img :src="mobileImagePreview" alt="Current mobile section image" class="w-full object-cover" style="aspect-ratio: 4 / 5;"></template>
+                            <div x-show="!mobileImagePreview || removeMobileImage" class="grid h-48 place-items-center p-4 text-center text-sm font-bold text-slate-500">No mobile image selected</div>
+                        </div>
+                    </div>
+                    <div class="space-y-5">
+                        <div class="rounded-2xl border border-slate-200 p-4">
+                            <h3 class="mb-3 text-sm font-black text-brand-ink">Desktop / tablet image</h3>
+                            <label class="admin-label">Upload image<input type="file" name="image_file" accept="image/jpeg,image/png,image/webp,image/avif" class="admin-input @error('image_file') border-red-400 @enderror" @change="previewFile($event, 'desktop')"></label>
+                            @error('image_file')<span class="block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
+                            <label class="admin-label mt-4">Image URL<input type="text" name="image_url" value="{{ old('image_url', $section->image_url) }}" class="admin-input @error('image_url') border-red-400 @enderror" maxlength="2048" placeholder="https://... or /storage/..."></label>
+                            @error('image_url')<span class="block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
+                            <label class="admin-label mt-4">Alt text<input type="text" name="image_alt" value="{{ old('image_alt', $section->image_alt) }}" class="admin-input" maxlength="255" placeholder="Describe the image"></label>
+                            <label class="mt-4 inline-flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-black text-red-700">
+                                <input type="hidden" name="remove_image" value="0">
+                                <input type="checkbox" name="remove_image" value="1" x-model="removeImage" class="h-4 w-4 rounded border-red-300 text-red-600">
+                                Remove current desktop image
+                            </label>
+                        </div>
+                        <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                            <h3 class="mb-3 text-sm font-black text-brand-ink">Mobile image</h3>
+                            <label class="admin-label">Upload mobile image<input type="file" name="mobile_image_file" accept="image/jpeg,image/png,image/webp,image/avif" class="admin-input @error('mobile_image_file') border-red-400 @enderror" @change="previewFile($event, 'mobile')"></label>
+                            @error('mobile_image_file')<span class="block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
+                            <label class="admin-label mt-4">Mobile image URL<input type="text" name="mobile_image_url" value="{{ old('mobile_image_url', $section->mobile_image_url) }}" class="admin-input @error('mobile_image_url') border-red-400 @enderror" maxlength="2048" placeholder="https://... or /storage/..."></label>
+                            @error('mobile_image_url')<span class="block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
+                            <label class="admin-label mt-4">Mobile alt text<input type="text" name="mobile_image_alt" value="{{ old('mobile_image_alt', $section->mobile_image_alt) }}" class="admin-input" maxlength="255" placeholder="Optional. Defaults to desktop alt text."></label>
+                            <label class="mt-4 inline-flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-black text-red-700">
+                                <input type="hidden" name="remove_mobile_image" value="0">
+                                <input type="checkbox" name="remove_mobile_image" value="1" x-model="removeMobileImage" class="h-4 w-4 rounded border-red-300 text-red-600">
+                                Remove current mobile image
+                            </label>
+                        </div>
                     </div>
                 </div>
             </x-admin.section-card>
@@ -231,6 +324,12 @@
                                     <p class="mt-1 text-xs">{{ $message }}</p>
                                 @endforeach
                             @endforeach
+                        </div>
+                    @endif
+
+                    @if(in_array('category_id', $itemFields, true))
+                        <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm font-bold leading-6 text-brand-dark">
+                            Select the exact <strong>category</strong>, <strong>subcategory</strong>, or <strong>sub-subcategory</strong> you want to show in this homepage section. Use this for sections like What Are You Looking For?, Popular Custom Sportswear Categories, Shop by Sport, and Best-Selling Team Gear. If the list is empty, the section will fall back to its automatic catalog selection.
                         </div>
                     @endif
 
@@ -255,7 +354,54 @@
                                         default => 255,
                                     };
                                 @endphp
-                                @if($field === 'description')
+                                @if($field === 'category_id')
+                                    <div class="{{ count($itemFields) === 1 ? 'md:col-span-2' : '' }}">
+                                        <label class="admin-label">{{ $fieldLabels[$field] ?? ucfirst($field) }}
+                                            <select class="admin-input" x-model="draftItem.{{ $field }}">
+                                                <option value="">Select category, subcategory, or sub-subcategory</option>
+                                                @foreach(($categoryOptionRows ?? []) as $option)
+                                                    <option value="{{ $option['id'] }}">{{ $option['label'] }} — {{ $option['level_label'] }}</option>
+                                                @endforeach
+                                            </select>
+                                        </label>
+
+                                        <div class="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+                                            <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
+                                                <input type="search" class="admin-input lg:flex-1" x-model.debounce.150ms="categorySearch" placeholder="Search category, subcategory, or sub-subcategory...">
+                                                <div class="flex flex-wrap gap-2">
+                                                    <button type="button" class="rounded-full border px-3 py-2 text-xs font-black transition" :class="categoryLevelFilter === 'all' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'" @click="categoryLevelFilter = 'all'">All</button>
+                                                    <button type="button" class="rounded-full border px-3 py-2 text-xs font-black transition" :class="categoryLevelFilter === 'category' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'" @click="categoryLevelFilter = 'category'">Categories</button>
+                                                    <button type="button" class="rounded-full border px-3 py-2 text-xs font-black transition" :class="categoryLevelFilter === 'subcategory' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'" @click="categoryLevelFilter = 'subcategory'">Subcategories</button>
+                                                    <button type="button" class="rounded-full border px-3 py-2 text-xs font-black transition" :class="categoryLevelFilter === 'sub_subcategory' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'" @click="categoryLevelFilter = 'sub_subcategory'">Sub-subcategories</button>
+                                                </div>
+                                            </div>
+
+                                            <template x-if="selectedCategoryOption()">
+                                                <div class="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
+                                                    Selected: <span x-text="selectedCategoryOption().path || selectedCategoryOption().display_label"></span>
+                                                    <span class="ml-2 rounded-full bg-white px-2 py-1 text-[10px] uppercase tracking-wider text-emerald-700" x-text="selectedCategoryOption().level_label"></span>
+                                                </div>
+                                            </template>
+
+                                            <div class="mt-3 max-h-72 overflow-y-auto rounded-xl border border-slate-100">
+                                                <template x-for="option in filteredCategoryOptions()" :key="option.id">
+                                                    <button type="button" class="flex w-full items-start justify-between gap-4 border-b border-slate-100 px-4 py-3 text-left text-sm transition last:border-b-0 hover:bg-blue-50" :class="String(draftItem.category_id) === String(option.id) ? 'bg-blue-50 text-blue-800' : 'bg-white text-slate-700'" @click="selectCategory(option)">
+                                                        <span class="min-w-0">
+                                                            <span class="block font-black text-brand-ink" x-text="option.display_label"></span>
+                                                            <span class="mt-1 block text-xs font-medium text-slate-500" x-text="option.path"></span>
+                                                        </span>
+                                                        <span class="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-600" x-text="option.level_label"></span>
+                                                    </button>
+                                                </template>
+                                                <div x-show="filteredCategoryOptions().length === 0" x-cloak class="px-4 py-6 text-center text-sm font-bold text-slate-500">
+                                                    No matching category found.
+                                                </div>
+                                            </div>
+
+                                            <p class="mt-3 text-xs font-bold text-slate-500">Tip: choose a parent category for broad cards, a subcategory for more specific cards, or a sub-subcategory for the most specific homepage card.</p>
+                                        </div>
+                                    </div>
+                                @elseif($field === 'description')
                                     <label class="admin-label md:col-span-2">{{ $fieldLabels[$field] ?? ucfirst($field) }}
                                         <textarea class="admin-textarea" rows="3" maxlength="{{ $maxLength }}" x-model="draftItem.{{ $field }}" placeholder="Enter {{ strtolower($fieldLabels[$field] ?? $field) }}"></textarea>
                                     </label>

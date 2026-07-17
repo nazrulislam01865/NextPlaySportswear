@@ -4182,3 +4182,125 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
 .storefront-cart-preview > .max-h-\[340px\] {
     max-height: 340px;
 }
+
+
+/* Responsive homepage banner update: desktop/tablet 8:3, mobile-specific image crop. */
+.promo-track {
+    aspect-ratio: 8 / 3;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+}
+
+.promo-slide > picture {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.promo-slide > picture > img,
+.promo-slide > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.promo-content {
+    width: min(1180px, calc(100% - 40px));
+    padding-block: clamp(1.5rem, 4vw, 4.5rem);
+}
+
+.promo-copy {
+    max-width: min(660px, 100%);
+}
+
+@media (max-width: 767px) {
+    .promo-track {
+        aspect-ratio: 4 / 5;
+        min-height: 0 !important;
+    }
+
+    .promo-content {
+        width: min(100% - 24px, 1180px);
+        align-items: end;
+        padding-top: 2rem;
+        padding-bottom: 4.75rem;
+    }
+}
+
+.home-page .hero-frame picture {
+    display: block;
+    width: 100%;
+}
+
+.home-page .hero-frame picture img {
+    display: block;
+    width: 100%;
+    height: 360px;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+@media (max-width: 640px) {
+    .home-page .hero-frame picture img {
+        height: 260px;
+    }
+}
+
+@media (max-width: 420px) {
+    .home-page .hero-frame picture img {
+        height: 230px;
+    }
+}
+
+/* Slider arrow placement refinement: keep controls at the outside edges and vertically centered. */
+.promo-arrow {
+    top: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1;
+    transform: translateY(-50%);
+}
+
+.promo-prev {
+    left: clamp(16px, 2.75vw, 56px);
+}
+
+.promo-next {
+    right: clamp(16px, 2.75vw, 56px);
+}
+
+.promo-arrow svg,
+.promo-arrow i,
+.promo-arrow span {
+    display: block;
+    line-height: 1;
+}
+
+@media (max-width: 767px) {
+    .promo-prev {
+        left: 12px;
+    }
+
+    .promo-next {
+        right: 12px;
+    }
+}
+
+/* Keep homepage slider pagination centered across the banner. */
+.promo-dots {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+}
+
+@media (max-width: 639px) {
+    .promo-dots {
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+    }
+}

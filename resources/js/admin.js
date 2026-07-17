@@ -2778,3 +2778,237 @@ preserveAdminSidebarPosition();
 
 
 Alpine.start();
+
+const initializeResizableAdminSidebar = () => {
+    const sidebar = document.getElementById('admin-sidebar');
+    const handle = document.querySelector('[data-admin-sidebar-resizer]');
+    if (!sidebar || !handle) return;
+
+    const storageKey = 'nextplay.admin.sidebar.width';
+    const root = document.documentElement;
+    const minWidth = Number(handle.getAttribute('aria-valuemin')) || 220;
+    const maxWidth = Number(handle.getAttribute('aria-valuemax')) || 380;
+    const defaultWidth = 256;
+
+    const clampWidth = (value) => Math.min(maxWidth, Math.max(minWidth, Math.round(value)));
+    const applyWidth = (value, persist = false) => {
+        const width = clampWidth(value);
+        root.style.setProperty('--admin-sidebar-width', `${width}px`);
+        handle.setAttribute('aria-valuenow', String(width));
+        if (persist) {
+            localStorage.setItem(storageKey, String(width));
+        }
+        return width;
+    };
+
+    const savedWidth = Number(localStorage.getItem(storageKey));
+    if (Number.isFinite(savedWidth) && savedWidth > 0) {
+        applyWidth(savedWidth);
+    }
+
+    let isDragging = false;
+    let sidebarLeft = 0;
+
+    const finishDragging = (event) => {
+        if (!isDragging) return;
+        isDragging = false;
+        document.body.classList.remove('admin-sidebar-resizing');
+        try {
+            handle.releasePointerCapture(event.pointerId);
+        } catch (_) {}
+        const currentWidth = Number.parseInt(getComputedStyle(root).getPropertyValue('--admin-sidebar-width'), 10) || defaultWidth;
+        applyWidth(currentWidth, true);
+    };
+
+    const dragSidebar = (event) => {
+        if (!isDragging) return;
+        event.preventDefault();
+        applyWidth(event.clientX - sidebarLeft);
+    };
+
+    handle.addEventListener('pointerdown', (event) => {
+        if (window.matchMedia('(max-width: 1023px)').matches) return;
+        event.preventDefault();
+        isDragging = true;
+        sidebarLeft = sidebar.getBoundingClientRect().left;
+        document.body.classList.add('admin-sidebar-resizing');
+        try {
+            handle.setPointerCapture(event.pointerId);
+        } catch (_) {}
+    });
+
+    handle.addEventListener('pointermove', dragSidebar);
+    handle.addEventListener('pointerup', finishDragging);
+    handle.addEventListener('pointercancel', finishDragging);
+    handle.addEventListener('dblclick', () => applyWidth(defaultWidth, true));
+    handle.addEventListener('keydown', (event) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const currentWidth = Number.parseInt(getComputedStyle(root).getPropertyValue('--admin-sidebar-width'), 10) || defaultWidth;
+        if (event.key === 'Home') {
+            applyWidth(minWidth, true);
+            return;
+        }
+        if (event.key === 'End') {
+            applyWidth(maxWidth, true);
+            return;
+        }
+        applyWidth(currentWidth + (event.key === 'ArrowRight' ? 16 : -16), true);
+    });
+
+    window.addEventListener('resize', () => {
+        const currentWidth = Number.parseInt(getComputedStyle(root).getPropertyValue('--admin-sidebar-width'), 10) || defaultWidth;
+        applyWidth(currentWidth, true);
+    });
+};
+
+const initializeAdminSidebarTooltips = () => {
+    const sidebar = document.getElementById('admin-sidebar');
+    if (!sidebar) return;
+
+    let tooltip = null;
+    let activeTarget = null;
+    let showTimer = null;
+
+    const ensureTooltip = () => {
+        if (tooltip) return tooltip;
+
+        tooltip = document.createElement('div');
+        tooltip.className = 'admin-sidebar-floating-tooltip';
+        tooltip.setAttribute('role', 'tooltip');
+        tooltip.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(tooltip);
+
+        return tooltip;
+    };
+
+    const tooltipTargetFromEvent = (event) => {
+        const target = event.target instanceof Element
+            ? event.target.closest('[data-sidebar-tooltip]')
+            : null;
+
+        return target && sidebar.contains(target) ? target : null;
+    };
+
+    const getLabel = (target) => target.querySelector('[data-sidebar-label], .truncate');
+
+    const normalizeText = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+
+    const isLabelTruncated = (target) => {
+        const label = getLabel(target);
+        const text = normalizeText(target.getAttribute('data-sidebar-tooltip'));
+
+        if (!text) return false;
+        if (!label) return text.length > 18;
+
+        const measuredAsTruncated = label.scrollWidth > label.clientWidth + 2;
+        const targetIsNarrow = target.getBoundingClientRect().width < 300;
+        const longLabel = text.length >= 18;
+
+        // Show the tooltip when the label is actually truncated. The fallback
+        // keeps the full label readable when Tailwind/browser rounding reports
+        // equal widths even though the visible text has ellipsis.
+        return measuredAsTruncated || (targetIsNarrow && longLabel);
+    };
+
+    const positionTooltip = (target) => {
+        if (!tooltip) return;
+
+        const targetRect = target.getBoundingClientRect();
+        const label = getLabel(target);
+        const anchorRect = label ? label.getBoundingClientRect() : targetRect;
+        const tooltipRect = tooltip.getBoundingClientRect();
+        const gap = 14;
+        let onLeft = false;
+        let left = Math.round(targetRect.right + gap);
+
+        if (left + tooltipRect.width > window.innerWidth - 12) {
+            left = Math.max(12, Math.round(targetRect.left - tooltipRect.width - gap));
+            onLeft = true;
+        }
+
+        let top = Math.round(anchorRect.top + anchorRect.height / 2);
+        const minTop = tooltipRect.height / 2 + 12;
+        const maxTop = window.innerHeight - tooltipRect.height / 2 - 12;
+        top = Math.min(maxTop, Math.max(minTop, top));
+
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top}px`;
+        tooltip.classList.toggle('is-on-left', onLeft);
+    };
+
+    const showTooltip = (target) => {
+        const text = normalizeText(target.getAttribute('data-sidebar-tooltip'));
+        if (!text || !isLabelTruncated(target)) return;
+
+        activeTarget = target;
+        const floatingTooltip = ensureTooltip();
+        floatingTooltip.textContent = text;
+        floatingTooltip.setAttribute('aria-hidden', 'false');
+        floatingTooltip.classList.add('is-visible');
+        requestAnimationFrame(() => positionTooltip(target));
+    };
+
+    const hideTooltip = () => {
+        activeTarget = null;
+
+        if (showTimer) {
+            window.clearTimeout(showTimer);
+            showTimer = null;
+        }
+
+        if (tooltip) {
+            tooltip.classList.remove('is-visible', 'is-on-left');
+            tooltip.setAttribute('aria-hidden', 'true');
+        }
+    };
+
+    const scheduleTooltip = (target) => {
+        if (activeTarget === target) return;
+
+        hideTooltip();
+        showTimer = window.setTimeout(() => {
+            showTimer = null;
+            showTooltip(target);
+        }, 80);
+    };
+
+    sidebar.addEventListener('pointerover', (event) => {
+        const target = tooltipTargetFromEvent(event);
+        if (!target) return;
+
+        const related = event.relatedTarget;
+        if (related instanceof Node && target.contains(related)) return;
+
+        scheduleTooltip(target);
+    });
+
+    sidebar.addEventListener('pointerout', (event) => {
+        const target = tooltipTargetFromEvent(event);
+        if (!target) return;
+
+        const related = event.relatedTarget;
+        if (related instanceof Node && target.contains(related)) return;
+
+        hideTooltip();
+    });
+
+    sidebar.addEventListener('focusin', (event) => {
+        const target = tooltipTargetFromEvent(event);
+        if (target) showTooltip(target);
+    });
+
+    sidebar.addEventListener('focusout', hideTooltip);
+    sidebar.addEventListener('scroll', hideTooltip, true);
+
+    window.addEventListener('resize', () => {
+        if (activeTarget) positionTooltip(activeTarget);
+    });
+
+    window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') hideTooltip();
+    });
+};
+
+initializeResizableAdminSidebar();
+initializeAdminSidebarTooltips();

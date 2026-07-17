@@ -12,6 +12,8 @@ class HomepageSectionMediaService
     {
         $uploaded = $request->file('image_file');
         $imageUrl = trim((string) $request->input('image_url', ''));
+        $mobileUploaded = $request->file('mobile_image_file');
+        $mobileImageUrl = trim((string) $request->input('mobile_image_url', ''));
 
         if ($request->boolean('remove_image')) {
             $this->deletePath($section->image_path);
@@ -27,6 +29,22 @@ class HomepageSectionMediaService
             $this->deletePath($section->image_path);
             $section->image_path = null;
             $section->image_url = $imageUrl;
+        }
+
+        if ($request->boolean('remove_mobile_image')) {
+            $this->deletePath($section->mobile_image_path);
+            $section->mobile_image_path = null;
+            $section->mobile_image_url = null;
+        }
+
+        if ($mobileUploaded) {
+            $this->deletePath($section->mobile_image_path);
+            $section->mobile_image_path = $mobileUploaded->store("homepage/sections/{$section->key}/mobile", 'public');
+            $section->mobile_image_url = null;
+        } elseif ($mobileImageUrl !== '') {
+            $this->deletePath($section->mobile_image_path);
+            $section->mobile_image_path = null;
+            $section->mobile_image_url = $mobileImageUrl;
         }
 
         $section->save();

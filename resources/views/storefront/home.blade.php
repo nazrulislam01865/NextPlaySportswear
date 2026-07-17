@@ -47,7 +47,7 @@
                     @break
 
                 @case('best_selling_gear')
-                    <x-storefront.home.best-selling-gear :categories="$categories" :section="$section" />
+                    <x-storefront.home.best-selling-gear :categories="$bestSellingGearCategories ?? $categories" :section="$section" />
                     @break
 
                 @case('shop_by_sport')

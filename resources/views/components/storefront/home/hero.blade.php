@@ -5,6 +5,8 @@
     $text = static fn (string $key, string $fallback = ''): string => filled(data_get($section, $key)) ? (string) data_get($section, $key) : $fallback;
     $items = collect(data_get($section, 'items', []))->filter(fn ($item) => filled(data_get($item, 'title')))->values();
     $image = data_get($section, 'image') ?: asset('storage/storefront/home/hero.webp');
+    $mobileImage = data_get($section, 'mobile_image') ?: $image;
+    $imageAlt = $text('mobile_image_alt') ?: $text('image_alt', 'Custom jerseys, caps, hoodies, and sports bag arranged for a team order');
 @endphp
 
 <section class="hero" aria-labelledby="hero-title">
@@ -37,7 +39,11 @@
         </div>
         <div class="hero-card">
             <div class="hero-frame">
-                <img loading="eager" fetchpriority="high" decoding="async" src="{{ $image }}" alt="{{ $text('image_alt', 'Custom jerseys, caps, hoodies, and sports bag arranged for a team order') }}" width="900" height="650">
+                <picture>
+                    <source media="(max-width: 767px)" srcset="{{ $mobileImage }}" sizes="100vw">
+                    <source media="(min-width: 768px)" srcset="{{ $image }}" sizes="(min-width: 980px) 520px, 100vw">
+                    <img loading="eager" fetchpriority="high" decoding="async" src="{{ $image }}" alt="{{ $imageAlt }}" width="900" height="650">
+                </picture>
             </div>
             <div class="hero-stat"><strong>500+ Teams</strong><span>Trusted across the USA</span></div>
         </div>

@@ -5,6 +5,7 @@
 @php
     $fallbackSlide = [[
         'image' => asset('storage/storefront/home/hero.webp'),
+        'mobile_image' => asset('storage/storefront/home/hero.webp'),
         'alt' => 'Custom sportswear and team uniforms',
         'image_focal_position' => 'center',
         'overlay_rgba' => 'rgba(13,37,69,.72)',
@@ -35,16 +36,26 @@
     <div class="promo-track" id="promoSlider" data-storefront-slider>
         @foreach($renderSlides as $index => $slide)
             <article class="promo-slide {{ $index === 0 ? 'active' : '' }}">
-                <img
-                    loading="{{ $index === 0 ? 'eager' : 'lazy' }}"
-                    @if($index === 0) fetchpriority="high" @endif
-                    decoding="async"
-                    src="{{ $slide['image'] }}"
-                    alt="{{ $slide['alt'] }}"
-                    style="object-position: {{ str_replace('-', ' ', $slide['image_focal_position']) }}"
-                    width="2048"
-                    height="768"
-                >
+                @php
+                    $desktopImage = $slide['image'] ?? asset('storage/storefront/home/hero.webp');
+                    $mobileImage = $slide['mobile_image'] ?? $desktopImage;
+                    $imageAlt = $slide['alt'] ?? 'Homepage banner';
+                    $imagePosition = str_replace('-', ' ', $slide['image_focal_position'] ?? 'center');
+                @endphp
+                <picture>
+                    <source media="(max-width: 767px)" srcset="{{ $mobileImage }}" sizes="100vw">
+                    <source media="(min-width: 768px)" srcset="{{ $desktopImage }}" sizes="100vw">
+                    <img
+                        loading="{{ $index === 0 ? 'eager' : 'lazy' }}"
+                        @if($index === 0) fetchpriority="high" @endif
+                        decoding="async"
+                        src="{{ $desktopImage }}"
+                        alt="{{ $imageAlt }}"
+                        style="object-position: {{ $imagePosition }}"
+                        width="2560"
+                        height="960"
+                    >
+                </picture>
                 <div class="promo-overlay" style="background: {{ $slide['overlay_rgba'] }}"></div>
 
                 @if($slide['show_content'])

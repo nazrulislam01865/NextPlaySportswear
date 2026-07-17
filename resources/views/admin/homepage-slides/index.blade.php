@@ -3,7 +3,7 @@
         <div>
             <p class="text-xs font-black uppercase tracking-[.16em] text-brand-red">Storefront content</p>
             <h2 class="mt-1 text-2xl font-black text-brand-dark">Homepage Slider</h2>
-            <p class="mt-1 text-sm leading-6 text-slate-500">Upload 2048×768 px banner images, hide or customize text, control buttons, schedule visibility, and set the display order.</p>
+            <p class="mt-1 text-sm leading-6 text-slate-500">Upload 2560×960 px (8:3) desktop/tablet banner images, add optional mobile banners, hide or customize text, control buttons, schedule visibility, and set the display order.</p>
         </div>
         <a href="{{ route('admin.homepage-slides.create') }}" class="btn btn-red">Add Slide</a>
     </div>
