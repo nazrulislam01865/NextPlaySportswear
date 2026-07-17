@@ -191,12 +191,13 @@ class ShippingMethodService
                 continue;
             }
 
-            $product = Product::query()->where('slug', $slug)->with('productionSpeeds')->first();
+            $product = Product::query()->where('slug', $slug)->with('productionSpeeds.productionMethod')->first();
             $speed = $product?->productionSpeeds?->where('is_active', true)->firstWhere('code', $speedCode)
                 ?? $product?->productionSpeeds?->where('is_active', true)->sortBy('sort_order')->first();
 
-            $min = max(0, (int) ($speed?->minimum_days ?? 0));
-            $max = max($min, (int) ($speed?->maximum_days ?? $min));
+            $method = $speed?->relationLoaded('productionMethod') ? $speed?->productionMethod : null;
+            $min = max(0, (int) ($method?->minimum_days ?? $speed?->minimum_days ?? 0));
+            $max = max($min, (int) ($method?->maximum_days ?? $speed?->maximum_days ?? $min));
 
             $minimumDays = max($minimumDays, $min);
             $maximumDays = max($maximumDays, $max);
@@ -204,7 +205,7 @@ class ShippingMethodService
             if ($product instanceof Product && ($min > 0 || $max > 0)) {
                 $lines[] = [
                     'product' => Arr::get($item, 'product.short_title', $product->name),
-                    'production_option' => $speed?->name ?: 'Standard production',
+                    'production_option' => ($method?->name ?: $speed?->name) ?: 'Standard production',
                     'minimum_days' => $min,
                     'maximum_days' => $max,
                 ];

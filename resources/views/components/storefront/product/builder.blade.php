@@ -349,7 +349,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                                 <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-slate-950 text-sm font-black text-white sm:h-10 sm:w-10">{{ $stepNumber++ }}</span>
                                 <div class="min-w-0 flex-1">
                                     <h3 class="text-xl font-black leading-tight text-brand-ink sm:text-2xl">Production &amp; Shipping</h3>
-                                    <p class="mt-1 text-sm leading-6 text-slate-500">Choose how fast you want production completed and how fast you want it delivered. Shipping cards show the estimated total time to your door.</p>
+                                    <p class="mt-1 text-sm leading-6 text-slate-500">Choose the production timeline and shipment timeline for this custom order.</p>
                                 </div>
                             </div>
 
@@ -391,7 +391,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                                     <div class="mb-3 flex flex-wrap items-end justify-between gap-2 pl-0 sm:pl-[52px]">
                                         <div>
                                             <h4 class="text-sm font-black text-slate-700">Shipping</h4>
-                                            <p class="mt-1 text-xs leading-5 text-slate-500">Choose how fast you want it delivered. Production time is already included in each estimate.</p>
+                                            <p class="mt-1 text-xs leading-5 text-slate-500">Choose the shipment timeline after production is complete.</p>
                                         </div>
                                         <small class="text-[11px] font-bold uppercase tracking-[.14em] text-slate-400">Choose one</small>
                                     </div>
@@ -428,15 +428,12 @@ window.productBuilderFabricPricing = function (config = {}) {
                                                     <strong class="text-sm text-brand-ink">{{ $method['label'] }}</strong>
                                                 </span>
 
-                                                <span class="mt-4 block text-2xl font-black tracking-tight text-slate-950" x-text="totalDeliveryDaysLabel({{ $methodJson }})"></span>
-                                                <span class="mt-1 block text-xs font-semibold text-slate-500">Total time to your door</span>
+                                                <span class="mt-4 block text-2xl font-black tracking-tight text-slate-950" x-text="shippingDaysOnlyLabel({{ $methodJson }})"></span>
+                                                <span class="mt-1 block text-xs font-semibold text-slate-500">Shipment timeline</span>
                                                 <span class="mt-3 block text-xs font-black" :class="shippingChargeLabel({{ $methodJson }}) === 'Included' ? 'text-green-700' : (['Contact us for price', 'Select quantity first'].includes(shippingChargeLabel({{ $methodJson }})) ? 'text-slate-500' : 'text-brand-red')" x-text="shippingChargeLabel({{ $methodJson }})"></span>
                                                 @if(!empty($method['description']))
                                                     <span class="mt-2 block text-xs leading-5 text-slate-500">{{ $method['description'] }}</span>
                                                 @endif
-                                                <span class="mt-3 block rounded-xl bg-slate-50 px-3 py-2 text-[11px] font-bold leading-5 text-slate-500">
-                                                    Shipping only: <span x-text="shippingDaysOnlyLabel({{ $methodJson }})"></span>
-                                                </span>
                                                 @if(!empty($method['is_quote_based']))
                                                     <span class="mt-2 inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-amber-700">Quote review</span>
                                                 @endif

@@ -2560,6 +2560,9 @@ window.adminMediaLibraryManager = (initial = {}) => ({
     indexUrl: initial.indexUrl || '/admin/media-library',
     storeUrl: initial.storeUrl || '/admin/media-library',
     totalImages: Number(initial.totalImages || 0),
+    scope: initial.scope || '',
+    perPage: Number(initial.perPage || 24),
+    emptyMessage: initial.emptyMessage || 'No media files found. Upload files above to start the gallery.',
     items: [],
     selectedIds: [],
     search: '',
@@ -2618,7 +2621,10 @@ window.adminMediaLibraryManager = (initial = {}) => ({
     url(page = 1) {
         const url = new URL(this.indexUrl, window.location.origin);
         url.searchParams.set('page', page);
-        url.searchParams.set('per_page', 24);
+        url.searchParams.set('per_page', Math.max(6, Math.min(48, Number(this.perPage || 24))));
+        if (String(this.scope || '').trim()) {
+            url.searchParams.set('scope', String(this.scope || '').trim());
+        }
         if (String(this.search || '').trim()) {
             url.searchParams.set('q', String(this.search || '').trim());
         }

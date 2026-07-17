@@ -1,6 +1,6 @@
 <x-layouts.admin
-    title="Image Gallery"
-    subtitle="Upload, search, and reuse global product images from one admin page."
+    title="Gallery"
+    subtitle="Search and reuse uploaded media files from the global gallery."
 >
     <div
         x-data="adminMediaLibraryManager({

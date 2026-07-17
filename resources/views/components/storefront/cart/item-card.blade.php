@@ -3,9 +3,14 @@
 @php
     $product = $item['product'];
     $customization = $item['customization'];
+    $quantity = max(1, (int) ($item['quantity'] ?? 1));
+    $minimumQuantity = max(1, (int) ($item['quantity_min'] ?? 1));
+    $maximumQuantity = max($minimumQuantity, (int) ($item['quantity_max'] ?? 999));
+    $decreaseQuantity = max($minimumQuantity, $quantity - 1);
+    $increaseQuantity = min($maximumQuantity, $quantity + 1);
 @endphp
 
-<article class="cart-item-card overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-card">
+<article class="cart-item-card overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-card" data-cart-item-card data-cart-item-key="{{ $item['key'] }}">
     <div class="cart-item-main grid gap-0 md:grid-cols-[150px_minmax(0,1fr)]">
         <a href="{{ $product['url'] }}" class="cart-item-image np-product-square-media group border-b border-slate-100 bg-white p-4 md:border-b-0 md:border-r">
             <img
@@ -32,8 +37,8 @@
 
                 <div class="cart-item-total shrink-0 rounded-2xl bg-slate-50 px-4 py-3 text-left sm:text-right">
                     <p class="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">Item total</p>
-                    <p class="mt-1 text-2xl font-black leading-none text-brand-ink">${{ number_format($item['line_total'], 2) }}</p>
-                    <p class="mt-1 text-xs font-semibold text-slate-500">${{ number_format($item['unit_price'] + $item['customization_unit_price'], 2) }} each</p>
+                    <p class="mt-1 text-2xl font-black leading-none text-brand-ink" data-cart-item-money="line_total">${{ number_format($item['line_total'], 2) }}</p>
+                    <p class="mt-1 text-xs font-semibold text-slate-500"><span data-cart-item-money="unit_total">${{ number_format($item['unit_price'] + $item['customization_unit_price'], 2) }}</span> each</p>
                 </div>
             </div>
 
@@ -75,27 +80,43 @@
     </div>
 
     <div class="cart-item-actions flex flex-col gap-3 border-t border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-        <form method="POST" action="{{ route('cart.items.update', $item['key']) }}" class="flex flex-col gap-2 sm:flex-row sm:items-end">
-            @csrf
-            @method('PATCH')
-            <div>
-                <label for="quantity-{{ $item['key'] }}" class="text-xs font-black uppercase tracking-wide text-slate-600">Quantity</label>
-                <input
-                    id="quantity-{{ $item['key'] }}"
-                    type="number"
-                    name="quantity"
-                    value="{{ $item['quantity'] }}"
-                    min="1"
-                    max="999"
-                    class="mt-1 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-center text-sm font-black text-slate-800 outline-none focus:border-brand-blue sm:w-24"
-                >
+        <div class="flex flex-col gap-2">
+            <p class="text-xs font-black uppercase tracking-wide text-slate-600">Quantity</p>
+            <div class="cart-quantity-stepper inline-flex items-center overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
+                <form method="POST" action="{{ route('cart.items.update', $item['key']) }}" class="m-0" data-cart-quantity-form>
+                    @csrf
+                    @method('PATCH')
+                    <input type="hidden" name="quantity" value="{{ $decreaseQuantity }}">
+                    <button
+                        type="submit"
+                        class="cart-quantity-stepper-button"
+                        data-cart-quantity-button
+                        aria-label="Decrease quantity for {{ $product['title'] }}"
+                        @disabled($quantity <= $minimumQuantity)
+                    >−</button>
+                </form>
+
+                <span class="cart-quantity-stepper-value" aria-live="polite" data-cart-item-quantity>{{ $quantity }}</span>
+
+                <form method="POST" action="{{ route('cart.items.update', $item['key']) }}" class="m-0" data-cart-quantity-form>
+                    @csrf
+                    @method('PATCH')
+                    <input type="hidden" name="quantity" value="{{ $increaseQuantity }}">
+                    <button
+                        type="submit"
+                        class="cart-quantity-stepper-button"
+                        data-cart-quantity-button
+                        aria-label="Increase quantity for {{ $product['title'] }}"
+                        @disabled($quantity >= $maximumQuantity)
+                    >+</button>
+                </form>
             </div>
-            <button class="btn btn-light w-full sm:w-auto" type="submit">Update</button>
-        </form>
+            <p class="text-xs font-semibold text-slate-500">Price updates automatically from the matching quantity tier.</p>
+        </div>
 
         <div class="grid gap-2 sm:flex sm:items-center">
             <a href="{{ $product['url'] }}#customize" class="btn btn-white w-full sm:w-auto">Edit Options</a>
-            <form method="POST" action="{{ route('cart.items.destroy', $item['key']) }}">
+            <form method="POST" action="{{ route('cart.items.destroy', $item['key']) }}" data-cart-remove-form>
                 @csrf
                 @method('DELETE')
                 <button class="btn w-full border border-red-200 bg-red-50 text-brand-red hover:bg-red-100 sm:w-auto" type="submit">Remove</button>

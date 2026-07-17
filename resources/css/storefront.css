@@ -4304,3 +4304,61 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
         transform: translateX(-50%);
     }
 }
+
+/* Cart quantity stepper: replaces the old update button with direct minus/plus controls. */
+.cart-quantity-stepper {
+    min-height: 3.25rem;
+}
+
+.cart-quantity-stepper-button {
+    display: inline-flex;
+    height: 3.25rem;
+    width: 3.25rem;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    background: #ffffff;
+    color: #0f172a;
+    font-size: 1.7rem;
+    font-weight: 900;
+    line-height: 1;
+    transition: background-color .16s ease, color .16s ease, opacity .16s ease;
+}
+
+.cart-quantity-stepper-button:hover:not(:disabled) {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.cart-quantity-stepper-button:disabled {
+    cursor: not-allowed;
+    opacity: .35;
+}
+
+.cart-quantity-stepper-value {
+    display: inline-flex;
+    min-width: 4rem;
+    height: 3.25rem;
+    align-items: center;
+    justify-content: center;
+    border-left: 1px solid #e2e8f0;
+    border-right: 1px solid #e2e8f0;
+    color: #0f172a;
+    font-size: 1.15rem;
+    font-weight: 900;
+}
+
+/* Cart AJAX quantity update state. */
+.cart-item-card.is-updating {
+    opacity: .72;
+    pointer-events: none;
+}
+
+.cart-item-card-updated {
+    animation: cartItemPulse .7s ease;
+}
+
+@keyframes cartItemPulse {
+    0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, .26); }
+    100% { box-shadow: 0 0 0 16px rgba(37, 99, 235, 0); }
+}

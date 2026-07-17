@@ -63,7 +63,20 @@
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Catalog</p>
                     @if($canAdmin('products.view'))
                         <x-admin.sidebar-link :href="route('admin.products.index')" :active="request()->routeIs('admin.products.*')" icon="◇">Products</x-admin.sidebar-link>
-                        <x-admin.sidebar-link :href="route('admin.media-library.index')" :active="request()->routeIs('admin.media-library.*')" icon="▧">Image Gallery</x-admin.sidebar-link>
+                        <x-admin.sidebar-group
+                            label="Media"
+                            icon="▧"
+                            :active="request()->routeIs('admin.media-library.*')"
+                        >
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.media-library.index')"
+                                :active="request()->routeIs('admin.media-library.index')"
+                            >Gallery</x-admin.sidebar-sub-link>
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.media-library.upload')"
+                                :active="request()->routeIs('admin.media-library.upload')"
+                            >Upload Media File</x-admin.sidebar-sub-link>
+                        </x-admin.sidebar-group>
                     @endif
                     @if($canAdmin('categories.view'))
                         <x-admin.sidebar-link :href="route('admin.categories.index')" :active="request()->routeIs('admin.categories.*')" icon="⌘">Categories</x-admin.sidebar-link>
@@ -127,7 +140,7 @@
                     <x-admin.sidebar-group
                         label="Master Data"
                         icon="◈"
-                        :active="$isCustomizationActive || $isSizeOptionActive || $isTrainingVestCustomizationActive || request()->routeIs('admin.shipping-methods.*')"
+                        :active="$isCustomizationActive || $isSizeOptionActive || $isTrainingVestCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*')"
                     >
                         @if($canAdmin('customization.view'))
                         @foreach($customizationMenuGroups as $groupKey => $customizationGroup)
@@ -225,9 +238,13 @@
 
                         @if($canAdmin('shipping.view'))
                             <x-admin.sidebar-sub-link
+                                :href="route('admin.production-methods.index')"
+                                :active="request()->routeIs('admin.production-methods.*')"
+                            >1.15 Production Methods</x-admin.sidebar-sub-link>
+                            <x-admin.sidebar-sub-link
                                 :href="route('admin.shipping-methods.index')"
                                 :active="request()->routeIs('admin.shipping-methods.*')"
-                            >1.15 Shipping Methods</x-admin.sidebar-sub-link>
+                            >1.16 Shipping Methods</x-admin.sidebar-sub-link>
                         @endif
                     </x-admin.sidebar-group>
                 @endif

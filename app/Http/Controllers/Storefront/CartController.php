@@ -11,6 +11,7 @@ use App\Services\Storefront\ProductCatalogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -124,18 +125,41 @@ class CartController extends Controller
             ]);
     }
 
-    public function update(UpdateCartItemRequest $request, string $cartItem): RedirectResponse
+    public function update(UpdateCartItemRequest $request, string $cartItem): RedirectResponse|JsonResponse
     {
-        $this->cart->update($cartItem, (int) $request->validated('quantity'));
+        $summary = $this->cart->update($cartItem, (int) $request->validated('quantity'));
+
+        if ($request->expectsJson()) {
+            $updatedItem = collect($summary['items'] ?? [])->firstWhere('key', $cartItem);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cart quantity updated.',
+                'cart' => $summary,
+                'item' => $updatedItem,
+                'item_html' => $updatedItem
+                    ? Blade::render('<x-storefront.cart.item-card :item="$item" />', ['item' => $updatedItem])
+                    : null,
+            ]);
+        }
 
         return redirect()
             ->route('cart.index')
             ->with('status', 'Cart quantity updated.');
     }
 
-    public function destroy(string $cartItem): RedirectResponse
+    public function destroy(Request $request, string $cartItem): RedirectResponse|JsonResponse
     {
-        $this->cart->remove($cartItem);
+        $summary = $this->cart->remove($cartItem);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Item removed from cart.',
+                'cart' => $summary,
+                'removed_key' => $cartItem,
+            ]);
+        }
 
         return redirect()
             ->route('cart.index')

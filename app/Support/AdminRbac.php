@@ -391,6 +391,7 @@ class AdminRbac
             'coupons' => 'coupons',
             'homepage.sections' => 'homepage_sections',
             'homepage-slides' => 'homepage_slides',
+            'production-methods' => 'shipping',
             'shipping-methods' => 'shipping',
             'rural-area-surcharges' => 'rural_surcharges',
             'payment-methods' => 'payment_methods',

@@ -45,6 +45,19 @@ class MediaLibraryController extends Controller
         ]);
     }
 
+
+    public function upload(Request $request): View
+    {
+        $query = $this->galleryQuery($request);
+        $todayQuery = $this->galleryQuery($request->duplicate(query: array_merge($request->query(), ['scope' => 'today'])));
+
+        return view('admin.media-library.upload', [
+            'totalImages' => (clone $query)->count(),
+            'todayImages' => (clone $todayQuery)->count(),
+            'latestImage' => (clone $query)->latest('id')->first(),
+        ]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $request->validate([
@@ -113,6 +126,14 @@ class MediaLibraryController extends Controller
                 });
             })
             ->latest('id');
+
+        $scope = Str::of((string) $request->query('scope', ''))->lower()->trim()->toString();
+
+        if ($scope === 'today') {
+            $query->whereDate('created_at', now()->toDateString());
+        } elseif ($scope === 'recent') {
+            $query->where('created_at', '>=', now()->subDays(7));
+        }
 
         if ($search !== '') {
             $query->where(function (Builder $builder) use ($search): void {

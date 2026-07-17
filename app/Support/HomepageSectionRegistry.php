@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
 
 final class HomepageSectionRegistry
 {
-    private const RETIRED_KEYS = ['customization_options'];
+    private const RETIRED_KEYS = ['customization_options', 'support'];
 
     /** @return array<int, string> */
     public static function retiredKeys(): array
@@ -260,18 +260,6 @@ final class HomepageSectionRegistry
                 'fields' => ['text', 'items'],
                 'item_label' => 'Use Case Cards',
                 'item_fields' => ['title', 'description'],
-            ],
-            [
-                'key' => 'support',
-                'name' => 'Support CTA',
-                'component' => 'support',
-                'sort_order' => 150,
-                'eyebrow' => 'Order support',
-                'title' => 'Need Help with Sizes, Logos, or Artwork?',
-                'description' => 'For team orders, send us the size list, logo file, player names, numbers, preferred colors, and delivery deadline. We’ll review the details and let you know if anything needs to be adjusted.',
-                'primary_label' => 'Start Your Order',
-                'primary_url' => '/contact-us',
-                'fields' => ['text', 'buttons'],
             ],
             [
                 'key' => 'testimonials',

@@ -11,6 +11,7 @@ use App\Models\Category;
 use App\Models\JerseyCustomizationOption;
 use App\Models\MediaLibraryImage;
 use App\Models\Product;
+use App\Models\ProductionMethod;
 use App\Models\SizeOptionGroup;
 use App\Models\ShippingMethod;
 use App\Services\Catalog\CategoryTreeService;
@@ -482,6 +483,11 @@ class ProductController extends Controller
             ->values()
             ->all();
 
+        $productionMethodOptions = ProductionMethod::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
         $shippingMethodOptions = ShippingMethod::query()
             ->orderBy('sort_order')
             ->orderBy('name')
@@ -494,6 +500,7 @@ class ProductController extends Controller
             'jerseyCustomizationTypes' => JerseyCustomizationType::masterDataOptions(),
             'jerseyCustomizationOptions' => $jerseyCustomizationOptions,
             'sizeOptionGroups' => $sizeOptionGroups,
+            'productionMethodOptions' => $productionMethodOptions,
             'shippingMethodOptions' => $shippingMethodOptions,
         ]);
     }
@@ -502,7 +509,7 @@ class ProductController extends Controller
     {
         return [
             'category', 'subcategory', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'sizeGroups.masterGroup',
-            'priceTiers', 'fabricPriceTables.tiers', 'artworkMethods', 'productionSpeeds', 'shippingMethods', 'faqs',
+            'priceTiers', 'fabricPriceTables.tiers', 'artworkMethods', 'productionSpeeds.productionMethod', 'shippingMethods', 'faqs',
         ];
     }
 
@@ -556,7 +563,7 @@ class ProductController extends Controller
             'badge_label', 'badge_color', 'short_description', 'base_price', 'compare_at_price',
             'cost_price', 'currency', 'minimum_quantity', 'maximum_quantity', 'is_featured',
             'is_customizable', 'is_active', 'track_inventory', 'stock_quantity', 'low_stock_threshold',
-            'allow_backorder', 'weight', 'shipping_class', 'shipping_methods_enabled', 'jersey_roster_enabled',
+            'allow_backorder', 'weight', 'shipping_class', 'production_methods_enabled', 'shipping_methods_enabled', 'jersey_roster_enabled',
             'jersey_roster_optional', 'jersey_roster_title', 'artwork_upload_enabled',
             'artwork_upload_required', 'artwork_upload_title', 'artwork_upload_description',
             'artwork_upload_max_files', 'artwork_upload_max_file_size_mb',
@@ -1321,7 +1328,7 @@ class ProductController extends Controller
         // legacy method cards so stale choices can never reappear on the storefront.
         $product->artworkMethods()->delete();
         $this->replaceSimpleRelation($product, 'productionSpeeds', $data['production_speeds'] ?? [], ['name', 'code'], [
-            'name', 'code', 'description', 'price_adjustment', 'minimum_quantity', 'maximum_quantity',
+            'production_method_id', 'name', 'code', 'description', 'price_adjustment', 'minimum_quantity', 'maximum_quantity',
             'minimum_days', 'maximum_days', 'is_active',
         ]);
         $this->replaceSimpleRelation($product, 'shippingMethods', $data['shipping_methods'] ?? [], ['name', 'code'], [

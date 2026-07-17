@@ -392,6 +392,38 @@
             })->values()->all(),
         ];
     })->values();
+    $hasOldProductionInput = session()->hasOldInput();
+    $selectedProductionCodes = collect($hasOldProductionInput
+        ? old('production_method_codes', [])
+        : ($product->relationLoaded('productionSpeeds') ? $product->productionSpeeds->pluck('code')->all() : []))
+        ->map(fn ($code) => \Illuminate\Support\Str::slug((string) $code))
+        ->filter()
+        ->unique()
+        ->values();
+    if (! $hasOldProductionInput && isset($productionMethodOptions) && $productionMethodOptions->isNotEmpty()) {
+        $availableProductionCodes = $productionMethodOptions
+            ->pluck('code')
+            ->map(fn ($code) => \Illuminate\Support\Str::slug((string) $code))
+            ->filter()
+            ->values();
+
+        $hasMatchingMasterProduction = $selectedProductionCodes
+            ->intersect($availableProductionCodes)
+            ->isNotEmpty();
+
+        if ((! $product->exists && $selectedProductionCodes->isEmpty()) || (! $hasMatchingMasterProduction && $selectedProductionCodes->isNotEmpty())) {
+            $defaultProductionCodes = $productionMethodOptions
+                ->where('is_default', true)
+                ->pluck('code')
+                ->map(fn ($code) => \Illuminate\Support\Str::slug((string) $code))
+                ->filter()
+                ->values();
+            $selectedProductionCodes = $defaultProductionCodes->isNotEmpty()
+                ? $defaultProductionCodes
+                : $productionMethodOptions->where('is_active', true)->take(1)->pluck('code')->map(fn ($code) => \Illuminate\Support\Str::slug((string) $code))->values();
+        }
+    }
+
     $hasOldShippingInput = session()->hasOldInput();
     $selectedShippingCodes = collect($hasOldShippingInput
         ? old('shipping_method_codes', [])
@@ -479,6 +511,7 @@
         'shippingMethods' => $shippingValues,
         'rosterFields' => $rosterFieldValues,
         'productProfile' => old('product_profile', $product->product_profile ?: 'standard'),
+        'productionMethodsEnabled' => (bool) old('production_methods_enabled', $product->production_methods_enabled ?? false),
         'shippingMethodsEnabled' => (bool) old('shipping_methods_enabled', $product->shipping_methods_enabled ?? false),
         'jerseyRosterEnabled' => (bool) old('jersey_roster_enabled', $product->jersey_roster_enabled ?? false),
         'jerseyRosterOptional' => (bool) old('jersey_roster_optional', $product->jersey_roster_optional ?? true),
@@ -1344,86 +1377,52 @@ Lead Time:"></div>
                 </header>
                 <div class="space-y-4">
                     <details class="np-config-panel" open>
-                        <summary>Production options</summary>
-                        <div class="mt-4 flex flex-wrap gap-2">
-                            <button type="button" class="np-secondary-button" @click="addProductionHeader()" :disabled="productionHeaders.length >= 12">＋ Add production option</button>
-                            <button type="button" class="np-secondary-button" @click="addProductionRow()" :disabled="productionRows.length >= 100">＋ Add range</button>
+                        <summary>Production methods</summary>
+                        <input type="hidden" name="production_methods_from_master" value="1">
+                        <div class="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <label class="inline-flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700">
+                                <input type="hidden" name="production_methods_enabled" :value="productionMethodsEnabled ? 1 : 0">
+                                <input type="checkbox" x-model="productionMethodsEnabled" class="h-4 w-4 rounded border-slate-300 text-brand-red">
+                                <span>Show production methods on product page</span>
+                            </label>
+                            <div class="min-w-0 text-xs font-medium leading-5 text-slate-500 md:text-right">
+                                <p>Select reusable production methods from <strong>Master Data → Production Methods</strong>. Names, descriptions, and working-day timelines stay controlled from master data.</p>
+                                <a href="{{ route('admin.production-methods.index') }}" target="_blank" class="mt-2 inline-flex font-black text-brand-blue hover:text-brand-red">Manage Production Methods ↗</a>
+                            </div>
                         </div>
 
-                        <div class="np-table-wrap np-production-table-wrap mt-4">
-                            <table class="np-simple-table np-production-table-desktop">
-                                <thead>
-                                    <tr>
-                                        <th>Quantity range</th>
-                                        <template x-for="(header,columnIndex) in productionHeaders" :key="columnIndex">
-                                            <th>
-                                                <input class="np-table-input font-black" :name="`production_table_headers[${columnIndex}]`" x-model="productionHeaders[columnIndex]" maxlength="160" placeholder="Standard Production">
-                                                <button type="button" class="mt-2 text-xs font-black text-red-700" @click="removeProductionHeader(columnIndex)" x-show="productionHeaders.length > 1">Remove column</button>
-                                            </th>
-                                        </template>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <template x-for="(row,rowIndex) in productionRows" :key="row.client_key || rowIndex">
-                                        <tr>
-                                            <td>
-                                                <input class="np-table-input font-black" :name="`production_table_rows[${rowIndex}][range]`" x-model="row.range" maxlength="50" placeholder="1-40 pairs">
-                                            </td>
-                                            <template x-for="(cell,columnIndex) in row.cells" :key="columnIndex">
-                                                <td>
-                                                    <input type="hidden" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][enabled]`" :value="cell.enabled ? 1 : 0">
-                                                    <label class="flex items-center gap-2 text-xs font-black text-slate-700"><input type="checkbox" x-model="cell.enabled"> Offer</label>
-                                                    <div class="mt-2 space-y-2" :class="!cell.enabled && 'pointer-events-none opacity-45'">
-                                                        <input class="np-table-input" type="number" min="0" step="0.01" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][price_adjustment]`" x-model.number="cell.price_adjustment" placeholder="Charge">
-                                                        <input class="np-table-input" type="text" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][production_time]`" x-model="cell.production_time" maxlength="60" placeholder="5-15 days">
-                                                        <textarea class="admin-textarea !mt-0 min-h-[70px]" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][description]`" x-model="cell.description" maxlength="2000" placeholder="Description"></textarea>
-                                                    </div>
-                                                </td>
-                                            </template>
-                                            <td><button type="button" class="np-icon-button" @click="removeProductionRow(rowIndex)">⌫</button></td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-
-                            <div class="np-production-mobile-columns" aria-label="Production options mobile layout">
-                                <template x-for="(header,columnIndex) in productionHeaders" :key="`production-mobile-column-${columnIndex}`">
-                                    <article class="np-production-column-card">
-                                        <label class="np-production-mobile-field">
-                                            <span>Production option</span>
-                                            <input class="np-table-input font-black" :name="`production_table_headers[${columnIndex}]`" x-model="productionHeaders[columnIndex]" maxlength="160" placeholder="Standard Production">
-                                        </label>
-                                        <button type="button" class="np-production-remove-column" @click="removeProductionHeader(columnIndex)" x-show="productionHeaders.length > 1">Remove column</button>
-
-                                        <div class="np-production-mobile-ranges">
-                                            <template x-for="(row,rowIndex) in productionRows" :key="`${row.client_key || rowIndex}-${columnIndex}`">
-                                                <section class="np-production-range-card">
-                                                    <label class="np-production-mobile-field">
-                                                        <span>Quantity range</span>
-                                                        <input class="np-table-input font-black" :name="`production_table_rows[${rowIndex}][range]`" x-model="row.range" maxlength="50" placeholder="1-40 pairs">
-                                                    </label>
-
-                                                    <div class="np-production-offer-card">
-                                                        <p class="np-production-mobile-label">Production offer</p>
-                                                        <input type="hidden" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][enabled]`" :value="row.cells[columnIndex].enabled ? 1 : 0">
-                                                        <label class="flex items-center gap-2 text-xs font-black text-slate-700"><input type="checkbox" x-model="row.cells[columnIndex].enabled"> Offer</label>
-                                                        <div class="mt-2 space-y-2" :class="!row.cells[columnIndex].enabled && 'pointer-events-none opacity-45'">
-                                                            <input class="np-table-input" type="number" min="0" step="0.01" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][price_adjustment]`" x-model.number="row.cells[columnIndex].price_adjustment" placeholder="Charge">
-                                                            <input class="np-table-input" type="text" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][production_time]`" x-model="row.cells[columnIndex].production_time" maxlength="60" placeholder="5-15 days">
-                                                            <textarea class="admin-textarea !mt-0 min-h-[70px]" :name="`production_table_rows[${rowIndex}][cells][${columnIndex}][description]`" x-model="row.cells[columnIndex].description" maxlength="2000" placeholder="Description"></textarea>
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="np-production-mobile-action">
-                                                        <button type="button" class="np-icon-button" @click="removeProductionRow(rowIndex)" aria-label="Remove quantity range">⌫</button>
-                                                    </div>
-                                                </section>
-                                            </template>
-                                        </div>
-                                    </article>
-                                </template>
-                            </div>
+                        <div x-show="productionMethodsEnabled" class="mt-4" x-cloak>
+                            @if(isset($productionMethodOptions) && $productionMethodOptions->isNotEmpty())
+                                <div class="grid items-stretch gap-3 xl:grid-cols-2">
+                                    @foreach($productionMethodOptions as $productionMethod)
+                                        @php($isSelectedProduction = $selectedProductionCodes->contains($productionMethod->code))
+                                        <article @class([
+                                            'flex h-full flex-col justify-between rounded-2xl border bg-white p-4 transition',
+                                            'border-slate-300 bg-slate-50' => $isSelectedProduction,
+                                            'border-slate-200' => ! $isSelectedProduction,
+                                        ])>
+                                            <label class="grid min-w-0 cursor-pointer grid-cols-[auto_minmax(0,1fr)] gap-3">
+                                                <input type="checkbox" name="production_method_codes[]" value="{{ $productionMethod->code }}" @checked($isSelectedProduction) class="mt-1 h-4 w-4 rounded border-slate-300 text-brand-red">
+                                                <span class="min-w-0">
+                                                    <span class="block truncate text-sm font-black text-brand-ink">{{ $productionMethod->name }}</span>
+                                                    <span class="mt-1 block text-xs font-medium leading-5 text-slate-500">{{ $productionMethod->minimum_days }}–{{ $productionMethod->maximum_days }} working days</span>
+                                                    @if($productionMethod->description)
+                                                        <span class="mt-2 block text-sm font-normal leading-6 text-slate-500">{{ $productionMethod->description }}</span>
+                                                    @endif
+                                                </span>
+                                            </label>
+                                            <div class="mt-4 flex flex-wrap gap-2 text-xs font-medium">
+                                                <span @class(["rounded-full px-3 py-1.5 font-medium", "bg-emerald-50 text-emerald-700" => $productionMethod->is_active, "bg-slate-50 text-slate-500" => ! $productionMethod->is_active])>{{ $productionMethod->is_active ? 'Active' : 'Inactive' }}</span>
+                                                @if($productionMethod->is_default)<span class="rounded-full bg-amber-50 px-3 py-1.5 font-medium text-amber-700">Default</span>@endif
+                                            </div>
+                                        </article>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="rounded-2xl border border-dashed border-slate-300 p-7 text-center text-sm text-slate-500">
+                                    No production methods found. Add production methods from <strong>Master Data → Production Methods</strong> first.
+                                </div>
+                            @endif
                         </div>
                     </details>
 
@@ -1442,29 +1441,24 @@ Lead Time:"></div>
                             @if($shippingMethodOptions->isNotEmpty())
                                 <div class="grid items-stretch gap-3 xl:grid-cols-2">
                                     @foreach($shippingMethodOptions as $shippingMethod)
-                                        @php
-                                            $isSelectedShipping = $selectedShippingCodes->contains($shippingMethod->code);
-                                            $isDefaultShipping = $defaultShippingCode === $shippingMethod->code;
-                                            $shippingPriceText = 'Price from product price table';
-                                        @endphp
                                         <article @class([
                                             'flex h-full flex-col justify-between rounded-2xl border bg-white p-4 transition',
-                                            'border-slate-300 bg-slate-50' => $isSelectedShipping,
-                                            'border-slate-200' => ! $isSelectedShipping,
+                                            'border-slate-300 bg-slate-50' => $selectedShippingCodes->contains($shippingMethod->code),
+                                            'border-slate-200' => ! $selectedShippingCodes->contains($shippingMethod->code),
                                         ])>
                                             <div class="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                                                 <label class="grid min-w-0 cursor-pointer grid-cols-[auto_minmax(0,1fr)] gap-3">
-                                                    <input type="checkbox" name="shipping_method_codes[]" value="{{ $shippingMethod->code }}" @checked($isSelectedShipping) class="mt-1 h-4 w-4 rounded border-slate-300 text-brand-red">
+                                                    <input type="checkbox" name="shipping_method_codes[]" value="{{ $shippingMethod->code }}" @checked($selectedShippingCodes->contains($shippingMethod->code)) class="mt-1 h-4 w-4 rounded border-slate-300 text-brand-red">
                                                     <span class="min-w-0">
                                                         <span class="block text-sm font-semibold leading-5 text-slate-900">{{ $shippingMethod->name }}</span>
-                                                        <span class="mt-1 block text-xs font-medium leading-5 text-slate-500">{{ $shippingPriceText }}</span>
+                                                        <span class="mt-1 block text-xs font-medium leading-5 text-slate-500">Price from product price table</span>
                                                         @if($shippingMethod->description)
                                                             <span class="mt-2 block text-sm font-normal leading-6 text-slate-500">{{ $shippingMethod->description }}</span>
                                                         @endif
                                                     </span>
                                                 </label>
                                                 <label class="inline-flex w-max items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600">
-                                                    <input type="radio" name="shipping_method_default_code" value="{{ $shippingMethod->code }}" @checked($isDefaultShipping) onclick="this.closest('article').querySelector('input[type=checkbox]').checked = true" class="h-3.5 w-3.5 border-slate-300 text-brand-red">
+                                                    <input type="radio" name="shipping_method_default_code" value="{{ $shippingMethod->code }}" @checked($defaultShippingCode === $shippingMethod->code) onclick="this.closest('article').querySelector('input[type=checkbox]').checked = true" class="h-3.5 w-3.5 border-slate-300 text-brand-red">
                                                     Default
                                                 </label>
                                             </div>

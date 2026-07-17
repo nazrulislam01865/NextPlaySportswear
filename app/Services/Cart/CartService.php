@@ -164,7 +164,11 @@ class CartService
 
         if ($record instanceof ShoppingCartItem) {
             $product = $this->products->findBySlug((string) $record->product_slug);
-            $record->quantity = $product ? $this->sanitizeQuantity($quantity, $product) : max(1, $quantity);
+            $quantity = $product ? $this->sanitizeQuantity($quantity, $product) : max(1, $quantity);
+            $record->quantity = $quantity;
+            if ($product) {
+                $record->customization = $this->applyCartQuantityToCustomization((array) ($record->customization ?? []), $quantity);
+            }
             $record->save();
             $this->persistCalculatedCartItem($record, $this->cartItemArray($record));
             $this->touchCart($cart);
@@ -646,7 +650,11 @@ class CartService
             ->map(function (array $item) use ($key, $quantity): array {
                 if (hash_equals($item['key'], $key)) {
                     $product = $this->products->findBySlug((string) $item['product_slug']);
-                    $item['quantity'] = $product ? $this->sanitizeQuantity($quantity, $product) : $quantity;
+                    $quantity = $product ? $this->sanitizeQuantity($quantity, $product) : max(1, $quantity);
+                    $item['quantity'] = $quantity;
+                    if ($product) {
+                        $item['customization'] = $this->applyCartQuantityToCustomization((array) ($item['customization'] ?? []), $quantity);
+                    }
                     $item['updated_at'] = now()->toIso8601String();
                 }
 
@@ -694,6 +702,8 @@ class CartService
             'key' => $item['key'] ?? $this->makeItemKey($product['slug'], $customization),
             'product' => Arr::only($product, ['id', 'slug', 'title', 'short_title', 'summary', 'sku', 'category', 'sport', 'image', 'alt', 'url', 'base_price', 'price']),
             'quantity' => $quantity,
+            'quantity_min' => $this->minimumQuantityForProduct($product),
+            'quantity_max' => $this->maximumQuantityForProduct($product),
             'customization' => $customization,
             'unit_price' => $unitPrice,
             'customization_unit_price' => $customizationUnitPrice,
@@ -967,16 +977,80 @@ class CartService
 
     private function sanitizeQuantity(int $quantity, array $product): int
     {
-        $minimum = max(1, (int) ($product['minimum_quantity'] ?? 1));
+        $minimum = $this->minimumQuantityForProduct($product);
+        $maximum = $this->maximumQuantityForProduct($product);
+
+        abort_if($maximum < $minimum, 422, 'This product is currently unavailable in the required minimum quantity.');
+
+        return min(max($quantity, $minimum), $maximum);
+    }
+
+    private function minimumQuantityForProduct(array $product): int
+    {
+        return max(1, (int) ($product['minimum_quantity'] ?? 1));
+    }
+
+    private function maximumQuantityForProduct(array $product): int
+    {
+        $minimum = $this->minimumQuantityForProduct($product);
         $maximum = min(999, max($minimum, (int) ($product['maximum_quantity'] ?? 999)));
 
         if (($product['track_inventory'] ?? false) && ! ($product['allow_backorder'] ?? false)) {
             $maximum = min($maximum, max(0, (int) ($product['stock_quantity'] ?? 0)));
         }
 
-        abort_if($maximum < $minimum, 422, 'This product is currently unavailable in the required minimum quantity.');
+        return $maximum;
+    }
 
-        return min(max($quantity, $minimum), $maximum);
+    private function applyCartQuantityToCustomization(array $customization, int $quantity): array
+    {
+        $configuration = (array) ($customization['configuration'] ?? []);
+        $quantities = collect((array) ($configuration['quantities'] ?? []))
+            ->map(fn ($value): int => max(0, (int) $value))
+            ->filter(fn (int $value): bool => $value > 0);
+
+        if ($quantities->isEmpty()) {
+            return $customization;
+        }
+
+        $total = max(1, (int) $quantities->sum());
+
+        if ($quantities->count() === 1) {
+            $configuration['quantities'] = [$quantities->keys()->first() => $quantity];
+            $customization['configuration'] = $configuration;
+
+            return $customization;
+        }
+
+        $distributed = [];
+        $fractions = [];
+        $assigned = 0;
+
+        foreach ($quantities as $key => $value) {
+            $raw = ($value / $total) * $quantity;
+            $base = (int) floor($raw);
+            $distributed[(string) $key] = $base;
+            $fractions[(string) $key] = $raw - $base;
+            $assigned += $base;
+        }
+
+        $remaining = max(0, $quantity - $assigned);
+        arsort($fractions);
+
+        foreach (array_keys($fractions) as $key) {
+            if ($remaining <= 0) {
+                break;
+            }
+            $distributed[$key] = ($distributed[$key] ?? 0) + 1;
+            $remaining--;
+        }
+
+        $configuration['quantities'] = collect($distributed)
+            ->filter(fn (int $value): bool => $value > 0)
+            ->all();
+        $customization['configuration'] = $configuration;
+
+        return $customization;
     }
 
     private function makeItemKey(string $slug, array $customization): string

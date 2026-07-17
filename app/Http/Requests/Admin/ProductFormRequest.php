@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin;
 use App\Enums\JerseyCustomizationType;
 use App\Models\JerseyCustomizationOption;
 use App\Models\Product;
+use App\Models\ProductionMethod;
 use App\Models\ShippingMethod;
 use App\Support\ProductionTime;
 use Illuminate\Foundation\Http\FormRequest;
@@ -66,6 +67,7 @@ class ProductFormRequest extends FormRequest
             'width' => ['nullable', 'numeric', 'min:0', 'max:999999.999'],
             'height' => ['nullable', 'numeric', 'min:0', 'max:999999.999'],
             'shipping_class' => ['nullable', 'string', 'max:100'],
+            'production_methods_enabled' => ['nullable', 'boolean'],
             'shipping_methods_enabled' => ['nullable', 'boolean'],
             'jersey_roster_enabled' => ['nullable', 'boolean'],
             'jersey_roster_optional' => ['nullable', 'boolean'],
@@ -230,7 +232,12 @@ class ProductFormRequest extends FormRequest
             'production_speeds.*.maximum_quantity' => ['nullable', 'integer', 'gte:production_speeds.*.minimum_quantity', 'max:1000000'],
             'production_speeds.*.minimum_days' => ['required', 'integer', 'min:0', 'max:3650'],
             'production_speeds.*.maximum_days' => ['required', 'integer', 'gte:production_speeds.*.minimum_days', 'max:3650'],
+            'production_speeds.*.production_method_id' => ['nullable', 'integer', 'exists:production_methods,id'],
             'production_speeds.*.is_active' => ['nullable', 'boolean'],
+
+            'production_methods_from_master' => ['nullable', 'boolean'],
+            'production_method_codes' => ['nullable', 'array', 'max:30'],
+            'production_method_codes.*' => ['nullable', 'string', 'max:160', 'distinct', Rule::exists('production_methods', 'code')],
 
             'shipping_method_codes' => ['nullable', 'array', 'max:30'],
             'shipping_method_codes.*' => ['nullable', 'string', 'max:160', 'distinct', Rule::exists('shipping_methods', 'code')],
@@ -441,7 +448,11 @@ class ProductFormRequest extends FormRequest
         };
 
         $production = $this->normalizeProductionTable();
-        $productionSpeeds = $normalizeRowsWithCodes($production['production_speeds']);
+        $productionSpeeds = $this->boolean('production_methods_enabled')
+            ? ($this->boolean('production_methods_from_master')
+                ? $this->productionMethodsFromMaster()
+                : $normalizeRowsWithCodes($production['production_speeds']))
+            : [];
 
         $rosterFields = collect($this->input('jersey_roster_fields', []))
             ->map(function ($field, int $index): array {
@@ -464,6 +475,7 @@ class ProductFormRequest extends FormRequest
             'shipping_methods' => $this->shippingMethodsFromMaster(),
             'jersey_roster_fields' => $rosterFields,
             'product_profile' => $this->input('product_profile', 'standard'),
+            'production_methods_enabled' => $this->boolean('production_methods_enabled'),
             'shipping_methods_enabled' => $this->boolean('shipping_methods_enabled'),
             'jersey_roster_enabled' => $this->boolean('jersey_roster_enabled'),
             'jersey_roster_optional' => $this->boolean('jersey_roster_optional'),
@@ -631,6 +643,46 @@ class ProductFormRequest extends FormRequest
      * Normalize the independent production table and flatten enabled cells into
      * the existing product_production_speeds persistence model.
      */
+    private function productionMethodsFromMaster(): array
+    {
+        $codes = collect((array) $this->input('production_method_codes', []))
+            ->map(fn ($code) => Str::slug((string) $code))
+            ->filter()
+            ->unique()
+            ->take(30)
+            ->values();
+
+        if ($codes->isEmpty()) {
+            return [];
+        }
+
+        $methods = ProductionMethod::query()
+            ->whereIn('code', $codes->all())
+            ->get()
+            ->keyBy('code');
+
+        return $codes->map(function (string $code) use ($methods): ?array {
+            /** @var ProductionMethod|null $method */
+            $method = $methods->get($code);
+            if (! $method instanceof ProductionMethod) {
+                return null;
+            }
+
+            return [
+                'production_method_id' => $method->id,
+                'name' => $method->name,
+                'code' => $method->code,
+                'description' => $method->description,
+                'price_adjustment' => 0,
+                'minimum_quantity' => 1,
+                'maximum_quantity' => null,
+                'minimum_days' => (int) ($method->minimum_days ?? 1),
+                'maximum_days' => (int) ($method->maximum_days ?? ($method->minimum_days ?? 1)),
+                'is_active' => (bool) ($method->is_active ?? true),
+            ];
+        })->filter()->values()->all();
+    }
+
     private function shippingMethodsFromMaster(): array
     {
         $codes = collect((array) $this->input('shipping_method_codes', []))

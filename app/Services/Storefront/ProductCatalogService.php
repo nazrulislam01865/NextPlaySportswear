@@ -528,7 +528,7 @@ class ProductCatalogService
     public function findBySlug(string $slug): ?array
     {
         if (Schema::hasTable('products')) {
-            $query = Product::query()->with(['category', 'subcategory', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'priceTiers', 'fabricPriceTables.tiers', 'artworkMethods', 'productionSpeeds', 'shippingMethods', 'faqs']);
+            $query = Product::query()->with(['category', 'subcategory', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'priceTiers', 'fabricPriceTables.tiers', 'artworkMethods', 'productionSpeeds.productionMethod', 'shippingMethods', 'faqs']);
             $isAdminPreview = auth('admin')->check() || (auth()->user()?->isAdmin() ?? false);
 
             if (! $isAdminPreview) {
@@ -1150,19 +1150,28 @@ class ProductCatalogService
                     ->filter()->unique()->values()->all(),
             ],
             'artwork_methods' => [],
-            'production_speeds' => $product->productionSpeeds->where('is_active', true)->map(fn ($speed) => [
-                'id' => $speed->code,
-                'label' => $speed->name,
-                'description' => $speed->description,
-                'price_delta' => (float) $speed->price_adjustment,
-                'minimum_quantity' => (int) ($speed->minimum_quantity ?: 1),
-                'maximum_quantity' => $speed->maximum_quantity === null ? null : (int) $speed->maximum_quantity,
-                'minimum_days' => $speed->minimum_days,
-                'maximum_days' => $speed->maximum_days,
-                'production_time' => ((int) $speed->minimum_days === 0 && (int) $speed->maximum_days === 0)
-                    ? 'To be confirmed'
-                    : null,
-            ])->values()->all(),
+            'production_methods_enabled' => (bool) ($product->production_methods_enabled ?? false),
+            'production_speeds' => ($product->production_methods_enabled ?? false) ? $product->productionSpeeds->where('is_active', true)->map(function ($speed) {
+                $method = $speed->relationLoaded('productionMethod') ? $speed->productionMethod : null;
+                $name = $method?->name ?: $speed->name;
+                $description = $method?->description ?: $speed->description;
+                $minimumDays = (int) ($method?->minimum_days ?? $speed->minimum_days);
+                $maximumDays = (int) ($method?->maximum_days ?? $speed->maximum_days);
+
+                return [
+                    'id' => $speed->code,
+                    'label' => $name,
+                    'description' => $description,
+                    'price_delta' => (float) $speed->price_adjustment,
+                    'minimum_quantity' => (int) ($speed->minimum_quantity ?: 1),
+                    'maximum_quantity' => $speed->maximum_quantity === null ? null : (int) $speed->maximum_quantity,
+                    'minimum_days' => $minimumDays,
+                    'maximum_days' => $maximumDays,
+                    'production_time' => ($minimumDays === 0 && $maximumDays === 0)
+                        ? 'To be confirmed'
+                        : null,
+                ];
+            })->values()->all() : [],
             'shipping_methods_enabled' => (bool) $product->shipping_methods_enabled,
             'shipping_methods' => $product->shipping_methods_enabled ? $product->shippingMethods->where('is_active', true)->map(function ($method) use ($priceTableHeaders): array {
                 $chargeType = $method->charge_type ?: 'per_unit';
@@ -1582,12 +1591,15 @@ class ProductCatalogService
         ];
         $product['artwork_methods'] = [];
         $product['shipping_methods'] = $product['shipping_methods'] ?? [];
+        $product['production_methods_enabled'] = $product['production_methods_enabled'] ?? false;
         $product['shipping_methods_enabled'] = $product['shipping_methods_enabled'] ?? false;
         $product['product_profile'] = $product['product_profile'] ?? 'standard';
         $product['jersey_roster'] = $product['jersey_roster'] ?? ['enabled' => false, 'optional' => true, 'title' => 'Add player names and numbers', 'fields' => []];
-        $product['production_speeds'] = $product['production_speeds'] ?? [
-            ['id' => 'standard', 'label' => 'Standard Production', 'description' => 'Standard schedule', 'price_delta' => 0, 'minimum_quantity' => 1, 'maximum_quantity' => null, 'minimum_days' => 14, 'maximum_days' => 18],
-        ];
+        $product['production_speeds'] = ($product['production_methods_enabled'] ?? false)
+            ? ($product['production_speeds'] ?? [
+                ['id' => 'standard', 'label' => 'Standard Production', 'description' => 'Standard schedule', 'price_delta' => 0, 'minimum_quantity' => 1, 'maximum_quantity' => null, 'minimum_days' => 14, 'maximum_days' => 18],
+            ])
+            : [];
         $product['price_table'] = $product['price_table'] ?? [
             'headers' => ['Quantity', 'Product Price', 'Shipping', 'Estimated Each', 'Order Total'],
             'rows' => collect($product['price_tiers'])->map(fn ($tier) => [$tier['quantity'], $tier['product_price'], $tier['shipping'], $tier['estimated_each'], $tier['estimated_order_total']])->all(),

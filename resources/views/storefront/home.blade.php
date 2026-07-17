@@ -63,10 +63,6 @@
                     <x-storefront.home.use-cases :section="$section" />
                     @break
 
-                @case('support')
-                    <x-storefront.home.support :section="$section" />
-                    @break
-
                 @case('testimonials')
                     <x-storefront.home.testimonials :section="$section" />
                     @break

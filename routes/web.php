@@ -83,6 +83,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/newsletter-subscribers/export', [\App\Http\Controllers\Admin\NewsletterSubscriberController::class, 'export'])->name('newsletter-subscribers.export');
 
         Route::get('/media-library', [\App\Http\Controllers\Admin\MediaLibraryController::class, 'index'])->name('media-library.index');
+        Route::get('/media-library/upload', [\App\Http\Controllers\Admin\MediaLibraryController::class, 'upload'])->name('media-library.upload');
         Route::post('/media-library', [\App\Http\Controllers\Admin\MediaLibraryController::class, 'store'])
             ->middleware('throttle:30,1')
             ->name('media-library.store');
@@ -161,6 +162,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('coupons', \App\Http\Controllers\Admin\CouponController::class)->except('show');
         Route::resource('rural-area-surcharges', \App\Http\Controllers\Admin\RuralAreaSurchargeController::class)
             ->parameters(['rural-area-surcharges' => 'ruralAreaSurcharge'])
+            ->except('show');
+        Route::resource('production-methods', \App\Http\Controllers\Admin\ProductionMethodController::class)
+            ->parameters(['production-methods' => 'productionMethod'])
             ->except('show');
         Route::resource('shipping-methods', \App\Http\Controllers\Admin\ShippingMethodController::class)
             ->parameters(['shipping-methods' => 'shippingMethod'])

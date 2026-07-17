@@ -23,11 +23,12 @@
                 </div>
             </div>
 
-            @if (session('status'))
-                <div class="mb-5 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-bold text-green-800">
-                    {{ session('status') }}
-                </div>
-            @endif
+            <div
+                class="mb-5 {{ session('status') ? '' : 'hidden' }} rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-bold text-green-800"
+                data-cart-page-feedback
+            >
+                {{ session('status') }}
+            </div>
 
             @if ($errors->any())
                 <div class="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">
@@ -57,7 +58,7 @@
                 </div>
             @else
                 <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_380px]">
-                    <div class="grid gap-4">
+                    <div class="grid gap-4" data-cart-items-list>
                         @foreach ($cart['items'] as $item)
                             <x-storefront.cart.item-card :item="$item" />
                         @endforeach
@@ -88,4 +89,130 @@
             </div>
         </div>
     </section>
+
+
+    @if (! $cart['is_preview'])
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+                const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                const feedback = document.querySelector('[data-cart-page-feedback]');
+
+                const showCartFeedback = (message, type = 'success') => {
+                    if (!feedback) return;
+                    feedback.textContent = message || '';
+                    feedback.classList.toggle('hidden', !message);
+                    feedback.classList.toggle('border-green-200', type === 'success');
+                    feedback.classList.toggle('bg-green-50', type === 'success');
+                    feedback.classList.toggle('text-green-800', type === 'success');
+                    feedback.classList.toggle('border-red-200', type !== 'success');
+                    feedback.classList.toggle('bg-red-50', type !== 'success');
+                    feedback.classList.toggle('text-red-800', type !== 'success');
+                };
+
+                const refreshSummary = (cart) => {
+                    if (!cart) return;
+
+                    document.querySelectorAll('[data-cart-summary-root]').forEach((root) => {
+                        root.querySelectorAll('[data-cart-money]').forEach((node) => {
+                            const key = node.getAttribute('data-cart-money');
+                            const prefix = node.getAttribute('data-cart-money-prefix') || '';
+                            const value = Number(cart[key] || 0);
+                            node.textContent = `${prefix}${money.format(value)}`;
+                        });
+
+                        const quantityNode = root.querySelector('[data-cart-quantity]');
+                        if (quantityNode) {
+                            const quantity = Number(cart.quantity || 0);
+                            quantityNode.textContent = `${quantity} item${quantity === 1 ? '' : 's'}`;
+                        }
+
+                        const pill = root.querySelector('[data-coupon-pill]');
+                        const couponCode = root.querySelector('[data-coupon-code]');
+                        if (pill) pill.classList.toggle('hidden', !cart.coupon_code);
+                        if (couponCode) couponCode.textContent = cart.coupon_code || '';
+
+                        const checkoutLink = root.querySelector('[data-checkout-link]');
+                        if (checkoutLink) {
+                            checkoutLink.classList.toggle('pointer-events-none', !cart.checkout_ready);
+                            checkoutLink.classList.toggle('opacity-50', !cart.checkout_ready);
+                        }
+                    });
+
+                    document.querySelectorAll('.storefront-cart-count-badge').forEach((node) => {
+                        const quantity = Number(cart.quantity || 0);
+                        node.textContent = quantity > 99 ? '99+' : String(quantity);
+                        node.classList.toggle('hidden', quantity <= 0);
+                    });
+                };
+
+                const setCardBusy = (card, busy) => {
+                    if (!card) return;
+                    card.classList.toggle('is-updating', busy);
+                    card.querySelectorAll('[data-cart-quantity-button]').forEach((button) => {
+                        button.disabled = busy || button.hasAttribute('data-originally-disabled');
+                    });
+                };
+
+                document.querySelectorAll('[data-cart-quantity-button]:disabled').forEach((button) => {
+                    button.setAttribute('data-originally-disabled', '1');
+                });
+
+                document.addEventListener('submit', async (event) => {
+                    const form = event.target.closest('[data-cart-quantity-form]');
+                    if (!form) return;
+
+                    event.preventDefault();
+
+                    const card = form.closest('[data-cart-item-card]');
+                    if (!card || card.classList.contains('is-updating')) return;
+
+                    setCardBusy(card, true);
+                    showCartFeedback('', 'success');
+
+                    try {
+                        const response = await fetch(form.action, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': csrf,
+                            },
+                            body: new FormData(form),
+                        });
+                        const payload = await response.json().catch(() => ({}));
+
+                        if (!response.ok) {
+                            const message = payload.message
+                                || Object.values(payload.errors || {})?.[0]?.[0]
+                                || 'Unable to update the cart quantity.';
+                            throw new Error(message);
+                        }
+
+                        refreshSummary(payload.cart);
+
+                        if (payload.item_html) {
+                            const wrapper = document.createElement('div');
+                            wrapper.innerHTML = payload.item_html.trim();
+                            const updatedCard = wrapper.firstElementChild;
+                            if (updatedCard) {
+                                card.replaceWith(updatedCard);
+                                updatedCard.classList.add('cart-item-card-updated');
+                                setTimeout(() => updatedCard.classList.remove('cart-item-card-updated'), 700);
+                                updatedCard.querySelectorAll('[data-cart-quantity-button]:disabled').forEach((button) => {
+                                    button.setAttribute('data-originally-disabled', '1');
+                                });
+                            }
+                        }
+
+                        showCartFeedback(payload.message || 'Cart quantity updated.', 'success');
+                    } catch (error) {
+                        showCartFeedback(error.message || 'Unable to update the cart quantity.', 'error');
+                        setCardBusy(card, false);
+                    }
+                });
+            });
+        </script>
+    @endif
+
 </x-layouts.storefront>

@@ -324,12 +324,12 @@ window.productBuilder = (config = {}) => ({
         const minimum = Math.max(0, Number(selected?.minimum_days || 0));
         const maximum = Math.max(minimum, Number(selected?.maximum_days ?? minimum));
         if (customTime && minimum === 0 && maximum === 0) return customTime;
-        return this.dayRangeLabel(minimum, maximum, 'days');
+        return this.dayRangeLabel(minimum, maximum, 'working days');
     },
 
     shippingDaysOnlyLabel(method = null) {
         const selected = method || (config.shipping_methods || []).find(item => item.id === this.shippingMethod);
-        return this.dayRangeLabel(selected?.minimum_days, selected?.maximum_days, 'days');
+        return this.dayRangeLabel(selected?.minimum_days, selected?.maximum_days, 'working days');
     },
 
     totalDeliveryDaysLabel(method = null) {
