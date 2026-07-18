@@ -41,6 +41,32 @@
                     $mobileImage = $slide['mobile_image'] ?? $desktopImage;
                     $imageAlt = $slide['alt'] ?? 'Homepage banner';
                     $imagePosition = str_replace('-', ' ', $slide['image_focal_position'] ?? 'center');
+                    $isEnabled = static fn (string $key): bool => filter_var($slide[$key] ?? false, FILTER_VALIDATE_BOOLEAN);
+                    $showContent = $isEnabled('show_content');
+                    $showEyebrow = $isEnabled('show_eyebrow');
+                    $showTitle = $isEnabled('show_title');
+                    $showDescription = $isEnabled('show_description');
+                    $showPrimaryButton = $isEnabled('show_primary_button');
+                    $showSecondaryButton = $isEnabled('show_secondary_button');
+                    $eyebrow = trim((string) ($slide['eyebrow'] ?? ''));
+                    $title = trim((string) ($slide['title'] ?? ''));
+                    $description = trim((string) ($slide['description'] ?? ''));
+                    $primaryLabel = trim((string) ($slide['primary_label'] ?? ''));
+                    $secondaryLabel = trim((string) ($slide['secondary_label'] ?? ''));
+                    $primaryUrl = $slide['primary_url'] ?? '#';
+                    $secondaryUrl = $slide['secondary_url'] ?? '#';
+                    $primaryTarget = $slide['primary_target'] ?? '_self';
+                    $secondaryTarget = $slide['secondary_target'] ?? '_self';
+                    $contentPosition = $slide['content_position'] ?? 'left';
+                    $textAlignment = $slide['text_alignment'] ?? 'left';
+                    $textTheme = $slide['text_theme'] ?? 'light';
+                    $hasVisibleContent = $showContent && (
+                        ($showEyebrow && filled($eyebrow))
+                        || ($showTitle && filled($title))
+                        || ($showDescription && filled($description))
+                        || ($showPrimaryButton && filled($primaryLabel))
+                        || ($showSecondaryButton && filled($secondaryLabel))
+                    );
                 @endphp
                 <picture>
                     <source media="(max-width: 767px)" srcset="{{ $mobileImage }}" sizes="100vw">
@@ -56,41 +82,41 @@
                         height="960"
                     >
                 </picture>
-                <div class="promo-overlay" style="background: {{ $slide['overlay_rgba'] }}"></div>
+                @if($hasVisibleContent)
+                    <div class="promo-overlay" style="background: {{ $slide['overlay_rgba'] ?? 'rgba(13,37,69,.72)' }}"></div>
 
-                @if($slide['show_content'])
                     <div class="promo-content">
-                        <div class="promo-copy position-{{ $slide['content_position'] }} align-{{ $slide['text_alignment'] }} theme-{{ $slide['text_theme'] }}">
-                            @if($slide['show_eyebrow'] && $slide['eyebrow'] !== '')
-                                <span class="promo-eyebrow">{{ $slide['eyebrow'] }}</span>
+                        <div class="promo-copy position-{{ $contentPosition }} align-{{ $textAlignment }} theme-{{ $textTheme }}">
+                            @if($showEyebrow && filled($eyebrow))
+                                <span class="promo-eyebrow">{{ $eyebrow }}</span>
                             @endif
 
-                            @if($slide['show_title'] && $slide['title'] !== '')
-                                <h1>{{ $slide['title'] }}</h1>
+                            @if($showTitle && filled($title))
+                                <h1>{{ $title }}</h1>
                             @endif
 
-                            @if($slide['show_description'] && $slide['description'] !== '')
-                                <p>{{ $slide['description'] }}</p>
+                            @if($showDescription && filled($description))
+                                <p>{{ $description }}</p>
                             @endif
 
-                            @if(($slide['show_primary_button'] && $slide['primary_label'] !== '') || ($slide['show_secondary_button'] && $slide['secondary_label'] !== ''))
+                            @if(($showPrimaryButton && filled($primaryLabel)) || ($showSecondaryButton && filled($secondaryLabel)))
                                 <div class="promo-actions">
-                                    @if($slide['show_primary_button'] && $slide['primary_label'] !== '')
+                                    @if($showPrimaryButton && filled($primaryLabel))
                                         <a
-                                            href="{{ $slide['primary_url'] }}"
-                                            target="{{ $slide['primary_target'] }}"
-                                            @if($slide['primary_target'] === '_blank') rel="noopener noreferrer" @endif
+                                            href="{{ $primaryUrl }}"
+                                            target="{{ $primaryTarget }}"
+                                            @if($primaryTarget === '_blank') rel="noopener noreferrer" @endif
                                             class="btn btn-red"
-                                        >{{ $slide['primary_label'] }}</a>
+                                        >{{ $primaryLabel }}</a>
                                     @endif
 
-                                    @if($slide['show_secondary_button'] && $slide['secondary_label'] !== '')
+                                    @if($showSecondaryButton && filled($secondaryLabel))
                                         <a
-                                            href="{{ $slide['secondary_url'] }}"
-                                            target="{{ $slide['secondary_target'] }}"
-                                            @if($slide['secondary_target'] === '_blank') rel="noopener noreferrer" @endif
+                                            href="{{ $secondaryUrl }}"
+                                            target="{{ $secondaryTarget }}"
+                                            @if($secondaryTarget === '_blank') rel="noopener noreferrer" @endif
                                             class="btn btn-white"
-                                        >{{ $slide['secondary_label'] }}</a>
+                                        >{{ $secondaryLabel }}</a>
                                     @endif
                                 </div>
                             @endif

@@ -17,27 +17,6 @@
 
     $selectedCount = count($selectedCategoryIds);
 
-    $iconForCategory = function (string $label): string {
-        $name = strtolower($label);
-
-        if (str_contains($name, 'bag')) {
-            return '<path d="M6 8h12l-1 11H7L6 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>';
-        }
-
-        if (str_contains($name, 'accessor') || str_contains($name, 'gear')) {
-            return '<path d="M5 9h14v10H5z"/><path d="M8 9V7a4 4 0 0 1 8 0v2"/>';
-        }
-
-        if (str_contains($name, 'sport') || str_contains($name, 'event')) {
-            return '<path d="M4 5l8 4l8-4v12l-8 4l-8-4V5Z"/><path d="M12 9v12"/><path d="M4 5l8 4l8-4"/>';
-        }
-
-        if (str_contains($name, 'cap') || str_contains($name, 'head')) {
-            return '<path d="M4 15c0-4.5 3.5-8 8-8s8 3.5 8 8"/><path d="M2 15h20"/><path d="M12 7V4"/>';
-        }
-
-        return '<path d="M9 4h6l3 3l-2 2v11H8V9L6 7l3-3Z"/><path d="M9 4c.7 1.2 1.7 1.8 3 1.8S14.3 5.2 15 4"/>';
-    };
 @endphp
 
 @once
@@ -187,11 +166,11 @@
         }
 
         .np-category-summary {
-            display: flex;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
             align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            min-height: 52px;
+            gap: 12px;
+            min-height: 54px;
             cursor: pointer;
             list-style: none;
             padding: 10px 0;
@@ -208,13 +187,14 @@
         }
 
         .np-parent-filter-option {
-            display: flex;
+            display: grid;
+            grid-template-columns: 24px minmax(0, 1fr) 20px;
             align-items: center;
-            gap: 9px;
+            column-gap: 10px;
             min-width: 0;
-            flex: 1 1 auto;
+            width: 100%;
             border-radius: 12px;
-            padding: 7px 8px;
+            padding: 8px 8px;
             transition: background .15s ease, color .15s ease;
         }
 
@@ -227,15 +207,18 @@
             flex: 0 0 auto;
             align-items: center;
             justify-content: center;
-            width: 22px;
-            height: 22px;
+            width: 24px;
+            height: 24px;
             color: #111827;
             transition: color .15s ease, transform .15s ease;
         }
 
-        .np-category-icon svg {
+        .np-category-icon svg,
+        .np-category-icon img {
+            display: block;
             width: 21px;
             height: 21px;
+            object-fit: contain;
         }
 
         .np-filter-checkbox {
@@ -248,18 +231,22 @@
 
         .np-parent-title {
             min-width: 0;
-            color: #111827;
-            font-size: 15px;
-            font-weight: 900;
-            line-height: 1.25;
+            color: #0f172a;
+            font-family: inherit;
+            font-size: .94rem;
+            font-weight: 650;
+            letter-spacing: -.01em;
+            line-height: 1.35;
             overflow-wrap: anywhere;
         }
 
         .np-parent-meta {
             display: inline-flex;
             align-items: center;
+            justify-content: flex-end;
             gap: 8px;
             flex: 0 0 auto;
+            min-width: max-content;
         }
 
         .np-count-pill {
@@ -292,19 +279,19 @@
         .np-child-list {
             display: flex;
             flex-direction: column;
-            gap: 2px;
-            margin: 0 0 12px 34px;
+            gap: 3px;
+            margin: 2px 0 14px 42px;
         }
 
         .np-child-filter-option {
-            display: flex;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
             align-items: center;
-            justify-content: space-between;
-            gap: 10px;
+            gap: 12px;
             min-height: 36px;
             border: 1px solid transparent;
             border-radius: 11px;
-            color: #687386;
+            color: #64748b;
             padding: 6px 8px;
             transition: background .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
         }
@@ -316,9 +303,11 @@
 
         .np-child-name {
             min-width: 0;
-            font-size: 14px;
-            font-weight: 700;
-            line-height: 1.3;
+            font-family: inherit;
+            font-size: .82rem;
+            font-weight: 500;
+            letter-spacing: 0;
+            line-height: 1.55;
             overflow-wrap: anywhere;
         }
 
@@ -484,7 +473,7 @@
             }
 
             .np-child-list {
-                margin-left: 30px;
+                margin-left: 34px;
             }
 
         }
@@ -563,7 +552,7 @@
                                         data-np-category-checkbox
                                     >
                                     <span class="np-category-icon" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{!! $iconForCategory((string) ($parent['label'] ?? '')) !!}</svg>
+                                        <x-storefront.category-icon :label="$parent['label'] ?? ''" :icon-url="$parent['icon_url'] ?? null" />
                                     </span>
                                     <span class="np-parent-title">{{ $parent['label'] }}</span>
                                     <span class="np-selected-mark" aria-hidden="true">

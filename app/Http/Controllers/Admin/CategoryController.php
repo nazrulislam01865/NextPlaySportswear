@@ -46,7 +46,7 @@ class CategoryController extends Controller
             ->select([
                 'id', 'parent_id', 'name', 'menu_label', 'slug', 'category_type', 'page_template',
                 'status', 'depth', 'tree_path', 'is_active', 'is_visible_in_catalog', 'is_visible_in_menu',
-                'is_featured', 'sort_order', 'updated_at', 'updated_by',
+                'is_featured', 'icon_path', 'icon_url', 'icon_alt', 'sort_order', 'updated_at', 'updated_by',
             ])
             ->with(['parent:id,name', 'updater:id,name'])
             ->withCount(['children', 'products']);
@@ -285,7 +285,7 @@ class CategoryController extends Controller
         $payload = Arr::only($data, [
             'parent_id', 'name', 'menu_label', 'slug', 'category_type', 'page_template', 'status',
             'eyebrow', 'short_title', 'short_description', 'best_for', 'cta_label', 'icon', 'sort_order',
-            'published_at', 'default_product_sort', 'image_alt', 'thumbnail_alt', 'banner_alt',
+            'published_at', 'default_product_sort', 'image_alt', 'thumbnail_alt', 'icon_alt', 'banner_alt',
             'mobile_banner_alt', 'is_visible_in_catalog', 'is_visible_in_menu', 'is_featured',
             'show_product_count', 'include_descendant_products', 'meta_title', 'meta_description',
             'meta_keywords', 'canonical_url', 'og_title', 'og_description', 'robots_index', 'robots_follow',
@@ -303,6 +303,9 @@ class CategoryController extends Controller
         $payload['image_url'] = $category?->image_url ?? (string) ($data['image_url'] ?? '');
         $payload['image_alt'] = filled($data['image_alt'] ?? null) ? $data['image_alt'] : $data['name'];
         $payload['thumbnail_alt'] = filled($data['thumbnail_alt'] ?? null) ? $data['thumbnail_alt'] : $data['name'];
+        $payload['icon_alt'] = empty($payload['parent_id'])
+            ? (filled($data['icon_alt'] ?? null) ? $data['icon_alt'] : $data['name'].' icon')
+            : null;
         $payload['highlights'] = collect(preg_split('/\r\n|\r|\n/', (string) ($data['highlights_text'] ?? '')))
             ->map(fn ($value) => trim((string) $value))->filter()->values()->all();
         if (array_key_exists('schema_json_text', $data)) {

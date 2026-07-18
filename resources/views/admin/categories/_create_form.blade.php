@@ -1,6 +1,7 @@
 @php
     $initialName = old('name', '');
     $initialPreview = null;
+    $initialIconPreview = $category->iconUrl();
     $initialParentId = (string) old('parent_id', $category->parent_id ?? '');
     $initialIsFeatured = filter_var(old('is_featured', false), FILTER_VALIDATE_BOOLEAN);
 @endphp
@@ -10,7 +11,7 @@
     enctype="multipart/form-data"
     action="{{ route('admin.categories.store') }}"
     class="space-y-6"
-    x-data="categoryCreateForm(@js(['name' => $initialName, 'preview' => $initialPreview, 'parentId' => $initialParentId, 'isFeatured' => $initialIsFeatured]))"
+    x-data="categoryCreateForm(@js(['name' => $initialName, 'preview' => $initialPreview, 'iconPreview' => $initialIconPreview, 'parentId' => $initialParentId, 'isFeatured' => $initialIsFeatured]))"
 >
     @csrf
 
@@ -135,6 +136,60 @@
                     </div>
                 </div>
             </x-admin.section-card>
+
+            <div x-show="parentId === ''" x-transition>
+            <x-admin.section-card
+                title="Parent Category Icon"
+                description="Set the small image icon used with top-level parent categories in storefront filters and the Shop Products menu."
+            >
+                <div class="grid gap-5 md:grid-cols-[104px_minmax(0,1fr)] md:items-start">
+                    <div class="grid h-24 w-24 place-items-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <template x-if="iconPreview">
+                            <img :src="iconPreview" alt="Selected parent category icon preview" class="h-full w-full object-contain">
+                        </template>
+                        <template x-if="!iconPreview">
+                            <div class="text-center text-xs font-bold text-slate-400">Icon preview</div>
+                        </template>
+                    </div>
+
+                    <div class="space-y-4">
+                        <label class="admin-label">
+                            Upload parent category icon
+                            <input
+                                class="admin-input py-3"
+                                type="file"
+                                name="icon_file"
+                                accept="image/jpeg,image/png,image/webp,image/avif"
+                                x-on:change="previewIcon($event)"
+                            >
+                            <small class="font-normal text-slate-500">PNG, JPG, WebP, or AVIF. If no icon is uploaded, the default icon will be shown automatically.</small>
+                        </label>
+
+                        <label class="admin-label">
+                            Icon alt text <span class="font-normal text-slate-400">(optional)</span>
+                            <input
+                                class="admin-input"
+                                name="icon_alt"
+                                value="{{ old('icon_alt') }}"
+                                maxlength="255"
+                                placeholder="Describe the parent category icon"
+                            >
+                        </label>
+
+                        <label class="admin-label">
+                            Icon image URL <span class="font-normal text-slate-400">(optional)</span>
+                            <input
+                                class="admin-input"
+                                name="icon_url"
+                                value="{{ old('icon_url') }}"
+                                maxlength="2048"
+                                placeholder="https://example.com/icon.svg"
+                            >
+                        </label>
+                    </div>
+                </div>
+            </x-admin.section-card>
+            </div>
         </div>
 
         <aside class="space-y-6 xl:sticky xl:top-24">
@@ -207,6 +262,7 @@ function categoryCreateForm(initial) {
         name: initial.name || '',
         slug: '',
         preview: initial.preview || null,
+        iconPreview: initial.iconPreview || null,
         parentId: initial.parentId || '',
         isFeatured: Boolean(initial.isFeatured),
         init() {
@@ -231,6 +287,16 @@ function categoryCreateForm(initial) {
                 URL.revokeObjectURL(this.preview);
             }
             this.preview = URL.createObjectURL(file);
+        },
+        previewIcon(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) {
+                return;
+            }
+            if (this.iconPreview && this.iconPreview.startsWith('blob:')) {
+                URL.revokeObjectURL(this.iconPreview);
+            }
+            this.iconPreview = URL.createObjectURL(file);
         },
     };
 }

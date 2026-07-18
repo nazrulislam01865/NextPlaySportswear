@@ -4,6 +4,7 @@
     $initialParentId = (string) old('parent_id', $category->parent_id ?? '');
     $initialIsFeatured = filter_var(old('is_featured', $category->is_featured ?? false), FILTER_VALIDATE_BOOLEAN);
     $initialPreview = $category->thumbnailUrl();
+    $initialIconPreview = $category->iconUrl();
 @endphp
 
 <form
@@ -15,6 +16,7 @@
         'name' => old('name', $category->name),
         'slug' => old('slug', $category->slug),
         'preview' => $initialPreview,
+        'iconPreview' => $initialIconPreview,
         'parentId' => $initialParentId,
         'isFeatured' => $initialIsFeatured,
     ]))"
@@ -220,6 +222,72 @@
                     </div>
                 </div>
             </x-admin.section-card>
+
+            <div x-show="parentId === ''" x-transition>
+            <x-admin.section-card
+                title="Parent Category Icon"
+                description="Upload a small image icon for top-level parent categories. This icon is used in storefront filters and the Shop Products menu."
+            >
+                <div class="grid gap-5 md:grid-cols-[104px_minmax(0,1fr)] md:items-start">
+                    <div class="grid h-24 w-24 place-items-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <template x-if="iconPreview">
+                            <img :src="iconPreview" alt="Selected parent category icon preview" class="h-full w-full object-contain">
+                        </template>
+                        <template x-if="!iconPreview">
+                            <div class="text-center text-xs font-bold text-slate-400">Icon preview</div>
+                        </template>
+                    </div>
+
+                    <div class="space-y-4">
+                        <label class="admin-label">
+                            Upload parent category icon
+                            <input
+                                class="admin-input py-3"
+                                type="file"
+                                name="icon_file"
+                                accept="image/jpeg,image/png,image/webp,image/avif"
+                                x-on:change="previewIcon($event)"
+                            >
+                            <small class="font-normal text-slate-500">PNG, JPG, WebP, or AVIF. Transparent square icons work best. If empty, the default icon is shown automatically.</small>
+                        </label>
+
+                        <label class="admin-label">
+                            Icon alt text <span class="font-normal text-slate-400">(optional)</span>
+                            <input
+                                class="admin-input"
+                                name="icon_alt"
+                                value="{{ old('icon_alt', $category->icon_alt) }}"
+                                maxlength="255"
+                                placeholder="Describe the parent category icon"
+                            >
+                        </label>
+
+                        <label class="admin-label">
+                            Icon image URL <span class="font-normal text-slate-400">(optional)</span>
+                            <input
+                                class="admin-input"
+                                name="icon_url"
+                                value="{{ old('icon_url', $category->icon_url) }}"
+                                maxlength="2048"
+                                placeholder="https://example.com/icon.svg"
+                            >
+                            <small class="font-normal text-slate-500">Uploading a file is recommended. URL is optional for externally hosted icons.</small>
+                        </label>
+
+                        @if($isEdit && ($category->icon_path || $category->icon_url))
+                            <label class="flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 p-4 text-sm">
+                                <input type="hidden" name="remove_icon" value="0">
+                                <input class="mt-1" type="checkbox" name="remove_icon" value="1">
+                                <span>
+                                    <strong class="block text-red-800">Remove current icon</strong>
+                                    <small class="mt-1 block leading-5 text-red-700">The default category icon will be used after saving.</small>
+                                </span>
+                            </label>
+                        @endif
+                    </div>
+                </div>
+            </x-admin.section-card>
+            </div>
 
             <x-admin.section-card
                 id="display"
@@ -493,6 +561,7 @@ function categoryAdminForm(initial) {
         name: initial.name || '',
         slug: initial.slug || '',
         preview: initial.preview || null,
+        iconPreview: initial.iconPreview || null,
         parentId: initial.parentId || '',
         isFeatured: Boolean(initial.isFeatured),
         init() {
@@ -514,6 +583,14 @@ function categoryAdminForm(initial) {
                 URL.revokeObjectURL(this.preview);
             }
             this.preview = URL.createObjectURL(file);
+        },
+        previewIcon(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            if (this.iconPreview && this.iconPreview.startsWith('blob:')) {
+                URL.revokeObjectURL(this.iconPreview);
+            }
+            this.iconPreview = URL.createObjectURL(file);
         },
     };
 }

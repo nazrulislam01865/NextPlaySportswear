@@ -155,6 +155,7 @@ class CategoryCatalogService
             'meta_title' => $category->meta_title,
             'meta_description' => $category->meta_description ?: $category->short_description ?: $category->description,
             'image' => $category->thumbnailUrl(),
+            'icon' => $category->iconUrl(),
             'banner' => $category->bannerUrl(),
             'mobile_banner' => $category->bannerUrl(true),
             'alt' => $category->thumbnail_alt ?: $category->image_alt ?: $category->name,

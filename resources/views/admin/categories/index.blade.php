@@ -262,9 +262,11 @@
                                         @if($category->depth > 0)
                                             <span class="category-branch-mark" aria-hidden="true">↳</span>
                                         @endif
-                                        <span class="category-folder-icon" aria-hidden="true">
-                                            <svg viewBox="0 0 24 24" fill="none"><path d="M3.5 7.5a2 2 0 0 1 2-2h4.2l1.9 2H18.5a2 2 0 0 1 2 2v7.2a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2V7.5Z" fill="currentColor" /></svg>
-                                        </span>
+                                        @if($category->parent_id === null)
+                                            <span class="category-folder-icon" aria-hidden="true">
+                                                <img src="{{ $category->iconUrl() }}" alt="" loading="lazy">
+                                            </span>
+                                        @endif
                                         <div class="min-w-0">
                                             <div class="flex min-w-0 flex-wrap items-center gap-2">
                                                 <strong class="truncate text-brand-ink">{{ $category->name }}</strong>

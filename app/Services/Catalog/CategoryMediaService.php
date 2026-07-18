@@ -11,6 +11,7 @@ class CategoryMediaService
     private const FIELDS = [
         'image' => ['path' => 'image_path', 'url' => 'image_url'],
         'thumbnail' => ['path' => 'thumbnail_path', 'url' => 'thumbnail_url'],
+        'icon' => ['path' => 'icon_path', 'url' => 'icon_url'],
         'banner' => ['path' => 'banner_path', 'url' => 'banner_url'],
         'mobile_banner' => ['path' => 'mobile_banner_path', 'url' => 'mobile_banner_url'],
         'og_image' => ['path' => 'og_image_path', 'url' => 'og_image_url'],
@@ -21,6 +22,14 @@ class CategoryMediaService
         foreach (self::FIELDS as $input => $columns) {
             $pathColumn = $columns['path'];
             $urlColumn = $columns['url'];
+
+            if ($input === 'icon' && $category->parent_id !== null) {
+                $this->deletePath($category->{$pathColumn});
+                $category->{$pathColumn} = null;
+                $category->{$urlColumn} = null;
+                continue;
+            }
+
             $uploaded = $request->file($input.'_file');
             $url = trim((string) $request->input($input.'_url', ''));
             $remove = $request->boolean('remove_'.$input);

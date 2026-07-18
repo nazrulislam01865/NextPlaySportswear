@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\CategoryIconDefaults;
 use App\Support\PublicMedia;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'parent_id', 'name', 'menu_label', 'slug', 'display_type', 'category_type', 'page_template', 'status',
     'depth', 'tree_path', 'eyebrow', 'short_title', 'description', 'short_description', 'description_html',
     'best_for', 'image_url', 'image_path', 'image_alt', 'thumbnail_path', 'thumbnail_url', 'thumbnail_alt',
-    'banner_path', 'banner_url', 'banner_alt', 'mobile_banner_path', 'mobile_banner_url', 'mobile_banner_alt',
+    'icon_path', 'icon_url', 'icon_alt', 'banner_path', 'banner_url', 'banner_alt', 'mobile_banner_path', 'mobile_banner_url', 'mobile_banner_alt',
     'icon', 'cta_label', 'meta_title', 'meta_description', 'meta_keywords', 'canonical_url', 'og_title',
     'og_description', 'og_image_path', 'og_image_url', 'robots_index', 'robots_follow', 'schema_json',
     'match_rules', 'highlights', 'is_active', 'is_visible_in_catalog', 'is_visible_in_menu', 'is_featured',
@@ -199,6 +200,30 @@ class Category extends Model
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+
+    public function uploadedIconUrl(): ?string
+    {
+        return $this->mediaUrl($this->icon_path, $this->icon_url);
+    }
+
+    public function defaultIconUrl(): ?string
+    {
+        if ($this->parent_id !== null) {
+            return null;
+        }
+
+        return CategoryIconDefaults::url($this->displayLabel());
+    }
+
+    public function iconUrl(): ?string
+    {
+        if ($this->parent_id !== null) {
+            return null;
+        }
+
+        return $this->uploadedIconUrl() ?: $this->defaultIconUrl();
     }
 
     public function thumbnailUrl(): string

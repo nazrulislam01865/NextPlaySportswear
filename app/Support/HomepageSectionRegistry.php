@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
 
 final class HomepageSectionRegistry
 {
-    private const RETIRED_KEYS = ['customization_options', 'support'];
+    private const RETIRED_KEYS = ['customization_options', 'support', 'final_cta'];
 
     /** @return array<int, string> */
     public static function retiredKeys(): array
@@ -216,7 +216,7 @@ final class HomepageSectionRegistry
                 'key' => 'shop_by_sport',
                 'name' => 'Shop by Sport',
                 'component' => 'shop_by_sport',
-                'sort_order' => 110,
+                'sort_order' => 15,
                 'eyebrow' => 'Find your sport',
                 'title' => 'Shop by Sport',
                 'description' => 'Choose sport categories, subcategories, or sub-subcategories from the admin catalog, or let this section load automatically.',
@@ -303,25 +303,6 @@ final class HomepageSectionRegistry
                 'fields' => ['text', 'items'],
                 'item_label' => 'Questions',
                 'item_fields' => ['title', 'description'],
-            ],
-            [
-                'key' => 'final_cta',
-                'name' => 'Final CTA',
-                'component' => 'final_cta',
-                'sort_order' => 180,
-                'title' => 'Ready to Build Your Team Gear?',
-                'description' => 'Start with a product or send us your order details for a custom quote.',
-                'primary_label' => 'Shop Now',
-                'primary_url' => '#products',
-                'secondary_label' => 'Request Bulk Quote',
-                'secondary_url' => '#bulk',
-                'items' => [
-                    ['title' => 'Email: [Insert email]'],
-                    ['title' => 'WhatsApp: [Insert WhatsApp number]'],
-                ],
-                'fields' => ['text', 'buttons', 'items'],
-                'item_label' => 'Contact Lines',
-                'item_fields' => ['title'],
             ],
         ];
 

@@ -38,8 +38,15 @@
                             href="{{ $child->resolvedUrl() }}"
                             target="{{ $child->target }}"
                             @if($child->target === '_blank') rel="noopener noreferrer" @endif
-                            class="np-mega-title"
-                        >{{ $child->label }}</a>
+                            class="np-mega-title {{ $isShopMega ? 'np-mega-title-with-icon' : '' }}"
+                        >
+                            @if($isShopMega)
+                                <span class="np-mega-category-icon" aria-hidden="true">
+                                    <x-storefront.category-icon :label="$child->label" :icon-url="$child->icon_url" />
+                                </span>
+                            @endif
+                            <span>{{ $child->label }}</span>
+                        </a>
 
                         @if($child->childrenRecursive->isNotEmpty())
                             <div class="np-mega-sublist">

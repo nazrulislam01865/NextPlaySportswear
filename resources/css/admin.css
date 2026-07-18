@@ -733,11 +733,12 @@
     }
 
     .category-folder-icon {
-        @apply mt-0.5 grid h-5 w-5 shrink-0 place-items-center text-brand-blue;
+        @apply mt-0.5 grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-white p-1 text-brand-blue;
     }
 
-    .category-folder-icon svg {
-        @apply h-5 w-5;
+    .category-folder-icon svg,
+    .category-folder-icon img {
+        @apply h-full w-full object-contain;
     }
 
     .category-item-actions {

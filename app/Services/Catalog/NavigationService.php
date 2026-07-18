@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Cache;
 
 class NavigationService
 {
-    private const CACHE_VERSION = 'v4';
+    private const CACHE_VERSION = 'v7';
 
     /** @var array<string, Collection<int, NavigationItem>> */
     private array $runtimeItems = [];
@@ -186,6 +186,7 @@ class NavigationService
             'label' => 'Shop Products',
             'link_type' => 'route',
             'category_slug' => null,
+            'icon_url' => null,
             'route_name' => 'categories.index',
             'url' => null,
             'target' => '_self',
@@ -227,6 +228,7 @@ class NavigationService
                 'label' => 'Home',
                 'link_type' => 'route',
                 'category_slug' => null,
+                'icon_url' => null,
                 'route_name' => 'home',
                 'url' => null,
                 'target' => '_self',
@@ -273,6 +275,7 @@ class NavigationService
                 'label' => 'Home',
                 'link_type' => 'route',
                 'category_slug' => null,
+                'icon_url' => null,
                 'route_name' => 'home',
                 'url' => null,
                 'target' => '_self',
@@ -283,6 +286,7 @@ class NavigationService
                 'label' => 'Shop Products',
                 'link_type' => 'route',
                 'category_slug' => null,
+                'icon_url' => null,
                 'route_name' => 'categories.index',
                 'url' => null,
                 'target' => '_self',
@@ -293,6 +297,7 @@ class NavigationService
                 'label' => 'All Products',
                 'link_type' => 'route',
                 'category_slug' => null,
+                'icon_url' => null,
                 'route_name' => 'products.index',
                 'url' => null,
                 'target' => '_self',
@@ -303,6 +308,7 @@ class NavigationService
                 'label' => 'Bulk Quote',
                 'link_type' => 'route',
                 'category_slug' => null,
+                'icon_url' => null,
                 'route_name' => 'quote.request',
                 'url' => null,
                 'target' => '_self',
@@ -319,7 +325,7 @@ class NavigationService
         $categories = Category::query()
             ->storefrontReachable(menuOnly: true)
             ->ordered()
-            ->get(['id', 'parent_id', 'name', 'menu_label', 'slug']);
+            ->get(['id', 'parent_id', 'name', 'menu_label', 'slug', 'icon_path', 'icon_url', 'icon_alt']);
 
         $byParent = $categories->groupBy(fn (Category $category): int => (int) ($category->parent_id ?? 0));
         $visited = [];
@@ -344,6 +350,7 @@ class NavigationService
                         'label' => $category->displayLabel(),
                         'link_type' => 'category',
                         'category_slug' => $category->slug,
+                        'icon_url' => $depth === 0 ? $category->uploadedIconUrl() : null,
                         'route_name' => null,
                         'url' => null,
                         'target' => '_self',

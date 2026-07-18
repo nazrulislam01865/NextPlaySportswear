@@ -70,10 +70,6 @@
                 @case('faq')
                     <x-storefront.home.faq :faqs="$faqs" :section="$section" />
                     @break
-
-                @case('final_cta')
-                    <x-storefront.home.final-cta :section="$section" />
-                    @break
             @endswitch
         @endforeach
 

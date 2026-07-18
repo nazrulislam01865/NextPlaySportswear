@@ -11,7 +11,7 @@ use Illuminate\Database\QueryException;
 
 class HomepageSliderService
 {
-    private const CACHE_KEY = 'storefront.homepage-slider.v1';
+    private const CACHE_KEY = 'storefront.homepage-slider.v2';
 
     /** @var array<int, array<string, mixed>>|null */
     private ?array $runtimeSlides = null;
@@ -78,31 +78,46 @@ class HomepageSliderService
                     return null;
                 }
 
+                $showContent = (bool) $slide->show_content;
+                $eyebrow = (string) ($slide->eyebrow ?? '');
+                $title = (string) ($slide->title ?? '');
+                $description = (string) ($slide->description ?? '');
+                $primaryLabel = (string) ($slide->primary_label ?? '');
+                $secondaryLabel = (string) ($slide->secondary_label ?? '');
+                $hasVisibleContent = $showContent && (
+                    ((bool) $slide->show_eyebrow && filled($eyebrow))
+                    || ((bool) $slide->show_title && filled($title))
+                    || ((bool) $slide->show_description && filled($description))
+                    || ((bool) $slide->show_primary_button && filled($primaryLabel))
+                    || ((bool) $slide->show_secondary_button && filled($secondaryLabel))
+                );
+
                 return [
                     'id' => (int) $slide->id,
-                    'eyebrow' => (string) ($slide->eyebrow ?? ''),
-                    'title' => (string) ($slide->title ?? ''),
-                    'description' => (string) ($slide->description ?? ''),
+                    'eyebrow' => $eyebrow,
+                    'title' => $title,
+                    'description' => $description,
                     'image' => $image,
                     'mobile_image' => $mobileImage ?: $image,
                     'alt' => (string) (($slide->mobile_image_alt ?? null) ?: $slide->image_alt ?: $slide->title ?: config('storefront.name').' promotion'),
                     'image_focal_position' => $this->enumValue($slide->image_focal_position, ['center', 'top', 'bottom', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right'], 'center'),
-                    'show_content' => (bool) $slide->show_content,
+                    'show_content' => $showContent,
                     'show_eyebrow' => (bool) $slide->show_eyebrow,
                     'show_title' => (bool) $slide->show_title,
                     'show_description' => (bool) $slide->show_description,
                     'show_primary_button' => (bool) $slide->show_primary_button,
-                    'primary_label' => (string) ($slide->primary_label ?? ''),
+                    'primary_label' => $primaryLabel,
                     'primary_url' => $this->safeUrl($slide->primary_url),
                     'primary_target' => $slide->primary_target === '_blank' ? '_blank' : '_self',
                     'show_secondary_button' => (bool) $slide->show_secondary_button,
-                    'secondary_label' => (string) ($slide->secondary_label ?? ''),
+                    'secondary_label' => $secondaryLabel,
                     'secondary_url' => $this->safeUrl($slide->secondary_url),
                     'secondary_target' => $slide->secondary_target === '_blank' ? '_blank' : '_self',
                     'content_position' => $this->enumValue($slide->content_position, ['left', 'center', 'right'], 'left'),
                     'text_alignment' => $this->enumValue($slide->text_alignment, ['left', 'center', 'right'], 'left'),
                     'text_theme' => $slide->text_theme === 'dark' ? 'dark' : 'light',
                     'overlay_rgba' => $this->rgba((string) $slide->overlay_color, (int) $slide->overlay_opacity),
+                    'has_visible_content' => $hasVisibleContent,
                 ];
             })
             ->filter()
@@ -166,6 +181,7 @@ class HomepageSliderService
             'text_alignment' => 'left',
             'text_theme' => 'light',
             'overlay_rgba' => 'rgba(13,37,69,0.72)',
+            'has_visible_content' => true,
         ];
 
         return [

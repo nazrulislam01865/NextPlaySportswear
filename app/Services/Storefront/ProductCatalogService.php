@@ -191,7 +191,7 @@ class ProductCatalogService
 
         $selectedCategoryIds = $this->normalizeCategoryFilterIds($selectedCategoryIds);
         $cacheVersion = (int) Cache::get('catalog.category-facets.version', 1);
-        $cacheKey = 'catalog.products.category-filter-tree.'.$this->catalogCacheVersionSuffix();
+        $cacheKey = 'catalog.products.category-filter-tree.icon-v3.'.$this->catalogCacheVersionSuffix();
         $ttl = max(60, (int) config('catalog.facets_cache_seconds', 300));
 
         $tree = Cache::remember($cacheKey, $ttl, function (): array {
@@ -221,6 +221,7 @@ class ProductCatalogService
                         'id' => (int) $parent->id,
                         'label' => $parent->name,
                         'slug' => $parent->slug,
+                        'icon_url' => $parent->uploadedIconUrl(),
                         'count' => $this->countProductsForCategoryFilter((int) $parent->id),
                         'children' => $children,
                     ];

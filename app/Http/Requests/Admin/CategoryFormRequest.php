@@ -49,6 +49,10 @@ class CategoryFormRequest extends FormRequest
             'thumbnail_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:5120'],
             'thumbnail_alt' => ['nullable', 'string', 'max:255'],
             'remove_thumbnail' => ['nullable', 'boolean'],
+            'icon_url' => ['nullable', 'url:http,https', 'max:2048'],
+            'icon_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:2048'],
+            'icon_alt' => ['nullable', 'string', 'max:255'],
+            'remove_icon' => ['nullable', 'boolean'],
             'banner_url' => ['nullable', 'url:http,https', 'max:2048'],
             'banner_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:8192'],
             'banner_alt' => ['nullable', 'string', 'max:255'],
@@ -109,7 +113,7 @@ class CategoryFormRequest extends FormRequest
         $booleanFields = [
             'is_visible_in_catalog', 'is_visible_in_menu', 'is_featured', 'show_product_count',
             'include_descendant_products', 'robots_index', 'robots_follow', 'remove_image',
-            'remove_thumbnail', 'remove_banner', 'remove_mobile_banner', 'remove_og_image',
+            'remove_thumbnail', 'remove_icon', 'remove_banner', 'remove_mobile_banner', 'remove_og_image',
         ];
 
         $payload = [];
