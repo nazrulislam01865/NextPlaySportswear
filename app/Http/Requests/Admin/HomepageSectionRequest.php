@@ -40,6 +40,8 @@ class HomepageSectionRequest extends FormRequest
             'items.*.description' => ['nullable', 'string', 'max:2000'],
             'items.*.url' => ['nullable', 'string', 'max:2048', new SafePublicUrl()],
             'items.*.label' => ['nullable', 'string', 'max:160'],
+            'items.*.image_url' => ['nullable', 'string', 'max:2048', new SafePublicUrl()],
+            'items.*.image_alt' => ['nullable', 'string', 'max:255'],
             'items.*.category_id' => ['nullable', 'integer', 'distinct', 'exists:categories,id'],
             'is_active' => ['nullable', 'boolean'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:1000000'],
@@ -107,7 +109,7 @@ class HomepageSectionRequest extends FormRequest
             }
 
             $row = [];
-            foreach (['icon', 'title', 'subtitle', 'description', 'url', 'label'] as $field) {
+            foreach (['icon', 'title', 'subtitle', 'description', 'url', 'label', 'image_url', 'image_alt'] as $field) {
                 $value = trim(strip_tags((string) ($item[$field] ?? '')));
                 if ($value !== '') {
                     $row[$field] = $value;

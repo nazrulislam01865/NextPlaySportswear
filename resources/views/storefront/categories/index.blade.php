@@ -61,7 +61,7 @@
                 <p class="mx-auto mt-2 max-w-[700px] text-slate-500 max-sm:mx-0">Looking for sport-specific uniforms or gear? Start with your sport and find matching products faster.</p>
             </div>
 
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 @foreach ($sports as $sport)
                     <x-storefront.sport-index-card :sport="$sport" />
                 @endforeach
@@ -80,10 +80,67 @@
                 </div>
 
                 <div class="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-                    <div class="rounded-[13px] border border-slate-200 bg-slate-50 p-3.5"><strong class="block text-brand-ink">Logo Printing</strong><span class="mt-1 block text-[13px] text-slate-500">Add your team, school, business, or event logo.</span></div>
-                    <div class="rounded-[13px] border border-slate-200 bg-slate-50 p-3.5"><strong class="block text-brand-ink">Player Names & Numbers</strong><span class="mt-1 block text-[13px] text-slate-500">Personalize jerseys and uniforms for each player.</span></div>
-                    <div class="rounded-[13px] border border-slate-200 bg-slate-50 p-3.5"><strong class="block text-brand-ink">Team Colors</strong><span class="mt-1 block text-[13px] text-slate-500">Match your team, club, school, or brand colors.</span></div>
-                    <div class="rounded-[13px] border border-slate-200 bg-slate-50 p-3.5"><strong class="block text-brand-ink">Artwork Review</strong><span class="mt-1 block text-[13px] text-slate-500">Send your design file or idea. A proof or mockup may be reviewed before production.</span></div>
+                    <div class="np-custom-support-card">
+                        <span class="np-custom-support-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H18a2 2 0 0 1 2 2v10" />
+                                <path d="M8 8h12" />
+                                <path d="M8 12h8" />
+                                <path d="M5 20h9" />
+                                <path d="M5 16h6" />
+                                <path d="M4 8h4v12H4z" />
+                            </svg>
+                        </span>
+                        <span class="min-w-0">
+                            <strong>Logo Printing</strong>
+                            <span>Add your team, school, business, or event logo.</span>
+                        </span>
+                    </div>
+
+                    <div class="np-custom-support-card">
+                        <span class="np-custom-support-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M8 4 5.5 6.5 7.5 9 10 7" />
+                                <path d="M16 4 18.5 6.5 16.5 9 14 7" />
+                                <path d="M8 4h8l-1 7v8a1 1 0 0 1-1 1H10a1 1 0 0 1-1-1v-8z" />
+                                <path d="M10.5 11.5h3" />
+                                <path d="M12 11.5v5" />
+                            </svg>
+                        </span>
+                        <span class="min-w-0">
+                            <strong>Player Names &amp; Numbers</strong>
+                            <span>Personalize jerseys and uniforms for each player.</span>
+                        </span>
+                    </div>
+
+                    <div class="np-custom-support-card">
+                        <span class="np-custom-support-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="7" cy="7" r="3" />
+                                <circle cx="17" cy="7" r="3" />
+                                <circle cx="7" cy="17" r="3" />
+                                <circle cx="17" cy="17" r="3" />
+                            </svg>
+                        </span>
+                        <span class="min-w-0">
+                            <strong>Team Colors</strong>
+                            <span>Match your team, club, school, or brand colors.</span>
+                        </span>
+                    </div>
+
+                    <div class="np-custom-support-card">
+                        <span class="np-custom-support-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M7 3h7l4 4v14H7z" />
+                                <path d="M14 3v5h5" />
+                                <path d="m9 16 2 2 4-5" />
+                            </svg>
+                        </span>
+                        <span class="min-w-0">
+                            <strong>Artwork Review</strong>
+                            <span>Send your design file or idea. A proof or mockup may be reviewed before production.</span>
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>

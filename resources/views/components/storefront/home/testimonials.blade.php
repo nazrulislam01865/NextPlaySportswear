@@ -38,6 +38,10 @@
     $primaryHref = route('testimonials.index');
     $secondaryLabel = 'Share your experience';
     $secondaryHref = route('contact') . '?topic=testimonial';
+    $reviewBaseHref = route('contact') . '?topic=testimonial';
+    $googleReviewHref = $reviewBaseHref . '&platform=google-reviews';
+    $trustpilotReviewHref = $reviewBaseHref . '&platform=trustpilot';
+    $facebookReviewHref = $reviewBaseHref . '&platform=facebook';
 @endphp
 
 <section class="np-testimonials-v2" id="testimonials" data-np-testimonials-section>
@@ -154,6 +158,164 @@
         }
 
         .np-testimonials-btn.is-red:hover { background: var(--np-red-dark); }
+
+
+        .np-review-platforms {
+            width: 100%;
+            margin-top: 30px;
+            border: 1px solid rgba(226, 232, 240, .95);
+            border-radius: 22px;
+            background: rgba(255, 255, 255, .90);
+            padding: clamp(18px, 2vw, 22px);
+            box-shadow: 0 16px 36px rgba(15, 23, 42, .08);
+            backdrop-filter: blur(8px);
+        }
+
+        .np-review-platforms-header h3 {
+            margin: 0 0 8px;
+            color: var(--np-ink);
+            font-size: clamp(15px, 1.5vw, 18px);
+            font-weight: 950;
+            letter-spacing: .09em;
+            text-transform: uppercase;
+        }
+
+        .np-review-platforms-header p {
+            margin: 0;
+            color: var(--np-muted);
+            font-size: clamp(14px, 1.6vw, 16px);
+            line-height: 1.5;
+        }
+
+        .np-review-platforms-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .np-review-platform-card {
+            display: flex;
+            min-height: 128px;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 15px;
+            border: 1px solid var(--np-line);
+            border-radius: 18px;
+            background: #fff;
+            padding: clamp(14px, 1.7vw, 18px);
+            color: var(--np-ink);
+            text-decoration: none;
+            box-shadow: 0 8px 22px rgba(15, 23, 42, .05);
+            transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+        }
+
+        .np-review-platform-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(239, 35, 60, .35);
+            box-shadow: 0 18px 38px rgba(15, 23, 42, .12);
+        }
+
+        .np-review-platform-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .np-review-platform-icon {
+            display: grid;
+            flex: 0 0 auto;
+            width: clamp(38px, 3.8vw, 48px);
+            height: clamp(38px, 3.8vw, 48px);
+            place-items: center;
+        }
+
+        .np-review-platform-icon svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .np-review-platform-icon.is-trustpilot svg { width: 86%; height: 86%; }
+        .np-review-platform-icon.is-facebook svg { width: 94%; height: 94%; }
+
+        .np-review-platform-brand strong {
+            display: block;
+            color: var(--np-ink);
+            font-size: clamp(15px, 1.55vw, 19px);
+            font-weight: 950;
+            line-height: 1.12;
+            letter-spacing: -.035em;
+        }
+
+        .np-review-platform-brand small {
+            display: block;
+            margin-top: 4px;
+            color: var(--np-muted);
+            font-size: 13px;
+            line-height: 1.35;
+        }
+
+        .np-review-platform-brand .np-stars {
+            display: block;
+            color: var(--np-gold);
+            font-size: clamp(13px, 1.4vw, 16px);
+            letter-spacing: 2px;
+        }
+
+        .np-review-platform-action {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--np-red);
+            font-size: clamp(13px, 1.45vw, 15px);
+            font-weight: 950;
+            line-height: 1.1;
+        }
+
+        .np-review-platform-action-text {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .np-review-platform-external {
+            display: grid;
+            flex: 0 0 auto;
+            width: 24px;
+            height: 24px;
+            margin-left: auto;
+            place-items: center;
+            border: 1.8px solid currentColor;
+            border-radius: 7px;
+        }
+
+        .np-review-platform-external svg {
+            width: 14px;
+            height: 14px;
+            stroke: currentColor;
+        }
+
+        .np-review-platforms-note {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            margin-top: 16px;
+            border-top: 1px solid var(--np-line);
+            padding-top: 14px;
+            color: var(--np-muted);
+            font-size: clamp(13px, 1.35vw, 15px);
+            line-height: 1.35;
+        }
+
+        .np-review-platforms-note svg {
+            flex: 0 0 auto;
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+        }
 
         .np-featured-review {
             position: relative;
@@ -487,6 +649,8 @@
             .np-testimonials-hero { grid-template-columns: minmax(0, 1fr); }
             .np-featured-review { min-height: 340px; }
             .np-testimonials-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .np-review-platforms-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            .np-review-platform-card { min-height: 128px; }
         }
 
         @media (max-width: 700px) {
@@ -500,6 +664,13 @@
             .np-testimonials-row-head { align-items: flex-start; flex-direction: column; }
             .np-testimonials-track { grid-auto-columns: minmax(286px, 86vw); }
             .np-testimonials-stats { grid-template-columns: minmax(0, 1fr); }
+            .np-review-platforms { padding: 18px; border-radius: 22px; }
+            .np-review-platforms-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 18px; }
+            .np-review-platform-card { min-height: 144px; gap: 18px; border-radius: 18px; }
+            .np-review-platform-brand { align-items: flex-start; gap: 14px; }
+            .np-review-platform-brand small { font-size: 15px; }
+            .np-review-platform-external { width: 28px; height: 28px; border-radius: 7px; }
+            .np-review-platforms-note { align-items: flex-start; font-size: 15px; }
         }
     </style>
 
@@ -515,6 +686,84 @@
                 <div class="np-testimonials-actions">
                     <a class="np-testimonials-btn is-red" href="{{ $primaryHref }}">{{ $primaryLabel }}</a>
                     <a class="np-testimonials-btn" href="{{ $secondaryHref }}">{{ $secondaryLabel }}</a>
+                </div>
+
+                <div class="np-review-platforms" aria-label="Review sharing platforms">
+                    <div class="np-review-platforms-header">
+                        <h3>Share your team’s story</h3>
+                        <p>Your feedback helps other teams order with confidence.</p>
+                    </div>
+
+                    <div class="np-review-platforms-grid">
+                        <a class="np-review-platform-card" href="{{ $googleReviewHref }}" aria-label="Write a NextPlay review on Google Reviews">
+                            <span class="np-review-platform-brand">
+                                <span class="np-review-platform-icon is-google" aria-hidden="true">
+                                    <svg viewBox="0 0 64 64" role="img" focusable="false">
+                                        <path fill="#4285f4" d="M59.2 32.7c0-2-.2-3.9-.5-5.7H32v10.8h15.3c-.7 3.5-2.7 6.5-5.7 8.5v7h9.2c5.4-5 8.4-12.3 8.4-20.6Z"/>
+                                        <path fill="#34a853" d="M32 60c7.7 0 14.2-2.5 18.9-6.8l-9.2-7c-2.6 1.7-5.8 2.7-9.7 2.7-7.4 0-13.7-5-15.9-11.7H6.6v7.2C11.3 53.7 20.9 60 32 60Z"/>
+                                        <path fill="#fbbc05" d="M16.1 37.2c-.6-1.7-.9-3.5-.9-5.3s.3-3.6.9-5.3v-7.2H6.6A27.7 27.7 0 0 0 4 32c0 4.5 1 8.7 2.6 12.4l9.5-7.2Z"/>
+                                        <path fill="#ea4335" d="M32 15.1c4.2 0 7.9 1.4 10.8 4.2l8.2-8.2C46.1 6.5 39.6 4 32 4 20.9 4 11.3 10.3 6.6 19.5l9.5 7.2c2.2-6.7 8.5-11.6 15.9-11.6Z"/>
+                                    </svg>
+                                </span>
+                                <span>
+                                    <strong>Google Reviews</strong>
+                                    <small><span class="np-stars" aria-label="5 out of 5 stars">★★★★★</span></small>
+                                </span>
+                            </span>
+                            <span class="np-review-platform-action">
+                                <span class="np-review-platform-action-text">Write a review <span aria-hidden="true">→</span></span>
+                                <span class="np-review-platform-external" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M10 14 20 4"/><path d="M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5"/></svg>
+                                </span>
+                            </span>
+                        </a>
+
+                        <a class="np-review-platform-card" href="{{ $trustpilotReviewHref }}" aria-label="Leave NextPlay feedback on Trustpilot">
+                            <span class="np-review-platform-brand">
+                                <span class="np-review-platform-icon is-trustpilot" aria-hidden="true">
+                                    <svg viewBox="0 0 64 64" role="img" focusable="false">
+                                        <path fill="#00b67a" d="m32 4.8 7.4 15 16.6 2.4-12 11.7 2.8 16.5L32 42.6l-14.8 7.8L20 33.9 8 22.2l16.6-2.4L32 4.8Z"/>
+                                    </svg>
+                                </span>
+                                <span>
+                                    <strong>Trustpilot</strong>
+                                    <small>Share your experience</small>
+                                </span>
+                            </span>
+                            <span class="np-review-platform-action">
+                                <span class="np-review-platform-action-text">Leave feedback <span aria-hidden="true">→</span></span>
+                                <span class="np-review-platform-external" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M10 14 20 4"/><path d="M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5"/></svg>
+                                </span>
+                            </span>
+                        </a>
+
+                        <a class="np-review-platform-card" href="{{ $facebookReviewHref }}" aria-label="Recommend NextPlay on Facebook">
+                            <span class="np-review-platform-brand">
+                                <span class="np-review-platform-icon is-facebook" aria-hidden="true">
+                                    <svg viewBox="0 0 64 64" role="img" focusable="false">
+                                        <circle cx="32" cy="32" r="29" fill="#1877f2"/>
+                                        <path fill="#fff" d="M39.1 35.2 40.3 27h-7.8v-5.3c0-2.2 1.1-4.4 4.6-4.4h3.6v-7A43.8 43.8 0 0 0 34.4 10c-6.5 0-10.8 4-10.8 11.1V27h-7.2v8.2h7.2V55h8.9V35.2h6.6Z"/>
+                                    </svg>
+                                </span>
+                                <span>
+                                    <strong>Facebook</strong>
+                                    <small>Recommend NextPlay</small>
+                                </span>
+                            </span>
+                            <span class="np-review-platform-action">
+                                <span class="np-review-platform-action-text">Recommend us <span aria-hidden="true">→</span></span>
+                                <span class="np-review-platform-external" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M10 14 20 4"/><path d="M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5"/></svg>
+                                </span>
+                            </span>
+                        </a>
+                    </div>
+
+                    <div class="np-review-platforms-note">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                        <span>Choose your preferred platform <span aria-hidden="true">•</span> Takes about 2 minutes</span>
+                    </div>
                 </div>
             </div>
 
@@ -532,6 +781,8 @@
                     </span>
                 </div>
             </article>
+
+
         </div>
 
         <div class="np-testimonials-row-head">

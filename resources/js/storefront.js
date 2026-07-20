@@ -1013,6 +1013,353 @@ window.productBuilder = (config = {}) => ({
 });
 
 
+
+const setupHeroCarousels = () => {
+    document.querySelectorAll('[data-hero-carousel]').forEach((carousel) => {
+        if (carousel.dataset.initialized === 'true') return;
+        carousel.dataset.initialized = 'true';
+
+        const slides = Array.from(carousel.querySelectorAll('[data-hero-slide]'));
+        const dots = Array.from(carousel.querySelectorAll('[data-hero-dot]'));
+        const prev = carousel.querySelector('[data-hero-prev]');
+        const next = carousel.querySelector('[data-hero-next]');
+        const status = carousel.querySelector('[data-hero-status]');
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        let current = Math.max(0, slides.findIndex((slide) => slide.classList.contains('is-active')));
+        let timer = null;
+        let pointerStartX = 0;
+        let pointerStartY = 0;
+        let pointerActive = false;
+
+        if (slides.length === 0) return;
+        if (current < 0) current = 0;
+
+        const setStatus = () => {
+            if (status) status.textContent = `Showing slide ${current + 1} of ${slides.length}`;
+        };
+
+        const showSlide = (index, shouldFocus = false) => {
+            const total = slides.length;
+            current = (index + total) % total;
+            const nextPreview = (current + 1) % total;
+
+            slides.forEach((slide, slideIndex) => {
+                const isActive = slideIndex === current;
+                const isPreview = total > 1 && slideIndex === nextPreview;
+
+                slide.classList.toggle('is-active', isActive);
+                slide.classList.toggle('is-next-preview', isPreview && !isActive);
+                slide.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+            });
+
+            dots.forEach((dot, dotIndex) => {
+                const isActive = dotIndex === current;
+                dot.classList.toggle('is-active', isActive);
+                dot.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+
+            setStatus();
+
+            if (shouldFocus) carousel.focus({ preventScroll: true });
+        };
+
+        const stop = () => {
+            if (timer) window.clearInterval(timer);
+            timer = null;
+        };
+
+        const start = () => {
+            stop();
+            if (slides.length > 1 && !reducedMotion.matches) {
+                timer = window.setInterval(() => showSlide(current + 1), 6500);
+            }
+        };
+
+        next?.addEventListener('click', () => {
+            showSlide(current + 1, true);
+            start();
+        });
+
+        prev?.addEventListener('click', () => {
+            showSlide(current - 1, true);
+            start();
+        });
+
+        dots.forEach((dot, index) => {
+            dot.addEventListener('click', () => {
+                showSlide(index, true);
+                start();
+            });
+        });
+
+        carousel.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowRight') {
+                event.preventDefault();
+                showSlide(current + 1, true);
+                start();
+            }
+
+            if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                showSlide(current - 1, true);
+                start();
+            }
+        });
+
+        carousel.addEventListener('pointerdown', (event) => {
+            pointerActive = true;
+            pointerStartX = event.clientX;
+            pointerStartY = event.clientY;
+            stop();
+        }, { passive: true });
+
+        carousel.addEventListener('pointerup', (event) => {
+            if (!pointerActive) return;
+            pointerActive = false;
+
+            const diffX = event.clientX - pointerStartX;
+            const diffY = event.clientY - pointerStartY;
+
+            if (Math.abs(diffX) > 45 && Math.abs(diffX) > Math.abs(diffY)) {
+                showSlide(diffX < 0 ? current + 1 : current - 1, true);
+            }
+
+            start();
+        }, { passive: true });
+
+        carousel.addEventListener('pointercancel', () => {
+            pointerActive = false;
+            start();
+        }, { passive: true });
+
+        carousel.addEventListener('mouseenter', stop, { passive: true });
+        carousel.addEventListener('mouseleave', start, { passive: true });
+        carousel.addEventListener('focusin', stop);
+        carousel.addEventListener('focusout', start);
+        reducedMotion.addEventListener?.('change', start);
+
+        showSlide(current);
+        start();
+    });
+};
+
+const setupHeroCardCarousels = () => {
+    document.querySelectorAll('[data-hero-card-carousel]').forEach((carousel) => {
+        if (carousel.dataset.cardInitialized === 'true') return;
+
+        const track = carousel.querySelector('[data-hero-card-track]');
+        const realSlides = track ? Array.from(track.querySelectorAll('[data-hero-card-slide]')) : [];
+        const dots = Array.from(carousel.querySelectorAll('[data-hero-card-dot]'));
+        const prev = carousel.querySelector('[data-hero-card-prev]');
+        const next = carousel.querySelector('[data-hero-card-next]');
+        const status = carousel.querySelector('[data-hero-card-status]');
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const total = realSlides.length;
+
+        if (!track || total === 0) return;
+
+        carousel.dataset.cardInitialized = 'true';
+
+        if (total > 1) {
+            const firstClone = realSlides[0].cloneNode(true);
+            const lastClone = realSlides[total - 1].cloneNode(true);
+
+            firstClone.dataset.heroClone = 'true';
+            lastClone.dataset.heroClone = 'true';
+            firstClone.setAttribute('aria-hidden', 'true');
+            lastClone.setAttribute('aria-hidden', 'true');
+            firstClone.removeAttribute('data-hero-card-slide');
+            lastClone.removeAttribute('data-hero-card-slide');
+
+            track.prepend(lastClone);
+            track.append(firstClone);
+        }
+
+        const trackSlides = () => Array.from(track.querySelectorAll('.hero-carousel__slide'));
+        let current = Math.max(0, realSlides.findIndex((slide) => slide.classList.contains('is-active')));
+        let position = total > 1 ? current + 1 : current;
+        let timer = null;
+        let pointerStartX = 0;
+        let pointerStartY = 0;
+        let pointerActive = false;
+        let resizeFrame = null;
+
+        if (current < 0) current = 0;
+
+        const gap = () => {
+            const styles = window.getComputedStyle(track);
+            return parseFloat(styles.columnGap || styles.gap || '0') || 0;
+        };
+
+        const step = () => {
+            const first = trackSlides()[0];
+            return first ? first.getBoundingClientRect().width + gap() : 0;
+        };
+
+        const setStatus = () => {
+            if (status) status.textContent = `Showing slide ${current + 1} of ${total}`;
+        };
+
+        const updateDots = () => {
+            dots.forEach((dot, dotIndex) => {
+                const isActive = dotIndex === current;
+                dot.classList.toggle('is-active', isActive);
+                dot.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+        };
+
+        const updateClasses = () => {
+            const slides = trackSlides();
+            const nextPosition = total > 1 ? position + 1 : position;
+
+            slides.forEach((slide, slideIndex) => {
+                const isActive = slideIndex === position;
+                const isPreview = total > 1 && slideIndex === nextPosition;
+                const isClone = slide.dataset.heroClone === 'true';
+
+                slide.classList.toggle('is-active', isActive);
+                slide.classList.toggle('is-next-preview', isPreview && !isActive);
+                slide.setAttribute('aria-hidden', isActive && !isClone ? 'false' : 'true');
+            });
+
+            updateDots();
+            setStatus();
+        };
+
+        const moveTrack = (animate = true) => {
+            if (!animate) track.classList.add('is-jump-disabled');
+            track.style.transform = `translate3d(${-position * step()}px, 0, 0)`;
+
+            if (!animate) {
+                window.requestAnimationFrame(() => {
+                    track.classList.remove('is-jump-disabled');
+                });
+            }
+        };
+
+        const jumpToRealSlide = () => {
+            if (total <= 1) return;
+
+            if (position === 0) {
+                position = total;
+                current = total - 1;
+                updateClasses();
+                moveTrack(false);
+            }
+
+            if (position === total + 1) {
+                position = 1;
+                current = 0;
+                updateClasses();
+                moveTrack(false);
+            }
+        };
+
+        const goTo = (targetIndex, animate = true) => {
+            current = (targetIndex + total) % total;
+            position = total > 1 ? current + 1 : current;
+            updateClasses();
+            moveTrack(animate);
+        };
+
+        const move = (direction) => {
+            if (total <= 1) return;
+            current = (current + direction + total) % total;
+            position += direction;
+            updateClasses();
+            moveTrack(true);
+        };
+
+        const stop = () => {
+            if (timer) window.clearInterval(timer);
+            timer = null;
+        };
+
+        const start = () => {
+            stop();
+            if (total > 1 && !reducedMotion.matches) {
+                timer = window.setInterval(() => move(1), 6200);
+            }
+        };
+
+        track.addEventListener('transitionend', (event) => {
+            if (event.target !== track || event.propertyName !== 'transform') return;
+            jumpToRealSlide();
+        });
+
+        next?.addEventListener('click', () => {
+            move(1);
+            start();
+        });
+
+        prev?.addEventListener('click', () => {
+            move(-1);
+            start();
+        });
+
+        dots.forEach((dot, index) => {
+            dot.addEventListener('click', () => {
+                goTo(index, true);
+                start();
+            });
+        });
+
+        carousel.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowRight') {
+                event.preventDefault();
+                move(1);
+                start();
+            }
+
+            if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                move(-1);
+                start();
+            }
+        });
+
+        carousel.addEventListener('pointerdown', (event) => {
+            pointerActive = true;
+            pointerStartX = event.clientX;
+            pointerStartY = event.clientY;
+            stop();
+        }, { passive: true });
+
+        carousel.addEventListener('pointerup', (event) => {
+            if (!pointerActive) return;
+            pointerActive = false;
+
+            const diffX = event.clientX - pointerStartX;
+            const diffY = event.clientY - pointerStartY;
+
+            if (Math.abs(diffX) > 45 && Math.abs(diffX) > Math.abs(diffY)) {
+                move(diffX < 0 ? 1 : -1);
+            }
+
+            start();
+        }, { passive: true });
+
+        carousel.addEventListener('pointercancel', () => {
+            pointerActive = false;
+            start();
+        }, { passive: true });
+
+        carousel.addEventListener('mouseenter', stop, { passive: true });
+        carousel.addEventListener('mouseleave', start, { passive: true });
+        carousel.addEventListener('focusin', stop);
+        carousel.addEventListener('focusout', start);
+        reducedMotion.addEventListener?.('change', start);
+
+        window.addEventListener('resize', () => {
+            if (resizeFrame) window.cancelAnimationFrame(resizeFrame);
+            resizeFrame = window.requestAnimationFrame(() => moveTrack(false));
+        }, { passive: true });
+
+        goTo(current, false);
+        start();
+    });
+};
+
 const setupHomepageSliders = () => {
     document.querySelectorAll('[data-storefront-slider]').forEach((slider) => {
         if (slider.dataset.initialized === 'true') return;
@@ -1351,13 +1698,78 @@ const setupStorefrontMenus = () => {
     window.addEventListener('scroll', syncShopMenuPosition, { passive: true });
 };
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => { setupStorefrontMenus(); setupHomepageSliders(); setupHomepageFaqs(); setupStorefrontSearchSuggestions(); }, { once: true });
-} else {
+
+const trackHeaderInteraction = (eventName, payload = {}) => {
+    const name = eventName || 'header_navigation_click';
+    const data = {
+        location: 'header',
+        ...payload,
+    };
+
+    try {
+        if (Array.isArray(window.dataLayer)) {
+            window.dataLayer.push({ event: name, ...data });
+        }
+    } catch (error) {
+        // Analytics must never block navigation.
+    }
+
+    try {
+        if (typeof window.gtag === 'function') {
+            window.gtag('event', name, data);
+        }
+    } catch (error) {
+        // Analytics must never block navigation.
+    }
+
+    window.dispatchEvent(new CustomEvent('nextplay:header-analytics', {
+        detail: { event: name, ...data },
+    }));
+};
+
+const setupHeaderAnalytics = () => {
+    document.querySelectorAll('[data-header-analytics]').forEach((element) => {
+        if (element.dataset.headerAnalyticsReady === 'true') return;
+        element.dataset.headerAnalyticsReady = 'true';
+
+        const eventName = element.dataset.headerAnalytics || 'header_navigation_click';
+        const label = element.dataset.headerAnalyticsLabel || element.textContent?.trim() || '';
+
+        if (element.matches('form')) {
+            element.addEventListener('submit', () => {
+                const input = element.querySelector('input[name="q"]');
+                trackHeaderInteraction(eventName, {
+                    label,
+                    search_term: input?.value?.trim() || '',
+                });
+            });
+            return;
+        }
+
+        element.addEventListener('click', () => {
+            trackHeaderInteraction(eventName, {
+                label,
+                href: element.getAttribute('href') || '',
+                text: element.textContent?.trim()?.replace(/\s+/g, ' ') || label,
+            });
+        });
+    });
+};
+
+const bootStorefront = () => {
     setupStorefrontMenus();
+    setupHeroCarousels();
+    setupHeroCardCarousels();
     setupHomepageSliders();
     setupHomepageFaqs();
     setupStorefrontSearchSuggestions();
+    setupHeaderAnalytics();
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootStorefront, { once: true });
+} else {
+    bootStorefront();
 }
 
 Alpine.start();

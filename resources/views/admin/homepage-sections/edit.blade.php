@@ -27,6 +27,8 @@
         'url' => 'Link',
         'label' => $section->key === 'testimonials' ? 'Story tag' : 'Link label',
         'category_id' => 'Category / Subcategory / Sub-subcategory',
+        'image_url' => 'Image URL override',
+        'image_alt' => 'Image alt text',
     ];
 @endphp
 
@@ -153,12 +155,15 @@
                 return this.categoryOptionList.find((option) => String(option.id) === id) ?? null;
             },
             itemPrimaryValue(item, index) {
+                const customTitle = String(item?.title ?? '').trim();
+                if (customTitle) return customTitle;
+
                 const categoryId = String(item?.category_id ?? '').trim();
                 const categoryOption = this.categoryOptionFor(categoryId);
                 if (categoryOption) {
                     return categoryOption.display_label || categoryOption.label || this.categoryOptions?.[categoryId];
                 }
-                for (const field of ['title', 'label', 'subtitle', 'description', 'url', 'icon']) {
+                for (const field of ['label', 'subtitle', 'description', 'url', 'image_url', 'icon']) {
                     const value = String(item?.[field] ?? '').trim();
                     if (value) return value;
                 }
@@ -329,7 +334,7 @@
 
                     @if(in_array('category_id', $itemFields, true))
                         <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm font-bold leading-6 text-brand-dark">
-                            Select the exact <strong>category</strong>, <strong>subcategory</strong>, or <strong>sub-subcategory</strong> you want to show in this homepage section. Use this for sections like What Are You Looking For?, Popular Custom Sportswear Categories, Shop by Sport, and Best-Selling Team Gear. If the list is empty, the section will fall back to its automatic catalog selection.
+                            Select the exact <strong>category</strong>, <strong>subcategory</strong>, or <strong>sub-subcategory</strong> you want to show in this homepage section. Use this for sections like What Are You Looking For?, Popular Custom Sportswear Categories, Shop by Sport, and Best-Selling Team Gear. For Best-Selling Team Gear, you can also override the card title, description, image URL, link, button label, and display order. If the list is empty, the section will fall back to its automatic catalog selection.
                         </div>
                     @endif
 
@@ -350,7 +355,7 @@
                                         'icon' => 20,
                                         'label' => 160,
                                         'description' => 2000,
-                                        'url' => 2048,
+                                        'url', 'image_url' => 2048,
                                         default => 255,
                                     };
                                 @endphp

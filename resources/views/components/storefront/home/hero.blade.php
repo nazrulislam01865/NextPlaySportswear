@@ -4,9 +4,43 @@
     $section = is_array($section) ? $section : [];
     $text = static fn (string $key, string $fallback = ''): string => filled(data_get($section, $key)) ? (string) data_get($section, $key) : $fallback;
     $items = collect(data_get($section, 'items', []))->filter(fn ($item) => filled(data_get($item, 'title')))->values();
-    $image = data_get($section, 'image') ?: asset('storage/storefront/home/hero.webp');
-    $mobileImage = data_get($section, 'mobile_image') ?: $image;
-    $imageAlt = $text('mobile_image_alt') ?: $text('image_alt', 'Custom jerseys, caps, hoodies, and sports bag arranged for a team order');
+
+    $defaultHeroSlides = [
+        [
+            'image' => asset('images/storefront/home/hero-slide-real-team-gear.webp'),
+            'heading' => 'Built for Your Team',
+            'text' => 'Custom colors, names & numbers',
+            'label' => 'Real Team Gear',
+            'alt' => 'Custom team jerseys displayed in navy, white, and red colors',
+        ],
+        [
+            'image' => asset('images/storefront/home/hero-slide-uniform-detail.webp'),
+            'heading' => 'Uniforms Ready to Customize',
+            'text' => 'Choose styles, fabrics, colors, and player details.',
+            'label' => 'Jersey Options',
+            'alt' => 'Custom jersey product images showing personalization options',
+        ],
+        [
+            'image' => asset('images/storefront/home/hero-slide-product-lineup.webp'),
+            'heading' => 'One Store for Team Gear',
+            'text' => 'Jerseys, caps, bags, training gear, and event merchandise in one place.',
+            'label' => 'Bulk & Team Orders',
+            'alt' => 'Custom sportswear product lineup with jerseys and team apparel',
+        ],
+    ];
+
+    $configuredHeroSlides = collect(data_get($section, 'hero_slides', data_get($section, 'slides', [])))
+        ->filter(fn ($slide) => filled(data_get($slide, 'image')))
+        ->map(fn ($slide) => [
+            'image' => (string) data_get($slide, 'image'),
+            'heading' => (string) data_get($slide, 'heading', data_get($slide, 'title', 'Custom Team Gear')),
+            'text' => (string) data_get($slide, 'text', data_get($slide, 'description', 'Custom sportswear made for your team.')),
+            'label' => (string) data_get($slide, 'label', data_get($slide, 'badge', 'Team Gear')),
+            'alt' => (string) data_get($slide, 'alt', data_get($slide, 'image_alt', data_get($slide, 'heading', 'Custom team sportswear'))),
+        ])
+        ->values();
+
+    $heroSlides = $configuredHeroSlides->isNotEmpty() ? $configuredHeroSlides : collect($defaultHeroSlides);
 @endphp
 
 <section class="hero" aria-labelledby="hero-title">
@@ -39,11 +73,60 @@
         </div>
         <div class="hero-card">
             <div class="hero-frame">
-                <picture>
-                    <source media="(max-width: 767px)" srcset="{{ $mobileImage }}" sizes="100vw">
-                    <source media="(min-width: 768px)" srcset="{{ $image }}" sizes="(min-width: 980px) 520px, 100vw">
-                    <img loading="eager" fetchpriority="high" decoding="async" src="{{ $image }}" alt="{{ $imageAlt }}" width="900" height="650">
-                </picture>
+                <div class="hero-carousel hero-card-slider" data-hero-card-carousel tabindex="0" role="region" aria-roledescription="carousel" aria-label="Featured custom sportswear photos">
+                    <div class="hero-carousel__viewport" data-hero-card-viewport>
+                        <div class="hero-carousel__track" data-hero-card-track>
+                            @foreach($heroSlides as $index => $slide)
+                                <article
+                                    class="hero-carousel__slide{{ $index === 0 ? ' is-active' : '' }}"
+                                    data-hero-card-slide
+                                    data-slide-index="{{ $index }}"
+                                    aria-hidden="{{ $index === 0 ? 'false' : 'true' }}"
+                                >
+                                    <img
+                                        src="{{ data_get($slide, 'image') }}"
+                                        data-fallback-src="{{ asset('images/storefront/home/hero.webp') }}"
+                                        alt="{{ data_get($slide, 'alt') }}"
+                                        width="1200"
+                                        height="820"
+                                        loading="{{ $index === 0 ? 'eager' : 'lazy' }}"
+                                        fetchpriority="{{ $index === 0 ? 'high' : 'auto' }}"
+                                        decoding="async"
+                                    >
+                                    @if(filled(data_get($slide, 'label')))
+                                        <span class="hero-carousel__label">{{ data_get($slide, 'label') }}</span>
+                                    @endif
+                                    <div class="hero-carousel__copy">
+                                        <h2>{{ data_get($slide, 'heading') }}</h2>
+                                        <p>{{ data_get($slide, 'text') }}</p>
+                                    </div>
+                                </article>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    @if($heroSlides->count() > 1)
+                        <button class="hero-carousel__nav hero-carousel__nav--prev" type="button" data-hero-card-prev aria-label="Previous slide">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                        </button>
+                        <button class="hero-carousel__nav hero-carousel__nav--next" type="button" data-hero-card-next aria-label="Next slide">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                        </button>
+                        <div class="hero-carousel__dots" role="tablist" aria-label="Choose hero slide">
+                            @foreach($heroSlides as $index => $slide)
+                                <button
+                                    type="button"
+                                    class="hero-carousel__dot{{ $index === 0 ? ' is-active' : '' }}"
+                                    data-hero-card-dot
+                                    role="tab"
+                                    aria-label="Show slide {{ $index + 1 }}"
+                                    aria-selected="{{ $index === 0 ? 'true' : 'false' }}"
+                                ></button>
+                            @endforeach
+                        </div>
+                    @endif
+                    <span class="sr-only" data-hero-card-status aria-live="polite">Showing slide 1 of {{ $heroSlides->count() }}</span>
+                </div>
             </div>
             <div class="hero-stat"><strong>500+ Teams</strong><span>Trusted across the USA</span></div>
         </div>

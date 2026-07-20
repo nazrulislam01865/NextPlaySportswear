@@ -136,7 +136,148 @@ class HomePageService
 
     private function bestSellingGearCategories(): array
     {
-        return $this->categoriesForSection('best_selling_gear', fn (): array => $this->automaticFeaturedCategories(), 8);
+        $items = collect($this->sectionItems('best_selling_gear'))
+            ->filter(fn (array $item): bool => (int) ($item['category_id'] ?? 0) > 0 || filled($item['title'] ?? null))
+            ->take(5)
+            ->values();
+
+        if ($items->isNotEmpty()) {
+            $categoryIds = $items
+                ->pluck('category_id')
+                ->map(fn ($id): int => (int) $id)
+                ->filter(fn (int $id): bool => $id > 0)
+                ->unique()
+                ->values()
+                ->all();
+
+            $categoriesById = collect($this->categoryCatalog->categoriesByIds($categoryIds, 5))->keyBy('id');
+
+            $cards = $items
+                ->map(function (array $item) use ($categoriesById): array {
+                    $categoryId = (int) ($item['category_id'] ?? 0);
+                    $category = $categoryId > 0 ? (array) ($categoriesById->get($categoryId) ?? []) : [];
+
+                    return $this->gearCardFromItem($item, $category);
+                })
+                ->filter(fn (array $card): bool => filled($card['short_title'] ?? null) && filled($card['url'] ?? null))
+                ->values()
+                ->all();
+
+            if ($cards !== []) {
+                return $cards;
+            }
+        }
+
+        return $this->automaticBestSellingGearCategories();
+    }
+
+    private function automaticBestSellingGearCategories(): array
+    {
+        $categories = collect($this->categoryCatalog->collections());
+        $usedKeys = [];
+
+        $preferred = [
+            [
+                'title' => 'Performance Apparel',
+                'description' => 'Custom performance apparel for active brands, teams, events, and promotional programs.',
+                'needles' => ['performance apparel', 'performance', 'apparel'],
+            ],
+            [
+                'title' => 'Accessories',
+                'description' => 'Custom accessories that add value to teamwear, fanwear, and promotional campaigns.',
+                'needles' => ['accessories', 'accessory'],
+            ],
+            [
+                'title' => 'Bags',
+                'description' => 'Custom sports and promotional bags for teams, schools, events, and branded merchandise programs.',
+                'needles' => ['bags', 'bag', 'sports bags'],
+            ],
+            [
+                'title' => 'Drinkware',
+                'description' => 'Custom drinkware for teams, gyms, schools, giveaways, and retail promotions.',
+                'needles' => ['drinkware', 'bottle', 'tumbler'],
+            ],
+            [
+                'title' => 'Headwear',
+                'description' => 'Custom headwear for teams, events, merch collections, and corporate branding.',
+                'needles' => ['headwear', 'caps', 'hats', 'cap'],
+            ],
+        ];
+
+        $cards = collect($preferred)
+            ->map(function (array $slot) use ($categories, &$usedKeys): ?array {
+                $category = $this->findPreferredGearCategory($categories, (array) $slot['needles'], $usedKeys);
+
+                if (! $category) {
+                    return null;
+                }
+
+                $usedKeys[] = (string) ($category['id'] ?? $category['slug'] ?? $slot['title']);
+
+                return $this->gearCardFromItem([
+                    'title' => $slot['title'],
+                    'description' => $slot['description'],
+                    'label' => 'Shop Category',
+                ], $category);
+            })
+            ->filter()
+            ->values();
+
+        if ($cards->count() < 5) {
+            $extra = $categories
+                ->reject(fn (array $category): bool => in_array((string) ($category['id'] ?? $category['slug'] ?? ''), $usedKeys, true))
+                ->map(fn (array $category): array => $this->gearCardFromItem(['label' => 'Shop Category'], $category));
+
+            $cards = $cards->merge($extra);
+        }
+
+        return $cards->take(5)->values()->all();
+    }
+
+    private function findPreferredGearCategory($categories, array $needles, array $usedKeys): ?array
+    {
+        foreach ($categories as $category) {
+            $key = (string) ($category['id'] ?? $category['slug'] ?? '');
+
+            if ($key !== '' && in_array($key, $usedKeys, true)) {
+                continue;
+            }
+
+            $haystack = strtolower(implode(' ', array_filter([
+                $category['slug'] ?? null,
+                $category['short_title'] ?? null,
+                $category['title'] ?? null,
+                $category['description'] ?? null,
+            ])));
+
+            foreach ($needles as $needle) {
+                if ($needle !== '' && str_contains($haystack, strtolower((string) $needle))) {
+                    return $category;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function gearCardFromItem(array $item, array $category): array
+    {
+        $title = trim((string) ($item['title'] ?? '')) ?: (string) ($category['short_title'] ?? $category['title'] ?? '');
+        $description = trim((string) ($item['description'] ?? '')) ?: (string) ($category['description'] ?? 'Custom team gear for clubs, schools, events, and branded programs.');
+        $url = trim((string) ($item['url'] ?? '')) ?: (string) ($category['url'] ?? route('products.index'));
+        $image = trim((string) ($item['image_url'] ?? '')) ?: (string) ($category['image'] ?? asset('images/category-placeholder.svg'));
+        $alt = trim((string) ($item['image_alt'] ?? '')) ?: (string) ($category['alt'] ?? ($title !== '' ? $title.' category image' : 'Best-selling gear category image'));
+        $label = trim((string) ($item['label'] ?? '')) ?: (string) ($category['link_label'] ?? 'Shop Category');
+
+        return array_merge($category, [
+            'short_title' => $title,
+            'title' => $title,
+            'description' => $description,
+            'url' => $url,
+            'image' => $image,
+            'alt' => $alt,
+            'link_label' => $label,
+        ]);
     }
 
     private function sports(): array

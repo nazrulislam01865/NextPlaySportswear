@@ -10,172 +10,284 @@
         'checkout_ready' => false,
     ];
     $cartItemCount = (int) ($cartItemCount ?? ($headerCart['quantity'] ?? 0));
+
+    $headerMenu = collect($storefrontMenus['header'] ?? []);
+    $shopMenuItem = $headerMenu->first(function ($item) {
+        $label = str($item->label ?? '')->lower()->squish()->toString();
+        return $label === 'shop products' || (($item->route_name ?? null) === 'categories.index');
+    });
+    $shopChildren = $shopMenuItem?->childrenRecursive ?? collect();
+    $shopUrl = $shopMenuItem?->resolvedUrl() ?? route('categories.index');
+
+    $homeActive = request()->routeIs('home');
+    $shopActive = request()->routeIs('categories.*');
+    $productsActive = request()->routeIs('products.*');
+    $howActive = request()->routeIs('how-to-order');
+    $quoteActive = request()->routeIs('quote.request') || request()->routeIs('quote.request.store') || request()->routeIs('bulk-ordering');
+    $shippingActive = request()->routeIs('shipping');
+
+    $accountHref = auth('admin')->check()
+        ? route('admin.dashboard')
+        : (auth('web')->check() ? route('account.dashboard') : route('login'));
+    $accountLabel = auth('admin')->check()
+        ? 'Admin Dashboard'
+        : (auth('web')->check() ? 'My Account' : 'Login');
+
+    $whatsappDigits = preg_replace('/\D+/', '', (string) config('storefront.whatsapp'));
+    $whatsappUrl = config('storefront.whatsapp_url') ?: ($whatsappDigits ? 'https://wa.me/'.$whatsappDigits : '#');
+    $socialLinks = collect(config('storefront.social', []))->filter(fn ($url) => filled($url) && $url !== '#');
 @endphp
 
 <header
     x-data="{ open: false }"
     x-effect="document.documentElement.classList.toggle('overflow-hidden', open)"
     @keydown.escape.window="open = false"
-    class="storefront-site-header sticky top-0 z-40 border-b border-slate-200 bg-white shadow-sm"
+    class="storefront-site-header np-site-header sticky top-0 z-40 bg-white"
     aria-label="Site header"
 >
-    <div class="site-container storefront-header-main flex min-h-[64px] items-center justify-between gap-2 py-2.5 sm:min-h-[72px] sm:py-3 lg:grid lg:grid-cols-[auto_minmax(220px,1fr)_auto] lg:gap-6 lg:py-4">
-        <a href="{{ route('home') }}" class="storefront-logo flex min-w-0 items-center gap-2 font-display text-lg font-bold uppercase leading-none tracking-tight text-brand-ink sm:gap-3 sm:text-xl lg:text-2xl" aria-label="{{ config('storefront.name') }} home">
-            <span class="storefront-logo-mark relative grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border-[3px] border-brand-red text-brand-red">
-                ✓
-                <span class="absolute -top-2 h-1.5 w-3.5 rounded-t-lg border-2 border-b-0 border-current" aria-hidden="true"></span>
-            </span>
-            <span class="storefront-logo-text truncate">NextPlay <span class="hidden sm:inline text-brand-red">Sportswear</span></span>
-        </a>
-
-        <form
-            method="GET"
-            action="{{ route('products.index') }}"
-            role="search"
-            aria-label="Product search"
-            class="relative mx-auto hidden w-full max-w-[450px] lg:block"
-            data-storefront-search-suggest
-            data-suggest-url="{{ route('products.suggestions') }}"
-        >
-            <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <circle cx="11" cy="11" r="7"></circle>
-                    <path d="m21 21-4.3-4.3"></path>
-                </svg>
-            </span>
-            <label for="site-product-search" class="sr-only">Search products</label>
-            <input
-                id="site-product-search"
-                type="search"
-                name="q"
-                value="{{ request('q') }}"
-                placeholder="Search jerseys, uniforms, caps, bags..."
-                autocomplete="off"
-                class="h-11 w-full rounded-xl border border-slate-300 bg-slate-50 pl-11 pr-4 text-sm text-slate-700 outline-none focus:border-brand-blue"
-            >
-            <div
-                class="storefront-search-suggestions absolute left-0 right-0 top-[calc(100%+0.5rem)] z-[70] hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
-                data-storefront-search-suggestions
-                role="listbox"
-                aria-label="Product suggestions"
-            ></div>
-        </form>
-
-        <div class="storefront-header-actions flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
-            <a href="{{ route('products.index') }}" class="btn btn-white hidden xl:inline-flex">Shop Now</a>
-            <a href="{{ route('quote.request') }}" class="btn btn-red hidden xl:inline-flex">Request Quote</a>
-
-            @if(auth('admin')->check())
-                <a href="{{ route('admin.dashboard') }}" class="btn btn-white hidden xl:inline-flex">Admin Dashboard</a>
-            @elseif(auth('web')->check())
-                <a href="{{ route('account.dashboard') }}" class="btn btn-white hidden xl:inline-flex">My Account</a>
-            @else
-                <a href="{{ route('login') }}" class="btn btn-white hidden xl:inline-flex">Login</a>
-            @endif
-
-            <div class="storefront-cart-hover relative">
-                <a
-                    href="{{ route('cart.index') }}"
-                    class="storefront-cart-icon-button storefront-cart-button relative inline-grid h-10 w-10 place-items-center rounded-xl border border-slate-300 bg-slate-50 text-slate-900 transition hover:border-brand-blue hover:bg-blue-50 hover:text-brand-blue sm:h-11 sm:w-11"
-                    aria-label="Shopping cart{{ $cartItemCount > 0 ? ', ' . $cartItemCount . ' items' : '' }}"
-                >
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <circle cx="9" cy="20" r="1.5"></circle>
-                        <circle cx="19" cy="20" r="1.5"></circle>
-                        <path d="M3 4h2l2.7 11.1a2 2 0 0 0 2 1.5h7.7a2 2 0 0 0 2-1.6L21 8H6"></path>
+    <div class="np-main-header">
+        <div class="np-header-shell np-main-header-inner">
+            <a href="{{ route('home') }}" class="np-brand-logo" aria-label="{{ config('storefront.name') }} home" data-header-analytics="header_navigation_click" data-header-analytics-label="logo_home">
+                <span class="np-brand-mark" aria-hidden="true">
+                    <svg viewBox="0 0 64 64" width="64" height="64" fill="none">
+                        <path d="M18 20h28c3.2 0 5.8 2.6 5.8 5.8v24.4c0 3.2-2.6 5.8-5.8 5.8H18c-3.2 0-5.8-2.6-5.8-5.8V25.8C12.2 22.6 14.8 20 18 20Z" stroke="currentColor" stroke-width="4.8" />
+                        <path d="M22.5 20v-4.2C22.5 9.9 26.5 6 32 6s9.5 3.9 9.5 9.8V20" stroke="currentColor" stroke-width="4.8" stroke-linecap="round" />
+                        <path d="m22.5 36 7.1 7.5 13.9-17" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
                     </svg>
-                    @if ($cartItemCount > 0)
-                        <span class="storefront-cart-count-badge absolute -right-1.5 -top-1.5 min-w-[22px] rounded-full bg-brand-red px-1.5 py-0.5 text-center text-[11px] font-black leading-4 text-white shadow-sm">{{ $cartItemCount > 99 ? '99+' : $cartItemCount }}</span>
-                    @endif
-                </a>
+                </span>
+                <span class="np-brand-text"><span>NEXTPLAY</span> <strong>SPORTSWEAR</strong></span>
+            </a>
 
-                <div class="storefront-cart-preview absolute right-0 top-[calc(100%+0.7rem)] z-[80] hidden w-[360px] max-w-[calc(100vw-1.25rem)] rounded-[22px] border border-slate-200 bg-white text-left shadow-2xl" role="region" aria-label="Cart preview">
-                    <span class="storefront-cart-preview-arrow" aria-hidden="true"></span>
-                    <div class="border-b border-slate-100 px-4 py-3">
-                        <div class="flex items-center justify-between gap-3">
-                            <p class="text-sm font-black uppercase tracking-[.14em] text-brand-ink">Cart Preview</p>
-                            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">{{ $cartItemCount }} item{{ $cartItemCount === 1 ? '' : 's' }}</span>
-                        </div>
-                    </div>
-
-                    @if (! empty($headerCart['items']))
-                        <div class="max-h-[340px] overflow-y-auto p-3">
-                            @foreach ($headerCart['items'] as $item)
-                                @php
-                                    $previewProduct = (array) ($item['product'] ?? []);
-                                    $previewTitle = $previewProduct['short_title'] ?? $previewProduct['title'] ?? 'Configured product';
-                                    $previewImage = $previewProduct['image'] ?? null;
-                                    $previewUrl = $previewProduct['url'] ?? route('cart.index');
-                                @endphp
-                                <a href="{{ $previewUrl }}" class="storefront-mini-cart-item flex gap-3 rounded-2xl p-2 transition hover:bg-slate-50">
-                                    <span class="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 bg-white">
-                                        @if ($previewImage)
-                                            <img src="{{ $previewImage }}" alt="{{ $previewProduct['alt'] ?? $previewTitle }}" class="h-full w-full object-contain p-1" loading="lazy">
-                                        @else
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-300" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 16 5-5 4 4 2-2 7 7"></path></svg>
-                                        @endif
-                                    </span>
-                                    <span class="min-w-0 flex-1">
-                                        <span class="block truncate text-sm font-black leading-5 text-brand-ink">{{ $previewTitle }}</span>
-                                        <span class="mt-1 block text-xs font-bold text-slate-500">Qty {{ (int) ($item['quantity'] ?? 0) }} · ${{ number_format((float) ($item['unit_price'] ?? 0), 2) }} each</span>
-                                        <span class="mt-1 block text-sm font-black text-brand-red">${{ number_format((float) ($item['line_total'] ?? 0), 2) }}</span>
-                                    </span>
-                                </a>
-                            @endforeach
-
-                            @if (($headerCart['remaining_items'] ?? 0) > 0)
-                                <p class="px-2 pb-1 pt-2 text-xs font-black text-slate-500">+ {{ $headerCart['remaining_items'] }} more cart item{{ (int) $headerCart['remaining_items'] === 1 ? '' : 's' }}</p>
-                            @endif
-                        </div>
-
-                        <div class="border-t border-slate-100 p-4">
-                            <div class="mb-3 flex items-center justify-between gap-4">
-                                <span class="text-sm font-bold text-slate-500">Estimated total</span>
-                                <span class="text-lg font-black text-brand-ink">${{ number_format((float) ($headerCart['total'] ?? 0), 2) }}</span>
-                            </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <a href="{{ route('cart.index') }}" class="btn btn-white w-full text-xs">View Cart</a>
-                                <a href="{{ route('checkout.index') }}" class="btn btn-red w-full text-xs {{ ($headerCart['checkout_ready'] ?? false) ? '' : 'pointer-events-none opacity-50' }}">Checkout</a>
-                            </div>
-                        </div>
-                    @else
-                        <div class="p-5 text-center">
-                            <div class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-slate-50 text-slate-400">
-                                <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"></circle><circle cx="19" cy="20" r="1.5"></circle><path d="M3 4h2l2.7 11.1a2 2 0 0 0 2 1.5h7.7a2 2 0 0 0 2-1.6L21 8H6"></path></svg>
-                            </div>
-                            <p class="mt-3 text-base font-black text-brand-ink">Your cart is empty</p>
-                            <p class="mt-1 text-sm font-semibold leading-6 text-slate-500">Add products to see them here instantly.</p>
-                            <a href="{{ route('products.index') }}" class="btn btn-red mt-4 w-full text-xs">Start Shopping</a>
-                        </div>
-                    @endif
-                </div>
-            </div>
-
-            <button
-                type="button"
-                class="storefront-menu-button grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-300 bg-white lg:hidden sm:h-11 sm:w-11"
-                :aria-label="open ? 'Close menu' : 'Open menu'"
-                :aria-expanded="open.toString()"
-                aria-controls="storefront-mobile-menu"
-                @click="open = !open"
+            <form
+                method="GET"
+                action="{{ route('products.index') }}"
+                role="search"
+                aria-label="Product search"
+                class="np-header-search"
+                data-storefront-search-suggest
+                data-suggest-url="{{ route('products.suggestions') }}"
+                data-header-search
+                data-header-analytics="header_search_submit"
+                data-header-analytics-label="product_search"
             >
-                <span x-show="!open" class="relative block h-0.5 w-5 bg-slate-800 before:absolute before:left-0 before:top-[-6px] before:h-0.5 before:w-5 before:bg-slate-800 before:content-[''] after:absolute after:left-0 after:top-[6px] after:h-0.5 after:w-5 after:bg-slate-800 after:content-['']"></span>
-                <span x-cloak x-show="open" class="text-2xl leading-none" aria-hidden="true">×</span>
-            </button>
+                <span class="np-header-search-icon" aria-hidden="true">
+                    <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="7"></circle>
+                        <path d="m21 21-4.3-4.3"></path>
+                    </svg>
+                </span>
+                <label for="site-product-search" class="sr-only">Search products and categories</label>
+                <input
+                    id="site-product-search"
+                    type="search"
+                    name="q"
+                    value="{{ request('q') }}"
+                    placeholder="Search jerseys, uniforms, caps, bags..."
+                    autocomplete="off"
+                    class="np-header-search-input"
+                >
+                <div
+                    class="storefront-search-suggestions np-search-suggestions hidden"
+                    data-storefront-search-suggestions
+                    role="listbox"
+                    aria-label="Product suggestions"
+                ></div>
+            </form>
+
+            <div class="np-header-actions">
+                <a href="{{ route('products.index') }}" class="np-header-btn np-header-btn-light np-shop-now-btn" data-header-analytics="header_cta_click" data-header-analytics-label="shop_now">Shop Now</a>
+                <a href="{{ route('quote.request') }}" class="np-header-btn np-header-btn-red" data-header-analytics="header_cta_click" data-header-analytics-label="request_quote">Request Quote</a>
+
+                <a href="{{ $accountHref }}" class="np-header-btn np-header-btn-light np-account-action" data-header-analytics="header_cta_click" data-header-analytics-label="{{ auth('web')->check() || auth('admin')->check() ? 'account' : 'login' }}">{{ $accountLabel }}</a>
+
+                <div class="storefront-cart-hover np-cart-action-wrap">
+                    <a
+                        href="{{ route('cart.index') }}"
+                        class="storefront-cart-button np-cart-action"
+                        aria-label="Shopping cart, {{ $cartItemCount }} item{{ $cartItemCount === 1 ? '' : 's' }}"
+                        data-header-analytics="header_cta_click"
+                        data-header-analytics-label="cart"
+                    >
+                        <svg width="31" height="31" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="9" cy="20" r="1.5"></circle>
+                            <circle cx="19" cy="20" r="1.5"></circle>
+                            <path d="M3 4h2l2.7 11.1a2 2 0 0 0 2 1.5h7.7a2 2 0 0 0 2-1.6L21 8H6"></path>
+                        </svg>
+                        <span class="storefront-cart-count-badge np-cart-count-badge">{{ $cartItemCount > 99 ? '99+' : $cartItemCount }}</span>
+                    </a>
+
+                    <div class="storefront-cart-preview absolute right-0 top-[calc(100%+0.7rem)] z-[80] hidden w-[360px] max-w-[calc(100vw-1.25rem)] rounded-[22px] border border-slate-200 bg-white text-left shadow-2xl" role="region" aria-label="Cart preview">
+                        <span class="storefront-cart-preview-arrow" aria-hidden="true"></span>
+                        <div class="border-b border-slate-100 px-4 py-3">
+                            <div class="flex items-center justify-between gap-3">
+                                <p class="text-sm font-black uppercase tracking-[.14em] text-brand-ink">Cart Preview</p>
+                                <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">{{ $cartItemCount }} item{{ $cartItemCount === 1 ? '' : 's' }}</span>
+                            </div>
+                        </div>
+
+                        @if (! empty($headerCart['items']))
+                            <div class="max-h-[340px] overflow-y-auto p-3">
+                                @foreach ($headerCart['items'] as $item)
+                                    @php
+                                        $previewProduct = (array) ($item['product'] ?? []);
+                                        $previewTitle = $previewProduct['short_title'] ?? $previewProduct['title'] ?? 'Configured product';
+                                        $previewImage = $previewProduct['image'] ?? null;
+                                        $previewUrl = $previewProduct['url'] ?? route('cart.index');
+                                    @endphp
+                                    <a href="{{ $previewUrl }}" class="storefront-mini-cart-item flex gap-3 rounded-2xl p-2 transition hover:bg-slate-50">
+                                        <span class="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 bg-white">
+                                            @if ($previewImage)
+                                                <img src="{{ $previewImage }}" alt="{{ $previewProduct['alt'] ?? $previewTitle }}" class="h-full w-full object-contain p-1" loading="lazy">
+                                            @else
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-300" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 16 5-5 4 4 2-2 7 7"></path></svg>
+                                            @endif
+                                        </span>
+                                        <span class="min-w-0 flex-1">
+                                            <span class="block truncate text-sm font-black leading-5 text-brand-ink">{{ $previewTitle }}</span>
+                                            <span class="mt-1 block text-xs font-bold text-slate-500">Qty {{ (int) ($item['quantity'] ?? 0) }} · ${{ number_format((float) ($item['unit_price'] ?? 0), 2) }} each</span>
+                                            <span class="mt-1 block text-sm font-black text-brand-red">${{ number_format((float) ($item['line_total'] ?? 0), 2) }}</span>
+                                        </span>
+                                    </a>
+                                @endforeach
+
+                                @if (($headerCart['remaining_items'] ?? 0) > 0)
+                                    <p class="px-2 pb-1 pt-2 text-xs font-black text-slate-500">+ {{ $headerCart['remaining_items'] }} more cart item{{ (int) $headerCart['remaining_items'] === 1 ? '' : 's' }}</p>
+                                @endif
+                            </div>
+
+                            <div class="border-t border-slate-100 p-4">
+                                <div class="mb-3 flex items-center justify-between gap-4">
+                                    <span class="text-sm font-bold text-slate-500">Estimated total</span>
+                                    <span class="text-lg font-black text-brand-ink">${{ number_format((float) ($headerCart['total'] ?? 0), 2) }}</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <a href="{{ route('cart.index') }}" class="btn btn-white w-full text-xs">View Cart</a>
+                                    <a href="{{ route('checkout.index') }}" class="btn btn-red w-full text-xs {{ ($headerCart['checkout_ready'] ?? false) ? '' : 'pointer-events-none opacity-50' }}">Checkout</a>
+                                </div>
+                            </div>
+                        @else
+                            <div class="p-5 text-center">
+                                <div class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-slate-50 text-slate-400">
+                                    <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"></circle><circle cx="19" cy="20" r="1.5"></circle><path d="M3 4h2l2.7 11.1a2 2 0 0 0 2 1.5h7.7a2 2 0 0 0 2-1.6L21 8H6"></path></svg>
+                                </div>
+                                <p class="mt-3 text-base font-black text-brand-ink">Your cart is empty</p>
+                                <p class="mt-1 text-sm font-semibold leading-6 text-slate-500">Add products to see them here instantly.</p>
+                                <a href="{{ route('products.index') }}" class="btn btn-red mt-4 w-full text-xs">Start Shopping</a>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    class="np-mobile-menu-toggle"
+                    :aria-label="open ? 'Close menu' : 'Open menu'"
+                    :aria-expanded="open.toString()"
+                    aria-controls="storefront-mobile-menu"
+                    @click="open = !open"
+                >
+                    <span x-show="!open" class="np-menu-bars" aria-hidden="true"></span>
+                    <span x-cloak x-show="open" class="np-menu-close" aria-hidden="true">×</span>
+                </button>
+            </div>
         </div>
     </div>
 
-    <div class="storefront-nav-row">
-        <nav class="storefront-main-nav site-container hidden lg:flex" aria-label="Main navigation">
-            @forelse(($storefrontMenus['header'] ?? collect()) as $item)
-                <x-storefront.menu.desktop-item :item="$item" :align="$loop->index >= 4 ? 'right' : 'left'" />
-            @empty
-                <x-storefront.nav-link href="{{ route('home') }}" :active="request()->routeIs('home')">Home</x-storefront.nav-link>
-                <x-storefront.nav-link href="{{ route('categories.index') }}">Shop Categories</x-storefront.nav-link>
-                <x-storefront.nav-link href="{{ route('products.index') }}">All Products</x-storefront.nav-link>
-                <x-storefront.nav-link href="{{ route('quote.request') }}">Bulk Quote</x-storefront.nav-link>
-            @endforelse
-        </nav>
+    <div class="storefront-nav-row np-category-nav-row">
+        <div class="np-header-shell np-category-nav-shell">
+            <nav class="storefront-main-nav np-category-nav" aria-label="Main navigation">
+                <a href="{{ route('home') }}" class="np-category-link {{ $homeActive ? 'is-active' : '' }}" @if($homeActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="home">Home</a>
+
+                <div class="np-menu-item np-category-menu-item {{ $shopActive ? 'is-active' : '' }}">
+                    <a
+                        href="{{ $shopUrl }}"
+                        class="np-category-link np-menu-link {{ $shopActive ? 'is-active' : '' }}"
+                        @if($shopActive) aria-current="page" @endif
+                        @if($shopChildren->isNotEmpty()) aria-haspopup="true" aria-expanded="false" @endif
+                        data-header-analytics="header_navigation_click"
+                        data-header-analytics-label="shop_products"
+                    >
+                        <span>Shop Products</span>
+                        <svg class="np-category-caret" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                    </a>
+
+                    @if($shopChildren->isNotEmpty())
+                        <div class="np-menu-panel np-shop-panel" role="group" aria-label="Shop Products submenu">
+                            <a class="np-menu-view-all" href="{{ $shopUrl }}" data-header-analytics="header_navigation_click" data-header-analytics-label="shop_products_view_all">
+                                <span>View all Shop Products</span>
+                                <span aria-hidden="true">→</span>
+                            </a>
+
+                            <div class="np-mega-grid">
+                                @foreach($shopChildren as $child)
+                                    <div class="np-mega-card">
+                                        <a
+                                            href="{{ $child->resolvedUrl() }}"
+                                            target="{{ $child->target }}"
+                                            @if($child->target === '_blank') rel="noopener noreferrer" @endif
+                                            class="np-mega-title np-mega-title-with-icon"
+                                            data-header-analytics="header_navigation_click"
+                                            data-header-analytics-label="category_{{ str($child->label)->slug('_') }}"
+                                        >
+                                            <span class="np-mega-category-icon" aria-hidden="true">
+                                                <x-storefront.category-icon :label="$child->label" :icon-url="$child->icon_url" />
+                                            </span>
+                                            <span>{{ $child->label }}</span>
+                                        </a>
+
+                                        @if($child->childrenRecursive->isNotEmpty())
+                                            <div class="np-mega-sublist">
+                                                @foreach($child->childrenRecursive as $grandchild)
+                                                    <div class="np-mega-subitem">
+                                                        <a
+                                                            href="{{ $grandchild->resolvedUrl() }}"
+                                                            target="{{ $grandchild->target }}"
+                                                            @if($grandchild->target === '_blank') rel="noopener noreferrer" @endif
+                                                            class="np-mega-subtitle"
+                                                            data-header-analytics="header_navigation_click"
+                                                            data-header-analytics-label="category_{{ str($grandchild->label)->slug('_') }}"
+                                                        >{{ $grandchild->label }}</a>
+
+                                                        @if($grandchild->childrenRecursive->isNotEmpty())
+                                                            <div class="np-mega-leaf-list">
+                                                                @foreach($grandchild->childrenRecursive as $leaf)
+                                                                    <a
+                                                                        href="{{ $leaf->resolvedUrl() }}"
+                                                                        target="{{ $leaf->target }}"
+                                                                        @if($leaf->target === '_blank') rel="noopener noreferrer" @endif
+                                                                        class="np-mega-leaf"
+                                                                        data-header-analytics="header_navigation_click"
+                                                                        data-header-analytics-label="category_{{ str($leaf->label)->slug('_') }}"
+                                                                    >{{ $leaf->label }}</a>
+                                                                @endforeach
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                </div>
+
+                <a href="{{ route('products.index') }}" class="np-category-link {{ $productsActive ? 'is-active' : '' }}" @if($productsActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="all_products">All Products</a>
+                <a href="{{ route('how-to-order') }}" class="np-category-link {{ $howActive ? 'is-active' : '' }}" @if($howActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="how_it_works">How It Works</a>
+                <a href="{{ route('quote.request') }}" class="np-category-link {{ $quoteActive ? 'is-active' : '' }}" @if($quoteActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="bulk_quote">Bulk Quote</a>
+            </nav>
+
+            <a href="{{ route('shipping') }}" class="np-usa-shipping {{ $shippingActive ? 'is-active' : '' }}" @if($shippingActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="usa_shipping">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 7h11v10H3z" />
+                    <path d="M14 10h3.6l2.4 3v4h-6" />
+                    <circle cx="7" cy="18" r="2" />
+                    <circle cx="17" cy="18" r="2" />
+                </svg>
+                <span>USA SHIPPING</span>
+            </a>
+        </div>
 
         <nav
             id="storefront-mobile-menu"
@@ -183,61 +295,88 @@
             x-show="open"
             x-transition
             @click.outside="open=false"
-            class="site-container max-h-[calc(100dvh-74px)] overflow-y-auto overscroll-contain py-4 text-sm text-slate-700 lg:hidden"
+            class="np-mobile-menu"
             aria-label="Mobile navigation"
         >
-            <form
-                method="GET"
-                action="{{ route('products.index') }}"
-                role="search"
-                class="relative mb-4"
-                data-storefront-search-suggest
-                data-suggest-url="{{ route('products.suggestions') }}"
-            >
-                <label for="mobile-product-search" class="sr-only">Search products</label>
-                <div class="flex gap-2">
-                    <input id="mobile-product-search" type="search" name="q" value="{{ request('q') }}" placeholder="Search products..." autocomplete="off" class="h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-slate-50 px-4 text-sm outline-none focus:border-brand-blue">
-                    <button class="btn btn-red shrink-0 px-4" type="submit">Search</button>
+            <div class="np-header-shell">
+                <form
+                    method="GET"
+                    action="{{ route('products.index') }}"
+                    role="search"
+                    class="np-mobile-search"
+                    data-storefront-search-suggest
+                    data-suggest-url="{{ route('products.suggestions') }}"
+                    data-header-search
+                    data-header-analytics="header_search_submit"
+                    data-header-analytics-label="mobile_product_search"
+                >
+                    <label for="mobile-product-search" class="sr-only">Search products and categories</label>
+                    <div class="np-mobile-search-row">
+                        <input id="mobile-product-search" type="search" name="q" value="{{ request('q') }}" placeholder="Search jerseys, uniforms, caps, bags..." autocomplete="off" class="np-header-search-input">
+                        <button class="np-header-btn np-header-btn-red" type="submit">Search</button>
+                    </div>
+                    <div
+                        class="storefront-search-suggestions np-search-suggestions hidden"
+                        data-storefront-search-suggestions
+                        role="listbox"
+                        aria-label="Product suggestions"
+                    ></div>
+                </form>
+
+                <div class="np-mobile-quick-actions" @click="if ($event.target.closest('a')) open = false">
+                    <a href="{{ route('products.index') }}" class="np-header-btn np-header-btn-light" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_shop_now">Shop Now</a>
+                    <a href="{{ route('quote.request') }}" class="np-header-btn np-header-btn-red" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_request_quote">Request Quote</a>
                 </div>
-                <div
-                    class="storefront-search-suggestions absolute left-0 right-0 top-[calc(100%+0.5rem)] z-[70] hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
-                    data-storefront-search-suggestions
-                    role="listbox"
-                    aria-label="Product suggestions"
-                ></div>
-            </form>
 
-            <div class="mb-4 grid grid-cols-2 gap-2" @click="if ($event.target.closest('a')) open = false">
-                <a href="{{ route('products.index') }}" class="btn btn-light w-full text-xs">Shop Now</a>
-                <a href="{{ route('quote.request') }}" class="btn btn-red w-full text-xs">Request Quote</a>
-            </div>
+                <div class="np-mobile-nav-list" @click="if ($event.target.closest('a')) open = false">
+                    <a href="{{ route('home') }}" class="np-mobile-nav-link {{ $homeActive ? 'is-active' : '' }}" @if($homeActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_home">Home</a>
 
-            <div @click="if ($event.target.closest('a')) open = false">
-                @forelse(($storefrontMenus['header'] ?? collect()) as $item)
-                    <x-storefront.menu.mobile-item :item="$item" />
-                @empty
-                    <a class="block rounded-lg px-3 py-3 font-bold hover:bg-slate-100" href="{{ route('categories.index') }}">Shop Categories</a>
-                    <a class="block rounded-lg px-3 py-3 font-bold hover:bg-slate-100" href="{{ route('products.index') }}">All Products</a>
-                @endforelse
-            </div>
+                    <details class="np-mobile-nav-details" {{ $shopActive ? 'open' : '' }}>
+                        <summary class="np-mobile-nav-summary {{ $shopActive ? 'is-active' : '' }}">
+                            <span>Shop Products</span>
+                            <span aria-hidden="true">+</span>
+                        </summary>
+                        <div class="np-mobile-submenu">
+                            <a href="{{ $shopUrl }}" class="np-mobile-nav-link np-mobile-view-all" data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_shop_products_view_all">View all Shop Products</a>
+                            @foreach($shopChildren as $child)
+                                <x-storefront.menu.mobile-item :item="$child" :depth="1" />
+                            @endforeach
+                        </div>
+                    </details>
 
-            <div class="mt-3 border-t border-slate-200 pt-3" @click="if ($event.target.closest('a')) open = false">
-                <a class="block rounded-lg px-3 py-3 hover:bg-slate-100" href="{{ route('orders.track') }}">Track Order</a>
-                <a class="block rounded-lg px-3 py-3 hover:bg-slate-100" href="{{ route('faq') }}">Help Center</a>
-                <a class="block rounded-lg px-3 py-3 hover:bg-slate-100" href="{{ route('contact') }}">Contact Us</a>
-                @if(auth('admin')->check())
-                    <a class="block rounded-lg px-3 py-3 font-bold text-brand-blue hover:bg-slate-100" href="{{ route('admin.dashboard') }}">Admin Dashboard</a>
-                    <form method="POST" action="{{ route('admin.logout') }}">@csrf<button class="w-full rounded-lg px-3 py-3 text-left hover:bg-slate-100">Admin Logout</button></form>
-                @elseif(auth('web')->check())
-                    <a class="block rounded-lg px-3 py-3 hover:bg-slate-100" href="{{ route('account.dashboard') }}">My Account</a>
-                    <form method="POST" action="{{ route('logout') }}">@csrf<button class="w-full rounded-lg px-3 py-3 text-left hover:bg-slate-100">Logout</button></form>
-                @else
-                    <a class="block rounded-lg px-3 py-3 hover:bg-slate-100" href="{{ route('login') }}">Login</a>
-                    <a class="block rounded-lg px-3 py-3 hover:bg-slate-100" href="{{ route('register') }}">Create Account</a>
+                    <a href="{{ route('products.index') }}" class="np-mobile-nav-link {{ $productsActive ? 'is-active' : '' }}" @if($productsActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_all_products">All Products</a>
+                    <a href="{{ route('how-to-order') }}" class="np-mobile-nav-link {{ $howActive ? 'is-active' : '' }}" @if($howActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_how_it_works">How It Works</a>
+                    <a href="{{ route('quote.request') }}" class="np-mobile-nav-link {{ $quoteActive ? 'is-active' : '' }}" @if($quoteActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_bulk_quote">Bulk Quote</a>
+                    <a href="{{ route('shipping') }}" class="np-mobile-nav-link np-mobile-shipping-link {{ $shippingActive ? 'is-active' : '' }}" @if($shippingActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_usa_shipping">USA Shipping</a>
+                </div>
+
+                <div class="np-mobile-utility-list" @click="if ($event.target.closest('a')) open = false">
+                    <a href="{{ route('orders.track') }}" class="np-mobile-nav-link" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_track_order">Track Order</a>
+                    <a href="{{ $whatsappUrl }}" target="_blank" rel="noopener noreferrer" class="np-mobile-nav-link" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_whatsapp">WhatsApp Us</a>
+                    <a href="{{ $accountHref }}" class="np-mobile-nav-link" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_account">{{ $accountLabel }}</a>
+                    @if(auth('admin')->check())
+                        <form method="POST" action="{{ route('admin.logout') }}">@csrf<button class="np-mobile-nav-link np-mobile-nav-button">Admin Logout</button></form>
+                    @elseif(auth('web')->check())
+                        <form method="POST" action="{{ route('logout') }}">@csrf<button class="np-mobile-nav-link np-mobile-nav-button">Logout</button></form>
+                    @else
+                        <a href="{{ route('register') }}" class="np-mobile-nav-link" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_create_account">Create Account</a>
+                    @endif
+                </div>
+
+                @if($socialLinks->isNotEmpty())
+                    <div class="np-mobile-social-wrap">
+                        <span>Follow us</span>
+                        <div class="np-social-links">
+                            @foreach($socialLinks as $network => $url)
+                                @php($networkLabel = str($network)->headline()->toString())
+                                <a href="{{ $url }}" class="np-social-link" target="_blank" rel="noopener noreferrer" aria-label="Follow NextPlay Sportswear on {{ $networkLabel }}" data-header-analytics="header_social_click" data-header-analytics-label="mobile_{{ $network }}">
+                                    <span aria-hidden="true">{{ strtoupper(substr((string) $network, 0, 1)) }}</span>
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
                 @endif
             </div>
         </nav>
     </div>
 </header>
-
-
