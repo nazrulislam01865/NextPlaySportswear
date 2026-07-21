@@ -8768,3 +8768,595 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     font-weight: 800 !important;
 }
 
+
+/* NEXTPLAY_PRODUCT_CARD_REDESIGN_LIGHTWEIGHT
+   Storefront product cards use real card metrics only. Rating/review, activity, favorite/order counts
+   are hidden unless the product has genuine values in the database/schema/specifications. */
+.storefront-clean-ui .np-product-card--nextplay {
+    overflow: hidden !important;
+    border: 1px solid #e6edf6 !important;
+    border-radius: 1.35rem !important;
+    background: #ffffff !important;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, .055) !important;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay:hover {
+    transform: translateY(-3px) !important;
+    border-color: #d8e3f1 !important;
+    box-shadow: 0 18px 42px rgba(15, 23, 42, .095) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-media-wrap {
+    position: relative !important;
+    padding: .72rem !important;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-media {
+    overflow: hidden !important;
+    border: 0 !important;
+    border-radius: 1.05rem !important;
+    background: radial-gradient(circle at 50% 20%, #ffffff 0%, #f8fafc 52%, #eef3f8 100%) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-media img {
+    padding: clamp(.28rem, 1.3vw, .65rem) !important;
+    background: transparent !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-badge {
+    position: absolute !important;
+    left: 1.12rem !important;
+    bottom: 1.12rem !important;
+    z-index: 2 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 1.75rem !important;
+    max-width: calc(100% - 4.5rem) !important;
+    padding: .43rem .68rem !important;
+    border-radius: .56rem !important;
+    color: #ffffff !important;
+    font-size: .66rem !important;
+    font-weight: 780 !important;
+    line-height: 1 !important;
+    letter-spacing: .08em !important;
+    text-transform: uppercase !important;
+    box-shadow: 0 9px 18px rgba(15, 23, 42, .13) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-badge--red { background: #e91d33 !important; }
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-badge--navy { background: #0d2545 !important; }
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-badge--blue { background: #2467b7 !important; }
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-favorite {
+    position: absolute !important;
+    top: 1.08rem !important;
+    right: 1.08rem !important;
+    z-index: 2 !important;
+    display: grid !important;
+    place-items: center !important;
+    width: 2.38rem !important;
+    height: 2.38rem !important;
+    border: 1px solid rgba(226, 232, 240, .9) !important;
+    border-radius: 999px !important;
+    background: rgba(255, 255, 255, .96) !important;
+    color: #061744 !important;
+    box-shadow: 0 10px 22px rgba(15, 23, 42, .12) !important;
+    transition: transform .16s ease, color .16s ease, border-color .16s ease, background .16s ease !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-favorite:hover,
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-favorite:focus-visible {
+    transform: translateY(-1px) scale(1.03) !important;
+    border-color: rgba(233, 29, 51, .3) !important;
+    color: #e91d33 !important;
+    background: #ffffff !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-favorite svg {
+    width: 1.12rem !important;
+    height: 1.12rem !important;
+    fill: none !important;
+    stroke: currentColor !important;
+    stroke-width: 2.05 !important;
+    stroke-linecap: round !important;
+    stroke-linejoin: round !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-body {
+    padding: 1rem 1.05rem 1.12rem !important;
+    gap: 0 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-category {
+    margin: 0 0 .55rem !important;
+    color: #12b6d8 !important;
+    font-size: .66rem !important;
+    font-weight: 760 !important;
+    line-height: 1.2 !important;
+    letter-spacing: .15em !important;
+    text-transform: uppercase !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-title {
+    min-height: 2.85rem !important;
+    margin: 0 !important;
+    color: #061744 !important;
+    font-size: clamp(.98rem, 1.08vw, 1.12rem) !important;
+    font-weight: 760 !important;
+    line-height: 1.32 !important;
+    letter-spacing: -.022em !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-title a {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 3 !important;
+    overflow: hidden !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-options {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: .34rem !important;
+    margin-top: .72rem !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-options span {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: .26rem !important;
+    min-height: 1.52rem !important;
+    max-width: 100% !important;
+    padding: .3rem .52rem !important;
+    border: 1px solid #dbeafe !important;
+    border-radius: 999px !important;
+    background: #f6fbff !important;
+    color: #334155 !important;
+    font-size: .67rem !important;
+    font-weight: 600 !important;
+    line-height: 1.15 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-options .np-product-card-options-more {
+    color: #64748b !important;
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-options svg {
+    flex: 0 0 auto !important;
+    width: .78rem !important;
+    height: .78rem !important;
+    border-radius: 999px !important;
+    color: #12b6d8 !important;
+    fill: currentColor !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-rating {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: .38rem !important;
+    margin-top: .72rem !important;
+    line-height: 1 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-rating-stars {
+    color: #f5a400 !important;
+    font-size: .9rem !important;
+    letter-spacing: .045em !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-rating-value {
+    color: #061744 !important;
+    font-size: .78rem !important;
+    font-weight: 760 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-rating-count {
+    color: #64748b !important;
+    font-size: .76rem !important;
+    font-weight: 560 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-activity {
+    display: flex !important;
+    align-items: center !important;
+    gap: .42rem !important;
+    margin-top: .62rem !important;
+    color: #475569 !important;
+    font-size: .7rem !important;
+    font-weight: 560 !important;
+    line-height: 1.35 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-activity svg {
+    flex: 0 0 auto !important;
+    width: .92rem !important;
+    height: .92rem !important;
+    color: #12b6d8 !important;
+    fill: currentColor !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-divider {
+    height: 1px !important;
+    width: 100% !important;
+    margin: auto 0 .82rem !important;
+    padding-top: .86rem !important;
+    border-bottom: 1px solid #e7eef7 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-price-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: .62rem !important;
+    margin-bottom: .88rem !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-price {
+    flex: 0 0 auto !important;
+    color: #061744 !important;
+    font-size: clamp(1.15rem, 1.6vw, 1.38rem) !important;
+    font-weight: 780 !important;
+    line-height: 1 !important;
+    letter-spacing: -.035em !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-bulk {
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    min-height: 1.36rem !important;
+    padding-left: .68rem !important;
+    color: #64748b !important;
+    font-size: .69rem !important;
+    font-weight: 560 !important;
+    line-height: 1.25 !important;
+    text-align: right !important;
+    white-space: nowrap !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-bulk::before {
+    content: '' !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: .1rem !important;
+    bottom: .1rem !important;
+    width: 1px !important;
+    background: #e2e8f0 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    min-height: 2.65rem !important;
+    padding: .72rem .9rem !important;
+    border: 0 !important;
+    border-radius: .78rem !important;
+    background: linear-gradient(135deg, #061744 0%, #001a4a 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 10px 20px rgba(0, 26, 74, .18) !important;
+    font-size: .88rem !important;
+    font-weight: 760 !important;
+    line-height: 1.2 !important;
+    text-align: center !important;
+    transition: transform .16s ease, box-shadow .16s ease, background .16s ease !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-button:hover,
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-button:focus-visible {
+    transform: translateY(-1px) !important;
+    background: linear-gradient(135deg, #0d2545 0%, #15345d 100%) !important;
+    box-shadow: 0 14px 25px rgba(0, 26, 74, .24) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-details-link {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: .36rem !important;
+    margin-top: .72rem !important;
+    color: #061744 !important;
+    font-size: .8rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    text-align: center !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-details-link:hover {
+    color: #e91d33 !important;
+}
+
+@media (max-width: 640px) {
+    .storefront-clean-ui .np-product-card--nextplay {
+        border-radius: 1.2rem !important;
+    }
+
+    .storefront-clean-ui .np-product-card--nextplay .np-product-card-media-wrap {
+        padding: .62rem !important;
+    }
+
+    .storefront-clean-ui .np-product-card--nextplay .np-product-card-body {
+        padding: .9rem .96rem 1rem !important;
+    }
+
+    .storefront-clean-ui .np-product-card--nextplay .np-product-card-title {
+        min-height: auto !important;
+        font-size: 1rem !important;
+    }
+
+    .storefront-clean-ui .np-product-card--nextplay .np-product-card-price-row {
+        align-items: center !important;
+        flex-direction: row !important;
+        gap: .5rem !important;
+    }
+
+    .storefront-clean-ui .np-product-card--nextplay .np-product-card-bulk {
+        white-space: normal !important;
+    }
+}
+
+/* NEXTPLAY_PRODUCT_CARD_COMPACT_4_COLUMN_TUNING
+   Keeps the approved NextPlay card structure but makes it compact enough for four products per row. */
+.storefront-clean-ui .home-product-desktop.grid-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: clamp(.9rem, 1.25vw, 1.15rem) !important;
+}
+
+.storefront-clean-ui .np-product-listing-grid {
+    gap: clamp(.9rem, 1.2vw, 1.15rem) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay {
+    border-radius: 1.05rem !important;
+    border-color: #e5edf7 !important;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, .055) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 16px 34px rgba(15, 23, 42, .09) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-media-wrap {
+    padding: .5rem !important;
+    background: #ffffff !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-media {
+    border-radius: .88rem !important;
+    background: radial-gradient(circle at 50% 18%, #ffffff 0%, #f8fafc 55%, #eef4fa 100%) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-media img {
+    padding: clamp(.22rem, .8vw, .46rem) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-badge {
+    left: .9rem !important;
+    bottom: .9rem !important;
+    min-height: 1.58rem !important;
+    padding: .36rem .58rem !important;
+    border-radius: .5rem !important;
+    font-size: .58rem !important;
+    font-weight: 750 !important;
+    letter-spacing: .075em !important;
+    box-shadow: 0 7px 14px rgba(233, 29, 51, .18) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-favorite {
+    top: .9rem !important;
+    right: .9rem !important;
+    width: 2.05rem !important;
+    height: 2.05rem !important;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, .11) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-favorite svg {
+    width: .98rem !important;
+    height: .98rem !important;
+    stroke-width: 2.15 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-body {
+    padding: .88rem .92rem .98rem !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-category {
+    margin-bottom: .45rem !important;
+    color: #12b6d8 !important;
+    font-size: .59rem !important;
+    font-weight: 760 !important;
+    letter-spacing: .18em !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-title {
+    min-height: 2.45rem !important;
+    font-size: clamp(.92rem, .95vw, 1.02rem) !important;
+    font-weight: 730 !important;
+    line-height: 1.22 !important;
+    letter-spacing: -.025em !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-title a {
+    -webkit-line-clamp: 2 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-options {
+    gap: .42rem .72rem !important;
+    margin-top: .62rem !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-options span {
+    min-height: auto !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: #475569 !important;
+    font-size: .66rem !important;
+    font-weight: 560 !important;
+    line-height: 1.25 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-options .np-product-card-options-more {
+    color: #64748b !important;
+    background: transparent !important;
+    border: 0 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-options svg {
+    width: .92rem !important;
+    height: .92rem !important;
+    padding: .12rem !important;
+    border: 1px solid #bfeafb !important;
+    border-radius: 999px !important;
+    color: #12b6d8 !important;
+    fill: currentColor !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-rating {
+    gap: .33rem !important;
+    margin-top: .66rem !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-rating-stars {
+    color: #f5a400 !important;
+    font-size: .82rem !important;
+    letter-spacing: .025em !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-rating-value {
+    font-size: .72rem !important;
+    font-weight: 740 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-rating-count {
+    font-size: .7rem !important;
+    font-weight: 520 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-activity {
+    margin-top: .52rem !important;
+    font-size: .66rem !important;
+    font-weight: 520 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-divider {
+    margin: auto 0 .68rem !important;
+    padding-top: .72rem !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-price-row {
+    gap: .5rem !important;
+    margin-bottom: .72rem !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-price {
+    font-size: clamp(1rem, 1.18vw, 1.15rem) !important;
+    font-weight: 760 !important;
+    letter-spacing: -.035em !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-bulk {
+    min-height: 1.15rem !important;
+    padding-left: .55rem !important;
+    font-size: .63rem !important;
+    font-weight: 520 !important;
+    white-space: normal !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-button {
+    min-height: 2.32rem !important;
+    padding: .58rem .8rem !important;
+    border-radius: .68rem !important;
+    font-size: .78rem !important;
+    font-weight: 740 !important;
+    box-shadow: 0 8px 17px rgba(0, 26, 74, .16) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-details-link {
+    margin-top: .6rem !important;
+    font-size: .72rem !important;
+    font-weight: 680 !important;
+}
+
+@media (min-width: 1024px) {
+    .storefront-clean-ui .home-product-desktop.grid-4 > .np-product-card--nextplay {
+        min-width: 0 !important;
+    }
+}
+
+@media (max-width: 1023px) {
+    .storefront-clean-ui .home-product-desktop.grid-4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+@media (max-width: 640px) {
+    .storefront-clean-ui .home-product-desktop.grid-4 {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    .storefront-clean-ui .np-product-card--nextplay .np-product-card-title {
+        min-height: auto !important;
+        font-size: .98rem !important;
+    }
+}
+
+/* NEXTPLAY_PRODUCT_CARD_OPTION_VISIBILITY_UPDATE
+   Makes customization chips and visitor activity easier to read while keeping the compact 4-column card layout. */
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-options span:not(.np-product-card-options-more) {
+    color: #334155 !important;
+    font-weight: 720 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-options .np-product-card-options-more {
+    color: #4b5f7c !important;
+    font-weight: 760 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-options svg {
+    width: 1rem !important;
+    height: 1rem !important;
+    padding: .13rem !important;
+    border: 1.5px solid #67d8f4 !important;
+    background: #effcff !important;
+    color: #08aeca !important;
+    fill: currentColor !important;
+    box-shadow: 0 2px 5px rgba(8, 174, 202, .12) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-activity {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: .34rem !important;
+    color: #4b5f7c !important;
+    font-weight: 680 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-activity svg {
+    width: 1rem !important;
+    height: 1rem !important;
+    color: #08aeca !important;
+    fill: currentColor !important;
+    flex: 0 0 auto !important;
+}
+
+/* NEXTPLAY_REALTIME_PRODUCT_VIEWER_TRACKING
+   The visitor row is now powered by live product-view session data. */
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-activity.is-live {
+    color: #334155 !important;
+    font-weight: 740 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-activity.is-live svg {
+    color: #08aeca !important;
+    filter: drop-shadow(0 2px 5px rgba(8, 174, 202, .14));
+}

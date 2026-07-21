@@ -129,6 +129,7 @@
     </style>
 
     <div class="np-product-page" x-data="{ imageOpen: false, image: null }" @open-product-image.window="image = $event.detail; imageOpen = true">
+        <span class="sr-only" data-product-view-track data-product-id="{{ $product['id'] ?? '' }}" aria-hidden="true"></span>
         <nav class="border-b border-slate-200 bg-slate-50" aria-label="Breadcrumb">
             <div class="site-container flex flex-wrap items-center gap-2 py-4 text-xs text-slate-500">
                 <a href="{{ route('home') }}" class="hover:text-brand-red">Home</a><span>/</span>
@@ -194,7 +195,7 @@
                         </div>
                         <a href="{{ route('products.index') }}" class="btn btn-white">View All Products</a>
                     </div>
-                    <div class="grid-4">
+                    <div class="grid-3">
                         @foreach($relatedProducts as $relatedProduct)
                             <x-storefront.product-card :product="$relatedProduct" />
                         @endforeach

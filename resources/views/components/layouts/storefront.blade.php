@@ -124,6 +124,7 @@
 
     <script>
         window.NextPlayImagePlaceholder = @json(asset('images/product-placeholder.svg'));
+        window.NextPlayProductActivityUrl = @json(route('products.visitor-activity'));
 
         window.nextPlayUseImagePlaceholder = function (image, fallbackSrc) {
             if (! image || String(image.tagName || '').toLowerCase() !== 'img') {

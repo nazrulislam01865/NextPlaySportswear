@@ -1731,6 +1731,87 @@ const setupStorefrontMenus = () => {
 };
 
 
+
+const setupProductCardActivity = () => {
+    const activityUrl = window.NextPlayProductActivityUrl || '';
+    if (!activityUrl) return;
+
+    const cards = Array.from(document.querySelectorAll('[data-product-card][data-product-id]'));
+    const trackers = Array.from(document.querySelectorAll('[data-product-view-track][data-product-id]'));
+    const ids = Array.from(new Set([...cards, ...trackers]
+        .map((element) => Number(element.dataset.productId || 0))
+        .filter((id) => Number.isInteger(id) && id > 0)))
+        .slice(0, 40);
+
+    if (ids.length === 0) return;
+
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    let running = false;
+
+    const updateCards = (activities = {}) => {
+        cards.forEach((card) => {
+            const id = String(Number(card.dataset.productId || 0));
+            const row = card.querySelector('[data-product-card-activity]');
+            const label = row?.querySelector('[data-product-card-activity-label]');
+            const activity = activities[id];
+
+            if (!row || !label) return;
+
+            if (activity?.label) {
+                label.textContent = activity.label;
+                row.hidden = false;
+                row.classList.add('is-live');
+            } else if (!row.dataset.persistedActivity) {
+                label.textContent = '';
+                row.hidden = true;
+                row.classList.remove('is-live');
+            }
+        });
+    };
+
+    cards.forEach((card) => {
+        const row = card.querySelector('[data-product-card-activity]');
+        const label = row?.querySelector('[data-product-card-activity-label]');
+        if (row && label && label.textContent.trim() !== '') {
+            row.dataset.persistedActivity = 'true';
+        }
+    });
+
+    const ping = async () => {
+        if (running || document.visibilityState === 'hidden') return;
+        running = true;
+
+        try {
+            const response = await fetch(activityUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({ product_ids: ids }),
+            });
+
+            if (!response.ok) return;
+
+            const payload = await response.json();
+            updateCards(payload.activities || {});
+        } catch (error) {
+            // Visitor activity is optional and must never interrupt storefront browsing.
+        } finally {
+            running = false;
+        }
+    };
+
+    ping();
+    window.setInterval(ping, 60000);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') ping();
+    });
+};
+
 const trackHeaderInteraction = (eventName, payload = {}) => {
     const name = eventName || 'header_navigation_click';
     const data = {
@@ -1796,6 +1877,7 @@ const bootStorefront = () => {
     setupHomepageFaqs();
     setupStorefrontSearchSuggestions();
     setupHeaderAnalytics();
+    setupProductCardActivity();
 };
 
 if (document.readyState === 'loading') {

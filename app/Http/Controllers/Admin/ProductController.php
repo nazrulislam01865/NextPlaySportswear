@@ -26,6 +26,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -561,7 +562,8 @@ class ProductController extends Controller
         $payload = Arr::only($data, [
             'category_id', 'subcategory_id', 'name', 'slug', 'sku', 'status', 'product_type', 'product_profile', 'brand',
             'badge_label', 'badge_color', 'short_description', 'base_price', 'compare_at_price',
-            'cost_price', 'currency', 'minimum_quantity', 'maximum_quantity', 'is_featured',
+            'cost_price', 'currency', 'rating_average', 'reviews_count', 'recent_viewers_count',
+            'favorites_count', 'recent_orders_count', 'minimum_quantity', 'maximum_quantity', 'is_featured',
             'is_customizable', 'is_active', 'track_inventory', 'stock_quantity', 'low_stock_threshold',
             'allow_backorder', 'weight', 'shipping_class', 'production_methods_enabled', 'shipping_methods_enabled', 'jersey_roster_enabled',
             'jersey_roster_optional', 'jersey_roster_title', 'artwork_upload_enabled',
@@ -572,6 +574,17 @@ class ProductController extends Controller
             'og_title', 'og_description', 'og_image_url', 'robots_index', 'robots_follow',
             'sort_order', 'published_at',
         ]);
+
+        foreach (['rating_average', 'reviews_count', 'recent_viewers_count', 'favorites_count', 'recent_orders_count'] as $metricField) {
+            if (! Schema::hasColumn('products', $metricField)) {
+                unset($payload[$metricField]);
+                continue;
+            }
+
+            if (array_key_exists($metricField, $payload) && $payload[$metricField] === '') {
+                $payload[$metricField] = null;
+            }
+        }
 
         $primaryCategoryId = $data['primary_category_id'] ?? null;
         $primaryCategory = $primaryCategoryId ? Category::query()->find($primaryCategoryId) : null;

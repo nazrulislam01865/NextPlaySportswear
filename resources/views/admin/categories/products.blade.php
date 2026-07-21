@@ -100,6 +100,7 @@
             <form method="POST" action="{{ route('admin.categories.products.update', $category) }}" class="category-product-attach-form" data-attach-products-form>
                 @csrf
                 @method('PUT')
+                <input type="hidden" name="assignment_action" value="attach_products">
 
                 <div class="category-product-attach-toolbar">
                     <label class="category-product-attach-select-all">
@@ -185,7 +186,7 @@
                                 </label>
                             @endforeach
                         </div>
-                        <button class="category-picker-apply" type="submit">Apply</button>
+                        <button class="category-picker-apply" type="submit" name="assignment_action" value="bulk_assign">Apply</button>
                     </div>
                 </details>
 
@@ -298,7 +299,7 @@
                                                             <p class="category-picker-empty">No more subcategories available.</p>
                                                         @endforelse
                                                     </div>
-                                                    <button class="category-picker-apply" type="submit">Apply</button>
+                                                    <button class="category-picker-apply" type="submit" name="assignment_action" value="save_category_changes">Apply</button>
                                                 </div>
                                             </details>
                                         </div>
@@ -354,7 +355,7 @@
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
                         <div class="admin-pagination">{{ $products->onEachSide(1)->links() }}</div>
                         @if($products->count() > 0)
-                            <button class="inline-flex min-h-12 items-center justify-center rounded-xl bg-brand-navy px-5 text-sm font-extrabold text-white shadow-card transition hover:-translate-y-0.5 hover:bg-brand-dark" type="submit">
+                            <button class="inline-flex min-h-12 items-center justify-center rounded-xl bg-brand-navy px-5 text-sm font-extrabold text-white shadow-card transition hover:-translate-y-0.5 hover:bg-brand-dark" type="submit" name="assignment_action" value="save_category_changes">
                                 Apply Changes
                             </button>
                         @endif

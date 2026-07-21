@@ -191,12 +191,15 @@ class CategoryProductController extends Controller
             'bulk_selected_product_ids.*' => ['integer', 'distinct', 'exists:products,id'],
             'bulk_category_ids' => ['nullable', 'array', 'max:50'],
             'bulk_category_ids.*' => ['integer', 'distinct', Rule::exists('categories', 'id')->whereNull('deleted_at')],
+            'assignment_action' => ['nullable', 'string', Rule::in(['attach_products', 'bulk_assign', 'save_category_changes'])],
             'product_category_updates' => ['nullable', 'array', 'max:100'],
             'product_category_updates.*.add_category_ids' => ['nullable', 'array', 'max:50'],
             'product_category_updates.*.add_category_ids.*' => ['integer', 'distinct', Rule::exists('categories', 'id')->whereNull('deleted_at')],
             'product_category_updates.*.remove_category_ids' => ['nullable', 'array', 'max:50'],
             'product_category_updates.*.remove_category_ids.*' => ['integer', 'distinct', Rule::exists('categories', 'id')->whereNull('deleted_at')],
         ]);
+
+        $assignmentAction = (string) ($validated['assignment_action'] ?? 'save_category_changes');
 
         $visibleIds = collect($validated['visible_product_ids'] ?? [])->map(fn ($id) => (int) $id)->unique()->values();
         $visibleIdSet = $visibleIds->flip();
@@ -218,6 +221,18 @@ class CategoryProductController extends Controller
             ->unique()
             ->values();
 
+        if ($assignmentAction === 'attach_products' && $attachProductIds->isEmpty()) {
+            return back()
+                ->withErrors(['attach_product_ids' => 'Please select at least one product before clicking Add selected products.'])
+                ->withInput();
+        }
+
+        if ($assignmentAction === 'bulk_assign' && ($selectedProductIds->isEmpty() || $bulkCategoryIds->isEmpty())) {
+            return back()
+                ->withErrors(['bulk_category_ids' => 'Select at least one visible product and one category before applying bulk assignment.'])
+                ->withInput();
+        }
+
         $changedProducts = collect();
 
         DB::transaction(function () use ($category, $visibleIds, $attachProductIds, $rowUpdates, $selectedProductIds, $bulkCategoryIds, $changedProducts): void {
@@ -234,13 +249,16 @@ class CategoryProductController extends Controller
                         ->where('is_primary', true)
                         ->exists();
 
-                    $this->applyCategoryChangesToProduct($productId, [(int) $category->id], []);
+                    $didChange = $this->applyCategoryChangesToProduct($productId, [(int) $category->id], []);
 
                     if (! $hasPrimaryCategory) {
                         $this->markCategoryAsPrimary($productId, (int) $category->id);
+                        $didChange = true;
                     }
 
-                    $changedProducts->push($productId);
+                    if ($didChange) {
+                        $changedProducts->push($productId);
+                    }
                 }
             }
 
@@ -263,14 +281,16 @@ class CategoryProductController extends Controller
                     continue;
                 }
 
-                $this->applyCategoryChangesToProduct($productId, $addIds->all(), $removeIds->all());
-                $changedProducts->push($productId);
+                if ($this->applyCategoryChangesToProduct($productId, $addIds->all(), $removeIds->all())) {
+                    $changedProducts->push($productId);
+                }
             }
 
             if ($selectedProductIds->isNotEmpty() && $bulkCategoryIds->isNotEmpty()) {
                 foreach ($selectedProductIds as $productId) {
-                    $this->applyCategoryChangesToProduct($productId, $bulkCategoryIds->all(), []);
-                    $changedProducts->push($productId);
+                    if ($this->applyCategoryChangesToProduct($productId, $bulkCategoryIds->all(), [])) {
+                        $changedProducts->push($productId);
+                    }
                 }
             }
 
@@ -282,9 +302,19 @@ class CategoryProductController extends Controller
 
         $changedCount = $changedProducts->unique()->count();
 
-        return back()->with('status', $changedCount > 0
-            ? "Category assignments updated for {$changedCount} product(s). Counts are refreshed."
-            : 'No category assignment changes were submitted.');
+        if ($changedCount > 0) {
+            $message = $assignmentAction === 'attach_products'
+                ? "Added {$changedCount} product(s) to {$category->name}. Counts are refreshed."
+                : "Category assignments updated for {$changedCount} product(s). Counts are refreshed.";
+
+            return back()->with('status', $message);
+        }
+
+        $message = $assignmentAction === 'attach_products'
+            ? 'The selected products are already assigned to this category. Refresh the page and try another product if needed.'
+            : 'No changes were saved because no product/category changes were selected.';
+
+        return back()->withErrors(['category_assignment' => $message]);
     }
 
     private function markCategoryAsPrimary(int $productId, int $categoryId): void
@@ -300,9 +330,10 @@ class CategoryProductController extends Controller
     }
 
     /** @param array<int, int> $addCategoryIds @param array<int, int> $removeCategoryIds */
-    private function applyCategoryChangesToProduct(int $productId, array $addCategoryIds, array $removeCategoryIds): void
+    private function applyCategoryChangesToProduct(int $productId, array $addCategoryIds, array $removeCategoryIds): bool
     {
         $now = now();
+        $changed = false;
 
         $primaryCategoryId = DB::table('category_product')
             ->where('product_id', $productId)
@@ -318,11 +349,15 @@ class CategoryProductController extends Controller
                 continue;
             }
 
-            DB::table('category_product')
+            $deleted = DB::table('category_product')
                 ->where('product_id', $productId)
                 ->where('category_id', $categoryId)
                 ->where('is_primary', false)
                 ->delete();
+
+            if ($deleted > 0) {
+                $changed = true;
+            }
         }
 
         $expandedAddCategoryIds = $this->expandCategoryIdsWithAncestors($addCategoryIds);
@@ -349,7 +384,11 @@ class CategoryProductController extends Controller
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
+
+            $changed = true;
         }
+
+        return $changed;
     }
 
 

@@ -837,6 +837,8 @@ class ProductCatalogService
         $detailInformation = $this->normalizeDetailInformation($product->specifications ?? []);
         $summaryDetailInformation = $this->summaryDetailInformation($detailInformation, $product);
         $specificationSku = trim((string) (($summaryDetailInformation['SKU'] ?? null) ?: ($detailInformation['SKU'] ?? '')));
+        $rating = $this->genuineProductRating($product);
+        $reviewsCount = $this->genuineProductReviewsCount($product);
 
         return [
             'id' => $product->id,
@@ -865,8 +867,12 @@ class ProductCatalogService
             ])->values()->all(),
             'attributes' => [],
             'sku' => $specificationSku !== '' ? $specificationSku : $product->sku,
-            'rating' => 0,
-            'reviews_count' => 0,
+            'rating' => $rating,
+            'reviews_count' => $reviewsCount,
+            'has_reviews' => $rating !== null && $reviewsCount !== null && $reviewsCount > 0,
+            'customization_options' => $this->productCardCustomizationOptions($product),
+            'has_bulk_pricing' => $this->hasBulkPricing($product),
+            'shopper_activity' => $this->productShopperActivity($product),
             'image' => $gallery[0]['url'],
             'alt' => $gallery[0]['alt'],
             'gallery' => $gallery,
@@ -893,6 +899,15 @@ class ProductCatalogService
             'categories',
             'images',
             'priceTiers',
+            'optionGroups' => fn ($query) => $query
+                ->where('is_active', true)
+                ->where(function ($builder): void {
+                    $builder->whereNull('display_mode')->orWhere('display_mode', '!=', 'hidden');
+                })
+                ->where(function ($builder): void {
+                    $builder->whereNull('show_in_summary')->orWhere('show_in_summary', true);
+                })
+                ->orderBy('sort_order'),
         ];
     }
 
@@ -970,6 +985,209 @@ class ProductCatalogService
     private function formatDisplayPrice(float $unitPrice): string
     {
         return 'From $'.number_format($unitPrice, 2);
+    }
+
+    private function genuineProductRating(Product $product): ?float
+    {
+        foreach (['rating_average', 'average_rating', 'rating'] as $column) {
+            if (! array_key_exists($column, $product->getAttributes())) {
+                continue;
+            }
+
+            $rating = $product->getAttribute($column);
+
+            if (is_numeric($rating) && (float) $rating > 0) {
+                return round(min(5, max(0, (float) $rating)), 1);
+            }
+        }
+
+        $schemaRating = data_get($product->schema_json, 'aggregateRating.ratingValue')
+            ?? data_get($product->schema_json, 'aggregateRating.rating')
+            ?? data_get($product->schema_json, 'ratingValue');
+
+        if (is_numeric($schemaRating) && (float) $schemaRating > 0) {
+            return round(min(5, max(0, (float) $schemaRating)), 1);
+        }
+
+        $specRating = $this->numericSpecificationValue($product, ['rating', 'average rating', 'rating average']);
+        if ($specRating !== null && $specRating > 0) {
+            return round(min(5, max(0, $specRating)), 1);
+        }
+
+        return null;
+    }
+
+    private function genuineProductReviewsCount(Product $product): ?int
+    {
+        foreach (['reviews_count', 'review_count', 'published_reviews_count'] as $column) {
+            if (! array_key_exists($column, $product->getAttributes())) {
+                continue;
+            }
+
+            $count = $product->getAttribute($column);
+
+            if (is_numeric($count) && (int) $count > 0) {
+                return (int) $count;
+            }
+        }
+
+        $schemaCount = data_get($product->schema_json, 'aggregateRating.reviewCount')
+            ?? data_get($product->schema_json, 'aggregateRating.ratingCount')
+            ?? data_get($product->schema_json, 'reviewCount');
+
+        if (is_numeric($schemaCount) && (int) $schemaCount > 0) {
+            return (int) $schemaCount;
+        }
+
+        $specCount = $this->numericSpecificationValue($product, ['reviews count', 'review count', 'reviews', 'rating count']);
+        if ($specCount !== null && (int) $specCount > 0) {
+            return (int) $specCount;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<int, string> $labels
+     */
+    private function numericSpecificationValue(Product $product, array $labels): ?float
+    {
+        $specifications = collect($product->specifications ?? []);
+
+        if ($specifications->isEmpty()) {
+            return null;
+        }
+
+        $wanted = collect($labels)
+            ->map(fn (string $label): string => Str::of($label)->lower()->squish()->toString())
+            ->all();
+
+        foreach ($specifications as $specification) {
+            if (! is_array($specification)) {
+                continue;
+            }
+
+            $name = Str::of((string) ($specification['name'] ?? $specification['label'] ?? $specification['key'] ?? ''))
+                ->lower()
+                ->squish()
+                ->toString();
+
+            if (! in_array($name, $wanted, true)) {
+                continue;
+            }
+
+            $value = (string) ($specification['value'] ?? $specification['content'] ?? '');
+
+            if (preg_match('/\d+(?:\.\d+)?/', $value, $match) === 1) {
+                return (float) $match[0];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function productCardCustomizationOptions(Product $product): array
+    {
+        $labels = collect();
+
+        if ((bool) $product->is_customizable) {
+            $labels->push('Custom design');
+        }
+
+        if ((bool) ($product->artwork_upload_enabled ?? false)) {
+            $labels->push('Artwork upload');
+        }
+
+        if ($product->relationLoaded('optionGroups')) {
+            $product->optionGroups
+                ->where('is_active', true)
+                ->filter(fn ($group): bool => ($group->display_mode ?: 'customer') !== 'hidden' && (bool) ($group->show_in_summary ?? true))
+                ->pluck('name')
+                ->each(fn ($name) => $labels->push((string) $name));
+        }
+
+        collect($product->features ?? [])
+            ->filter(fn ($feature): bool => is_scalar($feature))
+            ->each(fn ($feature) => $labels->push((string) $feature));
+
+        return $labels
+            ->map(fn (string $label): string => trim(preg_replace('/\s+/', ' ', strip_tags($label)) ?? ''))
+            ->filter(fn (string $label): bool => $label !== '')
+            ->reject(function (string $label): bool {
+                $normalized = Str::of($label)->lower()->replace(['&', '+'], ' and ')->squish()->toString();
+
+                return str_contains($normalized, 'name and number')
+                    || str_contains($normalized, 'names and numbers')
+                    || str_contains($normalized, 'team pricing')
+                    || str_contains($normalized, 'bulk pricing')
+                    || str_contains($normalized, 'bulk order')
+                    || str_contains($normalized, 'bulk quote');
+            })
+            ->unique(fn (string $label): string => Str::lower($label))
+            ->take(3)
+            ->values()
+            ->all();
+    }
+
+    private function hasBulkPricing(Product $product): bool
+    {
+        if ($product->relationLoaded('priceTiers') && $product->priceTiers->where('unit_price', '>', 0)->count() > 1) {
+            return true;
+        }
+
+        if (collect($product->price_table_rows ?? [])->filter(fn ($row): bool => is_array($row) && count($row) > 1)->count() > 1) {
+            return true;
+        }
+
+        return (int) ($product->minimum_quantity ?? 1) > 1;
+    }
+
+    private function productShopperActivity(Product $product): ?string
+    {
+        $liveViewers = $this->positiveIntegerAttribute($product, ['current_viewers_count', 'active_shoppers_count']);
+        if ($liveViewers !== null) {
+            return $liveViewers.' shopper'.($liveViewers === 1 ? '' : 's').' viewing now';
+        }
+
+        $recentViewers = $this->positiveIntegerAttribute($product, ['recent_viewers_count']);
+        if ($recentViewers !== null) {
+            return $recentViewers.' shopper'.($recentViewers === 1 ? '' : 's').' viewed this recently';
+        }
+
+        $orders = $this->positiveIntegerAttribute($product, ['recent_orders_count', 'orders_count', 'order_count']);
+        if ($orders !== null) {
+            return $orders.' order'.($orders === 1 ? '' : 's').' placed recently';
+        }
+
+        $favorites = $this->positiveIntegerAttribute($product, ['favorites_count', 'favorite_count', 'wishlist_count']);
+        if ($favorites !== null) {
+            return $favorites.' customer'.($favorites === 1 ? '' : 's').' saved this product';
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<int, string> $columns
+     */
+    private function positiveIntegerAttribute(Product $product, array $columns): ?int
+    {
+        foreach ($columns as $column) {
+            if (! array_key_exists($column, $product->getAttributes())) {
+                continue;
+            }
+
+            $value = $product->getAttribute($column);
+
+            if (is_numeric($value) && (int) $value > 0) {
+                return (int) $value;
+            }
+        }
+
+        return null;
     }
 
     public function fromModel(Product $product): array
@@ -1070,6 +1288,8 @@ class ProductCatalogService
         $specificationSku = trim((string) (($summaryDetailInformation['SKU'] ?? null) ?: ($detailInformation['SKU'] ?? '')));
         $productProfile = $product->product_profile ?: 'standard';
         $supportsSizeOptions = ProductSizing::supports($productProfile);
+        $rating = $this->genuineProductRating($product);
+        $reviewsCount = $this->genuineProductReviewsCount($product);
 
         return [
             'id' => $product->id,
@@ -1098,8 +1318,12 @@ class ProductCatalogService
             'categories' => $visibleCategories->map(fn ($category) => ['id' => $category->id, 'name' => $category->name, 'slug' => $category->slug, 'primary' => (int) $category->id === (int) ($primaryCategory?->id)])->values()->all(),
             'attributes' => $product->relationLoaded('attributeValues') ? $product->attributeValues->groupBy('attribute.slug')->map(fn ($values) => $values->pluck('label')->values()->all())->all() : [],
             'sku' => $specificationSku !== '' ? $specificationSku : $product->sku,
-            'rating' => 0,
-            'reviews_count' => 0,
+            'rating' => $rating,
+            'reviews_count' => $reviewsCount,
+            'has_reviews' => $rating !== null && $reviewsCount !== null && $reviewsCount > 0,
+            'customization_options' => $this->productCardCustomizationOptions($product),
+            'has_bulk_pricing' => $this->hasBulkPricing($product),
+            'shopper_activity' => $this->productShopperActivity($product),
             'image' => $gallery[0]['url'],
             'alt' => $gallery[0]['alt'],
             'gallery' => $gallery,

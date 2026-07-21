@@ -75,7 +75,7 @@
                 <div>
                     @if ($products->count())
                         <p class="mb-5 text-sm font-semibold text-slate-500">Showing {{ $products->firstItem() }}–{{ $products->lastItem() }} of {{ $products->total() }} products</p>
-                        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 {{ $categoryFilters === [] ? '2xl:grid-cols-4' : '' }}">
+                        <div class="np-product-listing-grid grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                             @foreach ($products as $product)
                                 <x-storefront.product-card :product="$product" :show-category="true" />
                             @endforeach
