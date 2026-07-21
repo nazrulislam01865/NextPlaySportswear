@@ -1048,6 +1048,122 @@ class ProductCatalogService
     }
 
     /**
+     * Return only written reviews that are already present in the product's
+     * JSON-LD/schema payload. This deliberately avoids generating placeholder
+     * testimonials or attributing global testimonials to a specific product.
+     *
+     * Supported schema shapes include a Product object, an @graph array, a
+     * top-level array of schema nodes, and either `review` or `reviews` keys.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function genuineProductReviewItems(Product $product): array
+    {
+        $schema = $product->schema_json;
+
+        if (! is_array($schema) || $schema === []) {
+            return [];
+        }
+
+        $nodes = collect();
+
+        if (array_is_list($schema)) {
+            $nodes = $nodes->concat($schema);
+        } else {
+            $nodes->push($schema);
+        }
+
+        foreach ((array) data_get($schema, '@graph', []) as $graphNode) {
+            if (is_array($graphNode)) {
+                $nodes->push($graphNode);
+            }
+        }
+
+        $reviews = $nodes
+            ->flatMap(function ($node): array {
+                if (! is_array($node)) {
+                    return [];
+                }
+
+                $payload = $node['review'] ?? $node['reviews'] ?? [];
+
+                if (! is_array($payload) || $payload === []) {
+                    return [];
+                }
+
+                return array_is_list($payload) ? $payload : [$payload];
+            })
+            ->filter(fn ($review): bool => is_array($review))
+            ->map(function (array $review): ?array {
+                $body = trim(strip_tags((string) ($review['reviewBody'] ?? $review['description'] ?? '')));
+                $authorPayload = $review['author'] ?? null;
+                $author = trim((string) (is_array($authorPayload)
+                    ? ($authorPayload['name'] ?? '')
+                    : $authorPayload));
+                $authorDetail = trim((string) (is_array($authorPayload)
+                    ? ($authorPayload['jobTitle'] ?? $authorPayload['description'] ?? '')
+                    : ''));
+                $rating = data_get($review, 'reviewRating.ratingValue')
+                    ?? data_get($review, 'reviewRating.rating')
+                    ?? ($review['rating'] ?? null);
+
+                if ($body === '' || ! is_numeric($rating) || (float) $rating <= 0) {
+                    return null;
+                }
+
+                $rating = round(min(5, max(1, (float) $rating)), 1);
+                $verifiedValue = $review['verified']
+                    ?? $review['isVerified']
+                    ?? data_get($review, 'author.verified')
+                    ?? false;
+
+                return [
+                    'title' => trim(strip_tags((string) ($review['name'] ?? $review['headline'] ?? ''))),
+                    'body' => $body,
+                    'rating' => $rating,
+                    'author' => $author !== '' ? $author : 'Customer',
+                    'author_detail' => $authorDetail,
+                    'verified' => filter_var($verifiedValue, FILTER_VALIDATE_BOOLEAN),
+                    'date' => trim((string) ($review['datePublished'] ?? '')),
+                ];
+            })
+            ->filter()
+            ->unique(fn (array $review): string => Str::lower($review['author'].'|'.$review['body']))
+            ->take(12)
+            ->values();
+
+        return $reviews->all();
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $reviewItems
+     * @return array<int, array{stars:int,count:int,percent:float}>
+     */
+    private function genuineReviewDistribution(array $reviewItems): array
+    {
+        $items = collect($reviewItems);
+        $total = $items->count();
+
+        if ($total === 0) {
+            return [];
+        }
+
+        return collect(range(5, 1))
+            ->map(function (int $stars) use ($items, $total): array {
+                $count = $items->filter(
+                    fn (array $review): bool => (int) round((float) ($review['rating'] ?? 0)) === $stars
+                )->count();
+
+                return [
+                    'stars' => $stars,
+                    'count' => $count,
+                    'percent' => round(($count / $total) * 100, 2),
+                ];
+            })
+            ->all();
+    }
+
+    /**
      * @param array<int, string> $labels
      */
     private function numericSpecificationValue(Product $product, array $labels): ?float
@@ -1147,26 +1263,9 @@ class ProductCatalogService
 
     private function productShopperActivity(Product $product): ?string
     {
-        $liveViewers = $this->positiveIntegerAttribute($product, ['current_viewers_count', 'active_shoppers_count']);
-        if ($liveViewers !== null) {
-            return $liveViewers.' shopper'.($liveViewers === 1 ? '' : 's').' viewing now';
-        }
-
-        $recentViewers = $this->positiveIntegerAttribute($product, ['recent_viewers_count']);
-        if ($recentViewers !== null) {
-            return $recentViewers.' shopper'.($recentViewers === 1 ? '' : 's').' viewed this recently';
-        }
-
-        $orders = $this->positiveIntegerAttribute($product, ['recent_orders_count', 'orders_count', 'order_count']);
-        if ($orders !== null) {
-            return $orders.' order'.($orders === 1 ? '' : 's').' placed recently';
-        }
-
-        $favorites = $this->positiveIntegerAttribute($product, ['favorites_count', 'favorite_count', 'wishlist_count']);
-        if ($favorites !== null) {
-            return $favorites.' customer'.($favorites === 1 ? '' : 's').' saved this product';
-        }
-
+        // Product-card visitor activity is populated asynchronously from genuine
+        // product-detail visits recorded in product_view_sessions. Do not render
+        // manually entered or inferred counts as shopper activity.
         return null;
     }
 
@@ -1290,6 +1389,7 @@ class ProductCatalogService
         $supportsSizeOptions = ProductSizing::supports($productProfile);
         $rating = $this->genuineProductRating($product);
         $reviewsCount = $this->genuineProductReviewsCount($product);
+        $reviewItems = $this->genuineProductReviewItems($product);
 
         return [
             'id' => $product->id,
@@ -1321,6 +1421,11 @@ class ProductCatalogService
             'rating' => $rating,
             'reviews_count' => $reviewsCount,
             'has_reviews' => $rating !== null && $reviewsCount !== null && $reviewsCount > 0,
+            'review_items' => $reviewItems,
+            'review_distribution' => $this->genuineReviewDistribution($reviewItems),
+            'favorites_count' => is_numeric($product->favorites_count) && (int) $product->favorites_count > 0
+                ? (int) $product->favorites_count
+                : null,
             'customization_options' => $this->productCardCustomizationOptions($product),
             'has_bulk_pricing' => $this->hasBulkPricing($product),
             'shopper_activity' => $this->productShopperActivity($product),
@@ -1861,6 +1966,12 @@ class ProductCatalogService
         $product['og_title'] = $product['og_title'] ?? null;
         $product['og_description'] = $product['og_description'] ?? null;
         $product['og_image'] = $product['og_image'] ?? $product['image'];
+        $product['review_items'] = collect($product['review_items'] ?? [])
+            ->filter(fn ($review) => is_array($review))
+            ->values()
+            ->all();
+        $product['review_distribution'] = $product['review_distribution']
+            ?? $this->genuineReviewDistribution($product['review_items']);
         $product['gallery'] = collect($product['gallery'])->map(fn ($image) => is_array($image) ? $image : ['url' => $image, 'alt' => $product['alt']])->all();
 
         return $product;

@@ -6,13 +6,18 @@
 
 <div class="np-utility-bar" aria-label="Store utility links">
     <div class="np-header-shell np-utility-inner">
-        <p class="np-utility-message">
+        <p class="np-utility-message" aria-label="Custom team gear. Built for every game.">
             <span class="np-utility-star" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
                     <path d="M12 2.5l2.45 5.54 6.05.53-4.58 3.95 1.38 5.86L12 15.25 6.7 18.38l1.38-5.86L3.5 8.57l6.05-.53L12 2.5z"/>
                 </svg>
             </span>
-            <span>CUSTOM TEAM GEAR • BUILT FOR EVERY GAME</span>
+            <span class="np-utility-marquee" aria-hidden="true">
+                <span class="np-utility-marquee-track">
+                    <span class="np-utility-marquee-item">CUSTOM TEAM GEAR <b>•</b> BUILT FOR EVERY GAME</span>
+                    <span class="np-utility-marquee-item">CUSTOM TEAM GEAR <b>•</b> BUILT FOR EVERY GAME</span>
+                </span>
+            </span>
         </p>
 
         <nav class="np-utility-links" aria-label="Header utility navigation">

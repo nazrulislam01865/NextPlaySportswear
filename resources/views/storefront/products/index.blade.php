@@ -33,7 +33,7 @@
     </section>
 
     <section class="section-padding bg-slate-50">
-        <div class="site-container" x-data="{filtersOpen:false}">
+        <div class="site-container np-products-catalog-container" x-data="{filtersOpen:false}">
             <div class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                     <p class="text-sm font-bold text-slate-500">{{ $products->total() }} product{{ $products->total() === 1 ? '' : 's' }} found</p>
@@ -75,7 +75,7 @@
                 <div>
                     @if ($products->count())
                         <p class="mb-5 text-sm font-semibold text-slate-500">Showing {{ $products->firstItem() }}–{{ $products->lastItem() }} of {{ $products->total() }} products</p>
-                        <div class="np-product-listing-grid grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                        <div class="np-product-listing-grid np-product-listing-grid--three grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                             @foreach ($products as $product)
                                 <x-storefront.product-card :product="$product" :show-category="true" />
                             @endforeach

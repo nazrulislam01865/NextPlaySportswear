@@ -42,6 +42,16 @@
     $googleReviewHref = $reviewBaseHref . '&platform=google-reviews';
     $trustpilotReviewHref = $reviewBaseHref . '&platform=trustpilot';
     $facebookReviewHref = $reviewBaseHref . '&platform=facebook';
+
+    $heroEyebrow = $text('eyebrow', 'Customer Words');
+    if (in_array(mb_strtolower(trim($heroEyebrow)), ['real teams. real feedback.', 'real teams real feedback'], true)) {
+        $heroEyebrow = 'Customer Words';
+    }
+
+    $heroTitle = $text('title', 'What Teams and Customers Say');
+    if (in_array(mb_strtolower(trim($heroTitle)), ['made for teams who want to look the part.', 'made for teams who want to look the part'], true)) {
+        $heroTitle = 'What Teams and Customers Say';
+    }
 @endphp
 
 <section class="np-testimonials-v2" id="testimonials" data-np-testimonials-section>
@@ -672,13 +682,400 @@
             .np-review-platform-external { width: 28px; height: 28px; border-radius: 7px; }
             .np-review-platforms-note { align-items: flex-start; font-size: 15px; }
         }
+
+
+        /* Prototype-matched upper testimonial section. Lower testimonial sections remain unchanged. */
+        .np-testimonials-v2 {
+            padding: 24px 0 66px;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at 97% 7%, rgba(239, 35, 60, .12), transparent 26%),
+                linear-gradient(180deg, #ffffff 0%, #ffffff 72%, #f8fafc 100%);
+        }
+
+        .np-testimonials-shell {
+            width: min(1490px, calc(100% - 48px));
+        }
+
+        .np-testimonials-hero {
+            grid-template-columns: minmax(0, 1.34fr) minmax(520px, .96fr);
+            gap: clamp(52px, 5.2vw, 86px);
+            align-items: stretch;
+            margin-bottom: 52px;
+        }
+
+        .np-testimonials-hero > div:first-child {
+            display: flex;
+            min-width: 0;
+            flex-direction: column;
+            padding-top: 11px;
+        }
+
+        .np-testimonials-eyebrow {
+            gap: 13px;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: .16em;
+        }
+
+        .np-testimonials-eyebrow::before {
+            width: 35px;
+            height: 4px;
+        }
+
+        .np-testimonials-title {
+            max-width: 760px;
+            margin: 26px 0 22px;
+            font-size: clamp(58px, 4.75vw, 78px);
+            line-height: .98;
+            font-weight: 800;
+            letter-spacing: -.052em;
+        }
+
+        .np-testimonials-lead {
+            max-width: 800px;
+            color: #718096;
+            font-size: clamp(20px, 1.55vw, 25px);
+            line-height: 1.52;
+        }
+
+        .np-testimonials-actions {
+            gap: 16px;
+            margin-top: 34px;
+        }
+
+        .np-testimonials-btn {
+            min-height: 60px;
+            padding: 15px 25px;
+            border-color: #e2e8f0;
+            font-size: 17px;
+            font-weight: 800;
+        }
+
+        .np-testimonials-btn.is-red {
+            padding-inline: 29px;
+            box-shadow: 0 16px 30px rgba(239, 35, 60, .22);
+        }
+
+        .np-review-platforms {
+            margin-top: 36px;
+            border-radius: 26px;
+            padding: 29px 28px 25px;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, .08);
+        }
+
+        .np-review-platforms-header h3 {
+            margin-bottom: 12px;
+            font-size: 21px;
+            font-weight: 800;
+            letter-spacing: .09em;
+        }
+
+        .np-review-platforms-header p {
+            font-size: 18px;
+            line-height: 1.45;
+        }
+
+        .np-review-platforms-grid {
+            gap: 14px;
+            margin-top: 22px;
+        }
+
+        .np-review-platform-card {
+            min-height: 188px;
+            gap: 20px;
+            border-radius: 20px;
+            padding: 23px 21px 20px;
+            box-shadow: 0 7px 18px rgba(15, 23, 42, .035);
+        }
+
+        .np-review-platform-brand {
+            align-items: center;
+            gap: 14px;
+        }
+
+        .np-review-platform-icon {
+            width: 55px;
+            height: 55px;
+        }
+
+        .np-review-platform-brand strong {
+            font-size: 22px;
+            font-weight: 800;
+            line-height: 1.08;
+        }
+
+        .np-review-platform-brand small {
+            margin-top: 5px;
+            font-size: 16px;
+            line-height: 1.25;
+        }
+
+        .np-review-platform-brand .np-stars {
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: 2px;
+        }
+
+        .np-review-platform-action {
+            font-size: 17px;
+            font-weight: 800;
+        }
+
+        .np-review-platform-external {
+            width: 29px;
+            height: 29px;
+            border-radius: 8px;
+        }
+
+        .np-review-platform-external svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .np-review-platforms-note {
+            gap: 11px;
+            margin-top: 20px;
+            padding-top: 18px;
+            font-size: 17px;
+        }
+
+        .np-review-platforms-note svg {
+            width: 21px;
+            height: 21px;
+        }
+
+        .np-featured-review {
+            display: flex;
+            min-height: 810px;
+            flex-direction: column;
+            border-radius: 36px;
+            padding: 48px 40px 46px;
+            background: linear-gradient(145deg, #0d172c 0%, #1d2a40 100%);
+            box-shadow: 0 24px 55px rgba(15, 23, 42, .14);
+        }
+
+        .np-featured-review::after {
+            top: -96px;
+            right: -72px;
+            width: 270px;
+            height: 270px;
+            background: rgba(239, 35, 60, .29);
+        }
+
+        .np-featured-rating {
+            align-items: center;
+            gap: 18px;
+            font-size: 57px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .np-featured-rating .np-stars {
+            font-size: 56px;
+            letter-spacing: 4px;
+        }
+
+        .np-featured-quote {
+            max-width: 510px;
+            margin: 78px 0 36px;
+            font-size: clamp(38px, 2.8vw, 48px);
+            font-weight: 800;
+            line-height: 1.28;
+            letter-spacing: -.035em;
+        }
+
+        .np-featured-person {
+            margin-top: auto;
+        }
+
+        .np-testimonial-avatar {
+            width: 66px;
+            height: 66px;
+            border-radius: 18px;
+            font-size: 17px;
+        }
+
+        .np-featured-person strong {
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .np-featured-person small {
+            margin-top: 7px;
+            font-size: 16px;
+        }
+
+        @media (max-width: 1180px) {
+            .np-testimonials-shell { width: min(100% - 36px, 1120px); }
+            .np-testimonials-hero {
+                grid-template-columns: minmax(0, 1.12fr) minmax(430px, .88fr);
+                gap: 36px;
+            }
+            .np-testimonials-title { font-size: clamp(50px, 5vw, 64px); }
+            .np-featured-review { min-height: 720px; padding: 40px 34px; }
+            .np-featured-rating { font-size: 48px; }
+            .np-featured-rating .np-stars { font-size: 44px; }
+            .np-featured-quote { margin-top: 62px; font-size: clamp(34px, 3.4vw, 42px); }
+            .np-review-platform-card { padding: 19px 16px; }
+            .np-review-platform-brand strong { font-size: 18px; }
+            .np-review-platform-brand small { font-size: 14px; }
+            .np-review-platform-icon { width: 46px; height: 46px; }
+        }
+
+        @media (max-width: 980px) {
+            .np-testimonials-v2 { padding-top: 48px; }
+            .np-testimonials-hero { grid-template-columns: minmax(0, 1fr); }
+            .np-testimonials-title { max-width: 760px; }
+            .np-featured-review { min-height: 590px; }
+            .np-review-platform-card { min-height: 165px; }
+        }
+
+        @media (max-width: 700px) {
+            .np-testimonials-v2 { padding: 48px 0 58px; }
+            .np-testimonials-shell { width: min(100% - 24px, 1180px); }
+            .np-testimonials-eyebrow { font-size: 12px; }
+            .np-testimonials-eyebrow::before { width: 28px; height: 3px; }
+            .np-testimonials-title { margin-top: 18px; font-size: clamp(42px, 12vw, 56px); }
+            .np-testimonials-lead { font-size: 17px; }
+            .np-testimonials-actions { margin-top: 26px; }
+            .np-testimonials-btn { min-height: 50px; padding: 12px 17px; font-size: 14px; }
+            .np-review-platforms { margin-top: 28px; padding: 21px 18px 18px; border-radius: 22px; }
+            .np-review-platforms-header h3 { font-size: 17px; }
+            .np-review-platforms-header p { font-size: 15px; }
+            .np-review-platforms-grid { grid-template-columns: minmax(0, 1fr); }
+            .np-review-platform-card { min-height: 132px; padding: 16px; }
+            .np-review-platform-brand strong { font-size: 18px; }
+            .np-review-platform-brand small { font-size: 14px; }
+            .np-review-platform-action { font-size: 14px; }
+            .np-review-platforms-note { font-size: 14px; }
+            .np-featured-review { min-height: 520px; padding: 30px 24px; border-radius: 28px; }
+            .np-featured-rating { gap: 10px; font-size: 42px; }
+            .np-featured-rating .np-stars { font-size: 32px; letter-spacing: 2px; }
+            .np-featured-quote { margin-top: 48px; font-size: clamp(30px, 9vw, 40px); }
+            .np-testimonial-avatar { width: 56px; height: 56px; }
+            .np-featured-person strong { font-size: 16px; }
+            .np-featured-person small { font-size: 14px; }
+        }
+
+        /* Compact, lighter upper-section typography and review-platform cards. */
+        .np-testimonials-eyebrow { font-weight: 700; }
+        .np-testimonials-title { font-weight: 700; }
+        .np-testimonials-btn { font-weight: 650; }
+
+        .np-review-platforms {
+            margin-top: 30px;
+            padding: 24px 24px 21px;
+        }
+
+        .np-review-platforms-header h3 {
+            margin-bottom: 8px;
+            font-size: 19px;
+            font-weight: 700;
+        }
+
+        .np-review-platforms-header p {
+            font-size: 16px;
+            line-height: 1.4;
+        }
+
+        .np-review-platforms-grid {
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .np-review-platform-card {
+            min-height: 150px;
+            gap: 14px;
+            padding: 17px 16px 15px;
+            border-radius: 18px;
+        }
+
+        .np-review-platform-brand {
+            gap: 11px;
+        }
+
+        .np-review-platform-icon {
+            width: 44px;
+            height: 44px;
+        }
+
+        .np-review-platform-brand > span:last-child {
+            min-width: 0;
+        }
+
+        .np-review-platform-brand strong {
+            font-size: 18px;
+            font-weight: 650;
+            line-height: 1.15;
+            letter-spacing: -.02em;
+            white-space: nowrap;
+        }
+
+        .np-review-platform-brand small {
+            margin-top: 3px;
+            font-size: 14px;
+            line-height: 1.25;
+            white-space: nowrap;
+        }
+
+        .np-review-platform-brand .np-stars {
+            font-size: 17px;
+            letter-spacing: 1.5px;
+        }
+
+        .np-review-platform-action {
+            font-size: 14px;
+            font-weight: 650;
+        }
+
+        .np-review-platform-external {
+            width: 25px;
+            height: 25px;
+            border-radius: 7px;
+        }
+
+        .np-review-platform-external svg {
+            width: 13px;
+            height: 13px;
+        }
+
+        .np-review-platforms-note {
+            margin-top: 16px;
+            padding-top: 14px;
+            font-size: 15px;
+        }
+
+        .np-featured-rating { font-weight: 700; }
+        .np-featured-quote { font-weight: 650; }
+        .np-featured-person strong { font-weight: 650; }
+        .np-featured-review .np-testimonial-avatar { font-weight: 700; }
+
+        @media (max-width: 1180px) and (min-width: 981px) {
+            .np-review-platforms { padding-inline: 20px; }
+            .np-review-platform-card { padding-inline: 13px; }
+            .np-review-platform-icon { width: 40px; height: 40px; }
+            .np-review-platform-brand { gap: 9px; }
+            .np-review-platform-brand strong { font-size: 16px; }
+            .np-review-platform-brand small { font-size: 12.5px; }
+            .np-review-platform-action { font-size: 13px; }
+        }
+
+        @media (max-width: 700px) {
+            .np-review-platforms { padding: 19px 16px 16px; }
+            .np-review-platform-card { min-height: 126px; padding: 15px; }
+            .np-review-platform-icon { width: 42px; height: 42px; }
+            .np-review-platform-brand strong { font-size: 17px; }
+            .np-review-platform-brand small { font-size: 13px; }
+        }
+
     </style>
 
     <div class="np-testimonials-shell">
         <div class="np-testimonials-hero">
             <div>
-                <span class="np-testimonials-eyebrow">{{ $text('eyebrow', 'Real teams. Real feedback.') }}</span>
-                <h2 class="np-testimonials-title">{{ $text('title', 'Made for teams who want to look the part.') }}</h2>
+                <span class="np-testimonials-eyebrow">{{ $heroEyebrow }}</span>
+                <h2 class="np-testimonials-title">{{ $heroTitle }}</h2>
                 <p class="np-testimonials-lead">
                     {{ $text('description', 'See how clubs, schools, businesses, and event teams use NextPlay for custom sportswear, team uniforms, event kits, and bulk orders.') }}
                 </p>

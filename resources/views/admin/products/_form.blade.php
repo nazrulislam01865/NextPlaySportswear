@@ -1717,30 +1717,31 @@ Lead Time:"></div>
                         <input class="admin-input" name="badge_label" value="{{ old('badge_label',$product->badge_label) }}" maxlength="80" placeholder="Customizable, New, Best Seller">
                     </label>
 
-
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                        <div class="mb-4">
-                            <h3 class="text-sm font-black uppercase tracking-[.16em] text-brand-ink">Product card store data</h3>
-                            <p class="mt-1 text-xs font-semibold leading-5 text-slate-500">Optional fields for the storefront product card. Leave empty unless the numbers come from genuine store data.</p>
+                    @if($isEdit)
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                            <div class="mb-4">
+                                <h3 class="text-sm font-black uppercase tracking-[.16em] text-brand-ink">Product card store data</h3>
+                                <p class="mt-1 text-xs font-semibold leading-5 text-slate-500">Optional fields for the storefront product card. Leave empty unless the numbers come from genuine store data.</p>
+                            </div>
+                            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                                <label class="admin-label">Rating average
+                                    <input class="admin-input" type="number" name="rating_average" min="0" max="5" step="0.1" value="{{ old('rating_average', $product->rating_average) }}" placeholder="4.8">
+                                </label>
+                                <label class="admin-label">Review count
+                                    <input class="admin-input" type="number" name="reviews_count" min="0" step="1" value="{{ old('reviews_count', $product->reviews_count) }}" placeholder="23">
+                                </label>
+                                <label class="admin-label">Recent viewers
+                                    <input class="admin-input" type="number" name="recent_viewers_count" min="0" step="1" value="{{ old('recent_viewers_count', $product->recent_viewers_count) }}" placeholder="Only if tracked">
+                                </label>
+                                <label class="admin-label">Favorites
+                                    <input class="admin-input" type="number" name="favorites_count" min="0" step="1" value="{{ old('favorites_count', $product->favorites_count) }}" placeholder="Only if tracked">
+                                </label>
+                                <label class="admin-label">Recent orders
+                                    <input class="admin-input" type="number" name="recent_orders_count" min="0" step="1" value="{{ old('recent_orders_count', $product->recent_orders_count) }}" placeholder="Only if tracked">
+                                </label>
+                            </div>
                         </div>
-                        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                            <label class="admin-label">Rating average
-                                <input class="admin-input" type="number" name="rating_average" min="0" max="5" step="0.1" value="{{ old('rating_average', $product->rating_average) }}" placeholder="4.8">
-                            </label>
-                            <label class="admin-label">Review count
-                                <input class="admin-input" type="number" name="reviews_count" min="0" step="1" value="{{ old('reviews_count', $product->reviews_count) }}" placeholder="23">
-                            </label>
-                            <label class="admin-label">Recent viewers
-                                <input class="admin-input" type="number" name="recent_viewers_count" min="0" step="1" value="{{ old('recent_viewers_count', $product->recent_viewers_count) }}" placeholder="Only if tracked">
-                            </label>
-                            <label class="admin-label">Favorites
-                                <input class="admin-input" type="number" name="favorites_count" min="0" step="1" value="{{ old('favorites_count', $product->favorites_count) }}" placeholder="Only if tracked">
-                            </label>
-                            <label class="admin-label">Recent orders
-                                <input class="admin-input" type="number" name="recent_orders_count" min="0" step="1" value="{{ old('recent_orders_count', $product->recent_orders_count) }}" placeholder="Only if tracked">
-                            </label>
-                        </div>
-                    </div>
+                    @endif
 
                     <input type="hidden" name="new_image_primary_index" :value="newImagePrimaryIndex()">
                     <div>

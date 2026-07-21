@@ -157,7 +157,9 @@
                             {{ $product['title'] }}
                         </h1>
 
-                        <div class="mt-5 h-1 w-10 bg-slate-200" aria-hidden="true"></div>
+                        <x-storefront.product.purchase-signals :product="$product" />
+
+                        <div class="mt-5 h-px w-full bg-slate-200" aria-hidden="true"></div>
 
                         @if(filled($product['summary']))
                             <p class="np-product-summary mt-5 max-w-3xl text-slate-700">
@@ -184,25 +186,8 @@
 
         <x-storefront.product.builder :product="$product" />
         <x-storefront.product.details :product="$product" />
-
-        @if(!empty($relatedProducts))
-            <section class="section-padding bg-slate-50">
-                <div class="site-container">
-                    <div class="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                        <div>
-                            <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">More products</p>
-                            <h2 class="font-display text-4xl font-bold uppercase tracking-tight text-brand-ink">Related Products</h2>
-                        </div>
-                        <a href="{{ route('products.index') }}" class="btn btn-white">View All Products</a>
-                    </div>
-                    <div class="grid-3">
-                        @foreach($relatedProducts as $relatedProduct)
-                            <x-storefront.product-card :product="$relatedProduct" />
-                        @endforeach
-                    </div>
-                </div>
-            </section>
-        @endif
+        <x-storefront.product.reviews :product="$product" />
+        <x-storefront.product.related-products :products="$relatedProducts" />
 
         <div
             x-cloak

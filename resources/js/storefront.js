@@ -1738,10 +1738,12 @@ const setupProductCardActivity = () => {
 
     const cards = Array.from(document.querySelectorAll('[data-product-card][data-product-id]'));
     const trackers = Array.from(document.querySelectorAll('[data-product-view-track][data-product-id]'));
-    const ids = Array.from(new Set([...cards, ...trackers]
+    const detailRows = Array.from(document.querySelectorAll('[data-product-detail-activity][data-product-id]'));
+    const ids = Array.from(new Set([...cards, ...trackers, ...detailRows]
         .map((element) => Number(element.dataset.productId || 0))
         .filter((id) => Number.isInteger(id) && id > 0)))
         .slice(0, 40);
+    const viewedProductId = Number(trackers[0]?.dataset.productId || 0);
 
     if (ids.length === 0) return;
 
@@ -1760,10 +1762,12 @@ const setupProductCardActivity = () => {
             if (activity?.label) {
                 label.textContent = activity.label;
                 row.hidden = false;
-                row.classList.add('is-live');
+                row.classList.add('has-activity');
+                row.classList.remove('is-live');
             } else if (!row.dataset.persistedActivity) {
                 label.textContent = '';
                 row.hidden = true;
+                row.classList.remove('has-activity');
                 row.classList.remove('is-live');
             }
         });
@@ -1776,6 +1780,35 @@ const setupProductCardActivity = () => {
             row.dataset.persistedActivity = 'true';
         }
     });
+
+    detailRows.forEach((row) => {
+        const label = row.querySelector('[data-product-detail-activity-label]');
+        if (label && label.textContent.trim() !== '') {
+            row.dataset.persistedActivity = 'true';
+        }
+    });
+
+    const updateDetailRows = (activities = {}) => {
+        detailRows.forEach((row) => {
+            const id = String(Number(row.dataset.productId || 0));
+            const label = row.querySelector('[data-product-detail-activity-label]');
+            const activity = activities[id];
+
+            if (!label) return;
+
+            if (activity?.label) {
+                label.textContent = activity.label;
+                row.hidden = false;
+                row.classList.add('has-activity');
+                row.classList.remove('is-live');
+            } else if (!row.dataset.persistedActivity) {
+                label.textContent = '';
+                row.hidden = true;
+                row.classList.remove('has-activity');
+                row.classList.remove('is-live');
+            }
+        });
+    };
 
     const ping = async () => {
         if (running || document.visibilityState === 'hidden') return;
@@ -1791,13 +1824,19 @@ const setupProductCardActivity = () => {
                     'X-CSRF-TOKEN': csrf,
                     'X-Requested-With': 'XMLHttpRequest',
                 },
-                body: JSON.stringify({ product_ids: ids }),
+                body: JSON.stringify({
+                    product_ids: ids,
+                    viewed_product_id: Number.isInteger(viewedProductId) && viewedProductId > 0
+                        ? viewedProductId
+                        : null,
+                }),
             });
 
             if (!response.ok) return;
 
             const payload = await response.json();
             updateCards(payload.activities || {});
+            updateDetailRows(payload.activities || {});
         } catch (error) {
             // Visitor activity is optional and must never interrupt storefront browsing.
         } finally {
@@ -1809,6 +1848,68 @@ const setupProductCardActivity = () => {
     window.setInterval(ping, 60000);
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') ping();
+    });
+};
+
+const setupProductDetailActions = () => {
+    document.querySelectorAll('[data-product-detail-favorite]').forEach((button) => {
+        const productId = String(button.dataset.productDetailFavorite || '').trim();
+        if (!productId) return;
+
+        const storageKey = `nextplay:favorites:${productId}`;
+        const label = button.querySelector('[data-product-detail-favorite-label]');
+
+        const render = (saved) => {
+            button.setAttribute('aria-pressed', saved ? 'true' : 'false');
+            button.classList.toggle('is-saved', saved);
+            if (label) label.textContent = saved ? 'Saved' : 'Save';
+        };
+
+        let saved = false;
+        try {
+            saved = window.localStorage.getItem(storageKey) === '1';
+        } catch (error) {
+            saved = false;
+        }
+
+        render(saved);
+
+        button.addEventListener('click', () => {
+            saved = !saved;
+            try {
+                window.localStorage.setItem(storageKey, saved ? '1' : '0');
+            } catch (error) {
+                // Saving a favorite is optional and should not block the page.
+            }
+            render(saved);
+        });
+    });
+
+    document.querySelectorAll('[data-product-detail-share]').forEach((button) => {
+        const label = button.querySelector('[data-product-detail-share-label]');
+        const defaultLabel = label?.textContent?.trim() || 'Share';
+
+        button.addEventListener('click', async () => {
+            const sharePayload = {
+                title: button.dataset.shareTitle || document.title,
+                text: button.dataset.shareText || '',
+                url: button.dataset.shareUrl || window.location.href,
+            };
+
+            try {
+                if (navigator.share) {
+                    await navigator.share(sharePayload);
+                } else if (navigator.clipboard?.writeText) {
+                    await navigator.clipboard.writeText(sharePayload.url);
+                    if (label) label.textContent = 'Link copied';
+                    window.setTimeout(() => {
+                        if (label) label.textContent = defaultLabel;
+                    }, 1800);
+                }
+            } catch (error) {
+                // A cancelled share action is not an error for the customer.
+            }
+        });
     });
 };
 
@@ -1878,6 +1979,7 @@ const bootStorefront = () => {
     setupStorefrontSearchSuggestions();
     setupHeaderAnalytics();
     setupProductCardActivity();
+    setupProductDetailActions();
 };
 
 if (document.readyState === 'loading') {

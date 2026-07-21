@@ -73,7 +73,7 @@ class ProductController extends Controller
         abort_if(! $product, 404);
 
         $priceValues = collect($product['price_tiers'] ?? [])->pluck('unit')->filter();
-        $structuredData = [[
+        $productSchema = [
             '@context' => 'https://schema.org',
             '@type' => 'Product',
             'name' => $product['title'],
@@ -93,7 +93,55 @@ class ProductController extends Controller
                     ? 'https://schema.org/OutOfStock'
                     : 'https://schema.org/InStock',
             ],
-        ]];
+        ];
+
+        if (! empty($product['has_reviews']) && is_numeric($product['rating'] ?? null) && is_numeric($product['reviews_count'] ?? null)) {
+            $productSchema['aggregateRating'] = [
+                '@type' => 'AggregateRating',
+                'ratingValue' => (float) $product['rating'],
+                'reviewCount' => (int) $product['reviews_count'],
+                'bestRating' => 5,
+                'worstRating' => 1,
+            ];
+        }
+
+        $schemaReviews = collect($product['review_items'] ?? [])
+            ->filter(fn ($review): bool => is_array($review) && filled($review['body'] ?? null) && is_numeric($review['rating'] ?? null))
+            ->take(12)
+            ->map(function (array $review): array {
+                $payload = [
+                    '@type' => 'Review',
+                    'reviewBody' => (string) $review['body'],
+                    'reviewRating' => [
+                        '@type' => 'Rating',
+                        'ratingValue' => (float) $review['rating'],
+                        'bestRating' => 5,
+                        'worstRating' => 1,
+                    ],
+                    'author' => [
+                        '@type' => 'Person',
+                        'name' => (string) ($review['author'] ?? 'Customer'),
+                    ],
+                ];
+
+                if (filled($review['title'] ?? null)) {
+                    $payload['name'] = (string) $review['title'];
+                }
+
+                if (filled($review['date'] ?? null)) {
+                    $payload['datePublished'] = (string) $review['date'];
+                }
+
+                return $payload;
+            })
+            ->values()
+            ->all();
+
+        if ($schemaReviews !== []) {
+            $productSchema['review'] = $schemaReviews;
+        }
+
+        $structuredData = [$productSchema];
 
         if (! empty($product['custom_schema']) && is_array($product['custom_schema'])) {
             $structuredData[] = $product['custom_schema'];

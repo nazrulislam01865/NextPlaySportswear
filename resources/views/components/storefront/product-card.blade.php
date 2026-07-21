@@ -17,7 +17,6 @@
         ->filter(fn ($option) => filled($option))
         ->values();
     $customizationOptions = $allCustomizationOptions->take(2)->values();
-    $remainingCustomizationOptions = max(0, $allCustomizationOptions->count() - $customizationOptions->count());
     $rating = $product['rating'] ?? null;
     $reviewsCount = $product['reviews_count'] ?? null;
 
@@ -86,9 +85,6 @@
                         {{ $option }}
                     </span>
                 @endforeach
-                @if ($remainingCustomizationOptions > 0)
-                    <span class="np-product-card-options-more">+{{ $remainingCustomizationOptions }} more</span>
-                @endif
             </div>
         @endif
 

@@ -14,21 +14,34 @@ class ProductActivityController extends Controller
 {
     public function track(Request $request): JsonResponse
     {
-        $productIds = collect((array) $request->input('product_ids', []))
-            ->merge([$request->input('product_id')])
+        $requestedProductIds = collect((array) $request->input('product_ids', []))
             ->filter(fn ($id): bool => is_numeric($id) && (int) $id > 0)
             ->map(fn ($id): int => (int) $id)
             ->unique()
             ->take(40)
             ->values();
 
-        if ($productIds->isEmpty() || ! Schema::hasTable('product_view_sessions')) {
+        $viewedProductId = is_numeric($request->input('viewed_product_id'))
+            ? (int) $request->input('viewed_product_id')
+            : 0;
+
+        $allProductIds = $requestedProductIds
+            ->when($viewedProductId > 0, fn ($ids) => $ids->push($viewedProductId))
+            ->unique()
+            ->take(40)
+            ->values();
+
+        if (
+            $allProductIds->isEmpty()
+            || ! Schema::hasTable('product_view_sessions')
+            || ! Schema::hasColumn('product_view_sessions', 'viewed_detail_at')
+        ) {
             return response()->json(['activities' => []]);
         }
 
         $validProductIds = Product::query()
             ->published()
-            ->whereIn('id', $productIds->all())
+            ->whereIn('id', $allProductIds->all())
             ->pluck('id')
             ->map(fn ($id): int => (int) $id)
             ->values();
@@ -37,39 +50,60 @@ class ProductActivityController extends Controller
             return response()->json(['activities' => []]);
         }
 
+        $now = now();
         $visitorId = $this->visitorId($request);
         $visitorKey = hash('sha256', $visitorId.'|'.(string) config('app.key'));
-        $now = now();
-        $activeMinutes = max(1, min(60, (int) config('storefront.product_cards.live_viewer_window_minutes', 5)));
-        $pruneMinutes = max(30, $activeMinutes * 6);
 
-        DB::table('product_view_sessions')
-            ->where('last_seen_at', '<', $now->copy()->subMinutes($pruneMinutes))
-            ->delete();
+        // Record a visit only when the browser is actually on a product-details page.
+        // Merely displaying a product card never counts as a product visit.
+        if ($viewedProductId > 0 && $validProductIds->contains($viewedProductId)) {
+            $existing = DB::table('product_view_sessions')
+                ->where('product_id', $viewedProductId)
+                ->where('visitor_key', $visitorKey)
+                ->exists();
 
-        foreach ($validProductIds as $productId) {
-            DB::table('product_view_sessions')->updateOrInsert(
-                [
-                    'product_id' => $productId,
+            if ($existing) {
+                DB::table('product_view_sessions')
+                    ->where('product_id', $viewedProductId)
+                    ->where('visitor_key', $visitorKey)
+                    ->update([
+                        'last_seen_at' => $now,
+                        'viewed_detail_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+            } else {
+                DB::table('product_view_sessions')->insert([
+                    'product_id' => $viewedProductId,
                     'visitor_key' => $visitorKey,
-                ],
-                [
                     'first_seen_at' => $now,
                     'last_seen_at' => $now,
+                    'viewed_detail_at' => $now,
                     'created_at' => $now,
                     'updated_at' => $now,
-                ]
-            );
+                ]);
+            }
         }
 
-        $activeCutoff = $now->copy()->subMinutes($activeMinutes);
+        // Keep the table compact while retaining enough history for weekly counts.
+        DB::table('product_view_sessions')
+            ->where(function ($query) use ($now): void {
+                $query->where('viewed_detail_at', '<', $now->copy()->subDays(90))
+                    ->orWhere(function ($nested) use ($now): void {
+                        $nested->whereNull('viewed_detail_at')
+                            ->where('last_seen_at', '<', $now->copy()->subDays(30));
+                    });
+            })
+            ->delete();
+
+        $weekCutoff = $now->copy()->subDays(7);
         $counts = DB::table('product_view_sessions')
             ->whereIn('product_id', $validProductIds->all())
-            ->where('last_seen_at', '>=', $activeCutoff)
+            ->whereNotNull('viewed_detail_at')
+            ->where('viewed_detail_at', '>=', $weekCutoff)
             ->select('product_id')
-            ->selectRaw('COUNT(*) as active_count')
+            ->selectRaw('COUNT(*) as weekly_count')
             ->groupBy('product_id')
-            ->pluck('active_count', 'product_id');
+            ->pluck('weekly_count', 'product_id');
 
         $activities = $validProductIds
             ->mapWithKeys(function (int $productId) use ($counts): array {
@@ -80,8 +114,8 @@ class ProductActivityController extends Controller
                 }
 
                 return [$productId => [
-                    'active_count' => $count,
-                    'label' => $count.' shopper'.($count === 1 ? '' : 's').' viewing now',
+                    'weekly_count' => $count,
+                    'label' => $count.' shopper'.($count === 1 ? '' : 's').' visited this week',
                 ]];
             })
             ->filter()

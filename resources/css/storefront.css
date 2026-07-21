@@ -9360,3 +9360,717 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     color: #08aeca !important;
     filter: drop-shadow(0 2px 5px rgba(8, 174, 202, .14));
 }
+
+/* NEXTPLAY_ALL_PRODUCTS_THREE_COLUMN_REFERENCE_CARD
+   Three products per desktop row on the All Products page. The reusable card follows
+   the supplied reference proportions and typography while retaining NextPlay colors
+   and genuine product data. */
+.storefront-clean-ui .np-product-listing-grid--three {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 1.5rem !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    overflow: hidden !important;
+    border: 1px solid #dce6f2 !important;
+    border-radius: 1.65rem !important;
+    background: #ffffff !important;
+    box-shadow: 0 14px 38px rgba(15, 23, 42, .075) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay:hover {
+    transform: translateY(-3px) !important;
+    border-color: #cfdeed !important;
+    box-shadow: 0 20px 48px rgba(15, 23, 42, .11) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-media-wrap {
+    padding: .78rem !important;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-media {
+    border-radius: 1.28rem !important;
+    background: radial-gradient(circle at 50% 20%, #ffffff 0%, #fafbfd 50%, #eff4f9 100%) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-media img {
+    padding: clamp(.4rem, 1.25vw, .82rem) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-badge {
+    left: 1.35rem !important;
+    bottom: 1.35rem !important;
+    min-height: 2rem !important;
+    padding: .52rem .82rem !important;
+    border-radius: .62rem !important;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif !important;
+    font-size: .68rem !important;
+    font-weight: 700 !important;
+    letter-spacing: .055em !important;
+    box-shadow: 0 9px 20px rgba(233, 29, 51, .2) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-favorite {
+    top: 1.3rem !important;
+    right: 1.3rem !important;
+    width: 2.9rem !important;
+    height: 2.9rem !important;
+    border-color: #e3e9f0 !important;
+    box-shadow: 0 11px 24px rgba(15, 23, 42, .12) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-favorite svg {
+    width: 1.35rem !important;
+    height: 1.35rem !important;
+    stroke-width: 2 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-body {
+    padding: 1.35rem 1.35rem 1.45rem !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-category {
+    margin-bottom: .75rem !important;
+    color: #12b6d8 !important;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif !important;
+    font-size: .72rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    letter-spacing: .19em !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-title {
+    min-height: 3.45rem !important;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif !important;
+    font-size: clamp(1.12rem, 1.35vw, 1.35rem) !important;
+    font-weight: 800 !important;
+    line-height: 1.28 !important;
+    letter-spacing: -.035em !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-title a {
+    -webkit-line-clamp: 2 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-options {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, max-content)) !important;
+    align-items: center !important;
+    gap: .6rem 1rem !important;
+    margin-top: .9rem !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-options span,
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-options span:not(.np-product-card-options-more) {
+    min-height: auto !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: #4b5f78 !important;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif !important;
+    font-size: .78rem !important;
+    font-weight: 500 !important;
+    line-height: 1.3 !important;
+    white-space: nowrap !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-options svg {
+    width: 1.22rem !important;
+    height: 1.22rem !important;
+    padding: .16rem !important;
+    border: 1.5px solid #1dc5e8 !important;
+    border-radius: 999px !important;
+    background: #ffffff !important;
+    color: #10b9dc !important;
+    box-shadow: none !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-rating {
+    gap: .5rem !important;
+    margin-top: 1rem !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-rating-stars {
+    color: #f9ad00 !important;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif !important;
+    font-size: 1.08rem !important;
+    letter-spacing: .02em !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-rating-value {
+    color: #061744 !important;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif !important;
+    font-size: .88rem !important;
+    font-weight: 800 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-rating-count {
+    color: #627089 !important;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif !important;
+    font-size: .86rem !important;
+    font-weight: 400 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-activity,
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-activity.is-live {
+    gap: .48rem !important;
+    margin-top: .86rem !important;
+    color: #50617c !important;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif !important;
+    font-size: .8rem !important;
+    font-weight: 400 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-activity svg,
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-activity.is-live svg {
+    width: 1.22rem !important;
+    height: 1.22rem !important;
+    color: #10b9dc !important;
+    filter: none !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-divider {
+    margin: auto 0 1rem !important;
+    padding-top: 1.1rem !important;
+    border-bottom-color: #dfe7f0 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-price-row {
+    gap: .9rem !important;
+    margin-bottom: 1rem !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-price {
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif !important;
+    font-size: clamp(1.35rem, 1.9vw, 1.72rem) !important;
+    font-weight: 800 !important;
+    letter-spacing: -.045em !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-bulk {
+    min-height: 1.8rem !important;
+    padding-left: .9rem !important;
+    color: #61708a !important;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif !important;
+    font-size: .78rem !important;
+    font-weight: 400 !important;
+    line-height: 1.25 !important;
+    white-space: normal !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-button {
+    min-height: 3.2rem !important;
+    padding: .9rem 1rem !important;
+    border-radius: .86rem !important;
+    background: linear-gradient(135deg, #061744 0%, #001a4a 100%) !important;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif !important;
+    font-size: .98rem !important;
+    font-weight: 700 !important;
+    box-shadow: 0 12px 26px rgba(0, 26, 74, .2) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-details-link {
+    margin-top: .88rem !important;
+    color: #061744 !important;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif !important;
+    font-size: .88rem !important;
+    font-weight: 600 !important;
+}
+
+@media (min-width: 640px) {
+    .storefront-clean-ui .np-product-listing-grid--three {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+@media (min-width: 1024px) {
+    .storefront-clean-ui .np-product-listing-grid--three {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: clamp(1.2rem, 1.55vw, 1.75rem) !important;
+    }
+}
+
+@media (max-width: 420px) {
+    .storefront-clean-ui .np-product-card--nextplay .np-product-card-options {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    .storefront-clean-ui .np-product-card--nextplay .np-product-card-options span,
+    .storefront-clean-ui .np-product-card--nextplay .np-product-card-options span:not(.np-product-card-options-more) {
+        white-space: normal !important;
+    }
+}
+
+
+/* NEXTPLAY_PRODUCT_CARD_FULL_TITLE_WEEKLY_VISITS_UPDATE
+   Wider three-column catalog cards, complete product names, lighter titles, and genuine
+   weekly visitor activity recorded only from product-detail page visits. */
+.storefront-clean-ui .np-products-catalog-container {
+    width: min(1320px, calc(100% - 32px)) !important;
+}
+
+.storefront-clean-ui .np-product-listing-grid--three {
+    gap: clamp(1.15rem, 1.45vw, 1.55rem) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay {
+    border-radius: 1.55rem !important;
+    box-shadow: 0 12px 34px rgba(15, 23, 42, .07) !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-body {
+    padding: 1.32rem 1.42rem 1.48rem !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-title {
+    min-height: 0 !important;
+    font-size: clamp(1.08rem, 1.16vw, 1.28rem) !important;
+    font-weight: 650 !important;
+    line-height: 1.3 !important;
+    letter-spacing: -.025em !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-title a {
+    display: block !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    -webkit-box-orient: initial !important;
+    -webkit-line-clamp: unset !important;
+    line-clamp: unset !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: .62rem .9rem !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-options span,
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-options span:not(.np-product-card-options-more) {
+    min-width: 0 !important;
+    white-space: normal !important;
+    font-weight: 600 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-rating-value {
+    font-weight: 700 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-activity,
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-activity.has-activity {
+    color: #53637c !important;
+    font-weight: 500 !important;
+    line-height: 1.4 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-price {
+    font-weight: 750 !important;
+}
+
+@media (min-width: 1024px) {
+    .storefront-clean-ui .np-product-listing-grid--three {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+}
+
+@media (max-width: 639px) {
+    .storefront-clean-ui .np-products-catalog-container {
+        width: min(100% - 24px, 1320px) !important;
+    }
+
+    .storefront-clean-ui .np-product-card--nextplay .np-product-card-body {
+        padding: 1.08rem 1.08rem 1.2rem !important;
+    }
+}
+
+/* NEXTPLAY_PRODUCT_CARD_COMPACT_PRICE_AND_ICON_REFINEMENT
+   Keeps the three-column card readable: compact price/bulk row and icons aligned
+   to the customization/activity text size. */
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-options svg {
+    width: .96rem !important;
+    height: .96rem !important;
+    padding: .1rem !important;
+    border-width: 1.25px !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-activity svg,
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-activity.is-live svg {
+    width: .96rem !important;
+    height: .96rem !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-price-row {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: .65rem !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-price {
+    flex: 0 0 auto !important;
+    font-size: clamp(1.18rem, 1.55vw, 1.48rem) !important;
+    line-height: 1.05 !important;
+}
+
+.storefront-clean-ui .np-product-card--nextplay .np-product-card-bulk {
+    min-width: 0 !important;
+    flex: 0 1 auto !important;
+    padding-left: .7rem !important;
+    font-size: clamp(.66rem, .72vw, .74rem) !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+}
+
+@media (max-width: 380px) {
+    .storefront-clean-ui .np-product-card--nextplay .np-product-card-bulk {
+        font-size: .62rem !important;
+    }
+}
+
+/* NEXTPLAY_HOME_PRODUCT_CARD_COMPACT_ALIGNMENT
+   The home page keeps four products per desktop row, but uses a tighter version of
+   the approved catalog card so long titles, price and bulk-quote text stay inside
+   each card without changing the All Products page design. */
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: clamp(.9rem, 1.15vw, 1.15rem) !important;
+    align-items: stretch !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 > .np-product-card--nextplay {
+    min-width: 0 !important;
+    width: 100% !important;
+    border-radius: 1.3rem !important;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, .065) !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-media-wrap {
+    padding: .58rem !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-media {
+    border-radius: 1.02rem !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-media img {
+    padding: clamp(.24rem, .7vw, .48rem) !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-badge {
+    left: 1rem !important;
+    bottom: 1rem !important;
+    min-height: 1.72rem !important;
+    padding: .4rem .66rem !important;
+    border-radius: .55rem !important;
+    font-size: .61rem !important;
+    letter-spacing: .065em !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-favorite {
+    top: 1rem !important;
+    right: 1rem !important;
+    width: 2.35rem !important;
+    height: 2.35rem !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-favorite svg {
+    width: 1.08rem !important;
+    height: 1.08rem !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-body {
+    min-width: 0 !important;
+    padding: 1rem 1.02rem 1.08rem !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-category {
+    margin-bottom: .55rem !important;
+    font-size: .63rem !important;
+    letter-spacing: .17em !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-title {
+    min-height: 0 !important;
+    font-size: clamp(.96rem, 1vw, 1.08rem) !important;
+    font-weight: 650 !important;
+    line-height: 1.28 !important;
+    letter-spacing: -.022em !important;
+    overflow-wrap: anywhere !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: .48rem .65rem !important;
+    margin-top: .68rem !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-options span,
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-options span:not(.np-product-card-options-more) {
+    min-width: 0 !important;
+    font-size: .68rem !important;
+    font-weight: 600 !important;
+    line-height: 1.22 !important;
+    white-space: normal !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-options svg {
+    width: .86rem !important;
+    height: .86rem !important;
+    padding: .08rem !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-rating {
+    gap: .34rem !important;
+    margin-top: .72rem !important;
+    min-width: 0 !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-rating-stars {
+    font-size: .88rem !important;
+    letter-spacing: .01em !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-rating-value {
+    font-size: .74rem !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-rating-count {
+    min-width: 0 !important;
+    font-size: .72rem !important;
+    white-space: nowrap !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-activity,
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-activity.is-live,
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-activity.has-activity {
+    gap: .34rem !important;
+    margin-top: .58rem !important;
+    font-size: .68rem !important;
+    line-height: 1.3 !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-activity svg,
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-activity.is-live svg {
+    width: .86rem !important;
+    height: .86rem !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-divider {
+    margin: auto 0 .72rem !important;
+    padding-top: .8rem !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-price-row {
+    display: grid !important;
+    grid-template-columns: max-content minmax(0, 1fr) !important;
+    align-items: center !important;
+    gap: .48rem !important;
+    width: 100% !important;
+    margin-bottom: .74rem !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-price {
+    min-width: 0 !important;
+    font-size: clamp(1.08rem, 1.25vw, 1.3rem) !important;
+    font-weight: 730 !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-bulk {
+    min-width: 0 !important;
+    padding-left: .52rem !important;
+    font-size: clamp(.56rem, .58vw, .64rem) !important;
+    font-weight: 450 !important;
+    line-height: 1.1 !important;
+    text-align: right !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-button {
+    min-height: 2.55rem !important;
+    padding: .68rem .75rem !important;
+    border-radius: .72rem !important;
+    font-size: .82rem !important;
+    font-weight: 680 !important;
+}
+
+.storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-details-link {
+    margin-top: .65rem !important;
+    font-size: .75rem !important;
+    font-weight: 600 !important;
+}
+
+@media (max-width: 1180px) and (min-width: 1024px) {
+    .storefront-clean-ui .home-page .home-product-desktop.grid-4 {
+        gap: .75rem !important;
+    }
+
+    .storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-body {
+        padding-inline: .82rem !important;
+    }
+
+    .storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-price {
+        font-size: 1rem !important;
+    }
+
+    .storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-bulk {
+        font-size: .54rem !important;
+        padding-left: .4rem !important;
+    }
+}
+
+@media (max-width: 1023px) {
+    .storefront-clean-ui .home-page .home-product-desktop.grid-4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+@media (max-width: 640px) {
+    .storefront-clean-ui .home-page .home-product-desktop.grid-4 {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    .storefront-clean-ui .home-page .home-product-desktop.grid-4 .np-product-card-bulk {
+        font-size: .68rem !important;
+    }
+}
+
+/* NEXTPLAY_COMPACT_UTILITY_TICKER_UPDATE
+   Compact desktop utility content and continuously repeat the team-gear message. */
+@media (min-width: 1280px) {
+    .np-utility-inner {
+        min-height: 42px !important;
+        gap: 14px !important;
+    }
+
+    .np-utility-message {
+        width: clamp(310px, 31vw, 570px) !important;
+        min-width: 0 !important;
+        flex: 1 1 auto !important;
+        gap: 8px !important;
+        overflow: hidden !important;
+        font-size: 13px !important;
+        font-weight: 750 !important;
+        line-height: 1 !important;
+        letter-spacing: .015em !important;
+    }
+
+    .np-utility-star {
+        width: 15px !important;
+        height: 15px !important;
+    }
+
+    .np-utility-marquee {
+        min-width: 0;
+        flex: 1 1 auto;
+        overflow: hidden;
+        white-space: nowrap;
+        mask-image: linear-gradient(to right, transparent, #000 3%, #000 97%, transparent);
+        -webkit-mask-image: linear-gradient(to right, transparent, #000 3%, #000 97%, transparent);
+    }
+
+    .np-utility-marquee-track {
+        display: flex;
+        width: max-content;
+        align-items: center;
+        will-change: transform;
+        animation: npUtilityTicker 15s linear infinite;
+    }
+
+    .np-utility-marquee-item {
+        display: inline-flex;
+        align-items: center;
+        flex: 0 0 auto;
+        padding-right: 52px;
+    }
+
+    .np-utility-marquee-item b {
+        margin-inline: 7px;
+        color: rgba(255, 255, 255, .72);
+        font-weight: 700;
+    }
+
+    .np-utility-links {
+        gap: 12px !important;
+    }
+
+    .np-utility-link {
+        gap: 6px !important;
+        min-height: 42px !important;
+        font-size: 12.5px !important;
+        font-weight: 650 !important;
+    }
+
+    .np-utility-link-icon {
+        width: 15px !important;
+        height: 15px !important;
+    }
+
+    .np-whatsapp-link .np-whatsapp-icon,
+    .np-whatsapp-link .np-whatsapp-icon svg {
+        width: 16px !important;
+        height: 16px !important;
+    }
+
+    .np-utility-divider {
+        height: 22px !important;
+        margin-inline: 2px !important;
+    }
+
+    .np-follow-label {
+        min-height: 42px !important;
+        font-size: 12.5px !important;
+        font-weight: 650 !important;
+    }
+
+    .np-utility-bar .np-social-links {
+        gap: 7px !important;
+    }
+
+    .np-social-link {
+        width: 30px !important;
+        height: 30px !important;
+        border-width: 1.2px !important;
+    }
+
+    .np-social-icon {
+        width: 13px !important;
+        height: 13px !important;
+    }
+
+    .np-usa-shipping {
+        width: auto !important;
+        min-width: 126px !important;
+        max-width: none !important;
+        min-height: 40px !important;
+        height: 40px !important;
+        padding: 0 11px !important;
+        gap: 6px !important;
+        border-radius: 10px !important;
+        font-size: 11.5px !important;
+        font-weight: 750 !important;
+    }
+
+    .np-usa-shipping svg {
+        width: 16px !important;
+        height: 16px !important;
+        flex: 0 0 16px !important;
+    }
+}
+
+@keyframes npUtilityTicker {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-50%, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .np-utility-marquee-track {
+        animation: none !important;
+    }
+}
