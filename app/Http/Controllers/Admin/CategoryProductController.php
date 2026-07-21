@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Services\Catalog\CategoryProductAssignmentSyncService;
 use App\Services\Catalog\CategoryTreeService;
+use App\Services\Storefront\ProductCatalogCacheService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,7 @@ class CategoryProductController extends Controller
     public function __construct(
         private readonly CategoryTreeService $treeService,
         private readonly CategoryProductAssignmentSyncService $assignmentSyncService,
+        private readonly ProductCatalogCacheService $productCatalogCache,
     ) {
     }
 
@@ -60,6 +62,8 @@ class CategoryProductController extends Controller
         }
 
         $subcategoryOptions = $this->subcategoryOptionsForPicker($category);
+        $attachProductSearch = trim(mb_substr((string) $request->query('assign_q', ''), 0, 100));
+        $assignableProductOptions = $this->assignableProductOptions($category, $attachProductSearch);
 
         $bulkCategoryOptions = Category::query()
             ->select(['id', 'parent_id', 'name', 'slug', 'depth', 'tree_path'])
@@ -76,10 +80,48 @@ class CategoryProductController extends Controller
             'products' => $query->paginate(30)->withQueryString(),
             'filters' => [
                 'q' => $search,
+                'assign_q' => $attachProductSearch,
             ],
             'subcategoryOptions' => $subcategoryOptions,
             'bulkCategoryOptions' => $bulkCategoryOptions,
+            'assignableProductOptions' => $assignableProductOptions,
         ]);
+    }
+
+    /**
+     * Return products that can be directly attached to the current category.
+     *
+     * The filtered assignment table only shows products that are already assigned
+     * to the selected category. A freshly-created category therefore has an empty
+     * table, so this lightweight picker lets admins seed that category with
+     * existing products without first visiting another category page.
+     */
+    private function assignableProductOptions(Category $category, string $search)
+    {
+        $query = Product::query()
+            ->select(['id', 'category_id', 'subcategory_id', 'name', 'slug', 'sku', 'status', 'is_active', 'updated_at'])
+            ->whereDoesntHave('categories', fn ($builder) => $builder->whereKey($category->id))
+            ->with([
+                'category:id,name,parent_id',
+                'subcategory:id,name,parent_id',
+                'images:id,product_id,path,url,alt_text,is_primary,sort_order',
+            ]);
+
+        if ($search !== '') {
+            $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search) . '%';
+
+            $query->where(function ($builder) use ($like): void {
+                $builder->where('name', 'like', $like)
+                    ->orWhere('sku', 'like', $like)
+                    ->orWhere('slug', 'like', $like);
+            });
+        }
+
+        return $query
+            ->orderBy('name')
+            ->orderBy('id')
+            ->limit(100)
+            ->get();
     }
 
     /**
@@ -139,10 +181,14 @@ class CategoryProductController extends Controller
     public function update(Request $request, Category $category): RedirectResponse
     {
         $validated = $request->validate([
-            'visible_product_ids' => ['required', 'array', 'max:100'],
+            'visible_product_ids' => ['nullable', 'array', 'max:100'],
             'visible_product_ids.*' => ['integer', 'distinct', 'exists:products,id'],
+            'attach_product_ids' => ['nullable', 'array', 'max:100'],
+            'attach_product_ids.*' => ['integer', 'distinct', 'exists:products,id'],
             'selected_product_ids' => ['nullable', 'array', 'max:100'],
             'selected_product_ids.*' => ['integer', 'distinct', 'exists:products,id'],
+            'bulk_selected_product_ids' => ['nullable', 'array', 'max:100'],
+            'bulk_selected_product_ids.*' => ['integer', 'distinct', 'exists:products,id'],
             'bulk_category_ids' => ['nullable', 'array', 'max:50'],
             'bulk_category_ids.*' => ['integer', 'distinct', Rule::exists('categories', 'id')->whereNull('deleted_at')],
             'product_category_updates' => ['nullable', 'array', 'max:100'],
@@ -152,10 +198,16 @@ class CategoryProductController extends Controller
             'product_category_updates.*.remove_category_ids.*' => ['integer', 'distinct', Rule::exists('categories', 'id')->whereNull('deleted_at')],
         ]);
 
-        $visibleIds = collect($validated['visible_product_ids'])->map(fn ($id) => (int) $id)->unique()->values();
+        $visibleIds = collect($validated['visible_product_ids'] ?? [])->map(fn ($id) => (int) $id)->unique()->values();
         $visibleIdSet = $visibleIds->flip();
+        $attachProductIds = collect($validated['attach_product_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values();
         $rowUpdates = collect($validated['product_category_updates'] ?? []);
         $selectedProductIds = collect($validated['selected_product_ids'] ?? [])
+            ->merge($validated['bulk_selected_product_ids'] ?? [])
             ->map(fn ($id) => (int) $id)
             ->filter(fn (int $id): bool => $visibleIdSet->has($id))
             ->unique()
@@ -168,8 +220,29 @@ class CategoryProductController extends Controller
 
         $changedProducts = collect();
 
-        DB::transaction(function () use ($visibleIds, $rowUpdates, $selectedProductIds, $bulkCategoryIds, $changedProducts): void {
-            DB::table('category_product')->whereIn('product_id', $visibleIds)->lockForUpdate()->get();
+        DB::transaction(function () use ($category, $visibleIds, $attachProductIds, $rowUpdates, $selectedProductIds, $bulkCategoryIds, $changedProducts): void {
+            $lockProductIds = $visibleIds->merge($attachProductIds)->unique()->values();
+
+            if ($lockProductIds->isNotEmpty()) {
+                DB::table('category_product')->whereIn('product_id', $lockProductIds->all())->lockForUpdate()->get();
+            }
+
+            if ($attachProductIds->isNotEmpty()) {
+                foreach ($attachProductIds as $productId) {
+                    $hasPrimaryCategory = DB::table('category_product')
+                        ->where('product_id', $productId)
+                        ->where('is_primary', true)
+                        ->exists();
+
+                    $this->applyCategoryChangesToProduct($productId, [(int) $category->id], []);
+
+                    if (! $hasPrimaryCategory) {
+                        $this->markCategoryAsPrimary($productId, (int) $category->id);
+                    }
+
+                    $changedProducts->push($productId);
+                }
+            }
 
             foreach ($visibleIds as $productId) {
                 $input = $rowUpdates->get((string) $productId, $rowUpdates->get($productId, []));
@@ -205,12 +278,25 @@ class CategoryProductController extends Controller
         });
 
         $this->treeService->flushCache();
+        $this->productCatalogCache->flush();
 
         $changedCount = $changedProducts->unique()->count();
 
         return back()->with('status', $changedCount > 0
             ? "Category assignments updated for {$changedCount} product(s). Counts are refreshed."
             : 'No category assignment changes were submitted.');
+    }
+
+    private function markCategoryAsPrimary(int $productId, int $categoryId): void
+    {
+        DB::table('category_product')
+            ->where('product_id', $productId)
+            ->update(['is_primary' => false, 'updated_at' => now()]);
+
+        DB::table('category_product')
+            ->where('product_id', $productId)
+            ->where('category_id', $categoryId)
+            ->update(['is_primary' => true, 'updated_at' => now()]);
     }
 
     /** @param array<int, int> $addCategoryIds @param array<int, int> $removeCategoryIds */

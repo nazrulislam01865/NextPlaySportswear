@@ -1,6 +1,7 @@
 <x-layouts.admin title="Products in {{ $category->name }}" :compact-header="true">
     @php
         $searchValue = $filters['q'] ?? '';
+        $attachProductSearch = $filters['assign_q'] ?? '';
         $from = $products->firstItem();
         $to = $products->lastItem();
         $total = $products->total();
@@ -68,9 +69,95 @@
             </div>
         </form>
 
+        <section class="category-product-attach-card" aria-label="Add existing products to this category">
+            <div class="category-product-attach-header">
+                <div>
+                    <span class="category-product-attach-eyebrow">Add products</span>
+                    <h2>Add existing products to {{ $category->name }}</h2>
+                    <p>Use this picker when the category is newly created or empty. Selected products will be attached to this category and its parent path, then the count refreshes automatically.</p>
+                </div>
+
+                <form method="GET" action="{{ route('admin.categories.products.index', $category) }}" class="category-product-attach-search">
+                    @if($searchValue !== '')
+                        <input type="hidden" name="q" value="{{ $searchValue }}">
+                    @endif
+                    <label class="sr-only" for="assign-product-search">Search products to add</label>
+                    <input
+                        id="assign-product-search"
+                        name="assign_q"
+                        value="{{ $attachProductSearch }}"
+                        placeholder="Search all products by name, SKU, or slug"
+                        autocomplete="off"
+                        maxlength="100"
+                    >
+                    <button type="submit">Search</button>
+                    @if($attachProductSearch !== '')
+                        <a href="{{ $searchValue !== '' ? route('admin.categories.products.index', ['category' => $category, 'q' => $searchValue]) : route('admin.categories.products.index', $category) }}">Clear</a>
+                    @endif
+                </form>
+            </div>
+
+            <form method="POST" action="{{ route('admin.categories.products.update', $category) }}" class="category-product-attach-form" data-attach-products-form>
+                @csrf
+                @method('PUT')
+
+                <div class="category-product-attach-toolbar">
+                    <label class="category-product-attach-select-all">
+                        <input id="attach-product-check-all" type="checkbox" data-attach-product-check-all>
+                        <span><span data-attach-selected-count>0</span> selected</span>
+                    </label>
+                    <p>Showing up to 100 products that are not already assigned to {{ $category->name }}.</p>
+                    <button type="submit" data-attach-products-submit disabled>Add selected products</button>
+                </div>
+
+                <div class="category-product-attach-results">
+                    @forelse($assignableProductOptions as $assignableProduct)
+                        @php
+                            $categoryLabel = $assignableProduct->subcategory?->name
+                                ?: $assignableProduct->category?->name
+                                ?: 'No primary category';
+                        @endphp
+                        <label class="category-product-attach-row" data-attach-product-row>
+                            <input
+                                type="checkbox"
+                                name="attach_product_ids[]"
+                                value="{{ $assignableProduct->id }}"
+                                data-attach-product-check
+                            >
+                            <span class="category-product-attach-thumb" aria-hidden="true">
+                                <img
+                                    src="{{ $assignableProduct->primaryImageUrl() }}"
+                                    alt=""
+                                    loading="lazy"
+                                    decoding="async"
+                                >
+                            </span>
+                            <span class="category-product-attach-main">
+                                <strong>{{ $assignableProduct->name }}</strong>
+                                <small>{{ $assignableProduct->sku ?: $assignableProduct->slug }}</small>
+                            </span>
+                            <span class="category-product-attach-meta">{{ $categoryLabel }}</span>
+                            <span class="category-product-attach-status {{ $assignableProduct->status === 'active' && $assignableProduct->is_active ? 'is-active' : '' }}">
+                                {{ $assignableProduct->status === 'active' && $assignableProduct->is_active ? 'Active' : ucfirst($assignableProduct->status) }}
+                            </span>
+                        </label>
+                    @empty
+                        <div class="category-product-attach-empty">
+                            @if($attachProductSearch !== '')
+                                No unassigned products matched “{{ $attachProductSearch }}”. Try another name, SKU, or slug.
+                            @else
+                                No assignable products are available. All products may already be attached to this category.
+                            @endif
+                        </div>
+                    @endforelse
+                </div>
+            </form>
+        </section>
+
         <form id="category-products-form" method="POST" action="{{ route('admin.categories.products.update', $category) }}" class="space-y-4">
             @csrf
             @method('PUT')
+            <div data-bulk-selected-products-sync hidden></div>
 
             <section class="category-product-bulk-card" aria-label="Bulk category assignment">
                 <div class="category-product-bulk-left">
@@ -285,6 +372,10 @@
             const rowChecks = Array.from(page.querySelectorAll('[data-product-row-check]'));
             const checkAll = page.querySelector('#category-product-check-all');
             const selectedCount = page.querySelector('[data-selected-count]');
+            const attachChecks = Array.from(page.querySelectorAll('[data-attach-product-check]'));
+            const attachCheckAll = page.querySelector('[data-attach-product-check-all]');
+            const attachSelectedCount = page.querySelector('[data-attach-selected-count]');
+            const attachSubmit = page.querySelector('[data-attach-products-submit]');
 
             const updateSelectedCount = () => {
                 const count = rowChecks.filter((checkbox) => checkbox.checked).length;
@@ -303,9 +394,67 @@
             rowChecks.forEach((checkbox) => checkbox.addEventListener('change', updateSelectedCount));
             updateSelectedCount();
 
-            page.querySelectorAll('[data-category-picker]').forEach((picker) => {
+            const updateAttachSelectedCount = () => {
+                const count = attachChecks.filter((checkbox) => checkbox.checked).length;
+                if (attachSelectedCount) attachSelectedCount.textContent = String(count);
+                if (attachSubmit) attachSubmit.disabled = count === 0;
+                if (attachCheckAll) {
+                    attachCheckAll.checked = attachChecks.length > 0 && count === attachChecks.length;
+                    attachCheckAll.indeterminate = count > 0 && count < attachChecks.length;
+                    attachCheckAll.disabled = attachChecks.length === 0;
+                }
+            };
+
+            attachCheckAll?.addEventListener('change', () => {
+                attachChecks.forEach((checkbox) => { checkbox.checked = attachCheckAll.checked; });
+                updateAttachSelectedCount();
+            });
+
+            attachChecks.forEach((checkbox) => checkbox.addEventListener('change', updateAttachSelectedCount));
+            updateAttachSelectedCount();
+
+            const form = page.querySelector('#category-products-form');
+            const bulkSelectedSync = page.querySelector('[data-bulk-selected-products-sync]');
+            const bulkCategoryChecks = Array.from(page.querySelectorAll('.category-picker--bulk input[name="bulk_category_ids[]"]'));
+
+            const syncBulkSelectedProducts = () => {
+                if (!bulkSelectedSync) return;
+
+                bulkSelectedSync.innerHTML = '';
+
+                const hasBulkCategories = bulkCategoryChecks.some((checkbox) => checkbox.checked);
+                if (!hasBulkCategories) return;
+
+                rowChecks
+                    .filter((checkbox) => checkbox.checked)
+                    .forEach((checkbox) => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'bulk_selected_product_ids[]';
+                        input.value = checkbox.value;
+                        bulkSelectedSync.appendChild(input);
+                    });
+            };
+
+            form?.addEventListener('submit', syncBulkSelectedProducts);
+
+            const categoryPickers = Array.from(page.querySelectorAll('[data-category-picker]'));
+
+            categoryPickers.forEach((picker) => {
                 const input = picker.querySelector('[data-category-picker-search]');
                 const options = Array.from(picker.querySelectorAll('[data-category-picker-option]'));
+
+                picker.addEventListener('toggle', () => {
+                    if (!picker.open) return;
+
+                    categoryPickers.forEach((otherPicker) => {
+                        if (otherPicker !== picker) {
+                            otherPicker.open = false;
+                        }
+                    });
+
+                    window.setTimeout(() => input?.focus({ preventScroll: true }), 0);
+                });
 
                 input?.addEventListener('input', () => {
                     const term = input.value.trim().toLowerCase();
@@ -316,10 +465,45 @@
                 });
             });
 
+            document.addEventListener('click', (event) => {
+                if (!page.contains(event.target)) return;
+
+                categoryPickers.forEach((picker) => {
+                    if (picker.open && !picker.contains(event.target)) {
+                        picker.open = false;
+                    }
+                });
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key !== 'Escape') return;
+
+                categoryPickers.forEach((picker) => {
+                    picker.open = false;
+                });
+            });
+
             page.querySelectorAll('[data-remove-tag-checkbox]').forEach((checkbox) => {
                 const chip = checkbox.closest('.category-assignment-tag');
+                const form = checkbox.closest('form');
+
                 checkbox.addEventListener('change', () => {
-                    chip?.classList.toggle('is-pending-removal', checkbox.checked);
+                    if (!checkbox.checked) {
+                        chip?.classList.remove('is-pending-removal');
+                        return;
+                    }
+
+                    chip?.classList.add('is-pending-removal');
+                    chip?.setAttribute('aria-hidden', 'true');
+                    checkbox.setAttribute('aria-disabled', 'true');
+
+                    window.setTimeout(() => {
+                        if (typeof form?.requestSubmit === 'function') {
+                            form.requestSubmit();
+                        } else {
+                            form?.submit();
+                        }
+                    }, 80);
                 });
             });
         });
