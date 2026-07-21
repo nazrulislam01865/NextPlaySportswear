@@ -16,6 +16,7 @@
         'jersey_roster' => $product['jersey_roster'] ?? ['enabled' => false, 'optional' => true, 'fields' => []],
         'price_tiers' => $product['price_tiers'] ?? [],
         'price_table' => $product['price_table'] ?? [],
+        'fabric_price_tables' => $product['fabric_price_tables'] ?? [],
     ];
 
     $allGroups = collect($product['option_groups'] ?? []);
@@ -23,7 +24,7 @@
     $customerOptionGroups = $allGroups->where('display_mode', 'customer');
     $sizeGroupsWithCharts = collect($product['size_groups'] ?? [])->filter(fn ($group) => (bool) data_get($group, 'chart.enabled'));
     $roster = $product['jersey_roster'] ?? [];
-    $rosterEnabled = ($product['product_profile'] ?? 'standard') === 'jersey' && (bool) ($roster['enabled'] ?? false);
+    $rosterEnabled = \App\Support\ProductRoster::supports($product['product_profile'] ?? 'standard') && (bool) ($roster['enabled'] ?? false);
     $artworkUpload = $product['artwork_upload'] ?? ['enabled' => false];
     $stepNumber = 1;
 @endphp
@@ -79,11 +80,16 @@ window.productBuilderFabricPricing = function (config = {}) {
             const fabricValue = this.selectedPricedFabricValue();
             return fabricValue?.fabric_price_table?.label ? `${fabricValue.fabric_price_table.label} fabric price` : '';
         },
+        priceTableSourceKey() {
+            const fabricValue = this.selectedPricedFabricValue();
+            return fabricValue?.fabric_price_table?.key || '';
+        },
         notifyPriceTableChange() {
             window.dispatchEvent(new CustomEvent('product-price-table-updated', {
                 detail: {
                     table: this.activePriceTable() || config.price_table || {},
                     label: this.priceTableSourceLabel(),
+                    key: this.priceTableSourceKey(),
                 },
             }));
         },
@@ -246,28 +252,55 @@ window.productBuilderFabricPricing = function (config = {}) {
                     </section>
                 @endif
 
+                @if(empty($product['size_groups']))
+                    <section class="rounded-[28px] border border-slate-200 bg-white shadow-card" id="product-quantity">
+                        <div class="flex items-start gap-4 border-b border-slate-200 bg-gradient-to-r from-white to-red-50 p-5 sm:p-6">
+                            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-dark font-black text-white">{{ $stepNumber++ }}</span>
+                            <div><h3 class="text-xl font-black leading-tight text-brand-ink sm:text-2xl">Select Quantity</h3><p class="mt-1 text-sm leading-6 text-slate-500">This product does not use a size chart. Choose the total order quantity.</p></div>
+                        </div>
+                        <div class="p-5 sm:p-6">
+                            <div class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <strong class="block text-sm text-brand-ink">Order quantity</strong>
+                                    <small class="mt-1 block text-xs leading-5 text-slate-500">
+                                        Minimum {{ number_format((int) ($product['minimum_quantity'] ?? 1)) }} piece{{ (int) ($product['minimum_quantity'] ?? 1) === 1 ? '' : 's' }}
+                                        @if(!empty($product['maximum_quantity']))
+                                            · Maximum {{ number_format((int) $product['maximum_quantity']) }} pieces
+                                        @endif
+                                    </small>
+                                </div>
+                                <div class="grid h-12 w-full max-w-[190px] grid-cols-[44px_1fr_44px] overflow-hidden rounded-xl border border-slate-300 bg-white">
+                                    <button type="button" class="bg-slate-100 font-black" @click="setOrderQuantity(Number(orderQuantity || 0)-1)" aria-label="Decrease quantity">−</button>
+                                    <input class="min-w-0 border-0 text-center font-black" type="number" min="{{ (int) ($product['minimum_quantity'] ?? 1) }}" @if(!empty($product['maximum_quantity'])) max="{{ (int) $product['maximum_quantity'] }}" @endif :value="orderQuantity" @change="setOrderQuantity($event.target.value)" aria-label="Order quantity">
+                                    <button type="button" class="bg-slate-100 font-black" @click="setOrderQuantity(Number(orderQuantity || 0)+1)" aria-label="Increase quantity">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                @endif
+
                 @if($rosterEnabled)
-                    <section class="rounded-[28px] border border-slate-200 bg-white shadow-card" id="jersey-roster">
+                    <section class="rounded-[28px] border border-slate-200 bg-white shadow-card" id="product-roster">
                         <div class="flex items-start gap-4 border-b border-slate-200 bg-gradient-to-r from-white to-blue-50 p-5 sm:p-6">
                             <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-dark font-black text-white">{{ $stepNumber++ }}</span>
-                            <div class="min-w-0 flex-1"><h3 class="text-xl font-black leading-tight text-brand-ink sm:text-2xl">{{ $roster['title'] ?? 'Add Player Names and Numbers' }}</h3><p class="mt-1 text-sm leading-6 text-slate-500">A separate row is generated for every jersey selected above, with its size locked to the chosen size quantity.</p></div>
+                            <div class="min-w-0 flex-1"><h3 class="text-xl font-black leading-tight text-brand-ink sm:text-2xl">{{ $roster['title'] ?? 'Add Player Names and Numbers' }}</h3><p class="mt-1 text-sm leading-6 text-slate-500">A separate row is generated for every selected item, with its size locked to the chosen size quantity.</p></div>
                         </div>
                         <div class="p-5 sm:p-6">
                             @if($roster['optional'] ?? true)
                                 <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                     <input type="checkbox" class="mt-1" :checked="rosterEnabled" @change="toggleRoster($event.target.checked)">
-                                    <span><strong class="block text-sm text-brand-ink">Add individual details for each jersey</strong><small class="mt-1 block text-xs leading-5 text-slate-500">Turn this on to enter names, numbers, front text, back text, or other fields offered by the administrator.</small></span>
+                                    <span><strong class="block text-sm text-brand-ink">Add individual details for each item</strong><small class="mt-1 block text-xs leading-5 text-slate-500">Turn this on to enter names, numbers, front text, back text, or other fields offered by the administrator.</small></span>
                                 </label>
                             @endif
 
                             <div x-show="rosterEnabled" x-cloak class="mt-5">
-                                <div x-show="totalQuantity() === 0" class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">Select jersey sizes and quantities first. The individual jersey list will then appear here.</div>
-                                <div x-show="totalQuantity() > 250" class="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-bold text-amber-900">Individual jersey details support up to 250 pieces in one configured cart line.</div>
+                                <div x-show="totalQuantity() === 0" class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">Select sizes and quantities first. The individual roster list will then appear here.</div>
+                                <div x-show="totalQuantity() > 250" class="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-bold text-amber-900">Individual roster details support up to 250 pieces in one configured cart line.</div>
                                 <div x-show="rosterRows.length" class="space-y-3">
                                     <template x-for="(row, rowIndex) in rosterRows" :key="`${row.size_key}:${rowIndex}`">
                                         <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                             <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-                                                <strong class="text-sm text-brand-ink">Jersey <span x-text="rowIndex + 1"></span></strong>
+                                                <strong class="text-sm text-brand-ink">Item <span x-text="rowIndex + 1"></span></strong>
                                                 <span class="rounded-full bg-brand-dark px-3 py-1 text-xs font-black text-white"><span x-text="row.size_group_label"></span> · <span x-text="row.size_label"></span></span>
                                             </div>
                                             <div class="grid gap-3 sm:grid-cols-2">
@@ -460,7 +493,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                 <div class="max-h-72 space-y-2 overflow-y-auto border-b border-slate-200 p-5 text-xs">
                     <div class="flex justify-between gap-3"><span class="text-slate-500">Selections</span><strong class="min-w-0 break-words text-right" x-text="selectionSummary() || 'No options selected'"></strong></div>
                     <div class="flex justify-between gap-3"><span class="text-slate-500">Sizes</span><strong class="min-w-0 break-words text-right" x-text="sizeSummary() || 'No quantities selected'"></strong></div>
-                    @if($rosterEnabled)<div class="flex justify-between gap-3"><span class="text-slate-500">Player details</span><strong class="text-right" x-text="rosterSummary()"></strong></div>@endif
+                    @if($rosterEnabled)<div class="flex justify-between gap-3"><span class="text-slate-500">Roster details</span><strong class="text-right" x-text="rosterSummary()"></strong></div>@endif
                     @if((bool) ($artworkUpload['enabled'] ?? false))<div class="flex justify-between gap-3"><span class="text-slate-500">Artwork</span><strong class="text-right" x-text="artworkLabel()"></strong></div>@endif
                     @if(!empty($product['production_speeds']))<div x-show="currentProductionSpeed()" class="flex justify-between gap-3"><span class="text-slate-500">Production</span><strong class="text-right" x-text="speedLabel()"></strong></div>@endif
                     @if(!empty($product['shipping_methods']))<div class="flex justify-between gap-3"><span class="text-slate-500">Shipping</span><strong class="text-right" x-text="shippingLabel()"></strong></div>@endif

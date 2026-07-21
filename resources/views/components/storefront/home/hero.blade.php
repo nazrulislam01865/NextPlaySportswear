@@ -93,13 +93,7 @@
                                         fetchpriority="{{ $index === 0 ? 'high' : 'auto' }}"
                                         decoding="async"
                                     >
-                                    @if(filled(data_get($slide, 'label')))
-                                        <span class="hero-carousel__label">{{ data_get($slide, 'label') }}</span>
-                                    @endif
-                                    <div class="hero-carousel__copy">
-                                        <h2>{{ data_get($slide, 'heading') }}</h2>
-                                        <p>{{ data_get($slide, 'text') }}</p>
-                                    </div>
+                                    {{-- Hero slide text overlays intentionally removed: the carousel now displays clean imagery only. --}}
                                 </article>
                             @endforeach
                         </div>

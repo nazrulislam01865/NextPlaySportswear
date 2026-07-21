@@ -176,7 +176,7 @@
                 </div>
 
                 <div class="mt-8 min-w-0 sm:mt-10 lg:mt-12">
-                    <x-storefront.product.price-table :table="$product['price_table']" embedded />
+                    <x-storefront.product.price-table :table="$product['price_table']" :fabric-tables="$product['fabric_price_tables'] ?? []" embedded />
                 </div>
             </div>
         </section>

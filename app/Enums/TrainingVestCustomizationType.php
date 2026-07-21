@@ -31,7 +31,7 @@ enum TrainingVestCustomizationType: string
 
     public function groupNumber(): string
     {
-        return '1.14';
+        return '1.19';
     }
 
     public function menuNumber(): string
@@ -132,7 +132,7 @@ enum TrainingVestCustomizationType: string
     {
         return [
             'training_vest' => [
-                'number' => '1.14',
+                'number' => '1.19',
                 'label' => 'Training Vest Customization',
                 'types' => self::menuTypes(),
             ],

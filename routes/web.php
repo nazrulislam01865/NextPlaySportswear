@@ -116,6 +116,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
             '/jersey-customization-options/type/{type}',
             [\App\Http\Controllers\Admin\JerseyCustomizationOptionController::class, 'typeIndex']
         )->name('jersey-customization-options.type');
+        Route::post(
+            '/jersey-customization-options/type/{type}/import-fabrics',
+            [\App\Http\Controllers\Admin\JerseyCustomizationOptionController::class, 'importFabrics']
+        )->name('jersey-customization-options.import-fabrics');
         Route::resource(
             'jersey-customization-options',
             \App\Http\Controllers\Admin\JerseyCustomizationOptionController::class

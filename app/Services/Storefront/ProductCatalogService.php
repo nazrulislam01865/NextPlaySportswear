@@ -6,6 +6,8 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductFabricPriceTable;
 use App\Support\PriceTableShipping;
+use App\Support\ProductRoster;
+use App\Support\ProductSizing;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator as ArrayLengthAwarePaginator;
@@ -1066,6 +1068,8 @@ class ProductCatalogService
         $detailInformation = $this->normalizeDetailInformation($product->specifications ?? []);
         $summaryDetailInformation = $this->summaryDetailInformation($detailInformation, $product);
         $specificationSku = trim((string) (($summaryDetailInformation['SKU'] ?? null) ?: ($detailInformation['SKU'] ?? '')));
+        $productProfile = $product->product_profile ?: 'standard';
+        $supportsSizeOptions = ProductSizing::supports($productProfile);
 
         return [
             'id' => $product->id,
@@ -1106,9 +1110,9 @@ class ProductCatalogService
             'details' => $detailInformation,
             'brand' => $product->brand ?: config('storefront.name'),
             'product_type' => $product->product_type,
-            'product_profile' => $product->product_profile ?: 'standard',
+            'product_profile' => $productProfile,
             'jersey_roster' => [
-                'enabled' => (bool) $product->jersey_roster_enabled && ($product->product_profile === 'jersey'),
+                'enabled' => (bool) $product->jersey_roster_enabled && ProductRoster::supports($productProfile),
                 'optional' => (bool) $product->jersey_roster_optional,
                 'title' => $product->jersey_roster_title ?: 'Add player names and numbers',
                 'fields' => collect($product->jersey_roster_fields ?? [])->filter(fn ($field) => (bool) ($field['enabled'] ?? true))->values()->all(),
@@ -1119,7 +1123,7 @@ class ProductCatalogService
             'stock_quantity' => $product->stock_quantity,
             'allow_backorder' => $product->allow_backorder,
             'option_groups' => $optionGroups,
-            'size_groups' => $product->sizeGroups->where('is_active', true)->map(fn ($group) => [
+            'size_groups' => $supportsSizeOptions ? $product->sizeGroups->where('is_active', true)->map(fn ($group) => [
                 'id' => $group->code,
                 'label' => $group->name,
                 'description_html' => $group->description_html,
@@ -1138,7 +1142,7 @@ class ProductCatalogService
                     'rows' => $group->chart_rows ?? [],
                     'image' => $group->chartImageUrl(),
                 ],
-            ])->values()->all(),
+            ])->values()->all() : [],
             'artwork_upload' => [
                 'enabled' => (bool) $product->artwork_upload_enabled,
                 'required' => (bool) $product->artwork_upload_required,
@@ -1208,7 +1212,7 @@ class ProductCatalogService
             })->values()->all() : [],
             'price_tiers' => $priceTiers,
             'price_table' => $priceTablePayload,
-            'fabric_price_tables' => array_values($fabricPriceTables),
+            'fabric_price_tables' => collect($fabricPriceTables)->unique(fn ($table) => (string) ($table['key'] ?? $table['fabric_code'] ?? $table['label'] ?? ''))->values()->all(),
             'faqs' => $product->faqs->where('is_active', true)->map(fn ($faq) => ['question' => $faq->question, 'answer' => $faq->answer])->values()->all(),
             'meta_title' => $product->meta_title,
             'meta_description' => $product->meta_description,
@@ -1236,7 +1240,12 @@ class ProductCatalogService
             ->where('is_active', true)
             ->mapWithKeys(function (ProductFabricPriceTable $table): array {
                 $formatted = $this->formatFabricPriceTable($table);
-                $keys = [$table->fabric_key => $formatted];
+                $keys = [];
+                $fabricKey = trim((string) $table->fabric_key);
+
+                if ($fabricKey !== '') {
+                    $keys[$fabricKey] = $formatted;
+                }
 
                 if ($table->jersey_customization_option_id) {
                     $keys['master:'.$table->jersey_customization_option_id] = $formatted;
@@ -1244,6 +1253,10 @@ class ProductCatalogService
 
                 if (filled($table->fabric_code)) {
                     $keys['code:'.Str::slug((string) $table->fabric_code)] = $formatted;
+                }
+
+                if ($keys === []) {
+                    $keys['fabric-table:'.$table->id] = $formatted;
                 }
 
                 return $keys;
@@ -1294,8 +1307,15 @@ class ProductCatalogService
             ]);
         }
 
+        $displayKey = trim((string) $table->fabric_key);
+        if ($displayKey === '') {
+            $displayKey = $table->jersey_customization_option_id
+                ? 'master:'.$table->jersey_customization_option_id
+                : (filled($table->fabric_code) ? 'code:'.Str::slug((string) $table->fabric_code) : 'fabric-table:'.$table->id);
+        }
+
         return [
-            'key' => $table->fabric_key,
+            'key' => $displayKey,
             'fabric_id' => $table->jersey_customization_option_id,
             'fabric_code' => $table->fabric_code,
             'label' => $table->fabric_label,
@@ -1567,6 +1587,8 @@ class ProductCatalogService
         $product['details'] = $product['details'] ?? $this->legacyDetails($product);
         $product['option_steps'] = $product['option_steps'] ?? $this->defaultOptionSteps();
         $product['faqs'] = $product['faqs'] ?? $this->defaultFaqs();
+        $product['product_profile'] = $product['product_profile'] ?? 'standard';
+        $supportsSizeOptions = ProductSizing::supports($product['product_profile'] ?? 'standard');
         $product['is_featured'] = $product['is_featured'] ?? false;
         $product['is_customizable'] = $product['is_customizable'] ?? true;
         $product['currency'] = $product['currency'] ?? 'USD';
@@ -1576,11 +1598,13 @@ class ProductCatalogService
         $product['customization_artwork_html'] = $product['customization_artwork_html'] ?? '';
         $product['fulfillment_html'] = $product['fulfillment_html'] ?? '';
         $product['option_groups'] = $product['option_groups'] ?? [];
-        $product['size_groups'] = $product['size_groups'] ?? collect($product['size_quantity_groups'])->map(fn ($group) => [
-            'id' => $group['key'],
-            'label' => $group['label'],
-            'sizes' => collect($group['sizes'])->map(fn ($size) => ['code' => Str::slug($size), 'label' => $size, 'price_delta' => 0])->all(),
-        ])->all();
+        $product['size_groups'] = $supportsSizeOptions
+            ? ($product['size_groups'] ?? collect($product['size_quantity_groups'])->map(fn ($group) => [
+                'id' => $group['key'],
+                'label' => $group['label'],
+                'sizes' => collect($group['sizes'])->map(fn ($size) => ['code' => Str::slug($size), 'label' => $size, 'price_delta' => 0])->all(),
+            ])->all())
+            : [];
         $product['artwork_upload'] = $product['artwork_upload'] ?? [
             'enabled' => true,
             'required' => false,
@@ -1594,7 +1618,6 @@ class ProductCatalogService
         $product['shipping_methods'] = $product['shipping_methods'] ?? [];
         $product['production_methods_enabled'] = $product['production_methods_enabled'] ?? false;
         $product['shipping_methods_enabled'] = $product['shipping_methods_enabled'] ?? false;
-        $product['product_profile'] = $product['product_profile'] ?? 'standard';
         $product['jersey_roster'] = $product['jersey_roster'] ?? ['enabled' => false, 'optional' => true, 'title' => 'Add player names and numbers', 'fields' => []];
         $product['production_speeds'] = ($product['production_methods_enabled'] ?? false)
             ? ($product['production_speeds'] ?? [

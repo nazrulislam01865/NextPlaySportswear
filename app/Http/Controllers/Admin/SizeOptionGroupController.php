@@ -7,6 +7,7 @@ use App\Enums\SizeAudience;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SizeOptionGroupRequest;
 use App\Models\SizeOptionGroup;
+use App\Support\ProductSizing;
 use App\Services\Catalog\SizeOptionGroupService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -112,7 +113,7 @@ class SizeOptionGroupController extends Controller
     {
         $context = (string) ($request->query('customization') ?: $request->input('_customization_context') ?: $request->input('customization_group'));
 
-        return array_key_exists($context, JerseyCustomizationType::menuGroups()) ? $context : null;
+        return array_key_exists($context, JerseyCustomizationType::menuGroups()) && ProductSizing::supports($context) ? $context : null;
     }
 
     private function customizationLabel(string $context): string

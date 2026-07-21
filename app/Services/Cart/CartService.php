@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Discounts\CouponService;
 use App\Services\Storefront\ProductCatalogService;
 use App\Support\PriceTableShipping;
+use App\Support\ProductRoster;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -876,7 +877,7 @@ class CartService
         $defaultShipping = $shippingMethods->firstWhere('default', true)['id'] ?? ($shippingIds[0] ?? null);
 
         $rosterSettings = $product['jersey_roster'] ?? [];
-        $rosterAvailable = ($product['product_profile'] ?? 'standard') === 'jersey' && (bool) ($rosterSettings['enabled'] ?? false);
+        $rosterAvailable = ProductRoster::supports($product['product_profile'] ?? 'standard') && (bool) ($rosterSettings['enabled'] ?? false);
         $rosterEnabled = $rosterAvailable && (! (bool) ($rosterSettings['optional'] ?? true) || filter_var($raw['roster_enabled'] ?? false, FILTER_VALIDATE_BOOL));
         $roster = [];
 
@@ -895,7 +896,7 @@ class CartService
                 }
             }
 
-            abort_if(count($desiredRows) > 250, 422, 'Per-jersey personalization is limited to 250 pieces per configured cart line.');
+            abort_if(count($desiredRows) > 250, 422, 'Per-item personalization is limited to 250 pieces per configured cart line.');
 
             $fields = collect($rosterSettings['fields'] ?? [])->filter(fn ($field) => (bool) ($field['enabled'] ?? true))->keyBy('key');
             $submittedRows = array_values((array) ($raw['roster'] ?? []));
@@ -959,16 +960,16 @@ class CartService
         }
 
         $rosterSettings = $product['jersey_roster'] ?? [];
-        if (($product['product_profile'] ?? 'standard') === 'jersey' && ($rosterSettings['enabled'] ?? false)) {
+        if (ProductRoster::supports($product['product_profile'] ?? 'standard') && ($rosterSettings['enabled'] ?? false)) {
             if (! ($rosterSettings['optional'] ?? true)) {
-                abort_unless((bool) ($configuration['roster_enabled'] ?? false), 422, 'Player details are required for this jersey.');
+                abort_unless((bool) ($configuration['roster_enabled'] ?? false), 422, 'Roster details are required for this product.');
             }
 
             if ($configuration['roster_enabled'] ?? false) {
                 $requiredFields = collect($rosterSettings['fields'] ?? [])->filter(fn ($field) => ($field['enabled'] ?? true) && ($field['required'] ?? false));
                 foreach (($configuration['roster'] ?? []) as $index => $row) {
                     foreach ($requiredFields as $field) {
-                        abort_unless(filled($row['values'][$field['key']] ?? null), 422, 'Complete '.$field['label'].' for jersey '.($index + 1).'.');
+                        abort_unless(filled($row['values'][$field['key']] ?? null), 422, 'Complete '.$field['label'].' for item '.($index + 1).'.');
                     }
                 }
             }

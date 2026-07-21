@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductionMethod;
 use App\Models\ShippingMethod;
 use App\Support\ProductionTime;
+use App\Support\ProductSizing;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -39,7 +40,7 @@ class ProductFormRequest extends FormRequest
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'subcategory_id' => ['nullable', 'integer', 'exists:categories,id', 'different:category_id'],
             'product_type' => ['nullable', 'string', 'max:100'],
-            'product_profile' => ['required', Rule::in(['standard', 'jersey', 'tshirt', 'other'])],
+            'product_profile' => ['required', Rule::in(array_values(array_unique(array_merge(['standard', 'other'], array_keys(JerseyCustomizationType::menuGroups())))))],
             'brand' => ['nullable', 'string', 'max:120'],
             'badge_label' => ['nullable', 'string', 'max:80'],
             'badge_color' => ['nullable', 'string', 'max:30'],
@@ -466,15 +467,20 @@ class ProductFormRequest extends FormRequest
                 return $field;
             })->values()->all();
 
+        $productProfile = $this->input('product_profile', 'standard');
+        $sizeGroups = ProductSizing::supports($productProfile)
+            ? $normalizeRowsWithCodes((array) $this->input('size_groups', []))
+            : [];
+
         $this->merge([
             'option_groups' => $optionGroups,
-            'size_groups' => $normalizeRowsWithCodes((array) $this->input('size_groups', [])),
+            'size_groups' => $sizeGroups,
             'production_table_headers' => $production['production_table_headers'],
             'production_table_rows' => $production['production_table_rows'],
             'production_speeds' => $productionSpeeds,
             'shipping_methods' => $this->shippingMethodsFromMaster(),
             'jersey_roster_fields' => $rosterFields,
-            'product_profile' => $this->input('product_profile', 'standard'),
+            'product_profile' => $productProfile,
             'production_methods_enabled' => $this->boolean('production_methods_enabled'),
             'shipping_methods_enabled' => $this->boolean('shipping_methods_enabled'),
             'jersey_roster_enabled' => $this->boolean('jersey_roster_enabled'),

@@ -7186,17 +7186,21 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     }
 }
 
-/* Homepage Best-Selling Team Gear redesign */
+/* Homepage Best-Selling Team Gear sporty redesign */
 .home-page .np-best-gear-section {
     position: relative;
     isolation: isolate;
     overflow: hidden;
-    padding: clamp(58px, 7vw, 88px) 0 !important;
+    padding: clamp(54px, 6vw, 74px) 0 clamp(62px, 7vw, 82px) !important;
     background:
-        radial-gradient(circle at 0% 6%, rgba(119, 168, 231, .55) 0 2%, transparent 16%),
-        radial-gradient(circle at 100% 7%, rgba(219, 234, 254, .55) 0 2%, transparent 16%),
-        linear-gradient(135deg, #031025 0%, #071a34 44%, #0b203e 100%);
+        radial-gradient(circle at 4% 9%, rgba(191, 219, 254, .72) 0 2.3%, rgba(37, 99, 235, .24) 6%, transparent 18%),
+        radial-gradient(circle at 96% 8%, rgba(255, 255, 255, .78) 0 2.2%, rgba(59, 130, 246, .25) 6%, transparent 18%),
+        linear-gradient(135deg, #020916 0%, #06152c 43%, #071a35 100%);
     color: #fff;
+}
+
+.home-page .np-best-gear-section .container {
+    width: min(1380px, calc(100% - 34px));
 }
 
 .home-page .np-best-gear-section::before,
@@ -7204,42 +7208,41 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     content: "";
     position: absolute;
     inset: 0;
-    pointer-events: none;
     z-index: -1;
+    pointer-events: none;
 }
 
 .home-page .np-best-gear-section::before {
     background:
-        linear-gradient(122deg, transparent 0 14%, rgba(255, 255, 255, .08) 14.2% 14.45%, transparent 14.7% 100%),
-        linear-gradient(132deg, transparent 0 31%, rgba(233, 29, 51, .82) 31.15% 31.7%, transparent 31.95% 100%),
-        linear-gradient(132deg, transparent 0 81%, rgba(233, 29, 51, .92) 81.15% 82.2%, transparent 82.45% 100%),
-        linear-gradient(0deg, transparent 0 74%, rgba(255, 255, 255, .1) 74.2% 74.45%, transparent 74.7% 100%);
-    opacity: .8;
+        linear-gradient(129deg, transparent 0 17%, rgba(255, 255, 255, .1) 17.12% 17.32%, transparent 17.48% 100%),
+        linear-gradient(130deg, transparent 0 20%, rgba(233, 29, 51, .9) 20.15% 20.7%, transparent 21.04% 100%),
+        linear-gradient(128deg, transparent 0 79%, rgba(233, 29, 51, .95) 79.08% 80.15%, transparent 80.55% 100%),
+        linear-gradient(140deg, transparent 0 86%, rgba(233, 29, 51, .8) 86.08% 86.38%, transparent 86.76% 100%),
+        radial-gradient(ellipse at 50% 105%, rgba(37, 99, 235, .2), transparent 58%);
+    opacity: .95;
 }
 
 .home-page .np-best-gear-section::after {
     background:
-        radial-gradient(circle, rgba(255, 255, 255, .13) 0 1.3px, transparent 1.45px) 0 0 / 18px 18px,
-        linear-gradient(90deg, transparent 0 48%, rgba(255, 255, 255, .12) 48.1% 48.28%, transparent 48.35% 100%),
-        linear-gradient(0deg, transparent 0 77%, rgba(255, 255, 255, .12) 77.1% 77.28%, transparent 77.35% 100%);
-    mask-image: linear-gradient(90deg, rgba(0, 0, 0, .7), transparent 42%, transparent 58%, rgba(0, 0, 0, .7));
-    opacity: .42;
+        radial-gradient(circle, rgba(255, 255, 255, .15) 0 1.15px, transparent 1.28px) 0 0 / 17px 17px,
+        linear-gradient(24deg, transparent 0 52%, rgba(255, 255, 255, .08) 52.08% 52.28%, transparent 52.5% 100%),
+        linear-gradient(0deg, transparent 0 84%, rgba(255, 255, 255, .08) 84.05% 84.22%, transparent 84.5% 100%);
+    mask-image: linear-gradient(90deg, rgba(0, 0, 0, .78), transparent 36%, transparent 64%, rgba(0, 0, 0, .78));
+    opacity: .46;
 }
 
 .home-page .np-best-gear-head {
-    position: relative;
-    max-width: 950px;
-    margin: 0 auto clamp(24px, 4vw, 34px);
+    max-width: 1040px;
+    margin: 0 auto clamp(20px, 3vw, 28px);
     text-align: center;
 }
 
 .home-page .np-best-gear-eyebrow {
     display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 7px;
-    color: #ff2840;
-    font-size: clamp(13px, 1.4vw, 18px);
+    margin-bottom: 8px;
+    color: #ff233c;
+    font-size: clamp(14px, 1.38vw, 22px);
+    font-style: italic;
     font-weight: 1000;
     letter-spacing: .18em;
     line-height: 1;
@@ -7250,43 +7253,45 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
 .home-page .np-best-gear-head h2 {
     margin: 0;
     color: #fff;
-    font-family: var(--display);
-    font-size: clamp(38px, 7vw, 76px);
+    font-family: var(--display, Impact, sans-serif);
+    font-size: clamp(42px, 6.7vw, 86px);
     font-style: italic;
     font-weight: 1000;
-    letter-spacing: .015em;
-    line-height: .92;
+    letter-spacing: .018em;
+    line-height: .88;
     text-transform: uppercase;
-    text-shadow: 0 8px 26px rgba(0, 0, 0, .34);
+    text-shadow: 0 9px 22px rgba(0, 0, 0, .35);
 }
 
 .home-page .np-best-gear-head p {
     position: relative;
     display: inline-flex;
     align-items: center;
-    gap: 14px;
+    justify-content: center;
+    gap: 16px;
     margin: 14px 0 0;
-    color: rgba(255, 255, 255, .92);
-    font-size: clamp(17px, 2vw, 22px);
+    color: rgba(255, 255, 255, .96);
+    font-size: clamp(18px, 1.9vw, 25px);
     font-style: italic;
     font-weight: 900;
-    line-height: 1.25;
+    line-height: 1.15;
 }
 
 .home-page .np-best-gear-head p::before,
 .home-page .np-best-gear-head p::after {
     content: "";
-    display: inline-block;
     width: 44px;
     height: 3px;
     border-radius: 999px;
-    background: var(--red);
+    background: #ff233c;
 }
 
 .home-page .np-best-gear-layout {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: clamp(16px, 2vw, 22px);
+    gap: clamp(16px, 1.55vw, 22px);
+    max-width: 1320px;
+    margin: 0 auto;
 }
 
 .home-page .np-best-gear-card {
@@ -7294,11 +7299,11 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     display: grid;
     min-width: 0;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, .58);
-    border-radius: 16px;
+    border: 1.5px solid rgba(255, 255, 255, .78);
+    border-radius: 14px;
     background: #fff;
     color: #0f172a;
-    box-shadow: 0 22px 45px rgba(0, 0, 0, .28);
+    box-shadow: 0 22px 44px rgba(0, 0, 0, .34);
     text-decoration: none;
     transform: translateZ(0);
     transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
@@ -7309,44 +7314,39 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     position: absolute;
     right: 0;
     bottom: 0;
-    width: 92px;
-    height: 78px;
+    z-index: 4;
+    width: 82px;
+    height: 70px;
     background:
-        linear-gradient(135deg, transparent 0 58%, rgba(233, 29, 51, .98) 58.5% 75%, transparent 75.5% 100%),
-        linear-gradient(135deg, transparent 0 69%, rgba(233, 29, 51, .55) 69.5% 73%, transparent 73.5% 100%);
+        linear-gradient(135deg, transparent 0 57%, rgba(233, 29, 51, .98) 57.5% 75%, transparent 75.5% 100%),
+        linear-gradient(135deg, transparent 0 68%, rgba(233, 29, 51, .55) 68.5% 72%, transparent 72.5% 100%);
     pointer-events: none;
 }
 
 .home-page .np-best-gear-card:hover,
 .home-page .np-best-gear-card:focus-visible {
-    transform: translateY(-6px);
-    border-color: rgba(233, 29, 51, .9);
-    box-shadow: 0 28px 55px rgba(0, 0, 0, .38), 0 0 0 4px rgba(233, 29, 51, .12);
+    transform: translateY(-5px);
+    border-color: rgba(255, 255, 255, .95);
+    box-shadow: 0 28px 56px rgba(0, 0, 0, .44), 0 0 0 4px rgba(233, 29, 51, .16);
 }
 
 .home-page .np-best-gear-card:focus-visible {
-    outline: 3px solid rgba(255, 255, 255, .78);
+    outline: 3px solid rgba(255, 255, 255, .75);
     outline-offset: 5px;
 }
 
 .home-page .np-best-gear-card__number {
     position: absolute;
-    top: 0;
     left: 0;
-    z-index: 3;
+    z-index: 5;
     display: grid;
-    width: 72px;
-    height: 62px;
     place-items: start;
-    padding: 10px 0 0 13px;
-    clip-path: polygon(0 0, 100% 0, 68% 100%, 0 100%);
-    background: var(--red);
     color: #fff;
-    font-family: var(--display);
-    font-size: 28px;
+    font-family: var(--display, Impact, sans-serif);
     font-style: italic;
     font-weight: 1000;
     line-height: 1;
+    pointer-events: none;
 }
 
 .home-page .np-best-gear-card__media {
@@ -7355,22 +7355,8 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     min-width: 0;
     overflow: hidden;
     background:
-        radial-gradient(circle at 50% 0%, rgba(255, 255, 255, .28), transparent 34%),
+        radial-gradient(circle at 50% 0%, rgba(255, 255, 255, .25), transparent 36%),
         linear-gradient(135deg, #102642, #071426);
-}
-
-.home-page .np-best-gear-card__media::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background:
-        linear-gradient(180deg, rgba(5, 16, 37, .1), rgba(5, 16, 37, .32)),
-        linear-gradient(90deg, rgba(255, 255, 255, .12) 1px, transparent 1px),
-        linear-gradient(0deg, rgba(255, 255, 255, .12) 1px, transparent 1px);
-    background-size: auto, 42px 42px, 42px 42px;
-    mix-blend-mode: screen;
-    opacity: .42;
-    pointer-events: none;
 }
 
 .home-page .np-best-gear-card__media img {
@@ -7384,7 +7370,7 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
 
 .home-page .np-best-gear-card:hover .np-best-gear-card__media img,
 .home-page .np-best-gear-card:focus-visible .np-best-gear-card__media img {
-    transform: scale(1.045);
+    transform: scale(1.035);
 }
 
 .home-page .np-best-gear-card__content {
@@ -7401,21 +7387,21 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
 
 .home-page .np-best-gear-card__title {
     display: block;
-    color: #0a1932;
-    font-family: var(--display);
+    color: #081735;
+    font-family: var(--display, Impact, sans-serif);
     font-style: italic;
     font-weight: 1000;
-    letter-spacing: .01em;
-    line-height: .98;
+    letter-spacing: .005em;
+    line-height: .96;
     text-transform: none;
 }
 
 .home-page .np-best-gear-card__description {
     display: block;
-    color: #64748b;
+    color: #475569;
     font-size: 14px;
     font-weight: 700;
-    line-height: 1.55;
+    line-height: 1.45;
 }
 
 .home-page .np-best-gear-card__link {
@@ -7423,7 +7409,7 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     align-items: center;
     gap: 9px;
     margin-top: auto;
-    color: var(--red);
+    color: #f1122e;
     font-size: 15px;
     font-weight: 1000;
     line-height: 1;
@@ -7437,17 +7423,27 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
 
 .home-page .np-best-gear-card--featured {
     grid-column: 1 / -1;
-    grid-template-columns: minmax(0, 1.25fr) minmax(330px, .88fr);
-    min-height: 286px;
+    grid-template-columns: minmax(0, 59.2%) minmax(0, 40.8%);
+    min-height: 278px;
 }
 
 .home-page .np-best-gear-card--featured .np-best-gear-card__media {
-    min-height: 286px;
+    min-height: 278px;
+}
+
+.home-page .np-best-gear-card--featured .np-best-gear-card__number {
+    top: 0;
+    width: 80px;
+    height: 74px;
+    padding: 13px 0 0 13px;
+    clip-path: polygon(0 0, 100% 0, 68% 100%, 0 100%);
+    background: #f1122e;
+    font-size: 32px;
 }
 
 .home-page .np-best-gear-card--featured .np-best-gear-card__content {
     justify-content: center;
-    padding: clamp(28px, 4vw, 54px) clamp(26px, 4vw, 46px);
+    padding: clamp(28px, 3.5vw, 52px) clamp(28px, 3.8vw, 48px);
 }
 
 .home-page .np-best-gear-card--featured .np-best-gear-card__content::before {
@@ -7455,19 +7451,20 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     position: absolute;
     top: 0;
     bottom: 0;
-    left: -38px;
-    width: 76px;
-    background: #0d2545;
-    clip-path: polygon(0 0, 44% 0, 100% 100%, 56% 100%);
+    left: -48px;
+    width: 86px;
+    background: #062042;
+    clip-path: polygon(0 0, 46% 0, 100% 100%, 54% 100%);
+    box-shadow: 9px 0 0 #0b63b6;
 }
 
 .home-page .np-best-gear-card--featured .np-best-gear-card__title {
-    max-width: 420px;
-    font-size: clamp(36px, 4.4vw, 52px);
+    max-width: 460px;
+    font-size: clamp(36px, 4.2vw, 54px);
 }
 
 .home-page .np-best-gear-card--featured .np-best-gear-card__description {
-    max-width: 430px;
+    max-width: 460px;
     margin-top: 18px;
     font-size: 16px;
 }
@@ -7478,27 +7475,39 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
 }
 
 .home-page .np-best-gear-card--supporting {
-    grid-template-rows: 190px minmax(190px, 1fr);
-    min-height: 392px;
+    grid-template-rows: 212px minmax(176px, 1fr);
+    min-height: 406px;
+}
+
+.home-page .np-best-gear-card--supporting .np-best-gear-card__number {
+    top: 212px;
+    width: 66px;
+    height: 46px;
+    padding: 9px 0 0 12px;
+    clip-path: polygon(0 0, 100% 0, 78% 100%, 0 100%);
+    background: #071a35;
+    font-size: 24px;
 }
 
 .home-page .np-best-gear-card--supporting .np-best-gear-card__content {
-    padding: 26px 26px 24px;
+    padding: 16px 26px 24px 70px;
 }
 
 .home-page .np-best-gear-card--supporting .np-best-gear-card__title {
-    font-size: clamp(28px, 3vw, 35px);
+    font-size: clamp(27px, 2.5vw, 34px);
 }
 
 .home-page .np-best-gear-card--supporting .np-best-gear-card__description {
-    margin-top: 12px;
+    margin-top: 14px;
 }
 
 .home-page .np-best-gear-card--supporting .np-best-gear-card__link {
-    margin-top: 22px;
+    margin-top: 24px;
 }
 
 .home-page .np-best-gear-empty {
+    max-width: 1320px;
+    margin: 0 auto;
     border: 1px solid rgba(255, 255, 255, .18);
     border-radius: 18px;
     background: rgba(255, 255, 255, .08);
@@ -7507,7 +7516,7 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     color: rgba(255, 255, 255, .82);
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1120px) {
     .home-page .np-best-gear-layout {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -7521,23 +7530,37 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     }
 
     .home-page .np-best-gear-card--featured .np-best-gear-card__media {
+        aspect-ratio: 16 / 7.2;
         min-height: 250px;
-        aspect-ratio: 16 / 8;
     }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 680px) {
     .home-page .np-best-gear-section {
-        padding: 52px 0 !important;
+        padding: 44px 0 52px !important;
+    }
+
+    .home-page .np-best-gear-section .container {
+        width: min(100% - 28px, 520px);
     }
 
     .home-page .np-best-gear-head {
-        text-align: left;
+        text-align: center;
+        margin-bottom: 22px;
+    }
+
+    .home-page .np-best-gear-eyebrow {
+        font-size: 13px;
+    }
+
+    .home-page .np-best-gear-head h2 {
+        font-size: clamp(32px, 12vw, 48px);
+        line-height: .94;
     }
 
     .home-page .np-best-gear-head p {
         display: block;
-        font-size: 16px;
+        font-size: 15px;
     }
 
     .home-page .np-best-gear-head p::before,
@@ -7547,42 +7570,50 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
 
     .home-page .np-best-gear-layout {
         grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
     }
 
     .home-page .np-best-gear-card,
     .home-page .np-best-gear-card--supporting {
-        grid-template-rows: auto auto;
+        grid-template-rows: 220px auto;
         min-height: 0;
         border-radius: 14px;
     }
 
-    .home-page .np-best-gear-card__media,
-    .home-page .np-best-gear-card--featured .np-best-gear-card__media {
-        min-height: 0;
-        aspect-ratio: 16 / 9;
+    .home-page .np-best-gear-card--featured {
+        grid-template-rows: 220px auto;
     }
 
-    .home-page .np-best-gear-card__number {
-        width: 62px;
-        height: 54px;
-        font-size: 24px;
+    .home-page .np-best-gear-card--featured .np-best-gear-card__media,
+    .home-page .np-best-gear-card--supporting .np-best-gear-card__media {
+        min-height: 220px;
+        aspect-ratio: auto;
     }
 
-    .home-page .np-best-gear-card--featured .np-best-gear-card__content,
+    .home-page .np-best-gear-card--supporting .np-best-gear-card__number {
+        top: 220px;
+    }
+
+    .home-page .np-best-gear-card--featured .np-best-gear-card__number {
+        width: 66px;
+        height: 58px;
+        font-size: 25px;
+    }
+
+    .home-page .np-best-gear-card--featured .np-best-gear-card__content {
+        padding: 24px 22px 26px;
+    }
+
     .home-page .np-best-gear-card--supporting .np-best-gear-card__content {
-        padding: 22px 20px 24px;
+        padding: 17px 22px 24px 68px;
     }
 
     .home-page .np-best-gear-card--featured .np-best-gear-card__title,
     .home-page .np-best-gear-card--supporting .np-best-gear-card__title {
-        font-size: clamp(28px, 10vw, 34px);
-    }
-
-    .home-page .np-best-gear-card--featured .np-best-gear-card__description {
-        margin-top: 12px;
-        font-size: 14px;
+        font-size: clamp(27px, 9vw, 34px);
     }
 }
+
 
 /* NEXTPLAY_COMPACT_HEADER_AND_HERO_WINDOW_SLIDER_UPDATE
    Keeps the existing project layout while making the header/hero less zoomed and giving
@@ -8079,6 +8110,555 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
 
 @media (max-width: 1279px) {
     .np-whatsapp-link .np-whatsapp-icon {
+        display: none !important;
+    }
+}
+
+/* NEXTPLAY_MOBILE_STICKY_LOGO_ONLY_HEADER
+   On small devices keep the sticky header clean: logo + menu only.
+   Search, cart, CTA, top utility bar, and desktop/category nav remain available inside the opened menu. */
+@media (max-width: 1023px) {
+    .np-utility-bar {
+        display: none !important;
+    }
+
+    .storefront-site-header.np-site-header {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 90 !important;
+        background: #fff !important;
+        border-bottom: 1px solid #e7edf6 !important;
+        box-shadow: 0 8px 24px rgba(8, 22, 50, .08) !important;
+    }
+
+    .np-main-header {
+        background: #fff !important;
+    }
+
+    .np-main-header-inner {
+        width: min(100%, calc(100% - 24px)) !important;
+        min-height: 64px !important;
+        grid-template-columns: minmax(0, 1fr) auto !important;
+        gap: 12px !important;
+        padding-block: 8px !important;
+    }
+
+    .np-brand-logo {
+        min-width: 0 !important;
+        gap: 8px !important;
+    }
+
+    .np-brand-mark {
+        width: 34px !important;
+        height: 34px !important;
+        flex: 0 0 34px !important;
+    }
+
+    .np-brand-text {
+        display: inline-flex !important;
+        min-width: 0 !important;
+        gap: 4px !important;
+        font-size: clamp(18px, 5.3vw, 24px) !important;
+        line-height: .95 !important;
+        letter-spacing: -.045em !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .np-brand-text strong {
+        display: inline !important;
+    }
+
+    .np-header-search,
+    .np-header-actions > .np-header-btn,
+    .np-header-actions > .np-cart-action-wrap,
+    .np-category-nav,
+    .np-usa-shipping {
+        display: none !important;
+    }
+
+    .np-header-actions {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        gap: 0 !important;
+        min-width: 0 !important;
+    }
+
+    .np-mobile-menu-toggle {
+        display: inline-flex !important;
+        width: 44px !important;
+        min-width: 44px !important;
+        height: 44px !important;
+        min-height: 44px !important;
+        border-radius: 14px !important;
+        border-color: #d9e3f0 !important;
+        background: #fff !important;
+        color: #0b1835 !important;
+        box-shadow: none !important;
+    }
+
+    .np-menu-bars,
+    .np-menu-bars::before,
+    .np-menu-bars::after {
+        height: 3px !important;
+        border-radius: 999px !important;
+        background: currentColor !important;
+    }
+
+    .np-menu-close {
+        font-size: 34px !important;
+        line-height: 1 !important;
+    }
+
+    .np-category-nav-row {
+        border-top: 0 !important;
+        background: transparent !important;
+    }
+
+    .np-category-nav-shell {
+        min-height: 0 !important;
+        display: block !important;
+    }
+
+    .np-mobile-menu {
+        display: block;
+        max-height: calc(100dvh - 64px) !important;
+        overflow-y: auto !important;
+        overscroll-behavior: contain !important;
+        padding-block: 14px 20px !important;
+        border-top: 1px solid #edf2f8 !important;
+        background: #fff !important;
+        box-shadow: 0 20px 45px rgba(8, 22, 50, .14) !important;
+    }
+}
+
+@media (max-width: 420px) {
+    .np-main-header-inner {
+        width: min(100%, calc(100% - 18px)) !important;
+        min-height: 60px !important;
+        padding-block: 7px !important;
+    }
+
+    .np-brand-mark {
+        width: 30px !important;
+        height: 30px !important;
+        flex-basis: 30px !important;
+    }
+
+    .np-brand-text {
+        font-size: clamp(16px, 5.1vw, 20px) !important;
+    }
+
+    .np-mobile-menu-toggle {
+        width: 42px !important;
+        min-width: 42px !important;
+        height: 42px !important;
+        min-height: 42px !important;
+    }
+}
+
+/* NEXTPLAY_MOBILE_MENU_PRIORITY_ACTIONS
+   Replaces the oversized mobile menu CTA buttons with compact utility cards. */
+.np-mobile-priority-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 14px 0 0;
+    padding-top: 14px;
+    border-top: 1px solid #edf1f6;
+}
+
+.np-mobile-action-card {
+    min-width: 0;
+    min-height: 72px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #dfe7f1;
+    border-radius: 16px;
+    background: #fff;
+    padding: 11px 10px;
+    color: var(--np-header-ink);
+    text-decoration: none;
+    box-shadow: 0 8px 22px rgba(8, 22, 50, .055);
+    transition: border-color .18s ease, background-color .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+.np-mobile-action-card:hover,
+.np-mobile-action-card:focus-visible,
+.np-mobile-action-card.is-active {
+    border-color: rgba(237, 16, 43, .24);
+    background: #fff7f8;
+    color: var(--np-header-red);
+    transform: translateY(-1px);
+    box-shadow: 0 12px 26px rgba(8, 22, 50, .08);
+}
+
+.np-mobile-action-icon {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 13px;
+    background: #f3f7fc;
+    color: #0b1835;
+}
+
+.np-mobile-action-card:hover .np-mobile-action-icon,
+.np-mobile-action-card:focus-visible .np-mobile-action-icon,
+.np-mobile-action-card.is-active .np-mobile-action-icon {
+    background: #ef102b;
+    color: #fff;
+}
+
+.np-mobile-action-copy {
+    min-width: 0;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.np-mobile-action-title,
+.np-mobile-action-meta {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.np-mobile-action-title {
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1.1;
+}
+
+.np-mobile-action-meta {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.np-mobile-action-card:hover .np-mobile-action-meta,
+.np-mobile-action-card:focus-visible .np-mobile-action-meta,
+.np-mobile-action-card.is-active .np-mobile-action-meta {
+    color: #b20c20;
+}
+
+.np-mobile-action-arrow {
+    flex: 0 0 auto;
+    color: #94a3b8;
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.np-mobile-action-card:hover .np-mobile-action-arrow,
+.np-mobile-action-card:focus-visible .np-mobile-action-arrow,
+.np-mobile-action-card.is-active .np-mobile-action-arrow {
+    color: currentColor;
+}
+
+@media (max-width: 420px) {
+    .np-mobile-priority-actions {
+        gap: 8px;
+    }
+
+    .np-mobile-action-card {
+        min-height: 66px;
+        gap: 8px;
+        border-radius: 14px;
+        padding: 9px 8px;
+    }
+
+    .np-mobile-action-icon {
+        width: 34px;
+        height: 34px;
+        flex-basis: 34px;
+        border-radius: 12px;
+    }
+
+    .np-mobile-action-title {
+        font-size: 13px;
+    }
+
+    .np-mobile-action-meta {
+        font-size: 10.5px;
+    }
+}
+
+
+/* Hero image slider clean-image update: hide/remove slide text overlays and dark text gradient. */
+.storefront-clean-ui .home-page .hero-card-slider .hero-carousel__slide::after {
+    content: none !important;
+    display: none !important;
+}
+
+.storefront-clean-ui .home-page .hero-card-slider .hero-carousel__label,
+.storefront-clean-ui .home-page .hero-card-slider .hero-carousel__copy {
+    display: none !important;
+}
+.home-page .np-best-gear-card--featured .np-best-gear-card__number {
+    opacity: 0;
+}
+
+/* NEXTPLAY_BEST_SELLING_GEAR_BORDER_REFINEMENT
+   Refines the sporty Best-Selling Team Gear cards so the featured card border,
+   divider, number badge, and white content panel match the approved reference. */
+.home-page .np-best-gear-section .container {
+    width: min(1324px, calc(100% - 36px)) !important;
+    max-width: 1324px !important;
+}
+
+.home-page .np-best-gear-layout {
+    max-width: 1274px !important;
+    gap: clamp(16px, 1.45vw, 20px) !important;
+}
+
+.home-page .np-best-gear-card {
+    border: 2px solid rgba(255, 255, 255, .88) !important;
+    border-radius: 15px !important;
+    background: #fff !important;
+    box-shadow:
+        0 24px 52px rgba(0, 0, 0, .36),
+        inset 0 0 0 1px rgba(255, 255, 255, .32) !important;
+}
+
+.home-page .np-best-gear-card__divider {
+    display: none;
+}
+
+.home-page .np-best-gear-card__media,
+.home-page .np-best-gear-card__content {
+    min-width: 0;
+}
+
+.home-page .np-best-gear-card__media {
+    z-index: 1;
+}
+
+.home-page .np-best-gear-card__content {
+    z-index: 3;
+}
+
+.home-page .np-best-gear-card__number {
+    opacity: 1 !important;
+}
+
+.home-page .np-best-gear-card--featured {
+    grid-template-columns: minmax(0, 55.7%) minmax(0, 44.3%) !important;
+    min-height: 274px !important;
+}
+
+.home-page .np-best-gear-card--featured .np-best-gear-card__media {
+    min-height: 274px !important;
+}
+
+.home-page .np-best-gear-card--featured .np-best-gear-card__content {
+    justify-content: center !important;
+    padding: clamp(30px, 3.3vw, 46px) clamp(34px, 4.2vw, 62px) clamp(30px, 3.3vw, 46px) clamp(58px, 5vw, 76px) !important;
+    background:
+        linear-gradient(135deg, rgba(15, 23, 42, .032) 0 1px, transparent 1px) 0 0 / 17px 17px,
+        #fff !important;
+}
+
+.home-page .np-best-gear-card--featured .np-best-gear-card__content::before {
+    display: none !important;
+}
+
+.home-page .np-best-gear-card--featured .np-best-gear-card__divider {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(55.7% - 42px);
+    z-index: 4;
+    display: block;
+    width: 92px;
+    background: #061e40;
+    clip-path: polygon(0 0, 48% 0, 100% 100%, 52% 100%);
+    box-shadow: 8px 0 0 #0b62b1;
+    pointer-events: none;
+}
+
+.home-page .np-best-gear-card--featured .np-best-gear-card__number {
+    width: 78px !important;
+    height: 72px !important;
+    padding: 12px 0 0 13px !important;
+    clip-path: polygon(0 0, 100% 0, 66% 100%, 0 100%) !important;
+    background: #f1122e !important;
+    font-size: 31px !important;
+}
+
+.home-page .np-best-gear-card--featured .np-best-gear-card__title {
+    max-width: 440px !important;
+    font-size: clamp(36px, 4.05vw, 52px) !important;
+    line-height: .96 !important;
+}
+
+.home-page .np-best-gear-card--featured .np-best-gear-card__description {
+    max-width: 455px !important;
+    margin-top: 16px !important;
+    font-size: 16px !important;
+    line-height: 1.45 !important;
+}
+
+.home-page .np-best-gear-card--featured .np-best-gear-card__link {
+    margin-top: 28px !important;
+}
+
+.home-page .np-best-gear-card--supporting {
+    grid-template-rows: 206px minmax(176px, 1fr) !important;
+    min-height: 394px !important;
+}
+
+.home-page .np-best-gear-card--supporting .np-best-gear-card__number {
+    top: 206px !important;
+    background: #071a35 !important;
+}
+
+.home-page .np-best-gear-card--supporting .np-best-gear-card__content {
+    padding: 16px 24px 23px 66px !important;
+}
+
+.home-page .np-best-gear-card--supporting .np-best-gear-card__title {
+    font-size: clamp(26px, 2.35vw, 32px) !important;
+}
+
+@media (max-width: 1120px) {
+    .home-page .np-best-gear-layout {
+        max-width: 860px !important;
+    }
+
+    .home-page .np-best-gear-card--featured {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    .home-page .np-best-gear-card--featured .np-best-gear-card__divider {
+        display: none !important;
+    }
+
+    .home-page .np-best-gear-card--featured .np-best-gear-card__content {
+        padding: 28px 30px 32px !important;
+    }
+
+    .home-page .np-best-gear-card--featured .np-best-gear-card__media {
+        min-height: 250px !important;
+        aspect-ratio: 16 / 7.2 !important;
+    }
+}
+
+@media (max-width: 680px) {
+    .home-page .np-best-gear-section .container {
+        width: min(100% - 28px, 520px) !important;
+    }
+
+    .home-page .np-best-gear-layout {
+        max-width: 520px !important;
+    }
+
+    .home-page .np-best-gear-card,
+    .home-page .np-best-gear-card--supporting {
+        grid-template-rows: 220px auto !important;
+        min-height: 0 !important;
+        border-radius: 14px !important;
+    }
+
+    .home-page .np-best-gear-card--featured {
+        grid-template-rows: 220px auto !important;
+    }
+
+    .home-page .np-best-gear-card--featured .np-best-gear-card__content,
+    .home-page .np-best-gear-card--supporting .np-best-gear-card__content {
+        padding: 22px 20px 25px 68px !important;
+    }
+
+    .home-page .np-best-gear-card--supporting .np-best-gear-card__number {
+        top: 220px !important;
+    }
+
+    .home-page .np-best-gear-card--featured .np-best-gear-card__number {
+        width: 66px !important;
+        height: 58px !important;
+        font-size: 25px !important;
+    }
+}
+
+/* Header USA Shipping compact size update: match Request Quote button sizing. */
+@media (min-width: 1280px) {
+    .np-usa-shipping {
+        width: 144px !important;
+        min-width: 144px !important;
+        max-width: 144px !important;
+        min-height: 48px !important;
+        height: 48px !important;
+        padding: 0 14px !important;
+        border-radius: 12px !important;
+        gap: 8px !important;
+        font-size: 13px !important;
+        font-weight: 800 !important;
+        letter-spacing: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .np-usa-shipping svg {
+        width: 19px !important;
+        height: 19px !important;
+        flex: 0 0 19px !important;
+    }
+}
+
+@media (min-width: 1280px) and (max-width: 1499px) {
+    .np-usa-shipping {
+        width: 138px !important;
+        min-width: 138px !important;
+        max-width: 138px !important;
+        min-height: 46px !important;
+        height: 46px !important;
+        padding: 0 12px !important;
+        gap: 7px !important;
+        font-size: 12.5px !important;
+    }
+
+    .np-usa-shipping svg {
+        width: 18px !important;
+        height: 18px !important;
+        flex-basis: 18px !important;
+    }
+}
+
+
+/* NEXTPLAY_BEST_SELLING_GEAR_DIVIDER_EXACT_MATCH
+   Replaces the featured card divider with the same angled outlined polygon
+   edge as the approved reference image. */
+.home-page .np-best-gear-card--featured .np-best-gear-card__divider {
+    position: absolute !important;
+    top: 12px !important;
+    bottom: 12px !important;
+    left: calc(55.7% - 58px) !important;
+    z-index: 4 !important;
+    display: block !important;
+    width: 124px !important;
+    background: #2f67c7 !important;
+    box-shadow: none !important;
+    clip-path: polygon(14% 0, 72% 0, 100% 29%, 43% 100%, 0 100%, 56% 29%) !important;
+    pointer-events: none !important;
+}
+
+.home-page .np-best-gear-card--featured .np-best-gear-card__divider::before {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    background: #081d3f;
+    clip-path: polygon(14% 0, 72% 0, 100% 29%, 43% 100%, 0 100%, 56% 29%);
+}
+
+@media (max-width: 1120px) {
+    .home-page .np-best-gear-card--featured .np-best-gear-card__divider {
         display: none !important;
     }
 }

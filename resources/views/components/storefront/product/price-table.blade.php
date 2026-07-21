@@ -1,6 +1,49 @@
-@props(['table', 'embedded' => false])
+@props(['table', 'fabricTables' => [], 'embedded' => false])
 
-@if(!empty($table['headers']) && !empty($table['rows']))
+@php
+    $defaultTable = is_array($table ?? null) ? $table : [];
+    $fabricTabs = collect($fabricTables ?? [])
+        ->filter(fn ($fabricTable) => is_array($fabricTable) && !empty($fabricTable['headers']) && !empty($fabricTable['rows']))
+        ->unique(fn ($fabricTable) => (string) ($fabricTable['key'] ?? $fabricTable['fabric_code'] ?? $fabricTable['label'] ?? spl_object_id((object) $fabricTable)))
+        ->values()
+        ->map(function ($fabricTable, $index) {
+            $label = trim((string) ($fabricTable['label'] ?? ''));
+            $code = trim((string) ($fabricTable['fabric_code'] ?? ''));
+            $key = trim((string) ($fabricTable['key'] ?? ''));
+
+            if ($label === '') {
+                $label = $code !== '' ? $code : 'Fabric '.($index + 1);
+            }
+
+            return [
+                'id' => $key !== '' ? $key : 'fabric-table-'.$index,
+                'label' => $label,
+                'code' => $code,
+                'table' => $fabricTable,
+            ];
+        })
+        ->values()
+        ->all();
+
+    $defaultPriceTab = (!empty($defaultTable['headers']) && !empty($defaultTable['rows']))
+        ? [[
+            'id' => 'default-price-table',
+            'label' => 'Default Price Table',
+            'code' => 'Standard',
+            'table' => $defaultTable,
+            'is_default' => true,
+        ]]
+        : [];
+
+    $priceTableTabs = collect($defaultPriceTab)
+        ->merge($fabricTabs)
+        ->values()
+        ->all();
+
+    $hasVisiblePriceTable = count($priceTableTabs) > 0;
+@endphp
+
+@if($hasVisiblePriceTable)
     @unless($embedded)
         <section class="section-padding bg-white" aria-labelledby="product-price-table-heading">
             <div class="site-container">
@@ -8,15 +51,54 @@
 
     <div
         x-data="{
-            defaultTable: @js($table),
-            table: @js($table),
+            defaultTable: @js($defaultTable),
+            tabs: @js($priceTableTabs),
+            activeTab: @js($priceTableTabs[0]['id'] ?? null),
+            runtimeTable: null,
             sourceLabel: '',
             init() {
                 window.addEventListener('product-price-table-updated', (event) => {
                     const nextTable = event.detail?.table || this.defaultTable;
-                    this.table = (Array.isArray(nextTable.rows) && nextTable.rows.length) ? nextTable : this.defaultTable;
+                    const incomingKey = String(event.detail?.key || nextTable?.key || '').trim();
+                    const incomingLabel = String(event.detail?.label || nextTable?.label || '').trim();
+
+                    if (this.tabs.length) {
+                        const defaultTab = this.tabs.find((tab) => tab.is_default) || this.tabs[0];
+                        const matchedTab = this.tabs.find((tab) => {
+                            const tabKey = String(tab.id || tab.table?.key || '').trim();
+                            const tableKey = String(tab.table?.key || '').trim();
+                            const tabLabel = String(tab.label || tab.table?.label || '').trim();
+                            const tableLabel = String(tab.table?.label || '').trim();
+
+                            return ! tab.is_default && (
+                                (incomingKey && (incomingKey === tabKey || incomingKey === tableKey))
+                                || (incomingLabel && (incomingLabel === tabLabel || incomingLabel === tableLabel || incomingLabel.includes(tabLabel)))
+                            );
+                        });
+
+                        this.activeTab = matchedTab?.id || defaultTab?.id || this.activeTab;
+                        return;
+                    }
+
+                    this.runtimeTable = (Array.isArray(nextTable.rows) && nextTable.rows.length) ? nextTable : this.defaultTable;
                     this.sourceLabel = event.detail?.label || '';
                 });
+            },
+            get table() {
+                if (this.tabs.length) {
+                    const selectedTab = this.tabs.find((tab) => tab.id === this.activeTab) || this.tabs[0];
+                    return selectedTab?.table || this.defaultTable;
+                }
+
+                return this.runtimeTable || this.defaultTable;
+            },
+            activeTabLabel() {
+                const selectedTab = this.tabs.find((tab) => tab.id === this.activeTab) || this.tabs[0];
+                return selectedTab?.label || '';
+            },
+            selectTab(id) {
+                this.activeTab = id;
+                this.sourceLabel = '';
             },
             cell(row, index) {
                 return Array.isArray(row) ? (row[index] || '—') : '—';
@@ -46,12 +128,30 @@
                 <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
                     Your unit price is selected from the total quantity across every chosen size.
                 </p>
-                <p x-show="sourceLabel" x-cloak class="mt-2 inline-flex rounded-full bg-red-50 px-3 py-1 text-xs font-black text-brand-red" x-text="`Showing ${sourceLabel}`"></p>
+                <p x-show="! tabs.length && sourceLabel" x-cloak class="mt-2 inline-flex rounded-full bg-red-50 px-3 py-1 text-xs font-black text-brand-red" x-text="`Showing ${sourceLabel}`"></p>
             </div>
 
             @unless($embedded)
                 <a href="#configure-product" class="btn btn-light mobile-full">Configure This Product</a>
             @endunless
+        </div>
+
+        <div x-show="tabs.length > 1" x-cloak class="border-b border-slate-200 bg-white">
+            <div class="touch-scroll-x flex overflow-x-auto" role="tablist" aria-label="Product price tables">
+                <template x-for="tab in tabs" :key="tab.id">
+                    <button
+                        type="button"
+                        role="tab"
+                        class="min-w-[150px] flex-1 border-r border-slate-200 px-3 py-2.5 text-center text-xs font-black transition last:border-r-0 sm:min-w-[180px] sm:px-5 sm:py-3 sm:text-sm"
+                        :class="activeTab === tab.id ? 'bg-white text-brand-red shadow-[inset_0_-3px_0_0_#ef1737]' : 'bg-slate-50 text-slate-600 hover:bg-white hover:text-brand-ink'"
+                        :aria-selected="activeTab === tab.id ? 'true' : 'false'"
+                        @click="selectTab(tab.id)"
+                    >
+                        <span class="block truncate leading-tight" x-text="tab.label"></span>
+                        <small x-show="tab.code" class="mt-0.5 block truncate text-[9px] font-bold uppercase tracking-[.1em] text-slate-400 sm:text-[10px]" x-text="tab.code"></small>
+                    </button>
+                </template>
+            </div>
         </div>
 
         <div class="grid gap-3 p-4 sm:hidden">

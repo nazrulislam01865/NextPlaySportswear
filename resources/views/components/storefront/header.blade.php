@@ -25,6 +25,9 @@
     $howActive = request()->routeIs('how-to-order');
     $quoteActive = request()->routeIs('quote.request') || request()->routeIs('quote.request.store') || request()->routeIs('bulk-ordering');
     $shippingActive = request()->routeIs('shipping');
+    $cartActive = request()->routeIs('cart.*');
+    $contactActive = request()->routeIs('contact') || request()->routeIs('contact.store');
+    $trackActive = request()->routeIs('orders.track') || request()->routeIs('orders.track.lookup');
 
     $accountHref = auth('admin')->check()
         ? route('admin.dashboard')
@@ -323,11 +326,6 @@
                     ></div>
                 </form>
 
-                <div class="np-mobile-quick-actions" @click="if ($event.target.closest('a')) open = false">
-                    <a href="{{ route('products.index') }}" class="np-header-btn np-header-btn-light" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_shop_now">Shop Now</a>
-                    <a href="{{ route('quote.request') }}" class="np-header-btn np-header-btn-red" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_request_quote">Request Quote</a>
-                </div>
-
                 <div class="np-mobile-nav-list" @click="if ($event.target.closest('a')) open = false">
                     <a href="{{ route('home') }}" class="np-mobile-nav-link {{ $homeActive ? 'is-active' : '' }}" @if($homeActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_home">Home</a>
 
@@ -351,7 +349,6 @@
                 </div>
 
                 <div class="np-mobile-utility-list" @click="if ($event.target.closest('a')) open = false">
-                    <a href="{{ route('orders.track') }}" class="np-mobile-nav-link" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_track_order">Track Order</a>
                     <a href="{{ $whatsappUrl }}" target="_blank" rel="noopener noreferrer" class="np-mobile-nav-link" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_whatsapp">WhatsApp Us</a>
                     <a href="{{ $accountHref }}" class="np-mobile-nav-link" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_account">{{ $accountLabel }}</a>
                     @if(auth('admin')->check())
@@ -362,6 +359,70 @@
                         <a href="{{ route('register') }}" class="np-mobile-nav-link" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_create_account">Create Account</a>
                     @endif
                 </div>
+
+                {{-- Mobile quick actions stay near the bottom, directly above Follow us. --}}
+                <div class="np-mobile-priority-actions" @click="if ($event.target.closest('a')) open = false">
+                    <a href="{{ route('cart.index') }}" class="np-mobile-action-card {{ $cartActive ? 'is-active' : '' }}" @if($cartActive) aria-current="page" @endif data-header-analytics="header_cta_click" data-header-analytics-label="mobile_cart">
+                        <span class="np-mobile-action-icon" aria-hidden="true">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="9" cy="20" r="1.5"></circle>
+                                <circle cx="19" cy="20" r="1.5"></circle>
+                                <path d="M3 4h2l2.7 11.1a2 2 0 0 0 2 1.5h7.7a2 2 0 0 0 2-1.6L21 8H6"></path>
+                            </svg>
+                        </span>
+                        <span class="np-mobile-action-copy">
+                            <span class="np-mobile-action-title">Cart</span>
+                            <span class="np-mobile-action-meta">{{ $cartItemCount }} item{{ $cartItemCount === 1 ? '' : 's' }}</span>
+                        </span>
+                        <span class="np-mobile-action-arrow" aria-hidden="true">›</span>
+                    </a>
+
+                    <a href="{{ route('contact') }}" class="np-mobile-action-card {{ $contactActive ? 'is-active' : '' }}" @if($contactActive) aria-current="page" @endif data-header-analytics="header_cta_click" data-header-analytics-label="mobile_contact">
+                        <span class="np-mobile-action-icon" aria-hidden="true">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path>
+                                <path d="M8 9h8M8 13h5"></path>
+                            </svg>
+                        </span>
+                        <span class="np-mobile-action-copy">
+                            <span class="np-mobile-action-title">Contact Us</span>
+                            <span class="np-mobile-action-meta">Talk to our team</span>
+                        </span>
+                        <span class="np-mobile-action-arrow" aria-hidden="true">›</span>
+                    </a>
+
+                    <a href="{{ route('quote.request') }}" class="np-mobile-action-card {{ $quoteActive ? 'is-active' : '' }}" @if($quoteActive) aria-current="page" @endif data-header-analytics="header_cta_click" data-header-analytics-label="mobile_request_quote">
+                        <span class="np-mobile-action-icon" aria-hidden="true">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <path d="M14 2v6h6"></path>
+                                <path d="M8 13h8M8 17h5"></path>
+                            </svg>
+                        </span>
+                        <span class="np-mobile-action-copy">
+                            <span class="np-mobile-action-title">Request Quote</span>
+                            <span class="np-mobile-action-meta">Custom bulk order</span>
+                        </span>
+                        <span class="np-mobile-action-arrow" aria-hidden="true">›</span>
+                    </a>
+
+                    <a href="{{ route('orders.track') }}" class="np-mobile-action-card {{ $trackActive ? 'is-active' : '' }}" @if($trackActive) aria-current="page" @endif data-header-analytics="header_cta_click" data-header-analytics-label="mobile_track_order">
+                        <span class="np-mobile-action-icon" aria-hidden="true">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 7h11v10H3z"></path>
+                                <path d="M14 10h3.6l2.4 3v4h-6"></path>
+                                <circle cx="7" cy="18" r="2"></circle>
+                                <circle cx="17" cy="18" r="2"></circle>
+                            </svg>
+                        </span>
+                        <span class="np-mobile-action-copy">
+                            <span class="np-mobile-action-title">Track Order</span>
+                            <span class="np-mobile-action-meta">Check order status</span>
+                        </span>
+                        <span class="np-mobile-action-arrow" aria-hidden="true">›</span>
+                    </a>
+                </div>
+
 
                 @if($socialLinks->isNotEmpty())
                     <div class="np-mobile-social-wrap">

@@ -19,6 +19,7 @@ enum JerseyCustomizationType: string
 
     case UniformType = 'uniform_type';
     case UniformStyle = 'uniform_style';
+    case UniformFabric = 'uniform_fabric';
     case UniformNeckline = 'uniform_neckline';
     case UniformSleeve = 'uniform_sleeve';
     case UniformSize = 'uniform_size';
@@ -90,6 +91,41 @@ enum JerseyCustomizationType: string
     case JacketHem = 'jacket_hem';
     case JacketSize = 'jacket_size';
 
+
+    case BagLogo = 'bag_logo';
+    case BagScreenPrint = 'bag_screen_print';
+    case BagColor = 'bag_color';
+    case BagPrintSize = 'bag_print_size';
+    case BagColorMode = 'bag_color_mode';
+
+    case HeadwearWovenLogo = 'headwear_woven_logo';
+    case HeadwearHeatLogo = 'headwear_heat_logo';
+    case HeadwearMultiPosition = 'headwear_multi_position';
+    case Headwear3dPuff = 'headwear_3d_puff';
+    case HeadwearFlatEmbroidery = 'headwear_flat_embroidery';
+    case HeadwearDyeSublimation = 'headwear_dye_sublimation';
+    case HeadwearColor = 'headwear_color';
+    case HeadwearSoftPvcPatch = 'headwear_soft_pvc_patch';
+    case Headwear2dLogo = 'headwear_2d_logo';
+    case HeadwearTeamNameNumber = 'headwear_team_name_number';
+
+    case DrinkwareLocation = 'drinkware_location';
+    case DrinkwareLaserPrint = 'drinkware_laser_print';
+    case DrinkwareBrandingLogo = 'drinkware_branding_logo';
+    case DrinkwareCustomGraphics = 'drinkware_custom_graphics';
+
+    case LanyardColor = 'lanyard_color';
+    case LanyardPrint = 'lanyard_print';
+    case LanyardBackgroundColor = 'lanyard_background_color';
+    case LanyardWidth = 'lanyard_width';
+    case LanyardAttachment = 'lanyard_attachment';
+    case LanyardLogo = 'lanyard_logo';
+
+    case HeadbandLogo = 'headband_logo';
+    case HeadbandPattern = 'headband_pattern';
+    case HeadbandAngle = 'headband_angle';
+    case HeadbandPackaging = 'headband_packaging';
+
     public function label(): string
     {
         return match ($this) {
@@ -104,6 +140,7 @@ enum JerseyCustomizationType: string
             self::ShortsPocketOption => 'Shorts Pocket Option',
             self::UniformType => 'Uniform Type',
             self::UniformStyle => 'Standard / Reversible',
+            self::UniformFabric => 'Uniform Fabric',
             self::UniformNeckline => 'Uniform Neckline',
             self::UniformSleeve => 'Uniform Sleeve',
             self::UniformSize => 'Uniform Size',
@@ -164,6 +201,35 @@ enum JerseyCustomizationType: string
             self::JacketCuff => 'Jacket Cuff',
             self::JacketHem => 'Jacket Hem',
             self::JacketSize => 'Jacket Size',
+            self::BagLogo => 'Logo',
+            self::BagScreenPrint => 'Print',
+            self::BagColor => 'Color',
+            self::BagPrintSize => 'Print Size',
+            self::BagColorMode => 'Single / Multicolor',
+            self::HeadwearWovenLogo => 'Logo',
+            self::HeadwearHeatLogo => 'Heat Logo',
+            self::HeadwearMultiPosition => 'Multi Position',
+            self::Headwear3dPuff => '3D Puff',
+            self::HeadwearFlatEmbroidery => 'Flat Embroidery',
+            self::HeadwearDyeSublimation => 'Print',
+            self::HeadwearColor => 'Color',
+            self::HeadwearSoftPvcPatch => 'Patch',
+            self::Headwear2dLogo => '2D Logo',
+            self::HeadwearTeamNameNumber => 'Custom Team Name / Number',
+            self::DrinkwareLocation => 'Location of Print',
+            self::DrinkwareLaserPrint => 'Print',
+            self::DrinkwareBrandingLogo => 'Logo / Branding',
+            self::DrinkwareCustomGraphics => 'Graphics',
+            self::LanyardColor => 'Color',
+            self::LanyardPrint => 'Print',
+            self::LanyardBackgroundColor => 'Background Color',
+            self::LanyardWidth => 'Lanyard Width',
+            self::LanyardAttachment => 'Attachment',
+            self::LanyardLogo => 'Logo',
+            self::HeadbandLogo => 'Logo',
+            self::HeadbandPattern => 'Pattern',
+            self::HeadbandAngle => 'Wrap',
+            self::HeadbandPackaging => 'Packaging',
         };
     }
 
@@ -181,6 +247,7 @@ enum JerseyCustomizationType: string
             self::ShortsPocketOption => 'shorts',
             self::UniformType,
             self::UniformStyle,
+            self::UniformFabric,
             self::UniformNeckline,
             self::UniformSleeve,
             self::UniformSize,
@@ -241,6 +308,35 @@ enum JerseyCustomizationType: string
             self::JacketCuff,
             self::JacketHem,
             self::JacketSize => 'jacket',
+            self::BagLogo,
+            self::BagScreenPrint,
+            self::BagColor,
+            self::BagPrintSize,
+            self::BagColorMode => 'bag',
+            self::HeadwearWovenLogo,
+            self::HeadwearHeatLogo,
+            self::HeadwearMultiPosition,
+            self::Headwear3dPuff,
+            self::HeadwearFlatEmbroidery,
+            self::HeadwearDyeSublimation,
+            self::HeadwearColor,
+            self::HeadwearSoftPvcPatch,
+            self::Headwear2dLogo,
+            self::HeadwearTeamNameNumber => 'headwear',
+            self::DrinkwareLocation,
+            self::DrinkwareLaserPrint,
+            self::DrinkwareBrandingLogo,
+            self::DrinkwareCustomGraphics => 'drinkware',
+            self::LanyardColor,
+            self::LanyardPrint,
+            self::LanyardBackgroundColor,
+            self::LanyardWidth,
+            self::LanyardAttachment,
+            self::LanyardLogo => 'lanyard',
+            self::HeadbandLogo,
+            self::HeadbandPattern,
+            self::HeadbandAngle,
+            self::HeadbandPackaging => 'headband',
         };
     }
 
@@ -260,6 +356,11 @@ enum JerseyCustomizationType: string
             'socks' => 'Socks Customization',
             'sweatshirt' => 'Sweatshirt Customization',
             'jacket' => 'Jacket Customization',
+            'bag' => 'Bag Customization',
+            'headwear' => 'Headwear Customization',
+            'drinkware' => 'Drinkware Customization',
+            'lanyard' => 'Lanyard Customization',
+            'headband' => 'Headband Customization',
             default => 'Product Customization',
         };
     }
@@ -280,6 +381,11 @@ enum JerseyCustomizationType: string
             'socks' => '1.11',
             'sweatshirt' => '1.12',
             'jacket' => '1.13',
+            'bag' => '1.14',
+            'headwear' => '1.15',
+            'drinkware' => '1.16',
+            'lanyard' => '1.17',
+            'headband' => '1.18',
             default => '1',
         };
     }
@@ -321,6 +427,10 @@ enum JerseyCustomizationType: string
             self::SocksColor,
             self::SweatshirtColor,
             self::JacketColor,
+            self::BagColor,
+            self::HeadwearColor,
+            self::LanyardColor,
+            self::LanyardBackgroundColor,
         ], true);
     }
 
@@ -343,6 +453,7 @@ enum JerseyCustomizationType: string
             self::ShortsPocketOption => 'Example: Side Pockets',
             self::UniformType => 'Example: Basketball Uniform',
             self::UniformStyle => 'Example: Reversible',
+            self::UniformFabric => 'Example: Performance Mesh Polyester',
             self::UniformNeckline => 'Example: V-Neck',
             self::UniformSleeve => 'Example: Sleeveless',
             self::UniformSize => 'Example: Youth Large',
@@ -403,6 +514,35 @@ enum JerseyCustomizationType: string
             self::JacketCuff => 'Example: Adjustable Hook-and-Loop Cuff',
             self::JacketHem => 'Example: Elastic Drawcord Hem',
             self::JacketSize => 'Example: Adult Large',
+            self::BagLogo => 'Example: Team Logo',
+            self::BagScreenPrint => 'Example: Front print or screen print',
+            self::BagColor => 'Example: Black',
+            self::BagPrintSize => 'Example: 8 inch print',
+            self::BagColorMode => 'Example: Single Color',
+            self::HeadwearWovenLogo => 'Example: Front logo',
+            self::HeadwearHeatLogo => 'Example: Heat Transfer Logo',
+            self::HeadwearMultiPosition => 'Example: Front + Side',
+            self::Headwear3dPuff => 'Example: Raised 3D Puff',
+            self::HeadwearFlatEmbroidery => 'Example: Flat Embroidered Logo',
+            self::HeadwearDyeSublimation => 'Example: Screen print or sublimation',
+            self::HeadwearColor => 'Example: Navy Blue',
+            self::HeadwearSoftPvcPatch => 'Example: Soft PVC patch',
+            self::Headwear2dLogo => 'Example: 2D Logo Patch',
+            self::HeadwearTeamNameNumber => 'Example: Team name + number',
+            self::DrinkwareLocation => 'Example: Front center, back, or wrap',
+            self::DrinkwareLaserPrint => 'Example: Laser print or screen print',
+            self::DrinkwareBrandingLogo => 'Example: Brand logo or team mark',
+            self::DrinkwareCustomGraphics => 'Example: Custom wrap graphic',
+            self::LanyardColor => 'Example: Royal Blue',
+            self::LanyardPrint => 'Example: One-side print',
+            self::LanyardBackgroundColor => 'Example: White background',
+            self::LanyardWidth => 'Example: 20 mm',
+            self::LanyardAttachment => 'Example: Metal hook',
+            self::LanyardLogo => 'Example: Repeating logo',
+            self::HeadbandLogo => 'Example: Front logo',
+            self::HeadbandPattern => 'Example: Stripe pattern',
+            self::HeadbandAngle => 'Example: Full wrap artwork',
+            self::HeadbandPackaging => 'Example: Individual poly bag',
         };
     }
 
@@ -420,6 +560,7 @@ enum JerseyCustomizationType: string
             self::ShortsPocketOption => 'Add simple pocket choices such as no pocket, side pockets, or zipper pocket.',
             self::UniformType => 'Add uniform type choices that help admins separate basketball, soccer, baseball, or other uniform setups.',
             self::UniformStyle => 'Add simple uniform style choices such as standard or reversible.',
+            self::UniformFabric => 'Add uniform-only fabric choices with short details such as performance mesh, lightweight polyester, reversible fabric, or moisture-wicking material. These are stored separately from jersey, shorts, and other fabric lists.',
             self::UniformNeckline => 'Add uniform neckline choices that customers need to select.',
             self::UniformSleeve => 'Add uniform sleeve choices such as sleeveless, short sleeve, or long sleeve.',
             self::UniformSize => 'Add uniform-specific size values only when they are different from the main Size Options master data.',
@@ -480,6 +621,35 @@ enum JerseyCustomizationType: string
             self::JacketCuff => 'Add jacket cuff choices such as ribbed cuff, elastic cuff, snap cuff, adjustable cuff, or open cuff.',
             self::JacketHem => 'Add jacket hem choices such as ribbed hem, elastic hem, straight hem, drop-tail hem, or drawcord hem.',
             self::JacketSize => 'Manage jacket size values through the separate Jacket Size Options master data.',
+            self::BagLogo => 'Add bag-only logo choices. These are stored separately from headwear, lanyard, drinkware, and jersey logos.',
+            self::BagScreenPrint => 'Add bag-only print choices such as screen print, front print, or side print.',
+            self::BagColor => 'Add bag-only color choices with exact color values. These are not shared with any other product color list.',
+            self::BagPrintSize => 'Add print-size choices used for bag artwork setup.',
+            self::BagColorMode => 'Add choices such as single color, multicolor, or full color print.',
+            self::HeadwearWovenLogo => 'Add headwear-only logo choices for caps, hats, and related items.',
+            self::HeadwearHeatLogo => 'Add heat-transfer logo choices for headwear.',
+            self::HeadwearMultiPosition => 'Add position choices such as front, side, back, or multiple positions.',
+            self::Headwear3dPuff => 'Add raised 3D puff embroidery choices.',
+            self::HeadwearFlatEmbroidery => 'Add flat embroidery choices for headwear.',
+            self::HeadwearDyeSublimation => 'Add headwear-only print choices such as sublimation, heat print, or panel print.',
+            self::HeadwearColor => 'Add headwear-only color choices with exact color values. These are not shared with any other product color list.',
+            self::HeadwearSoftPvcPatch => 'Add headwear-only patch choices such as PVC patch, woven patch, or leather patch.',
+            self::Headwear2dLogo => 'Add 2D logo patch or flat logo choices.',
+            self::HeadwearTeamNameNumber => 'Add team name and number personalization choices for headwear.',
+            self::DrinkwareLocation => 'Add drinkware-only print-location choices such as front, back, wrap, or lid area.',
+            self::DrinkwareLaserPrint => 'Add drinkware-only print choices such as laser print, screen print, engraving, or wrap print.',
+            self::DrinkwareBrandingLogo => 'Add drinkware-only logo and branding choices.',
+            self::DrinkwareCustomGraphics => 'Add drinkware-only graphics choices used for custom artwork.',
+            self::LanyardColor => 'Add lanyard-only color choices with exact color values. These are not shared with any other product color list.',
+            self::LanyardPrint => 'Add lanyard-only print style choices such as one-side or two-side print.',
+            self::LanyardBackgroundColor => 'Add background color choices for lanyard artwork.',
+            self::LanyardWidth => 'Add lanyard width choices such as 15 mm, 20 mm, or 25 mm.',
+            self::LanyardAttachment => 'Add attachment choices such as hook, buckle, clip, or badge reel.',
+            self::LanyardLogo => 'Add lanyard-only logo choices for lanyard artwork.',
+            self::HeadbandLogo => 'Add logo choices for headband customization.',
+            self::HeadbandPattern => 'Add pattern choices such as solid, stripe, gradient, or custom pattern.',
+            self::HeadbandAngle => 'Add headband-only wrap choices for full-wrap or partial-wrap artwork.',
+            self::HeadbandPackaging => 'Add packaging choices for headband orders.',
         };
     }
 
@@ -501,6 +671,7 @@ enum JerseyCustomizationType: string
             self::NeckAndCollar => 'Optional neck/collar image',
             self::Fabric,
             self::ShortsFabric,
+            self::UniformFabric,
             self::PantsFabric,
             self::HoodieFabric,
             self::PoloFabric,
@@ -555,8 +726,37 @@ enum JerseyCustomizationType: string
             self::SweatshirtHem,
             self::JacketHem => 'Optional hem reference image',
             self::JacketType => 'Optional jacket type image',
+            self::BagLogo,
+            self::HeadwearWovenLogo,
+            self::HeadwearHeatLogo,
+            self::Headwear2dLogo,
+            self::DrinkwareBrandingLogo,
+            self::LanyardLogo,
+            self::HeadbandLogo => 'Optional logo reference image',
+            self::BagScreenPrint,
+            self::DrinkwareLaserPrint,
+            self::LanyardPrint => 'Optional print method image',
+            self::BagColor,
+            self::HeadwearColor,
+            self::LanyardColor,
+            self::LanyardBackgroundColor => 'Optional color swatch',
+            self::BagPrintSize,
+            self::LanyardWidth => 'Optional size reference image',
+            self::BagColorMode,
+            self::HeadwearMultiPosition,
+            self::Headwear3dPuff,
+            self::HeadwearFlatEmbroidery,
+            self::HeadwearDyeSublimation,
+            self::HeadwearSoftPvcPatch,
+            self::HeadwearTeamNameNumber,
+            self::DrinkwareLocation,
+            self::DrinkwareCustomGraphics,
+            self::LanyardAttachment,
+            self::HeadbandAngle,
+            self::HeadbandPackaging => 'Optional reference image',
             self::CompressionWearPattern,
-            self::SocksPattern => 'Optional pattern image',
+            self::SocksPattern,
+            self::HeadbandPattern => 'Optional pattern image',
         };
     }
 
@@ -578,6 +778,7 @@ enum JerseyCustomizationType: string
             self::NeckAndCollar => 'Optional. Add a clear close-up of the neckline or collar shape.',
             self::Fabric,
             self::ShortsFabric,
+            self::UniformFabric,
             self::PantsFabric,
             self::HoodieFabric,
             self::PoloFabric,
@@ -632,8 +833,37 @@ enum JerseyCustomizationType: string
             self::SweatshirtHem,
             self::JacketHem => 'Optional. Add only when the hem finish needs a visual preview.',
             self::JacketType => 'Optional. Add only when the jacket type needs a visual preview.',
+            self::BagLogo,
+            self::HeadwearWovenLogo,
+            self::HeadwearHeatLogo,
+            self::Headwear2dLogo,
+            self::DrinkwareBrandingLogo,
+            self::LanyardLogo,
+            self::HeadbandLogo => 'Optional. Add a clear logo or patch reference image when helpful.',
+            self::BagScreenPrint,
+            self::DrinkwareLaserPrint,
+            self::LanyardPrint => 'Optional. Add a print-method reference image when helpful.',
+            self::BagColor,
+            self::HeadwearColor,
+            self::LanyardColor,
+            self::LanyardBackgroundColor => 'Optional. Add a real swatch only when the HEX color needs a visual reference.',
+            self::BagPrintSize,
+            self::LanyardWidth => 'Optional. Add only when a size reference helps the admin or customer.',
+            self::BagColorMode,
+            self::HeadwearMultiPosition,
+            self::Headwear3dPuff,
+            self::HeadwearFlatEmbroidery,
+            self::HeadwearDyeSublimation,
+            self::HeadwearSoftPvcPatch,
+            self::HeadwearTeamNameNumber,
+            self::DrinkwareLocation,
+            self::DrinkwareCustomGraphics,
+            self::LanyardAttachment,
+            self::HeadbandAngle,
+            self::HeadbandPackaging => 'Optional. Add only when this option needs a visual preview.',
             self::CompressionWearPattern,
-            self::SocksPattern => 'Optional. Add only when the pattern needs a visual preview.',
+            self::SocksPattern,
+            self::HeadbandPattern => 'Optional. Add only when the pattern needs a visual preview.',
         };
     }
 
@@ -655,6 +885,7 @@ enum JerseyCustomizationType: string
             self::NeckAndCollar => 'Choose neck/collar image',
             self::Fabric,
             self::ShortsFabric,
+            self::UniformFabric,
             self::PantsFabric,
             self::HoodieFabric,
             self::PoloFabric,
@@ -709,8 +940,37 @@ enum JerseyCustomizationType: string
             self::SweatshirtHem,
             self::JacketHem => 'Choose hem image',
             self::JacketType => 'Choose jacket type image',
+            self::BagLogo,
+            self::HeadwearWovenLogo,
+            self::HeadwearHeatLogo,
+            self::Headwear2dLogo,
+            self::DrinkwareBrandingLogo,
+            self::LanyardLogo,
+            self::HeadbandLogo => 'Choose logo image',
+            self::BagScreenPrint,
+            self::DrinkwareLaserPrint,
+            self::LanyardPrint => 'Choose print image',
+            self::BagColor,
+            self::HeadwearColor,
+            self::LanyardColor,
+            self::LanyardBackgroundColor => 'Choose swatch image',
+            self::BagPrintSize,
+            self::LanyardWidth => 'Choose size image',
+            self::BagColorMode,
+            self::HeadwearMultiPosition,
+            self::Headwear3dPuff,
+            self::HeadwearFlatEmbroidery,
+            self::HeadwearDyeSublimation,
+            self::HeadwearSoftPvcPatch,
+            self::HeadwearTeamNameNumber,
+            self::DrinkwareLocation,
+            self::DrinkwareCustomGraphics,
+            self::LanyardAttachment,
+            self::HeadbandAngle,
+            self::HeadbandPackaging => 'Choose reference image',
             self::CompressionWearPattern,
-            self::SocksPattern => 'Choose pattern image',
+            self::SocksPattern,
+            self::HeadbandPattern => 'Choose pattern image',
         };
     }
 
@@ -725,8 +985,9 @@ enum JerseyCustomizationType: string
     /** @return array<string, string> */
     public static function masterDataOptions(): array
     {
-        return collect(self::cases())
-            ->reject(static fn (self $type): bool => $type->isSizeChartType())
+        return collect(self::menuGroups())
+            ->flatMap(static fn (array $group): array => $group['types'])
+            ->unique(static fn (self $type): string => $type->value)
             ->mapWithKeys(static fn (self $type): array => [$type->value => $type->label()])
             ->all();
     }
@@ -783,6 +1044,7 @@ enum JerseyCustomizationType: string
             'uniform' => [
                 self::UniformType,
                 self::UniformStyle,
+                self::UniformFabric,
                 self::UniformNeckline,
                 self::UniformSleeve,
                 self::UniformSize,
@@ -864,6 +1126,40 @@ enum JerseyCustomizationType: string
                 self::JacketHem,
                 self::JacketSize,
             ],
+            'bag' => [
+                self::BagLogo,
+                self::BagScreenPrint,
+                self::BagColor,
+                self::BagPrintSize,
+                self::BagColorMode,
+            ],
+            'headwear' => [
+                self::HeadwearWovenLogo,
+                self::HeadwearDyeSublimation,
+                self::HeadwearSoftPvcPatch,
+                self::HeadwearColor,
+                self::Headwear3dPuff,
+                self::HeadwearFlatEmbroidery,
+                self::HeadwearMultiPosition,
+                self::HeadwearTeamNameNumber,
+            ],
+            'drinkware' => [
+                self::DrinkwareLaserPrint,
+                self::DrinkwareLocation,
+                self::DrinkwareBrandingLogo,
+                self::DrinkwareCustomGraphics,
+            ],
+            'lanyard' => [
+                self::LanyardColor,
+                self::LanyardPrint,
+                self::LanyardLogo,
+            ],
+            'headband' => [
+                self::HeadbandLogo,
+                self::HeadbandPattern,
+                self::HeadbandAngle,
+                self::HeadbandPackaging,
+            ],
             default => [],
         };
     }
@@ -885,6 +1181,11 @@ enum JerseyCustomizationType: string
             'socks' => ['number' => '1.11', 'label' => 'Socks Customization', 'types' => self::menuTypesForGroup('socks')],
             'sweatshirt' => ['number' => '1.12', 'label' => 'Sweatshirt Customization', 'types' => self::menuTypesForGroup('sweatshirt')],
             'jacket' => ['number' => '1.13', 'label' => 'Jacket Customization', 'types' => self::menuTypesForGroup('jacket')],
+            'bag' => ['number' => '1.14', 'label' => 'Bag Customization', 'types' => self::menuTypesForGroup('bag')],
+            'headwear' => ['number' => '1.15', 'label' => 'Headwear Customization', 'types' => self::menuTypesForGroup('headwear')],
+            'drinkware' => ['number' => '1.16', 'label' => 'Drinkware Customization', 'types' => self::menuTypesForGroup('drinkware')],
+            'lanyard' => ['number' => '1.17', 'label' => 'Lanyard Customization', 'types' => self::menuTypesForGroup('lanyard')],
+            'headband' => ['number' => '1.18', 'label' => 'Headband Customization', 'types' => self::menuTypesForGroup('headband')],
         ];
     }
 
@@ -894,6 +1195,7 @@ enum JerseyCustomizationType: string
         return [
             self::Fabric,
             self::ShortsFabric,
+            self::UniformFabric,
             self::PantsFabric,
             self::HoodieFabric,
             self::PoloFabric,
