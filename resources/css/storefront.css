@@ -8662,3 +8662,57 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
         display: none !important;
     }
 }
+
+/* NEXTPLAY_BEST_SELLING_GEAR_THIN_BLUE_EDGE_FIX
+   Final correction: the featured card divider is a tiny stroked blue edge,
+   not a filled navy block. This matches the thin border visible in the reference. */
+.home-page .np-best-gear-card--featured .np-best-gear-card__media {
+    clip-path: polygon(0 0, calc(100% - 38px) 0, 100% 50%, calc(100% - 38px) 100%, 0 100%) !important;
+}
+
+.home-page .np-best-gear-card--featured .np-best-gear-card__divider {
+    position: absolute !important;
+    top: 2px !important;
+    bottom: 2px !important;
+    left: calc(55.7% - 39px) !important;
+    z-index: 6 !important;
+    display: block !important;
+    width: 46px !important;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 46 100' preserveAspectRatio='none'%3E%3Cpolyline points='2,0 9,0 44,50 9,100 2,100' fill='none' stroke='%230b63b6' stroke-width='4.2' stroke-linecap='square' stroke-linejoin='miter'/%3E%3C/svg%3E") center / 100% 100% no-repeat !important;
+    clip-path: none !important;
+    box-shadow: none !important;
+    pointer-events: none !important;
+}
+
+.home-page .np-best-gear-card--featured .np-best-gear-card__divider::before,
+.home-page .np-best-gear-card--featured .np-best-gear-card__divider::after {
+    display: none !important;
+    content: none !important;
+}
+
+@media (max-width: 1120px) {
+    .home-page .np-best-gear-card--featured .np-best-gear-card__media {
+        clip-path: none !important;
+    }
+
+    .home-page .np-best-gear-card--featured .np-best-gear-card__divider {
+        display: none !important;
+    }
+}
+
+/* NEXTPLAY_BEST_SELLING_GEAR_BORDER_ALIGNMENT_FIX
+   Pull the thin blue border slightly into the image edge so there is no visible gap. */
+.home-page .np-best-gear-card--featured .np-best-gear-card__divider {
+    left: calc(55.7% - 47px) !important;
+}
+
+/* NEXTPLAY_BEST_SELLING_GEAR_BORDER_CORNER_FIX
+   Remove the tiny top/bottom cap artifacts so the angled blue border corners look clean. */
+.home-page .np-best-gear-card--featured .np-best-gear-card__divider {
+    top: 0 !important;
+    bottom: 0 !important;
+    left: calc(55.7% - 45px) !important;
+    width: 44px !important;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 100' preserveAspectRatio='none'%3E%3Cpolyline points='8,0 42,50 8,100' fill='none' stroke='%230b63b6' stroke-width='4' stroke-linecap='butt' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat !important;
+}
+

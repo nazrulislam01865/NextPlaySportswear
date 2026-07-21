@@ -254,7 +254,12 @@ class Category extends Model
 
     public function displayLabel(): string
     {
-        return $this->menu_label ?: $this->name;
+        return (string) (
+            $this->menu_label
+            ?: $this->name
+            ?: $this->slug
+            ?: 'New Category'
+        );
     }
 
     private function mediaUrl(?string $path, ?string $url): ?string

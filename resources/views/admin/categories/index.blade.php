@@ -291,10 +291,11 @@
                                     <a
                                         href="{{ route('admin.categories.products.index', $category) }}"
                                         class="category-products-count-link"
-                                        aria-label="Manage product assignments for {{ $category->name }}"
+                                        aria-label="View products in {{ $category->name }}"
+                                        title="View products in {{ $category->name }}"
                                     >
-                                        <span>{{ number_format($category->products_count) }}</span>
-                                        <small>Manage</small>
+                                        <span>{{ number_format($category->products_count) }} {{ \Illuminate\Support\Str::plural('product', (int) $category->products_count) }}</span>
+                                        <small aria-hidden="true">›</small>
                                     </a>
                                 </td>
                                 <td class="px-6 py-5 text-center text-base font-semibold text-brand-ink" data-label="Children">{{ number_format($category->children_count) }}</td>
