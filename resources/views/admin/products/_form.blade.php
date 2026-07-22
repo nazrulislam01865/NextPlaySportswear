@@ -468,44 +468,6 @@
         'depth' => (int) ($category->depth ?? 0),
         'parent_id' => $category->parent_id ? (int) $category->parent_id : null,
     ])->values()->all();
-    $productFamilyLabel = static function (string $key): string {
-        return match ($key) {
-            'tshirt' => 'T-Shirt',
-            'quarter_zip' => 'Quarter-Zip',
-            'tank_top' => 'Tank Top',
-            'compression_wear' => 'Compression Wear',
-            default => \Illuminate\Support\Str::headline(str_replace('_', ' ', $key)),
-        };
-    };
-    $productFamilyIcons = [
-        'jersey' => '🏟', 'shorts' => '◧', 'uniform' => '★', 'pants' => '▰',
-        'hoodie' => '◓', 'polo' => '◒', 'tshirt' => 'T', 'quarter_zip' => '↯',
-        'tank_top' => '△', 'compression_wear' => '◈', 'socks' => '∥', 'sweatshirt' => '▣',
-        'jacket' => '◫', 'bag' => '◨', 'headwear' => '◉', 'drinkware' => '◍',
-        'lanyard' => '⌁', 'headband' => '⌒',
-    ];
-    $productFamilies = collect(\App\Enums\JerseyCustomizationType::menuGroups())
-        ->map(fn ($group, $key) => [
-            'value' => (string) $key,
-            'label' => $productFamilyLabel((string) $key),
-            'title' => $group['label'],
-            'number' => $group['number'],
-            'icon' => $productFamilyIcons[$key] ?? '✦',
-            'description' => count($group['types']).' master-data customization features',
-            'features' => collect($group['types'])->map(fn ($type) => $type->value)->values()->all(),
-        ])
-        ->values()
-        ->all();
-    $rawProductProfile = old('product_profile', $product->product_profile ?: '');
-    $selectedProductGroup = array_key_exists((string) $rawProductProfile, \App\Enums\JerseyCustomizationType::menuGroups())
-        ? (string) $rawProductProfile
-        : '';
-    if ($selectedProductGroup === '' && $isEdit && $product->relationLoaded('optionGroups')) {
-        $selectedProductGroup = (string) ($product->optionGroups
-            ->map(fn ($group) => \App\Enums\JerseyCustomizationType::tryFrom((string) $group->jersey_customization_type)?->group())
-            ->filter()
-            ->first() ?: '');
-    }
     $initial = [
         'productName' => old('name', $product->name),
         'shortDescription' => old('short_description', $product->short_description),
@@ -530,8 +492,7 @@
         'optionGroupErrors' => $optionGroupValidationErrors,
         'jerseyCustomizationTypes' => $jerseyCustomizationTypes,
         'customizationTypeGroups' => collect(\App\Enums\JerseyCustomizationType::menuGroups())
-            ->map(fn ($group, $key) => [
-                'key' => (string) $key,
+            ->map(fn ($group) => [
                 'number' => $group['number'],
                 'label' => $group['label'],
                 'types' => collect($group['types'])->map(fn ($type) => [
@@ -549,12 +510,7 @@
         'productionRows' => $productionRowValues->all(),
         'shippingMethods' => $shippingValues,
         'rosterFields' => $rosterFieldValues,
-        'rosterExcludedProductGroups' => \App\Support\ProductRoster::EXCLUDED_PRODUCT_PROFILES,
-        'sizeExcludedProductGroups' => \App\Support\ProductSizing::EXCLUDED_PRODUCT_PROFILES,
-        'productFamilies' => $productFamilies,
-        'selectedProductGroup' => $selectedProductGroup,
-        'showProductTypeDialog' => ! $isEdit,
-        'productProfile' => old('product_profile', $selectedProductGroup ?: ($product->product_profile ?: 'standard')),
+        'productProfile' => old('product_profile', $product->product_profile ?: 'standard'),
         'productionMethodsEnabled' => (bool) old('production_methods_enabled', $product->production_methods_enabled ?? false),
         'shippingMethodsEnabled' => (bool) old('shipping_methods_enabled', $product->shipping_methods_enabled ?? false),
         'jerseyRosterEnabled' => (bool) old('jersey_roster_enabled', $product->jersey_roster_enabled ?? false),
@@ -584,393 +540,6 @@
 @endphp
 
 @once
-<style>
-    .np-product-type-backdrop {
-        position: fixed;
-        inset: 0;
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: clamp(16px, 2.4vw, 34px);
-        background: rgba(15, 23, 42, .72);
-        backdrop-filter: blur(6px);
-    }
-
-    .np-product-type-modal {
-        width: min(1120px, calc(100vw - 32px));
-        max-height: min(860px, calc(100vh - 32px));
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        border: 1px solid rgba(226, 232, 240, .9);
-        border-radius: 28px;
-        background: #ffffff;
-        box-shadow: 0 34px 90px rgba(15, 23, 42, .36);
-    }
-
-    .np-product-type-modal__header {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 18px;
-        align-items: start;
-        padding: 24px 28px;
-        border-bottom: 1px solid #e2e8f0;
-        background:
-            radial-gradient(circle at top right, rgba(36, 103, 183, .12), transparent 34%),
-            linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    }
-
-    .np-product-type-modal__eyebrow {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 10px;
-        color: #e91d33;
-        font-size: 11px;
-        font-weight: 900;
-        letter-spacing: .16em;
-        text-transform: uppercase;
-    }
-
-    .np-product-type-modal__eyebrow span {
-        display: grid;
-        width: 26px;
-        height: 26px;
-        place-items: center;
-        border-radius: 999px;
-        color: #ffffff;
-        background: #e91d33;
-        letter-spacing: 0;
-        font-size: 12px;
-    }
-
-    .np-product-type-modal__header h2 {
-        margin: 0;
-        color: #111827;
-        font-size: clamp(24px, 2.2vw, 32px);
-        line-height: 1.1;
-        font-weight: 900;
-        letter-spacing: -.04em;
-    }
-
-    .np-product-type-modal__header p {
-        max-width: 760px;
-        margin-top: 9px;
-        color: #64748b;
-        font-size: 14px;
-        line-height: 1.65;
-        font-weight: 600;
-    }
-
-    .np-product-type-modal__close {
-        display: grid;
-        width: 42px;
-        height: 42px;
-        place-items: center;
-        border: 1px solid #dbe3ef;
-        border-radius: 14px;
-        color: #64748b;
-        background: rgba(255, 255, 255, .9);
-        font-size: 22px;
-        font-weight: 800;
-        transition: .18s ease;
-    }
-
-    .np-product-type-modal__close:hover {
-        color: #111827;
-        background: #f8fafc;
-    }
-
-    .np-product-type-modal__toolbar {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 14px;
-        align-items: center;
-        padding: 16px 28px;
-        border-bottom: 1px solid #e2e8f0;
-        background: #f8fafc;
-    }
-
-    .np-product-type-search {
-        display: flex;
-        min-height: 50px;
-        align-items: center;
-        gap: 10px;
-        border: 1px solid #dbe3ef;
-        border-radius: 16px;
-        background: #ffffff;
-        padding: 0 16px;
-        box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
-    }
-
-    .np-product-type-search span {
-        color: #94a3b8;
-        font-size: 17px;
-        font-weight: 900;
-    }
-
-    .np-product-type-search input {
-        width: 100%;
-        min-width: 0;
-        border: 0;
-        outline: none;
-        background: transparent;
-        color: #111827;
-        font-size: 14px;
-        font-weight: 700;
-        box-shadow: none;
-    }
-
-    .np-product-type-search input:focus {
-        border: 0;
-        outline: none;
-        box-shadow: none;
-    }
-
-    .np-product-type-search input::placeholder {
-        color: #94a3b8;
-    }
-
-    .np-product-type-count {
-        min-width: 118px;
-        border: 1px solid #dbe3ef;
-        border-radius: 16px;
-        background: #ffffff;
-        padding: 9px 14px;
-        text-align: center;
-        box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
-    }
-
-    .np-product-type-count strong {
-        display: block;
-        color: #2467b7;
-        font-size: 18px;
-        line-height: 1;
-        font-weight: 900;
-    }
-
-    .np-product-type-count span {
-        display: block;
-        margin-top: 3px;
-        color: #64748b;
-        font-size: 11px;
-        line-height: 1;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: .08em;
-    }
-
-    .np-product-type-modal__body {
-        overflow-y: auto;
-        padding: 20px 28px 24px;
-        background: #ffffff;
-    }
-
-    .np-product-type-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 14px;
-    }
-
-    .np-product-type-card {
-        display: flex;
-        min-height: 178px;
-        flex-direction: column;
-        justify-content: space-between;
-        border: 1px solid #e2e8f0;
-        border-radius: 22px;
-        background: #ffffff;
-        padding: 16px;
-        text-align: left;
-        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
-    }
-
-    .np-product-type-card:hover {
-        transform: translateY(-2px);
-        border-color: #b7c8de;
-        box-shadow: 0 16px 34px rgba(15, 23, 42, .10);
-    }
-
-    .np-product-type-card.is-selected {
-        border-color: #e91d33;
-        background: #fff6f7;
-        box-shadow: 0 0 0 4px rgba(233, 29, 51, .10);
-    }
-
-    .np-product-type-card__top {
-        display: grid;
-        grid-template-columns: 48px minmax(0, 1fr);
-        gap: 12px;
-        align-items: start;
-    }
-
-    .np-product-type-card__icon {
-        display: grid;
-        width: 48px;
-        height: 48px;
-        place-items: center;
-        border-radius: 16px;
-        color: #15345d;
-        background: #f1f5f9;
-        font-size: 18px;
-        font-weight: 900;
-    }
-
-    .np-product-type-card.is-selected .np-product-type-card__icon {
-        color: #ffffff;
-        background: #e91d33;
-    }
-
-    .np-product-type-card__number {
-        display: block;
-        color: #2467b7;
-        font-size: 11px;
-        line-height: 1;
-        font-weight: 900;
-        letter-spacing: .08em;
-    }
-
-    .np-product-type-card__title {
-        display: block;
-        margin-top: 7px;
-        color: #111827;
-        font-size: 17px;
-        line-height: 1.15;
-        font-weight: 900;
-        letter-spacing: -.02em;
-    }
-
-    .np-product-type-card__description {
-        display: block;
-        margin-top: 7px;
-        color: #64748b;
-        font-size: 12px;
-        line-height: 1.45;
-        font-weight: 700;
-    }
-
-    .np-product-type-card__features {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin-top: 14px;
-    }
-
-    .np-product-type-card__features span {
-        border-radius: 999px;
-        background: #f8fafc;
-        padding: 5px 8px;
-        color: #475569;
-        font-size: 10px;
-        line-height: 1;
-        font-weight: 800;
-    }
-
-    .np-product-type-card__action {
-        display: inline-flex;
-        width: max-content;
-        align-items: center;
-        gap: 6px;
-        margin-top: 16px;
-        color: #e91d33;
-        font-size: 12px;
-        font-weight: 900;
-    }
-
-    .np-product-type-card.is-selected .np-product-type-card__action {
-        color: #15345d;
-    }
-
-    .np-product-type-empty {
-        border: 2px dashed #cbd5e1;
-        border-radius: 22px;
-        padding: 42px 20px;
-        text-align: center;
-    }
-
-    .np-product-type-empty strong {
-        display: block;
-        color: #111827;
-        font-size: 16px;
-        font-weight: 900;
-    }
-
-    .np-product-type-empty span {
-        display: block;
-        margin-top: 8px;
-        color: #64748b;
-        font-size: 13px;
-        font-weight: 600;
-    }
-
-    .np-product-type-modal__footer {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 12px;
-        justify-content: space-between;
-        border-top: 1px solid #e2e8f0;
-        background: #f8fafc;
-        padding: 14px 28px;
-    }
-
-    .np-product-type-modal__note {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        color: #64748b;
-        font-size: 12px;
-        font-weight: 800;
-    }
-
-    .np-product-type-modal__note span {
-        display: inline-flex;
-        align-items: center;
-        border-radius: 999px;
-        background: #ffffff;
-        padding: 7px 10px;
-        border: 1px solid #e2e8f0;
-    }
-
-    @media (max-width: 767.98px) {
-        .np-product-type-backdrop {
-            align-items: stretch;
-            padding: 10px;
-        }
-
-        .np-product-type-modal {
-            width: 100%;
-            max-height: calc(100vh - 20px);
-            border-radius: 22px;
-        }
-
-        .np-product-type-modal__header,
-        .np-product-type-modal__toolbar,
-        .np-product-type-modal__body,
-        .np-product-type-modal__footer {
-            padding-left: 16px;
-            padding-right: 16px;
-        }
-
-        .np-product-type-modal__toolbar {
-            grid-template-columns: 1fr;
-        }
-
-        .np-product-type-count {
-            display: none;
-        }
-
-        .np-product-type-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .np-product-type-card {
-            min-height: 0;
-        }
-    }
-</style>
-
 <script>
 window.adminProductFormFabric = function (initial = {}) {
     const baseFactory = window.adminProductForm;
@@ -982,9 +551,6 @@ window.adminProductFormFabric = function (initial = {}) {
     const basePreparePriceImportMapping = form.preparePriceImportMapping || null;
     const baseClosePriceImportMapping = form.closePriceImportMapping || null;
     const baseApplyPriceImportMapping = form.applyPriceImportMapping || null;
-    const baseOpenSizeGroupPicker = form.openSizeGroupPicker || null;
-    const baseSelectSizeGroup = form.selectSizeGroup || null;
-    const baseFilteredSizeOptionGroups = form.filteredSizeOptionGroups || null;
 
     return Object.assign(form, {
         fabricPriceTables: initial.fabricPriceTables || {},
@@ -995,150 +561,11 @@ window.adminProductFormFabric = function (initial = {}) {
         fabricPriceImportTargetKey: '',
         fabricPriceImportTargetGroupIndex: null,
         fabricPriceImportTargetValueIndex: null,
-        productFamilies: Array.isArray(initial.productFamilies) ? initial.productFamilies : [],
-        selectedProductGroup: initial.selectedProductGroup || '',
-        productTypeDialogOpen: Boolean(initial.showProductTypeDialog) && ! initial.selectedProductGroup,
-        productTypeSearch: '',
-        rosterExcludedProductGroups: Array.isArray(initial.rosterExcludedProductGroups) ? initial.rosterExcludedProductGroups : ['bag', 'headwear', 'drinkware', 'lanyard', 'lyniard', 'headband'],
-        sizeExcludedProductGroups: Array.isArray(initial.sizeExcludedProductGroups) ? initial.sizeExcludedProductGroups : ['bag', 'headwear', 'drinkware', 'lanyard', 'lyniard', 'headband'],
         init() {
-            if (! this.selectedProductGroup && this.productProfile && this.productProfile !== 'standard' && this.productProfile !== 'other') {
-                this.selectedProductGroup = this.productProfile;
-            }
             baseInit.call(this);
-            if (! this.selectedProductGroup) {
-                this.selectedProductGroup = this.detectProductGroupFromOptions();
-            }
-            this.productProfile = this.selectedProductGroup || this.productProfile || 'standard';
-            if (! this.canUseRosterForProductGroup()) {
-                this.jerseyRosterEnabled = false;
-            }
-            if (! this.canUseSizeOptionsForProductGroup()) {
-                this.sizeGroups = [];
-                this.sizeGroupPickerOpen = false;
-            }
-            if (this.productTypeDialogOpen) {
-                document.documentElement.classList.add('overflow-hidden');
-            }
             (this.optionGroups || []).forEach((group) => {
                 (group.values || []).forEach((value) => this.ensureFabricPricing(value, group));
             });
-        },
-        detectProductGroupFromOptions() {
-            for (const group of (this.optionGroups || [])) {
-                const family = this.customizationGroupForType(group?.jersey_customization_type || '');
-                if (family) return family;
-            }
-            return '';
-        },
-        productFamilyByValue(value) {
-            const familyValue = String(value || '');
-            return (this.productFamilies || []).find((family) => String(family.value || '') === familyValue) || null;
-        },
-        selectedProductFamily() {
-            return this.productFamilyByValue(this.selectedProductGroup);
-        },
-        selectedProductLabel() {
-            return this.selectedProductFamily()?.label || '';
-        },
-        canUseRosterForProductGroup(value = null) {
-            const group = String(value ?? this.selectedProductGroup ?? '').trim().toLowerCase();
-            return ! group || ! (this.rosterExcludedProductGroups || []).includes(group);
-        },
-        canUseSizeOptionsForProductGroup(value = null) {
-            const group = String(value ?? this.selectedProductGroup ?? '').trim().toLowerCase();
-            return ! group || ! (this.sizeExcludedProductGroups || []).includes(group);
-        },
-        rosterProductLabel() {
-            return this.selectedProductLabel() || 'product';
-        },
-        filteredProductFamilies() {
-            const query = String(this.productTypeSearch || '').trim().toLowerCase();
-            return (this.productFamilies || []).filter((family) => {
-                if (!query) return true;
-                return String(family.label || '').toLowerCase().includes(query)
-                    || String(family.title || '').toLowerCase().includes(query)
-                    || (family.features || []).some((feature) => String(this.jerseyCustomizationTypes?.[feature] || feature).toLowerCase().includes(query));
-            });
-        },
-        openProductTypeDialog() {
-            this.productTypeSearch = '';
-            this.productTypeDialogOpen = true;
-            document.documentElement.classList.add('overflow-hidden');
-        },
-        closeProductTypeDialog() {
-            if (! this.selectedProductGroup) return;
-            this.productTypeDialogOpen = false;
-            document.documentElement.classList.remove('overflow-hidden');
-        },
-        selectProductFamily(family) {
-            const selected = typeof family === 'string' ? this.productFamilyByValue(family) : family;
-            if (! selected?.value) return;
-
-            const nextGroup = String(selected.value);
-            const changed = this.selectedProductGroup && this.selectedProductGroup !== nextGroup;
-            if (changed && (this.optionGroups || []).length > 0) {
-                const confirmed = window.confirm('Changing the product type will replace the generated customization feature blocks. Continue?');
-                if (! confirmed) return;
-                this.optionGroups = [];
-                this.sizeGroups = [];
-            }
-
-            this.selectedProductGroup = nextGroup;
-            this.productProfile = nextGroup;
-            this.productTypeDialogOpen = false;
-            document.documentElement.classList.remove('overflow-hidden');
-            this.addProductFeatureGroups(selected.features || []);
-            if (! this.canUseRosterForProductGroup(nextGroup)) {
-                this.jerseyRosterEnabled = false;
-            }
-            if (! this.canUseSizeOptionsForProductGroup(nextGroup)) {
-                this.sizeGroups = [];
-                this.sizeGroupPickerOpen = false;
-            }
-            this.handleProgressChange(false);
-            this.$nextTick(() => {
-                document.getElementById('options')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            });
-        },
-        addProductFeatureGroups(featureTypes = []) {
-            const existing = new Set((this.optionGroups || []).map((group) => String(group.jersey_customization_type || '')).filter(Boolean));
-            (featureTypes || []).forEach((type) => {
-                const key = String(type || '');
-                if (! key || existing.has(key)) return;
-                const name = this.jerseyCustomizationTypes?.[key] || key.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
-                const group = this.addOptionGroup(key, name);
-                existing.add(key);
-                (group.values || []).forEach((value) => this.ensureFabricPricing(value, group));
-            });
-        },
-        openSizeGroupPicker() {
-            if (! this.canUseSizeOptionsForProductGroup()) {
-                this.sizeGroupPickerOpen = false;
-                return;
-            }
-            if (baseOpenSizeGroupPicker) {
-                return baseOpenSizeGroupPicker.call(this);
-            }
-            this.sizeGroupPickerSearch = '';
-            this.sizeGroupPickerContext = '';
-            this.sizeGroupPickerOpen = true;
-            document.documentElement.classList.add('overflow-hidden');
-        },
-        selectSizeGroup(master) {
-            if (! this.canUseSizeOptionsForProductGroup()) return;
-            if (baseSelectSizeGroup) {
-                return baseSelectSizeGroup.call(this, master);
-            }
-        },
-        filteredSizeOptionGroups() {
-            if (! this.canUseSizeOptionsForProductGroup()) return [];
-            return baseFilteredSizeOptionGroups ? baseFilteredSizeOptionGroups.call(this) : [];
-        },
-        visibleCustomizationTypeGroups() {
-            const selected = String(this.selectedProductGroup || '');
-            if (! selected) return this.customizationTypeGroups || [];
-            return (this.customizationTypeGroups || []).filter((group) => String(group.key || '') === selected);
         },
         isFabricGroup(group) {
             return this.fabricCustomizationTypes.includes(group?.jersey_customization_type || '');
@@ -1553,8 +980,7 @@ window.adminProductFormFabric = function (initial = {}) {
 
     <input type="hidden" name="slug" x-model="slug">
     <input type="hidden" name="currency" value="{{ old('currency', $product->currency ?: 'USD') }}">
-    <input type="hidden" name="product_profile" :value="selectedProductGroup || (jerseyRosterEnabled ? 'jersey' : 'standard')">
-    <input type="hidden" name="product_type" :value="selectedProductLabel()">
+    <input type="hidden" name="product_profile" :value="jerseyRosterEnabled ? 'jersey' : 'standard'">
     <input type="hidden" name="is_active" value="1">
     <input type="hidden" name="is_customizable" value="1">
     <input type="hidden" name="track_inventory" value="{{ old('track_inventory', (int) ($product->track_inventory ?? false)) }}">
@@ -1588,23 +1014,6 @@ window.adminProductFormFabric = function (initial = {}) {
                 </header>
 
                 <div class="np-field-stack">
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div class="min-w-0">
-                                <p class="text-[10px] font-black uppercase tracking-[.14em] text-brand-blue">Product form</p>
-                                <h3 class="mt-1 text-lg font-black text-brand-ink" x-text="selectedProductLabel() || 'Choose product type'"></h3>
-                                <p class="mt-1 text-sm font-medium leading-6 text-slate-500" x-text="selectedProductFamily()?.description || 'Select Jersey, Shorts, Bag, Headwear, Drinkware, Lanyard, Headband, or another product type to generate the correct customization form.'"></p>
-                            </div>
-                            <button type="button" class="np-secondary-button shrink-0" @click="openProductTypeDialog()" x-text="selectedProductGroup ? 'Change product type' : 'Choose product type'"></button>
-                        </div>
-                        <div class="mt-3 flex flex-wrap gap-2" x-show="selectedProductFamily()" x-cloak>
-                            <template x-for="feature in (selectedProductFamily()?.features || []).slice(0, 8)" :key="feature">
-                                <span class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-600" x-text="jerseyCustomizationTypes[feature] || feature"></span>
-                            </template>
-                            <span x-show="(selectedProductFamily()?.features || []).length > 8" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-500" x-text="`+${(selectedProductFamily()?.features || []).length - 8} more`"></span>
-                        </div>
-                    </div>
-
                     <label class="admin-label">Product title <span class="text-brand-red">*</span>
                         <input class="admin-input" name="name" x-model="productName" @input="updateSlug()" required maxlength="220" placeholder="e.g., Custom Baseball Jersey">
                     </label>
@@ -1951,8 +1360,8 @@ Lead Time:"></div>
                 <header class="np-card__header"><div><h2>3. Product Options</h2></div></header>
                 <div class="np-option-tiles">
                     <article><span class="np-option-tiles__icon purple">✦</span><div><strong>Customizable Features</strong><small>Add features customers can personalize.</small></div><button type="button" class="np-secondary-button" @click="openNewFeatureDialog()">＋ Add feature</button></article>
-                    <article x-show="canUseSizeOptionsForProductGroup()" x-cloak><span class="np-option-tiles__icon amber">✎</span><div><strong>Sizes &amp; Quantities</strong><small>Define available sizes and quantity rules.</small></div><button type="button" class="np-secondary-button" @click="openSizeGroupPicker()">＋ Add size option</button></article>
-                    <article x-show="canUseRosterForProductGroup()" x-cloak><span class="np-option-tiles__icon teal">♙</span><div><strong>Roster</strong><small>Collect names, numbers, and item-level details.</small></div><button type="button" class="np-secondary-button" @click="jerseyRosterEnabled = !jerseyRosterEnabled" x-text="jerseyRosterEnabled ? 'Hide roster fields' : 'Show roster fields'"></button></article>
+                    <article><span class="np-option-tiles__icon amber">✎</span><div><strong>Sizes &amp; Quantities</strong><small>Define available sizes and quantity rules.</small></div><button type="button" class="np-secondary-button" @click="openSizeGroupPicker()">＋ Add size option</button></article>
+                    <article><span class="np-option-tiles__icon teal">♙</span><div><strong>Jersey Roster</strong><small>Collect player names and jersey numbers.</small></div><button type="button" class="np-secondary-button" @click="jerseyRosterEnabled = !jerseyRosterEnabled" x-text="jerseyRosterEnabled ? 'Hide jersey fields' : 'Show jersey fields'"></button></article>
                 </div>
 
                 <details class="np-config-panel" open x-show="optionGroups.length > 0" x-cloak>
@@ -1970,19 +1379,17 @@ Lead Time:"></div>
                     </div>
                 </details>
 
-                <template x-if="canUseSizeOptionsForProductGroup()">
-                    <details class="np-config-panel" open x-show="sizeGroups.length > 0" x-cloak>
-                        <summary>Sizes &amp; quantities setup</summary>
+                <details class="np-config-panel" open x-show="sizeGroups.length > 0" x-cloak>
+                    <summary>Sizes &amp; quantities setup</summary>
                     <div class="mt-4 space-y-4">
                         <template x-for="(group,index) in sizeGroups" :key="group.client_key || index">
                             <article class="np-nested-card"><input type="hidden" :name="`size_groups[${index}][existing_id]`" :value="group.existing_id || ''"><input type="hidden" :name="`size_groups[${index}][size_option_group_id]`" :value="group.size_option_group_id || ''"><input type="hidden" :name="`size_groups[${index}][name]`" :value="group.name"><input type="hidden" :name="`size_groups[${index}][code]`" :value="group.code"><input type="hidden" :name="`size_groups[${index}][description_html]`" :value="group.description_html || ''"><input type="hidden" :name="`size_groups[${index}][chart_html]`" :value="group.chart_html || ''"><input type="hidden" :name="`size_groups[${index}][chart_title]`" :value="group.chart_title || ''"><input type="hidden" :name="`size_groups[${index}][chart_note]`" :value="group.chart_note || ''"><input type="hidden" :name="`size_groups[${index}][chart_image_url]`" :value="group.chart_image_url || ''"><input type="hidden" :name="`size_groups[${index}][chart_columns_text]`" :value="(group.chart_columns || []).join(', ')"><input type="hidden" :name="`size_groups[${index}][chart_rows_text]`" :value="(group.chart_rows || []).map(row => row.join(' | ')).join('\n')"><input type="hidden" :name="`size_groups[${index}][clear_chart_image]`" value="0"><input type="hidden" :name="`size_groups[${index}][chart_enabled]`" :value="group.chart_enabled ? 1 : 0"><input type="hidden" :name="`size_groups[${index}][sizes_text]`" :value="(group.sizes || []).join(', ')"><input type="hidden" :name="`size_groups[${index}][is_active]`" value="1"><div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><p class="text-[10px] font-black uppercase tracking-[.14em] text-brand-blue" x-text="group.audience_label || 'Size Option'"></p><h3 class="mt-1 text-lg font-black text-brand-ink" x-text="group.name"></h3><div class="mt-3 flex flex-wrap gap-2"><template x-for="size in (group.sizes || [])" :key="size"><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-black text-slate-700" x-text="size"></span></template></div></div><div class="flex shrink-0 items-start gap-3"><img x-show="group.chart_image_preview" :src="group.chart_image_preview" :alt="`${group.name} size chart`" class="h-20 w-20 rounded-xl border border-slate-200 bg-slate-50 object-contain"><button type="button" class="np-danger-button" @click="sizeGroups.splice(index,1)">Remove</button></div></div></article>
                         </template>
                         <div x-show="sizeGroups.length === 0" class="rounded-2xl border-2 border-dashed border-slate-300 p-8 text-center"><p class="font-black text-brand-ink">No size option has been added.</p><button type="button" class="np-secondary-button mt-4" @click="openSizeGroupPicker()">Add Size Option</button></div>
                     </div>
-                    </details>
-                </template>
+                </details>
 
-                <details class="np-config-panel" :open="jerseyRosterEnabled" x-show="canUseRosterForProductGroup()" x-cloak><summary>Roster fields</summary><div class="mt-4 flex flex-wrap items-start justify-between gap-4"><div><h3 class="font-black">Names, numbers, and item details</h3><p class="mt-1 max-w-3xl text-xs leading-5 text-slate-500">When disabled, the roster step is not shown on the storefront for this product.</p></div><label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold"><input type="hidden" name="jersey_roster_enabled" :value="jerseyRosterEnabled ? 1 : 0"><input type="checkbox" x-model="jerseyRosterEnabled"> Show roster step</label></div><div x-show="jerseyRosterEnabled" class="mt-4 rounded-2xl border border-slate-200 p-4 sm:p-5"><div class="grid gap-4 md:grid-cols-2"><label class="admin-label">Customer heading<input class="admin-input" name="jersey_roster_title" value="{{ old('jersey_roster_title', $product->jersey_roster_title ?: 'Add player names and numbers') }}"></label><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4"><input type="hidden" name="jersey_roster_optional" :value="jerseyRosterOptional ? 1 : 0"><input type="checkbox" x-model="jerseyRosterOptional"><span><strong class="block text-sm">Customer may skip roster details</strong><small class="text-xs text-slate-500">When disabled, every enabled roster field marked required must be completed.</small></span></label></div><div class="mt-5 flex items-center justify-between gap-3"><div><h4 class="font-black">Fields shown for each item</h4><p class="text-xs text-slate-500">The size is generated automatically from selected size quantities.</p></div><button type="button" class="np-secondary-button" @click="addRosterField()">＋ Add Field</button></div><div class="mt-4 space-y-3"><template x-for="(field,index) in rosterFields" :key="index"><div class="grid gap-3 rounded-2xl border border-slate-200 p-4 sm:grid-cols-2 lg:grid-cols-[1.5fr_150px_130px_auto] lg:items-end"><input type="hidden" :name="`jersey_roster_fields[${index}][key]`" x-model="field.key"><input type="hidden" :name="`jersey_roster_fields[${index}][enabled]`" value="1"><label class="admin-label">Customer label<input class="admin-input" :name="`jersey_roster_fields[${index}][label]`" x-model="field.label" @blur="if(!field.key) field.key = field.label.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')" placeholder="Player name"></label><label class="admin-label">Input type<select class="admin-input" :name="`jersey_roster_fields[${index}][type]`" x-model="field.type"><option value="text">Text</option><option value="number">Number</option></select></label><label class="admin-label">Max length<input class="admin-input" type="number" min="1" max="120" :name="`jersey_roster_fields[${index}][max_length]`" x-model="field.max_length"></label><div class="flex flex-wrap gap-3 pb-3"><input type="hidden" :name="`jersey_roster_fields[${index}][required]`" :value="field.required ? 1 : 0"><label class="text-xs font-bold"><input type="checkbox" x-model="field.required"> Required</label><button type="button" class="np-danger-link" @click="rosterFields.splice(index,1)">Remove</button></div></div></template></div></div></details>
+                <details class="np-config-panel" :open="jerseyRosterEnabled"><summary>Jersey roster fields</summary><div class="mt-4 flex flex-wrap items-start justify-between gap-4"><div><h3 class="font-black">Player names and numbers</h3><p class="mt-1 max-w-3xl text-xs leading-5 text-slate-500">When disabled, the Jersey Roster step is not shown on the storefront.</p></div><label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold"><input type="hidden" name="jersey_roster_enabled" :value="jerseyRosterEnabled ? 1 : 0"><input type="checkbox" x-model="jerseyRosterEnabled"> Show jersey roster step</label></div><div x-show="jerseyRosterEnabled" class="mt-4 rounded-2xl border border-slate-200 p-4 sm:p-5"><div class="grid gap-4 md:grid-cols-2"><label class="admin-label">Customer heading<input class="admin-input" name="jersey_roster_title" value="{{ old('jersey_roster_title', $product->jersey_roster_title ?: 'Add player names and numbers') }}"></label><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4"><input type="hidden" name="jersey_roster_optional" :value="jerseyRosterOptional ? 1 : 0"><input type="checkbox" x-model="jerseyRosterOptional"><span><strong class="block text-sm">Customer may skip roster details</strong><small class="text-xs text-slate-500">When disabled, every enabled roster field marked required must be completed.</small></span></label></div><div class="mt-5 flex items-center justify-between gap-3"><div><h4 class="font-black">Fields shown for each jersey</h4><p class="text-xs text-slate-500">The size is generated automatically from selected size quantities.</p></div><button type="button" class="np-secondary-button" @click="addRosterField()">＋ Add Field</button></div><div class="mt-4 space-y-3"><template x-for="(field,index) in rosterFields" :key="index"><div class="grid gap-3 rounded-2xl border border-slate-200 p-4 sm:grid-cols-2 lg:grid-cols-[1.5fr_150px_130px_auto] lg:items-end"><input type="hidden" :name="`jersey_roster_fields[${index}][key]`" x-model="field.key"><input type="hidden" :name="`jersey_roster_fields[${index}][enabled]`" value="1"><label class="admin-label">Customer label<input class="admin-input" :name="`jersey_roster_fields[${index}][label]`" x-model="field.label" @blur="if(!field.key) field.key = field.label.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')" placeholder="Player name"></label><label class="admin-label">Input type<select class="admin-input" :name="`jersey_roster_fields[${index}][type]`" x-model="field.type"><option value="text">Text</option><option value="number">Number</option></select></label><label class="admin-label">Max length<input class="admin-input" type="number" min="1" max="120" :name="`jersey_roster_fields[${index}][max_length]`" x-model="field.max_length"></label><div class="flex flex-wrap gap-3 pb-3"><input type="hidden" :name="`jersey_roster_fields[${index}][required]`" :value="field.required ? 1 : 0"><label class="text-xs font-bold"><input type="checkbox" x-model="field.required"> Required</label><button type="button" class="np-danger-link" @click="rosterFields.splice(index,1)">Remove</button></div></div></template></div></div></details>
             </section>
 
             <section id="artwork" class="np-card"><header class="np-card__header"><div><h2>4. Custom Artwork Upload</h2><p>Allow customers to upload custom artwork for this product.</p></div></header><div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,.7fr)]"><div class="np-field-stack"><div class="grid gap-4 sm:grid-cols-2"><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4"><input type="hidden" name="artwork_upload_enabled" :value="artworkUploadEnabled ? 1 : 0"><input type="checkbox" x-model="artworkUploadEnabled"><span><strong class="block text-sm">Show artwork upload step</strong><small class="text-xs text-slate-500">The section disappears when disabled.</small></span></label><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4" :class="!artworkUploadEnabled && 'opacity-50'"><input type="hidden" name="artwork_upload_required" :value="artworkUploadRequired ? 1 : 0"><input type="checkbox" x-model="artworkUploadRequired" :disabled="!artworkUploadEnabled"><span><strong class="block text-sm">Artwork is required</strong><small class="text-xs text-slate-500">At least one file must be selected.</small></span></label></div><div x-show="artworkUploadEnabled" class="grid gap-4 sm:grid-cols-2"><label class="admin-label sm:col-span-2">Section title<input class="admin-input" name="artwork_upload_title" x-model="artworkUploadTitle" maxlength="180"></label><label class="admin-label sm:col-span-2">Upload instructions<textarea class="admin-textarea np-textarea-sm" name="artwork_upload_description" x-model="artworkUploadDescription" maxlength="3000"></textarea></label><label class="admin-label">Accepted extensions<input class="admin-input font-mono" name="artwork_upload_accepted_types" x-model="artworkUploadAcceptedTypes" placeholder="pdf,ai,png,jpg,jpeg,eps"></label><label class="admin-label">Maximum file size (MB)<input class="admin-input" type="number" min="1" max="25" name="artwork_upload_max_file_size_mb" x-model.number="artworkUploadMaxFileSizeMb"></label><label class="admin-label sm:col-span-2">Maximum files<input class="admin-input" type="number" min="1" max="12" name="artwork_upload_max_files" x-model.number="artworkUploadMaxFiles"></label></div></div><div x-show="artworkUploadEnabled" class="np-artwork-preview"><span>☁</span><strong>Upload area will appear on product page</strong><small>Drag &amp; drop or click to upload</small></div></div></section>
@@ -2179,7 +1586,7 @@ Lead Time:"></div>
         </aside>
     </div>
 
-    <div x-cloak x-show="!productTypeDialogOpen" x-transition.opacity class="np-bottom-bar"><a href="{{ route('admin.products.index') }}" class="np-secondary-button">Cancel</a><div class="ml-auto flex flex-wrap gap-3"><button type="submit" class="np-secondary-button" @click="$refs.productStatus.value = 'draft'">Save Draft</button><button type="submit" class="np-primary-button">{{ $isEdit ? 'Update Product' : 'Create Product' }}</button></div></div>
+    <div class="np-bottom-bar"><a href="{{ route('admin.products.index') }}" class="np-secondary-button">Cancel</a><div class="ml-auto flex flex-wrap gap-3"><button type="submit" class="np-secondary-button" @click="$refs.productStatus.value = 'draft'">Save Draft</button><button type="submit" class="np-primary-button">{{ $isEdit ? 'Update Product' : 'Create Product' }}</button></div></div>
     <div x-cloak x-show="priceImportMappingOpen" x-transition.opacity class="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/65 p-3 sm:p-5" role="dialog" aria-modal="true" aria-labelledby="price-import-mapping-title" @keydown.escape.window="closePriceImportMapping()">
         <div x-show="priceImportMappingOpen" x-transition class="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl" @click.outside="closePriceImportMapping()">
             <div class="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-5 sm:px-7">
@@ -2319,77 +1726,6 @@ Lead Time:"></div>
     </div>
 
 
-    <div x-cloak x-show="productTypeDialogOpen" x-transition.opacity class="np-product-type-backdrop" role="dialog" aria-modal="true" aria-labelledby="product-type-dialog-title" @click.self="closeProductTypeDialog()" @keydown.escape.window="closeProductTypeDialog()">
-        <div x-show="productTypeDialogOpen" x-transition class="np-product-type-modal">
-            <header class="np-product-type-modal__header">
-                <div>
-                    <span class="np-product-type-modal__eyebrow"><span>1</span> Add product form</span>
-                    <h2 id="product-type-dialog-title">Choose the product type first</h2>
-                    <p>Select the product family you want to add. The matching customization sections will be generated automatically and every option will continue to come from Master Data.</p>
-                </div>
-                <button x-show="selectedProductGroup" x-cloak type="button" class="np-product-type-modal__close" @click="closeProductTypeDialog()" aria-label="Close">×</button>
-            </header>
-
-            <div class="np-product-type-modal__toolbar">
-                <label class="np-product-type-search" aria-label="Search product type">
-                    <span>⌕</span>
-                    <input type="search" x-model="productTypeSearch" placeholder="Search product type or customization feature...">
-                </label>
-                <div class="np-product-type-count" aria-live="polite">
-                    <strong x-text="filteredProductFamilies().length"></strong>
-                    <span>Forms</span>
-                </div>
-            </div>
-
-            <div class="np-product-type-modal__body">
-                <div class="np-product-type-grid">
-                    <template x-for="family in filteredProductFamilies()" :key="family.value">
-                        <button type="button" class="np-product-type-card" :class="selectedProductGroup === family.value ? 'is-selected' : ''" @click="selectProductFamily(family)">
-                            <span>
-                                <span class="np-product-type-card__top">
-                                    <span class="np-product-type-card__icon" x-text="family.icon || '✦'"></span>
-                                    <span class="min-w-0">
-                                        <span class="np-product-type-card__number" x-text="family.number"></span>
-                                        <strong class="np-product-type-card__title" x-text="family.label"></strong>
-                                        <small class="np-product-type-card__description" x-text="family.description"></small>
-                                    </span>
-                                </span>
-
-                                <span class="np-product-type-card__features">
-                                    <template x-for="feature in (family.features || []).slice(0, 4)" :key="`${family.value}-${feature}`">
-                                        <span x-text="jerseyCustomizationTypes[feature] || feature"></span>
-                                    </template>
-                                    <span x-show="(family.features || []).length > 4" x-text="`+${(family.features || []).length - 4}`"></span>
-                                </span>
-                            </span>
-
-                            <span class="np-product-type-card__action" x-text="selectedProductGroup === family.value ? 'Selected form ✓' : 'Use this form →'"></span>
-                        </button>
-                    </template>
-                </div>
-
-                <div x-show="filteredProductFamilies().length === 0" class="np-product-type-empty">
-                    <strong>No matching product type found.</strong>
-                    <span>Try searching by product name, print method, fabric, color, logo, or another customization feature.</span>
-                </div>
-            </div>
-
-            <footer class="np-product-type-modal__footer">
-                <div class="np-product-type-modal__note">
-                    <span>✓ Same add-product style</span>
-                    <span>✓ Master-data customization options</span>
-                    <span>✓ Form changes by product type</span>
-                </div>
-                <div class="flex flex-wrap gap-3">
-                    @if(! $isEdit)
-                        <a href="{{ route('admin.products.index') }}" class="np-secondary-button">Cancel</a>
-                    @endif
-                    <button x-show="selectedProductGroup" x-cloak type="button" class="np-secondary-button" @click="closeProductTypeDialog()">Keep selected form</button>
-                </div>
-            </footer>
-        </div>
-    </div>
-
     <div x-cloak x-show="newFeatureDialogOpen" x-transition.opacity class="fixed inset-0 z-[110] grid place-items-center bg-slate-950/65 p-4" role="dialog" aria-modal="true" aria-labelledby="new-feature-dialog-title" @click.self="closeNewFeatureDialog()" @keydown.escape.window="closeNewFeatureDialog()">
         <div x-show="newFeatureDialogOpen" x-transition class="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-7">
             <div class="flex items-start justify-between gap-4">
@@ -2404,7 +1740,7 @@ Lead Time:"></div>
             <label class="admin-label mt-6">Feature name
                 <select x-ref="newFeatureNameInput" class="admin-input" x-model="newFeatureType" @change="newFeatureNameError = ''">
                     <option value="">Select a feature</option>
-                    <template x-for="group in visibleCustomizationTypeGroups()" :key="group.label">
+                    <template x-for="group in customizationTypeGroups" :key="group.label">
                         <optgroup :label="group.label">
                             <template x-for="feature in group.types" :key="feature.value">
                                 <option :value="feature.value" x-text="feature.label"></option>
@@ -2413,7 +1749,6 @@ Lead Time:"></div>
                     </template>
                 </select>
             </label>
-            <p class="mt-2 text-xs font-semibold text-slate-500" x-show="selectedProductGroup" x-cloak>Showing features for <strong x-text="selectedProductLabel()"></strong>. Change the product type from the Product Basics section to see another form.</p>
             <p x-show="newFeatureNameError" x-text="newFeatureNameError" class="mt-2 text-sm font-bold text-red-700"></p>
 
             <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -2469,7 +1804,7 @@ Lead Time:"></div>
     </div>
 
 
-        <div x-cloak x-show="sizeGroupPickerOpen && canUseSizeOptionsForProductGroup()" x-transition.opacity class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-4" @keydown.escape.window="closeSizeGroupPicker()">
+        <div x-cloak x-show="sizeGroupPickerOpen" x-transition.opacity class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-4" @keydown.escape.window="closeSizeGroupPicker()">
             <div class="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl" @click.outside="closeSizeGroupPicker()">
                 <div class="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-5 sm:px-7">
                     <div>
@@ -2483,7 +1818,7 @@ Lead Time:"></div>
                 <div class="grid gap-3 border-b border-slate-200 p-4 sm:grid-cols-[220px_minmax(0,1fr)] sm:px-7">
                     <select class="admin-input mt-0" x-model="sizeGroupPickerContext">
                         <option value="">All clothing sections</option>
-                        <template x-for="group in (customizationTypeGroups || []).filter((group) => canUseSizeOptionsForProductGroup(group.key || ((group.types[0] && group.types[0].group) || '')))" :key="group.label">
+                        <template x-for="group in customizationTypeGroups" :key="group.label">
                             <option :value="(group.types[0] && group.types[0].group) || ''" x-text="group.label"></option>
                         </template>
                     </select>
