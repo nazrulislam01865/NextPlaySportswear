@@ -20,6 +20,9 @@ use App\Http\Controllers\Storefront\ProductActivityController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
+Route::get('/homepage/latest-products', [HomeController::class, 'latestProducts'])
+    ->middleware('throttle:120,1')
+    ->name('home.latest-products');
 Route::get('/sitemap.xml', \App\Http\Controllers\Storefront\SitemapController::class)->name('sitemap');
 Route::post('/products/visitor-activity', [ProductActivityController::class, 'track'])
     ->middleware('throttle:120,1')

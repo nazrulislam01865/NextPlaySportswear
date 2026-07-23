@@ -37,6 +37,8 @@ class ProductCatalogCacheService
     {
         Cache::forget('catalog.product-summaries.'.$versionSuffix);
 
+        Cache::forget('catalog.homepage-featured.'.$versionSuffix.'.all');
+
         foreach ([4, 6, 8, 10, 12, 16, 24] as $limit) {
             Cache::forget('catalog.homepage-featured.'.$versionSuffix.'.'.$limit);
             Cache::forget('catalog.homepage-latest.'.$versionSuffix.'.'.$limit);

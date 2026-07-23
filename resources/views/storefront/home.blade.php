@@ -39,7 +39,7 @@
                     @break
 
                 @case('latest_products')
-                    <x-storefront.home.latest-products :products="$latestProducts ?? []" :section="$section" />
+                    <x-storefront.home.latest-products :products="$latestProducts ?? []" :section="$section" :signature="$latestProductsSignature ?? ''" />
                     @break
 
                 @case('best_selling_products')

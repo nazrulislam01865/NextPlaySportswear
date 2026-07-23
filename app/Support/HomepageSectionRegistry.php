@@ -187,7 +187,7 @@ final class HomepageSectionRegistry
                 'sort_order' => 95,
                 'eyebrow' => 'New arrivals',
                 'title' => 'Latest',
-                'description' => 'The newest active products appear here automatically.',
+                'description' => 'The latest created or updated active products appear here automatically.',
                 'fields' => ['text'],
             ],
             [

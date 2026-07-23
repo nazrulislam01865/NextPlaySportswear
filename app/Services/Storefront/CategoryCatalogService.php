@@ -70,7 +70,7 @@ class CategoryCatalogService
         return $categories->map(fn (Category $category) => $this->categoryData($category))->all();
     }
 
-    public function popularSportswearCategories(int $limit = 8): array
+    public function popularSportswearCategories(?int $limit = null): array
     {
         $categories = Category::query()
             ->storefrontReachable()
@@ -87,9 +87,13 @@ class CategoryCatalogService
                             ->whereNull('sport_parent.deleted_at');
                     });
             })
-            ->ordered()
-            ->limit($limit)
-            ->get();
+            ->ordered();
+
+        if ($limit !== null) {
+            $categories->limit(max(1, $limit));
+        }
+
+        $categories = $categories->get();
 
         $this->attachProductCounts($categories);
 

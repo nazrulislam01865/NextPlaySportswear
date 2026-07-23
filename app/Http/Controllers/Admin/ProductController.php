@@ -518,6 +518,13 @@ class ProductController extends Controller
     {
         $this->categoryTreeService->flushCache();
         $this->productCatalogCache->flush();
+
+        // Notify an already-open storefront tab immediately after the admin
+        // creates, updates, deletes, or bulk-changes products. The storefront
+        // also polls as a fallback for changes made from another browser.
+        if (request()->hasSession()) {
+            request()->session()->flash('storefront_catalog_changed_at', (string) now()->getTimestampMs());
+        }
     }
 
     /**

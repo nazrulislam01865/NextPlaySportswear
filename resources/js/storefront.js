@@ -1191,26 +1191,47 @@ const setupHeroCardCarousels = () => {
         if (!track || total === 0) return;
 
         carousel.dataset.cardInitialized = 'true';
+        carousel.classList.toggle('has-wraparound', total > 1);
+
+        // Hero images are few and above the fold. Preload them so the wrap-around
+        // clone is never shown before its image has finished loading.
+        realSlides.forEach((slide) => {
+            const image = slide.querySelector('img');
+            if (image) image.loading = 'eager';
+        });
 
         if (total > 1) {
             const firstClone = realSlides[0].cloneNode(true);
             const lastClone = realSlides[total - 1].cloneNode(true);
+            // The active first-slide clone still needs a following card to fill
+            // the right-side preview area while the last-to-first animation is
+            // running. Without this extra clone, the viewport background is
+            // exposed as a pale/white strip until the track jumps back.
+            const firstPreviewClone = (realSlides[1] || realSlides[0]).cloneNode(true);
 
-            firstClone.dataset.heroClone = 'true';
-            lastClone.dataset.heroClone = 'true';
-            firstClone.setAttribute('aria-hidden', 'true');
-            lastClone.setAttribute('aria-hidden', 'true');
-            firstClone.removeAttribute('data-hero-card-slide');
-            lastClone.removeAttribute('data-hero-card-slide');
+            firstClone.dataset.heroClone = 'first';
+            lastClone.dataset.heroClone = 'last';
+            firstPreviewClone.dataset.heroClone = 'first-preview';
+
+            [firstClone, lastClone, firstPreviewClone].forEach((clone) => {
+                clone.setAttribute('aria-hidden', 'true');
+                clone.removeAttribute('data-hero-card-slide');
+                clone.querySelectorAll('img').forEach((image) => {
+                    image.loading = 'eager';
+                    image.fetchPriority = 'high';
+                });
+            });
 
             track.prepend(lastClone);
-            track.append(firstClone);
+            track.append(firstClone, firstPreviewClone);
         }
 
         const trackSlides = () => Array.from(track.querySelectorAll('.hero-carousel__slide'));
         let current = Math.max(0, realSlides.findIndex((slide) => slide.classList.contains('is-active')));
         let position = total > 1 ? current + 1 : current;
         let timer = null;
+        let transitionTimer = null;
+        let isAnimating = false;
         let pointerStartX = 0;
         let pointerStartY = 0;
         let pointerActive = false;
@@ -1247,7 +1268,7 @@ const setupHeroCardCarousels = () => {
             slides.forEach((slide, slideIndex) => {
                 const isActive = slideIndex === position;
                 const isPreview = total > 1 && slideIndex === nextPosition;
-                const isClone = slide.dataset.heroClone === 'true';
+                const isClone = Boolean(slide.dataset.heroClone);
 
                 slide.classList.toggle('is-active', isActive);
                 slide.classList.toggle('is-next-preview', isPreview && !isActive);
@@ -1259,8 +1280,14 @@ const setupHeroCardCarousels = () => {
         };
 
         const moveTrack = (animate = true) => {
-            if (!animate) track.classList.add('is-jump-disabled');
-            track.style.transform = `translate3d(${-position * step()}px, 0, 0)`;
+            if (animate) track.classList.remove('is-jump-disabled');
+            else track.classList.add('is-jump-disabled');
+
+            const slides = trackSlides();
+            const targetSlide = slides[position];
+            const targetOffset = targetSlide ? targetSlide.offsetLeft : position * step();
+
+            track.style.transform = `translate3d(${-targetOffset}px, 0, 0)`;
 
             if (!animate) {
                 window.requestAnimationFrame(() => {
@@ -1269,37 +1296,55 @@ const setupHeroCardCarousels = () => {
             }
         };
 
-        const jumpToRealSlide = () => {
-            if (total <= 1) return;
+        const finishTransition = () => {
+            if (transitionTimer) window.clearTimeout(transitionTimer);
+            transitionTimer = null;
 
-            if (position === 0) {
+            if (total > 1 && position === 0) {
                 position = total;
                 current = total - 1;
                 updateClasses();
                 moveTrack(false);
-            }
-
-            if (position === total + 1) {
+            } else if (total > 1 && position === total + 1) {
                 position = 1;
                 current = 0;
                 updateClasses();
                 moveTrack(false);
             }
+
+            isAnimating = false;
+        };
+
+        const scheduleTransitionFallback = () => {
+            if (transitionTimer) window.clearTimeout(transitionTimer);
+            // transitionend can be skipped by browsers when a tab loses focus or
+            // when users click quickly. This fallback always normalizes the clone.
+            transitionTimer = window.setTimeout(finishTransition, 900);
         };
 
         const goTo = (targetIndex, animate = true) => {
+            if (transitionTimer) window.clearTimeout(transitionTimer);
+            transitionTimer = null;
+
             current = (targetIndex + total) % total;
             position = total > 1 ? current + 1 : current;
+            isAnimating = animate;
             updateClasses();
             moveTrack(animate);
+
+            if (animate) scheduleTransitionFallback();
+            else isAnimating = false;
         };
 
         const move = (direction) => {
-            if (total <= 1) return;
+            if (total <= 1 || isAnimating) return;
+
+            isAnimating = true;
             current = (current + direction + total) % total;
             position += direction;
             updateClasses();
             moveTrack(true);
+            scheduleTransitionFallback();
         };
 
         const stop = () => {
@@ -1316,7 +1361,7 @@ const setupHeroCardCarousels = () => {
 
         track.addEventListener('transitionend', (event) => {
             if (event.target !== track || event.propertyName !== 'transform') return;
-            jumpToRealSlide();
+            finishTransition();
         });
 
         next?.addEventListener('click', () => {
@@ -1970,11 +2015,198 @@ const setupHeaderAnalytics = () => {
     });
 };
 
+const setupProductCollectionSliders = () => {
+    document.querySelectorAll('[data-product-slider]').forEach((slider) => {
+        if (slider.dataset.productSliderReady === 'true') return;
+
+        const track = slider.querySelector('[data-product-slider-track]');
+        const previousButton = slider.querySelector('[data-product-slider-prev]');
+        const nextButton = slider.querySelector('[data-product-slider-next]');
+
+        if (!track || !previousButton || !nextButton) return;
+
+        const items = Array.from(track.querySelectorAll('.home-product-slider-item'));
+        if (items.length === 0) return;
+
+        slider.dataset.productSliderReady = 'true';
+
+        const tolerance = 3;
+
+        const cardStep = () => {
+            const firstItem = items[0];
+            if (!firstItem) return Math.max(240, track.clientWidth * .85);
+
+            const styles = window.getComputedStyle(track);
+            const gap = Number.parseFloat(styles.columnGap || styles.gap || '0') || 0;
+
+            return firstItem.getBoundingClientRect().width + gap;
+        };
+
+        const updateControls = () => {
+            const hasOverflow = track.scrollWidth > track.clientWidth + tolerance;
+
+            previousButton.hidden = !hasOverflow;
+            nextButton.hidden = !hasOverflow;
+
+            if (!hasOverflow) {
+                previousButton.disabled = true;
+                nextButton.disabled = true;
+                return;
+            }
+
+            const maximumScroll = Math.max(0, track.scrollWidth - track.clientWidth);
+            previousButton.disabled = track.scrollLeft <= tolerance;
+            nextButton.disabled = track.scrollLeft >= maximumScroll - tolerance;
+        };
+
+        const scrollByCard = (direction) => {
+            track.scrollBy({
+                left: cardStep() * direction,
+                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+            });
+        };
+
+        previousButton.addEventListener('click', () => scrollByCard(-1));
+        nextButton.addEventListener('click', () => scrollByCard(1));
+
+        track.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                scrollByCard(-1);
+            }
+
+            if (event.key === 'ArrowRight') {
+                event.preventDefault();
+                scrollByCard(1);
+            }
+        });
+
+        let updateFrame = null;
+        track.addEventListener('scroll', () => {
+            if (updateFrame) window.cancelAnimationFrame(updateFrame);
+            updateFrame = window.requestAnimationFrame(updateControls);
+        }, { passive: true });
+
+        if ('ResizeObserver' in window) {
+            const observer = new ResizeObserver(updateControls);
+            observer.observe(track);
+            items.forEach(item => observer.observe(item));
+        } else {
+            window.addEventListener('resize', updateControls, { passive: true });
+        }
+
+        updateControls();
+        window.requestAnimationFrame(updateControls);
+    });
+};
+
+
+let liveProductSectionsRefreshing = false;
+let liveProductSectionsTimer = null;
+let liveProductSectionsChannel = null;
+
+const refreshLiveProductSection = async (section) => {
+    const endpoint = section.dataset.liveProductRefreshUrl || '';
+    if (!endpoint) return;
+
+    const url = new URL(endpoint, window.location.origin);
+    const signature = section.dataset.liveProductSignature || '';
+
+    if (signature) url.searchParams.set('signature', signature);
+    url.searchParams.set('_', String(Date.now()));
+
+    const response = await fetch(url.toString(), {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    });
+
+    if (!response.ok) return;
+
+    const payload = await response.json();
+    if (!payload?.changed || !payload?.html) {
+        if (payload?.signature) section.dataset.liveProductSignature = payload.signature;
+        return;
+    }
+
+    const template = document.createElement('template');
+    template.innerHTML = String(payload.html).trim();
+    const replacement = template.content.firstElementChild;
+
+    if (!replacement?.matches('[data-live-product-section]')) return;
+
+    section.replaceWith(replacement);
+    setupProductCollectionSliders();
+
+    window.dispatchEvent(new CustomEvent('nextplay:latest-products-updated', {
+        detail: {
+            signature: payload.signature || '',
+            checkedAt: payload.checked_at || '',
+        },
+    }));
+};
+
+const refreshLiveProductSections = async () => {
+    if (liveProductSectionsRefreshing || document.visibilityState === 'hidden') return;
+
+    const sections = Array.from(document.querySelectorAll('[data-live-product-section]'));
+    if (sections.length === 0) return;
+
+    liveProductSectionsRefreshing = true;
+
+    try {
+        await Promise.all(sections.map(async (section) => {
+            try {
+                await refreshLiveProductSection(section);
+            } catch (error) {
+                // Live homepage updates are an enhancement and must never block browsing.
+            }
+        }));
+    } finally {
+        liveProductSectionsRefreshing = false;
+    }
+};
+
+const setupLiveProductSections = () => {
+    const sections = Array.from(document.querySelectorAll('[data-live-product-section]'));
+    if (sections.length === 0 || liveProductSectionsTimer !== null) return;
+
+    const refreshInterval = Math.max(3000, Math.min(...sections.map((section) => {
+        const value = Number(section.dataset.liveProductRefreshMs || 5000);
+        return Number.isFinite(value) ? value : 5000;
+    })));
+
+    liveProductSectionsTimer = window.setInterval(refreshLiveProductSections, refreshInterval);
+
+    window.addEventListener('focus', refreshLiveProductSections, { passive: true });
+    window.addEventListener('pageshow', refreshLiveProductSections, { passive: true });
+    window.addEventListener('storage', (event) => {
+        if (event.key === 'nextplay:catalog-updated-at') refreshLiveProductSections();
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') refreshLiveProductSections();
+    });
+
+    if ('BroadcastChannel' in window) {
+        liveProductSectionsChannel = new BroadcastChannel('nextplay:storefront-updates');
+        liveProductSectionsChannel.addEventListener('message', (event) => {
+            if (event.data?.type === 'catalog-updated') refreshLiveProductSections();
+        });
+    }
+};
+
 const bootStorefront = () => {
     setupStorefrontMenus();
     setupHeroCarousels();
     setupHeroCardCarousels();
     setupHomepageSliders();
+    setupProductCollectionSliders();
+    setupLiveProductSections();
     setupHomepageFaqs();
     setupStorefrontSearchSuggestions();
     setupHeaderAnalytics();

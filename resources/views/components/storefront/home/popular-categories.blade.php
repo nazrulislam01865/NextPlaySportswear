@@ -13,7 +13,7 @@
                 <h2>{{ $text('title', 'Popular Custom Sportswear Categories') }}</h2>
                 @if(filled($text('description')))<p>{{ $text('description', 'Our most requested sport categories and subcategories for teams, events, and fan gear.') }}</p>@endif
             </div>
-            <div class="grid-4">
+            <div class="grid-4 home-category-card-grid home-category-card-grid--4">
                 @foreach($categories as $category)
                     <x-storefront.category-card :category="$category" />
                 @endforeach

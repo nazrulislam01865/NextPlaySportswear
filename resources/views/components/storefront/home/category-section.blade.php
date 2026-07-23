@@ -14,7 +14,7 @@
                 <p>{{ $text('description', 'Start with an admin-managed category and find the right product faster.') }}</p>
             @endif
         </div>
-        <div class="home-featured-category-grid">
+        <div class="home-featured-category-grid home-category-card-grid home-category-card-grid--featured">
             @forelse($categories as $category)
                 <x-storefront.category-card :category="$category" />
             @empty

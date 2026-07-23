@@ -384,7 +384,7 @@
                 @if (session('status'))
                     <div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
                 @endif
-                @if ($errors->any() && ! request()->routeIs('admin.products.create', 'admin.products.edit'))
+                @if ($errors->any() && ! request()->routeIs('admin.products.create', 'admin.products.edit', 'admin.homepage.sections.edit'))
                     <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                         <p class="font-black">Please correct the highlighted information.</p>
                         <ul class="mt-2 list-disc space-y-1 pl-5">
@@ -396,6 +396,26 @@
             </main>
         </div>
     </div>
+    @if(session()->has('storefront_catalog_changed_at'))
+        <script>
+            (() => {
+                const changedAt = @json((string) session('storefront_catalog_changed_at'));
+
+                try {
+                    window.localStorage.setItem('nextplay:catalog-updated-at', changedAt);
+                } catch (error) {
+                    // Local storage can be unavailable in restricted browsers.
+                }
+
+                if ('BroadcastChannel' in window) {
+                    const channel = new BroadcastChannel('nextplay:storefront-updates');
+                    channel.postMessage({ type: 'catalog-updated', changedAt });
+                    channel.close();
+                }
+            })();
+        </script>
+    @endif
+
     @auth('admin')
         <div class="admin-toast" id="adminToast" aria-live="polite"></div>
         <script>

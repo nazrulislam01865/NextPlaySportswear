@@ -12,12 +12,12 @@
             <h2>{{ $text('title', 'Shop by Sport') }}</h2>
             @if(filled($text('description')))<p>{{ $text('description', 'Active sport categories from the admin catalog appear here automatically.') }}</p>@endif
         </div>
-        <div class="grid-6">
+        <div class="grid-6 home-category-card-grid home-category-card-grid--6">
             @forelse($sports as $sport)
-                <a class="sport-card" href="{{ $sport['url'] }}" aria-label="Shop {{ $sport['short_title'] }} Gear">
+                <a class="sport-card np-home-sport-card" href="{{ $sport['url'] }}" aria-label="Shop {{ $sport['short_title'] }} Gear">
                     <img loading="lazy" decoding="async" src="{{ $sport['image'] }}" alt="{{ $sport['alt'] }}" class="np-category-square-image" width="420" height="420">
-                    <h3>{{ $sport['title'] }}</h3>
-                    <span class="link-red">Shop {{ $sport['short_title'] }} Gear</span>
+                    <h3 class="np-home-sport-card__title">{{ $sport['title'] }}</h3>
+                    <span class="link-red np-home-sport-card__link">Shop {{ $sport['short_title'] }} Gear</span>
                 </a>
             @empty
                 <p>No active sport categories are available yet.</p>

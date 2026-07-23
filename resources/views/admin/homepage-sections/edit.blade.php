@@ -54,12 +54,19 @@
             categoryOptionList: @js($categoryOptionRows),
             categorySearch: '',
             categoryLevelFilter: 'all',
+            selectedCategoryIds: [],
             items: @js($items),
             draftItem: {},
             editingIndex: null,
+            itemError: '',
+            itemNotice: '',
+            submittingAfterDraftSync: false,
             init() {
                 this.items = this.normalizeItems(this.items);
                 this.resetItemDraft();
+            },
+            hasCategoryField() {
+                return this.itemFields.includes('category_id');
             },
             blankItem() {
                 const item = {};
@@ -81,26 +88,106 @@
             normalizeItems(items) {
                 return (Array.isArray(items) ? items : [])
                     .map((item) => this.normalizeItem(item))
-                    .filter((item) => this.hasItemContent(item))
-                    .slice(0, 30);
+                    .filter((item) => this.hasItemContent(item));
             },
             hasItemContent(item) {
                 return this.itemFields.some((field) => String(item?.[field] ?? '').trim() !== '');
             },
-            resetItemDraft() {
+            clearItemFeedback() {
+                this.itemError = '';
+                this.itemNotice = '';
+            },
+            resetItemDraft(preserveFeedback = false) {
                 this.draftItem = this.blankItem();
                 this.editingIndex = null;
+                this.selectedCategoryIds = [];
                 this.categorySearch = '';
                 this.categoryLevelFilter = 'all';
+                if (!preserveFeedback) this.clearItemFeedback();
             },
-            selectCategory(option) {
-                this.draftItem.category_id = String(option?.id ?? '');
-                this.categorySearch = '';
+            categoryOptionFor(categoryId) {
+                const id = String(categoryId ?? '').trim();
+                if (!id) return null;
+                return this.categoryOptionList.find((option) => String(option.id) === id) ?? null;
+            },
+            categoryDisplayName(categoryId) {
+                const option = this.categoryOptionFor(categoryId);
+                return option?.path || option?.display_label || option?.label || `Category #${categoryId}`;
+            },
+            isCategorySelected(categoryId) {
+                const id = String(categoryId ?? '').trim();
+                return id !== '' && this.selectedCategoryIds.includes(id);
+            },
+            isCategoryAlreadyAdded(categoryId) {
+                const id = String(categoryId ?? '').trim();
+                if (!id) return false;
+                return this.items.some((item, index) => index !== this.editingIndex && String(item?.category_id ?? '').trim() === id);
+            },
+            toggleCategorySelection(option) {
+                const id = String(option?.id ?? '').trim();
+                if (!id) return;
+                this.clearItemFeedback();
+
+                if (this.editingIndex !== null) {
+                    if (this.isCategoryAlreadyAdded(id)) {
+                        this.itemError = `“${this.categoryDisplayName(id)}” is already in this section. Choose a different category.`;
+                        return;
+                    }
+                    this.selectedCategoryIds = [id];
+                    this.draftItem.category_id = id;
+                    return;
+                }
+
+                if (this.isCategorySelected(id)) {
+                    this.selectedCategoryIds = this.selectedCategoryIds.filter((selectedId) => selectedId !== id);
+                    this.draftItem.category_id = this.selectedCategoryIds[0] ?? '';
+                    return;
+                }
+
+                if (this.isCategoryAlreadyAdded(id)) {
+                    this.itemError = `“${this.categoryDisplayName(id)}” is already in this section. It cannot be added twice.`;
+                    return;
+                }
+
+                this.selectedCategoryIds.push(id);
+                this.draftItem.category_id = this.selectedCategoryIds[0] ?? '';
+            },
+            removeSelectedCategory(categoryId) {
+                const id = String(categoryId ?? '').trim();
+                this.selectedCategoryIds = this.selectedCategoryIds.filter((selectedId) => selectedId !== id);
+                this.draftItem.category_id = this.selectedCategoryIds[0] ?? '';
+                this.clearItemFeedback();
+            },
+            selectVisibleCategories() {
+                if (this.editingIndex !== null) return;
+                this.clearItemFeedback();
+
+                const availableIds = this.filteredCategoryOptions()
+                    .map((option) => String(option.id))
+                    .filter((id) => !this.isCategoryAlreadyAdded(id));
+
+                this.selectedCategoryIds = Array.from(new Set([...this.selectedCategoryIds, ...availableIds]));
+                this.draftItem.category_id = this.selectedCategoryIds[0] ?? '';
+
+                if (availableIds.length === 0) {
+                    this.itemError = 'Every visible category is already in this section.';
+                    return;
+                }
+
+                this.itemNotice = `${availableIds.length} visible categor${availableIds.length === 1 ? 'y was' : 'ies were'} selected.`;
+            },
+            clearCategorySelection() {
+                this.selectedCategoryIds = [];
+                this.draftItem.category_id = '';
+                this.clearItemFeedback();
+            },
+            selectedCategoryOptions() {
+                return this.selectedCategoryIds
+                    .map((id) => this.categoryOptionFor(id))
+                    .filter((option) => option !== null);
             },
             selectedCategoryOption() {
-                const categoryId = String(this.draftItem?.category_id ?? '').trim();
-                if (!categoryId) return null;
-                return this.categoryOptionList.find((option) => String(option.id) === categoryId) ?? null;
+                return this.selectedCategoryOptions()[0] ?? null;
             },
             filteredCategoryOptions() {
                 const search = String(this.categorySearch ?? '').trim().toLowerCase();
@@ -113,31 +200,109 @@
                     })
                     .slice(0, 120);
             },
+            duplicateCategoryGroups() {
+                if (!this.hasCategoryField()) return [];
+                const groups = {};
+                this.items.forEach((item, index) => {
+                    const id = String(item?.category_id ?? '').trim();
+                    if (!id) return;
+                    groups[id] ??= [];
+                    groups[id].push(index + 1);
+                });
+                return Object.entries(groups)
+                    .filter(([, positions]) => positions.length > 1)
+                    .map(([id, positions]) => ({ id, positions, label: this.categoryDisplayName(id) }));
+            },
+            duplicateCategoryMessages() {
+                return this.duplicateCategoryGroups().map((group) => {
+                    const positions = group.positions.length === 2
+                        ? `${group.positions[0]} and ${group.positions[1]}`
+                        : `${group.positions.slice(0, -1).join(', ')}, and ${group.positions.at(-1)}`;
+                    return `“${group.label}” appears more than once in items ${positions}.`;
+                });
+            },
+            saveButtonLabel() {
+                if (this.editingIndex !== null) return 'Update Item in List';
+                if (!this.hasCategoryField()) return '+ Add Item to List';
+                const count = this.selectedCategoryIds.length;
+                if (count > 1) return `+ Add ${count} Selected Items`;
+                return '+ Add Selected Item';
+            },
             saveItem() {
+                this.clearItemFeedback();
                 const item = this.normalizeItem(this.draftItem);
+
+                if (this.hasCategoryField()) {
+                    const requestedIds = this.editingIndex !== null
+                        ? [String(item.category_id ?? '').trim()]
+                        : this.selectedCategoryIds;
+                    const selectedIds = Array.from(new Set(requestedIds.filter((id) => String(id).trim() !== '')));
+
+                    if (selectedIds.length === 0) {
+                        this.itemError = this.editingIndex === null
+                            ? 'Choose at least one category, subcategory, or sub-subcategory before adding it.'
+                            : 'Choose a category, subcategory, or sub-subcategory before updating this item.';
+                        return false;
+                    }
+
+                    const duplicateIds = selectedIds.filter((id) => this.isCategoryAlreadyAdded(id));
+                    if (duplicateIds.length > 0) {
+                        const names = duplicateIds.map((id) => `“${this.categoryDisplayName(id)}”`).join(', ');
+                        this.itemError = `${names} ${duplicateIds.length === 1 ? 'is' : 'are'} already in this section. Remove the duplicate selection or choose another value.`;
+                        return false;
+                    }
+
+                    if (this.editingIndex !== null) {
+                        item.category_id = selectedIds[0];
+                        this.items.splice(this.editingIndex, 1, item);
+                        this.resetItemDraft(true);
+                        this.itemNotice = `“${this.categoryDisplayName(selectedIds[0])}” was updated in the list.`;
+                        return true;
+                    }
+
+                    selectedIds.forEach((categoryId) => {
+                        this.items.push({ ...item, category_id: categoryId });
+                    });
+
+                    const addedNames = selectedIds.map((id) => this.categoryDisplayName(id));
+                    this.resetItemDraft(true);
+                    this.itemNotice = selectedIds.length === 1
+                        ? `“${addedNames[0]}” was added to the list.`
+                        : `${selectedIds.length} selected categories were added to the list.`;
+                    return true;
+                }
+
                 if (!this.hasItemContent(item)) {
-                    window.alert('Enter at least one item field before adding it to the list.');
-                    return;
+                    this.itemError = 'Complete at least one item field before adding it to the list.';
+                    return false;
                 }
-                if (this.editingIndex === null && this.items.length >= 30) {
-                    window.alert('A homepage section can contain up to 30 items.');
-                    return;
-                }
+
                 if (this.editingIndex === null) {
                     this.items.push(item);
+                    this.resetItemDraft(true);
+                    this.itemNotice = 'The item was added to the list.';
                 } else {
                     this.items.splice(this.editingIndex, 1, item);
+                    this.resetItemDraft(true);
+                    this.itemNotice = 'The item was updated in the list.';
                 }
-                this.resetItemDraft();
+
+                return true;
             },
             editItem(index) {
+                this.clearItemFeedback();
                 this.draftItem = this.normalizeItem(this.items[index] ?? {});
                 this.editingIndex = index;
+                const categoryId = String(this.draftItem?.category_id ?? '').trim();
+                this.selectedCategoryIds = categoryId ? [categoryId] : [];
+                this.categorySearch = '';
+                this.categoryLevelFilter = 'all';
                 this.$nextTick(() => this.$refs.itemEditor?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
             },
             removeItem(index) {
                 if (!window.confirm('Remove this item from the section?')) return;
                 this.items.splice(index, 1);
+                this.clearItemFeedback();
                 if (this.editingIndex === index) this.resetItemDraft();
                 else if (this.editingIndex !== null && this.editingIndex > index) this.editingIndex--;
             },
@@ -148,11 +313,6 @@
                 this.items.splice(target, 0, moved);
                 if (this.editingIndex === index) this.editingIndex = target;
                 else if (this.editingIndex === target) this.editingIndex = index;
-            },
-            categoryOptionFor(categoryId) {
-                const id = String(categoryId ?? '').trim();
-                if (!id) return null;
-                return this.categoryOptionList.find((option) => String(option.id) === id) ?? null;
             },
             itemPrimaryValue(item, index) {
                 const customTitle = String(item?.title ?? '').trim();
@@ -185,11 +345,15 @@
                     .join(' • ');
                 return details.length > 180 ? `${details.slice(0, 177)}...` : details;
             },
-            validateItemDraft(event) {
-                if (!this.hasItemContent(this.draftItem)) return;
+            prepareSubmit(event) {
+                const hasPendingSelection = this.hasCategoryField() && this.selectedCategoryIds.length > 0;
+                if (this.submittingAfterDraftSync || (!this.hasItemContent(this.draftItem) && !hasPendingSelection)) return;
+
                 event.preventDefault();
-                window.alert('Add or update the item in the list before saving the section.');
-                this.$nextTick(() => this.$refs.itemEditor?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+                if (!this.saveItem()) return;
+
+                this.submittingAfterDraftSync = true;
+                this.$nextTick(() => event.target.submit());
             },
             previewFile(event, target = 'desktop') {
                 const file = event.target.files?.[0];
@@ -211,7 +375,7 @@
                 this.imagePreview = URL.createObjectURL(file);
             }
         }"
-        @submit="validateItemDraft($event)"
+        @submit="prepareSubmit($event)"
     >
         @csrf
         @method('PATCH')
@@ -321,31 +485,49 @@
         @if($hasItems)
             <x-admin.section-card :title="$definition['item_label'] ?? 'Items'" description="Use one form to add or edit an item. Saved items stay in the compact list below instead of opening every item at once.">
                 <div class="space-y-5">
-                    @if($errors->has('items') || count($errors->get('items.*')))
-                        <div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
-                            <p>Some item information needs attention.</p>
-                            @foreach($errors->get('items.*') as $messages)
-                                @foreach($messages as $message)
-                                    <p class="mt-1 text-xs">{{ $message }}</p>
+                    @php
+                        $itemErrorMessages = collect($errors->messages())
+                            ->filter(fn ($messages, $field) => $field === 'items' || str_starts_with((string) $field, 'items.'))
+                            ->flatten()
+                            ->filter()
+                            ->unique()
+                            ->values();
+                    @endphp
+                    @if($itemErrorMessages->isNotEmpty())
+                        <div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                            <p class="font-black">Please review the selected homepage items.</p>
+                            <ul class="mt-2 list-disc space-y-1 pl-5 text-xs font-bold leading-5">
+                                @foreach($itemErrorMessages as $message)
+                                    <li>{{ $message }}</li>
                                 @endforeach
-                            @endforeach
+                            </ul>
                         </div>
                     @endif
 
                     @if(in_array('category_id', $itemFields, true))
                         <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm font-bold leading-6 text-brand-dark">
-                            Select the exact <strong>category</strong>, <strong>subcategory</strong>, or <strong>sub-subcategory</strong> you want to show in this homepage section. Use this for sections like What Are You Looking For?, Popular Custom Sportswear Categories, Shop by Sport, and Best-Selling Team Gear. For Best-Selling Team Gear, you can also override the card title, description, image URL, link, button label, and display order. If the list is empty, the section will fall back to its automatic catalog selection.
+                            Select one or several exact <strong>categories</strong>, <strong>subcategories</strong>, or <strong>sub-subcategories</strong> and add them together. Multi-selection and duplicate protection work for every category-driven homepage section, including What Are You Looking For?, Popular Custom Sportswear Categories, Shop by Sport, and Best-Selling Team Gear. If the list is empty, the section falls back to its automatic catalog selection.
+                        </div>
+
+                        <div x-show="duplicateCategoryMessages().length > 0" x-cloak class="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+                            <p class="font-black">Duplicate selections are already present in this list.</p>
+                            <ul class="mt-2 list-disc space-y-1 pl-5 text-xs font-bold leading-5">
+                                <template x-for="message in duplicateCategoryMessages()" :key="message">
+                                    <li x-text="message"></li>
+                                </template>
+                            </ul>
+                            <p class="mt-2 text-xs font-semibold">Remove one copy of each named category before saving.</p>
                         </div>
                     @endif
 
                     <div x-ref="itemEditor" class="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
                         <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                             <div>
-                                <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red" x-text="editingIndex === null ? 'Add item' : `Editing item ${editingIndex + 1}`"></p>
-                                <h3 class="mt-1 text-lg font-black text-brand-ink" x-text="editingIndex === null ? 'Item information' : 'Update item information'"></h3>
-                                <p class="mt-1 text-sm font-medium text-slate-600">Complete the fields below, then add the item to the list.</p>
+                                <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red" x-text="editingIndex === null ? (hasCategoryField() ? 'Select items' : 'Add item') : `Editing item ${editingIndex + 1}`"></p>
+                                <h3 class="mt-1 text-lg font-black text-brand-ink" x-text="editingIndex === null ? (hasCategoryField() ? 'Choose one or more homepage items' : 'Item information') : 'Update item information'"></h3>
+                                <p class="mt-1 text-sm font-medium text-slate-600" x-text="hasCategoryField() && editingIndex === null ? 'Select several values and add them to the list together.' : 'Complete the fields below, then add or update the item.'"></p>
                             </div>
-                            <span class="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-500 shadow-sm"><span x-text="items.length"></span>/30 items</span>
+                            <span class="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-500 shadow-sm"><span x-text="items.length"></span> item<span x-text="items.length === 1 ? '' : 's'"></span></span>
                         </div>
 
                         <div class="grid gap-4 md:grid-cols-2">
@@ -361,14 +543,10 @@
                                 @endphp
                                 @if($field === 'category_id')
                                     <div class="{{ count($itemFields) === 1 ? 'md:col-span-2' : '' }}">
-                                        <label class="admin-label">{{ $fieldLabels[$field] ?? ucfirst($field) }}
-                                            <select class="admin-input" x-model="draftItem.{{ $field }}">
-                                                <option value="">Select category, subcategory, or sub-subcategory</option>
-                                                @foreach(($categoryOptionRows ?? []) as $option)
-                                                    <option value="{{ $option['id'] }}">{{ $option['label'] }} — {{ $option['level_label'] }}</option>
-                                                @endforeach
-                                            </select>
-                                        </label>
+                                        <div class="flex flex-col gap-1">
+                                            <span class="admin-label">{{ $fieldLabels[$field] ?? ucfirst($field) }}</span>
+                                            <p class="text-xs font-semibold text-slate-500" x-text="editingIndex === null ? 'Choose one or more values. Each selected value will become its own homepage item.' : 'Choose one value for the item being edited.'"></p>
+                                        </div>
 
                                         <div class="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
                                             <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -381,21 +559,54 @@
                                                 </div>
                                             </div>
 
-                                            <template x-if="selectedCategoryOption()">
-                                                <div class="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
-                                                    Selected: <span x-text="selectedCategoryOption().path || selectedCategoryOption().display_label"></span>
-                                                    <span class="ml-2 rounded-full bg-white px-2 py-1 text-[10px] uppercase tracking-wider text-emerald-700" x-text="selectedCategoryOption().level_label"></span>
+                                            <div class="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                                                <span class="text-xs font-black text-slate-600">
+                                                    <span x-text="selectedCategoryIds.length"></span>
+                                                    selected
+                                                    <span x-show="editingIndex === null">for bulk add</span>
+                                                </span>
+                                                <div class="flex flex-wrap gap-2">
+                                                    <button type="button" x-show="editingIndex === null" x-cloak class="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-black text-blue-700 hover:bg-blue-50" @click="selectVisibleCategories()">Select visible</button>
+                                                    <button type="button" x-show="selectedCategoryIds.length > 0" x-cloak class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-600 hover:bg-slate-100" @click="clearCategorySelection()">Clear selection</button>
                                                 </div>
-                                            </template>
+                                            </div>
 
-                                            <div class="mt-3 max-h-72 overflow-y-auto rounded-xl border border-slate-100">
+                                            <div x-show="selectedCategoryOptions().length > 0" x-cloak class="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                                                <p class="text-xs font-black uppercase tracking-wider text-emerald-800">Selected values</p>
+                                                <div class="mt-2 flex flex-wrap gap-2">
+                                                    <template x-for="option in selectedCategoryOptions()" :key="`selected-${option.id}`">
+                                                        <button type="button" class="inline-flex max-w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-left text-xs font-bold text-emerald-800 shadow-sm hover:bg-emerald-100" @click="removeSelectedCategory(option.id)" :title="`Remove ${option.path || option.display_label} from the selection`">
+                                                            <span class="truncate" x-text="option.path || option.display_label"></span>
+                                                            <span class="shrink-0 text-base leading-none" aria-hidden="true">×</span>
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </div>
+
+                                            <div class="mt-3 max-h-80 overflow-y-auto rounded-xl border border-slate-100">
                                                 <template x-for="option in filteredCategoryOptions()" :key="option.id">
-                                                    <button type="button" class="flex w-full items-start justify-between gap-4 border-b border-slate-100 px-4 py-3 text-left text-sm transition last:border-b-0 hover:bg-blue-50" :class="String(draftItem.category_id) === String(option.id) ? 'bg-blue-50 text-blue-800' : 'bg-white text-slate-700'" @click="selectCategory(option)">
-                                                        <span class="min-w-0">
+                                                    <button
+                                                        type="button"
+                                                        class="flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3 text-left text-sm transition last:border-b-0"
+                                                        :class="isCategorySelected(option.id) ? 'bg-blue-50 text-blue-800' : (isCategoryAlreadyAdded(option.id) ? 'bg-slate-50 text-slate-500 hover:bg-amber-50' : 'bg-white text-slate-700 hover:bg-blue-50')"
+                                                        @click="toggleCategorySelection(option)"
+                                                        :aria-pressed="isCategorySelected(option.id)"
+                                                    >
+                                                        <span
+                                                            class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border text-xs font-black"
+                                                            :class="isCategorySelected(option.id) ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white text-transparent'"
+                                                            aria-hidden="true"
+                                                        >
+                                                            <span x-show="isCategorySelected(option.id)" x-cloak>✓</span>
+                                                        </span>
+                                                        <span class="min-w-0 flex-1">
                                                             <span class="block font-black text-brand-ink" x-text="option.display_label"></span>
                                                             <span class="mt-1 block text-xs font-medium text-slate-500" x-text="option.path"></span>
                                                         </span>
-                                                        <span class="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-600" x-text="option.level_label"></span>
+                                                        <span class="flex shrink-0 flex-col items-end gap-1">
+                                                            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-600" x-text="option.level_label"></span>
+                                                            <span x-show="isCategoryAlreadyAdded(option.id) && !isCategorySelected(option.id)" x-cloak class="text-[10px] font-black uppercase tracking-wider text-amber-700">Already added</span>
+                                                        </span>
                                                     </button>
                                                 </template>
                                                 <div x-show="filteredCategoryOptions().length === 0" x-cloak class="px-4 py-6 text-center text-sm font-bold text-slate-500">
@@ -403,7 +614,7 @@
                                                 </div>
                                             </div>
 
-                                            <p class="mt-3 text-xs font-bold text-slate-500">Tip: choose a parent category for broad cards, a subcategory for more specific cards, or a sub-subcategory for the most specific homepage card.</p>
+                                            <p class="mt-3 text-xs font-bold text-slate-500">Tip: use the filters and search, select several values, then add them together. Existing values are marked “Already added” and cannot be duplicated.</p>
                                         </div>
                                     </div>
                                 @elseif($field === 'description')
@@ -418,8 +629,11 @@
                             @endforeach
                         </div>
 
+                        <div x-show="itemError" x-cloak class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700" x-text="itemError"></div>
+                        <div x-show="itemNotice" x-cloak class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800" x-text="itemNotice"></div>
+
                         <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-                            <button type="button" class="btn btn-red" @click="saveItem()" x-text="editingIndex === null ? '+ Add Item to List' : 'Update Item in List'"></button>
+                            <button type="button" class="btn btn-red" @click="saveItem()" x-text="saveButtonLabel()"></button>
                             <button type="button" class="btn btn-white" x-show="editingIndex !== null" x-cloak @click="resetItemDraft()">Cancel Editing</button>
                             <p class="text-xs font-bold text-slate-500 sm:ml-auto">The section is saved only after you click “Update Section”.</p>
                         </div>

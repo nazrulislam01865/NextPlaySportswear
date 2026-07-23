@@ -572,40 +572,49 @@ class ProductCatalogService
             ->all();
     }
 
-    public function featured(int $limit = 8): array
+    public function featured(?int $limit = 8): array
     {
-        $limit = max(1, min($limit, 24));
+        $normalizedLimit = $limit === null ? null : max(1, min($limit, 24));
+        $cacheIndex = $normalizedLimit === null ? 'all' : (string) $normalizedLimit;
 
-        if (array_key_exists($limit, $this->featuredProducts)) {
-            return $this->featuredProducts[$limit];
+        if (array_key_exists($cacheIndex, $this->featuredProducts)) {
+            return $this->featuredProducts[$cacheIndex];
         }
 
         if (Schema::hasTable('products')) {
             $cacheVersion = $this->catalogCacheVersionSuffix();
-            $cacheKey = 'catalog.homepage-featured.'.$cacheVersion.'.'.$limit;
+            $cacheKey = 'catalog.homepage-featured.'.$cacheVersion.'.'.$cacheIndex;
             $ttl = max(60, (int) config('catalog.category_cache_seconds', 1800));
 
             $databaseProducts = Cache::remember(
                 $cacheKey,
                 $ttl,
-                function () use ($limit): array {
-                    $products = Product::query()
+                function () use ($normalizedLimit): array {
+                    $featuredQuery = Product::query()
                         ->published()
                         ->featured()
                         ->with($this->listingRelations())
                         ->orderBy('sort_order')
                         ->orderByDesc('published_at')
-                        ->limit($limit)
-                        ->get();
+                        ->orderByDesc('updated_at');
 
-                    if ($products->count() < $limit) {
+                    if ($normalizedLimit !== null) {
+                        $featuredQuery->limit($normalizedLimit);
+                    }
+
+                    $products = $featuredQuery->get();
+
+                    // Limited callers keep the historical fallback behaviour.
+                    // The homepage requests all featured products and therefore
+                    // only receives products explicitly marked as featured.
+                    if ($normalizedLimit !== null && $products->count() < $normalizedLimit) {
                         $fallback = Product::query()
                             ->published()
                             ->whereNotIn('id', $products->modelKeys())
                             ->with($this->listingRelations())
                             ->orderBy('sort_order')
                             ->orderByDesc('published_at')
-                            ->limit($limit - $products->count())
+                            ->limit($normalizedLimit - $products->count())
                             ->get();
 
                         $products = $products->concat($fallback);
@@ -619,23 +628,29 @@ class ProductCatalogService
             );
 
             if ($databaseProducts !== []) {
-                return $this->featuredProducts[$limit] = $databaseProducts;
+                return $this->featuredProducts[$cacheIndex] = $databaseProducts;
             }
         }
 
         $fallback = collect($this->products())
             ->map(fn (array $product): array => $this->hydrateProduct($product));
-        $featured = $fallback->where('is_featured', true)->take($limit)->values();
+        $featured = $fallback->where('is_featured', true)->values();
 
-        if ($featured->count() < $limit) {
+        if ($normalizedLimit === null) {
+            return $this->featuredProducts[$cacheIndex] = $featured->all();
+        }
+
+        $featured = $featured->take($normalizedLimit)->values();
+
+        if ($featured->count() < $normalizedLimit) {
             $featured = $featured->concat(
                 $fallback
                     ->reject(fn (array $product): bool => $featured->contains('slug', $product['slug']))
-                    ->take($limit - $featured->count())
+                    ->take($normalizedLimit - $featured->count())
             );
         }
 
-        return $this->featuredProducts[$limit] = $featured->values()->all();
+        return $this->featuredProducts[$cacheIndex] = $featured->values()->all();
     }
 
     public function latest(int $limit = 4): array
@@ -657,7 +672,7 @@ class ProductCatalogService
                 fn (): array => Product::query()
                     ->published()
                     ->with($this->listingRelations())
-                    ->orderByDesc('published_at')
+                    ->orderByDesc('updated_at')
                     ->orderByDesc('created_at')
                     ->orderByDesc('id')
                     ->limit($limit)

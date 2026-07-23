@@ -3,7 +3,6 @@
 @php
     $section = is_array($section) ? $section : [];
     $text = static fn (string $key, string $fallback = ''): string => filled(data_get($section, $key)) ? (string) data_get($section, $key) : $fallback;
-    $cards = collect(is_iterable($categories) ? $categories : [])->filter(fn ($category) => is_array($category))->take(5)->values();
     $subtitle = $text('description', 'Built for teams. Designed to perform.');
 
     $visualPresets = [
@@ -39,15 +38,18 @@
         ],
     ];
 
-    if ($cards->count() < count($visualPresets)) {
-        for ($slot = $cards->count(); $slot < count($visualPresets); $slot++) {
-            $cards->push([
-                'title' => $visualPresets[$slot]['title'],
-                'short_title' => $visualPresets[$slot]['title'],
-                'description' => $visualPresets[$slot]['description'],
-                'url' => route('products.index'),
-            ]);
-        }
+    $cards = collect(is_iterable($categories) ? $categories : [])
+        ->filter(fn ($category): bool => is_array($category))
+        ->values();
+
+    // Keep an attractive automatic fallback only when the catalog has no cards.
+    // Admin-selected cards are never padded, replaced, or limited.
+    if ($cards->isEmpty()) {
+        $cards = collect($visualPresets)->map(fn (array $preset): array => array_merge($preset, [
+            'short_title' => $preset['title'],
+            'url' => route('products.index'),
+            'link_label' => 'Shop Category',
+        ]));
     }
 @endphp
 
@@ -62,18 +64,22 @@
         </div>
 
         @if($cards->isNotEmpty())
-            <div class="np-best-gear-layout" aria-label="Best-selling team gear categories">
+            <div
+                class="np-best-gear-layout {{ $cards->count() > 5 ? 'np-best-gear-layout--expanded' : '' }}"
+                aria-label="Best-selling team gear categories"
+                data-card-count="{{ $cards->count() }}"
+            >
                 @foreach($cards as $index => $category)
                     @php
                         $preset = $visualPresets[$index] ?? [];
                         $number = str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT);
                         $isFeatured = $index === 0;
-                        $title = (string) ($preset['title'] ?? ($category['short_title'] ?? $category['title'] ?? 'Category'));
-                        $description = (string) ($preset['description'] ?? \Illuminate\Support\Str::limit(strip_tags((string) ($category['description'] ?? 'Shop custom team gear for clubs, schools, events, and branded programs.')), $isFeatured ? 155 : 125));
-                        $image = (string) ($preset['image'] ?? ($category['image'] ?? asset('images/category-placeholder.svg')));
-                        $alt = (string) ($preset['alt'] ?? ($category['alt'] ?? $title.' category image'));
-                        $url = (string) ($category['url'] ?? route('products.index'));
-                        $label = 'Shop Category';
+                        $title = trim((string) ($category['short_title'] ?? $category['title'] ?? '')) ?: (string) ($preset['title'] ?? 'Category');
+                        $description = trim(strip_tags((string) ($category['description'] ?? ''))) ?: (string) ($preset['description'] ?? 'Shop custom team gear for clubs, schools, events, and branded programs.');
+                        $image = trim((string) ($category['image'] ?? '')) ?: (string) ($preset['image'] ?? asset('images/category-placeholder.svg'));
+                        $alt = trim((string) ($category['alt'] ?? '')) ?: (string) ($preset['alt'] ?? $title.' category image');
+                        $url = trim((string) ($category['url'] ?? '')) ?: route('products.index');
+                        $label = trim((string) ($category['link_label'] ?? '')) ?: 'Shop Category';
                     @endphp
 
                     <a

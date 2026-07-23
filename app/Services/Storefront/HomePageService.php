@@ -16,6 +16,8 @@ class HomePageService
     }
     public function getHomePageData(): array
     {
+        $latestProductsFeed = $this->latestProductsFeed();
+
         return [
             'seo' => $this->seo(),
             'slides' => $this->homepageSlider->slides(),
@@ -23,7 +25,8 @@ class HomePageService
             'categories' => $this->categories(),
             'buyerPaths' => $this->sectionItems('buyer_paths'),
             'featuredProducts' => $this->featuredProducts(),
-            'latestProducts' => $this->latestProducts(),
+            'latestProducts' => $latestProductsFeed['products'],
+            'latestProductsSignature' => $latestProductsFeed['signature'],
             'bestSellingProducts' => $this->bestSellingProducts(),
             'popularSportsCategories' => $this->popularSportsCategories(),
             'bestSellingGearCategories' => $this->bestSellingGearCategories(),
@@ -50,14 +53,13 @@ class HomePageService
 
     private function categories(): array
     {
-        return $this->categoriesForSection('categories', fn (): array => $this->automaticFeaturedCategories(), 6);
+        return $this->categoriesForSection('categories', fn (): array => $this->automaticFeaturedCategories());
     }
 
     private function automaticFeaturedCategories(): array
     {
         return collect($this->categoryCatalog->collections())
             ->filter(fn (array $category): bool => (bool) ($category['is_featured'] ?? false))
-            ->take(6)
             ->values()
             ->all();
     }
@@ -113,12 +115,29 @@ class HomePageService
 
     private function featuredProducts(): array
     {
-        return $this->productCatalog->featured(8);
+        return $this->productCatalog->featured(null);
     }
 
-    private function latestProducts(): array
+    /**
+     * Return the current Latest Products storefront payload.
+     *
+     * The signature lets an already-open homepage check for catalog changes
+     * without reloading the whole page or replacing unchanged markup.
+     *
+     * @return array{products: array<int, array<string, mixed>>, section: array<string, mixed>, signature: string}
+     */
+    public function latestProductsFeed(): array
     {
-        return $this->productCatalog->latest(4);
+        $products = $this->productCatalog->latest(12);
+        $section = collect($this->homepageSections->sections())
+            ->first(fn (array $item): bool => ($item['key'] ?? null) === 'latest_products'
+                || ($item['component'] ?? null) === 'latest_products');
+
+        return [
+            'products' => $products,
+            'section' => is_array($section) ? $section : [],
+            'signature' => hash('sha256', serialize([$products, $section])),
+        ];
     }
 
     private function bestSellingProducts(): array
@@ -128,17 +147,15 @@ class HomePageService
 
     private function popularSportsCategories(): array
     {
-        return $this->categoriesForSection('popular_categories', fn (): array => collect($this->categoryCatalog->popularSportswearCategories())
-            ->take(8)
+        return $this->categoriesForSection('popular_categories', fn (): array => collect($this->categoryCatalog->popularSportswearCategories(null))
             ->values()
-            ->all(), 8);
+            ->all());
     }
 
     private function bestSellingGearCategories(): array
     {
         $items = collect($this->sectionItems('best_selling_gear'))
             ->filter(fn (array $item): bool => (int) ($item['category_id'] ?? 0) > 0 || filled($item['title'] ?? null))
-            ->take(5)
             ->values();
 
         if ($items->isNotEmpty()) {
@@ -150,7 +167,7 @@ class HomePageService
                 ->values()
                 ->all();
 
-            $categoriesById = collect($this->categoryCatalog->categoriesByIds($categoryIds, 5))->keyBy('id');
+            $categoriesById = collect($this->categoryCatalog->categoriesByIds($categoryIds, max(1, count($categoryIds))))->keyBy('id');
 
             $cards = $items
                 ->map(function (array $item) use ($categoriesById): array {
@@ -283,17 +300,17 @@ class HomePageService
     private function sports(): array
     {
         return $this->categoriesForSection('shop_by_sport', fn (): array => collect($this->categoryCatalog->sports())
-            ->take(10)
             ->values()
-            ->all(), 10);
+            ->all());
     }
 
-    private function categoriesForSection(string $key, callable $fallback, int $limit): array
+    private function categoriesForSection(string $key, callable $fallback, ?int $limit = null): array
     {
         $ids = $this->categoryIdsForSection($key);
 
         if ($ids !== []) {
-            $selected = $this->categoryCatalog->categoriesByIds($ids, $limit);
+            $selectedLimit = $limit ?? count($ids);
+            $selected = $this->categoryCatalog->categoriesByIds($ids, $selectedLimit);
 
             if ($selected !== []) {
                 return $selected;

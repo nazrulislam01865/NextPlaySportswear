@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\Category;
 use App\Rules\SafePublicUrl;
 use App\Support\HomepageSectionRegistry;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Validator;
 
 class HomepageSectionRequest extends FormRequest
@@ -33,7 +35,7 @@ class HomepageSectionRequest extends FormRequest
             'mobile_image_url' => ['nullable', 'string', 'max:2048', new SafePublicUrl()],
             'mobile_image_alt' => ['nullable', 'string', 'max:255'],
             'remove_mobile_image' => ['nullable', 'boolean'],
-            'items' => ['nullable', 'array', 'max:30'],
+            'items' => ['nullable', 'array'],
             'items.*.icon' => ['nullable', 'string', 'max:20'],
             'items.*.title' => ['nullable', 'string', 'max:255'],
             'items.*.subtitle' => ['nullable', 'string', 'max:255'],
@@ -42,9 +44,43 @@ class HomepageSectionRequest extends FormRequest
             'items.*.label' => ['nullable', 'string', 'max:160'],
             'items.*.image_url' => ['nullable', 'string', 'max:2048', new SafePublicUrl()],
             'items.*.image_alt' => ['nullable', 'string', 'max:255'],
-            'items.*.category_id' => ['nullable', 'integer', 'distinct', 'exists:categories,id'],
+            // Duplicate category selections are checked below so the user sees
+            // the real category names instead of technical array field names.
+            'items.*.category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'is_active' => ['nullable', 'boolean'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:1000000'],
+        ];
+    }
+
+    /** @return array<string, string> */
+    public function messages(): array
+    {
+        return [
+            'items.array' => 'The homepage item list could not be read. Please refresh the page and try again.',
+            'items.*.category_id.integer' => 'One of the selected homepage categories is invalid. Please select it again.',
+            'items.*.category_id.exists' => 'One of the selected categories is no longer available. Please choose another category.',
+            'items.*.icon.max' => 'An item icon or set of initials cannot be longer than 20 characters.',
+            'items.*.title.max' => 'An item title cannot be longer than 255 characters.',
+            'items.*.subtitle.max' => 'An item subtitle cannot be longer than 255 characters.',
+            'items.*.description.max' => 'An item description cannot be longer than 2,000 characters.',
+            'items.*.label.max' => 'An item button label cannot be longer than 160 characters.',
+            'items.*.image_alt.max' => 'An item image description cannot be longer than 255 characters.',
+        ];
+    }
+
+    /** @return array<string, string> */
+    public function attributes(): array
+    {
+        return [
+            'items.*.icon' => 'item icon or initials',
+            'items.*.title' => 'item title',
+            'items.*.subtitle' => 'item subtitle',
+            'items.*.description' => 'item description',
+            'items.*.url' => 'item link',
+            'items.*.label' => 'item button label',
+            'items.*.image_url' => 'item image URL',
+            'items.*.image_alt' => 'item image description',
+            'items.*.category_id' => 'selected category',
         ];
     }
 
@@ -67,6 +103,7 @@ class HomepageSectionRequest extends FormRequest
             $key = (string) $this->route('key');
             $definition = HomepageSectionRegistry::definition($key);
             $fields = $definition['fields'] ?? [];
+            $itemFields = $definition['item_fields'] ?? [];
 
             if (in_array('buttons', $fields, true)) {
                 if (filled($this->input('primary_label')) && blank($this->input('primary_url'))) {
@@ -76,6 +113,10 @@ class HomepageSectionRequest extends FormRequest
                 if (filled($this->input('secondary_label')) && blank($this->input('secondary_url'))) {
                     $validator->errors()->add('secondary_url', 'Enter the secondary button destination or remove the label.');
                 }
+            }
+
+            if (in_array('category_id', $itemFields, true)) {
+                $this->addDuplicateCategoryErrors($validator);
             }
         });
     }
@@ -96,6 +137,87 @@ class HomepageSectionRequest extends FormRequest
         $data['sort_order'] = (int) $this->input('sort_order', 0);
 
         return $data;
+    }
+
+    private function addDuplicateCategoryErrors(Validator $validator): void
+    {
+        $positionsByCategory = collect((array) $this->input('items', []))
+            ->map(function ($item, int $index): ?array {
+                if (! is_array($item)) {
+                    return null;
+                }
+
+                $categoryId = (int) ($item['category_id'] ?? 0);
+
+                return $categoryId > 0
+                    ? ['category_id' => $categoryId, 'position' => $index + 1]
+                    : null;
+            })
+            ->filter()
+            ->groupBy('category_id')
+            ->map(fn (Collection $rows): array => $rows->pluck('position')->map(fn ($position): int => (int) $position)->values()->all())
+            ->filter(fn (array $positions): bool => count($positions) > 1);
+
+        if ($positionsByCategory->isEmpty()) {
+            return;
+        }
+
+        $categoryLabels = $this->categoryLabels($positionsByCategory->keys()->map(fn ($id): int => (int) $id)->all());
+
+        foreach ($positionsByCategory as $categoryId => $positions) {
+            $label = $categoryLabels[(int) $categoryId] ?? 'Category #'.(int) $categoryId;
+            $validator->errors()->add(
+                'items',
+                sprintf(
+                    '“%s” is listed more than once (items %s). Keep it only once or choose a different category.',
+                    $label,
+                    $this->formatPositions($positions),
+                ),
+            );
+        }
+    }
+
+    /**
+     * @param array<int, int> $categoryIds
+     * @return array<int, string>
+     */
+    private function categoryLabels(array $categoryIds): array
+    {
+        if ($categoryIds === []) {
+            return [];
+        }
+
+        return Category::query()
+            ->with('ancestors')
+            ->whereKey($categoryIds)
+            ->get()
+            ->mapWithKeys(function (Category $category): array {
+                $parts = $category->ancestors
+                    ->sortByDesc(fn (Category $ancestor): int => (int) ($ancestor->pivot?->depth ?? 0))
+                    ->map(fn (Category $ancestor): string => (string) ($ancestor->short_title ?: $ancestor->displayLabel()))
+                    ->filter()
+                    ->values()
+                    ->all();
+
+                $parts[] = (string) ($category->short_title ?: $category->displayLabel());
+
+                return [(int) $category->id => implode(' › ', array_values(array_unique(array_filter($parts))))];
+            })
+            ->all();
+    }
+
+    /** @param array<int, int> $positions */
+    private function formatPositions(array $positions): string
+    {
+        $positions = array_values(array_unique(array_map('intval', $positions)));
+
+        if (count($positions) <= 1) {
+            return (string) ($positions[0] ?? '');
+        }
+
+        $last = array_pop($positions);
+
+        return implode(', ', $positions).' and '.$last;
     }
 
     /** @return array<int, array<string, string>> */
