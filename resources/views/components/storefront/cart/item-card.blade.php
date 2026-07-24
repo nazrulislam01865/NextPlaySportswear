@@ -8,6 +8,9 @@
     $maximumQuantity = max($minimumQuantity, (int) ($item['quantity_max'] ?? 999));
     $decreaseQuantity = max($minimumQuantity, $quantity - 1);
     $increaseQuantity = min($maximumQuantity, $quantity + 1);
+    $fulfillment = (array) ($customization['fulfillment'] ?? []);
+    $production = is_array($fulfillment['production'] ?? null) ? $fulfillment['production'] : null;
+    $shipping = is_array($fulfillment['shipping'] ?? null) ? $fulfillment['shipping'] : null;
 @endphp
 
 <article class="cart-item-card overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-card" data-cart-item-card data-cart-item-key="{{ $item['key'] }}">
@@ -38,7 +41,7 @@
                 <div class="cart-item-total shrink-0 rounded-2xl bg-slate-50 px-4 py-3 text-left sm:text-right">
                     <p class="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">Item total</p>
                     <p class="mt-1 text-2xl font-black leading-none text-brand-ink" data-cart-item-money="line_total">${{ number_format($item['line_total'], 2) }}</p>
-                    <p class="mt-1 text-xs font-semibold text-slate-500"><span data-cart-item-money="unit_total">${{ number_format($item['unit_price'] + $item['customization_unit_price'], 2) }}</span> each</p>
+                    <p class="mt-1 text-xs font-semibold text-slate-500"><span data-cart-item-money="unit_total">${{ number_format($item['unit_price'] + $item['customization_unit_price'] + ($item['shipping_unit_price'] ?? 0), 2) }}</span> each</p>
                 </div>
             </div>
 
@@ -71,7 +74,30 @@
                 </div>
 
                 <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                    <p class="text-[11px] font-black uppercase tracking-[.14em] text-brand-red">Production notes</p>
+                    <p class="text-[11px] font-black uppercase tracking-[.14em] text-brand-red">Production &amp; shipping</p>
+                    <dl class="mt-3 grid gap-2 text-sm">
+                        @if($production)
+                            <div class="cart-info-row">
+                                <dt>Production</dt>
+                                <dd>
+                                    {{ $production['label'] ?? 'Standard production' }}
+                                    <span class="block text-xs font-bold {{ ($production['amount'] ?? 0) > 0 ? 'text-brand-red' : 'text-green-700' }}">{{ $production['display_amount'] ?? 'Included' }}</span>
+                                    @if(($production['minimum_days'] ?? 0) > 0 || ($production['maximum_days'] ?? 0) > 0)
+                                        <span class="block text-xs text-slate-500">{{ $production['minimum_days'] ?? 0 }}–{{ $production['maximum_days'] ?? $production['minimum_days'] ?? 0 }} business days</span>
+                                    @endif
+                                </dd>
+                            </div>
+                        @endif
+                        @if($shipping)
+                            <div class="cart-info-row">
+                                <dt>Shipping</dt>
+                                <dd>
+                                    {{ $shipping['label'] ?? 'Selected shipping' }}
+                                    <span class="block text-xs text-slate-500">{{ $shipping['display_amount'] ?? 'Included' }}</span>
+                                </dd>
+                            </div>
+                        @endif
+                    </dl>
                     <p class="mt-3 text-sm leading-6 text-slate-600">{{ $customization['notes'] ?: 'No special notes added yet.' }}</p>
                     <span class="mt-3 inline-flex rounded-full bg-green-50 px-3 py-1 text-xs font-black text-green-700">Proof review before production</span>
                 </div>
@@ -80,9 +106,10 @@
     </div>
 
     <div class="cart-item-actions flex flex-col gap-3 border-t border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-        <div class="flex flex-col gap-2">
-            <p class="text-xs font-black uppercase tracking-wide text-slate-600">Quantity</p>
-            <div class="cart-quantity-stepper inline-flex items-center overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
+        <div class="cart-quantity-block">
+            <div class="cart-quantity-control">
+                <p class="cart-quantity-label">Quantity</p>
+                <div class="cart-quantity-stepper inline-flex items-center overflow-hidden border border-slate-300 bg-white shadow-sm">
                 <form method="POST" action="{{ route('cart.items.update', $item['key']) }}" class="m-0" data-cart-quantity-form>
                     @csrf
                     @method('PATCH')
@@ -110,12 +137,13 @@
                         @disabled($quantity >= $maximumQuantity)
                     >+</button>
                 </form>
+                </div>
             </div>
-            <p class="text-xs font-semibold text-slate-500">Price updates automatically from the matching quantity tier.</p>
+            <p class="cart-quantity-help">Tier price updates automatically.</p>
         </div>
 
         <div class="grid gap-2 sm:flex sm:items-center">
-            <a href="{{ $product['url'] }}#customize" class="btn btn-white w-full sm:w-auto">Edit Options</a>
+            <a href="{{ route('products.show', ['slug' => $product['slug'], 'cart_item' => $item['key']]).'#configure-product' }}" class="btn btn-white w-full sm:w-auto">Edit Options</a>
             <form method="POST" action="{{ route('cart.items.destroy', $item['key']) }}" data-cart-remove-form>
                 @csrf
                 @method('DELETE')

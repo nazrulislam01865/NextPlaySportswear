@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\ProductWishlist;
 use App\Services\Cart\CartService;
 use App\Services\Catalog\NavigationService;
 use App\Services\Storefront\HomepageSliderService;
@@ -44,7 +45,17 @@ class AppServiceProvider extends ServiceProvider
             $cartSummary = $cartService->summary();
             $cartItems = collect($cartSummary['items'] ?? [])->values();
 
+            $customer = auth('web')->user();
+            $wishlistItemCount = $customer?->isCustomer()
+                ? ProductWishlist::query()
+                    ->where('user_id', $customer->getKey())
+                    ->whereHas('product', fn ($query) => $query->published())
+                    ->count()
+                : 0;
+
             $view->with('cartItemCount', (int) ($cartSummary['quantity'] ?? 0));
+            $view->with('wishlistItemCount', $wishlistItemCount);
+            $view->with('wishlistAuthenticated', $customer?->isCustomer() ?? false);
             $view->with('headerCart', [
                 'items' => $cartItems->take(4)->all(),
                 'total_items' => $cartItems->count(),
@@ -62,6 +73,20 @@ class AppServiceProvider extends ServiceProvider
             $view->with('storefrontMenus', app(NavigationService::class)->storefrontMenus());
         });
 
+        RateLimiter::for('admin-login', function (Request $request): array {
+            $ip = (string) ($request->ip() ?: 'unknown');
+            $email = strtolower(trim((string) $request->input('email')));
+            $emailFingerprint = hash('sha256', substr($email, 0, 190));
+
+            // Keep brute-force protection without blocking a legitimate admin
+            // after a few accidental double-clicks or validation retries.
+            return [
+                Limit::perMinute(30)->by('admin-login-ip:'.$ip),
+                Limit::perMinute(15)->by('admin-login-account:'.$ip.':'.$emailFingerprint),
+            ];
+        });
+
+
         RateLimiter::for('contact', function (Request $request): array {
             $email = strtolower(trim((string) $request->input('email')));
             $emailFingerprint = hash('sha256', substr($email, 0, 190));
@@ -72,6 +97,23 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perHour(20)->by('contact-ip-hour:'.$ip),
                 Limit::perHour(10)->by('contact-email-hour:'.$emailFingerprint),
             ];
+        });
+
+
+        RateLimiter::for('checkout-step', function (Request $request): Limit {
+            $identity = (string) ($request->user('web')?->getAuthIdentifier() ?: $request->ip() ?: 'guest');
+            $routeName = (string) ($request->route()?->getName() ?: $request->path());
+
+            // Each checkout step gets an independent bucket. This avoids the
+            // previous nested numeric throttles counting every request twice
+            // and incorrectly returning HTTP 429 during a normal checkout.
+            return Limit::perMinute(20)->by('checkout-step:'.$identity.':'.$routeName);
+        });
+
+        RateLimiter::for('checkout-place-order', function (Request $request): Limit {
+            $identity = (string) ($request->user('web')?->getAuthIdentifier() ?: $request->ip() ?: 'guest');
+
+            return Limit::perMinute(4)->by('checkout-place-order:'.$identity);
         });
     }
 }

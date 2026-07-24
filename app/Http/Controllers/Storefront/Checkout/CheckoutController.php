@@ -9,7 +9,6 @@ use App\Http\Requests\Storefront\Checkout\PaymentMethodRequest;
 use App\Http\Requests\Storefront\Checkout\PlaceOrderRequest;
 use App\Http\Requests\Storefront\Checkout\ReviewConfirmationRequest;
 use App\Http\Requests\Storefront\Checkout\ShippingAddressRequest;
-use App\Http\Requests\Storefront\Checkout\ShippingMethodRequest;
 use App\Services\Checkout\CheckoutService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -94,7 +93,7 @@ class CheckoutController extends Controller
 
         $this->checkout->storeBillingAddress($request->validated(), $request->user());
 
-        return redirect()->route('checkout.shipping-method')->with('status', 'Billing preference saved.');
+        return redirect()->route('checkout.payment-method')->with('status', 'Billing preference saved. Your product shipping and production selections were carried forward automatically.');
     }
 
     public function shippingMethod(Request $request): View|RedirectResponse
@@ -103,26 +102,28 @@ class CheckoutController extends Controller
             return $redirect;
         }
 
-        if ($redirect = $this->guardStep('shipping_method')) {
+        if ($redirect = $this->guardStep('payment')) {
             return $redirect;
         }
 
-        return $this->view('storefront.checkout.shipping-method', 'Shipping Method', 'Select a shipping method based on order timeline, production needs, and delivery urgency.', $request, 'shipping_method');
+        return redirect()
+            ->route('checkout.payment-method')
+            ->with('status', 'Shipping and production methods were already selected for each product and do not need to be chosen again.');
     }
 
-    public function storeShippingMethod(ShippingMethodRequest $request): RedirectResponse
+    public function storeShippingMethod(Request $request): RedirectResponse
     {
         if ($redirect = $this->guardCart()) {
             return $redirect;
         }
 
-        if ($redirect = $this->guardStep('shipping_method')) {
+        if ($redirect = $this->guardStep('payment')) {
             return $redirect;
         }
 
-        $this->checkout->storeShippingMethod($request->validated());
-
-        return redirect()->route('checkout.payment-method')->with('status', 'Shipping method selected.');
+        return redirect()
+            ->route('checkout.payment-method')
+            ->with('status', 'Shipping and production methods were carried from your configured cart items.');
     }
 
     public function paymentMethod(Request $request): View|RedirectResponse
@@ -163,7 +164,7 @@ class CheckoutController extends Controller
             return $redirect;
         }
 
-        return $this->view('storefront.checkout.review', 'Order Review', 'Review contact, shipping, billing, payment, customization, and total before placing the order.', $request, 'review');
+        return $this->view('storefront.checkout.review', 'Review & Place Order', 'Review contact, shipping, billing, payment, customization, and the final total, then place the order once.', $request, 'review');
     }
 
     public function storeReview(ReviewConfirmationRequest $request): RedirectResponse
@@ -178,7 +179,7 @@ class CheckoutController extends Controller
 
         $this->checkout->confirmReview($request->validated());
 
-        return redirect()->route('checkout.place-order')->with('status', 'Order details confirmed.');
+        return redirect()->route('checkout.review')->with('status', 'Order details confirmed. You can now place the order on this page.');
     }
 
     public function placeOrder(Request $request): View|RedirectResponse
@@ -187,11 +188,7 @@ class CheckoutController extends Controller
             return $redirect;
         }
 
-        if ($redirect = $this->guardStep('place')) {
-            return $redirect;
-        }
-
-        return $this->view('storefront.checkout.place-order', 'Place Order', 'Final secure order placement action with confirmation, protection, and processing state.', $request, 'place');
+        return redirect()->route('checkout.review');
     }
 
     public function submitOrder(PlaceOrderRequest $request): RedirectResponse
@@ -200,11 +197,13 @@ class CheckoutController extends Controller
             return $redirect;
         }
 
-        if ($redirect = $this->guardStep('place')) {
+        if ($redirect = $this->guardStep('review')) {
             return $redirect;
         }
 
-        $order = $this->checkout->placeOrder($request->validated(), $request->user());
+        $validated = $request->validated();
+        $this->checkout->confirmReview($validated);
+        $order = $this->checkout->placeOrder($validated, $request->user());
 
         return redirect()->route('order.confirmation')->with('status', 'Order snapshot created securely.');
     }

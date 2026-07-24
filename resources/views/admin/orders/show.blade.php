@@ -44,7 +44,8 @@
                     <h3 class="text-lg font-black">Billing & Delivery</h3>
                     <div class="mt-3 text-sm leading-6 text-slate-600">
                         <p><b class="text-slate-900">Billing:</b> {{ data_get($order->billing_address, 'same_as_shipping') ? 'Same as shipping address' : (trim(($billing['address_line_1'] ?? '').' '.($billing['city'] ?? '')) ?: 'Not provided') }}</p>
-                        <p><b class="text-slate-900">Shipping method:</b> {{ data_get($order->shipping_method, 'title', data_get($order->shipping_method, 'label', 'Not selected')) }}</p>
+                        <p><b class="text-slate-900">Product shipping:</b> {{ data_get($order->shipping_method, 'title', data_get($order->shipping_method, 'label', 'Not selected')) }}</p>
+                        <p><b class="text-slate-900">Delivery estimate:</b> {{ data_get($order->shipping_method, 'eta', 'Calculated from the selected production and shipping methods') }}</p>
                         <p><b class="text-slate-900">Payment choice:</b> {{ data_get($order->payment_method, 'label', str(data_get($order->payment_method, 'method', 'pending'))->headline()) }}</p>
                         @if($order->customer_note)<p class="mt-2"><b class="text-slate-900">Customer note:</b> {{ $order->customer_note }}</p>@endif
                     </div>
@@ -152,6 +153,18 @@
         </div>
 
         <aside class="space-y-6 xl:sticky xl:top-28">
+            <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-card">
+                <h3 class="text-lg font-black">Order Totals</h3>
+                <div class="mt-4 grid gap-3 text-sm">
+                    <div class="flex justify-between gap-4"><span class="text-slate-500">Merchandise subtotal</span><strong>${{ number_format((float) $order->subtotal, 2) }}</strong></div>
+                    <div class="flex justify-between gap-4"><span class="text-slate-500">Customization charges</span><strong>${{ number_format($order->displayCustomizationTotal(), 2) }}</strong></div>
+                    <div class="flex justify-between gap-4"><span class="text-slate-500">Discount</span><strong class="text-green-700">-${{ number_format((float) $order->discount_total, 2) }}</strong></div>
+                    <div class="flex justify-between gap-4"><span class="text-slate-500">Shipping charges</span><strong>${{ number_format($order->displayShippingTotal(), 2) }}</strong></div>
+                    <div class="flex justify-between gap-4"><span class="text-slate-500">Tax</span><strong>${{ number_format((float) $order->tax_total, 2) }}</strong></div>
+                    <div class="flex justify-between gap-4 border-t border-slate-200 pt-4 text-lg"><span class="font-black">Grand total</span><strong>${{ number_format((float) $order->grand_total, 2) }}</strong></div>
+                </div>
+            </section>
+
             <form method="POST" action="{{ route('admin.orders.update', $order) }}" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-card">
                 @csrf @method('PATCH')
                 <h3 class="text-lg font-black">Update Order</h3>

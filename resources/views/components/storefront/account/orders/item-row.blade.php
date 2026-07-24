@@ -11,9 +11,13 @@
         </div>
         @unless($compact)
             @php($customization = (array) $item->customization)
+            @php($fulfillment = (array) ($customization['fulfillment'] ?? []))
             <div class="mt-3 grid gap-1 text-xs leading-5 text-slate-600">
                 @if(!empty($customization['design_option']))<p><b>Design:</b> {{ $customization['design_option'] }}</p>@endif
                 @if(!empty($customization['size_summary']))<p><b>Sizes:</b> {{ $customization['size_summary'] }}</p>@endif
+                @if(is_array($fulfillment['production'] ?? null))<p><b>Production:</b> {{ data_get($fulfillment, 'production.label', 'Standard production') }} · {{ data_get($fulfillment, 'production.display_amount', 'Included') }}</p>@endif
+                @if(is_array($fulfillment['shipping'] ?? null))<p><b>Shipping:</b> {{ data_get($fulfillment, 'shipping.label', 'Selected shipping') }} · {{ data_get($fulfillment, 'shipping.display_amount', 'Included') }}</p>@endif
+                @if(($fulfillment['estimated_minimum_days'] ?? 0) > 0 || ($fulfillment['estimated_maximum_days'] ?? 0) > 0)<p><b>Estimated production + delivery:</b> {{ $fulfillment['estimated_minimum_days'] ?? 0 }}–{{ $fulfillment['estimated_maximum_days'] ?? $fulfillment['estimated_minimum_days'] ?? 0 }} business days</p>@endif
                 @if(!empty($customization['notes']))<p><b>Notes:</b> {{ $customization['notes'] }}</p>@endif
             </div>
         @endunless

@@ -47,6 +47,12 @@ class User extends Authenticatable
         return $this->shoppingCarts()->where('status', 'active');
     }
 
+    /** @return HasMany<ProductWishlist> */
+    public function productWishlists(): HasMany
+    {
+        return $this->hasMany(ProductWishlist::class)->latest();
+    }
+
     /** @return HasMany<Order> */
     public function orders(): HasMany
     {

@@ -1,5 +1,36 @@
-@props(['product'])
+@props(['product', 'editItem' => null])
 @php
+    $isEditing = is_array($editItem) && filled($editItem['key'] ?? null);
+    $editCustomization = $isEditing ? (array) ($editItem['customization'] ?? []) : [];
+    $editConfiguration = $isEditing ? (array) ($editCustomization['configuration'] ?? []) : [];
+    $existingArtwork = collect($editCustomization['artwork_files'] ?? [])
+        ->filter(fn ($file) => is_array($file) && filled($file['path'] ?? null))
+        ->values()
+        ->map(function (array $file, int $index) use ($editItem): array {
+            $size = max(0, (int) ($file['size'] ?? 0));
+            $name = (string) ($file['original_name'] ?? 'Artwork file');
+            $extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+            $previewable = in_array($extension, ['png', 'jpg', 'jpeg', 'webp', 'svg'], true);
+
+            return [
+                'key' => 'existing:'.sha1((string) $file['path']),
+                'path' => (string) $file['path'],
+                'name' => $name,
+                'size' => $size,
+                'sizeLabel' => $size >= 1024 * 1024
+                    ? number_format($size / (1024 * 1024), 2).' MB'
+                    : max(1, (int) round($size / 1024)).' KB',
+                'existing' => true,
+                'extension' => $extension,
+                'previewable' => $previewable,
+                'url' => route('cart.items.artwork.show', [
+                    'cartItem' => (string) ($editItem['key'] ?? ''),
+                    'artworkIndex' => $index,
+                ]),
+            ];
+        })
+        ->all();
+
     $builderConfig = [
         'title' => $product['title'],
         'currency' => $product['currency'] ?? 'USD',
@@ -17,6 +48,20 @@
         'price_tiers' => $product['price_tiers'] ?? [],
         'price_table' => $product['price_table'] ?? [],
         'fabric_price_tables' => $product['fabric_price_tables'] ?? [],
+        'edit_mode' => $isEditing,
+        'edit_item_key' => $isEditing ? (string) $editItem['key'] : null,
+        'initial_state' => $isEditing ? [
+            'selections' => (array) ($editConfiguration['selections'] ?? []),
+            'multi_selections' => (array) ($editConfiguration['multi_selections'] ?? []),
+            'inputs' => (array) ($editConfiguration['inputs'] ?? []),
+            'quantities' => (array) ($editConfiguration['quantities'] ?? []),
+            'order_quantity' => (int) ($editItem['quantity'] ?? ($product['minimum_quantity'] ?? 1)),
+            'production_speed' => $editConfiguration['production_speed'] ?? null,
+            'shipping_method' => $editConfiguration['shipping_method'] ?? null,
+            'roster_enabled' => (bool) ($editConfiguration['roster_enabled'] ?? false),
+            'roster' => array_values((array) ($editConfiguration['roster'] ?? [])),
+            'artwork_files' => $existingArtwork,
+        ] : null,
     ];
 
     $allGroups = collect($product['option_groups'] ?? []);
@@ -113,14 +158,39 @@ window.productBuilderFabricPricing = function (config = {}) {
 <section id="configure-product" class="section-padding bg-slate-100" aria-labelledby="configure-product-heading">
     <div class="site-container" x-data="productBuilderFabricPricing(@js($builderConfig))" x-init="init()" @keydown.escape.window="closeSizeChart()">
         <div class="max-w-3xl">
-            <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">Product configuration</p>
-            <h2 id="configure-product-heading" class="mt-1 font-display text-3xl font-bold uppercase leading-tight tracking-tight text-brand-ink sm:text-5xl">Configure This Product</h2>
-            <p class="mt-3 text-sm leading-7 text-slate-600">The choices below are controlled separately for this product. Fixed details are shown for reference, while customer-customizable features can be selected before adding the item to cart.</p>
+            <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">{{ $isEditing ? 'Edit cart configuration' : 'Product configuration' }}</p>
+            <h2 id="configure-product-heading" class="mt-1 font-display text-3xl font-bold uppercase leading-tight tracking-tight text-brand-ink sm:text-5xl">{{ $isEditing ? 'Update This Product' : 'Configure This Product' }}</h2>
+            <p class="mt-3 text-sm leading-7 text-slate-600">{{ $isEditing ? 'Your saved cart selections are loaded below. Adjust only what you need, then update the existing cart item.' : 'The choices below are controlled separately for this product. Fixed details are shown for reference, while customer-customizable features can be selected before adding the item to cart.' }}</p>
         </div>
 
+        @if($isEditing)
+            <div class="mt-6 flex flex-col gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <strong class="block text-sm text-brand-ink">Editing the saved cart item</strong>
+                    <p class="mt-1 text-xs leading-5 text-slate-600">Sizes, customization choices, delivery options, roster entries, and retained artwork have been restored.</p>
+                </div>
+                <a href="{{ route('cart.index') }}" class="btn btn-white shrink-0">Cancel Editing</a>
+            </div>
+        @endif
+
+        @if($errors->any())
+            <div class="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
+                <strong class="block font-black">Please review the product configuration.</strong>
+                <ul class="mt-2 list-disc space-y-1 pl-5">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         <div class="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <form method="POST" enctype="multipart/form-data" action="{{ route('cart.items.store') }}" class="space-y-5" @submit="if(!validate()) $event.preventDefault()">
+            <form method="POST" enctype="multipart/form-data" action="{{ $isEditing ? route('cart.items.options.update', $editItem['key']) : route('cart.items.store') }}" class="space-y-5" @submit="if(!validate()) $event.preventDefault()">
                 @csrf
+                @if($isEditing)
+                    @method('PATCH')
+                    <input type="hidden" name="retained_artwork_json" :value="retainedArtworkJson()">
+                @endif
                 <input type="hidden" name="product_slug" value="{{ $product['slug'] }}">
                 <input type="hidden" name="quantity" :value="totalQuantity()">
                 <input type="hidden" name="design_option" :value="selectionSummary() || 'Configured product'">
@@ -128,7 +198,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                 <input type="hidden" name="size_summary" :value="sizeSummary()">
                 <input type="hidden" name="artwork_status" :value="artworkLabel()">
                 <input type="hidden" name="notes" :value="selectionSummary()">
-                <input type="hidden" name="configuration_json" x-model="configurationJson">
+                <input type="hidden" name="configuration_json" :value="configurationJson">
 
                 @if($fixedGroups->isNotEmpty())
                     <section class="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-card" aria-labelledby="included-details-title">
@@ -319,6 +389,36 @@ window.productBuilderFabricPricing = function (config = {}) {
                     </section>
                 @endif
 
+                @once
+                    <style>
+                        .np-artwork-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;margin-top:1rem}
+                        .np-artwork-preview-card{display:grid;grid-template-columns:76px minmax(0,1fr) auto;align-items:center;gap:.8rem;min-width:0;padding:.7rem;border:1px solid #e2e8f0;border-radius:16px;background:#f8fafc}
+                        .np-artwork-preview-media{display:grid;width:76px;height:76px;place-items:center;overflow:hidden;border:1px solid #dbe4ef;border-radius:12px;background:#fff}
+                        .np-artwork-preview-image{width:100%;height:100%;object-fit:contain;padding:.3rem}
+                        .np-artwork-file-icon{display:grid;width:100%;height:100%;place-items:center;background:linear-gradient(145deg,#eff6ff,#fff);font-size:.72rem;font-weight:900;letter-spacing:.08em;color:#1d4f91}
+                        .np-artwork-preview-copy{min-width:0}
+                        .np-artwork-preview-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#102342;font-size:.82rem}
+                        .np-artwork-preview-meta{display:block;margin-top:.2rem;color:#64748b;font-size:.75rem}
+                        .np-artwork-preview-actions{display:flex;align-items:center;gap:.45rem}
+                        .np-artwork-view-button,.np-artwork-remove-button{display:grid;min-width:38px;height:38px;place-items:center;border-radius:999px;font-size:.75rem;font-weight:900;text-decoration:none;transition:background-color .15s ease,border-color .15s ease,color .15s ease}
+                        .np-artwork-view-button{padding:0 .75rem;border:1px solid #bfd0e6;background:#fff;color:#1d4f91}
+                        .np-artwork-view-button:hover{border-color:#1d4f91;background:#eff6ff}
+                        .np-artwork-remove-button{border:1px solid #fecaca;background:#fff;color:#e11d2e}
+                        .np-artwork-remove-button:hover{background:#fff1f2}
+                        .np-artwork-view-button:focus-visible,.np-artwork-remove-button:focus-visible{outline:3px solid rgba(29,79,145,.28);outline-offset:2px}
+                        @media(max-width:767px){
+                            .np-artwork-preview-grid{grid-template-columns:1fr}
+                            .np-artwork-preview-card{grid-template-columns:64px minmax(0,1fr) auto}
+                            .np-artwork-preview-media{width:64px;height:64px}
+                        }
+                        @media(max-width:430px){
+                            .np-artwork-preview-card{grid-template-columns:58px minmax(0,1fr);align-items:start}
+                            .np-artwork-preview-media{width:58px;height:58px}
+                            .np-artwork-preview-actions{grid-column:1/-1;justify-content:flex-end}
+                        }
+                    </style>
+                @endonce
+
                 @if((bool) ($artworkUpload['enabled'] ?? false))
                     @php
                         $artworkTypes = collect($artworkUpload['accepted_types'] ?? ['pdf','svg','png','jpg','jpeg','webp'])
@@ -343,26 +443,66 @@ window.productBuilderFabricPricing = function (config = {}) {
                                     Up to {{ $artworkMaxFiles }} files · {{ $artworkMaxSize }} MB each · {{ $artworkTypes->map(fn ($type) => strtoupper($type))->implode(', ') }}
                                 </small>
                                 <input
+                                    x-ref="artworkInput"
                                     class="mt-4 w-full text-sm"
                                     type="file"
                                     name="artwork_files[]"
                                     multiple
                                     accept="{{ $artworkAccept }}"
                                     @change="handleArtworkFiles($event)"
-                                    @if($artworkUpload['required'] ?? false) required @endif
+                                    @if(($artworkUpload['required'] ?? false) && empty($existingArtwork)) required @endif
                                 >
                             </label>
 
                             <div x-show="artworkFiles.length" x-cloak class="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
                                 <div class="flex items-center justify-between gap-3">
-                                    <strong class="text-sm text-brand-ink">Selected artwork</strong>
-                                    <span class="text-xs font-black text-brand-blue"><span x-text="artworkFiles.length"></span> / {{ $artworkMaxFiles }} files</span>
+                                    <div>
+                                        <strong class="text-sm text-brand-ink">Selected artwork</strong>
+                                        <p class="mt-1 text-xs text-slate-500">Image files are shown below immediately. Use View for a larger preview or supported document files.</p>
+                                    </div>
+                                    <span class="shrink-0 text-xs font-black text-brand-blue"><span x-text="artworkFiles.length"></span> / {{ $artworkMaxFiles }} files</span>
                                 </div>
-                                <ul class="mt-3 grid gap-2 sm:grid-cols-2">
-                                    <template x-for="file in artworkFiles" :key="file.name + file.size">
-                                        <li class="min-w-0 rounded-xl bg-slate-50 px-3 py-2 text-xs">
-                                            <strong class="block truncate text-brand-ink" x-text="file.name"></strong>
-                                            <span class="text-slate-500" x-text="file.sizeLabel"></span>
+
+                                <ul class="np-artwork-preview-grid">
+                                    <template x-for="(file, fileIndex) in artworkFiles" :key="file.key || `${file.name}:${file.size}:${fileIndex}`">
+                                        <li class="np-artwork-preview-card">
+                                            <div class="np-artwork-preview-media">
+                                                <template x-if="artworkCanPreview(file)">
+                                                    <img
+                                                        :src="artworkFileUrl(file)"
+                                                        :alt="`Preview of ${file.name}`"
+                                                        class="np-artwork-preview-image"
+                                                    >
+                                                </template>
+                                                <template x-if="!artworkCanPreview(file)">
+                                                    <div class="np-artwork-file-icon" aria-hidden="true">
+                                                        <span x-text="artworkExtension(file)"></span>
+                                                    </div>
+                                                </template>
+                                            </div>
+
+                                            <div class="np-artwork-preview-copy">
+                                                <strong class="np-artwork-preview-name" x-text="file.name"></strong>
+                                                <span class="np-artwork-preview-meta" x-text="file.existing ? `${file.sizeLabel} · Saved` : `${file.sizeLabel} · New`"></span>
+                                            </div>
+
+                                            <div class="np-artwork-preview-actions">
+                                                <a
+                                                    x-show="artworkCanOpen(file)"
+                                                    x-cloak
+                                                    :href="artworkFileUrl(file)"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    class="np-artwork-view-button"
+                                                    :aria-label="`View ${file.name}`"
+                                                >View</a>
+                                                <button
+                                                    type="button"
+                                                    class="np-artwork-remove-button"
+                                                    @click="removeArtworkFile(fileIndex)"
+                                                    :aria-label="`Remove ${file.name}`"
+                                                >×</button>
+                                            </div>
                                         </li>
                                     </template>
                                 </ul>
@@ -484,7 +624,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                     </section>
                 @endif
 
-                <div class="xl:hidden"><button type="submit" class="btn btn-red w-full py-4">Add Configured Product</button></div>
+                <div class="xl:hidden"><button type="submit" class="btn btn-red w-full py-4">{{ $isEditing ? 'Update Cart Item' : 'Add Configured Product' }}</button></div>
             </form>
 
             <aside class="h-fit overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-hero xl:sticky xl:top-36">
@@ -495,7 +635,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                     <div class="flex justify-between gap-3"><span class="text-slate-500">Sizes</span><strong class="min-w-0 break-words text-right" x-text="sizeSummary() || 'No quantities selected'"></strong></div>
                     @if($rosterEnabled)<div class="flex justify-between gap-3"><span class="text-slate-500">Roster details</span><strong class="text-right" x-text="rosterSummary()"></strong></div>@endif
                     @if((bool) ($artworkUpload['enabled'] ?? false))<div class="flex justify-between gap-3"><span class="text-slate-500">Artwork</span><strong class="text-right" x-text="artworkLabel()"></strong></div>@endif
-                    @if(!empty($product['production_speeds']))<div x-show="currentProductionSpeed()" class="flex justify-between gap-3"><span class="text-slate-500">Production</span><strong class="text-right" x-text="speedLabel()"></strong></div>@endif
+                    @if(!empty($product['production_speeds']))<div x-show="currentProductionSpeed()" class="flex justify-between gap-3"><span class="text-slate-500">Production</span><strong class="text-right" x-text="`${speedLabel()} · ${chargeLabel(currentProductionSpeed())}`"></strong></div>@endif
                     @if(!empty($product['shipping_methods']))<div class="flex justify-between gap-3"><span class="text-slate-500">Shipping</span><strong class="text-right" x-text="shippingLabel()"></strong></div>@endif
                 </div>
                 <div class="space-y-3 p-5 text-sm">
@@ -506,7 +646,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                     <div class="flex justify-between"><span class="text-slate-500">Quantity</span><strong x-text="totalQuantity()"></strong></div>
                     <div class="flex items-end justify-between border-t border-dashed border-slate-300 pt-4"><span class="font-black">Estimated total</span><strong class="text-2xl font-black text-brand-red" x-text="money(totalPrice())"></strong></div>
                 </div>
-                <div class="px-5 pb-5"><button type="button" class="btn btn-red hidden w-full py-4 xl:flex" @click="$root.querySelector('form').requestSubmit()">Add Configured Product</button><p class="mt-3 text-center text-[10px] leading-4 text-slate-500">Final prices, selections, sizes, shipping, roster information, and files are recalculated and validated by the Laravel backend.</p></div>
+                <div class="px-5 pb-5"><button type="button" class="btn btn-red hidden w-full py-4 xl:flex" @click="$root.querySelector('form').requestSubmit()">{{ $isEditing ? 'Update Cart Item' : 'Add Configured Product' }}</button><p class="mt-3 text-center text-[10px] leading-4 text-slate-500">Final prices, selections, sizes, shipping, roster information, and files are recalculated and validated by the Laravel backend.</p></div>
             </aside>
         </div>
 

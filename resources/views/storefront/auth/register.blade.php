@@ -29,6 +29,9 @@
 
             <form method="POST" action="{{ route('register.store') }}" class="grid gap-5" novalidate>
                 @csrf
+                @if (! empty($redirectUrl))
+                    <input type="hidden" name="redirect" value="{{ $redirectUrl }}">
+                @endif
 
                 <input type="text" name="website" value="" autocomplete="off" tabindex="-1" class="hidden" aria-hidden="true">
 
@@ -100,7 +103,7 @@
 
             <div class="mt-7 rounded-2xl border border-dashed border-slate-300 bg-white p-5 text-center">
                 <p class="text-sm font-bold text-slate-600">Already have a customer account?</p>
-                <a href="{{ route('login') }}" class="mt-3 btn btn-white w-full rounded-2xl sm:w-auto">
+                <a href="{{ route('login', array_filter(['redirect' => $redirectUrl ?? null])) }}" class="mt-3 btn btn-white w-full rounded-2xl sm:w-auto">
                     Sign In Instead
                 </a>
             </div>

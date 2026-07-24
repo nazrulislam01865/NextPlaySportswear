@@ -63,6 +63,13 @@
                                     <td class="px-4 py-4 font-bold text-brand-ink">{{ $item['title'] }}</td>
                                     <td class="px-4 py-4 font-semibold leading-6 text-slate-600">
                                         {{ $item['customization']['design_option'] }} · {{ $item['customization']['size_summary'] }}
+                                        @php($fulfillment = (array) ($item['customization']['fulfillment'] ?? []))
+                                        @if(is_array($fulfillment['production'] ?? null))
+                                            <br>Production: {{ data_get($fulfillment, 'production.label', 'Standard production') }} · {{ data_get($fulfillment, 'production.display_amount', 'Included') }}
+                                        @endif
+                                        @if(is_array($fulfillment['shipping'] ?? null))
+                                            <br>Shipping: {{ data_get($fulfillment, 'shipping.label', 'Selected shipping') }}
+                                        @endif
                                         @if ($item['customization']['notes'] !== '')
                                             <br>{{ $item['customization']['notes'] }}
                                         @endif
@@ -79,8 +86,9 @@
                 <div class="mt-6 ml-auto max-w-sm rounded-2xl bg-slate-50 p-5">
                     <div class="grid gap-2 text-sm font-bold text-slate-600">
                         <div class="flex justify-between"><span>Subtotal</span><strong class="text-brand-ink">${{ number_format($order['totals']['subtotal'], 2) }}</strong></div>
+                        @if(($order['totals']['customization_total'] ?? 0) > 0)<div class="flex justify-between"><span>Customization</span><strong class="text-brand-ink">${{ number_format($order['totals']['customization_total'], 2) }}</strong></div>@endif
                         <div class="flex justify-between"><span>Discount @if(!empty($order['totals']['coupon_code']))<span class="text-xs font-black text-green-700">({{ $order['totals']['coupon_code'] }})</span>@endif</span><strong class="text-brand-red">-${{ number_format($order['totals']['discount'], 2) }}</strong></div>
-                        <div class="flex justify-between"><span>Shipping</span><strong class="text-brand-ink">${{ number_format($order['totals']['shipping'], 2) }}</strong></div>
+                        <div class="flex justify-between"><span>Shipping charges</span><strong class="text-brand-ink">${{ number_format($order['totals']['shipping'], 2) }}</strong></div>
                         <div class="flex justify-between"><span>Tax</span><strong class="text-brand-ink">${{ number_format($order['totals']['tax'], 2) }}</strong></div>
                         <div class="mt-2 flex justify-between border-t border-slate-200 pt-4 text-lg text-brand-ink"><span>Total</span><strong>${{ number_format($order['totals']['total'], 2) }}</strong></div>
                     </div>

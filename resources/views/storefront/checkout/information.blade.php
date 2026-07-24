@@ -5,7 +5,7 @@
 
 <x-storefront.checkout.shell :seo="$seo" :steps="$steps" :current-step="$currentStep" title="Contact Information" description="Use your saved account contact or add the minimum details needed for order updates." :summary="$summary">
     <x-storefront.checkout.panel title="Contact Information" description="We only need the details required for order confirmation, payment updates, and delivery communication.">
-        <form method="POST" action="{{ route('checkout.information.store') }}" class="grid gap-6" x-data="{ contactChoice: @js($defaultContactChoice) }">
+        <form data-single-submit method="POST" action="{{ route('checkout.information.store') }}" class="grid gap-6" x-data="{ contactChoice: @js($defaultContactChoice) }">
             @csrf
 
             @if ($hasSavedContact)

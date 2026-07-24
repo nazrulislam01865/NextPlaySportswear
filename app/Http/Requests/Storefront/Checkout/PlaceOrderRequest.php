@@ -14,6 +14,7 @@ class PlaceOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'confirm_details' => ['accepted'],
             'terms' => ['accepted'],
             'idempotency_key' => ['required', 'string', 'size:40'],
         ];
@@ -22,6 +23,7 @@ class PlaceOrderRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'confirm_details.accepted' => 'Please confirm that the order details are correct before placing the order.',
             'terms.accepted' => 'Please accept the Terms, Privacy Policy, and Custom Product Production Policy before placing the order.',
         ];
     }

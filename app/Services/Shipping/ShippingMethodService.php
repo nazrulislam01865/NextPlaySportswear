@@ -99,6 +99,28 @@ class ShippingMethodService
             $slug = (string) ($item['product_slug'] ?? Arr::get($item, 'product.slug', ''));
             $selectedCode = (string) Arr::get($item, 'customization.configuration.shipping_method', '');
             $quantity = max(1, (int) ($item['quantity'] ?? 1));
+            $snapshot = Arr::get($item, 'customization.fulfillment.shipping');
+
+            if (is_array($snapshot) && $selectedCode !== '') {
+                $amount = round(max(0, (float) ($item['product_shipping_total'] ?? $snapshot['amount'] ?? 0)), 2);
+                $priceStatus = (string) ($snapshot['price_status'] ?? 'priced');
+                $total += $amount;
+                $lines[] = [
+                    'item_key' => (string) ($item['key'] ?? ''),
+                    'product' => Arr::get($item, 'product.short_title', Arr::get($item, 'product.title', 'Product')),
+                    'method' => (string) ($snapshot['label'] ?? 'Selected shipping'),
+                    'code' => (string) ($snapshot['code'] ?? $selectedCode),
+                    'charge_type' => (string) ($snapshot['charge_type'] ?? 'configured_product'),
+                    'quantity' => $quantity,
+                    'amount' => $amount,
+                    'display_amount' => (string) ($snapshot['display_amount'] ?? '$'.number_format($amount, 2)),
+                    'price_status' => $priceStatus,
+                    'minimum_days' => max(0, (int) ($snapshot['minimum_days'] ?? 0)),
+                    'maximum_days' => max(0, (int) ($snapshot['maximum_days'] ?? $snapshot['minimum_days'] ?? 0)),
+                ];
+
+                continue;
+            }
 
             if ($slug === '' || $selectedCode === '') {
                 continue;
@@ -159,6 +181,7 @@ class ShippingMethodService
             $amount = round(max(0, $amount), 2);
             $total += $amount;
             $lines[] = [
+                'item_key' => (string) ($item['key'] ?? ''),
                 'product' => Arr::get($item, 'product.short_title', Arr::get($item, 'product.title', 'Product')),
                 'method' => $method->name,
                 'code' => $method->code,
@@ -186,6 +209,26 @@ class ShippingMethodService
         foreach ((array) ($cart['items'] ?? []) as $item) {
             $slug = (string) ($item['product_slug'] ?? Arr::get($item, 'product.slug', ''));
             $speedCode = (string) Arr::get($item, 'customization.configuration.production_speed', '');
+            $snapshot = Arr::get($item, 'customization.fulfillment.production');
+
+            if (is_array($snapshot)) {
+                $min = max(0, (int) ($snapshot['minimum_days'] ?? 0));
+                $max = max($min, (int) ($snapshot['maximum_days'] ?? $min));
+                $minimumDays = max($minimumDays, $min);
+                $maximumDays = max($maximumDays, $max);
+                $lines[] = [
+                    'item_key' => (string) ($item['key'] ?? ''),
+                    'product' => Arr::get($item, 'product.short_title', Arr::get($item, 'product.title', 'Product')),
+                    'production_option' => (string) ($snapshot['label'] ?? 'Standard production'),
+                    'code' => (string) ($snapshot['code'] ?? $speedCode),
+                    'minimum_days' => $min,
+                    'maximum_days' => $max,
+                    'amount' => round(max(0, (float) ($snapshot['amount'] ?? 0)), 2),
+                    'display_amount' => (string) ($snapshot['display_amount'] ?? '$'.number_format(max(0, (float) ($snapshot['amount'] ?? 0)), 2)),
+                ];
+
+                continue;
+            }
 
             if ($slug === '') {
                 continue;
@@ -198,16 +241,21 @@ class ShippingMethodService
             $method = $speed?->relationLoaded('productionMethod') ? $speed?->productionMethod : null;
             $min = max(0, (int) ($method?->minimum_days ?? $speed?->minimum_days ?? 0));
             $max = max($min, (int) ($method?->maximum_days ?? $speed?->maximum_days ?? $min));
+            $amount = round(max(0, (float) ($speed?->price_adjustment ?? 0)) * max(1, (int) ($item['quantity'] ?? 1)), 2);
 
             $minimumDays = max($minimumDays, $min);
             $maximumDays = max($maximumDays, $max);
 
-            if ($product instanceof Product && ($min > 0 || $max > 0)) {
+            if ($product instanceof Product && $speed !== null) {
                 $lines[] = [
+                    'item_key' => (string) ($item['key'] ?? ''),
                     'product' => Arr::get($item, 'product.short_title', $product->name),
                     'production_option' => ($method?->name ?: $speed?->name) ?: 'Standard production',
+                    'code' => (string) ($speed?->code ?? $speedCode),
                     'minimum_days' => $min,
                     'maximum_days' => $max,
+                    'amount' => $amount,
+                    'display_amount' => $amount > 0 ? '$'.number_format($amount, 2) : 'Included',
                 ];
             }
         }

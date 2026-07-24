@@ -16,6 +16,7 @@ use App\Models\SizeOptionGroup;
 use App\Models\ShippingMethod;
 use App\Services\Catalog\CategoryTreeService;
 use App\Services\Catalog\ProductOptionFilterSyncService;
+use App\Services\Catalog\ProductChangeSummaryService;
 use App\Services\AdminNotificationService;
 use App\Services\Security\SafeHtmlService;
 use App\Services\Storefront\ProductCatalogCacheService;
@@ -38,6 +39,7 @@ class ProductController extends Controller
         private readonly SafeHtmlService $safeHtml,
         private readonly CategoryTreeService $categoryTreeService,
         private readonly ProductOptionFilterSyncService $productOptionFilterSyncService,
+        private readonly ProductChangeSummaryService $productChangeSummaryService,
         private readonly AdminNotificationService $adminNotifications,
         private readonly ProductCatalogCacheService $productCatalogCache,
     ) {
@@ -45,7 +47,7 @@ class ProductController extends Controller
 
     public function index(Request $request): View
     {
-        $query = Product::query()->with(['category', 'subcategory', 'categories', 'images']);
+        $query = Product::query()->with(['category', 'subcategory', 'categories', 'images', 'updater:id,name,email']);
 
         if ($search = trim((string) $request->query('q'))) {
             $query->where(fn ($builder) => $builder
@@ -216,11 +218,20 @@ class ProductController extends Controller
             'unfeature' => ['is_featured' => false],
         };
 
-        $updated = DB::transaction(function () use ($ids, $payload): int {
+        $bulkSummary = match ($action) {
+            'activate' => 'Status changed to Active',
+            'deactivate' => 'Status changed to Draft',
+            'archive' => 'Status changed to Archived',
+            'feature' => 'Featured flag enabled',
+            'unfeature' => 'Featured flag removed',
+        };
+
+        $updated = DB::transaction(function () use ($ids, $payload, $bulkSummary): int {
             return Product::query()
                 ->whereIn('id', $ids)
                 ->lockForUpdate()
                 ->update(array_merge($payload, [
+                    'last_update_summary' => $bulkSummary,
                     'updated_by' => auth('admin')->id(),
                     'updated_at' => now(),
                 ]));
@@ -279,6 +290,10 @@ class ProductController extends Controller
             $this->syncRelations($product, $request);
             $product->load($this->relations());
             $this->syncProductSpecifications($product, $request);
+            $product->forceFill([
+                'last_update_summary' => 'Product created',
+                'updated_by' => auth('admin')->id(),
+            ])->save();
 
             return $product;
         });
@@ -310,11 +325,22 @@ class ProductController extends Controller
 
     public function update(ProductFormRequest $request, Product $product): RedirectResponse
     {
-        DB::transaction(function () use ($request, $product): void {
+        $product->load($this->relations());
+        $before = $this->productChangeSummaryService->snapshot($product);
+
+        DB::transaction(function () use ($request, $product, $before): void {
             $product->update($this->productPayload($request, $product));
             $this->syncRelations($product, $request);
             $product->load($this->relations());
             $this->syncProductSpecifications($product, $request);
+
+            $product->refresh()->load($this->relations());
+            $after = $this->productChangeSummaryService->snapshot($product);
+
+            $product->forceFill([
+                'last_update_summary' => $this->productChangeSummaryService->summarize($before, $after),
+                'updated_by' => auth('admin')->id(),
+            ])->save();
         });
 
         $this->flushProductCaches();
@@ -358,8 +384,9 @@ class ProductController extends Controller
             $copy->is_active = false;
             $copy->is_featured = false;
             $copy->published_at = null;
-            $copy->created_by = auth()->id();
-            $copy->updated_by = auth()->id();
+            $copy->created_by = auth('admin')->id();
+            $copy->updated_by = auth('admin')->id();
+            $copy->last_update_summary = 'Duplicated from '.($product->sku ?: $product->name);
             $copy->save();
 
             foreach ($product->images as $item) {
@@ -717,8 +744,8 @@ class ProductController extends Controller
             $payload['schema_json'] = null;
         }
 
-        $payload['created_by'] = $product?->created_by ?? auth()->id();
-        $payload['updated_by'] = auth()->id();
+        $payload['created_by'] = $product?->created_by ?? auth('admin')->id();
+        $payload['updated_by'] = auth('admin')->id();
 
         return $payload;
     }

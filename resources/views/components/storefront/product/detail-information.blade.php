@@ -51,21 +51,21 @@
     }
 @endphp
 
-<div class="np-detail-information mt-6">
+<div class="np-detail-information mt-5">
     @if($detailInformation->isNotEmpty())
         <div class="overflow-hidden border-y border-slate-200">
             <table class="w-full table-fixed border-collapse text-left">
                 <thead>
                     <tr class="border-b border-slate-200 text-[11px] font-black uppercase tracking-[.04em] text-slate-700 sm:text-xs">
-                        <th class="w-[34%] px-0 py-2.5 pr-4 sm:w-[31%]">Detail</th>
-                        <th class="px-0 py-2.5">Information</th>
+                        <th class="w-[34%] px-0 py-2 pr-4 sm:w-[31%]">Detail</th>
+                        <th class="px-0 py-2">Information</th>
                     </tr>
                 </thead>
                 <tbody class="text-[13px] leading-5 text-slate-600 sm:text-sm">
                     @foreach($detailInformation as $label => $value)
                         <tr class="border-b border-slate-200 last:border-b-0">
-                            <th class="break-words px-0 py-2.5 pr-4 text-left align-top font-medium text-slate-600">{{ $label }}</th>
-                            <td class="break-words px-0 py-2.5 align-top font-medium text-slate-600">{{ $value }}</td>
+                            <th class="break-words px-0 py-2 pr-4 text-left align-top font-medium text-slate-600">{{ $label }}</th>
+                            <td class="break-words px-0 py-2 align-top font-medium text-slate-600">{{ $value }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -74,7 +74,7 @@
     @endif
 
     <div class="np-product-meta mt-4 divide-y divide-dotted divide-slate-300 border-y border-dotted border-slate-300 text-slate-700">
-        <div class="py-2.5">
+        <div class="py-2">
             <span class="font-semibold text-slate-800">Category:</span>
             @if($categories->isNotEmpty())
                 @foreach($categories as $category)
@@ -93,7 +93,7 @@
         </div>
 
         @if($tags->isNotEmpty())
-            <div class="py-2.5">
+            <div class="py-2">
                 <span class="font-semibold text-slate-800">Tags:</span>
                 <span class="text-blue-800">
                     @foreach($tags as $tag)

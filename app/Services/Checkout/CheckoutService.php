@@ -48,7 +48,10 @@ class CheckoutService
             'savedBillingAddresses' => $this->savedAddresses($user, 'billing'),
             'savedPaymentMethods' => $savedCardGateway ? $this->savedPaymentMethods($user) : [],
             'savedCardGateway' => $savedCardGateway,
-            'shippingMethods' => $this->shippingMethods($cart, $state),
+            // Shipping is selected per product in the configurator and carried
+            // through the cart/order automatically. Keep this key for legacy
+            // view compatibility, but do not ask the customer to choose again.
+            'shippingMethods' => [],
             'paymentOptions' => $paymentOptions,
             'summary' => $summary,
             'orderIdempotencyKey' => $this->orderIdempotencyKey(),
@@ -96,12 +99,12 @@ class CheckoutService
             ]);
         }
 
-        $missingStep = $this->firstIncompleteStepBefore('place');
-
-        if ($missingStep !== null) {
-            throw ValidationException::withMessages([
-                'checkout' => $missingStep['message'],
-            ]);
+        foreach (['information', 'shipping', 'billing', 'payment', 'review'] as $stepKey) {
+            if (! $this->isStepComplete($stepKey)) {
+                throw ValidationException::withMessages([
+                    'checkout' => $this->stepMessage($stepKey),
+                ]);
+            }
         }
     }
 
@@ -475,6 +478,14 @@ class CheckoutService
     {
         $state = session(self::SESSION_KEY, []);
 
+        // Product shipping is now sourced from each cart line. Remove any
+        // legacy checkout-level selection left in an older session so it can
+        // never override or duplicate the product configuration.
+        if (isset($state['shipping_method'])) {
+            unset($state['shipping_method']);
+            session()->put(self::SESSION_KEY, $state);
+        }
+
         if (isset($state['information']) && is_array($state['information'])) {
             $information = Arr::only($state['information'], [
                 'email',
@@ -514,10 +525,9 @@ class CheckoutService
     private function forgetDependentSteps(array &$state, string $key): void
     {
         $dependencies = [
-            'information' => ['shipping_address', 'billing_address', 'shipping_method', 'payment_method', 'review'],
-            'shipping_address' => ['billing_address', 'shipping_method', 'payment_method', 'review'],
-            'billing_address' => ['shipping_method', 'payment_method', 'review'],
-            'shipping_method' => ['payment_method', 'review'],
+            'information' => ['shipping_address', 'billing_address', 'payment_method', 'review'],
+            'shipping_address' => ['billing_address', 'payment_method', 'review'],
+            'billing_address' => ['payment_method', 'review'],
             'payment_method' => ['review'],
         ];
 
@@ -719,7 +729,6 @@ class CheckoutService
                 && filled(Arr::get($state, 'shipping_address.address.country')),
             'billing' => filled(Arr::get($state, 'billing_address.address.address_line_1'))
                 || (bool) Arr::get($state, 'billing_address.same_as_shipping'),
-            'shipping_method' => filled(Arr::get($state, 'shipping_method.code')),
             'payment' => filled(Arr::get($state, 'payment_method.method')),
             'review' => (bool) Arr::get($state, 'review.confirmed'),
             default => true,
@@ -737,7 +746,6 @@ class CheckoutService
             'information' => 'Please complete your contact information before continuing checkout.',
             'shipping' => 'Please complete your shipping address before continuing checkout.',
             'billing' => 'Please complete your billing address before continuing checkout.',
-            'shipping_method' => 'Please select a shipping method before continuing checkout.',
             'payment' => 'Please select a secure payment method before continuing checkout.',
             'review' => 'Please review and confirm your order details before placing the order.',
             default => 'Please complete the previous checkout step before continuing.',
@@ -746,15 +754,20 @@ class CheckoutService
 
     private function checkoutSummary(array $cart, array $state): array
     {
-        $methods = collect($this->shippingMethods($cart, $state))->keyBy('code');
-        $selectedCode = (string) Arr::get($state, 'shipping_method.code', '');
-        $shippingMethod = $selectedCode !== '' ? $methods->get($selectedCode) : null;
-        $shippingMethod = $shippingMethod ?? $this->shipping->defaultMethod($methods->values()->all()) ?? [];
-
-        $selectedShippingPrice = (float) ($shippingMethod['price'] ?? 0);
-        $ruralSurcharge = (float) ($shippingMethod['rural_surcharge']['amount'] ?? 0);
         $productShipping = $this->shipping->productShippingTotal($cart);
         $productShippingTotal = (float) ($productShipping['total'] ?? 0);
+        $productionWindow = $this->shipping->productionWindow($cart);
+        $fulfillmentLines = $this->fulfillmentLines($cart, $productShipping, $productionWindow);
+        $ruralSurchargeDetails = $this->ruralSurchargeForState($state);
+        $ruralSurcharge = (float) ($ruralSurchargeDetails['amount'] ?? 0);
+        $automaticShippingBase = max(0, (float) ($cart['additional_shipping'] ?? 0));
+        $selectedShippingPrice = round($productShippingTotal + $automaticShippingBase + $ruralSurcharge, 2);
+        $shippingMethod = $this->configuredShippingSnapshot(
+            $fulfillmentLines,
+            $productShippingTotal,
+            $automaticShippingBase,
+            $ruralSurchargeDetails
+        );
         $paymentMethod = $state['payment_method'] ?? [
             'method' => null,
             'code' => null,
@@ -762,9 +775,8 @@ class CheckoutService
             'amount' => null,
         ];
 
-        // Product-specific shipping selected on the product page is already included in
-        // the configured item price by CartService. We keep it visible here so admins
-        // and customers can see that it was carried automatically without charging it twice.
+        // Shipping is a separate charge category. Product-level shipping,
+        // automatic delivery, and rural surcharges are combined once here.
         $total = round(max(0, $cart['subtotal'] + $cart['customization_total'] - $cart['discount'] + $selectedShippingPrice + $cart['tax']), 2);
 
         if (is_array($paymentMethod) && filled($paymentMethod['method'] ?? null)) {
@@ -779,16 +791,123 @@ class CheckoutService
             'customization_total' => $cart['customization_total'],
             'discount' => $cart['discount'],
             'coupon_code' => $cart['coupon_code'] ?? null,
-            'shipping_base' => round((float) ($shippingMethod['base_price'] ?? max(0, $selectedShippingPrice - $ruralSurcharge)), 2),
+            'shipping_base' => round($productShippingTotal + $automaticShippingBase, 2),
             'rural_surcharge' => round($ruralSurcharge, 2),
-            'rural_surcharge_details' => $shippingMethod['rural_surcharge'] ?? null,
+            'rural_surcharge_details' => $ruralSurchargeDetails,
             'product_shipping_total' => round($productShippingTotal, 2),
             'product_shipping_lines' => $productShipping['lines'] ?? [],
+            'production_lines' => $productionWindow['lines'] ?? [],
+            'fulfillment_lines' => $fulfillmentLines,
             'shipping' => round($selectedShippingPrice, 2),
             'tax' => $cart['tax'],
             'total' => $total,
             'shipping_method' => $shippingMethod,
             'payment_method' => $paymentMethod,
+        ];
+    }
+
+    private function fulfillmentLines(array $cart, array $productShipping, array $productionWindow): array
+    {
+        $shippingByKey = collect((array) ($productShipping['lines'] ?? []))->keyBy('item_key');
+        $productionByKey = collect((array) ($productionWindow['lines'] ?? []))->keyBy('item_key');
+
+        return collect((array) ($cart['items'] ?? []))->map(function (array $item) use ($shippingByKey, $productionByKey): array {
+            $itemKey = (string) ($item['key'] ?? '');
+            $snapshot = (array) Arr::get($item, 'customization.fulfillment', []);
+            $production = is_array($snapshot['production'] ?? null)
+                ? $snapshot['production']
+                : (array) ($productionByKey->get($itemKey) ?? []);
+            $shipping = is_array($snapshot['shipping'] ?? null)
+                ? $snapshot['shipping']
+                : (array) ($shippingByKey->get($itemKey) ?? []);
+
+            if ($shipping !== []) {
+                $shippingLine = (array) ($shippingByKey->get($itemKey) ?? []);
+                $shipping = array_merge($shipping, [
+                    'code' => (string) ($shipping['code'] ?? $shippingLine['code'] ?? ''),
+                    'label' => (string) ($shipping['label'] ?? $shippingLine['method'] ?? 'Selected shipping'),
+                    'amount' => round((float) ($shippingLine['amount'] ?? $shipping['amount'] ?? 0), 2),
+                    'display_amount' => (string) ($shippingLine['display_amount'] ?? $shipping['display_amount'] ?? '$'.number_format((float) ($shippingLine['amount'] ?? $shipping['amount'] ?? 0), 2)),
+                    'price_status' => (string) ($shippingLine['price_status'] ?? $shipping['price_status'] ?? 'priced'),
+                    'minimum_days' => max(0, (int) ($shipping['minimum_days'] ?? $shippingLine['minimum_days'] ?? 0)),
+                    'maximum_days' => max(0, (int) ($shipping['maximum_days'] ?? $shippingLine['maximum_days'] ?? $shipping['minimum_days'] ?? 0)),
+                ]);
+            }
+
+            if ($production !== []) {
+                $productionLine = (array) ($productionByKey->get($itemKey) ?? []);
+                $production = array_merge($production, [
+                    'code' => (string) ($production['code'] ?? $productionLine['code'] ?? ''),
+                    'label' => (string) ($production['label'] ?? $productionLine['production_option'] ?? 'Standard production'),
+                    'amount' => round((float) ($production['amount'] ?? $productionLine['amount'] ?? 0), 2),
+                    'display_amount' => (string) ($production['display_amount'] ?? $productionLine['display_amount'] ?? (((float) ($production['amount'] ?? $productionLine['amount'] ?? 0)) > 0
+                        ? '$'.number_format((float) ($production['amount'] ?? $productionLine['amount'] ?? 0), 2)
+                        : 'Included')),
+                    'minimum_days' => max(0, (int) ($production['minimum_days'] ?? $productionLine['minimum_days'] ?? 0)),
+                    'maximum_days' => max(0, (int) ($production['maximum_days'] ?? $productionLine['maximum_days'] ?? $production['minimum_days'] ?? 0)),
+                ]);
+            }
+
+            $productionMin = max(0, (int) ($production['minimum_days'] ?? 0));
+            $productionMax = max($productionMin, (int) ($production['maximum_days'] ?? $productionMin));
+            $shippingMin = max(0, (int) ($shipping['minimum_days'] ?? 0));
+            $shippingMax = max($shippingMin, (int) ($shipping['maximum_days'] ?? $shippingMin));
+
+            return [
+                'item_key' => $itemKey,
+                'product' => (string) Arr::get($item, 'product.short_title', Arr::get($item, 'product.title', 'Product')),
+                'quantity' => max(1, (int) ($item['quantity'] ?? 1)),
+                'production' => $production !== [] ? $production : null,
+                'shipping' => $shipping !== [] ? $shipping : null,
+                'estimated_minimum_days' => $productionMin + $shippingMin,
+                'estimated_maximum_days' => $productionMax + $shippingMax,
+            ];
+        })->values()->all();
+    }
+
+    private function configuredShippingSnapshot(
+        array $fulfillmentLines,
+        float $productShippingTotal,
+        float $automaticShippingBase,
+        ?array $ruralSurcharge
+    ): array {
+        $shippingLabels = collect($fulfillmentLines)
+            ->pluck('shipping.label')
+            ->filter()
+            ->unique()
+            ->values();
+        $minimumDays = (int) collect($fulfillmentLines)->max('estimated_minimum_days');
+        $maximumDays = (int) collect($fulfillmentLines)->max('estimated_maximum_days');
+        $ruralAmount = max(0, (float) ($ruralSurcharge['amount'] ?? 0));
+        $additionalCharge = round(max(0, $automaticShippingBase) + $ruralAmount, 2);
+        $selectedShippingTotal = round(max(0, $productShippingTotal) + $additionalCharge, 2);
+
+        $title = match ($shippingLabels->count()) {
+            0 => $automaticShippingBase > 0 ? 'Automatic standard delivery' : 'Shipping included with configured products',
+            1 => (string) $shippingLabels->first(),
+            default => 'Shipping selected per product',
+        };
+
+        $eta = ($minimumDays > 0 || $maximumDays > 0)
+            ? 'Production and delivery estimate: '.$minimumDays.'–'.max($minimumDays, $maximumDays).' business days'
+            : 'Delivery timing follows the production and shipping methods selected for each product.';
+
+        return [
+            'code' => 'product-configured-shipping',
+            'title' => $title,
+            'description' => 'Shipping methods were selected while configuring the products in this order.',
+            'eta' => $eta,
+            'base_price' => round(max(0, $productShippingTotal + $automaticShippingBase), 2),
+            'price' => $selectedShippingTotal,
+            'display_price' => $selectedShippingTotal > 0
+                ? '$'.number_format($selectedShippingTotal, 2)
+                : 'Included',
+            'additional_display_price' => '$'.number_format($additionalCharge, 2),
+            'product_shipping_total' => round(max(0, $productShippingTotal), 2),
+            'rural_surcharge' => $ruralSurcharge,
+            'source' => 'product_configuration',
+            'totals_separated' => true,
+            'lines' => $fulfillmentLines,
         ];
     }
 
@@ -864,10 +983,8 @@ class CheckoutService
             ['key' => 'information', 'label' => 'Information', 'route' => 'checkout.information'],
             ['key' => 'shipping', 'label' => 'Shipping Address', 'route' => 'checkout.shipping-address'],
             ['key' => 'billing', 'label' => 'Billing', 'route' => 'checkout.billing-address'],
-            ['key' => 'shipping_method', 'label' => 'Shipping Method', 'route' => 'checkout.shipping-method'],
             ['key' => 'payment', 'label' => 'Payment', 'route' => 'checkout.payment-method'],
-            ['key' => 'review', 'label' => 'Review', 'route' => 'checkout.review'],
-            ['key' => 'place', 'label' => 'Place Order', 'route' => 'checkout.place-order'],
+            ['key' => 'review', 'label' => 'Review & Place Order', 'route' => 'checkout.review'],
         ];
     }
 }

@@ -1,6 +1,6 @@
 @props(['category', 'filters', 'options', 'idPrefix' => 'category-filter'])
 
-<form method="GET" action="{{ $category['url'] }}" class="space-y-6" aria-label="Filter products">
+<form method="GET" action="{{ $category['url'] }}" class="np-category-facet-form space-y-5" aria-label="Filter products">
     <div
         class="relative"
         data-storefront-search-suggest

@@ -244,6 +244,8 @@ class ProductFormRequest extends FormRequest
             'production_methods_from_master' => ['nullable', 'boolean'],
             'production_method_codes' => ['nullable', 'array', 'max:30'],
             'production_method_codes.*' => ['nullable', 'string', 'max:160', 'distinct', Rule::exists('production_methods', 'code')],
+            'production_method_price_adjustments' => ['nullable', 'array', 'max:30'],
+            'production_method_price_adjustments.*' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
 
             'shipping_method_codes' => ['nullable', 'array', 'max:30'],
             'shipping_method_codes.*' => ['nullable', 'string', 'max:160', 'distinct', Rule::exists('shipping_methods', 'code')],
@@ -663,6 +665,17 @@ class ProductFormRequest extends FormRequest
             ->take(30)
             ->values();
 
+        $priceAdjustments = collect((array) $this->input('production_method_price_adjustments', []))
+            ->mapWithKeys(function ($value, $code): array {
+                $normalizedCode = Str::slug((string) $code);
+
+                if ($normalizedCode === '') {
+                    return [];
+                }
+
+                return [$normalizedCode => max(0, round((float) $value, 2))];
+            });
+
         if ($codes->isEmpty()) {
             return [];
         }
@@ -672,7 +685,7 @@ class ProductFormRequest extends FormRequest
             ->get()
             ->keyBy('code');
 
-        return $codes->map(function (string $code) use ($methods): ?array {
+        return $codes->map(function (string $code) use ($methods, $priceAdjustments): ?array {
             /** @var ProductionMethod|null $method */
             $method = $methods->get($code);
             if (! $method instanceof ProductionMethod) {
@@ -684,7 +697,7 @@ class ProductFormRequest extends FormRequest
                 'name' => $method->name,
                 'code' => $method->code,
                 'description' => $method->description,
-                'price_adjustment' => 0,
+                'price_adjustment' => (float) $priceAdjustments->get($code, 0),
                 'minimum_quantity' => 1,
                 'maximum_quantity' => null,
                 'minimum_days' => (int) ($method->minimum_days ?? 1),
@@ -1162,6 +1175,8 @@ class ProductFormRequest extends FormRequest
             'production_table_rows.*.range.max' => 'Keep the production quantity range within 50 characters.',
             'production_table_rows.*.cells.*.price_adjustment.numeric' => 'Enter the production charge as a number.',
             'production_table_rows.*.cells.*.price_adjustment.min' => 'The production charge cannot be negative.',
+            'production_method_price_adjustments.*.numeric' => 'Enter each production method charge as a valid number.',
+            'production_method_price_adjustments.*.min' => 'A production method charge cannot be negative.',
             'production_table_rows.*.cells.*.production_time.max' => 'Keep the production time within 60 characters, for example 5-15 days or To be confirmed.',
             'production_speeds.*.maximum_quantity.gte' => 'The production quantity maximum must be greater than or equal to the minimum quantity.',
             'production_speeds.*.maximum_days.gte' => 'The production maximum days must be greater than or equal to the minimum days.',

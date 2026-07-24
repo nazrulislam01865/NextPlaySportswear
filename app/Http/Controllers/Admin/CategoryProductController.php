@@ -297,10 +297,22 @@ class CategoryProductController extends Controller
             $changedProducts->unique()->each(fn (int $productId): mixed => $this->normalizePrimaryCategory($productId));
         });
 
+        $changedProductIds = $changedProducts->unique()->values();
+
+        if ($changedProductIds->isNotEmpty()) {
+            Product::query()
+                ->whereIn('id', $changedProductIds->all())
+                ->update([
+                    'last_update_summary' => 'Category assignments updated from '.$category->name,
+                    'updated_by' => auth('admin')->id(),
+                    'updated_at' => now(),
+                ]);
+        }
+
         $this->treeService->flushCache();
         $this->productCatalogCache->flush();
 
-        $changedCount = $changedProducts->unique()->count();
+        $changedCount = $changedProductIds->count();
 
         if ($changedCount > 0) {
             $message = $assignmentAction === 'attach_products'

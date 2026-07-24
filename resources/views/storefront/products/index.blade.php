@@ -57,7 +57,7 @@
                 </div>
             </div>
 
-            <div class="np-product-layout {{ $categoryFilters !== [] ? 'has-filters' : '' }} grid gap-7">
+            <div class="np-product-layout {{ $categoryFilters !== [] ? 'has-filters' : '' }} grid gap-4">
                 @if($categoryFilters !== [])
                     <aside class="np-filter-shell hidden self-start lg:flex">
                         <x-storefront.product.category-filter-panel
@@ -75,7 +75,7 @@
                 <div>
                     @if ($products->count())
                         <p class="mb-5 text-sm font-semibold text-slate-500">Showing {{ $products->firstItem() }}–{{ $products->lastItem() }} of {{ $products->total() }} products</p>
-                        <div class="np-product-listing-grid np-product-listing-grid--three grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                        <div class="np-product-listing-grid np-product-listing-grid--three grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                             @foreach ($products as $product)
                                 <x-storefront.product-card :product="$product" :show-category="true" />
                             @endforeach

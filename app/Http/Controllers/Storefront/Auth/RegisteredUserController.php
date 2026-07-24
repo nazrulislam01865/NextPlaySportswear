@@ -5,17 +5,20 @@ namespace App\Http\Controllers\Storefront\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Storefront\Auth\RegisterRequest;
 use App\Models\User;
+use App\Support\StorefrontRedirect;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class RegisteredUserController extends Controller
 {
-    public function create(): View
+    public function create(Request $request): View
     {
         return view('storefront.auth.register', [
+            'redirectUrl' => StorefrontRedirect::capture($request),
             'seo' => [
                 'title' => 'Create Customer Account | NextPlay Sportswear',
                 'description' => 'Create a NextPlay Sportswear customer account for faster checkout, quote requests, team order tracking, and custom design proof updates.',
@@ -39,12 +42,15 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user));
 
+        Auth::guard('admin')->logout();
         Auth::guard('web')->login($user);
         Auth::shouldUse('web');
         $request->session()->regenerate();
 
+        $destination = StorefrontRedirect::intended($request, route('account.dashboard'));
+
         return redirect()
-            ->intended(route('account.dashboard'))
+            ->to($destination)
             ->with('status', 'Your account has been created. You can now manage quotes, orders, and custom design proofs.');
     }
 }

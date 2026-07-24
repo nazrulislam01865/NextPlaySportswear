@@ -31,7 +31,7 @@ class Product extends Model
         'price_table_highlight_column', 'price_table_note', 'production_table_headers', 'production_table_rows', 'meta_title', 'meta_description',
         'meta_keywords', 'canonical_url', 'og_title', 'og_description', 'og_image_url',
         'robots_index', 'robots_follow', 'schema_json', 'sort_order', 'published_at',
-        'created_by', 'updated_by',
+        'created_by', 'updated_by', 'last_update_summary',
     ];
 
     protected function casts(): array
@@ -131,6 +131,11 @@ class Product extends Model
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function wishlists(): HasMany
+    {
+        return $this->hasMany(ProductWishlist::class);
     }
 
     public function images(): HasMany

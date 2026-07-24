@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
+use App\Models\ProductWishlist;
+use App\Services\Cart\CartService;
 use App\Services\Storefront\ProductCatalogService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
@@ -11,7 +13,8 @@ use Illuminate\Http\Request;
 class ProductController extends Controller
 {
     public function __construct(
-        private readonly ProductCatalogService $productCatalogService
+        private readonly ProductCatalogService $productCatalogService,
+        private readonly CartService $cart,
     ) {
     }
 
@@ -66,11 +69,26 @@ class ProductController extends Controller
         return response()->json(['data' => $suggestions]);
     }
 
-    public function show(string $slug): View
+    public function show(Request $request, string $slug): View
     {
         $product = $this->productCatalogService->findBySlug($slug);
 
         abort_if(! $product, 404);
+
+        $cartEditItem = null;
+        $cartItemKey = trim((string) $request->query('cart_item', ''));
+
+        if ($cartItemKey !== '') {
+            abort_unless(mb_strlen($cartItemKey) <= 64, 404);
+
+            $cartEditItem = $this->cart->findItem($cartItemKey);
+
+            abort_if($cartEditItem === null, 404, 'The cart item you are trying to edit no longer exists.');
+            abort_unless(
+                hash_equals((string) ($cartEditItem['product_slug'] ?? ''), (string) $product['slug']),
+                404
+            );
+        }
 
         $priceValues = collect($product['price_tiers'] ?? [])->pluck('unit')->filter();
         $productSchema = [
@@ -147,8 +165,47 @@ class ProductController extends Controller
             $structuredData[] = $product['custom_schema'];
         }
 
+        $customer = auth('web')->user();
+        $productId = (int) ($product['id'] ?? 0);
+        $isAuthenticatedCustomer = ($customer?->isCustomer() ?? false) && $productId > 0;
+        $canonicalUrl = (string) (($product['canonical_url'] ?? null) ?: ($product['url'] ?? route('products.show', $product['slug'])));
+        $firstGalleryImage = collect($product['gallery'] ?? [])->first();
+        $productImage = (string) (($product['image'] ?? null) ?: (
+            is_array($firstGalleryImage) && filled($firstGalleryImage['url'] ?? null)
+                ? $firstGalleryImage['url']
+                : asset('images/product-placeholder.svg')
+        ));
+        $initialWishlisted = $isAuthenticatedCustomer
+            ? ProductWishlist::query()
+                ->where('user_id', $customer->getKey())
+                ->where('product_id', $productId)
+                ->exists()
+            : false;
+
+        $productSocial = [
+            'product_id' => $productId,
+            'slug' => (string) $product['slug'],
+            'title' => (string) $product['title'],
+            'url' => $canonicalUrl,
+            'image' => $productImage,
+            'summary' => (string) ($product['summary'] ?? ''),
+            'price' => (float) ($product['base_price'] ?? 0),
+            'currency' => (string) ($product['currency'] ?? 'USD'),
+            'favorites_count' => max(0, (int) ($product['favorites_count'] ?? 0)),
+            'authenticated' => $isAuthenticatedCustomer,
+            'initial_wishlisted' => $initialWishlisted,
+            'wishlist_endpoint' => $isAuthenticatedCustomer
+                ? route('wishlist.products.update', ['product' => $productId])
+                : null,
+            'wishlist_url' => route('wishlist.index'),
+            'login_url' => route('login', ['redirect' => $request->fullUrl()]),
+            'guest_storage_key' => 'nextplay:guest-wishlist:v1',
+        ];
+
         return view('storefront.products.show', [
             'product' => $product,
+            'cartEditItem' => $cartEditItem,
+            'productSocial' => $productSocial,
             'relatedProducts' => $this->productCatalogService->relatedFor($product),
             'seo' => [
                 'title' => $product['meta_title'] ?: $product['title'].' | '.config('storefront.name'),

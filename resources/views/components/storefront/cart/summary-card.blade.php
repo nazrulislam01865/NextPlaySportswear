@@ -27,7 +27,7 @@
             <dd class="font-black text-green-700" data-cart-money="discount" data-cart-money-prefix="-">-${{ number_format($cart['discount'], 2) }}</dd>
         </div>
         <div class="flex items-center justify-between gap-4 py-2">
-            <dt class="font-semibold text-slate-500">Estimated shipping</dt>
+            <dt class="font-semibold text-slate-500">Shipping charges</dt>
             <dd class="font-black text-slate-900" data-cart-money="shipping">${{ number_format($cart['shipping'], 2) }}</dd>
         </div>
         <div class="flex items-center justify-between gap-4 py-2">
@@ -35,6 +35,7 @@
             <dd class="font-black text-slate-900" data-cart-money="tax">${{ number_format($cart['tax'], 2) }}</dd>
         </div>
     </dl>
+
 
     <div
         class="mt-4 {{ $cart['coupon_code'] ? '' : 'hidden' }} flex items-center justify-between gap-3 rounded-2xl border border-green-200 bg-green-50 p-3 text-sm"

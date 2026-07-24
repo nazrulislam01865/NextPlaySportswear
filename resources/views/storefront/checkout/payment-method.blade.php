@@ -1,6 +1,6 @@
 <x-storefront.checkout.shell :seo="$seo" :steps="$steps" :current-step="$currentStep" title="Payment Method" description="Choose the admin-enabled payment method for the final checkout total." :summary="$summary">
-    <x-storefront.checkout.panel title="Payment Method" description="The amount below comes from the selected shipping method, rural surcharge, discount, tax, and cart totals. Laravel recalculates it again before order placement.">
-        <form method="POST" action="{{ route('checkout.payment-method.store') }}" class="grid gap-6">
+    <x-storefront.checkout.panel title="Payment Method" description="Production and shipping choices were carried from each configured product. The amount below includes those saved selections, any address surcharge, discounts, tax, and cart totals.">
+        <form data-single-submit method="POST" action="{{ route('checkout.payment-method.store') }}" class="grid gap-6">
             @csrf
 
             <div class="rounded-[24px] border border-brand-navy/10 bg-brand-navy p-5 text-white shadow-card">
@@ -9,7 +9,7 @@
                     <div>
                         <h3 class="font-display text-4xl font-bold">${{ number_format((float) ($summary['total'] ?? 0), 2) }}</h3>
                         <p class="mt-2 text-sm font-bold text-blue-100">
-                            Shipping: {{ $summary['shipping_method']['title'] ?? 'Selected method' }} · {{ $summary['shipping_method']['display_price'] ?? '$0.00' }}
+                            Product fulfillment: {{ $summary['shipping_method']['title'] ?? 'Selected with products' }} · {{ $summary['shipping_method']['display_price'] ?? 'Included' }}
                             @if(($summary['rural_surcharge'] ?? 0) > 0)
                                 · Rural surcharge ${{ number_format((float) $summary['rural_surcharge'], 2) }}
                             @endif
@@ -88,7 +88,7 @@
             </div>
 
             <div class="flex flex-col-reverse gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
-                <a class="btn btn-light" href="{{ route('checkout.shipping-method') }}">Back</a>
+                <a class="btn btn-light" href="{{ route('checkout.billing-address') }}">Back</a>
                 <button class="btn btn-red" type="submit" @disabled(count($paymentOptions) === 0)>Review Order</button>
             </div>
         </form>

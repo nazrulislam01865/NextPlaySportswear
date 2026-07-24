@@ -142,7 +142,7 @@ class HomePageService
 
     private function bestSellingProducts(): array
     {
-        return $this->productCatalog->bestSelling(4);
+        return $this->productCatalog->bestSelling(5);
     }
 
     private function popularSportsCategories(): array

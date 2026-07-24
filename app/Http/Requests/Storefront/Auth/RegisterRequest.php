@@ -23,6 +23,7 @@ class RegisterRequest extends FormRequest
             'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
             'website' => ['nullable', 'max:0'],
             'terms' => ['accepted'],
+            'redirect' => ['nullable', 'string', 'max:2048'],
         ];
     }
 

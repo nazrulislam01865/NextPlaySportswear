@@ -546,7 +546,7 @@ class ProductCatalogService
         return collect($this->all())->firstWhere('slug', $slug);
     }
 
-    public function relatedFor(array $product, int $limit = 4): array
+    public function relatedFor(array $product, int $limit = 5): array
     {
         return collect($this->all())
             ->reject(fn (array $item): bool => $item['slug'] === $product['slug'])

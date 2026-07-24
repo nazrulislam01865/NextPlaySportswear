@@ -400,6 +400,17 @@
         ->filter()
         ->unique()
         ->values();
+    $savedProductionMethodCharges = $product->relationLoaded('productionSpeeds')
+        ? $product->productionSpeeds
+            ->mapWithKeys(fn ($speed) => [
+                \Illuminate\Support\Str::slug((string) $speed->code) => max(0, round((float) $speed->price_adjustment, 2)),
+            ])
+            ->all()
+        : [];
+    $productionMethodChargeValues = collect(old('production_method_price_adjustments', $savedProductionMethodCharges))
+        ->mapWithKeys(fn ($value, $code) => [
+            \Illuminate\Support\Str::slug((string) $code) => max(0, round((float) $value, 2)),
+        ]);
     if (! $hasOldProductionInput && isset($productionMethodOptions) && $productionMethodOptions->isNotEmpty()) {
         $availableProductionCodes = $productionMethodOptions
             ->pluck('code')
@@ -514,6 +525,7 @@
         'productionMethodsEnabled' => (bool) old('production_methods_enabled', $product->production_methods_enabled ?? false),
         'shippingMethodsEnabled' => (bool) old('shipping_methods_enabled', $product->shipping_methods_enabled ?? false),
         'jerseyRosterEnabled' => (bool) old('jersey_roster_enabled', $product->jersey_roster_enabled ?? false),
+        'jerseyRosterPanelOpen' => true,
         'jerseyRosterOptional' => (bool) old('jersey_roster_optional', $product->jersey_roster_optional ?? true),
         'artworkUploadEnabled' => (bool) old('artwork_upload_enabled', $product->artwork_upload_enabled ?? false),
         'artworkUploadRequired' => (bool) old('artwork_upload_required', $product->artwork_upload_required ?? false),
@@ -1126,32 +1138,6 @@ Lead Time:"></div>
                         <input class="admin-input" name="badge_label" value="{{ old('badge_label',$product->badge_label) }}" maxlength="80" placeholder="Customizable, New, Best Seller">
                     </label>
 
-                    @if($isEdit)
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                            <div class="mb-4">
-                                <h3 class="text-sm font-black uppercase tracking-[.16em] text-brand-ink">Product card store data</h3>
-                                <p class="mt-1 text-xs font-semibold leading-5 text-slate-500">Optional fields for the storefront product card. Leave empty unless the numbers come from genuine store data.</p>
-                            </div>
-                            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                                <label class="admin-label">Rating average
-                                    <input class="admin-input" type="number" name="rating_average" min="0" max="5" step="0.1" value="{{ old('rating_average', $product->rating_average) }}" placeholder="4.8">
-                                </label>
-                                <label class="admin-label">Review count
-                                    <input class="admin-input" type="number" name="reviews_count" min="0" step="1" value="{{ old('reviews_count', $product->reviews_count) }}" placeholder="23">
-                                </label>
-                                <label class="admin-label">Recent viewers
-                                    <input class="admin-input" type="number" name="recent_viewers_count" min="0" step="1" value="{{ old('recent_viewers_count', $product->recent_viewers_count) }}" placeholder="Only if tracked">
-                                </label>
-                                <label class="admin-label">Favorites
-                                    <input class="admin-input" type="number" name="favorites_count" min="0" step="1" value="{{ old('favorites_count', $product->favorites_count) }}" placeholder="Only if tracked">
-                                </label>
-                                <label class="admin-label">Recent orders
-                                    <input class="admin-input" type="number" name="recent_orders_count" min="0" step="1" value="{{ old('recent_orders_count', $product->recent_orders_count) }}" placeholder="Only if tracked">
-                                </label>
-                            </div>
-                        </div>
-                    @endif
-
                     <input type="hidden" name="new_image_primary_index" :value="newImagePrimaryIndex()">
                     <div>
                         <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -1361,7 +1347,7 @@ Lead Time:"></div>
                 <div class="np-option-tiles">
                     <article><span class="np-option-tiles__icon purple">✦</span><div><strong>Customizable Features</strong><small>Add features customers can personalize.</small></div><button type="button" class="np-secondary-button" @click="openNewFeatureDialog()">＋ Add feature</button></article>
                     <article><span class="np-option-tiles__icon amber">✎</span><div><strong>Sizes &amp; Quantities</strong><small>Define available sizes and quantity rules.</small></div><button type="button" class="np-secondary-button" @click="openSizeGroupPicker()">＋ Add size option</button></article>
-                    <article><span class="np-option-tiles__icon teal">♙</span><div><strong>Jersey Roster</strong><small>Collect player names and jersey numbers.</small></div><button type="button" class="np-secondary-button" @click="jerseyRosterEnabled = !jerseyRosterEnabled" x-text="jerseyRosterEnabled ? 'Hide jersey fields' : 'Show jersey fields'"></button></article>
+                    <article><span class="np-option-tiles__icon teal">♙</span><div><strong>Jersey Roster</strong><small>Collect player names and jersey numbers.</small></div><button type="button" class="np-secondary-button" @click="jerseyRosterPanelOpen = !jerseyRosterPanelOpen" x-text="jerseyRosterPanelOpen ? 'Hide jersey fields' : 'Show jersey fields'"></button></article>
                 </div>
 
                 <details class="np-config-panel" open x-show="optionGroups.length > 0" x-cloak>
@@ -1389,7 +1375,78 @@ Lead Time:"></div>
                     </div>
                 </details>
 
-                <details class="np-config-panel" :open="jerseyRosterEnabled"><summary>Jersey roster fields</summary><div class="mt-4 flex flex-wrap items-start justify-between gap-4"><div><h3 class="font-black">Player names and numbers</h3><p class="mt-1 max-w-3xl text-xs leading-5 text-slate-500">When disabled, the Jersey Roster step is not shown on the storefront.</p></div><label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold"><input type="hidden" name="jersey_roster_enabled" :value="jerseyRosterEnabled ? 1 : 0"><input type="checkbox" x-model="jerseyRosterEnabled"> Show jersey roster step</label></div><div x-show="jerseyRosterEnabled" class="mt-4 rounded-2xl border border-slate-200 p-4 sm:p-5"><div class="grid gap-4 md:grid-cols-2"><label class="admin-label">Customer heading<input class="admin-input" name="jersey_roster_title" value="{{ old('jersey_roster_title', $product->jersey_roster_title ?: 'Add player names and numbers') }}"></label><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4"><input type="hidden" name="jersey_roster_optional" :value="jerseyRosterOptional ? 1 : 0"><input type="checkbox" x-model="jerseyRosterOptional"><span><strong class="block text-sm">Customer may skip roster details</strong><small class="text-xs text-slate-500">When disabled, every enabled roster field marked required must be completed.</small></span></label></div><div class="mt-5 flex items-center justify-between gap-3"><div><h4 class="font-black">Fields shown for each jersey</h4><p class="text-xs text-slate-500">The size is generated automatically from selected size quantities.</p></div><button type="button" class="np-secondary-button" @click="addRosterField()">＋ Add Field</button></div><div class="mt-4 space-y-3"><template x-for="(field,index) in rosterFields" :key="index"><div class="grid gap-3 rounded-2xl border border-slate-200 p-4 sm:grid-cols-2 lg:grid-cols-[1.5fr_150px_130px_auto] lg:items-end"><input type="hidden" :name="`jersey_roster_fields[${index}][key]`" x-model="field.key"><input type="hidden" :name="`jersey_roster_fields[${index}][enabled]`" value="1"><label class="admin-label">Customer label<input class="admin-input" :name="`jersey_roster_fields[${index}][label]`" x-model="field.label" @blur="if(!field.key) field.key = field.label.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')" placeholder="Player name"></label><label class="admin-label">Input type<select class="admin-input" :name="`jersey_roster_fields[${index}][type]`" x-model="field.type"><option value="text">Text</option><option value="number">Number</option></select></label><label class="admin-label">Max length<input class="admin-input" type="number" min="1" max="120" :name="`jersey_roster_fields[${index}][max_length]`" x-model="field.max_length"></label><div class="flex flex-wrap gap-3 pb-3"><input type="hidden" :name="`jersey_roster_fields[${index}][required]`" :value="field.required ? 1 : 0"><label class="text-xs font-bold"><input type="checkbox" x-model="field.required"> Required</label><button type="button" class="np-danger-link" @click="rosterFields.splice(index,1)">Remove</button></div></div></template></div></div></details>
+                <details
+                    class="np-config-panel"
+                    :open="jerseyRosterPanelOpen"
+                    @toggle="jerseyRosterPanelOpen = $el.open"
+                >
+                    <summary>Jersey roster fields</summary>
+                    <div class="mt-4 flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                            <h3 class="font-black">Player names and numbers</h3>
+                            <p class="mt-1 max-w-3xl text-xs leading-5 text-slate-500">The editor stays open by default. Enable the storefront step only when customers should enter jersey details.</p>
+                        </div>
+                        <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold">
+                            <input type="hidden" name="jersey_roster_enabled" :value="jerseyRosterEnabled ? 1 : 0">
+                            <input type="checkbox" x-model="jerseyRosterEnabled">
+                            Show jersey roster step to customers
+                        </label>
+                    </div>
+
+                    <div x-show="jerseyRosterEnabled" x-cloak class="mt-4 rounded-2xl border border-slate-200 p-4 sm:p-5">
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <label class="admin-label">Customer heading
+                                <input class="admin-input" name="jersey_roster_title" value="{{ old('jersey_roster_title', $product->jersey_roster_title ?: 'Add player names and numbers') }}">
+                            </label>
+                            <label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4">
+                                <input type="hidden" name="jersey_roster_optional" :value="jerseyRosterOptional ? 1 : 0">
+                                <input type="checkbox" x-model="jerseyRosterOptional">
+                                <span>
+                                    <strong class="block text-sm">Customer may skip roster details</strong>
+                                    <small class="text-xs text-slate-500">When disabled, every enabled roster field marked required must be completed.</small>
+                                </span>
+                            </label>
+                        </div>
+
+                        <div class="mt-5 flex items-center justify-between gap-3">
+                            <div>
+                                <h4 class="font-black">Fields shown for each jersey</h4>
+                                <p class="text-xs text-slate-500">The size is generated automatically from selected size quantities.</p>
+                            </div>
+                            <button type="button" class="np-secondary-button" @click="addRosterField()">＋ Add Field</button>
+                        </div>
+
+                        <div class="mt-4 space-y-3">
+                            <template x-for="(field,index) in rosterFields" :key="index">
+                                <div class="grid gap-3 rounded-2xl border border-slate-200 p-4 sm:grid-cols-2 lg:grid-cols-[1.5fr_150px_130px_auto] lg:items-end">
+                                    <input type="hidden" :name="`jersey_roster_fields[${index}][key]`" x-model="field.key">
+                                    <input type="hidden" :name="`jersey_roster_fields[${index}][enabled]`" value="1">
+                                    <label class="admin-label">Customer label
+                                        <input class="admin-input" :name="`jersey_roster_fields[${index}][label]`" x-model="field.label" @blur="if(!field.key) field.key = field.label.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')" placeholder="Player name">
+                                    </label>
+                                    <label class="admin-label">Input type
+                                        <select class="admin-input" :name="`jersey_roster_fields[${index}][type]`" x-model="field.type">
+                                            <option value="text">Text</option>
+                                            <option value="number">Number</option>
+                                        </select>
+                                    </label>
+                                    <label class="admin-label">Max length
+                                        <input class="admin-input" type="number" min="1" max="120" :name="`jersey_roster_fields[${index}][max_length]`" x-model="field.max_length">
+                                    </label>
+                                    <div class="flex flex-wrap gap-3 pb-3">
+                                        <input type="hidden" :name="`jersey_roster_fields[${index}][required]`" :value="field.required ? 1 : 0">
+                                        <label class="text-xs font-bold"><input type="checkbox" x-model="field.required"> Required</label>
+                                        <button type="button" class="np-danger-link" @click="rosterFields.splice(index,1)">Remove</button>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div x-show="!jerseyRosterEnabled" x-cloak class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-500">
+                        Jersey roster is currently hidden from customers. Enable “Show jersey roster step to customers” to customize its heading and fields.
+                    </div>
+                </details>
             </section>
 
             <section id="artwork" class="np-card"><header class="np-card__header"><div><h2>4. Custom Artwork Upload</h2><p>Allow customers to upload custom artwork for this product.</p></div></header><div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,.7fr)]"><div class="np-field-stack"><div class="grid gap-4 sm:grid-cols-2"><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4"><input type="hidden" name="artwork_upload_enabled" :value="artworkUploadEnabled ? 1 : 0"><input type="checkbox" x-model="artworkUploadEnabled"><span><strong class="block text-sm">Show artwork upload step</strong><small class="text-xs text-slate-500">The section disappears when disabled.</small></span></label><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4" :class="!artworkUploadEnabled && 'opacity-50'"><input type="hidden" name="artwork_upload_required" :value="artworkUploadRequired ? 1 : 0"><input type="checkbox" x-model="artworkUploadRequired" :disabled="!artworkUploadEnabled"><span><strong class="block text-sm">Artwork is required</strong><small class="text-xs text-slate-500">At least one file must be selected.</small></span></label></div><div x-show="artworkUploadEnabled" class="grid gap-4 sm:grid-cols-2"><label class="admin-label sm:col-span-2">Section title<input class="admin-input" name="artwork_upload_title" x-model="artworkUploadTitle" maxlength="180"></label><label class="admin-label sm:col-span-2">Upload instructions<textarea class="admin-textarea np-textarea-sm" name="artwork_upload_description" x-model="artworkUploadDescription" maxlength="3000"></textarea></label><label class="admin-label">Accepted extensions<input class="admin-input font-mono" name="artwork_upload_accepted_types" x-model="artworkUploadAcceptedTypes" placeholder="pdf,ai,png,jpg,jpeg,eps"></label><label class="admin-label">Maximum file size (MB)<input class="admin-input" type="number" min="1" max="25" name="artwork_upload_max_file_size_mb" x-model.number="artworkUploadMaxFileSizeMb"></label><label class="admin-label sm:col-span-2">Maximum files<input class="admin-input" type="number" min="1" max="12" name="artwork_upload_max_files" x-model.number="artworkUploadMaxFiles"></label></div></div><div x-show="artworkUploadEnabled" class="np-artwork-preview"><span>☁</span><strong>Upload area will appear on product page</strong><small>Drag &amp; drop or click to upload</small></div></div></section>
@@ -1412,7 +1469,7 @@ Lead Time:"></div>
                                 <span>Show production methods on product page</span>
                             </label>
                             <div class="min-w-0 text-xs font-medium leading-5 text-slate-500 md:text-right">
-                                <p>Select reusable production methods from <strong>Master Data → Production Methods</strong>. Names, descriptions, and working-day timelines stay controlled from master data.</p>
+                                <p>Select reusable production methods from <strong>Master Data → Production Methods</strong>. Names, descriptions, and timelines stay controlled from master data; the extra charge is configured separately for this product.</p>
                                 <a href="{{ route('admin.production-methods.index') }}" target="_blank" class="mt-2 inline-flex font-black text-brand-blue hover:text-brand-red">Manage Production Methods ↗</a>
                             </div>
                         </div>
@@ -1421,14 +1478,22 @@ Lead Time:"></div>
                             @if(isset($productionMethodOptions) && $productionMethodOptions->isNotEmpty())
                                 <div class="grid items-stretch gap-3 xl:grid-cols-2">
                                     @foreach($productionMethodOptions as $productionMethod)
-                                        @php($isSelectedProduction = $selectedProductionCodes->contains($productionMethod->code))
-                                        <article @class([
+                                        @php
+                                            $normalizedProductionCode = \Illuminate\Support\Str::slug((string) $productionMethod->code);
+                                            $isSelectedProduction = $selectedProductionCodes->contains($normalizedProductionCode);
+                                            $productionMethodCharge = (float) $productionMethodChargeValues->get($normalizedProductionCode, 0);
+                                        @endphp
+                                        <article
+                                            x-data="{ selected: @js($isSelectedProduction) }"
+                                            @class([
                                             'flex h-full flex-col justify-between rounded-2xl border bg-white p-4 transition',
                                             'border-slate-300 bg-slate-50' => $isSelectedProduction,
                                             'border-slate-200' => ! $isSelectedProduction,
-                                        ])>
+                                            ])
+                                            :class="selected ? 'border-brand-blue bg-blue-50 shadow-sm' : 'border-slate-200 bg-white'"
+                                        >
                                             <label class="grid min-w-0 cursor-pointer grid-cols-[auto_minmax(0,1fr)] gap-3">
-                                                <input type="checkbox" name="production_method_codes[]" value="{{ $productionMethod->code }}" @checked($isSelectedProduction) class="mt-1 h-4 w-4 rounded border-slate-300 text-brand-red">
+                                                <input type="checkbox" name="production_method_codes[]" value="{{ $productionMethod->code }}" x-model="selected" @checked($isSelectedProduction) class="mt-1 h-4 w-4 rounded border-slate-300 text-brand-red">
                                                 <span class="min-w-0">
                                                     <span class="block truncate text-sm font-black text-brand-ink">{{ $productionMethod->name }}</span>
                                                     <span class="mt-1 block text-xs font-medium leading-5 text-slate-500">{{ $productionMethod->minimum_days }}–{{ $productionMethod->maximum_days }} working days</span>
@@ -1436,6 +1501,29 @@ Lead Time:"></div>
                                                         <span class="mt-2 block text-sm font-normal leading-6 text-slate-500">{{ $productionMethod->description }}</span>
                                                     @endif
                                                 </span>
+                                            </label>
+                                            <label class="mt-4 block rounded-xl border border-slate-200 bg-slate-50 p-3" :class="!selected && 'opacity-50'">
+                                                <span class="flex flex-wrap items-center justify-between gap-2 text-xs font-black text-slate-700">
+                                                    <span>Extra production charge</span>
+                                                    <span class="font-semibold text-slate-500">Per piece</span>
+                                                </span>
+                                                <div class="relative mt-2">
+                                                    <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-black text-slate-400">$</span>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        max="999999999.99"
+                                                        step="0.01"
+                                                        inputmode="decimal"
+                                                        name="production_method_price_adjustments[{{ $productionMethod->code }}]"
+                                                        value="{{ number_format($productionMethodCharge, 2, '.', '') }}"
+                                                        :disabled="!selected"
+                                                        class="admin-input mt-0"
+                                                        style="padding-left: 2rem;"
+                                                        aria-label="Extra charge per piece for {{ $productionMethod->name }}"
+                                                    >
+                                                </div>
+                                                <span class="mt-2 block text-[11px] font-medium leading-5 text-slate-500">Use 0.00 when this production method is included. Express and rush charges are added to every configured piece.</span>
                                             </label>
                                             <div class="mt-4 flex flex-wrap gap-2 text-xs font-medium">
                                                 <span @class(["rounded-full px-3 py-1.5 font-medium", "bg-emerald-50 text-emerald-700" => $productionMethod->is_active, "bg-slate-50 text-slate-500" => ! $productionMethod->is_active])>{{ $productionMethod->is_active ? 'Active' : 'Inactive' }}</span>

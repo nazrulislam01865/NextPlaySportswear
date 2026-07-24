@@ -9,7 +9,7 @@
 
 <x-storefront.checkout.shell :seo="$seo" :steps="$steps" :current-step="$currentStep" title="Shipping Address" description="Use a saved shipping address or add a new delivery address for this order." :summary="$summary">
     <x-storefront.checkout.panel title="Shipping Address" description="Choose where the order should be delivered. Rural ZIP/postal surcharges are checked automatically after this step.">
-        <form method="POST" action="{{ route('checkout.shipping-address.store') }}" class="grid gap-6" x-data="{ addressChoice: @js($defaultAddressChoice) }">
+        <form data-single-submit method="POST" action="{{ route('checkout.shipping-address.store') }}" class="grid gap-6" x-data="{ addressChoice: @js($defaultAddressChoice) }">
             @csrf
 
             @if (count($savedShippingAddresses) > 0)

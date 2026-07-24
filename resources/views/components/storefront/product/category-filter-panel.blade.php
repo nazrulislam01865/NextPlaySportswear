@@ -27,10 +27,10 @@
         }
 
         .np-filter-shell {
-            height: min(760px, calc(100vh - 8rem));
+            height: min(720px, calc(100vh - 9rem));
             border: 1px solid #dbe5f1;
             background: #ffffff;
-            border-radius: 22px;
+            border-radius: 18px;
             box-shadow: 0 18px 40px rgba(15, 23, 42, .08);
         }
 
@@ -38,7 +38,7 @@
             display: flex;
             flex: 1 1 auto;
             flex-direction: column;
-            gap: 16px;
+            gap: 13px;
             min-height: 0;
             width: 100%;
         }
@@ -72,9 +72,9 @@
 
         .np-filter-category-search {
             width: 100%;
-            height: 48px;
+            height: 44px;
             border: 1px solid #d5dde8;
-            border-radius: 14px;
+            border-radius: 12px;
             background: #ffffff;
             color: #111827;
             font-size: 14px;
@@ -99,7 +99,7 @@
             align-items: center;
             justify-content: space-between;
             gap: 10px;
-            margin-top: 18px;
+            margin-top: 14px;
         }
 
         .np-filter-section-label {
@@ -117,7 +117,7 @@
             align-items: center;
             justify-content: center;
             min-width: 26px;
-            min-height: 26px;
+            min-height: 24px;
             border-radius: 999px;
             background: #fff1f2;
             color: #e91d33;
@@ -132,7 +132,7 @@
             flex: 1 1 auto;
             min-height: 0;
             overflow-y: auto;
-            margin-top: 10px;
+            margin-top: 8px;
             padding-right: 4px;
             overscroll-behavior: contain;
             scrollbar-width: thin;
@@ -170,10 +170,10 @@
             grid-template-columns: minmax(0, 1fr) auto;
             align-items: center;
             gap: 12px;
-            min-height: 54px;
+            min-height: 46px;
             cursor: pointer;
             list-style: none;
-            padding: 10px 0;
+            padding: 6px 0;
             user-select: none;
         }
 
@@ -190,11 +190,11 @@
             display: grid;
             grid-template-columns: 24px minmax(0, 1fr) 20px;
             align-items: center;
-            column-gap: 10px;
+            column-gap: 8px;
             min-width: 0;
             width: 100%;
             border-radius: 12px;
-            padding: 8px 8px;
+            padding: 7px 6px;
             transition: background .15s ease, color .15s ease;
         }
 
@@ -233,11 +233,13 @@
             min-width: 0;
             color: #0f172a;
             font-family: inherit;
-            font-size: .94rem;
+            font-size: .875rem;
             font-weight: 650;
             letter-spacing: -.01em;
-            line-height: 1.35;
-            overflow-wrap: anywhere;
+            line-height: 1.3;
+            overflow-wrap: normal;
+            word-break: normal;
+            hyphens: none;
         }
 
         .np-parent-meta {
@@ -253,8 +255,8 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 30px;
-            min-height: 26px;
+            min-width: 28px;
+            min-height: 24px;
             border-radius: 999px;
             background: #f8fafc;
             color: #526071;
@@ -280,7 +282,7 @@
             display: flex;
             flex-direction: column;
             gap: 3px;
-            margin: 2px 0 14px 42px;
+            margin: 2px 0 10px 34px;
         }
 
         .np-child-filter-option {
@@ -288,11 +290,11 @@
             grid-template-columns: minmax(0, 1fr) auto;
             align-items: center;
             gap: 12px;
-            min-height: 36px;
+            min-height: 33px;
             border: 1px solid transparent;
             border-radius: 11px;
             color: #64748b;
-            padding: 6px 8px;
+            padding: 5px 7px;
             transition: background .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
         }
 
@@ -304,11 +306,13 @@
         .np-child-name {
             min-width: 0;
             font-family: inherit;
-            font-size: .82rem;
+            font-size: .79rem;
             font-weight: 500;
             letter-spacing: 0;
-            line-height: 1.55;
-            overflow-wrap: anywhere;
+            line-height: 1.35;
+            overflow-wrap: normal;
+            word-break: normal;
+            hyphens: auto;
         }
 
         .np-selected-mark {
@@ -380,7 +384,7 @@
         .np-filter-empty-state {
             display: none;
             border: 1px dashed #cbd5e1;
-            border-radius: 14px;
+            border-radius: 12px;
             color: #64748b;
             font-size: 13px;
             font-weight: 700;
@@ -418,7 +422,7 @@
             overflow: hidden;
             background: #fff;
             box-shadow: -24px 0 60px rgba(15, 23, 42, .28);
-            padding: 18px;
+            padding: 14px;
         }
 
         .np-filter-close {
@@ -443,7 +447,7 @@
 
         @media (min-width: 1024px) {
             .np-product-layout.has-filters {
-                grid-template-columns: 300px minmax(0, 1fr);
+                grid-template-columns: 324px minmax(0, 1fr);
                 align-items: start;
             }
 
@@ -451,7 +455,7 @@
                 display: flex;
                 flex-direction: column;
                 overflow: hidden;
-                padding: 18px;
+                padding: 14px;
                 position: sticky;
                 top: 8rem;
             }
@@ -459,7 +463,7 @@
 
         @media (min-width: 1280px) {
             .np-product-layout.has-filters {
-                grid-template-columns: 320px minmax(0, 1fr);
+                grid-template-columns: 336px minmax(0, 1fr);
             }
         }
 

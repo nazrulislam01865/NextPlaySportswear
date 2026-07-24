@@ -142,6 +142,34 @@ class Order extends Model
         return $this->delivered_at->copy()->addDays((int) config('commerce.exchange_window_days', 30))->isFuture();
     }
 
+
+    public function hasSeparatedFulfillmentTotals(): bool
+    {
+        return (bool) data_get($this->shipping_method, 'totals_separated', false);
+    }
+
+    public function displayCustomizationTotal(): float
+    {
+        $customization = (float) $this->customization_total;
+
+        if ($this->hasSeparatedFulfillmentTotals()) {
+            return round(max(0, $customization), 2);
+        }
+
+        return round(max(0, $customization - (float) ($this->product_shipping_total ?? 0)), 2);
+    }
+
+    public function displayShippingTotal(): float
+    {
+        $shipping = (float) $this->shipping_total;
+
+        if ($this->hasSeparatedFulfillmentTotals()) {
+            return round(max(0, $shipping), 2);
+        }
+
+        return round(max(0, $shipping + (float) ($this->product_shipping_total ?? 0)), 2);
+    }
+
     public function outstandingAmount(): float
     {
         $paid = (float) $this->payments()->where('status', 'paid')->sum('amount');

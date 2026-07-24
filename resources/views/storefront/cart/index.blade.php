@@ -82,7 +82,7 @@
                 <a href="{{ route('products.index') }}" class="btn btn-white">View All Products</a>
             </div>
 
-            <div class="grid-3">
+            <div class="grid-3 np-product-listing-grid np-product-listing-grid--recommended">
                 @foreach ($recommendedProducts as $product)
                     <x-storefront.product-card :product="$product" />
                 @endforeach

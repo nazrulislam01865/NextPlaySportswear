@@ -34,8 +34,10 @@ class CartService
         $items = $preview ? $this->previewItems() : $this->items();
         $couponCode = $preview ? 'TEAM10' : $this->couponCode();
 
-        $subtotal = collect($items)->sum('line_subtotal');
-        $customizationTotal = collect($items)->sum('customization_total');
+        $subtotal = (float) collect($items)->sum('line_subtotal');
+        // Customization contains only genuine product customization and production
+        // surcharges. Product-level shipping is kept in its own total.
+        $customizationTotal = (float) collect($items)->sum('customization_total');
         $merchandiseTotal = $subtotal + $customizationTotal;
         $quantity = (int) collect($items)->sum('quantity');
         $couponValidation = $couponCode
@@ -43,10 +45,12 @@ class CartService
             : null;
         $discount = $couponValidation['valid'] ?? false ? (float) $couponValidation['discount'] : 0.00;
         $genericShippingItems = collect($items)->where('uses_product_shipping', false);
-        $shipping = $this->calculateShipping(
+        $additionalShipping = $this->calculateShipping(
             (float) $genericShippingItems->sum(fn (array $item) => ($item['line_subtotal'] ?? 0) + ($item['customization_total'] ?? 0)),
             (int) $genericShippingItems->sum('quantity')
         );
+        $productShippingTotal = (float) collect($items)->sum('product_shipping_total');
+        $shipping = $additionalShipping + $productShippingTotal;
         $tax = $this->calculateTax($merchandiseTotal - $discount);
         $total = max(0, $merchandiseTotal - $discount + $shipping + $tax);
 
@@ -62,6 +66,8 @@ class CartService
             'merchandise_total' => round($merchandiseTotal, 2),
             'discount' => round($discount, 2),
             'shipping' => round($shipping, 2),
+            'additional_shipping' => round($additionalShipping, 2),
+            'product_shipping_total' => round($productShippingTotal, 2),
             'tax' => round($tax, 2),
             'total' => round($total, 2),
             'quantity' => $quantity,
@@ -94,6 +100,26 @@ class CartService
             ->filter()
             ->values()
             ->all();
+    }
+
+    public function findItem(string $key): ?array
+    {
+        if (! $this->databaseCartAvailable()) {
+            return collect($this->sessionItems())
+                ->first(fn (array $item): bool => hash_equals((string) ($item['key'] ?? ''), $key));
+        }
+
+        $cart = $this->currentCart($this->hasLegacySessionCart());
+
+        if (! $cart instanceof ShoppingCart) {
+            return null;
+        }
+
+        $this->importLegacySessionCart($cart);
+
+        $record = $cart->items()->where('item_key', $key)->first();
+
+        return $record instanceof ShoppingCartItem ? $this->cartItemArray($record) : null;
     }
 
     public function count(): int
@@ -144,6 +170,77 @@ class CartService
 
         $this->importLegacySessionCart($cart);
         $this->persistCartItem($cart, $item, true);
+        $this->touchCart($cart);
+
+        return $this->summary();
+    }
+
+    public function replace(string $key, array $payload): array
+    {
+        $existing = $this->findItem($key);
+
+        abort_if($existing === null, 404, 'The cart item you are trying to edit no longer exists.');
+        abort_unless(
+            hash_equals((string) ($existing['product_slug'] ?? ''), (string) ($payload['product_slug'] ?? '')),
+            422,
+            'The selected product does not match this cart item.'
+        );
+
+        $product = $this->products->findBySlug((string) $payload['product_slug']);
+
+        abort_if($product === null, 404);
+
+        $customization = $this->sanitizeCustomization($payload, $product, (int) ($payload['quantity'] ?? 1));
+        $configuredQuantity = (int) collect($customization['configuration']['quantities'] ?? [])->sum();
+        $quantity = $this->sanitizeQuantity($configuredQuantity > 0 ? $configuredQuantity : (int) ($payload['quantity'] ?? 1), $product);
+        $this->validateRequiredConfiguration($product, $customization);
+        $newKey = $this->makeItemKey($product['slug'], $customization);
+
+        $item = $this->repriceItem([
+            'key' => $newKey,
+            'product_slug' => $product['slug'],
+            'quantity' => $quantity,
+            'customization' => $customization,
+            'created_at' => $existing['created_at'] ?? now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
+
+        if (! $this->databaseCartAvailable()) {
+            $items = $this->sessionItems();
+            $existingIndex = collect($items)->search(
+                fn (array $cartItem): bool => hash_equals((string) ($cartItem['key'] ?? ''), $key)
+            );
+
+            abort_if($existingIndex === false, 404, 'The cart item you are trying to edit no longer exists.');
+
+            $duplicateExists = collect($items)->contains(function (array $cartItem, int $index) use ($existingIndex, $newKey): bool {
+                return $index !== $existingIndex
+                    && hash_equals((string) ($cartItem['key'] ?? ''), $newKey);
+            });
+
+            abort_if($duplicateExists, 422, 'Another cart item already uses these exact options. Choose a different configuration or remove the duplicate item first.');
+
+            $items[$existingIndex] = $item;
+            session()->put(self::SESSION_ITEMS_KEY, array_values($items));
+
+            return $this->summary();
+        }
+
+        $cart = $this->currentCart($this->hasLegacySessionCart());
+        abort_unless($cart instanceof ShoppingCart, 404, 'The cart item you are trying to edit no longer exists.');
+
+        $this->importLegacySessionCart($cart);
+        $record = $cart->items()->where('item_key', $key)->first();
+        abort_unless($record instanceof ShoppingCartItem, 404, 'The cart item you are trying to edit no longer exists.');
+
+        $duplicateExists = $cart->items()
+            ->where('item_key', $newKey)
+            ->where($record->getKeyName(), '!=', $record->getKey())
+            ->exists();
+
+        abort_if($duplicateExists, 422, 'Another cart item already uses these exact options. Choose a different configuration or remove the duplicate item first.');
+
+        $this->persistCalculatedCartItem($record, $item);
         $this->touchCart($cart);
 
         return $this->summary();
@@ -697,7 +794,11 @@ class CartService
         $configuredQuantity = (int) collect($customization['configuration']['quantities'] ?? [])->sum();
         $quantity = $this->sanitizeQuantity($configuredQuantity > 0 ? $configuredQuantity : (int) ($item['quantity'] ?? 1), $product);
         $unitPrice = $this->unitPriceForQuantity($product, $quantity, $customization);
+        $shippingCharge = $this->productShippingCharge($product, $customization, $quantity);
+        $customization = $this->withFulfillmentPricing($customization, $shippingCharge, $quantity);
         $customizationUnitPrice = $this->customizationUnitPrice($product, $customization, $quantity);
+        $productShippingTotal = round((float) ($shippingCharge['total'] ?? 0), 2);
+        $shippingUnitPrice = $quantity > 0 ? round($productShippingTotal / $quantity, 4) : 0.0;
 
         return array_merge($item, [
             'key' => $item['key'] ?? $this->makeItemKey($product['slug'], $customization),
@@ -708,9 +809,11 @@ class CartService
             'customization' => $customization,
             'unit_price' => $unitPrice,
             'customization_unit_price' => $customizationUnitPrice,
+            'shipping_unit_price' => $shippingUnitPrice,
             'line_subtotal' => round($unitPrice * $quantity, 2),
             'customization_total' => round($customizationUnitPrice * $quantity, 2),
-            'line_total' => round(($unitPrice + $customizationUnitPrice) * $quantity, 2),
+            'line_total' => round((($unitPrice + $customizationUnitPrice) * $quantity) + $productShippingTotal, 2),
+            'product_shipping_total' => $productShippingTotal,
             'uses_product_shipping' => ! empty($product['shipping_methods']),
         ]);
     }
@@ -722,14 +825,46 @@ class CartService
         $sizeSummary = Str::limit(trim((string) ($payload['size_summary'] ?? 'Sizes selected in configuration')), 600, '');
         $artworkStatus = Str::limit(trim((string) ($payload['artwork_status'] ?? 'Artwork can be sent now or later')), 120, '');
         $notes = Str::limit(trim((string) ($payload['notes'] ?? '')), 1000, '');
+        $rawConfiguration = $payload['configuration_json'] ?? ($payload['configuration'] ?? []);
+        $rawConfiguration = $this->recoverLegacyConfiguration(
+            $rawConfiguration,
+            $payload,
+            $product,
+            $fallbackQuantity
+        );
         $configuration = $this->normalizeConfiguration(
-            $payload['configuration_json'] ?? ($payload['configuration'] ?? []),
+            $rawConfiguration,
             $product,
             $fallbackQuantity
         );
         $selectedSpeed = collect($product['production_speeds'] ?? [])->firstWhere('id', $configuration['production_speed'] ?? null);
         $selectedShipping = collect($product['shipping_methods'] ?? [])->firstWhere('id', $configuration['shipping_method'] ?? null);
         $secureDeliveryLabels = collect([$selectedSpeed['label'] ?? null, $selectedShipping['label'] ?? null])->filter()->implode(' / ');
+        $fulfillment = [
+            'production' => $selectedSpeed ? [
+                'code' => (string) ($selectedSpeed['id'] ?? ''),
+                'label' => (string) ($selectedSpeed['label'] ?? 'Standard production'),
+                'description' => (string) ($selectedSpeed['description'] ?? ''),
+                'price_delta' => round((float) ($selectedSpeed['price_delta'] ?? 0), 2),
+                'minimum_days' => max(0, (int) ($selectedSpeed['minimum_days'] ?? 0)),
+                'maximum_days' => max(
+                    max(0, (int) ($selectedSpeed['minimum_days'] ?? 0)),
+                    (int) ($selectedSpeed['maximum_days'] ?? $selectedSpeed['minimum_days'] ?? 0)
+                ),
+            ] : null,
+            'shipping' => $selectedShipping ? [
+                'code' => (string) ($selectedShipping['id'] ?? ''),
+                'label' => (string) ($selectedShipping['label'] ?? 'Standard shipping'),
+                'description' => (string) ($selectedShipping['description'] ?? ''),
+                'charge_type' => (string) ($selectedShipping['charge_type'] ?? 'per_unit'),
+                'minimum_days' => max(0, (int) ($selectedShipping['minimum_days'] ?? 0)),
+                'maximum_days' => max(
+                    max(0, (int) ($selectedShipping['minimum_days'] ?? 0)),
+                    (int) ($selectedShipping['maximum_days'] ?? $selectedShipping['minimum_days'] ?? 0)
+                ),
+                'quote_based' => (bool) ($selectedShipping['is_quote_based'] ?? false),
+            ] : null,
+        ];
 
         $artworkFiles = collect((array) ($payload['artwork_files'] ?? []))
             ->filter(fn ($file) => is_array($file) && filled($file['path'] ?? null))
@@ -762,11 +897,261 @@ class CartService
                 : ($artworkStatus === '' ? 'No artwork uploaded' : $artworkStatus),
             'notes' => $notes,
             'configuration' => $configuration,
+            'fulfillment' => $fulfillment,
             'artwork_files' => $artworkFiles->all(),
             // Legacy first-file fields remain for existing order/cart views.
             'artwork_path' => $firstArtwork['path'] ?? null,
             'artwork_original_name' => $firstArtwork['original_name'] ?? null,
         ];
+    }
+
+    /**
+     * Older cached storefront bundles submitted the human-readable summaries but
+     * left configuration_json empty. Reconstruct the editable values from those
+     * summaries so existing cart lines can still be edited after deployment.
+     */
+    private function recoverLegacyConfiguration(
+        array|string $raw,
+        array $payload,
+        array $product,
+        int $fallbackQuantity = 1
+    ): array {
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            $raw = is_array($decoded) ? $decoded : [];
+        }
+
+        $raw = is_array($raw) ? $raw : [];
+
+        if (empty($raw['quantities']) && ! empty($product['size_groups'])) {
+            $quantities = $this->legacyQuantitiesFromSummary(
+                (string) ($payload['size_summary'] ?? ''),
+                (array) ($product['size_groups'] ?? [])
+            );
+
+            if ($quantities !== []) {
+                $raw['quantities'] = $quantities;
+            }
+        }
+
+        $selectionSummary = trim((string) ($payload['design_option'] ?? ''));
+        if ($selectionSummary === '' || strcasecmp($selectionSummary, 'Configured product') === 0) {
+            $selectionSummary = trim((string) ($payload['notes'] ?? ''));
+        }
+
+        if ($selectionSummary !== '') {
+            $raw = $this->mergeLegacyOptionSummary(
+                $raw,
+                $selectionSummary,
+                (array) ($product['option_groups'] ?? [])
+            );
+        }
+
+        $deliverySummary = trim((string) ($payload['delivery_preference'] ?? ''));
+        if ($deliverySummary !== '') {
+            if (blank($raw['production_speed'] ?? null)) {
+                $speed = collect($product['production_speeds'] ?? [])->first(function (array $candidate) use ($deliverySummary): bool {
+                    return $this->summaryContainsLabel($deliverySummary, (string) ($candidate['label'] ?? ''));
+                });
+
+                if (filled($speed['id'] ?? null)) {
+                    $raw['production_speed'] = (string) $speed['id'];
+                }
+            }
+
+            if (blank($raw['shipping_method'] ?? null)) {
+                $shipping = collect($product['shipping_methods'] ?? [])->first(function (array $candidate) use ($deliverySummary): bool {
+                    return $this->summaryContainsLabel($deliverySummary, (string) ($candidate['label'] ?? ''));
+                });
+
+                if (filled($shipping['id'] ?? null)) {
+                    $raw['shipping_method'] = (string) $shipping['id'];
+                }
+            }
+        }
+
+        if (empty($product['size_groups']) && ! isset($raw['order_quantity'])) {
+            $raw['order_quantity'] = max(1, $fallbackQuantity);
+        }
+
+        return $raw;
+    }
+
+    private function legacyQuantitiesFromSummary(string $summary, array $sizeGroups): array
+    {
+        $summary = trim($summary);
+        if ($summary === '' || strcasecmp($summary, 'Sizes selected in configuration') === 0) {
+            return [];
+        }
+
+        $groups = collect($sizeGroups)->map(function (array $group): array {
+            $sizes = collect($group['sizes'] ?? [])->map(function (array $size): array {
+                return [
+                    'code' => (string) ($size['code'] ?? ''),
+                    'label' => (string) ($size['label'] ?? ($size['code'] ?? '')),
+                ];
+            })->filter(fn (array $size): bool => $size['code'] !== '')->values()->all();
+
+            return [
+                'id' => (string) ($group['id'] ?? ''),
+                'label' => (string) ($group['label'] ?? ($group['id'] ?? '')),
+                'sizes' => $sizes,
+            ];
+        })->filter(fn (array $group): bool => $group['id'] !== '')->values();
+
+        if ($groups->isEmpty()) {
+            return [];
+        }
+
+        $quantities = [];
+        $segments = preg_split('/\s*;\s*/u', $summary, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        foreach ($segments as $segment) {
+            $groupLabel = '';
+            $sizeText = trim($segment);
+
+            if (str_contains($segment, ':')) {
+                [$groupLabel, $sizeText] = array_pad(explode(':', $segment, 2), 2, '');
+                $groupLabel = trim($groupLabel);
+                $sizeText = trim($sizeText);
+            }
+
+            $group = $groups->first(function (array $candidate) use ($groupLabel): bool {
+                if ($groupLabel === '') {
+                    return false;
+                }
+
+                $needle = $this->normalizeSummaryToken($groupLabel);
+
+                return $needle !== '' && in_array($needle, [
+                    $this->normalizeSummaryToken($candidate['id']),
+                    $this->normalizeSummaryToken($candidate['label']),
+                ], true);
+            });
+
+            if (! $group && $groups->count() === 1) {
+                $group = $groups->first();
+            }
+
+            if (! is_array($group)) {
+                continue;
+            }
+
+            foreach ((array) ($group['sizes'] ?? []) as $size) {
+                $aliases = array_values(array_unique(array_filter([
+                    (string) ($size['label'] ?? ''),
+                    (string) ($size['code'] ?? ''),
+                ])));
+
+                foreach ($aliases as $alias) {
+                    $pattern = '/(?:^|[,\s])'.preg_quote($alias, '/').'\s*(?:×|x|\*)\s*(\d+)(?=$|[,\s])/iu';
+                    if (! preg_match($pattern, $sizeText, $matches)) {
+                        continue;
+                    }
+
+                    $quantity = max(0, min(9999, (int) ($matches[1] ?? 0)));
+                    if ($quantity > 0) {
+                        $quantities[$group['id'].':'.$size['code']] = $quantity;
+                    }
+                    break;
+                }
+            }
+        }
+
+        return $quantities;
+    }
+
+    private function mergeLegacyOptionSummary(array $raw, string $summary, array $optionGroups): array
+    {
+        $segments = preg_split('/\s*;\s*/u', $summary, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $groups = collect($optionGroups)->filter(
+            fn (array $group): bool => (string) ($group['display_mode'] ?? 'customer') === 'customer'
+        );
+
+        foreach ($segments as $segment) {
+            if (! str_contains($segment, ':')) {
+                continue;
+            }
+
+            [$label, $valueText] = array_pad(explode(':', $segment, 2), 2, '');
+            $label = $this->normalizeSummaryToken($label);
+            $valueText = trim($valueText);
+
+            if ($label === '' || $valueText === '') {
+                continue;
+            }
+
+            $group = $groups->first(function (array $candidate) use ($label): bool {
+                return in_array($label, [
+                    $this->normalizeSummaryToken((string) ($candidate['id'] ?? '')),
+                    $this->normalizeSummaryToken((string) ($candidate['label'] ?? '')),
+                ], true);
+            });
+
+            if (! is_array($group) || blank($group['id'] ?? null)) {
+                continue;
+            }
+
+            $groupId = (string) $group['id'];
+            $type = (string) ($group['type'] ?? 'select');
+            $values = collect($group['values'] ?? []);
+
+            if ($type === 'checkbox' && empty(($raw['multi_selections'] ?? [])[$groupId])) {
+                $requestedLabels = collect(preg_split('/\s*,\s*/u', $valueText, -1, PREG_SPLIT_NO_EMPTY) ?: [])
+                    ->map(fn (string $value): string => $this->normalizeSummaryToken($value))
+                    ->filter();
+
+                $selected = $values->filter(function (array $value) use ($requestedLabels): bool {
+                    $aliases = collect([(string) ($value['id'] ?? ''), (string) ($value['label'] ?? '')])
+                        ->map(fn (string $alias): string => $this->normalizeSummaryToken($alias));
+
+                    return $aliases->intersect($requestedLabels)->isNotEmpty();
+                })->pluck('id')->map(fn ($id): string => (string) $id)->values()->all();
+
+                if ($selected !== []) {
+                    $raw['multi_selections'][$groupId] = $selected;
+                }
+                continue;
+            }
+
+            if (in_array($type, ['image', 'swatch', 'buttons', 'select'], true)
+                && blank(($raw['selections'] ?? [])[$groupId])) {
+                $requested = $this->normalizeSummaryToken($valueText);
+                $selected = $values->first(function (array $value) use ($requested): bool {
+                    return in_array($requested, [
+                        $this->normalizeSummaryToken((string) ($value['id'] ?? '')),
+                        $this->normalizeSummaryToken((string) ($value['label'] ?? '')),
+                    ], true);
+                });
+
+                if (filled($selected['id'] ?? null)) {
+                    $raw['selections'][$groupId] = (string) $selected['id'];
+                }
+                continue;
+            }
+
+            if (! in_array($type, ['image', 'swatch', 'buttons', 'select', 'checkbox', 'file'], true)
+                && ! array_key_exists($groupId, (array) ($raw['inputs'] ?? []))) {
+                $raw['inputs'][$groupId] = $valueText;
+            }
+        }
+
+        return $raw;
+    }
+
+    private function summaryContainsLabel(string $summary, string $label): bool
+    {
+        $summary = $this->normalizeSummaryToken($summary);
+        $label = $this->normalizeSummaryToken($label);
+
+        return $label !== '' && str_contains(' '.$summary.' ', ' '.$label.' ');
+    }
+
+    private function normalizeSummaryToken(string $value): string
+    {
+        return trim((string) preg_replace('/\s+/u', ' ', mb_strtolower(
+            preg_replace('/[^\pL\pN]+/u', ' ', $value) ?? $value
+        )));
     }
 
     private function normalizeConfiguration(array|string $raw, array $product, int $fallbackQuantity = 1): array
@@ -1179,29 +1564,6 @@ class CartService
             ->firstWhere('id', $configuration['production_speed'] ?? null);
         $perUnit += (float) ($speed['price_delta'] ?? 0);
 
-        $shipping = collect($product['shipping_methods'] ?? [])->firstWhere('id', $configuration['shipping_method'] ?? null);
-        if ($shipping) {
-            $tableRate = $this->shippingPerUnitFromPriceTable($product, $customization, $shipping, $quantity);
-            if ($tableRate !== null) {
-                $perUnit += $tableRate;
-            } elseif (($shipping['price_source'] ?? null) === 'price_table' || ($shipping['requires_price_table'] ?? false) || ($shipping['charge_type'] ?? null) === 'price_table') {
-                // No matching price-table column was found for the selected method.
-                // Keep the amount unpriced instead of falling back to legacy master data.
-            } elseif (($shipping['charge_type'] ?? 'per_unit') === 'master_method') {
-                $base = (float) ($shipping['base_price'] ?? $shipping['price_delta'] ?? 0);
-                $perItem = (float) ($shipping['per_item_price'] ?? 0);
-                $fixedOrder += max(0, $base - $perItem);
-                $perUnit += $perItem;
-            } else {
-                $amount = (float) ($shipping['price_delta'] ?? 0);
-                if (($shipping['charge_type'] ?? 'per_unit') === 'fixed_order') {
-                    $fixedOrder += $amount;
-                } elseif (! in_array(($shipping['charge_type'] ?? 'per_unit'), ['included', 'price_table'], true)) {
-                    $perUnit += $amount;
-                }
-            }
-        }
-
         if ($quantity > 0) {
             // Sizes determine only the total quantity. The price tier chosen for that
             // total quantity determines the base unit price; sizes never add a price.
@@ -1209,6 +1571,93 @@ class CartService
         }
 
         return round($perUnit, 2);
+    }
+
+    /**
+     * Calculate the product-level shipping selected in the configurator.
+     *
+     * The amount is returned separately from customization so the storefront,
+     * checkout, order records, and invoices can label it as shipping.
+     */
+    private function productShippingCharge(array $product, array $customization, int $quantity): array
+    {
+        $configuration = (array) ($customization['configuration'] ?? []);
+        $shipping = collect($product['shipping_methods'] ?? [])->firstWhere('id', $configuration['shipping_method'] ?? null);
+
+        if (! is_array($shipping)) {
+            return [
+                'per_unit' => 0.0,
+                'fixed_order' => 0.0,
+                'total' => 0.0,
+                'price_status' => 'not_applicable',
+            ];
+        }
+
+        $perUnit = 0.0;
+        $fixedOrder = 0.0;
+        $priceStatus = 'priced';
+        $tableRate = $this->shippingPerUnitFromPriceTable($product, $customization, $shipping, $quantity);
+
+        if ($tableRate !== null) {
+            $perUnit = max(0, $tableRate);
+        } elseif (($shipping['price_source'] ?? null) === 'price_table' || ($shipping['requires_price_table'] ?? false) || ($shipping['charge_type'] ?? null) === 'price_table') {
+            $priceStatus = 'contact_us';
+        } elseif (($shipping['charge_type'] ?? 'per_unit') === 'master_method') {
+            $base = max(0, (float) ($shipping['base_price'] ?? $shipping['price_delta'] ?? 0));
+            $perItem = max(0, (float) ($shipping['per_item_price'] ?? 0));
+            $fixedOrder = max(0, $base - $perItem);
+            $perUnit = $perItem;
+        } else {
+            $amount = max(0, (float) ($shipping['price_delta'] ?? 0));
+            if (($shipping['charge_type'] ?? 'per_unit') === 'fixed_order') {
+                $fixedOrder = $amount;
+            } elseif (! in_array(($shipping['charge_type'] ?? 'per_unit'), ['included', 'price_table'], true)) {
+                $perUnit = $amount;
+            }
+        }
+
+        return [
+            'per_unit' => round($perUnit, 4),
+            'fixed_order' => round($fixedOrder, 2),
+            'total' => round(($perUnit * max(1, $quantity)) + $fixedOrder, 2),
+            'price_status' => $priceStatus,
+        ];
+    }
+
+    private function withFulfillmentPricing(array $customization, array $shippingCharge, int $quantity): array
+    {
+        $fulfillment = (array) ($customization['fulfillment'] ?? []);
+        $production = is_array($fulfillment['production'] ?? null) ? $fulfillment['production'] : null;
+        $shipping = is_array($fulfillment['shipping'] ?? null) ? $fulfillment['shipping'] : null;
+
+        if ($production !== null) {
+            $production['amount'] = round(max(0, (float) ($production['price_delta'] ?? 0)) * max(1, $quantity), 2);
+            $production['display_amount'] = $production['amount'] > 0
+                ? '$'.number_format((float) $production['amount'], 2)
+                : 'Included';
+        }
+
+        if ($shipping !== null) {
+            $shipping['amount'] = round((float) ($shippingCharge['total'] ?? 0), 2);
+            $shipping['display_amount'] = ($shippingCharge['price_status'] ?? 'priced') === 'contact_us'
+                ? 'Contact us for price'
+                : '$'.number_format((float) $shipping['amount'], 2);
+            $shipping['price_status'] = (string) ($shippingCharge['price_status'] ?? 'priced');
+        }
+
+        $productionMinimum = max(0, (int) ($production['minimum_days'] ?? 0));
+        $productionMaximum = max($productionMinimum, (int) ($production['maximum_days'] ?? $productionMinimum));
+        $shippingMinimum = max(0, (int) ($shipping['minimum_days'] ?? 0));
+        $shippingMaximum = max($shippingMinimum, (int) ($shipping['maximum_days'] ?? $shippingMinimum));
+
+        $customization['fulfillment'] = [
+            'production' => $production,
+            'shipping' => $shipping,
+            'estimated_minimum_days' => $productionMinimum + $shippingMinimum,
+            'estimated_maximum_days' => $productionMaximum + $shippingMaximum,
+        ];
+
+        return $customization;
     }
 
     private function calculateDiscount(float $merchandiseTotal, ?string $couponCode): float

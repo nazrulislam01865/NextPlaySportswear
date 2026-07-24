@@ -21,7 +21,7 @@
             @if(session('status'))<div class="mt-5 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>@endif
             @if($errors->any())<div class="mt-5 rounded-xl bg-red-50 p-3 text-sm text-red-800">{{ $errors->first() }}</div>@endif
 
-            <form method="POST" action="{{ route('admin.login.store') }}" class="mt-7 space-y-4">
+            <form method="POST" action="{{ route('admin.login.store') }}" class="mt-7 space-y-4" data-admin-login-form>
                 @csrf
                 <label class="block text-sm font-black text-slate-700">Email address
                     <input type="email" name="email" value="{{ old('email') }}" required autocomplete="username" class="mt-2 h-12 w-full rounded-xl border border-slate-300 px-4 outline-none focus:border-brand-blue">
@@ -30,10 +30,32 @@
                     <input type="password" name="password" required autocomplete="current-password" class="mt-2 h-12 w-full rounded-xl border border-slate-300 px-4 outline-none focus:border-brand-blue">
                 </label>
                 <label class="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" name="remember" value="1" class="rounded border-slate-300 text-brand-red"> Keep me signed in on this device</label>
-                <button type="submit" class="btn btn-red w-full py-4">Sign in securely</button>
+                <button type="submit" class="btn btn-red w-full py-4" data-admin-login-submit data-submitting-label="Signing in…">Sign in securely</button>
             </form>
             <a href="{{ route('home') }}" class="mt-5 block text-center text-sm font-bold text-brand-blue">← Return to storefront</a>
         </section>
     </main>
+
+    <script>
+        (() => {
+            const form = document.querySelector('[data-admin-login-form]');
+            const button = form?.querySelector('[data-admin-login-submit]');
+
+            if (!form || !button) return;
+
+            form.addEventListener('submit', (event) => {
+                if (form.dataset.submitting === '1') {
+                    event.preventDefault();
+                    return;
+                }
+
+                form.dataset.submitting = '1';
+                button.disabled = true;
+                button.setAttribute('aria-disabled', 'true');
+                button.textContent = button.dataset.submittingLabel || 'Signing in…';
+            });
+        })();
+    </script>
+
 </body>
 </html>

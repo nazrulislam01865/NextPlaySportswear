@@ -45,11 +45,22 @@
 
     <div class="mt-6 grid gap-4">
         @forelse ($items as $item)
+            @php
+                $itemFulfillment = (array) data_get($item, 'customization.fulfillment', []);
+                $itemProduction = is_array($itemFulfillment['production'] ?? null) ? $itemFulfillment['production'] : null;
+                $itemShipping = is_array($itemFulfillment['shipping'] ?? null) ? $itemFulfillment['shipping'] : null;
+            @endphp
             <div class="grid grid-cols-[68px_1fr] gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
                 <img src="{{ $item['product']['image'] ?? '' }}" alt="{{ $item['product']['alt'] ?? $item['product']['title'] ?? 'Product' }}" class="h-16 w-16 rounded-xl bg-white object-contain">
                 <div class="min-w-0">
                     <h3 class="line-clamp-2 text-sm font-black text-brand-ink">{{ $item['product']['short_title'] ?? $item['product']['title'] ?? 'Product' }}</h3>
                     <p class="mt-1 text-xs font-semibold text-slate-500">Qty {{ $item['quantity'] ?? 1 }} · {{ $item['customization']['design_option'] ?? 'Custom design' }}</p>
+                    @if($itemProduction)
+                        <p class="mt-1 text-xs font-bold text-slate-600">Production: {{ $itemProduction['label'] ?? 'Standard production' }} · {{ $itemProduction['display_amount'] ?? 'Included' }}</p>
+                    @endif
+                    @if($itemShipping)
+                        <p class="mt-1 text-xs font-bold text-slate-600">Shipping: {{ $itemShipping['label'] ?? 'Selected shipping' }}</p>
+                    @endif
                     <p class="mt-1 text-sm font-black text-slate-900">${{ number_format($item['line_total'] ?? 0, 2) }}</p>
                 </div>
             </div>
@@ -61,13 +72,10 @@
     <dl class="mt-6 grid gap-3 text-sm">
         <div class="flex justify-between gap-4"><dt class="font-semibold text-slate-500">Merchandise subtotal</dt><dd class="font-black text-slate-900">${{ number_format($summary['subtotal'] ?? 0, 2) }}</dd></div>
         <div class="flex justify-between gap-4"><dt class="font-semibold text-slate-500">Customization</dt><dd class="font-black text-slate-900">${{ number_format($summary['customization_total'] ?? 0, 2) }}</dd></div>
-        @if(($summary['product_shipping_total'] ?? 0) > 0)
-            <div class="flex justify-between gap-4"><dt class="font-semibold text-slate-500">Product shipping <span class="text-xs font-black text-slate-400">included</span></dt><dd class="font-black text-slate-900">${{ number_format($summary['product_shipping_total'] ?? 0, 2) }}</dd></div>
-        @endif
         <div class="flex justify-between gap-4"><dt class="font-semibold text-slate-500">Discount @if(!empty($summary['coupon_code']))<span class="text-xs font-black text-green-700">({{ $summary['coupon_code'] }})</span>@endif</dt><dd class="font-black text-green-700">-${{ number_format($summary['discount'] ?? 0, 2) }}</dd></div>
         <div class="flex justify-between gap-4">
             <dt class="font-semibold text-slate-500">
-                Shipping
+                Shipping charges
                 <span class="text-xs font-black text-slate-400" x-show="shippingTitle" x-cloak>(<span x-text="shippingTitle"></span>)</span>
             </dt>
             <dd class="font-black text-slate-900" x-text="shippingBase">{{ $initialShippingBase }}</dd>
@@ -81,6 +89,7 @@
         </div>
         <div class="flex justify-between gap-4"><dt class="font-semibold text-slate-500">Estimated tax</dt><dd class="font-black text-slate-900">${{ number_format($summary['tax'] ?? 0, 2) }}</dd></div>
     </dl>
+
 
     <div class="mt-6 rounded-2xl bg-brand-navy p-4 text-white">
         <div class="flex items-end justify-between gap-4">

@@ -146,7 +146,7 @@
 
     <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
         <div class="admin-table-scroll" tabindex="0" aria-label="Products table">
-            <table class="admin-table min-w-[1235px] text-[13px]">
+            <table class="admin-table text-[13px]" style="min-width: 1710px;">
                 <thead class="bg-slate-50 text-left text-[10px] font-bold uppercase tracking-[.12em] text-slate-500">
                     <tr>
                         <th class="w-14 px-4 py-3.5"><input id="product-check-all" type="checkbox" class="h-4 w-4 rounded border-slate-300" aria-label="Select all products on this page"></th>
@@ -156,6 +156,8 @@
                         <th class="w-[125px] px-4 py-3.5">Inventory</th>
                         <th class="w-[95px] px-4 py-3.5">Status</th>
                         <th class="w-[135px] px-4 py-3.5">Flags</th>
+                        <th class="px-4 py-3.5" style="width: 205px;">Last updated</th>
+                        <th class="px-4 py-3.5" style="width: 265px;">What was updated</th>
                         <th class="w-[300px] px-4 py-3.5 text-right">Actions</th>
                     </tr>
                 </thead>
@@ -199,6 +201,23 @@
                                     @endif
                                 </div>
                             </td>
+                            <td class="px-4 py-3.5 align-top">
+                                <p class="whitespace-nowrap font-bold text-slate-800">{{ $product->updated_at?->format('M d, Y') ?? '—' }}</p>
+                                <p class="mt-1 whitespace-nowrap text-xs font-medium text-slate-500">{{ $product->updated_at?->format('h:i A') ?? 'Time unavailable' }}</p>
+                                <p class="mt-1 text-xs leading-5 text-slate-400">
+                                    By {{ $product->updater?->name ?: $product->updater?->email ?: 'System / import' }}
+                                </p>
+                            </td>
+                            <td class="px-4 py-3.5 align-top">
+                                @php($updateSummary = trim((string) $product->last_update_summary))
+                                <p
+                                    class="text-sm font-semibold leading-5 text-slate-700"
+                                    title="{{ $updateSummary !== '' ? $updateSummary : 'No update summary was recorded for this existing product.' }}"
+                                    style="display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;"
+                                >
+                                    {{ $updateSummary !== '' ? $updateSummary : 'No update summary recorded' }}
+                                </p>
+                            </td>
                             <td class="px-4 py-3.5">
                                 <div class="admin-row-actions">
                                     <a href="{{ route('products.show', $product->slug) }}" target="_blank" rel="noopener" class="admin-row-action border-slate-200">Preview</a>
@@ -216,7 +235,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="px-4 py-12 text-center text-slate-500">No products found.</td></tr>
+                        <tr><td colspan="10" class="px-4 py-12 text-center text-slate-500">No products found.</td></tr>
                     @endforelse
                 </tbody>
             </table>

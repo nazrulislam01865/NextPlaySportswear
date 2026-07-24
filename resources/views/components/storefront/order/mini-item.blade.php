@@ -12,6 +12,13 @@
         <p class="mt-1 text-xs font-semibold leading-5 text-slate-500">
             Qty {{ $item['quantity'] }} · {{ $item['customization']['size_summary'] }}
         </p>
+        @php($fulfillment = (array) ($item['customization']['fulfillment'] ?? []))
+        @if(is_array($fulfillment['production'] ?? null))
+            <p class="mt-1 text-xs font-bold leading-5 text-slate-600">Production: {{ data_get($fulfillment, 'production.label', 'Standard production') }} · {{ data_get($fulfillment, 'production.display_amount', 'Included') }}</p>
+        @endif
+        @if(is_array($fulfillment['shipping'] ?? null))
+            <p class="mt-1 text-xs font-bold leading-5 text-slate-600">Shipping: {{ data_get($fulfillment, 'shipping.label', 'Selected shipping') }}</p>
+        @endif
         <p class="mt-1 text-xs font-semibold leading-5 text-slate-500">
             {{ $item['customization']['design_option'] }}
         </p>

@@ -20,6 +20,7 @@ class LoginRequest extends FormRequest
             'email' => ['required', 'email:rfc,dns', 'max:255'],
             'password' => ['required', 'string', 'max:255'],
             'remember' => ['nullable', 'boolean'],
+            'redirect' => ['nullable', 'string', 'max:2048'],
         ];
     }
 }

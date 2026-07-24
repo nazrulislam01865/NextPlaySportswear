@@ -17,6 +17,7 @@ use App\Http\Controllers\Storefront\NewsletterController;
 use App\Http\Controllers\Storefront\OrderController;
 use App\Http\Controllers\Storefront\ProductController;
 use App\Http\Controllers\Storefront\ProductActivityController;
+use App\Http\Controllers\Storefront\ProductWishlistController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
@@ -71,10 +72,10 @@ Route::permanentRedirect('/accessibility-statement', '/accessibility');
 
 
 
-Route::prefix('admin')->name('admin.')->group(function () {
+Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(function () {
     Route::get('/login', [\App\Http\Controllers\Admin\Auth\AdminSessionController::class, 'create'])->name('login');
     Route::post('/login', [\App\Http\Controllers\Admin\Auth\AdminSessionController::class, 'store'])
-        ->middleware('throttle:5,1')
+        ->middleware('throttle:admin-login')
         ->name('login.store');
 
     Route::middleware(['auth:admin', 'admin', 'admin.permission', 'admin.activity'])->group(function () {
@@ -322,10 +323,27 @@ Route::get('/products/search-suggestions', [ProductController::class, 'suggestio
 Route::get('/product/{slug}', [ProductController::class, 'show'])->name('products.show');
 Route::get('/products/{slug}', [ProductController::class, 'show'])->name('products.show.legacy');
 
+Route::get('/wishlist', [ProductWishlistController::class, 'index'])
+    ->middleware('not.admin')
+    ->name('wishlist.index');
+Route::post('/wishlist/guest-products', [ProductWishlistController::class, 'guestProducts'])
+    ->middleware(['not.admin', 'throttle:60,1'])
+    ->name('wishlist.guest-products');
+Route::get('/wishlist/status', [ProductWishlistController::class, 'status'])
+    ->middleware(['not.admin', 'auth:web', 'customer', 'throttle:60,1'])
+    ->name('wishlist.status');
+Route::put('/wishlist/products/{product}', [ProductWishlistController::class, 'update'])
+    ->middleware(['not.admin', 'auth:web', 'customer', 'throttle:60,1'])
+    ->name('wishlist.products.update');
+
 Route::permanentRedirect('/quote-request', '/bulk-quote');
 
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+Route::get('/cart/items/{cartItem}/artwork/{artworkIndex}', [CartController::class, 'showArtwork'])
+    ->whereNumber('artworkIndex')
+    ->name('cart.items.artwork.show');
 Route::post('/cart/items', [CartController::class, 'store'])->name('cart.items.store');
+Route::patch('/cart/items/{cartItem}/options', [CartController::class, 'updateOptions'])->name('cart.items.options.update');
 Route::patch('/cart/items/{cartItem}', [CartController::class, 'update'])->name('cart.items.update');
 Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.items.destroy');
 Route::post('/cart/coupon', [CartController::class, 'applyCoupon'])->name('cart.coupon.apply');
@@ -342,27 +360,27 @@ Route::post('/track-order', [OrderController::class, 'lookup'])->middleware('thr
 Route::get('/invoice-download', [OrderController::class, 'invoice'])->name('orders.invoice.legacy');
 Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->where('orderNumber', '[A-Za-z0-9\-]+')->name('orders.invoice');
 
-Route::prefix('checkout')->name('checkout.')->middleware(['not.admin', 'auth:web', 'customer', 'throttle:60,1'])->group(function () {
+Route::prefix('checkout')->name('checkout.')->middleware(['not.admin', 'auth:web', 'customer'])->group(function () {
     Route::get('/', [CheckoutController::class, 'information'])->name('index');
     Route::get('/information', [CheckoutController::class, 'information'])->name('information');
-    Route::post('/information', [CheckoutController::class, 'storeInformation'])->middleware('throttle:12,1')->name('information.store');
+    Route::post('/information', [CheckoutController::class, 'storeInformation'])->middleware('throttle:checkout-step')->name('information.store');
 
     Route::get('/shipping-address', [CheckoutController::class, 'shippingAddress'])->name('shipping-address');
-    Route::post('/shipping-address', [CheckoutController::class, 'storeShippingAddress'])->middleware('throttle:12,1')->name('shipping-address.store');
+    Route::post('/shipping-address', [CheckoutController::class, 'storeShippingAddress'])->middleware('throttle:checkout-step')->name('shipping-address.store');
 
     Route::get('/billing-address', [CheckoutController::class, 'billingAddress'])->name('billing-address');
-    Route::post('/billing-address', [CheckoutController::class, 'storeBillingAddress'])->middleware('throttle:12,1')->name('billing-address.store');
+    Route::post('/billing-address', [CheckoutController::class, 'storeBillingAddress'])->middleware('throttle:checkout-step')->name('billing-address.store');
 
     Route::get('/shipping-method', [CheckoutController::class, 'shippingMethod'])->name('shipping-method');
-    Route::post('/shipping-method', [CheckoutController::class, 'storeShippingMethod'])->middleware('throttle:12,1')->name('shipping-method.store');
+    Route::post('/shipping-method', [CheckoutController::class, 'storeShippingMethod'])->middleware('throttle:checkout-step')->name('shipping-method.store');
 
     Route::get('/payment-method', [CheckoutController::class, 'paymentMethod'])->name('payment-method');
-    Route::post('/payment-method', [CheckoutController::class, 'storePaymentMethod'])->middleware('throttle:8,1')->name('payment-method.store');
+    Route::post('/payment-method', [CheckoutController::class, 'storePaymentMethod'])->middleware('throttle:checkout-step')->name('payment-method.store');
 
     Route::get('/review', [CheckoutController::class, 'review'])->name('review');
-    Route::post('/review', [CheckoutController::class, 'storeReview'])->middleware('throttle:10,1')->name('review.store');
+    Route::post('/review', [CheckoutController::class, 'storeReview'])->middleware('throttle:checkout-step')->name('review.store');
 
     Route::get('/place-order', [CheckoutController::class, 'placeOrder'])->name('place-order');
-    Route::post('/place-order', [CheckoutController::class, 'submitOrder'])->middleware('throttle:4,1')->name('place-order.submit');
+    Route::post('/place-order', [CheckoutController::class, 'submitOrder'])->middleware('throttle:checkout-place-order')->name('place-order.submit');
     Route::get('/success', [CheckoutController::class, 'success'])->name('success');
 });

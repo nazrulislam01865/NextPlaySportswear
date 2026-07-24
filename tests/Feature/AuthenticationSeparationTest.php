@@ -63,6 +63,46 @@ class AuthenticationSeparationTest extends TestCase
         $this->get(route('account.dashboard'))->assertRedirect(route('admin.dashboard'));
     }
 
+
+    public function test_customer_login_ignores_a_stale_admin_intended_url(): void
+    {
+        $customer = User::factory()->create([
+            'role' => 'customer',
+            'is_active' => true,
+            'password' => Hash::make('Password123'),
+        ]);
+
+        $this->withSession(['url.intended' => route('admin.dashboard')])
+            ->post(route('login.store'), [
+                'email' => $customer->email,
+                'password' => 'Password123',
+            ])
+            ->assertRedirect(route('account.dashboard'));
+
+        $this->assertAuthenticatedAs($customer, 'web');
+        $this->assertGuest('admin');
+        $this->assertFalse(session()->has('url.intended'));
+    }
+
+    public function test_customer_login_returns_to_the_product_the_customer_was_viewing(): void
+    {
+        $customer = User::factory()->create([
+            'role' => 'customer',
+            'is_active' => true,
+            'password' => Hash::make('Password123'),
+        ]);
+        $productUrl = route('products.show', ['slug' => 'custom-team-jersey']);
+
+        $this->post(route('login.store'), [
+            'email' => $customer->email,
+            'password' => 'Password123',
+            'redirect' => $productUrl,
+        ])->assertRedirect($productUrl);
+
+        $this->assertAuthenticatedAs($customer, 'web');
+        $this->assertGuest('admin');
+    }
+
     public function test_customer_session_cannot_open_admin_panel(): void
     {
         $customer = User::factory()->create([
@@ -72,6 +112,29 @@ class AuthenticationSeparationTest extends TestCase
 
         $this->actingAs($customer, 'web')
             ->get(route('admin.dashboard'))
-            ->assertRedirect(route('admin.login'));
+            ->assertNotFound();
+    }
+
+    public function test_customer_session_cannot_see_or_submit_the_admin_login_page(): void
+    {
+        $customer = User::factory()->create([
+            'role' => 'customer',
+            'is_active' => true,
+            'password' => Hash::make('Password123'),
+        ]);
+
+        $this->actingAs($customer, 'web')
+            ->get(route('admin.login'))
+            ->assertNotFound();
+
+        $this->actingAs($customer, 'web')
+            ->post(route('admin.login.store'), [
+                'email' => $customer->email,
+                'password' => 'Password123',
+            ])
+            ->assertNotFound();
+
+        $this->assertAuthenticatedAs($customer, 'web');
+        $this->assertGuest('admin');
     }
 }

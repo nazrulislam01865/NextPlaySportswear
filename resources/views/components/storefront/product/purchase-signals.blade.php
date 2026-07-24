@@ -5,9 +5,6 @@
     $reviewsCount = $product['reviews_count'] ?? null;
     $usingDefaultRating = false;
 
-    // Keep the title-area rating in sync with product cards and the full
-    // reviews section. Until product-level reviews are published, use the
-    // configured storefront demo rating requested for the prototype.
     if ((! is_numeric($rating) || ! is_numeric($reviewsCount) || (int) $reviewsCount <= 0)
         && (bool) config('storefront.product_cards.show_default_rating', true)) {
         $rating = config('storefront.product_cards.default_rating', 4.8);
@@ -20,9 +17,6 @@
     $filledStars = $hasReviews ? max(0, min(5, (int) round((float) $rating))) : 0;
     $ratingStars = $hasReviews ? str_repeat('★', $filledStars).str_repeat('☆', 5 - $filledStars) : '';
     $activityLabel = trim((string) ($product['shopper_activity'] ?? ''));
-    $favoritesCount = is_numeric($product['favorites_count'] ?? null) && (int) $product['favorites_count'] > 0
-        ? (int) $product['favorites_count']
-        : null;
 @endphp
 
 <div class="np-product-signals" aria-label="Product rating and customer activity">
@@ -41,27 +35,58 @@
         <button
             type="button"
             class="np-product-signal-button"
-            data-product-detail-favorite="{{ $product['id'] ?? '' }}"
-            aria-pressed="false"
+            :class="wishlisted ? 'is-saved' : ''"
+            @click="toggleWishlist()"
+            :aria-label="wishlistLabel()"
+            :title="wishlistLabel()"
+            :aria-pressed="wishlisted ? 'true' : 'false'"
+            :disabled="wishlistBusy"
         >
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z" /></svg>
-            <span data-product-detail-favorite-label>Save</span>
-            @if($favoritesCount)
-                <strong>{{ number_format($favoritesCount) }}</strong>
-            @endif
+            <svg viewBox="0 0 24 24" :fill="wishlisted ? 'currentColor' : 'none'" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z" /></svg>
+            <span x-text="wishlisted ? 'Saved' : 'Save'">Save</span>
+            <strong x-show="productFavoritesCount > 0" x-text="Number(productFavoritesCount).toLocaleString()"></strong>
         </button>
 
-        <button
-            type="button"
-            class="np-product-signal-button"
-            data-product-detail-share
-            data-share-title="{{ $product['title'] }}"
-            data-share-text="{{ $product['summary'] ?? '' }}"
-            data-share-url="{{ $product['url'] ?? request()->fullUrl() }}"
+        <div
+            class="np-product-share-wrapper relative"
+            @click.outside="shareOpen = false"
+            @keydown.escape.window="shareOpen = false"
         >
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.8-3.4a3.1 3.1 0 0 0 0-3.6l6.8-3.4A3 3 0 1 0 15 5c0 .2 0 .4.1.6L8.2 9a3 3 0 1 0 0 6l6.9 3.4A3 3 0 1 0 18 16Z" /></svg>
-            <span data-product-detail-share-label>Share</span>
-        </button>
+            <button
+                type="button"
+                class="np-product-signal-button"
+                @click="shareProduct()"
+                :aria-expanded="shareOpen ? 'true' : 'false'"
+                :aria-controls="shareMenuId()"
+                aria-label="Share this product"
+                :disabled="shareBusy"
+            >
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.8-3.4a3.1 3.1 0 0 0 0-3.6l6.8-3.4A3 3 0 1 0 15 5c0 .2 0 .4.1.6L8.2 9a3 3 0 1 0 0 6l6.9 3.4A3 3 0 1 0 18 16Z" /></svg>
+                <span>Share</span>
+            </button>
+
+            <div
+                x-cloak
+                x-show="shareOpen"
+                x-transition.origin.top.left
+                :id="shareMenuId()"
+                role="menu"
+                aria-label="Share this product"
+                class="np-product-share-menu absolute left-0 top-[calc(100%+.65rem)] z-50 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl"
+            >
+                <button type="button" role="menuitem" @click="copyProductLink()">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    Copy link
+                </button>
+                <button type="button" role="menuitem" @click="shareThrough('whatsapp')"><span aria-hidden="true">W</span>WhatsApp</button>
+                <button type="button" role="menuitem" @click="shareThrough('facebook')"><span aria-hidden="true">f</span>Facebook</button>
+                <button type="button" role="menuitem" @click="shareThrough('x')"><span aria-hidden="true">X</span>X</button>
+                <button type="button" role="menuitem" @click="shareThrough('email')">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-10 5L2 7"></path></svg>
+                    Email
+                </button>
+            </div>
+        </div>
 
         <div
             class="np-product-signal-button np-product-signal-button--activity"
@@ -74,82 +99,82 @@
             <span data-product-detail-activity-label>{{ $activityLabel }}</span>
         </div>
     </div>
+
+    <p
+        x-cloak
+        x-show="!socialConfig.authenticated && wishlisted"
+        class="mt-3 text-xs font-semibold leading-5 text-slate-500"
+    >
+        Saved on this browser.
+        <a :href="socialConfig.login_url" class="font-black text-brand-blue underline decoration-brand-blue/30 underline-offset-2 hover:text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue">
+            Sign in to keep it across devices.
+        </a>
+    </p>
 </div>
 
 @once
     <style>
         .np-product-signals {
-            margin-top: 1rem;
+            display: block;
+            margin-top: .72rem;
         }
-
         .np-product-signals__rating {
             display: inline-flex;
             align-items: center;
             flex-wrap: wrap;
-            gap: .45rem;
+            gap: .28rem;
             color: #0b2450;
-            font-size: .92rem;
-            line-height: 1.35;
+            font-size: .8rem;
+            line-height: 1.2;
             text-decoration: none;
         }
-
-        .np-product-signals__rating:hover {
-            color: #e91d33;
-        }
-
+        .np-product-signals__rating:hover { color: #e91d33; }
         .np-product-signals__stars {
             color: #f5a400;
-            font-size: 1.22rem;
-            letter-spacing: .045em;
+            font-size: 1.05rem;
+            letter-spacing: .015em;
             line-height: 1;
         }
-
         .np-product-signals__rating strong {
             color: #061744;
-            font-weight: 750;
+            font-size: .82rem;
+            font-weight: 850;
         }
-
         .np-product-signals__rating span:last-child {
             color: #2563eb;
-            font-weight: 700;
+            font-size: .8rem;
+            font-weight: 750;
         }
-
         .np-product-signals__actions {
             display: flex;
             align-items: center;
             flex-wrap: wrap;
-            gap: .65rem;
-            margin-top: .9rem;
+            gap: .42rem;
+            margin-top: .55rem;
         }
-
         .np-product-signal-button {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: .5rem;
-            min-height: 2.55rem;
-            padding: .55rem .9rem;
+            gap: .38rem;
+            min-height: 2.22rem;
+            padding: .4rem .68rem;
             border: 1px solid #dbe5f0;
-            border-radius: .7rem;
+            border-radius: .68rem;
             background: #fff;
             color: #0b2450;
-            font-size: .82rem;
-            font-weight: 700;
-            line-height: 1.2;
+            font-size: .75rem;
+            font-weight: 800;
+            line-height: 1.15;
+            white-space: nowrap;
             transition: border-color .16s ease, color .16s ease, background .16s ease, transform .16s ease;
         }
-
-        button.np-product-signal-button:hover,
-        button.np-product-signal-button:focus-visible {
-            border-color: #19b7d7;
-            color: #061744;
-            background: #f5fbff;
-            transform: translateY(-1px);
-        }
-
+        button.np-product-signal-button:hover, button.np-product-signal-button:focus-visible { border-color: #19b7d7; color: #061744; background: #f5fbff; transform: translateY(-1px); }
+        button.np-product-signal-button:focus-visible, .np-product-share-menu button:focus-visible { outline: 3px solid rgba(24, 92, 170, .28); outline-offset: 2px; }
+        button.np-product-signal-button:disabled { cursor: wait; opacity: .6; transform: none; }
         .np-product-signal-button svg {
-            width: 1.05rem;
-            height: 1.05rem;
+            width: .92rem;
+            height: .92rem;
             flex: 0 0 auto;
             fill: none;
             stroke: currentColor;
@@ -157,45 +182,42 @@
             stroke-linecap: round;
             stroke-linejoin: round;
         }
-
-        .np-product-signal-button strong {
-            font-weight: 800;
-        }
-
-        .np-product-signal-button.is-saved {
-            border-color: rgba(233, 29, 51, .3);
-            background: rgba(233, 29, 51, .06);
-            color: #e91d33;
-        }
-
-        .np-product-signal-button.is-saved svg {
-            fill: currentColor;
-        }
-
+        .np-product-signal-button strong { font-weight: 850; }
+        .np-product-signal-button.is-saved { border-color: rgba(233, 29, 51, .3); background: rgba(233, 29, 51, .06); color: #e91d33; }
+        .np-product-signal-button.is-saved svg { fill: currentColor; }
         .np-product-signal-button--activity {
+            max-width: min(100%, 15.5rem);
             color: #334155;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-
-        .np-product-signal-button--activity.is-live {
-            border-color: rgba(25, 183, 215, .32);
-            background: #f4fcff;
-            color: #0e7490;
+        .np-product-signal-button--activity span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
-
-        .np-product-signal-button--activity[hidden] {
-            display: none !important;
+        .np-product-signal-button--activity.is-live { border-color: rgba(25, 183, 215, .32); background: #f4fcff; color: #0e7490; }
+        .np-product-signal-button--activity[hidden] { display: none !important; }
+        .np-product-signals > p {
+            margin-top: .4rem !important;
         }
-
+        .np-product-share-menu button { display: flex; width: 100%; align-items: center; gap: .7rem; border-radius: .7rem; padding: .65rem .7rem; text-align: left; font-size: .82rem; font-weight: 700; color: #334155; transition: background-color .18s ease, color .18s ease; }
+        .np-product-share-menu button:hover { background: #f1f5f9; color: #15345d; }
+        .np-product-share-menu button svg, .np-product-share-menu button > span { width: 1rem; height: 1rem; flex: 0 0 1rem; display: inline-grid; place-items: center; font-weight: 900; }
+        @media (max-width: 900px) {
+            .np-product-signals__actions { gap: .38rem; }
+            .np-product-signal-button--activity { max-width: min(100%, 15rem); }
+        }
         @media (max-width: 640px) {
-            .np-product-signals__actions {
-                gap: .5rem;
-            }
-
-            .np-product-signal-button {
-                min-height: 2.4rem;
-                padding: .5rem .72rem;
-                font-size: .77rem;
-            }
+            .np-product-signals { margin-top: .62rem; }
+            .np-product-signals__rating { gap: .22rem; font-size: .74rem; }
+            .np-product-signals__stars { font-size: .96rem; }
+            .np-product-signals__rating strong,
+            .np-product-signals__rating span:last-child { font-size: .75rem; }
+            .np-product-signals__actions { margin-top: .5rem; gap: .34rem; }
+            .np-product-signal-button { min-height: 2.08rem; padding: .36rem .58rem; font-size: .71rem; }
+            .np-product-signal-button svg { width: .86rem; height: .86rem; }
+            .np-product-signal-button--activity { max-width: 100%; }
         }
     </style>
 @endonce

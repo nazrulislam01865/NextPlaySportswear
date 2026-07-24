@@ -49,6 +49,13 @@
                                             </ul>
                                         @endif
                                     </div>
+                                    @php($fulfillment = (array) ($item['customization']['fulfillment'] ?? []))
+                                    @if(is_array($fulfillment['production'] ?? null))
+                                        <p><strong class="text-slate-900">Production:</strong> {{ data_get($fulfillment, 'production.label', 'Standard production') }} · {{ data_get($fulfillment, 'production.display_amount', 'Included') }}</p>
+                                    @endif
+                                    @if(is_array($fulfillment['shipping'] ?? null))
+                                        <p><strong class="text-slate-900">Shipping:</strong> {{ data_get($fulfillment, 'shipping.label', 'Selected shipping') }} · {{ data_get($fulfillment, 'shipping.display_amount', 'Included') }}</p>
+                                    @endif
                                 </div>
                                 @if ($item['customization']['notes'] !== '')
                                     <p class="mt-3 rounded-xl bg-slate-50 p-3 text-sm font-semibold leading-6 text-slate-600">{{ $item['customization']['notes'] }}</p>
@@ -74,7 +81,7 @@
                     {{ $line }}<br>
                 @endforeach
             </x-storefront.order.info-box>
-            <x-storefront.order.info-box title="Shipping Method">
+            <x-storefront.order.info-box title="Product Fulfillment">
                 {{ $order['shipping_method']['title'] ?? 'Standard Shipping' }}<br>
                 {{ $order['shipping_method']['eta'] ?? 'Estimated after production' }}
             </x-storefront.order.info-box>

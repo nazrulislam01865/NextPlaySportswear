@@ -10,6 +10,8 @@
         'checkout_ready' => false,
     ];
     $cartItemCount = (int) ($cartItemCount ?? ($headerCart['quantity'] ?? 0));
+    $wishlistItemCount = max(0, (int) ($wishlistItemCount ?? 0));
+    $wishlistAuthenticated = (bool) ($wishlistAuthenticated ?? false);
 
     $headerMenu = collect($storefrontMenus['header'] ?? []);
     $shopMenuItem = $headerMenu->first(function ($item) {
@@ -23,15 +25,18 @@
     $shopActive = request()->routeIs('categories.*');
     $productsActive = request()->routeIs('products.*');
     $howActive = request()->routeIs('how-to-order');
-    $quoteActive = request()->routeIs('quote.request') || request()->routeIs('quote.request.store') || request()->routeIs('bulk-ordering');
     $shippingActive = request()->routeIs('shipping');
     $cartActive = request()->routeIs('cart.*');
+    $wishlistActive = request()->routeIs('wishlist.*');
     $contactActive = request()->routeIs('contact') || request()->routeIs('contact.store');
     $trackActive = request()->routeIs('orders.track') || request()->routeIs('orders.track.lookup');
 
+    $storefrontReturnUrl = request()->routeIs('login', 'register') ? null : request()->fullUrl();
     $accountHref = auth('admin')->check()
         ? route('admin.dashboard')
-        : (auth('web')->check() ? route('account.dashboard') : route('login'));
+        : (auth('web')->check()
+            ? route('account.dashboard')
+            : route('login', array_filter(['redirect' => $storefrontReturnUrl])));
     $accountLabel = auth('admin')->check()
         ? 'Admin Dashboard'
         : (auth('web')->check() ? 'My Account' : 'Login');
@@ -99,9 +104,25 @@
 
             <div class="np-header-actions">
                 <a href="{{ route('products.index') }}" class="np-header-btn np-header-btn-light np-shop-now-btn" data-header-analytics="header_cta_click" data-header-analytics-label="shop_now">Shop Now</a>
-                <a href="{{ route('quote.request') }}" class="np-header-btn np-header-btn-red" data-header-analytics="header_cta_click" data-header-analytics-label="request_quote">Request Quote</a>
-
                 <a href="{{ $accountHref }}" class="np-header-btn np-header-btn-light np-account-action" data-header-analytics="header_cta_click" data-header-analytics-label="{{ auth('web')->check() || auth('admin')->check() ? 'account' : 'login' }}">{{ $accountLabel }}</a>
+
+                <a
+                    href="{{ route('wishlist.index') }}"
+                    class="np-icon-action np-wishlist-action {{ $wishlistActive ? 'is-active' : '' }}"
+                    aria-label="Wishlist, {{ $wishlistItemCount }} item{{ $wishlistItemCount === 1 ? '' : 's' }}"
+                    data-wishlist-header-link
+                    data-wishlist-authenticated="{{ $wishlistAuthenticated ? '1' : '0' }}"
+                    data-wishlist-initial-count="{{ $wishlistItemCount }}"
+                    data-wishlist-storage-key="nextplay:guest-wishlist:v1"
+                    data-wishlist-status-endpoint="{{ route('wishlist.status') }}"
+                    data-header-analytics="header_cta_click"
+                    data-header-analytics-label="wishlist"
+                >
+                    <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"></path>
+                    </svg>
+                    <span class="np-wishlist-count-badge" data-wishlist-count>{{ $wishlistItemCount > 99 ? '99+' : $wishlistItemCount }}</span>
+                </a>
 
                 <div class="storefront-cart-hover np-cart-action-wrap">
                     <a
@@ -278,7 +299,6 @@
 
                 <a href="{{ route('products.index') }}" class="np-category-link {{ $productsActive ? 'is-active' : '' }}" @if($productsActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="all_products">All Products</a>
                 <a href="{{ route('how-to-order') }}" class="np-category-link {{ $howActive ? 'is-active' : '' }}" @if($howActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="how_it_works">How It Works</a>
-                <a href="{{ route('quote.request') }}" class="np-category-link {{ $quoteActive ? 'is-active' : '' }}" @if($quoteActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="bulk_quote">Bulk Quote</a>
             </nav>
 
             <a href="{{ route('shipping') }}" class="np-usa-shipping {{ $shippingActive ? 'is-active' : '' }}" @if($shippingActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="usa_shipping">
@@ -344,7 +364,6 @@
 
                     <a href="{{ route('products.index') }}" class="np-mobile-nav-link {{ $productsActive ? 'is-active' : '' }}" @if($productsActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_all_products">All Products</a>
                     <a href="{{ route('how-to-order') }}" class="np-mobile-nav-link {{ $howActive ? 'is-active' : '' }}" @if($howActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_how_it_works">How It Works</a>
-                    <a href="{{ route('quote.request') }}" class="np-mobile-nav-link {{ $quoteActive ? 'is-active' : '' }}" @if($quoteActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_bulk_quote">Bulk Quote</a>
                     <a href="{{ route('shipping') }}" class="np-mobile-nav-link np-mobile-shipping-link {{ $shippingActive ? 'is-active' : '' }}" @if($shippingActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_usa_shipping">USA Shipping</a>
                 </div>
 
@@ -362,6 +381,19 @@
 
                 {{-- Mobile quick actions stay near the bottom, directly above Follow us. --}}
                 <div class="np-mobile-priority-actions" @click="if ($event.target.closest('a')) open = false">
+                    <a href="{{ route('wishlist.index') }}" class="np-mobile-action-card {{ $wishlistActive ? 'is-active' : '' }}" @if($wishlistActive) aria-current="page" @endif data-wishlist-header-link data-wishlist-authenticated="{{ $wishlistAuthenticated ? '1' : '0' }}" data-wishlist-initial-count="{{ $wishlistItemCount }}" data-wishlist-storage-key="nextplay:guest-wishlist:v1" data-wishlist-status-endpoint="{{ route('wishlist.status') }}" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_wishlist">
+                        <span class="np-mobile-action-icon" aria-hidden="true">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"></path>
+                            </svg>
+                        </span>
+                        <span class="np-mobile-action-copy">
+                            <span class="np-mobile-action-title">Wishlist</span>
+                            <span class="np-mobile-action-meta"><span data-wishlist-count>{{ $wishlistItemCount }}</span> saved</span>
+                        </span>
+                        <span class="np-mobile-action-arrow" aria-hidden="true">›</span>
+                    </a>
+
                     <a href="{{ route('cart.index') }}" class="np-mobile-action-card {{ $cartActive ? 'is-active' : '' }}" @if($cartActive) aria-current="page" @endif data-header-analytics="header_cta_click" data-header-analytics-label="mobile_cart">
                         <span class="np-mobile-action-icon" aria-hidden="true">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
@@ -387,21 +419,6 @@
                         <span class="np-mobile-action-copy">
                             <span class="np-mobile-action-title">Contact Us</span>
                             <span class="np-mobile-action-meta">Talk to our team</span>
-                        </span>
-                        <span class="np-mobile-action-arrow" aria-hidden="true">›</span>
-                    </a>
-
-                    <a href="{{ route('quote.request') }}" class="np-mobile-action-card {{ $quoteActive ? 'is-active' : '' }}" @if($quoteActive) aria-current="page" @endif data-header-analytics="header_cta_click" data-header-analytics-label="mobile_request_quote">
-                        <span class="np-mobile-action-icon" aria-hidden="true">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                <path d="M14 2v6h6"></path>
-                                <path d="M8 13h8M8 17h5"></path>
-                            </svg>
-                        </span>
-                        <span class="np-mobile-action-copy">
-                            <span class="np-mobile-action-title">Request Quote</span>
-                            <span class="np-mobile-action-meta">Custom bulk order</span>
                         </span>
                         <span class="np-mobile-action-arrow" aria-hidden="true">›</span>
                     </a>

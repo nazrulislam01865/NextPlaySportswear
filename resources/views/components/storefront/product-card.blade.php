@@ -33,6 +33,12 @@
     $ratingStarCount = $hasReviews ? max(0, min(5, (int) round((float) $rating))) : 0;
     $ratingStars = $hasReviews ? str_repeat('★', $ratingStarCount).str_repeat('☆', 5 - $ratingStarCount) : '';
     $activityLabel = trim((string) ($product['shopper_activity'] ?? ''));
+    $productId = (int) ($product['id'] ?? 0);
+    $wishlistEndpoint = $productId > 0
+        ? route('wishlist.products.update', ['product' => $productId])
+        : '';
+    $wishlistPrice = (float) ($product['base_price'] ?? 0);
+    $wishlistCurrency = (string) ($product['currency'] ?? 'USD');
 @endphp
 
 <article class="np-product-card np-product-card--nextplay group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card card-hover" data-product-card data-product-id="{{ $product['id'] ?? '' }}">
@@ -57,8 +63,18 @@
         <button
             type="button"
             class="np-product-card-favorite"
-            aria-label="Save {{ $product['title'] }} to favorites"
-            data-product-favorite="{{ $product['id'] ?? '' }}"
+            aria-label="Add {{ $product['title'] }} to wishlist"
+            aria-pressed="false"
+            title="Add to wishlist"
+            data-product-favorite="{{ $productId }}"
+            data-wishlist-endpoint="{{ $wishlistEndpoint }}"
+            data-wishlist-product-slug="{{ $product['slug'] ?? '' }}"
+            data-wishlist-product-title="{{ $product['title'] ?? '' }}"
+            data-wishlist-product-summary="{{ $product['summary'] ?? '' }}"
+            data-wishlist-product-url="{{ $productUrl }}"
+            data-wishlist-product-image="{{ $product['image'] ?? '' }}"
+            data-wishlist-product-price="{{ $wishlistPrice }}"
+            data-wishlist-product-currency="{{ $wishlistCurrency }}"
         >
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z" />

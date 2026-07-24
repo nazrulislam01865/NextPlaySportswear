@@ -7,6 +7,7 @@ use App\Support\AdminRbac;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -47,6 +48,10 @@ class AdminSessionController extends Controller
         Auth::shouldUse('admin');
         $request->session()->regenerate();
         $admin->forceFill(['last_login_at' => now()])->saveQuietly();
+
+        $ip = (string) ($request->ip() ?: 'unknown');
+        $emailFingerprint = hash('sha256', substr(strtolower(trim((string) $credentials['email'])), 0, 190));
+        RateLimiter::clear('admin-login-account:'.$ip.':'.$emailFingerprint);
 
         return redirect()->intended(route('admin.dashboard'));
     }

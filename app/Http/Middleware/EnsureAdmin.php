@@ -15,7 +15,7 @@ class EnsureAdmin
 
         if (! Auth::guard('admin')->user()?->isAdmin()) {
             Auth::guard('admin')->logout();
-            abort(403, 'Administrator access is required.');
+            abort(404);
         }
 
         return $next($request);

@@ -23,7 +23,7 @@
 
 <x-storefront.checkout.shell :seo="$seo" :steps="$steps" :current-step="$currentStep" title="Shipping Method" description="Select a shipping method based on order timeline, production needs, and delivery urgency." :summary="$summary">
     <x-storefront.checkout.panel title="Shipping Method" description="Shipping options are loaded from admin settings and recalculated with your shipping ZIP, cart quantity, subtotal, and rural surcharge rules.">
-        <form method="POST" action="{{ route('checkout.shipping-method.store') }}" class="grid gap-6" x-data="{ selected: @js($selectedShippingCode), previews: @js($methodPreview), current(){ return this.previews[this.selected] || {}; }, notify(){ this.$dispatch('checkout-shipping-preview', this.current()); }, init(){ this.$nextTick(() => this.notify()); } }">
+        <form data-single-submit method="POST" action="{{ route('checkout.shipping-method.store') }}" class="grid gap-6" x-data="{ selected: @js($selectedShippingCode), previews: @js($methodPreview), current(){ return this.previews[this.selected] || {}; }, notify(){ this.$dispatch('checkout-shipping-preview', this.current()); }, init(){ this.$nextTick(() => this.notify()); } }">
             @csrf
 
             @if(empty($shippingMethods))

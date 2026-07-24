@@ -22,14 +22,35 @@ class OrderPdfService
 
         foreach ($order->items as $item) {
             $lines[] = sprintf('%s  x%d  $%s', $item->product_name, $item->quantity, number_format((float) $item->line_total, 2));
+
+            $customization = (array) $item->customization;
+            $fulfillment = (array) ($customization['fulfillment'] ?? []);
+            $production = is_array($fulfillment['production'] ?? null) ? $fulfillment['production'] : null;
+            $shipping = is_array($fulfillment['shipping'] ?? null) ? $fulfillment['shipping'] : null;
+
+            if ($production !== null) {
+                $lines[] = sprintf(
+                    '  Production: %s (%s)',
+                    (string) ($production['label'] ?? 'Standard production'),
+                    (string) ($production['display_amount'] ?? 'Included')
+                );
+            }
+
+            if ($shipping !== null) {
+                $lines[] = sprintf(
+                    '  Shipping: %s (%s)',
+                    (string) ($shipping['label'] ?? 'Selected shipping'),
+                    (string) ($shipping['display_amount'] ?? 'Included')
+                );
+            }
         }
 
         $lines = array_merge($lines, [
             '',
             'Subtotal: $'.number_format((float) $order->subtotal, 2),
-            'Customization: $'.number_format((float) $order->customization_total, 2),
+            'Customization: $'.number_format($order->displayCustomizationTotal(), 2),
             'Discount: -$'.number_format((float) $order->discount_total, 2),
-            'Shipping: $'.number_format((float) $order->shipping_total, 2),
+            'Shipping charges: $'.number_format($order->displayShippingTotal(), 2),
             'Tax: $'.number_format((float) $order->tax_total, 2),
             'TOTAL: $'.number_format((float) $order->grand_total, 2).' '.$order->currency,
             '',

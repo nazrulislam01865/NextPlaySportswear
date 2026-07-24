@@ -191,6 +191,17 @@ class OrderExperienceService
     public function normalizeOrder(array $order): array
     {
         $totals = (array) ($order['totals'] ?? []);
+        $totalsSeparated = (bool) data_get($order, 'shipping_method.totals_separated', false);
+        $rawCustomizationTotal = round((float) ($totals['customization_total'] ?? 0), 2);
+        $productShippingTotal = round((float) ($totals['product_shipping_total'] ?? 0), 2);
+        $rawShippingTotal = round((float) ($totals['shipping'] ?? 0), 2);
+        $displayCustomizationTotal = $totalsSeparated
+            ? $rawCustomizationTotal
+            : round(max(0, $rawCustomizationTotal - $productShippingTotal), 2);
+        $displayShippingTotal = $totalsSeparated
+            ? $rawShippingTotal
+            : round(max(0, $rawShippingTotal + $productShippingTotal), 2);
+
         $items = collect((array) ($order['items'] ?? []))->map(function (array $item): array {
             $product = (array) ($item['product'] ?? []);
             $customization = (array) ($item['customization'] ?? []);
@@ -215,14 +226,24 @@ class OrderExperienceService
                             'size' => max(0, (int) ($file['size'] ?? 0)),
                             'mime_type' => (string) ($file['mime_type'] ?? 'application/octet-stream'),
                         ])->values()->all(),
+                    'fulfillment' => (array) ($customization['fulfillment'] ?? []),
                     'notes' => (string) ($customization['notes'] ?? ''),
                 ],
             ];
         })->values()->all();
 
         $placedAt = isset($order['placed_at']) ? Carbon::parse($order['placed_at']) : now();
-        $estimatedStart = $placedAt->copy()->addWeekdays(8)->format('M d');
-        $estimatedEnd = $placedAt->copy()->addWeekdays(12)->format('M d');
+        $estimatedMinimumDays = (int) collect($items)->max(fn (array $item): int => max(0, (int) data_get($item, 'customization.fulfillment.estimated_minimum_days', 0)));
+        $estimatedMaximumDays = (int) collect($items)->max(fn (array $item): int => max(0, (int) data_get($item, 'customization.fulfillment.estimated_maximum_days', 0)));
+
+        if ($estimatedMaximumDays <= 0) {
+            $estimatedMinimumDays = 8;
+            $estimatedMaximumDays = 12;
+        }
+
+        $estimatedMaximumDays = max($estimatedMinimumDays, $estimatedMaximumDays);
+        $estimatedStart = $placedAt->copy()->addWeekdays($estimatedMinimumDays)->format('M d');
+        $estimatedEnd = $placedAt->copy()->addWeekdays($estimatedMaximumDays)->format('M d');
 
         return array_merge($order, [
             'order_number' => (string) ($order['order_number'] ?? 'NP-' . now()->format('ymd') . '-PENDING'),
@@ -235,10 +256,12 @@ class OrderExperienceService
             'items' => $items,
             'totals' => [
                 'subtotal' => round((float) ($totals['subtotal'] ?? collect($items)->sum('line_total')), 2),
-                'customization_total' => round((float) ($totals['customization_total'] ?? 0), 2),
+                'customization_total' => $displayCustomizationTotal,
                 'discount' => round((float) ($totals['discount'] ?? 0), 2),
                 'coupon_code' => (string) ($totals['coupon_code'] ?? ($order['coupon_code'] ?? '')),
-                'shipping' => round((float) ($totals['shipping'] ?? 0), 2),
+                'shipping' => $displayShippingTotal,
+                'rural_surcharge' => round((float) ($totals['rural_surcharge'] ?? 0), 2),
+                'product_shipping_total' => $productShippingTotal,
                 'tax' => round((float) ($totals['tax'] ?? 0), 2),
                 'total' => round((float) ($totals['total'] ?? collect($items)->sum('line_total')), 2),
                 'quantity' => (int) ($totals['quantity'] ?? collect($items)->sum('quantity')),

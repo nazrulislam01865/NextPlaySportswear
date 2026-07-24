@@ -36,6 +36,9 @@
 
             <form method="POST" action="{{ route('login.store') }}" class="grid gap-5" novalidate>
                 @csrf
+                @if (! empty($redirectUrl))
+                    <input type="hidden" name="redirect" value="{{ $redirectUrl }}">
+                @endif
 
                 <x-storefront.auth.input
                     name="email"
@@ -84,7 +87,7 @@
                         Keep me signed in
                     </label>
 
-                    <a href="{{ route('register') }}" class="text-sm font-black text-slate-700 hover:text-brand-red">
+                    <a href="{{ route('register', array_filter(['redirect' => $redirectUrl ?? null])) }}" class="text-sm font-black text-slate-700 hover:text-brand-red">
                         Create account to checkout
                     </a>
                 </div>
@@ -96,7 +99,7 @@
 
             <div class="mt-7 rounded-2xl border border-dashed border-slate-300 bg-white p-5 text-center">
                 <p class="text-sm font-bold text-slate-600">New to NextPlay Sportswear?</p>
-                <a href="{{ route('register') }}" class="mt-3 btn btn-white w-full rounded-2xl sm:w-auto">
+                <a href="{{ route('register', array_filter(['redirect' => $redirectUrl ?? null])) }}" class="mt-3 btn btn-white w-full rounded-2xl sm:w-auto">
                     Create Customer Account
                 </a>
             </div>
