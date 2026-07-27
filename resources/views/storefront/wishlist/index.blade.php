@@ -825,7 +825,7 @@
                 <div class="np-wishlist-card-grid">
                     <a data-wishlist-product-link class="np-wishlist-media" aria-label="View saved product">
                         <span class="np-wishlist-image-frame">
-                            <img data-wishlist-product-image class="np-wishlist-image" loading="lazy">
+                            <img data-wishlist-product-image class="np-wishlist-image" alt="" loading="lazy" decoding="async">
                         </span>
                     </a>
 

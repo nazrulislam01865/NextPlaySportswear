@@ -22,18 +22,6 @@ class AccountController extends Controller
         ]);
     }
 
-    public function section(Request $request, string $section): View
-    {
-        abort_unless($this->allowedSection($section), 404);
-
-        return view('storefront.account.section', [
-            'seo' => $this->seo('My Account - ' . str($section)->headline() . ' | NextPlay Sportswear'),
-            'account' => $this->accountService->dashboard($request->user()),
-            'navigation' => $this->accountService->accountNavigation(),
-            'section' => $this->accountService->section($section),
-        ]);
-    }
-
     /**
      * @return array<string, string>
      */
@@ -41,23 +29,8 @@ class AccountController extends Controller
     {
         return [
             'title' => $title,
-            'description' => 'Manage your NextPlay Sportswear customer profile, quotes, orders, saved designs, and proof approvals.',
+            'description' => 'Manage your NextPlay Sportswear profile, orders, delivery details, returns, downloads, and support.',
             'robots' => 'noindex, nofollow',
         ];
-    }
-
-    private function allowedSection(string $section): bool
-    {
-        return in_array($section, [
-            'orders',
-            'repeat-orders',
-            'saved-designs',
-            'saved-carts',
-            'quotes',
-            'addresses',
-            'payment-methods',
-            'support',
-            'gift-cards',
-        ], true);
     }
 }

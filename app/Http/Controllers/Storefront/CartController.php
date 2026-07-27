@@ -95,7 +95,7 @@ class CartController extends Controller
     public function store(AddCartItemRequest $request): RedirectResponse
     {
         $payload = $request->validated();
-        $product = $this->products->findBySlug((string) $payload['product_slug']);
+        $product = $this->products->findFullBySlug((string) $payload['product_slug']);
 
         abort_if($product === null, 404);
 
@@ -133,7 +133,7 @@ class CartController extends Controller
 
         abort_unless(hash_equals($productSlug, (string) ($payload['product_slug'] ?? '')), 422, 'The selected product does not match this cart item.');
 
-        $product = $this->products->findBySlug($productSlug);
+        $product = $this->products->findFullBySlug($productSlug);
         abort_if($product === null, 404);
 
         $existingArtwork = (array) data_get($existingItem, 'customization.artwork_files', []);

@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
 
 class HomepageSectionService
 {
-    private const CACHE_KEY = 'storefront.homepage-sections.v4';
+    private const CACHE_KEY = 'storefront.homepage-sections.v5';
 
     /** @var array<int, array<string, mixed>>|null */
     private ?array $runtimeSections = null;

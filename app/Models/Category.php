@@ -106,9 +106,24 @@ class Category extends Model
     }
 
     /** @param Builder<Category> $query */
+    public function scopeLeaf(Builder $query): Builder
+    {
+        return $query->whereDoesntHave('children');
+    }
+
+    /** @param Builder<Category> $query */
     public function scopeOrdered(Builder $query): Builder
     {
         return $query->orderBy('sort_order')->orderBy('name');
+    }
+
+    public function isLeaf(): bool
+    {
+        if ($this->relationLoaded('children')) {
+            return $this->children->isEmpty();
+        }
+
+        return ! $this->children()->exists();
     }
 
     public function parent(): BelongsTo

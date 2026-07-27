@@ -26,7 +26,7 @@ class CategoryProductAssignmentSyncService
      * strict:
      * - optionally clears the existing category_product rows first;
      * - rebuilds from products.category_id and products.subcategory_id;
-     * - adds parent/ancestor category rows so parent menu categories show products;
+     * - stores direct assignments only on last-level (leaf) categories;
      * - adds only safe rule-based categories from explicit category match_rules;
      * - never changes the trusted leaf category primary unless a product has no
      *   legacy category at all.
@@ -59,6 +59,13 @@ class CategoryProductAssignmentSyncService
             if ($resetExisting) {
                 $stats['assignments_deleted'] = (int) DB::table('category_product')->count();
                 DB::table('category_product')->delete();
+            } else {
+                $leafIds = Category::query()->leaf()->pluck('id');
+                $deleteQuery = DB::table('category_product');
+                if ($leafIds->isNotEmpty()) {
+                    $deleteQuery->whereNotIn('category_id', $leafIds->all());
+                }
+                $stats['assignments_deleted'] += (int) $deleteQuery->delete();
             }
 
             $this->syncFromLegacyProductCategories($stats);
@@ -74,15 +81,12 @@ class CategoryProductAssignmentSyncService
     /** @param array<string, int> $stats */
     private function syncFromLegacyProductCategories(array &$stats): void
     {
-        $categories = Category::query()->get(['id', 'parent_id']);
+        $categories = Category::query()->leaf()->get(['id', 'parent_id']);
         $validCategoryIds = $categories->pluck('id')->map(fn ($id): int => (int) $id)->flip();
-        $parentById = $categories->pluck('parent_id', 'id')
-            ->map(fn ($parentId): ?int => $parentId === null ? null : (int) $parentId);
-
         Product::withTrashed()
             ->select(['id', 'category_id', 'subcategory_id', 'sort_order'])
             ->orderBy('id')
-            ->chunkById(300, function ($products) use (&$stats, $validCategoryIds, $parentById): void {
+            ->chunkById(300, function ($products) use (&$stats, $validCategoryIds): void {
                 foreach ($products as $product) {
                     $stats['products_scanned']++;
 
@@ -115,7 +119,6 @@ class CategoryProductAssignmentSyncService
                     }
 
                     $assignmentIds = $validLegacyCategoryIds
-                        ->flatMap(fn (int $categoryId): array => $this->categoryWithAncestorIds($categoryId, $parentById))
                         ->filter(fn (int $categoryId): bool => $validCategoryIds->has($categoryId))
                         ->unique()
                         ->values();
@@ -131,9 +134,6 @@ class CategoryProductAssignmentSyncService
 
                         if ($created) {
                             $stats['legacy_assignments_created']++;
-                            if (! $validLegacyCategoryIds->contains((int) $categoryId)) {
-                                $stats['ancestor_assignments_created']++;
-                            }
                         } else {
                             $stats['assignments_existing']++;
                         }
@@ -153,7 +153,8 @@ class CategoryProductAssignmentSyncService
             return;
         }
 
-        $validCategoryIds = $categories->pluck('id')->map(fn ($id): int => (int) $id)->flip();
+        $leafCategoryIds = Category::query()->leaf()->pluck('id')->map(fn ($id): int => (int) $id)->flip();
+        $validCategoryIds = $leafCategoryIds;
         $categoriesById = $categories->keyBy('id');
         $parentById = $categories->pluck('parent_id', 'id')
             ->map(fn ($parentId): ?int => $parentId === null ? null : (int) $parentId);
@@ -195,7 +196,6 @@ class CategoryProductAssignmentSyncService
                     $stats['trusted_rule_products_matched']++;
 
                     $assignmentIds = $matchedIds
-                        ->flatMap(fn (int $categoryId): array => $this->categoryWithAncestorIds($categoryId, $parentById))
                         ->filter(fn (int $categoryId): bool => $validCategoryIds->has($categoryId))
                         ->unique()
                         ->values();
@@ -211,9 +211,6 @@ class CategoryProductAssignmentSyncService
 
                         if ($created) {
                             $stats['trusted_rule_assignments_created']++;
-                            if (! $matchedIds->contains((int) $categoryId)) {
-                                $stats['trusted_rule_ancestor_assignments_created']++;
-                            }
                         } else {
                             $stats['assignments_existing']++;
                         }
@@ -420,6 +417,10 @@ class CategoryProductAssignmentSyncService
                         ->get();
 
                     if ($assignments->isEmpty()) {
+                        Product::withTrashed()->whereKey($product->id)->update([
+                            'category_id' => null,
+                            'subcategory_id' => null,
+                        ]);
                         continue;
                     }
 
@@ -444,6 +445,16 @@ class CategoryProductAssignmentSyncService
 
                         $stats['primary_fixed']++;
                     }
+
+                    $rootId = (int) (DB::table('category_closure')
+                        ->where('descendant_id', $primaryId)
+                        ->orderByDesc('depth')
+                        ->value('ancestor_id') ?: $primaryId);
+
+                    Product::withTrashed()->whereKey($product->id)->update([
+                        'category_id' => $rootId,
+                        'subcategory_id' => $rootId === $primaryId ? null : $primaryId,
+                    ]);
                 }
             });
     }

@@ -101,7 +101,7 @@ final class StorefrontRedirect
         $path = '/'.ltrim((string) ($parts['path'] ?? '/'), '/');
         $normalizedPath = Str::lower(rtrim($path, '/') ?: '/');
 
-        foreach (['/admin', '/login', '/register', '/logout', '/forgot-password'] as $blockedPath) {
+        foreach (['/admin', '/login', '/register', '/logout', '/forgot-password', '/reset-password'] as $blockedPath) {
             if ($normalizedPath === $blockedPath || Str::startsWith($normalizedPath, $blockedPath.'/')) {
                 return null;
             }

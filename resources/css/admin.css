@@ -1,3 +1,5 @@
+@import './pagination.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -205,29 +207,9 @@
         vertical-align: middle;
     }
 
-    .admin-pagination nav {
-        @apply flex items-center;
-    }
-
-    .admin-pagination [aria-label="Pagination Navigation"] > div:first-child {
-        @apply hidden;
-    }
-
-    .admin-pagination [aria-label="Pagination Navigation"] > div:last-child {
-        @apply flex items-center gap-2;
-    }
-
-    .admin-pagination [aria-label="Pagination Navigation"] p {
-        @apply hidden;
-    }
-
-    .admin-pagination [aria-label="Pagination Navigation"] span,
-    .admin-pagination [aria-label="Pagination Navigation"] a {
-        @apply inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-black text-brand-navy shadow-sm transition hover:bg-slate-50;
-    }
-
-    .admin-pagination [aria-current="page"] span {
-        @apply border-brand-navy bg-brand-navy text-white;
+    .admin-pagination {
+        width: 100%;
+        min-width: 0;
     }
 
     .admin-status-pill {
@@ -2813,14 +2795,6 @@
     font-weight: 700;
 }
 
-.admin-clean-ui .admin-pagination [aria-label="Pagination Navigation"] span,
-.admin-clean-ui .admin-pagination [aria-label="Pagination Navigation"] a {
-    min-height: 2.25rem;
-    min-width: 2.25rem;
-    border-radius: .65rem;
-    font-size: .8125rem;
-    font-weight: 700;
-}
 
 .admin-clean-ui .np-product-builder {
     gap: 1rem !important;
@@ -4066,13 +4040,6 @@ body.admin-ui-minimalize main small {
     font-weight: 400;
 }
 
-body.admin-ui-minimalize main .admin-pagination [aria-label="Pagination Navigation"] span,
-body.admin-ui-minimalize main .admin-pagination [aria-label="Pagination Navigation"] a {
-    min-width: 2.5rem !important;
-    min-height: 2.5rem !important;
-    font-weight: 600 !important;
-    border-radius: .7rem !important;
-}
 
 @media (max-width: 767.98px) {
     body.admin-ui-minimalize header h1 {
@@ -5338,5 +5305,40 @@ body.admin-sidebar-resizing * {
    Make optional subcategory × behave like a real removal instead of leaving a struck-through chip. */
 .category-assignment-tag--optional.is-pending-removal {
     display: none !important;
+}
+
+/* Launch accessibility defaults. */
+.admin-skip-link {
+    position: fixed;
+    top: .75rem;
+    left: .75rem;
+    z-index: 9999;
+    transform: translateY(-160%);
+    border-radius: .75rem;
+    background: #15345d;
+    color: #fff;
+    padding: .75rem 1rem;
+    font-weight: 800;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, .22);
+    transition: transform .16s ease;
+}
+
+.admin-skip-link:focus {
+    transform: translateY(0);
+}
+
+#admin-main-content:focus {
+    outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
 }
 

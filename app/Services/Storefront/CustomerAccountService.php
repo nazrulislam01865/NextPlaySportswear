@@ -99,25 +99,6 @@ class CustomerAccountService
         ];
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    public function section(string $section): array
-    {
-        $sections = collect($this->cards())->keyBy('key');
-        $card = $sections->get($section, [
-            'title' => 'Account Area',
-            'description' => 'This account feature will be connected with the related module in a later phase.',
-            'icon' => 'user',
-        ]);
-
-        return [
-            'title' => $card['title'],
-            'description' => $card['description'],
-            'icon' => $card['icon'] ?? 'user',
-            'nextSteps' => $this->moduleNextSteps($section),
-        ];
-    }
 
     /**
      * @return array<int, array<string, string>>
@@ -131,8 +112,6 @@ class CustomerAccountService
             ['label' => 'Order History', 'href' => route('account.orders.index'), 'route' => 'account.orders.index'],
             ['label' => 'Returns & Exchanges', 'href' => route('account.returns.index'), 'route' => 'account.returns.index'],
             ['label' => 'Order Downloads', 'href' => route('account.downloads.index'), 'route' => 'account.downloads.index'],
-            ['label' => 'Quotes', 'href' => route('account.section', ['section' => 'quotes']), 'route' => 'account.section'],
-            ['label' => 'Saved Designs', 'href' => route('account.section', ['section' => 'saved-designs']), 'route' => 'account.section'],
             ['label' => 'Saved Addresses', 'href' => route('account.addresses.index'), 'route' => 'account.addresses.index'],
             ['label' => 'Payment Methods', 'href' => route('account.payment-methods.index'), 'route' => 'account.payment-methods.index'],
         ];
@@ -148,7 +127,6 @@ class CustomerAccountService
             'email' => $user->email,
             'initials' => $this->initials($user->name),
             'membership' => 'Customer account',
-            'rewardBalance' => '$0.00',
             'joined' => optional($user->created_at)->format('M d, Y'),
         ];
     }
@@ -174,18 +152,10 @@ class CustomerAccountService
             [
                 'key' => 'orders',
                 'title' => 'Order History',
-                'description' => 'View order status, proof updates, tracking, and invoices.',
+                'description' => 'View order status, proof updates, tracking, invoices, returns, and repeat-order options.',
                 'badge' => $this->openOrderBadge($user),
                 'icon' => 'orders',
                 'href' => route('account.orders.index'),
-            ],
-            [
-                'key' => 'repeat-orders',
-                'title' => 'Repeat Orders',
-                'description' => 'Reorder past uniforms with updated sizes and roster.',
-                'badge' => 'Fast',
-                'icon' => 'repeat',
-                'href' => route('account.section', ['section' => 'repeat-orders']),
             ],
             [
                 'key' => 'profile',
@@ -193,28 +163,6 @@ class CustomerAccountService
                 'description' => 'Edit contact, organization, sport preference, and password settings.',
                 'icon' => 'settings',
                 'href' => route('account.profile.edit'),
-            ],
-            [
-                'key' => 'saved-designs',
-                'title' => 'Saved Designs',
-                'description' => 'Access saved logos, mockups, proofs, and artwork files.',
-                'icon' => 'designs',
-                'href' => route('account.section', ['section' => 'saved-designs']),
-            ],
-            [
-                'key' => 'saved-carts',
-                'title' => 'Saved Carts',
-                'description' => 'Return to saved product selections and quote drafts.',
-                'icon' => 'cart',
-                'href' => route('account.section', ['section' => 'saved-carts']),
-            ],
-            [
-                'key' => 'quotes',
-                'title' => 'Email Quotes',
-                'description' => 'Check quote requests, responses, and quoted pricing.',
-                'badge' => '0 saved',
-                'icon' => 'mail',
-                'href' => route('account.section', ['section' => 'quotes']),
             ],
             [
                 'key' => 'addresses',
@@ -233,16 +181,9 @@ class CustomerAccountService
             [
                 'key' => 'support',
                 'title' => 'Support',
-                'description' => 'Contact support for design, order, or quote help.',
+                'description' => 'Contact support for design, order, return, or quote help.',
                 'icon' => 'support',
-                'href' => route('account.section', ['section' => 'support']),
-            ],
-            [
-                'key' => 'gift-cards',
-                'title' => 'Gift Cards',
-                'description' => 'View purchased, received, or redeemed gift cards.',
-                'icon' => 'gift',
-                'href' => route('account.section', ['section' => 'gift-cards']),
+                'href' => route('contact'),
             ],
         ];
     }
@@ -270,42 +211,6 @@ class CustomerAccountService
         ];
     }
 
-    /**
-     * @return array<int, string>
-     */
-    private function moduleNextSteps(string $section): array
-    {
-        return match ($section) {
-            'orders' => [
-                'Use Order Center to review payment, production, shipment, return, refund, invoice, and download activity.',
-                'Use Order Again to rebuild a cart from an earlier order while rechecking current pricing and availability.',
-            ],
-            'quotes' => [
-                'Connect this page with quote_requests after the quote workflow is implemented.',
-                'Show quote status, admin response, quoted amount, attachments, and convert-to-order action.',
-            ],
-            'saved-designs' => [
-                'Connect saved artwork, mockups, and proof approvals to the design proof module.',
-                'Store files privately and serve customer-owned files only through signed/authorized access.',
-            ],
-            'saved-carts' => [
-                'Connect this page to saved cart and quote draft records.',
-                'Allow customers to continue unfinished carts and bulk quote drafts.',
-            ],
-            'support' => [
-                'Connect this page with contact tickets or support messages.',
-                'Include order number, quote number, and design proof references for faster support.',
-            ],
-            'gift-cards' => [
-                'Connect this page with gift card purchases and redemption history.',
-                'Display balance, status, and redemption timeline securely.',
-            ],
-            default => [
-                'Connect this account page with its database module.',
-                'Keep customer data protected with auth, ownership checks, and Form Request validation.',
-            ],
-        };
-    }
 
     private function initials(?string $name): string
     {

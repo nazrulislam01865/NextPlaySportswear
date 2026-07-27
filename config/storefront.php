@@ -18,9 +18,18 @@ return [
         'youtube' => env('STOREFRONT_YOUTUBE_URL', 'https://www.youtube.com/@nextplaysportswear'),
     ],
 
-    'url' => env('APP_URL', 'https://example.com'),
+    'url' => env('STOREFRONT_URL', env('APP_URL', 'https://example.com')),
 
     'logo' => env('STOREFRONT_LOGO', '/images/logo.png'),
+
+    'og_image' => env('STOREFRONT_OG_IMAGE', 'images/og-default.jpg'),
+
+    'area_served' => env('STOREFRONT_AREA_SERVED', 'Worldwide'),
+
+    'available_languages' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('STOREFRONT_AVAILABLE_LANGUAGES', 'English'))
+    ))),
 
     'slider_cache_seconds' => (int) env('STOREFRONT_SLIDER_CACHE_SECONDS', 600),
 

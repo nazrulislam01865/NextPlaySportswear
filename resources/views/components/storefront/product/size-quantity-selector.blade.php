@@ -123,7 +123,7 @@
                         <p class="mt-1 text-sm text-slate-500">{{ $chart['note'] }}</p>
                     @endif
                 </div>
-                <button type="button" class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-100 text-xl font-black text-brand-ink hover:bg-red-50 hover:text-brand-red" @click="sizeChartOpen = false">×</button>
+                <button type="button" class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-100 text-xl font-black text-brand-ink hover:bg-red-50 hover:text-brand-red" aria-label="Close size chart" @click="sizeChartOpen = false">×</button>
             </div>
 
             <div class="max-h-[78dvh] overflow-y-auto p-3 sm:max-h-[72vh] sm:p-5">

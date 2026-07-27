@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class CategoryCatalogService
 {
@@ -59,6 +60,67 @@ class CategoryCatalogService
         return $categories->map(fn (Category $category) => $this->categoryData($category))->all();
     }
 
+    /**
+     * Return every storefront-reachable product category in hierarchy order.
+     *
+     * Sport roots and their descendants are intentionally omitted because the
+     * category landing page renders those separately in the Shop by Sport area.
+     * This keeps the product category grid complete without duplicating sport
+     * navigation cards.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function allProductCategories(): array
+    {
+        $categories = Category::query()
+            ->storefrontReachable()
+            ->with('parent:id,name,slug,parent_id')
+            ->get();
+
+        $childrenByParent = $categories
+            ->groupBy(fn (Category $category): int => (int) ($category->parent_id ?? 0));
+
+        $ordered = collect();
+
+        $walk = function (int $parentId) use (&$walk, $childrenByParent, $ordered): void {
+            $siblings = $childrenByParent->get($parentId, collect())
+                ->sort(function (Category $left, Category $right): int {
+                    $sortComparison = ((int) $left->sort_order) <=> ((int) $right->sort_order);
+
+                    return $sortComparison !== 0
+                        ? $sortComparison
+                        : strcasecmp((string) $left->name, (string) $right->name);
+                });
+
+            foreach ($siblings as $category) {
+                $ordered->push($category);
+                $walk((int) $category->id);
+            }
+        };
+
+        $productRoots = $childrenByParent->get(0, collect())
+            ->reject(fn (Category $category): bool => $category->category_type === 'sport')
+            ->sort(function (Category $left, Category $right): int {
+                $sortComparison = ((int) $left->sort_order) <=> ((int) $right->sort_order);
+
+                return $sortComparison !== 0
+                    ? $sortComparison
+                    : strcasecmp((string) $left->name, (string) $right->name);
+            });
+
+        foreach ($productRoots as $root) {
+            $ordered->push($root);
+            $walk((int) $root->id);
+        }
+
+        $this->attachProductCounts($ordered);
+
+        return $ordered
+            ->map(fn (Category $category) => $this->categoryData($category))
+            ->values()
+            ->all();
+    }
+
     public function sports(): array
     {
         $categories = $this->topLevelQuery()
@@ -69,37 +131,6 @@ class CategoryCatalogService
 
         return $categories->map(fn (Category $category) => $this->categoryData($category))->all();
     }
-
-    public function popularSportswearCategories(?int $limit = null): array
-    {
-        $categories = Category::query()
-            ->storefrontReachable()
-            ->where(function (Builder $query): void {
-                $query->where('category_type', 'sport')
-                    ->orWhereHas('parent', fn (Builder $parent): Builder => $parent->where('category_type', 'sport'))
-                    ->orWhereExists(function ($subquery): void {
-                        $subquery->selectRaw('1')
-                            ->from('category_closure as sport_cc')
-                            ->join('categories as sport_parent', 'sport_parent.id', '=', 'sport_cc.ancestor_id')
-                            ->whereColumn('sport_cc.descendant_id', 'categories.id')
-                            ->where('sport_cc.depth', '>', 0)
-                            ->where('sport_parent.category_type', 'sport')
-                            ->whereNull('sport_parent.deleted_at');
-                    });
-            })
-            ->ordered();
-
-        if ($limit !== null) {
-            $categories->limit(max(1, $limit));
-        }
-
-        $categories = $categories->get();
-
-        $this->attachProductCounts($categories);
-
-        return $categories->map(fn (Category $category) => $this->categoryData($category))->all();
-    }
-
 
     /** @param array<int, int|string> $ids */
     public function categoriesByIds(array $ids, int $limit = 12): array
@@ -149,6 +180,10 @@ class CategoryCatalogService
             'id' => $category->id,
             'slug' => $category->slug,
             'group' => $category->category_type,
+            'parent_name' => $category->parent?->name,
+            'parent_slug' => $category->parent?->slug,
+            'depth' => (int) ($category->depth ?? ($category->parent_id ? 1 : 0)),
+            'is_subcategory' => $category->parent_id !== null,
             'tags' => array_values(array_unique(array_filter([$category->category_type, $category->display_type]))),
             'eyebrow' => $category->eyebrow ?: 'Custom sportswear',
             'title' => $category->name,
@@ -207,43 +242,20 @@ class CategoryCatalogService
             }
         }
 
+        if (($filters['sports'] ?? []) !== []) {
+            $this->productCatalogService->applyCategorySelection($query, $filters['sports']);
+        }
+
         $allowedAttributeSlugs = $this->filterableAttributeSlugsForListing($category, $categoryIds);
-
-        foreach ($filters['attributes'] as $attributeSlug => $valueSlugs) {
-            if (! in_array($attributeSlug, $allowedAttributeSlugs, true)) {
-                continue;
-            }
-
-            $query->whereHas('attributeValues', function (Builder $builder) use ($attributeSlug, $valueSlugs): void {
-                $builder->whereIn('attribute_values.slug', $valueSlugs)
-                    ->whereHas('attribute', fn (Builder $attributeQuery) => $attributeQuery
-                        ->where('slug', $attributeSlug)
-                        ->where('is_active', true)
-                        ->where('is_filterable', true));
-            });
-        }
-
-        if ($filters['min_price'] !== null) {
-            $query->where('products.base_price', '>=', $filters['min_price']);
-        }
-        if ($filters['max_price'] !== null) {
-            $query->where('products.base_price', '<=', $filters['max_price']);
-        }
-        if ($filters['in_stock']) {
-            $query->where(fn (Builder $builder) => $builder
-                ->where('products.track_inventory', false)
-                ->orWhere('products.stock_quantity', '>', 0)
-                ->orWhere('products.allow_backorder', true));
-        }
-        if ($filters['customizable']) {
-            $query->where('products.is_customizable', true);
-        }
+        $this->productCatalogService->applyCommonCatalogFilters($query, $filters, $allowedAttributeSlugs);
 
         match ($filters['sort']) {
-            'price-low' => $query->orderBy('products.base_price'),
-            'price-high' => $query->orderByDesc('products.base_price'),
-            'name-asc' => $query->orderBy('products.name'),
+            'price-low' => $this->productCatalogService->applyListingPriceSort($query, 'asc'),
+            'price-high' => $this->productCatalogService->applyListingPriceSort($query, 'desc'),
+            'name-asc' => $query->orderBy('products.name')->orderByDesc('products.id'),
             'newest' => $query->orderByDesc('products.published_at')->orderByDesc('products.id'),
+            'rating-high' => $query->orderByDesc('products.rating_average')->orderByDesc('products.reviews_count')->orderBy('products.name'),
+            'best-selling' => $query->orderByDesc('products.recent_orders_count')->orderByDesc('products.is_featured')->orderBy('products.name'),
             default => $query
                 ->orderByDesc('category_featured')
                 ->orderByRaw('COALESCE(category_sort, products.sort_order, 999999) ASC')
@@ -292,6 +304,13 @@ class CategoryCatalogService
 
             $configuredAttributes = $category->filters
                 ->filter(fn (CatalogAttribute $attribute) => $attribute->is_active && $attribute->is_filterable)
+                ->reject(function (CatalogAttribute $attribute): bool {
+                    $slug = (string) $attribute->slug;
+                    $label = Str::lower($attribute->name.' '.$slug);
+
+                    return in_array($slug, ['production-time', 'shipping-time', 'free-shipping', 'free-setup', 'brand', 'color', 'size'], true)
+                        || Str::contains($label, ['color', 'colour', 'fabric', 'material', 'metarial', 'meterial']);
+                })
                 ->values();
 
             $configuredAttributeIds = $configuredAttributes
@@ -360,14 +379,23 @@ class CategoryCatalogService
                 ->values()
                 ->all();
 
-            $priceCeiling = (float) $this->applyCategoryProductFilter(Product::query()->published(), $categoryIds)
-                ->max('base_price');
+            $baseQuery = $this->applyCategoryProductFilter(Product::query()->published(), $categoryIds);
+            $shared = $this->productCatalogService->commonFilterOptions(clone $baseQuery);
+            $sharedAttributes = collect($shared['attributes'] ?? [])
+                ->concat($attributes)
+                ->unique('slug')
+                ->values()
+                ->all();
 
-            return [
+            $sports = $category->category_type === 'sport'
+                ? []
+                : $this->productCatalogService->sportFilterOptions(clone $baseQuery);
+
+            return array_merge($shared, [
                 'subcategories' => $childCategories,
-                'attributes' => $attributes,
-                'price_ceiling' => max(100, (int) ceil($priceCeiling / 25) * 25),
-            ];
+                'sports' => count($sports) > 1 ? $sports : [],
+                'attributes' => $sharedAttributes,
+            ]);
         });
     }
 

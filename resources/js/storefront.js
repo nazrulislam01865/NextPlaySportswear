@@ -4,6 +4,38 @@ import Alpine from 'alpinejs';
 
 window.Alpine = Alpine;
 
+const setupGlobalImageFallbacks = () => {
+    const body = document.body;
+    const fallbackUrl = body?.dataset.imagePlaceholderUrl || '/images/product-placeholder.svg';
+
+    window.NextPlayImagePlaceholder = fallbackUrl;
+    window.NextPlayProductActivityUrl = body?.dataset.productActivityUrl || '';
+
+    window.nextPlayUseImagePlaceholder = (image, fallbackSrc = '') => {
+        if (!image || String(image.tagName || '').toLowerCase() !== 'img') return;
+
+        const fallback = fallbackSrc || image.getAttribute('data-fallback-src') || fallbackUrl;
+        const current = image.currentSrc || image.getAttribute('src') || '';
+
+        if (!fallback || current === fallback || current.endsWith('/images/product-placeholder.svg')) return;
+
+        image.removeAttribute('srcset');
+        image.setAttribute('src', fallback);
+        image.classList.add('np-image-placeholder-active');
+    };
+
+    if (document.documentElement.dataset.imageFallbackReady === '1') return;
+    document.documentElement.dataset.imageFallbackReady = '1';
+
+    document.addEventListener('error', (event) => {
+        window.nextPlayUseImagePlaceholder?.(event.target);
+    }, true);
+
+    document.querySelectorAll('img[src*="product-placeholder.svg"]').forEach((image) => {
+        image.classList.add('np-image-placeholder-active');
+    });
+};
+
 window.showStorefrontToast = (payload = {}) => {
     window.dispatchEvent(new CustomEvent('storefront-toast', {
         detail: payload,
@@ -368,6 +400,236 @@ const createProductSocialActions = (socialConfig = {}) => ({
     },
 });
 
+
+const productImagePreviewCache = new Map();
+
+const loadProductPreviewImage = (url) => new Promise((resolve, reject) => {
+    const image = new Image();
+    image.decoding = 'async';
+
+    try {
+        const parsed = new URL(url, window.location.href);
+        if (parsed.origin !== window.location.origin) image.crossOrigin = 'anonymous';
+    } catch (error) {
+        // Relative and data URLs do not need a cross-origin mode.
+    }
+
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('Product image could not be loaded.'));
+    image.src = url;
+});
+
+const canvasToObjectUrl = (canvas) => new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+        if (!blob) {
+            reject(new Error('Product image could not be prepared.'));
+            return;
+        }
+
+        resolve(URL.createObjectURL(blob));
+    }, 'image/png');
+});
+
+const trimProductPreviewWhitespace = async (url) => {
+    if (!url) return '';
+    if (productImagePreviewCache.has(url)) return productImagePreviewCache.get(url);
+
+    const image = await loadProductPreviewImage(url);
+    const sourceWidth = image.naturalWidth || image.width;
+    const sourceHeight = image.naturalHeight || image.height;
+
+    if (!sourceWidth || !sourceHeight) return url;
+
+    const analysisLimit = 1400;
+    const analysisScale = Math.min(1, analysisLimit / Math.max(sourceWidth, sourceHeight));
+    const analysisWidth = Math.max(1, Math.round(sourceWidth * analysisScale));
+    const analysisHeight = Math.max(1, Math.round(sourceHeight * analysisScale));
+    const analysisCanvas = document.createElement('canvas');
+    analysisCanvas.width = analysisWidth;
+    analysisCanvas.height = analysisHeight;
+
+    const analysisContext = analysisCanvas.getContext('2d', { willReadFrequently: true });
+    if (!analysisContext) return url;
+
+    analysisContext.drawImage(image, 0, 0, analysisWidth, analysisHeight);
+    const pixels = analysisContext.getImageData(0, 0, analysisWidth, analysisHeight).data;
+
+    const samplePatch = (startX, startY) => {
+        const samples = [];
+        const patch = Math.max(2, Math.min(8, Math.floor(Math.min(analysisWidth, analysisHeight) * .012)));
+
+        for (let y = 0; y < patch; y += 1) {
+            for (let x = 0; x < patch; x += 1) {
+                const px = Math.max(0, Math.min(analysisWidth - 1, startX + x));
+                const py = Math.max(0, Math.min(analysisHeight - 1, startY + y));
+                const offset = (py * analysisWidth + px) * 4;
+                samples.push([
+                    pixels[offset],
+                    pixels[offset + 1],
+                    pixels[offset + 2],
+                    pixels[offset + 3],
+                ]);
+            }
+        }
+
+        return [0, 1, 2, 3].map(channel => {
+            const values = samples.map(sample => sample[channel]).sort((a, b) => a - b);
+            return values[Math.floor(values.length / 2)] || 0;
+        });
+    };
+
+    const patchSize = Math.max(2, Math.min(8, Math.floor(Math.min(analysisWidth, analysisHeight) * .012)));
+    const cornerColours = [
+        samplePatch(0, 0),
+        samplePatch(Math.max(0, analysisWidth - patchSize), 0),
+        samplePatch(0, Math.max(0, analysisHeight - patchSize)),
+        samplePatch(Math.max(0, analysisWidth - patchSize), Math.max(0, analysisHeight - patchSize)),
+    ];
+    const mostlyLightCorners = cornerColours.filter(([r, g, b, a]) => a < 16 || (r > 226 && g > 226 && b > 226)).length >= 3;
+
+    const isBackgroundPixel = (offset) => {
+        const r = pixels[offset];
+        const g = pixels[offset + 1];
+        const b = pixels[offset + 2];
+        const a = pixels[offset + 3];
+
+        if (a <= 12) return true;
+        if (mostlyLightCorners && r >= 238 && g >= 238 && b >= 238) return true;
+
+        return cornerColours.some(([cr, cg, cb, ca]) => {
+            if (Math.abs(a - ca) > 70) return false;
+            const maxDifference = Math.max(Math.abs(r - cr), Math.abs(g - cg), Math.abs(b - cb));
+            const averageDifference = (Math.abs(r - cr) + Math.abs(g - cg) + Math.abs(b - cb)) / 3;
+            return maxDifference <= 26 && averageDifference <= 18;
+        });
+    };
+
+    const rowHasContent = (y) => {
+        let count = 0;
+        const needed = Math.max(3, Math.ceil(analysisWidth * .006));
+        for (let x = 0; x < analysisWidth; x += 1) {
+            if (!isBackgroundPixel((y * analysisWidth + x) * 4)) {
+                count += 1;
+                if (count >= needed) return true;
+            }
+        }
+        return false;
+    };
+
+    const columnHasContent = (x, top, bottom) => {
+        let count = 0;
+        const needed = Math.max(3, Math.ceil((bottom - top + 1) * .006));
+        for (let y = top; y <= bottom; y += 1) {
+            if (!isBackgroundPixel((y * analysisWidth + x) * 4)) {
+                count += 1;
+                if (count >= needed) return true;
+            }
+        }
+        return false;
+    };
+
+    let top = 0;
+    while (top < analysisHeight - 1 && !rowHasContent(top)) top += 1;
+    let bottom = analysisHeight - 1;
+    while (bottom > top && !rowHasContent(bottom)) bottom -= 1;
+    let left = 0;
+    while (left < analysisWidth - 1 && !columnHasContent(left, top, bottom)) left += 1;
+    let right = analysisWidth - 1;
+    while (right > left && !columnHasContent(right, top, bottom)) right -= 1;
+
+    const analysisPadding = Math.max(1, Math.round(Math.min(analysisWidth, analysisHeight) * .004));
+    top = Math.max(0, top - analysisPadding);
+    left = Math.max(0, left - analysisPadding);
+    bottom = Math.min(analysisHeight - 1, bottom + analysisPadding);
+    right = Math.min(analysisWidth - 1, right + analysisPadding);
+
+    const cropWidthRatio = (right - left + 1) / analysisWidth;
+    const cropHeightRatio = (bottom - top + 1) / analysisHeight;
+    const removedArea = 1 - (cropWidthRatio * cropHeightRatio);
+
+    if (removedArea < .018 || cropWidthRatio < .12 || cropHeightRatio < .12) {
+        productImagePreviewCache.set(url, url);
+        return url;
+    }
+
+    const sourceX = Math.max(0, Math.floor(left / analysisScale));
+    const sourceY = Math.max(0, Math.floor(top / analysisScale));
+    const sourceCropWidth = Math.min(sourceWidth - sourceX, Math.ceil((right - left + 1) / analysisScale));
+    const sourceCropHeight = Math.min(sourceHeight - sourceY, Math.ceil((bottom - top + 1) / analysisScale));
+    const outputLimit = 2800;
+    const outputScale = Math.min(1, outputLimit / Math.max(sourceCropWidth, sourceCropHeight));
+    const outputWidth = Math.max(1, Math.round(sourceCropWidth * outputScale));
+    const outputHeight = Math.max(1, Math.round(sourceCropHeight * outputScale));
+    const outputCanvas = document.createElement('canvas');
+    outputCanvas.width = outputWidth;
+    outputCanvas.height = outputHeight;
+
+    const outputContext = outputCanvas.getContext('2d');
+    if (!outputContext) return url;
+
+    outputContext.drawImage(
+        image,
+        sourceX,
+        sourceY,
+        sourceCropWidth,
+        sourceCropHeight,
+        0,
+        0,
+        outputWidth,
+        outputHeight,
+    );
+
+    const objectUrl = await canvasToObjectUrl(outputCanvas);
+    productImagePreviewCache.set(url, objectUrl);
+    return objectUrl;
+};
+
+window.addEventListener('beforeunload', () => {
+    productImagePreviewCache.forEach((cachedUrl, sourceUrl) => {
+        if (cachedUrl !== sourceUrl && cachedUrl.startsWith('blob:')) URL.revokeObjectURL(cachedUrl);
+    });
+});
+
+window.productImageViewer = () => ({
+    imageOpen: false,
+    image: null,
+    previewSrc: '',
+    previewLoading: false,
+    previewFailed: false,
+    previewToken: 0,
+
+    async open(image = null) {
+        if (!image?.url) return;
+
+        const token = ++this.previewToken;
+        this.image = image;
+        this.previewSrc = '';
+        this.previewFailed = false;
+        this.previewLoading = true;
+        this.imageOpen = true;
+        document.documentElement.classList.add('np-product-preview-open');
+
+        try {
+            const preparedUrl = await trimProductPreviewWhitespace(String(image.url));
+            if (token !== this.previewToken || !this.imageOpen) return;
+            this.previewSrc = preparedUrl || String(image.url);
+        } catch (error) {
+            if (token !== this.previewToken || !this.imageOpen) return;
+            this.previewSrc = String(image.url);
+            this.previewFailed = true;
+        } finally {
+            if (token === this.previewToken) this.previewLoading = false;
+        }
+    },
+
+    close() {
+        this.previewToken += 1;
+        this.imageOpen = false;
+        this.previewLoading = false;
+        document.documentElement.classList.remove('np-product-preview-open');
+    },
+});
+
 const rosterExcludedProductProfiles = ['bag', 'headwear', 'drinkware', 'drinkwear', 'lanyard', 'lyniard', 'headband'];
 const rosterSupportsProductProfile = (profile = '') => !rosterExcludedProductProfiles.includes(String(profile || '').trim().toLowerCase());
 
@@ -376,6 +638,8 @@ window.productBuilder = (config = {}) => ({
     config,
     initialized: false,
     galleryIndex: 0,
+    galleryImageState: {},
+    gallerySelectionToken: 0,
     selections: {},
     multiSelections: {},
     inputs: {},
@@ -513,6 +777,48 @@ window.productBuilder = (config = {}) => ({
             style: 'currency',
             currency: config.currency || 'USD',
         }).format(Number(value || 0));
+    },
+
+    markGalleryImageReady(index, event) {
+        this.galleryImageState[index] = 'ready';
+        event?.currentTarget?.closest('.np-product-gallery-slide')?.classList.add('is-loaded');
+    },
+
+    markGalleryImageError(index) {
+        this.galleryImageState[index] = 'error';
+    },
+
+    selectGalleryImage(index) {
+        const gallery = Array.isArray(config.gallery) ? config.gallery : [];
+        const nextIndex = Number(index);
+
+        if (!Number.isInteger(nextIndex) || nextIndex < 0 || nextIndex >= gallery.length || nextIndex === this.galleryIndex) {
+            return;
+        }
+
+        const token = ++this.gallerySelectionToken;
+        const target = gallery[nextIndex];
+        const activate = () => {
+            if (token !== this.gallerySelectionToken) return;
+            this.galleryIndex = nextIndex;
+        };
+
+        if (this.galleryImageState[nextIndex] === 'ready' || !target?.url) {
+            requestAnimationFrame(activate);
+            return;
+        }
+
+        const preloader = new Image();
+        preloader.decoding = 'async';
+        preloader.onload = () => {
+            this.galleryImageState[nextIndex] = 'ready';
+            requestAnimationFrame(activate);
+        };
+        preloader.onerror = () => {
+            this.galleryImageState[nextIndex] = 'error';
+            requestAnimationFrame(activate);
+        };
+        preloader.src = target.url;
     },
 
     currentImage() {
@@ -2619,14 +2925,36 @@ const setupProductCardActivity = () => {
 const setupGlobalWishlistHeader = () => {
     const badges = Array.from(document.querySelectorAll('[data-wishlist-count]'));
     const links = Array.from(document.querySelectorAll('[data-wishlist-header-link]'));
-    if (badges.length === 0 && links.length === 0) return;
+    const preview = document.querySelector('[data-wishlist-preview]');
+    if (badges.length === 0 && links.length === 0 && !preview) return;
 
     const source = links[0];
     const authenticated = source?.dataset.wishlistAuthenticated === '1';
     const storageKey = source?.dataset.wishlistStorageKey || DEFAULT_GUEST_WISHLIST_STORAGE_KEY;
+    const previewEndpoint = String(source?.dataset.wishlistPreviewEndpoint || '');
     const initialCount = Math.max(0, Number(source?.dataset.wishlistInitialCount || 0));
+    const previewCount = preview?.querySelector('[data-wishlist-preview-count]');
+    const previewList = preview?.querySelector('[data-wishlist-preview-list]');
+    const previewEmpty = preview?.querySelector('[data-wishlist-preview-empty]');
+    const previewItems = preview?.querySelector('[data-wishlist-preview-items]');
+    const previewRemaining = preview?.querySelector('[data-wishlist-preview-remaining]');
+    const previewTemplate = preview?.querySelector('template[data-wishlist-preview-item-template]');
+    const previewWrapper = preview?.closest('.storefront-wishlist-hover');
+    let previewLoading = false;
+    let lastPreviewRefresh = 0;
 
-    const render = (count) => {
+    const money = (value, currency = 'USD') => {
+        try {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: String(currency || 'USD'),
+            }).format(Number(value || 0));
+        } catch (error) {
+            return `$${Number(value || 0).toFixed(2)}`;
+        }
+    };
+
+    const renderCount = (count) => {
         const safeCount = Math.max(0, Number(count || 0));
         badges.forEach((badge) => {
             badge.textContent = safeCount > 99 ? '99+' : String(safeCount);
@@ -2635,20 +2963,117 @@ const setupGlobalWishlistHeader = () => {
         links.forEach((link) => {
             link.setAttribute('aria-label', `Wishlist, ${safeCount} item${safeCount === 1 ? '' : 's'}`);
         });
+        if (previewCount) {
+            previewCount.textContent = `${safeCount} item${safeCount === 1 ? '' : 's'}`;
+        }
     };
 
-    render(authenticated ? initialCount : storedWishlistCount(storageKey));
+    const renderPreview = (items, totalItems = null) => {
+        if (!preview || !previewItems || !previewTemplate?.content?.firstElementChild) return;
+
+        const normalizedItems = Array.isArray(items)
+            ? items.filter((item) => item && typeof item === 'object').slice(0, 4)
+            : [];
+        const safeTotal = Math.max(
+            normalizedItems.length,
+            Number.isFinite(Number(totalItems)) ? Number(totalItems) : normalizedItems.length,
+        );
+
+        previewItems.replaceChildren();
+
+        normalizedItems.forEach((item) => {
+            const row = previewTemplate.content.firstElementChild.cloneNode(true);
+            const title = String(item.title || 'Saved product');
+            const url = String(item.url || '/wishlist');
+            const image = String(item.image || window.NextPlayImagePlaceholder || '/images/product-placeholder.svg');
+            const imageNode = row.querySelector('[data-wishlist-preview-image]');
+            const titleNode = row.querySelector('[data-wishlist-preview-title]');
+            const priceNode = row.querySelector('[data-wishlist-preview-price]');
+
+            row.href = url;
+            if (imageNode) {
+                imageNode.src = image;
+                imageNode.alt = String(item.alt || title);
+            }
+            if (titleNode) titleNode.textContent = title;
+            if (priceNode) priceNode.textContent = money(item.price, item.currency);
+
+            previewItems.appendChild(row);
+        });
+
+        const hasItems = normalizedItems.length > 0;
+        previewList?.classList.toggle('hidden', !hasItems);
+        previewEmpty?.classList.toggle('hidden', hasItems);
+
+        const remaining = Math.max(0, safeTotal - normalizedItems.length);
+        if (previewRemaining) {
+            previewRemaining.classList.toggle('hidden', remaining === 0);
+            previewRemaining.textContent = `+ ${remaining} more wishlist item${remaining === 1 ? '' : 's'}`;
+        }
+
+        renderCount(safeTotal);
+    };
+
+    const guestPreviewItems = () => Object.values(readStoredWishlist(storageKey))
+        .filter((item) => item && typeof item === 'object')
+        .sort((a, b) => String(b.saved_at || '').localeCompare(String(a.saved_at || '')));
+
+    const renderGuestPreview = () => {
+        const items = guestPreviewItems();
+        renderPreview(items, items.length);
+    };
+
+    const refreshAuthenticatedPreview = async (force = false) => {
+        if (!authenticated || !previewEndpoint || previewLoading) return;
+        if (!force && Date.now() - lastPreviewRefresh < 15000) return;
+
+        previewLoading = true;
+        try {
+            const response = await fetch(previewEndpoint, {
+                method: 'GET',
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (!response.ok) return;
+            const payload = await response.json();
+            renderPreview(payload.items || [], payload.total_items || 0);
+            lastPreviewRefresh = Date.now();
+        } catch (error) {
+            // The server-rendered preview remains available if refresh fails.
+        } finally {
+            previewLoading = false;
+        }
+    };
+
+    renderCount(authenticated ? initialCount : storedWishlistCount(storageKey));
+    if (!authenticated) renderGuestPreview();
 
     window.addEventListener('nextplay:wishlist-changed', (event) => {
         const count = Number(event.detail?.count);
-        if (Number.isFinite(count)) render(count);
+        if (Number.isFinite(count)) renderCount(count);
+
+        if (authenticated) {
+            refreshAuthenticatedPreview(true);
+        } else {
+            renderGuestPreview();
+        }
     });
 
     window.addEventListener('storage', (event) => {
         if (!authenticated && event.key === storageKey) {
-            render(storedWishlistCount(storageKey));
+            renderGuestPreview();
         }
     });
+
+    if (authenticated && previewWrapper) {
+        previewWrapper.addEventListener('pointerenter', () => refreshAuthenticatedPreview(), { passive: true });
+        previewWrapper.addEventListener('focusin', () => refreshAuthenticatedPreview());
+    }
 };
 
 const setupWishlistPage = () => {
@@ -3109,6 +3534,7 @@ const setupLiveProductSections = () => {
 };
 
 const bootStorefront = () => {
+    setupGlobalImageFallbacks();
     setupStorefrontMenus();
     setupHeroCarousels();
     setupHeroCardCarousels();

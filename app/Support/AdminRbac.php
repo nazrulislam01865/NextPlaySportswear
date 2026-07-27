@@ -14,6 +14,19 @@ class AdminRbac
 {
     public const DELETE_PERMISSION_KEY = 'records.delete';
 
+    /** Permissions for launch-hidden modules that used to appear in Role Matrix. */
+    private const RETIRED_PERMISSION_KEYS = [
+        'inventory.view',
+        'customers.view',
+        'reviews.view',
+        'content.view',
+        'content.manage',
+        'taxes.view',
+        'reports.view',
+        'settings.view',
+        'settings.manage',
+    ];
+
     /** @return array<int, array<string, mixed>> */
     public static function roles(): array
     {
@@ -29,7 +42,7 @@ class AdminRbac
             [
                 'slug' => 'admin',
                 'name' => 'Admin',
-                'description' => 'Store administrator with broad catalog, order, customer, store and report access.',
+                'description' => 'Store administrator with broad catalog, order, storefront and access-control permissions.',
                 'sort_order' => 2,
                 'is_system' => true,
                 'is_active' => true,
@@ -53,7 +66,7 @@ class AdminRbac
             [
                 'slug' => 'support_agent',
                 'name' => 'Support Agent',
-                'description' => 'Views orders, returns, customer records and support-oriented reports.',
+                'description' => 'Views orders, returns, customer requests and fulfillment details.',
                 'sort_order' => 5,
                 'is_system' => true,
                 'is_active' => true,
@@ -85,36 +98,27 @@ class AdminRbac
             self::permission('customization.manage', 'Catalog', 'Manage', 'Manage Customization Master Data', 'Create and update product customization options and size option groups.', 'admin.jersey-customization-options.store', 51),
             self::permission('menus.view', 'Catalog', 'View', 'View Navigation Menus', 'Open admin navigation menu records.', 'admin.menus.index', 60),
             self::permission('menus.manage', 'Catalog', 'Manage', 'Manage Navigation Menus', 'Create and update storefront navigation menus.', 'admin.menus.store', 61),
-            self::permission('inventory.view', 'Catalog', 'View', 'View Inventory', 'Open inventory placeholder and stock-related dashboard links.', 'admin.modules.show', 70),
 
             self::permission('orders.view', 'Commerce', 'View', 'View Orders', 'Open orders, order details, shipments, order downloads and customer change requests.', 'admin.orders.index', 100),
             self::permission('orders.manage', 'Commerce', 'Manage', 'Manage Orders', 'Update order status, payment status, fulfillment status, shipments, change requests and order downloads.', 'admin.orders.update', 101),
             self::permission('returns.view', 'Commerce', 'View', 'View Returns & Exchanges', 'Open return and exchange requests and their attachments.', 'admin.returns.index', 110),
             self::permission('returns.manage', 'Commerce', 'Manage', 'Manage Returns & Exchanges', 'Update return and exchange status, refunds and review notes.', 'admin.returns.update', 111),
-            self::permission('customers.view', 'Commerce', 'View', 'View Customers', 'Open customer management placeholder and customer dashboard links.', 'admin.modules.show', 120),
             self::permission('coupons.view', 'Commerce', 'View', 'View Coupons', 'Open discounts and coupon lists.', 'admin.coupons.index', 130),
             self::permission('coupons.manage', 'Commerce', 'Manage', 'Manage Coupons', 'Create and update discounts and coupons.', 'admin.coupons.store', 131),
-            self::permission('reviews.view', 'Commerce', 'View', 'View Reviews', 'Open reviews placeholder module.', 'admin.modules.show', 140),
 
             self::permission('homepage_sections.view', 'Storefront', 'View', 'View Homepage Sections', 'Open homepage section controls.', 'admin.homepage.sections.index', 160),
             self::permission('homepage_sections.manage', 'Storefront', 'Manage', 'Manage Homepage Sections', 'Update homepage section text, buttons, images, items, visibility and display order.', 'admin.homepage.sections.update', 161),
             self::permission('homepage_slides.view', 'Storefront', 'View', 'View Homepage Slider', 'Open homepage slide records.', 'admin.homepage-slides.index', 170),
             self::permission('homepage_slides.manage', 'Storefront', 'Manage', 'Manage Homepage Slider', 'Create, update and toggle homepage slides.', 'admin.homepage-slides.store', 171),
-            self::permission('content.view', 'Storefront', 'View', 'View Content', 'Open content and navigation placeholder module.', 'admin.modules.show', 180),
-            self::permission('content.manage', 'Storefront', 'Manage', 'Manage Content', 'Manage content-oriented store modules and navigation content.', 'admin.modules.show', 181),
             self::permission('shipping.view', 'Catalog', 'View', 'View Shipping Methods', 'Open shipping method master data records.', 'admin.shipping-methods.index', 190),
             self::permission('shipping.manage', 'Catalog', 'Manage', 'Manage Shipping Methods', 'Create and update shipping method master data records.', 'admin.shipping-methods.store', 191),
             self::permission('rural_surcharges.view', 'Storefront', 'View', 'View Rural Surcharges', 'Open rural area surcharge records.', 'admin.rural-area-surcharges.index', 200),
             self::permission('rural_surcharges.manage', 'Storefront', 'Manage', 'Manage Rural Surcharges', 'Create and update rural area surcharges.', 'admin.rural-area-surcharges.store', 201),
-            self::permission('payment_methods.view', 'Storefront', 'View', 'View Payment Methods', 'Open payment method records and payment placeholder modules.', 'admin.payment-methods.index', 210),
+            self::permission('payment_methods.view', 'Storefront', 'View', 'View Payment Methods', 'Open and manage the payment methods presented during checkout.', 'admin.payment-methods.index', 210),
             self::permission('payment_methods.manage', 'Storefront', 'Manage', 'Manage Payment Methods', 'Create and update payment methods.', 'admin.payment-methods.store', 211),
             self::permission('newsletters.view', 'Storefront', 'View', 'View Newsletter Subscribers', 'Open homepage newsletter subscriber emails and export filtered subscriber lists.', 'admin.newsletter-subscribers.index', 215),
             self::permission('newsletters.manage', 'Storefront', 'Manage', 'Manage Newsletter Subscribers', 'Manage newsletter subscriber records and exports.', 'admin.newsletter-subscribers.export', 216),
-            self::permission('taxes.view', 'Storefront', 'View', 'View Taxes', 'Open taxes placeholder module.', 'admin.modules.show', 220),
 
-            self::permission('reports.view', 'Reports', 'View', 'View Reports', 'Open report placeholder module and report dashboard links.', 'admin.modules.show', 250),
-            self::permission('settings.view', 'System', 'View', 'View Settings', 'Open store settings placeholder module.', 'admin.modules.show', 280),
-            self::permission('settings.manage', 'System', 'Manage', 'Manage Settings', 'Manage store-level settings when implemented.', 'admin.modules.show', 281),
             self::permission('users.view', 'System', 'View', 'View Admin Users', 'Open admin user records and role assignment page.', 'admin.users.index', 290),
             self::permission('users.manage', 'System', 'Manage', 'Manage Admin Users', 'Create admin users, update roles, reset passwords and deactivate admin accounts.', 'admin.users.store', 291),
             self::permission('role_matrix.view', 'System', 'View', 'View Role Matrix', 'Open the role and permission matrix.', 'admin.role-matrix.index', 300),
@@ -133,10 +137,8 @@ class AdminRbac
             'attributes.view', 'attributes.manage',
             'customization.view', 'customization.manage',
             'menus.view', 'menus.manage',
-            'inventory.view',
             'homepage_sections.view', 'homepage_sections.manage',
             'homepage_slides.view', 'homepage_slides.manage',
-            'content.view', 'content.manage',
             'newsletters.view', 'newsletters.manage',
         ];
 
@@ -144,8 +146,6 @@ class AdminRbac
             'dashboard.view',
             'orders.view', 'orders.manage',
             'returns.view', 'returns.manage',
-            'customers.view',
-            'reports.view',
         ];
 
         $contentAll = [
@@ -153,7 +153,6 @@ class AdminRbac
             'menus.view', 'menus.manage',
             'homepage_sections.view', 'homepage_sections.manage',
             'homepage_slides.view', 'homepage_slides.manage',
-            'content.view', 'content.manage',
             'shipping.view', 'shipping.manage',
             'rural_surcharges.view', 'rural_surcharges.manage',
             'payment_methods.view', 'payment_methods.manage',
@@ -171,7 +170,7 @@ class AdminRbac
             'admin' => $adminAllExceptProtected,
             'catalog_manager' => $catalogAll,
             'order_manager' => $commerceAll,
-            'support_agent' => ['dashboard.view', 'orders.view', 'returns.view', 'customers.view', 'reports.view'],
+            'support_agent' => ['dashboard.view', 'orders.view', 'returns.view'],
             'content_manager' => $contentAll,
         ];
     }
@@ -210,6 +209,12 @@ class AdminRbac
                 ]
             );
         }
+
+        // Keep launch-hidden, unfinished modules out of the permission matrix even
+        // on upgraded installations where their old permission rows still exist.
+        AdminPermission::query()
+            ->whereIn('key', self::RETIRED_PERMISSION_KEYS)
+            ->delete();
 
         if (! Schema::hasTable('admin_role_permissions')) {
             return;
@@ -426,16 +431,12 @@ class AdminRbac
 
         if ($name === 'modules.show') {
             $module = (string) $request->route('module');
+
             return match ($module) {
-                'customers' => 'customers.view',
-                'inventory' => 'inventory.view',
-                'reviews' => 'reviews.view',
-                'content' => 'content.view',
-                'reports' => 'reports.view',
+                'inventory' => 'products.view',
+                'content' => 'homepage_sections.view',
                 'shipping' => 'shipping.view',
-                'taxes' => 'taxes.view',
                 'payments' => 'payment_methods.view',
-                'settings' => 'settings.view',
                 'discounts' => 'coupons.view',
                 'orders' => 'orders.view',
                 default => null,
@@ -454,7 +455,7 @@ class AdminRbac
     {
         $manageActions = [
             'create', 'store', 'edit', 'update', 'destroy', 'duplicate', 'toggle', 'bulk', 'import',
-            'ordering.update', 'sync-legacy', 'shipments.store', 'shipments.update', 'requests.update',
+            'ordering.update', 'sync-legacy', 'approve', 'shipments.store', 'shipments.update', 'requests.update',
             'downloads.store', 'downloads.destroy', 'roles.store',
         ];
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Storefront\ProductFilterRequest;
 use App\Models\ProductWishlist;
 use App\Services\Cart\CartService;
 use App\Services\Storefront\ProductCatalogService;
@@ -18,33 +19,65 @@ class ProductController extends Controller
     ) {
     }
 
-    public function index(Request $request): View
+    public function index(ProductFilterRequest $request): View
     {
-        $query = $request->string('q')->trim()->toString();
-        $tag = trim((string) $request->query('tag', ''));
-        $selectedCategoryIds = $this->productCatalogService->normalizeCategoryFilterIds((array) $request->query('categories', []));
-        $products = $this->productCatalogService->searchPaginated($query, $tag, $selectedCategoryIds);
-        $categoryFilters = $this->productCatalogService->categoryFilterTree($selectedCategoryIds);
-        $hasFilters = filled($query) || filled($tag) || $selectedCategoryIds !== [];
+        $filters = $request->filters();
+        $filters['categories'] = $this->productCatalogService->normalizeCategoryFilterIds($filters['categories']);
+        $filters['sports'] = $this->productCatalogService->normalizeCategoryFilterIds($filters['sports']);
+
+        $products = $this->productCatalogService->searchPaginated($filters);
+        $filterOptions = $this->productCatalogService->filterOptions($filters);
+        $hasFilters = $this->hasCatalogFilters($filters);
 
         return view('storefront.products.index', [
             'products' => $products,
-            'query' => $query,
-            'tag' => $tag,
-            'selectedCategoryIds' => $selectedCategoryIds,
-            'categoryFilters' => $categoryFilters,
+            'filters' => $filters,
+            'filterOptions' => $filterOptions,
+            'query' => $filters['q'],
+            'tag' => $filters['tag'],
+            'selectedCategoryIds' => $filters['categories'],
+            'categoryFilters' => $filterOptions['categories'] ?? [],
             'hasFilters' => $hasFilters,
+            'activeFilterCount' => $this->activeFilterCount($filters),
             'seo' => [
-                'title' => filled($tag)
-                    ? 'Products tagged '.$tag.' | '.config('storefront.name')
-                    : (filled($query)
-                        ? 'Search results for '.$query.' | '.config('storefront.name')
+                'title' => filled($filters['tag'])
+                    ? 'Products tagged '.$filters['tag'].' | '.config('storefront.name')
+                    : (filled($filters['q'])
+                        ? 'Search results for '.$filters['q'].' | '.config('storefront.name')
                         : 'Products | '.config('storefront.name')),
                 'description' => 'Browse custom jerseys, uniforms, hoodies, caps, bags, and bulk-ready team sportswear products.',
                 'canonical' => route('products.index'),
             ],
         ]);
     }
+
+    /** @param array<string, mixed> $filters */
+    private function hasCatalogFilters(array $filters): bool
+    {
+        return $this->activeFilterCount($filters) > 0;
+    }
+
+    /** @param array<string, mixed> $filters */
+    private function activeFilterCount(array $filters): int
+    {
+        $count = filled($filters['q'] ?? null) ? 1 : 0;
+        $count += filled($filters['tag'] ?? null) ? 1 : 0;
+
+        foreach (['categories', 'sports', 'product_types', 'colors', 'materials', 'artwork_methods', 'moq', 'customization', 'availability'] as $key) {
+            $count += count((array) ($filters[$key] ?? []));
+        }
+
+        foreach ((array) ($filters['attributes'] ?? []) as $values) {
+            $count += count((array) $values);
+        }
+
+        $count += ($filters['min_price'] ?? null) !== null ? 1 : 0;
+        $count += ($filters['max_price'] ?? null) !== null ? 1 : 0;
+        $count += ($filters['min_rating'] ?? null) !== null ? 1 : 0;
+
+        return $count;
+    }
+
 
 
     public function suggestions(Request $request): JsonResponse
@@ -71,7 +104,7 @@ class ProductController extends Controller
 
     public function show(Request $request, string $slug): View
     {
-        $product = $this->productCatalogService->findBySlug($slug);
+        $product = $this->productCatalogService->findFullBySlug($slug);
 
         abort_if(! $product, 404);
 

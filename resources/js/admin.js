@@ -1,8 +1,6 @@
 import './bootstrap';
 
 import Alpine from 'alpinejs';
-import { readSheet } from 'read-excel-file/browser';
-
 window.Alpine = Alpine;
 
 const slugify = (value = '') => String(value)
@@ -1256,9 +1254,14 @@ window.adminProductForm = (initial = {}) => ({
             if (file.size > 5 * 1024 * 1024) throw new Error('The spreadsheet must not exceed 5 MB.');
             const extension = String(file.name || '').split('.').pop().toLowerCase();
             if (!['xlsx', 'csv'].includes(extension)) throw new Error('Upload an XLSX or CSV spreadsheet.');
-            const matrix = extension === 'csv'
-                ? this.parseCsvMatrix(await file.text())
-                : await readSheet(file);
+            let matrix;
+
+            if (extension === 'csv') {
+                matrix = this.parseCsvMatrix(await file.text());
+            } else {
+                const { readSheet } = await import('read-excel-file/browser');
+                matrix = await readSheet(file);
+            }
             this.preparePriceImportMapping(matrix, file.name, targetTable, targetLabel);
         } catch (error) {
             const message = error instanceof Error ? error.message : 'The price table could not be imported.';

@@ -94,8 +94,8 @@
                                 decoding="async"
                                 src="{{ $image }}"
                                 alt="{{ $alt }}"
-                                width="{{ $isFeatured ? 770 : 394 }}"
-                                height="{{ $isFeatured ? 278 : 212 }}"
+                                width="{{ $isFeatured ? 640 : 280 }}"
+                                height="{{ $isFeatured ? 300 : 184 }}"
                             >
                         </span>
                         <span class="np-best-gear-card__divider" aria-hidden="true"></span>

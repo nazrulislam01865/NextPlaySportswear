@@ -6,10 +6,10 @@
     @endphp
 
     <div class="mb-6 flex flex-col justify-between gap-4 rounded-3xl bg-brand-dark p-6 text-white shadow-card md:flex-row md:items-start">
-        <div>
+        <div class="min-w-0">
             <p class="text-xs font-black uppercase tracking-[.16em] text-brand-red">Placed {{ $order->placed_at?->format('M d, Y · g:i A') }}</p>
-            <h2 class="mt-2 text-3xl font-black">{{ $order->customer_name }}</h2>
-            <p class="mt-1 text-sm text-slate-300">{{ $order->customer_email }} · {{ $order->customer_phone ?: 'No phone' }}</p>
+            <h2 class="mt-2 break-words text-3xl font-black text-white" style="color: #fff !important;">{{ $order->customer_name }}</h2>
+            <p class="mt-1 break-words text-sm text-slate-300">{{ $order->customer_email }} · {{ $order->customer_phone ?: 'No phone' }}</p>
         </div>
         <div class="flex flex-wrap gap-2">
             <x-storefront.account.orders.status-pill :status="$order->status" />
@@ -25,7 +25,11 @@
                     <div><h3 class="text-xl font-black">Order Items</h3><p class="text-sm text-slate-500">Immutable product and customization snapshots captured at checkout.</p></div>
                     <strong class="text-2xl">{{ $order->currency }} {{ number_format((float) $order->grand_total, 2) }}</strong>
                 </div>
-                <div class="mt-5 grid gap-4">@foreach($order->items as $item)<x-storefront.account.orders.item-row :item="$item" />@endforeach</div>
+                <div class="mt-5 grid gap-4">
+                    @foreach($order->items as $item)
+                        <x-admin.orders.item-details :item="$item" :order="$order" />
+                    @endforeach
+                </div>
             </section>
 
             <section class="grid gap-5 md:grid-cols-2">
@@ -164,6 +168,16 @@
                     <div class="flex justify-between gap-4 border-t border-slate-200 pt-4 text-lg"><span class="font-black">Grand total</span><strong>${{ number_format((float) $order->grand_total, 2) }}</strong></div>
                 </div>
             </section>
+
+            @if($order->canApproveAfterPayment())
+                <form method="POST" action="{{ route('admin.orders.approve', $order) }}" class="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 shadow-card" onsubmit="return confirm('Approve this paid order and move it to Design Review?')">
+                    @csrf @method('PATCH')
+                    <p class="text-xs font-black uppercase tracking-[.16em] text-emerald-700">Payment confirmed</p>
+                    <h3 class="mt-2 text-lg font-black text-emerald-950">Approve Order</h3>
+                    <p class="mt-2 text-sm leading-6 text-emerald-800">Payment is marked as paid. Approving will move this order to Design Review so the artwork and production workflow can begin.</p>
+                    <button class="btn btn-red mt-4 w-full" type="submit">Approve Order &amp; Start Design Review</button>
+                </form>
+            @endif
 
             <form method="POST" action="{{ route('admin.orders.update', $order) }}" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-card">
                 @csrf @method('PATCH')

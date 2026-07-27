@@ -104,6 +104,18 @@ class Order extends Model
             && $this->grand_total > 0;
     }
 
+    public function canApproveAfterPayment(): bool
+    {
+        return $this->payment_status === 'paid'
+            && in_array($this->status, [
+                'pending_payment',
+                'payment_review',
+                'payment_failed',
+                'quote_invoice_requested',
+                'on_hold',
+            ], true);
+    }
+
     public function canRequestCancellation(): bool
     {
         return in_array($this->status, config('commerce.cancellable_statuses', []), true)

@@ -82,9 +82,10 @@ class StorefrontCategoryTest extends TestCase
         $product = Product::query()->where('sku', 'NPS-JER-PRO-001')->firstOrFail();
         $primary = $product->categories()->wherePivot('is_primary', true)->first();
 
-        $this->assertGreaterThanOrEqual(2, $product->categories()->count());
+        $this->assertGreaterThanOrEqual(1, $product->categories()->count());
         $this->assertNotNull($primary);
         $this->assertSame('basketball-jerseys', $primary->slug);
+        $product->categories->each(fn (Category $category) => $this->assertTrue($category->isLeaf()));
     }
 
     public function test_invalid_filter_values_are_rejected(): void

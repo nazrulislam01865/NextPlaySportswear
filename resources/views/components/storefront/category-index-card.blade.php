@@ -1,38 +1,53 @@
 @props(['category'])
 
 <article
-    class="group flex h-full flex-col overflow-hidden rounded-[14px] border border-slate-200 bg-white shadow-card transition duration-200 hover:-translate-y-1 hover:shadow-soft"
+    class="np-all-category-card group"
     data-tags="{{ implode(' ', $category['tags']) }}"
     x-show="filter === 'all' || $el.dataset.tags.split(' ').includes(filter)"
     x-transition.opacity.duration.150ms
 >
-    <a href="{{ $category['url'] }}" class="np-category-square-media block overflow-hidden" aria-label="{{ $category['link_label'] }}">
+    <a
+        href="{{ $category['url'] }}"
+        class="np-all-category-card__media"
+        aria-label="{{ $category['link_label'] }}"
+    >
         <img
             loading="lazy"
             src="{{ $category['image'] }}"
             alt="{{ $category['alt'] }}"
-            class="np-category-square-image transition duration-300 group-hover:scale-[1.025]"
-            width="700"
-            height="700"
+            class="np-all-category-card__image"
+            width="720"
+            height="480"
         >
     </a>
 
-    <div class="flex flex-1 flex-col p-[17px]">
-        <h3 class="text-lg font-extrabold text-brand-ink">
-            <a href="{{ $category['url'] }}" class="hover:text-brand-red">{{ $category['title'] }}</a>
+    <div class="np-all-category-card__body">
+        <div class="np-all-category-card__meta">
+            @if ($category['parent_name'])
+                <span class="np-all-category-card__parent">{{ $category['parent_name'] }}</span>
+            @else
+                <span class="np-all-category-card__parent">Product category</span>
+            @endif
+
+            @if (($category['product_count'] ?? 0) > 0)
+                <span class="np-all-category-card__count">
+                    {{ number_format((int) $category['product_count']) }}
+                    <span class="sr-only">products</span>
+                </span>
+            @endif
+        </div>
+
+        <h3 class="np-all-category-card__title">
+            <a href="{{ $category['url'] }}">{{ $category['title'] }}</a>
         </h3>
 
-        <p class="mt-2 text-sm leading-[1.55] text-slate-500">{{ $category['description'] }}</p>
-
-        @if ($category['best_for'])
-            <div class="mt-3 border-t border-slate-100 pt-3 text-[13px] leading-5 text-slate-700">
-                <strong class="mb-1 block text-[11px] font-black uppercase tracking-[.06em] text-brand-ink">Best For</strong>
-                {{ $category['best_for'] }}
-            </div>
+        @if (! empty($category['description']))
+            <p class="np-all-category-card__description">{{ $category['description'] }}</p>
         @endif
 
-        <a href="{{ $category['url'] }}" class="mt-auto inline-flex items-center gap-2 pt-4 text-[13px] font-black uppercase tracking-[.02em] text-brand-red hover:text-brand-redDark">
-            {{ $category['link_label'] }} <span aria-hidden="true">→</span>
+        <a href="{{ $category['url'] }}" class="np-all-category-card__link">
+            {{ $category['link_label'] }}
+            <span aria-hidden="true">→</span>
         </a>
     </div>
 </article>

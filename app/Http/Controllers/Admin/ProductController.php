@@ -415,11 +415,22 @@ class ProductController extends Controller
                     $newTable->tiers()->create(Arr::except($tier->toArray(), ['id', 'product_fabric_price_table_id', 'created_at', 'updated_at']));
                 }
             }
-            $copy->categories()->sync($product->categories->mapWithKeys(fn ($category) => [$category->id => [
-                'is_primary' => (bool) $category->pivot->is_primary,
-                'is_featured' => (bool) $category->pivot->is_featured,
-                'sort_order' => (int) $category->pivot->sort_order,
-            ]])->all());
+            $leafCategoryIds = Category::query()
+                ->leaf()
+                ->whereIn('id', $product->categories->pluck('id')->all())
+                ->pluck('id')
+                ->map(fn ($id): int => (int) $id)
+                ->flip();
+            $copiedCategoryAssignments = $product->categories
+                ->filter(fn (Category $category): bool => $leafCategoryIds->has((int) $category->id))
+                ->mapWithKeys(fn (Category $category): array => [$category->id => [
+                    'is_primary' => (bool) $category->pivot->is_primary,
+                    'is_featured' => (bool) $category->pivot->is_featured,
+                    'sort_order' => (int) $category->pivot->sort_order,
+                ]])
+                ->all();
+            $copy->categories()->sync($copiedCategoryAssignments);
+            $this->syncLegacyCategoryColumnsFromLeafAssignments($copy, $copiedCategoryAssignments);
             $manualAttributeValueIds = $product->attributeValues->pluck('id')->all();
             $copy->attributeValues()->sync($manualAttributeValueIds);
             $this->productOptionFilterSyncService->sync($copy, $manualAttributeValueIds);
@@ -523,7 +534,7 @@ class ProductController extends Controller
 
         return view($view, [
             'product' => $product,
-            'categoryOptions' => $this->categoryTreeService->flatOptions(),
+            'categoryOptions' => $this->categoryTreeService->leafOptions(),
             'catalogAttributes' => CatalogAttribute::query()->active()->with(['values' => fn ($query) => $query->active()->orderBy('sort_order')])->ordered()->get(),
             'jerseyCustomizationTypes' => JerseyCustomizationType::masterDataOptions(),
             'jerseyCustomizationOptions' => $jerseyCustomizationOptions,
@@ -620,10 +631,20 @@ class ProductController extends Controller
             }
         }
 
-        $primaryCategoryId = $data['primary_category_id'] ?? null;
-        $primaryCategory = $primaryCategoryId ? Category::query()->find($primaryCategoryId) : null;
-        $payload['category_id'] = $primaryCategory?->parent_id ?: $primaryCategory?->id;
-        $payload['subcategory_id'] = $primaryCategory?->parent_id ? $primaryCategory->id : null;
+        $primaryCategoryId = (bool) ($data['show_in_category_page'] ?? true)
+            ? ($data['primary_category_id'] ?? null)
+            : null;
+        $primaryCategory = $primaryCategoryId ? Category::query()->leaf()->find($primaryCategoryId) : null;
+        $rootCategoryId = $primaryCategory
+            ? (int) (DB::table('category_closure')
+                ->where('descendant_id', $primaryCategory->id)
+                ->orderByDesc('depth')
+                ->value('ancestor_id') ?: $primaryCategory->id)
+            : null;
+        $payload['category_id'] = $rootCategoryId;
+        $payload['subcategory_id'] = $primaryCategory && $rootCategoryId !== (int) $primaryCategory->id
+            ? (int) $primaryCategory->id
+            : null;
 
         $payload['description_html'] = $this->safeHtml->sanitize($data['description_html'] ?? null);
         $payload['customization_artwork_html'] = $this->safeHtml->sanitize($data['customization_artwork_html'] ?? null);
@@ -1576,15 +1597,56 @@ class ProductController extends Controller
             ->all();
     }
 
+    /** @param array<int, array{is_primary:bool,is_featured:bool,sort_order:int}> $assignments */
+    private function syncLegacyCategoryColumnsFromLeafAssignments(Product $product, array $assignments): void
+    {
+        if ($assignments === []) {
+            $product->forceFill([
+                'category_id' => null,
+                'subcategory_id' => null,
+            ])->saveQuietly();
+
+            return;
+        }
+
+        $primaryLeafId = collect($assignments)
+            ->filter(fn (array $pivot): bool => (bool) ($pivot['is_primary'] ?? false))
+            ->keys()
+            ->map(fn ($id): int => (int) $id)
+            ->first();
+        $primaryLeafId = $primaryLeafId ?: (int) array_key_first($assignments);
+
+        $rootCategoryId = (int) (DB::table('category_closure')
+            ->where('descendant_id', $primaryLeafId)
+            ->orderByDesc('depth')
+            ->value('ancestor_id') ?: $primaryLeafId);
+
+        $product->forceFill([
+            'category_id' => $rootCategoryId,
+            'subcategory_id' => $rootCategoryId === $primaryLeafId ? null : $primaryLeafId,
+        ])->saveQuietly();
+    }
+
     private function syncCatalogAssignments(Product $product, array $data): void
     {
         $showInCategoryPage = (bool) ($data['show_in_category_page'] ?? true);
         $primaryId = isset($data['primary_category_id']) ? (int) $data['primary_category_id'] : null;
-        $categoryIds = collect($data['category_assignments'] ?? [])
+        $requestedCategoryIds = collect($data['category_assignments'] ?? [])
+            ->push($primaryId)
             ->map(fn ($id) => (int) $id)
             ->filter()
             ->unique()
             ->values();
+        $leafCategoryIdSet = Category::query()
+            ->leaf()
+            ->whereIn('id', $requestedCategoryIds->all())
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->flip();
+        $categoryIds = $requestedCategoryIds
+            ->filter(fn (int $id): bool => $leafCategoryIdSet->has($id))
+            ->values();
+        $primaryId = $primaryId && $leafCategoryIdSet->has($primaryId) ? $primaryId : null;
 
         if ($showInCategoryPage && $primaryId) {
             $categoryIds = $categoryIds->prepend($primaryId)->unique()->values();
@@ -1613,6 +1675,7 @@ class ProductController extends Controller
         })->all();
 
         $product->categories()->sync($sync);
+        $this->syncLegacyCategoryColumnsFromLeafAssignments($product, $sync);
         $product->attributeValues()->sync(
             collect($data['attribute_value_ids'] ?? [])->map(fn ($id) => (int) $id)->unique()->all()
         );

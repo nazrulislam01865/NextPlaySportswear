@@ -2,14 +2,15 @@
 
 namespace App\Providers;
 
-use App\Models\ProductWishlist;
 use App\Services\Cart\CartService;
 use App\Services\Catalog\NavigationService;
 use App\Services\Storefront\HomepageSliderService;
 use App\Services\Storefront\HomepageSectionService;
+use App\Services\Wishlist\WishlistHeaderService;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\RateLimiter;
@@ -27,6 +28,9 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Paginator::defaultView('pagination.nextplay');
+        Paginator::defaultSimpleView('pagination.nextplay-simple');
+
         $compiledViewPath = config('view.compiled');
 
         if (is_string($compiledViewPath) && $compiledViewPath !== '') {
@@ -41,31 +45,15 @@ class AppServiceProvider extends ServiceProvider
         });
 
         View::composer('components.storefront.header', function ($view): void {
-            $cartService = app(CartService::class);
-            $cartSummary = $cartService->summary();
-            $cartItems = collect($cartSummary['items'] ?? [])->values();
-
+            $headerCart = app(CartService::class)->headerSummary(4);
             $customer = auth('web')->user();
-            $wishlistItemCount = $customer?->isCustomer()
-                ? ProductWishlist::query()
-                    ->where('user_id', $customer->getKey())
-                    ->whereHas('product', fn ($query) => $query->published())
-                    ->count()
-                : 0;
+            $headerWishlist = app(WishlistHeaderService::class)->summary($customer, 4);
 
-            $view->with('cartItemCount', (int) ($cartSummary['quantity'] ?? 0));
-            $view->with('wishlistItemCount', $wishlistItemCount);
+            $view->with('cartItemCount', (int) ($headerCart['quantity'] ?? 0));
+            $view->with('wishlistItemCount', (int) ($headerWishlist['total_items'] ?? 0));
             $view->with('wishlistAuthenticated', $customer?->isCustomer() ?? false);
-            $view->with('headerCart', [
-                'items' => $cartItems->take(4)->all(),
-                'total_items' => $cartItems->count(),
-                'remaining_items' => max(0, $cartItems->count() - 4),
-                'quantity' => (int) ($cartSummary['quantity'] ?? 0),
-                'subtotal' => (float) ($cartSummary['subtotal'] ?? 0),
-                'total' => (float) ($cartSummary['total'] ?? 0),
-                'is_empty' => (bool) ($cartSummary['is_empty'] ?? true),
-                'checkout_ready' => (bool) ($cartSummary['checkout_ready'] ?? false),
-            ]);
+            $view->with('headerWishlist', $headerWishlist);
+            $view->with('headerCart', $headerCart);
             $view->with('storefrontMenus', app(NavigationService::class)->storefrontMenus());
         });
 
@@ -83,6 +71,28 @@ class AppServiceProvider extends ServiceProvider
             return [
                 Limit::perMinute(30)->by('admin-login-ip:'.$ip),
                 Limit::perMinute(15)->by('admin-login-account:'.$ip.':'.$emailFingerprint),
+            ];
+        });
+
+        RateLimiter::for('password-reset-link', function (Request $request): array {
+            $ip = (string) ($request->ip() ?: 'unknown');
+            $email = strtolower(trim((string) $request->input('email')));
+            $fingerprint = hash('sha256', substr($email, 0, 190));
+
+            return [
+                Limit::perMinute(3)->by('password-reset-link-ip:'.$ip),
+                Limit::perHour(8)->by('password-reset-link-account:'.$fingerprint),
+            ];
+        });
+
+        RateLimiter::for('password-reset', function (Request $request): array {
+            $ip = (string) ($request->ip() ?: 'unknown');
+            $email = strtolower(trim((string) $request->input('email')));
+            $fingerprint = hash('sha256', substr($email, 0, 190));
+
+            return [
+                Limit::perMinute(5)->by('password-reset-ip:'.$ip),
+                Limit::perHour(15)->by('password-reset-account:'.$fingerprint),
             ];
         });
 
@@ -114,6 +124,21 @@ class AppServiceProvider extends ServiceProvider
             $identity = (string) ($request->user('web')?->getAuthIdentifier() ?: $request->ip() ?: 'guest');
 
             return Limit::perMinute(4)->by('checkout-place-order:'.$identity);
+        });
+
+        RateLimiter::for('order-reorder', function (Request $request): array {
+            $identity = (string) ($request->user('web')?->getAuthIdentifier() ?: $request->ip() ?: 'guest');
+            $routeOrder = $request->route('order');
+            $orderId = is_object($routeOrder) && method_exists($routeOrder, 'getKey')
+                ? (string) $routeOrder->getKey()
+                : (string) ($routeOrder ?: 'unknown');
+
+            // Reorders get their own bucket instead of sharing the generic
+            // numeric account throttle with unrelated profile/address writes.
+            return [
+                Limit::perMinute(30)->by('order-reorder-minute:'.$identity.':'.$orderId),
+                Limit::perHour(120)->by('order-reorder-hour:'.$identity),
+            ];
         });
     }
 }

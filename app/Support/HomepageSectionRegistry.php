@@ -8,7 +8,13 @@ use Illuminate\Support\Str;
 
 final class HomepageSectionRegistry
 {
-    private const RETIRED_KEYS = ['customization_options', 'support', 'final_cta'];
+    private const RETIRED_KEYS = [
+        'customization_options',
+        'support',
+        'final_cta',
+        'popular_categories',
+        'use_cases',
+    ];
 
     /** @return array<int, string> */
     public static function retiredKeys(): array
@@ -90,18 +96,6 @@ final class HomepageSectionRegistry
                 'fields' => ['text', 'items'],
                 'item_label' => 'Buyer Cards',
                 'item_fields' => ['icon', 'title', 'description', 'url', 'label'],
-            ],
-            [
-                'key' => 'popular_categories',
-                'name' => 'Popular Categories',
-                'component' => 'popular_categories',
-                'sort_order' => 50,
-                'eyebrow' => 'Most requested',
-                'title' => 'Popular Custom Sportswear Categories',
-                'description' => 'Our most requested sport categories, subcategories, and sub-subcategories for teams, events, and fan gear.',
-                'fields' => ['text', 'items'],
-                'item_label' => 'Popular Categories',
-                'item_fields' => ['category_id'],
             ],
             [
                 'key' => 'design_jersey',
@@ -219,7 +213,7 @@ final class HomepageSectionRegistry
                 'sort_order' => 15,
                 'eyebrow' => 'Find your sport',
                 'title' => 'Shop by Sport',
-                'description' => 'Choose sport categories, subcategories, or sub-subcategories from the admin catalog, or let this section load automatically.',
+                'description' => 'Browse uniforms, apparel and gear by sport.',
                 'fields' => ['text', 'items'],
                 'item_label' => 'Sport Categories',
                 'item_fields' => ['category_id'],
@@ -243,23 +237,6 @@ final class HomepageSectionRegistry
                 'fields' => ['text', 'items'],
                 'item_label' => 'Reason Cards',
                 'item_fields' => ['icon', 'title', 'description'],
-            ],
-            [
-                'key' => 'use_cases',
-                'name' => 'Use Cases',
-                'component' => 'use_cases',
-                'sort_order' => 140,
-                'eyebrow' => 'Built for use',
-                'title' => 'Made for Play, Practice, Travel, and Team Events',
-                'description' => 'Choose products based on how they will be used.',
-                'items' => [
-                    ['image' => 'football.webp', 'title' => 'Game Day', 'description' => 'Uniforms, jerseys, shorts, and team sets.', 'image_alt' => 'Players on game day'],
-                    ['image' => 'training.webp', 'title' => 'Training', 'description' => 'T-shirts, practice wear, hoodies, and performance apparel.', 'image_alt' => 'Athletes training'],
-                    ['image' => 'bags.webp', 'title' => 'Events & Promotions', 'description' => 'Caps, bags, branded apparel, and giveaway items.', 'image_alt' => 'Event and branded merchandise'],
-                ],
-                'fields' => ['text', 'items'],
-                'item_label' => 'Use Case Cards',
-                'item_fields' => ['title', 'description'],
             ],
             [
                 'key' => 'testimonials',
@@ -373,6 +350,27 @@ final class HomepageSectionRegistry
         $definition = self::definition($key) ?? [];
         $values = $section ? $section->toArray() : [];
         $merged = array_merge($definition, array_filter($values, static fn ($value): bool => $value !== null));
+
+        // Not every homepage section needs headings, buttons, or media. Keep a
+        // predictable view payload so overview/edit screens can safely render
+        // publishing-only sections without undefined array-key exceptions.
+        foreach ([
+            'eyebrow',
+            'title',
+            'description',
+            'primary_label',
+            'primary_url',
+            'secondary_label',
+            'secondary_url',
+            'image_path',
+            'image_url',
+            'image_alt',
+            'mobile_image_path',
+            'mobile_image_url',
+            'mobile_image_alt',
+        ] as $nullableKey) {
+            $merged[$nullableKey] = $merged[$nullableKey] ?? null;
+        }
 
         $merged['key'] = $key;
         $merged['name'] = (string) ($merged['name'] ?? Str::of($key)->replace('_', ' ')->title());

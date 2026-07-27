@@ -308,9 +308,117 @@
             }
         }
 
+
+        /* Stable gallery stage: every image occupies the same grid cell. Images
+           cross-fade in place, so changing thumbnails never collapses the media
+           column or makes the rest of the product page jump. */
+        .np-product-page .np-product-gallery-main {
+            display: grid !important;
+            isolation: isolate;
+            width: 100% !important;
+            height: auto !important;
+            aspect-ratio: var(--np-gallery-stage-ratio, 1 / 1) !important;
+            overflow: hidden !important;
+        }
+
+        .np-product-page .np-product-gallery-slide {
+            grid-area: 1 / 1 !important;
+            align-self: stretch;
+            width: 100% !important;
+            height: 100% !important;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transform: scale(.992);
+            z-index: 1;
+            transition:
+                opacity .24s ease,
+                transform .34s cubic-bezier(.2, .75, .25, 1),
+                visibility 0s linear .24s;
+            will-change: opacity, transform;
+        }
+
+        .np-product-page .np-product-gallery-main:not([data-gallery-ready="true"]) .np-product-gallery-slide:first-of-type,
+        .np-product-page .np-product-gallery-slide.is-active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transform: scale(1);
+            z-index: 2;
+            transition-delay: 0s;
+        }
+
+        .np-product-page .np-product-gallery-slide.is-inactive {
+            cursor: default;
+        }
+
+        .np-product-page .np-product-gallery-slide .np-product-gallery-image {
+            width: 100% !important;
+            height: 100% !important;
+            max-height: 100% !important;
+            object-fit: contain !important;
+            object-position: center !important;
+        }
+
+        .np-product-page .np-product-gallery-thumb {
+            transition: opacity .2s ease, transform .2s ease !important;
+        }
+
+        .np-product-page .np-product-gallery-thumb:hover,
+        .np-product-page .np-product-gallery-thumb:focus-visible,
+        .np-product-page .np-product-gallery-thumb.is-active {
+            transform: translateY(-2px);
+        }
+
+        html.np-product-preview-open,
+        html.np-product-preview-open body {
+            overflow: hidden !important;
+        }
+
+        .np-product-image-preview-overlay {
+            background: rgba(2, 6, 23, .96) !important;
+            overscroll-behavior: contain;
+        }
+
+        .np-product-image-preview {
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity .22s ease, transform .3s cubic-bezier(.2, .75, .25, 1);
+        }
+
+        .np-product-image-preview-loader {
+            position: absolute;
+            inset: 50% auto auto 50%;
+            width: 42px;
+            height: 42px;
+            margin: -21px 0 0 -21px;
+            border: 3px solid rgba(255, 255, 255, .2);
+            border-top-color: #fff;
+            border-radius: 999px;
+            animation: np-product-preview-spin .72s linear infinite;
+        }
+
+        @keyframes np-product-preview-spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .np-product-page .np-product-gallery-slide,
+            .np-product-page .np-product-gallery-thumb,
+            .np-product-image-preview {
+                transition: none !important;
+            }
+
+            .np-product-image-preview-loader {
+                animation-duration: 1.4s;
+            }
+        }
+
     </style>
 
-    <div class="np-product-page" x-data="{ imageOpen: false, image: null }" @open-product-image.window="image = $event.detail; imageOpen = true">
+    <script src="{{ asset('js/product-image-viewer.js') }}?v=20260725-gallery-fix"></script>
+
+    <div class="np-product-page" x-data="productImageViewer()" @open-product-image.window="open($event.detail)">
         <span class="sr-only" data-product-view-track data-product-id="{{ $product['id'] ?? '' }}" aria-hidden="true"></span>
         <nav class="border-b border-slate-200 bg-slate-50" aria-label="Breadcrumb">
             <div class="site-container flex flex-wrap items-center gap-2 py-4 text-xs text-slate-500">
@@ -374,23 +482,44 @@
         <div
             x-cloak
             x-show="imageOpen"
-            x-transition.opacity
-            class="fixed inset-0 z-[80] flex items-center justify-center overflow-hidden bg-slate-950/90"
-            style="margin:0;padding:0;border:0;background-color:rgba(2,6,23,.90);"
-            @click.self="imageOpen=false"
-            @keydown.escape.window="imageOpen=false"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            class="np-product-image-preview-overlay fixed inset-0 z-[80] flex items-center justify-center overflow-hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Expanded product image"
+            @click.self="close()"
+            @keydown.escape.window="close()"
         >
             <button
                 type="button"
-                class="np-product-image-preview-close z-10 grid h-11 w-11 place-items-center rounded-full bg-white/95 text-2xl shadow-card backdrop-blur"
-                @click="imageOpen=false"
+                class="np-product-image-preview-close z-10 grid h-11 w-11 place-items-center rounded-full bg-white/95 text-2xl shadow-card backdrop-blur transition hover:scale-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/35"
+                @click="close()"
                 aria-label="Close image preview"
             >×</button>
+
+            <span
+                x-show="previewLoading"
+                class="np-product-image-preview-loader"
+                role="status"
+                aria-label="Preparing image preview"
+            ></span>
+
             <img
-                :src="image?.url"
-                :alt="image?.alt"
+                x-cloak
+                x-show="!previewLoading && previewSrc"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 scale-[.985]"
+                x-transition:enter-end="opacity-100 scale-100"
+                :src="previewSrc"
+                :alt="image?.alt || 'Product image'"
                 class="np-product-image-preview"
-                style="display:block;width:auto;height:auto;max-width:100vw;max-height:100vh;margin:0;padding:0;border:0;border-radius:0;outline:0;box-shadow:none;background:transparent;"
+                decoding="async"
+                @load="previewLoading = false"
             >
         </div>
     </div>

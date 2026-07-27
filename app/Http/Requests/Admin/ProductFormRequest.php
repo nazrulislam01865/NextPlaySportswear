@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\JerseyCustomizationType;
+use App\Models\Category;
 use App\Models\JerseyCustomizationOption;
 use App\Models\Product;
 use App\Models\ProductionMethod;
@@ -565,6 +566,28 @@ class ProductFormRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            $submittedCategoryIds = collect([$this->input('primary_category_id')])
+                ->merge((array) $this->input('category_assignments', []))
+                ->filter(fn ($id): bool => filter_var($id, FILTER_VALIDATE_INT) !== false)
+                ->map(fn ($id): int => (int) $id)
+                ->filter()
+                ->unique()
+                ->values();
+
+            if ($submittedCategoryIds->isNotEmpty()) {
+                $nonLeafCategoryNames = Category::query()
+                    ->whereIn('id', $submittedCategoryIds->all())
+                    ->whereHas('children')
+                    ->pluck('name');
+
+                if ($nonLeafCategoryNames->isNotEmpty()) {
+                    $validator->errors()->add(
+                        'primary_category_id',
+                        'Products can only be assigned to last-level categories. Choose a category with no child categories. Invalid selection: '.$nonLeafCategoryNames->join(', ').'.'
+                    );
+                }
+            }
+
             $groups = collect($this->input('option_groups', []))->values();
             $masterIds = $groups
                 ->flatMap(static fn ($group) => collect($group['values'] ?? [])->pluck('jersey_customization_option_id'))

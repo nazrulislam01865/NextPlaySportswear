@@ -10,7 +10,13 @@
         'checkout_ready' => false,
     ];
     $cartItemCount = (int) ($cartItemCount ?? ($headerCart['quantity'] ?? 0));
-    $wishlistItemCount = max(0, (int) ($wishlistItemCount ?? 0));
+    $headerWishlist = $headerWishlist ?? [
+        'items' => [],
+        'total_items' => 0,
+        'remaining_items' => 0,
+        'is_empty' => true,
+    ];
+    $wishlistItemCount = max(0, (int) ($wishlistItemCount ?? ($headerWishlist['total_items'] ?? 0)));
     $wishlistAuthenticated = (bool) ($wishlistAuthenticated ?? false);
 
     $headerMenu = collect($storefrontMenus['header'] ?? []);
@@ -37,9 +43,13 @@
         : (auth('web')->check()
             ? route('account.dashboard')
             : route('login', array_filter(['redirect' => $storefrontReturnUrl])));
-    $accountLabel = auth('admin')->check()
+    $adminAuthenticated = auth('admin')->check();
+    $customerAuthenticated = auth('web')->check();
+    $accountAuthenticated = $adminAuthenticated || $customerAuthenticated;
+    $accountLabel = $adminAuthenticated
         ? 'Admin Dashboard'
-        : (auth('web')->check() ? 'My Account' : 'Login');
+        : ($customerAuthenticated ? 'My Account' : 'Login');
+    $accountActive = request()->routeIs('admin.*', 'account.*');
 
     $whatsappDigits = preg_replace('/\D+/', '', (string) config('storefront.whatsapp'));
     $whatsappUrl = config('storefront.whatsapp_url') ?: ($whatsappDigits ? 'https://wa.me/'.$whatsappDigits : '#');
@@ -104,25 +114,122 @@
 
             <div class="np-header-actions">
                 <a href="{{ route('products.index') }}" class="np-header-btn np-header-btn-light np-shop-now-btn" data-header-analytics="header_cta_click" data-header-analytics-label="shop_now">Shop Now</a>
-                <a href="{{ $accountHref }}" class="np-header-btn np-header-btn-light np-account-action" data-header-analytics="header_cta_click" data-header-analytics-label="{{ auth('web')->check() || auth('admin')->check() ? 'account' : 'login' }}">{{ $accountLabel }}</a>
+                @if($accountAuthenticated)
+                    <a
+                        href="{{ $accountHref }}"
+                        class="np-icon-action np-profile-action {{ $accountActive ? 'is-active' : '' }}"
+                        aria-label="{{ $accountLabel }}"
+                        title="{{ $accountLabel }}"
+                        @if($accountActive) aria-current="page" @endif
+                        data-header-analytics="header_cta_click"
+                        data-header-analytics-label="{{ $adminAuthenticated ? 'admin_profile' : 'customer_profile' }}"
+                    >
+                        <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="8" r="4"></circle>
+                            <path d="M4 21a8 8 0 0 1 16 0"></path>
+                        </svg>
+                        <span class="sr-only">{{ $accountLabel }}</span>
+                    </a>
+                @else
+                    <a href="{{ $accountHref }}" class="np-header-btn np-header-btn-light np-account-action" data-header-analytics="header_cta_click" data-header-analytics-label="login">Login</a>
+                @endif
 
-                <a
-                    href="{{ route('wishlist.index') }}"
-                    class="np-icon-action np-wishlist-action {{ $wishlistActive ? 'is-active' : '' }}"
-                    aria-label="Wishlist, {{ $wishlistItemCount }} item{{ $wishlistItemCount === 1 ? '' : 's' }}"
-                    data-wishlist-header-link
-                    data-wishlist-authenticated="{{ $wishlistAuthenticated ? '1' : '0' }}"
-                    data-wishlist-initial-count="{{ $wishlistItemCount }}"
-                    data-wishlist-storage-key="nextplay:guest-wishlist:v1"
-                    data-wishlist-status-endpoint="{{ route('wishlist.status') }}"
-                    data-header-analytics="header_cta_click"
-                    data-header-analytics-label="wishlist"
-                >
-                    <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"></path>
-                    </svg>
-                    <span class="np-wishlist-count-badge" data-wishlist-count>{{ $wishlistItemCount > 99 ? '99+' : $wishlistItemCount }}</span>
-                </a>
+                <div class="storefront-wishlist-hover np-wishlist-action-wrap">
+                    <a
+                        href="{{ route('wishlist.index') }}"
+                        class="np-icon-action np-wishlist-action {{ $wishlistActive ? 'is-active' : '' }}"
+                        aria-label="Wishlist, {{ $wishlistItemCount }} item{{ $wishlistItemCount === 1 ? '' : 's' }}"
+                        data-wishlist-header-link
+                        data-wishlist-authenticated="{{ $wishlistAuthenticated ? '1' : '0' }}"
+                        data-wishlist-initial-count="{{ $wishlistItemCount }}"
+                        data-wishlist-storage-key="nextplay:guest-wishlist:v1"
+                        data-wishlist-status-endpoint="{{ route('wishlist.status') }}"
+                        data-wishlist-preview-endpoint="{{ route('wishlist.preview') }}"
+                        data-header-analytics="header_cta_click"
+                        data-header-analytics-label="wishlist"
+                    >
+                        <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"></path>
+                        </svg>
+                        <span class="np-wishlist-count-badge" data-wishlist-count aria-hidden="true">{{ $wishlistItemCount > 99 ? '99+' : $wishlistItemCount }}</span>
+                    </a>
+
+                    <div
+                        class="storefront-wishlist-preview absolute right-0 top-[calc(100%+0.7rem)] z-[80] hidden w-[360px] max-w-[calc(100vw-1.25rem)] rounded-[22px] border border-slate-200 bg-white text-left shadow-2xl"
+                        role="region"
+                        aria-label="Wishlist preview"
+                        data-wishlist-preview
+                    >
+                        <span class="storefront-wishlist-preview-arrow" aria-hidden="true"></span>
+                        <div class="border-b border-slate-100 px-4 py-3">
+                            <div class="flex items-center justify-between gap-3">
+                                <p class="text-sm font-black uppercase tracking-[.14em] text-brand-ink">Wishlist Preview</p>
+                                <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600" data-wishlist-preview-count>
+                                    {{ $wishlistItemCount }} item{{ $wishlistItemCount === 1 ? '' : 's' }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div data-wishlist-preview-list class="{{ empty($headerWishlist['items']) ? 'hidden' : '' }}">
+                            <div class="max-h-[340px] overflow-y-auto p-3" data-wishlist-preview-items>
+                                @foreach (($headerWishlist['items'] ?? []) as $item)
+                                    <a href="{{ $item['url'] ?? route('wishlist.index') }}" class="storefront-mini-wishlist-item flex gap-3 rounded-2xl p-2 transition hover:bg-slate-50" data-wishlist-preview-item>
+                                        <span class="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 bg-white">
+                                            <img
+                                                src="{{ $item['image'] ?? asset('images/product-placeholder.svg') }}"
+                                                alt="{{ $item['alt'] ?? $item['title'] ?? 'Saved product' }}"
+                                                class="h-full w-full object-contain p-1"
+                                                loading="lazy"
+                                                decoding="async"
+                                                width="64"
+                                                height="64"
+                                                data-wishlist-preview-image
+                                            >
+                                        </span>
+                                        <span class="min-w-0 flex-1">
+                                            <span class="block truncate text-sm font-black leading-5 text-brand-ink" data-wishlist-preview-title>{{ $item['title'] ?? 'Saved product' }}</span>
+                                            <span class="mt-1 block text-xs font-bold text-slate-500">Saved for later</span>
+                                            <span class="mt-1 block text-sm font-black text-brand-red" data-wishlist-preview-price>${{ number_format((float) ($item['price'] ?? 0), 2) }}</span>
+                                        </span>
+                                    </a>
+                                @endforeach
+                            </div>
+
+                            <p class="{{ ($headerWishlist['remaining_items'] ?? 0) > 0 ? '' : 'hidden' }} px-5 pb-1 text-xs font-black text-slate-500" data-wishlist-preview-remaining>
+                                + {{ (int) ($headerWishlist['remaining_items'] ?? 0) }} more wishlist item{{ (int) ($headerWishlist['remaining_items'] ?? 0) === 1 ? '' : 's' }}
+                            </p>
+
+                            <div class="mt-2 grid grid-cols-2 gap-2 border-t border-slate-100 p-4">
+                                <a href="{{ route('wishlist.index') }}" class="btn btn-white w-full text-xs">View Wishlist</a>
+                                <a href="{{ route('products.index') }}" class="btn btn-red w-full text-xs">Keep Shopping</a>
+                            </div>
+                        </div>
+
+                        <div class="{{ empty($headerWishlist['items']) ? '' : 'hidden' }} p-5 text-center" data-wishlist-preview-empty>
+                            <div class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-slate-50 text-slate-400">
+                                <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"></path>
+                                </svg>
+                            </div>
+                            <p class="mt-3 text-base font-black text-brand-ink">Your wishlist is empty</p>
+                            <p class="mt-1 text-sm font-semibold leading-6 text-slate-500">Save products and they will appear here.</p>
+                            <a href="{{ route('products.index') }}" class="btn btn-red mt-4 w-full text-xs">Explore Products</a>
+                        </div>
+
+                        <template data-wishlist-preview-item-template>
+                            <a href="#" class="storefront-mini-wishlist-item flex gap-3 rounded-2xl p-2 transition hover:bg-slate-50" data-wishlist-preview-item>
+                                <span class="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 bg-white">
+                                    <img src="{{ asset('images/product-placeholder.svg') }}" alt="Saved product" class="h-full w-full object-contain p-1" loading="lazy" decoding="async" width="64" height="64" data-wishlist-preview-image>
+                                </span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="block truncate text-sm font-black leading-5 text-brand-ink" data-wishlist-preview-title>Saved product</span>
+                                    <span class="mt-1 block text-xs font-bold text-slate-500">Saved for later</span>
+                                    <span class="mt-1 block text-sm font-black text-brand-red" data-wishlist-preview-price>$0.00</span>
+                                </span>
+                            </a>
+                        </template>
+                    </div>
+                </div>
 
                 <div class="storefront-cart-hover np-cart-action-wrap">
                     <a
@@ -137,7 +244,7 @@
                             <circle cx="19" cy="20" r="1.5"></circle>
                             <path d="M3 4h2l2.7 11.1a2 2 0 0 0 2 1.5h7.7a2 2 0 0 0 2-1.6L21 8H6"></path>
                         </svg>
-                        <span class="storefront-cart-count-badge np-cart-count-badge">{{ $cartItemCount > 99 ? '99+' : $cartItemCount }}</span>
+                        <span class="storefront-cart-count-badge np-cart-count-badge" aria-hidden="true">{{ $cartItemCount > 99 ? '99+' : $cartItemCount }}</span>
                     </a>
 
                     <div class="storefront-cart-preview absolute right-0 top-[calc(100%+0.7rem)] z-[80] hidden w-[360px] max-w-[calc(100vw-1.25rem)] rounded-[22px] border border-slate-200 bg-white text-left shadow-2xl" role="region" aria-label="Cart preview">
@@ -161,7 +268,7 @@
                                     <a href="{{ $previewUrl }}" class="storefront-mini-cart-item flex gap-3 rounded-2xl p-2 transition hover:bg-slate-50">
                                         <span class="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 bg-white">
                                             @if ($previewImage)
-                                                <img src="{{ $previewImage }}" alt="{{ $previewProduct['alt'] ?? $previewTitle }}" class="h-full w-full object-contain p-1" loading="lazy">
+                                                <img src="{{ $previewImage }}" alt="{{ $previewProduct['alt'] ?? $previewTitle }}" class="h-full w-full object-contain p-1" loading="lazy" decoding="async" width="64" height="64">
                                             @else
                                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-300" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 16 5-5 4 4 2-2 7 7"></path></svg>
                                             @endif
@@ -181,7 +288,7 @@
 
                             <div class="border-t border-slate-100 p-4">
                                 <div class="mb-3 flex items-center justify-between gap-4">
-                                    <span class="text-sm font-bold text-slate-500">Estimated total</span>
+                                    <span class="text-sm font-bold text-slate-500">Cart subtotal</span>
                                     <span class="text-lg font-black text-brand-ink">${{ number_format((float) ($headerCart['total'] ?? 0), 2) }}</span>
                                 </div>
                                 <div class="grid grid-cols-2 gap-2">

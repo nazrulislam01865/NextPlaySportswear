@@ -18,4 +18,15 @@ class HomepageSectionOrderTest extends TestCase
         $this->assertIsInt($shopBySportPosition);
         $this->assertSame($sliderPosition + 1, $shopBySportPosition);
     }
+
+    public function test_removed_homepage_sections_are_retired_and_not_manageable(): void
+    {
+        $keys = array_column(HomepageSectionRegistry::orderedDefinitions(), 'key');
+
+        $this->assertNotContains('popular_categories', $keys);
+        $this->assertNotContains('use_cases', $keys);
+        $this->assertTrue(HomepageSectionRegistry::isRetired('popular_categories'));
+        $this->assertTrue(HomepageSectionRegistry::isRetired('use_cases'));
+    }
+
 }

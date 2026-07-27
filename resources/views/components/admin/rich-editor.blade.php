@@ -4,9 +4,9 @@
     <div class="flex flex-wrap gap-1 border-b border-slate-200 bg-slate-50 p-2">
         <button type="button" class="admin-editor-button" @click="command('formatBlock', 'h2')">H2</button>
         <button type="button" class="admin-editor-button" @click="command('formatBlock', 'h3')">H3</button>
-        <button type="button" class="admin-editor-button font-black" @click="command('bold')">B</button>
-        <button type="button" class="admin-editor-button italic" @click="command('italic')">I</button>
-        <button type="button" class="admin-editor-button underline" @click="command('underline')">U</button>
+        <button type="button" class="admin-editor-button font-black" aria-label="Bold" title="Bold" @click="command('bold')">B</button>
+        <button type="button" class="admin-editor-button italic" aria-label="Italic" title="Italic" @click="command('italic')">I</button>
+        <button type="button" class="admin-editor-button underline" aria-label="Underline" title="Underline" @click="command('underline')">U</button>
         <button type="button" class="admin-editor-button" @click="command('insertUnorderedList')">• List</button>
         <button type="button" class="admin-editor-button" @click="command('insertOrderedList')">1. List</button>
         <button type="button" class="admin-editor-button" @click="command('formatBlock', 'blockquote')">Quote</button>

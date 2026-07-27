@@ -2,15 +2,12 @@
     @php
         $categoryStatuses = ['draft', 'active', 'inactive', 'archived'];
         $categoryTypes = ['standard', 'sport', 'collection', 'apparel', 'accessory', 'promotional', 'sale', 'new-arrival', 'navigation-only'];
-        $from = $categories->firstItem();
-        $to = $categories->lastItem();
-        $total = $categories->total();
 
         $stats = [
             ['label' => 'Total Categories', 'value' => $analytics['total'], 'note' => 'All catalog nodes', 'icon' => 'tree', 'tone' => 'slate'],
             ['label' => 'Active', 'value' => $analytics['active'], 'note' => 'Published and available', 'icon' => 'check', 'tone' => 'blue'],
             ['label' => 'Featured', 'value' => $analytics['featured'], 'note' => 'Homepage parent categories', 'icon' => 'star', 'tone' => 'slate'],
-            ['label' => 'Empty', 'value' => $analytics['empty'], 'note' => 'No direct product assignment', 'icon' => 'folder', 'tone' => 'amber'],
+            ['label' => 'Empty', 'value' => $analytics['empty'], 'note' => 'No products in category subtree', 'icon' => 'folder', 'tone' => 'amber'],
             ['label' => 'Tree Depth', 'value' => $analytics['max_depth'], 'note' => 'Maximum current level', 'icon' => 'chart', 'tone' => 'violet'],
         ];
     @endphp
@@ -233,6 +230,16 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @forelse($categories as $category)
+                            @php
+                                $deleteImpact = $categoryDeleteImpacts[(int) $category->id] ?? [
+                                    'category_count' => 1,
+                                    'child_category_count' => 0,
+                                    'category_names' => [],
+                                    'product_count' => 0,
+                                    'product_names' => [],
+                                    'menu_item_count' => 0,
+                                ];
+                            @endphp
                             <tr>
                                 <td class="px-6 py-5" data-label="Select">
                                     <input class="category-row-check" type="checkbox" name="category_ids[]" value="{{ $category->id }}" form="bulk-category-form" aria-label="Select {{ $category->name }}">
@@ -272,8 +279,8 @@
                                     <a
                                         href="{{ route('admin.categories.products.index', $category) }}"
                                         class="category-products-count-link"
-                                        aria-label="View products in {{ $category->name }}"
-                                        title="View products in {{ $category->name }}"
+                                        aria-label="View {{ number_format($category->products_count) }} {{ \Illuminate\Support\Str::plural('product', (int) $category->products_count) }} in the {{ $category->name }} category subtree"
+                                        title="{{ $category->children_count > 0 ? 'Includes unique products from every descendant leaf category.' : 'View products assigned to this leaf category.' }}"
                                     >
                                         <span>{{ number_format($category->products_count) }} {{ \Illuminate\Support\Str::plural('product', (int) $category->products_count) }}</span>
                                         <small aria-hidden="true">›</small>
@@ -328,11 +335,21 @@
                                                     @csrf
                                                     <button type="submit">Duplicate</button>
                                                 </form>
-                                                <form method="POST" action="{{ route('admin.categories.destroy', $category) }}" onsubmit="return confirm('Move this category to trash?')">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="text-red-700">Delete</button>
-                                                </form>
+                                                <button
+                                                    type="button"
+                                                    class="text-red-700"
+                                                    data-category-delete-trigger
+                                                    data-delete-url="{{ route('admin.categories.destroy', $category) }}"
+                                                    data-category-name="{{ $category->name }}"
+                                                    data-category-count="{{ (int) $deleteImpact['category_count'] }}"
+                                                    data-child-count="{{ (int) $deleteImpact['child_category_count'] }}"
+                                                    data-product-count="{{ (int) $deleteImpact['product_count'] }}"
+                                                    data-menu-count="{{ (int) $deleteImpact['menu_item_count'] }}"
+                                                    data-category-names="{{ json_encode($deleteImpact['category_names'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}"
+                                                    data-product-names="{{ json_encode($deleteImpact['product_names'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}"
+                                                >
+                                                    Delete
+                                                </button>
                                             </div>
                                         </details>
                                     </div>
@@ -351,17 +368,62 @@
             </div>
 
             <div class="category-table-footer">
-                <p>
-                    @if($total > 0)
-                        Showing {{ $from }}–{{ $to }} of {{ $total }} {{ \Illuminate\Support\Str::plural('category', $total) }}
-                    @else
-                        Showing 0 categories
-                    @endif
-                </p>
-                <div class="admin-pagination">{{ $categories->onEachSide(1)->links() }}</div>
+                <div class="admin-pagination">{{ $categories->links('pagination.nextplay', ['itemName' => 'category']) }}</div>
             </div>
         </section>
     </div>
+
+    <dialog id="category-delete-dialog" class="m-auto w-[min(94vw,720px)] overflow-hidden rounded-[22px] border-0 bg-transparent p-0 shadow-2xl backdrop:bg-slate-950/60">
+        <div class="overflow-hidden rounded-[22px] bg-white">
+            <div class="flex items-start justify-between gap-5 border-b border-slate-200 px-6 py-5 sm:px-7">
+                <div>
+                    <p class="text-xs font-black uppercase tracking-[.18em] text-red-600">Category-tree deletion</p>
+                    <h2 class="mt-2 text-xl font-black text-brand-ink sm:text-2xl">Delete <span data-category-delete-name></span>?</h2>
+                    <p class="mt-2 text-sm font-semibold leading-6 text-slate-600">The selected category and every child category below it will be deleted together.</p>
+                </div>
+                <button type="button" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-2xl leading-none text-slate-500 transition hover:bg-slate-50 hover:text-slate-900" aria-label="Close delete dialog" data-category-delete-close>×</button>
+            </div>
+
+            <div class="space-y-5 px-6 py-6 sm:px-7">
+                <div class="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-semibold leading-6 text-red-900">
+                    Affected products will not be deleted. They will become completely categoryless, with all of their category assignments removed. Menu links pointing to deleted categories will be disabled.
+                </div>
+
+                <div class="grid gap-3 sm:grid-cols-3">
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <strong class="block text-2xl font-black text-brand-ink" data-category-delete-total-categories>0</strong>
+                        <span class="mt-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Categories deleted</span>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <strong class="block text-2xl font-black text-brand-ink" data-category-delete-products>0</strong>
+                        <span class="mt-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Products categoryless</span>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <strong class="block text-2xl font-black text-brand-ink" data-category-delete-menus>0</strong>
+                        <span class="mt-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Menu links disabled</span>
+                    </div>
+                </div>
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    <section class="rounded-2xl border border-slate-200 p-4" data-category-delete-children-section>
+                        <h3 class="text-sm font-black text-brand-ink">Child categories affected</h3>
+                        <ul class="mt-3 max-h-36 space-y-2 overflow-auto text-sm font-semibold text-slate-600" data-category-delete-children></ul>
+                    </section>
+                    <section class="rounded-2xl border border-slate-200 p-4" data-category-delete-products-section>
+                        <h3 class="text-sm font-black text-brand-ink">Products affected</h3>
+                        <ul class="mt-3 max-h-36 space-y-2 overflow-auto text-sm font-semibold text-slate-600" data-category-delete-product-names></ul>
+                    </section>
+                </div>
+            </div>
+
+            <form method="POST" class="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-6 py-5 sm:flex-row sm:justify-end sm:px-7" data-category-delete-form>
+                @csrf
+                @method('DELETE')
+                <button type="button" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-extrabold text-brand-navy transition hover:bg-slate-100" data-category-delete-close>Cancel</button>
+                <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-xl bg-red-600 px-5 text-sm font-extrabold text-white shadow-sm transition hover:bg-red-700">Delete affected category tree</button>
+            </form>
+        </div>
+    </dialog>
 
     @once
         <script>
@@ -374,6 +436,78 @@
                     const name = input.files?.[0]?.name || 'No file chosen';
                     input.closest('.category-file-picker')?.querySelector('[data-category-file-name]')?.replaceChildren(document.createTextNode(name));
                 });
+            });
+
+            const categoryDeleteDialog = document.getElementById('category-delete-dialog');
+            const categoryDeleteForm = categoryDeleteDialog?.querySelector('[data-category-delete-form]');
+
+            const fillDeleteList = (list, values, emptyMessage, extraCount = 0) => {
+                if (!list) return;
+
+                list.replaceChildren();
+                const items = Array.isArray(values) && values.length ? values : [emptyMessage];
+
+                items.forEach(value => {
+                    const item = document.createElement('li');
+                    item.textContent = value;
+                    list.appendChild(item);
+                });
+
+                if (extraCount > 0) {
+                    const item = document.createElement('li');
+                    item.textContent = `+ ${extraCount} more`;
+                    item.className = 'font-black text-slate-800';
+                    list.appendChild(item);
+                }
+            };
+
+            document.querySelectorAll('[data-category-delete-trigger]').forEach(trigger => {
+                trigger.addEventListener('click', () => {
+                    const categoryCount = Number(trigger.dataset.categoryCount || 1);
+                    const childCount = Number(trigger.dataset.childCount || 0);
+                    const productCount = Number(trigger.dataset.productCount || 0);
+                    const menuCount = Number(trigger.dataset.menuCount || 0);
+                    let categoryNames = [];
+                    let productNames = [];
+
+                    try { categoryNames = JSON.parse(trigger.dataset.categoryNames || '[]'); } catch (error) { categoryNames = []; }
+                    try { productNames = JSON.parse(trigger.dataset.productNames || '[]'); } catch (error) { productNames = []; }
+
+                    if (categoryDeleteForm) categoryDeleteForm.action = trigger.dataset.deleteUrl || '';
+                    categoryDeleteDialog?.querySelector('[data-category-delete-name]')?.replaceChildren(document.createTextNode(trigger.dataset.categoryName || 'this category'));
+                    categoryDeleteDialog?.querySelector('[data-category-delete-total-categories]')?.replaceChildren(document.createTextNode(String(categoryCount)));
+                    categoryDeleteDialog?.querySelector('[data-category-delete-products]')?.replaceChildren(document.createTextNode(String(productCount)));
+                    categoryDeleteDialog?.querySelector('[data-category-delete-menus]')?.replaceChildren(document.createTextNode(String(menuCount)));
+
+                    fillDeleteList(
+                        categoryDeleteDialog?.querySelector('[data-category-delete-children]'),
+                        categoryNames,
+                        childCount > 0 ? 'Child category details unavailable.' : 'No child categories; only the selected category will be deleted.',
+                        Math.max(0, childCount - categoryNames.length)
+                    );
+                    fillDeleteList(
+                        categoryDeleteDialog?.querySelector('[data-category-delete-product-names]'),
+                        productNames,
+                        productCount > 0 ? 'Product details unavailable.' : 'No products will be affected.',
+                        Math.max(0, productCount - productNames.length)
+                    );
+
+                    trigger.closest('details')?.removeAttribute('open');
+
+                    if (typeof categoryDeleteDialog?.showModal === 'function') {
+                        categoryDeleteDialog.showModal();
+                    } else if (confirm(`Delete ${trigger.dataset.categoryName || 'this category'} and all affected child categories?`)) {
+                        categoryDeleteForm?.requestSubmit();
+                    }
+                });
+            });
+
+            categoryDeleteDialog?.querySelectorAll('[data-category-delete-close]').forEach(button => {
+                button.addEventListener('click', () => categoryDeleteDialog.close());
+            });
+
+            categoryDeleteDialog?.addEventListener('click', event => {
+                if (event.target === categoryDeleteDialog) categoryDeleteDialog.close();
             });
         </script>
     @endonce

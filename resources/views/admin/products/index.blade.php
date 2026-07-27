@@ -241,16 +241,7 @@
             </table>
         </div>
         <div class="border-t border-slate-100 p-3.5">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p class="text-sm font-medium text-slate-500">
-                    @if($products->total() > 0)
-                        Showing {{ $products->firstItem() }} to {{ $products->lastItem() }} of {{ $products->total() }} products
-                    @else
-                        Showing 0 products
-                    @endif
-                </p>
-                <div class="admin-pagination">{{ $products->onEachSide(1)->links() }}</div>
-            </div>
+            <div class="admin-pagination">{{ $products->links('pagination.nextplay', ['itemName' => 'product']) }}</div>
         </div>
     </section>
 

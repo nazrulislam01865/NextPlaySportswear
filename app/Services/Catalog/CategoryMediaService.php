@@ -91,6 +91,13 @@ class CategoryMediaService
         foreach (self::FIELDS as $columns) {
             $this->deletePath($category->{$columns['path']});
         }
+
+        $category->contentBlocks()
+            ->pluck('image_path')
+            ->filter()
+            ->each(fn (string $path): bool => Storage::disk('public')->delete($path));
+
+        Storage::disk('public')->deleteDirectory("categories/{$category->id}");
     }
 
     private function deletePath(?string $path): void

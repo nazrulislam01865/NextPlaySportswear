@@ -13,12 +13,6 @@
             $dashboardCards[] = ['Products', $stats['products'], route('admin.products.index')];
             $dashboardCards[] = ['Active Products', $stats['active_products'], route('admin.products.index', ['status' => 'active'])];
         }
-        if ($canViewInventory) {
-            $dashboardCards[] = ['Low Stock', $stats['low_stock_products'], route('admin.modules.show', 'inventory')];
-        }
-        if ($canViewCustomers) {
-            $dashboardCards[] = ['Customers', $stats['customers'], route('admin.modules.show', 'customers')];
-        }
     @endphp
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -35,7 +29,7 @@
             <div class="flex flex-col justify-between gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center">
                 <div>
                     <h2 class="text-xl font-black">Recent notifications</h2>
-                    <p class="text-sm text-slate-500">Latest admin activity alerts across products, orders, master data, and settings.</p>
+                    <p class="text-sm text-slate-500">Latest admin activity alerts across products, orders, and live store management.</p>
                 </div>
                 <div class="responsive-actions [&_.btn]:w-full sm:[&_.btn]:w-auto">
                     @if(($stats['unread_notifications'] ?? 0) > 0)
@@ -75,7 +69,7 @@
             </div>
 
             @if(method_exists($recentNotifications, 'hasPages') && $recentNotifications->hasPages())
-                <div class="admin-pagination border-t border-slate-100 p-5">{{ $recentNotifications->links() }}</div>
+                <div class="admin-pagination border-t border-slate-100 px-4 py-3">{{ $recentNotifications->links('pagination.nextplay', ['itemName' => 'notification']) }}</div>
             @endif
         </section>
 
@@ -117,7 +111,7 @@
             </div>
 
             @if(method_exists($recentOrders, 'hasPages') && $recentOrders->hasPages())
-                <div class="admin-pagination border-t border-slate-100 p-5">{{ $recentOrders->links() }}</div>
+                <div class="admin-pagination border-t border-slate-100 px-4 py-3">{{ $recentOrders->links('pagination.nextplay', ['itemName' => 'order']) }}</div>
             @endif
         </section>
         @endif
@@ -168,7 +162,7 @@
             </div>
 
             @if(method_exists($recentProducts, 'hasPages') && $recentProducts->hasPages())
-                <div class="admin-pagination border-t border-slate-100 p-5">{{ $recentProducts->links() }}</div>
+                <div class="admin-pagination border-t border-slate-100 px-4 py-3">{{ $recentProducts->links('pagination.nextplay', ['itemName' => 'product']) }}</div>
             @endif
         </section>
         @endif

@@ -53,34 +53,78 @@ class CatalogNavigationSeeder extends Seeder
 
     private function syncProductCategories(): void
     {
-        Product::query()->with('categories')->chunkById(100, function ($products): void {
-            foreach ($products as $product) {
-                $legacyIds = collect([$product->category_id, $product->subcategory_id])
-                    ->filter()->map(fn ($id) => (int) $id)->unique()->values();
-                $existingPrimary = $product->categories->first(fn ($category) => (bool) $category->pivot->is_primary);
-                $primaryId = $existingPrimary?->id ?: $product->subcategory_id ?: $product->category_id ?: $product->categories->first()?->id;
+        $leafIdSet = Category::query()
+            ->leaf()
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->flip();
 
-                $existingIds = $product->categories->pluck('id')->map(fn ($id) => (int) $id);
-                $missingIds = $legacyIds->diff($existingIds)->values();
+        Product::query()->with('categories')->chunkById(100, function ($products) use ($leafIdSet): void {
+            foreach ($products as $product) {
+                $existingLeafIds = $product->categories
+                    ->pluck('id')
+                    ->map(fn ($id): int => (int) $id)
+                    ->filter(fn (int $id): bool => $leafIdSet->has($id))
+                    ->unique()
+                    ->values();
+                $nonLeafIds = $product->categories
+                    ->pluck('id')
+                    ->map(fn ($id): int => (int) $id)
+                    ->reject(fn (int $id): bool => $leafIdSet->has($id))
+                    ->values();
+
+                if ($nonLeafIds->isNotEmpty()) {
+                    $product->categories()->detach($nonLeafIds->all());
+                }
+
+                $legacyLeafIds = collect([$product->subcategory_id, $product->category_id])
+                    ->filter()
+                    ->map(fn ($id): int => (int) $id)
+                    ->filter(fn (int $id): bool => $leafIdSet->has($id))
+                    ->unique()
+                    ->values();
+                $missingIds = $legacyLeafIds->diff($existingLeafIds)->values();
 
                 if ($missingIds->isNotEmpty()) {
-                    $product->categories()->attach($missingIds->mapWithKeys(fn (int $id, int $index) => [
+                    $product->categories()->attach($missingIds->mapWithKeys(fn (int $id, int $index): array => [
                         $id => [
                             'is_primary' => false,
                             'is_featured' => false,
-                            'sort_order' => (int) $product->sort_order + $existingIds->count() + $index,
+                            'sort_order' => (int) $product->sort_order + $existingLeafIds->count() + $index,
                         ],
                     ])->all());
                 }
 
-                // Seeders are intentionally non-destructive: preserve existing category
-                // merchandising metadata and only establish a primary assignment when
-                // the product does not already have one.
-                if ($primaryId && ! DB::table('category_product')->where('product_id', $product->id)->where('is_primary', true)->exists()) {
+                $assignmentIds = $existingLeafIds->merge($missingIds)->unique()->values();
+                $preferredId = (int) ($product->subcategory_id ?: $product->category_id ?: 0);
+                $primaryId = $assignmentIds->contains($preferredId)
+                    ? $preferredId
+                    : (int) ($assignmentIds->first() ?: 0);
+
+                DB::table('category_product')
+                    ->where('product_id', $product->id)
+                    ->update(['is_primary' => false, 'updated_at' => now()]);
+
+                if ($primaryId > 0) {
                     DB::table('category_product')
                         ->where('product_id', $product->id)
                         ->where('category_id', $primaryId)
                         ->update(['is_primary' => true, 'updated_at' => now()]);
+
+                    $rootId = (int) (DB::table('category_closure')
+                        ->where('descendant_id', $primaryId)
+                        ->orderByDesc('depth')
+                        ->value('ancestor_id') ?: $primaryId);
+
+                    $product->forceFill([
+                        'category_id' => $rootId,
+                        'subcategory_id' => $rootId === $primaryId ? null : $primaryId,
+                    ])->saveQuietly();
+                } else {
+                    $product->forceFill([
+                        'category_id' => null,
+                        'subcategory_id' => null,
+                    ])->saveQuietly();
                 }
             }
         });

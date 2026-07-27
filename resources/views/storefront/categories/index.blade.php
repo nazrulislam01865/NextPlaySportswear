@@ -36,7 +36,7 @@
                 <p class="mx-auto mt-2 max-w-[700px] text-slate-500 max-sm:mx-0">Start with the product type that matches your team, event, business, or personal order.</p>
             </div>
 
-            <div class="grid grid-cols-1 gap-[22px] md:grid-cols-2 lg:grid-cols-3" id="categoryGrid">
+            <div class="np-all-categories-grid" id="categoryGrid">
                 @foreach ($collections as $category)
                     <x-storefront.category-index-card :category="$category" />
                 @endforeach
@@ -61,7 +61,7 @@
                 <p class="mx-auto mt-2 max-w-[700px] text-slate-500 max-sm:mx-0">Looking for sport-specific uniforms or gear? Start with your sport and find matching products faster.</p>
             </div>
 
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach ($sports as $sport)
                     <x-storefront.sport-index-card :sport="$sport" />
                 @endforeach

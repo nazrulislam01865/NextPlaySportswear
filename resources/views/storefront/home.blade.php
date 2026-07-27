@@ -18,10 +18,6 @@
                     <x-storefront.home.buyer-paths :buyer-paths="$section['items'] ?? $buyerPaths ?? []" :section="$section" />
                     @break
 
-                @case('popular_categories')
-                    <x-storefront.home.popular-categories :categories="$popularSportsCategories ?? []" :section="$section" />
-                    @break
-
                 @case('design_jersey')
                     <x-storefront.home.design-jersey :section="$section" />
                     @break
@@ -57,10 +53,6 @@
 
                 @case('why_choose')
                     <x-storefront.home.why-choose :section="$section" />
-                    @break
-
-                @case('use_cases')
-                    <x-storefront.home.use-cases :section="$section" />
                     @break
 
                 @case('testimonials')

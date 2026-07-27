@@ -27,15 +27,25 @@ class CategoryProductController extends Controller
     {
         $category->load([
             'parent:id,name,slug,parent_id',
+            'children:id,parent_id,name,slug,depth,tree_path',
             'ancestors' => fn ($builder) => $builder->select('categories.id', 'categories.name', 'categories.slug', 'categories.parent_id'),
         ]);
 
         $search = trim(mb_substr((string) $request->query('q', ''), 0, 100));
-        $categoryProductCount = $category->products()->count();
+        $listingCategoryIds = $this->listingCategoryIds($category);
+        $categoryIsLeaf = $category->isLeaf();
 
-        $query = Product::query()
+        $baseQuery = Product::query()
             ->select(['id', 'category_id', 'subcategory_id', 'name', 'slug', 'sku', 'status', 'is_active', 'updated_at', 'updated_by'])
-            ->whereHas('categories', fn ($builder) => $builder->whereKey($category->id))
+            ->where(function ($builder) use ($listingCategoryIds): void {
+                $builder->whereHas('categories', fn ($categoryQuery) => $categoryQuery->whereIn('categories.id', $listingCategoryIds))
+                    ->orWhereIn('category_id', $listingCategoryIds)
+                    ->orWhereIn('subcategory_id', $listingCategoryIds);
+            });
+
+        $categoryProductCount = (clone $baseQuery)->count();
+
+        $query = $baseQuery
             ->with([
                 'categories' => function ($builder): void {
                     $builder->select('categories.id', 'categories.parent_id', 'categories.name', 'categories.slug', 'categories.depth', 'categories.tree_path')
@@ -52,7 +62,7 @@ class CategoryProductController extends Controller
             ->orderBy('id');
 
         if ($search !== '') {
-            $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search) . '%';
+            $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $search) . '%';
 
             $query->where(function ($builder) use ($like): void {
                 $builder->where('name', 'like', $like)
@@ -63,9 +73,12 @@ class CategoryProductController extends Controller
 
         $subcategoryOptions = $this->subcategoryOptionsForPicker($category);
         $attachProductSearch = trim(mb_substr((string) $request->query('assign_q', ''), 0, 100));
-        $assignableProductOptions = $this->assignableProductOptions($category, $attachProductSearch);
+        $assignableProductOptions = $categoryIsLeaf
+            ? $this->assignableProductOptions($category, $attachProductSearch)
+            : collect();
 
         $bulkCategoryOptions = Category::query()
+            ->leaf()
             ->select(['id', 'parent_id', 'name', 'slug', 'depth', 'tree_path'])
             ->where('id', '!=', $category->id)
             ->orderBy('tree_path')
@@ -75,6 +88,8 @@ class CategoryProductController extends Controller
 
         return view('admin.categories.products', [
             'category' => $category,
+            'categoryIsLeaf' => $categoryIsLeaf,
+            'leafDestinationOptions' => $subcategoryOptions,
             'breadcrumbs' => $category->ancestors->values()->push($category),
             'categoryProductCount' => $categoryProductCount,
             'products' => $query->paginate(30)->withQueryString(),
@@ -136,30 +151,46 @@ class CategoryProductController extends Controller
     {
         $columns = ['categories.id', 'categories.parent_id', 'categories.name', 'categories.slug', 'categories.depth', 'categories.tree_path'];
 
-        $descendants = $category->descendants()
-            ->select($columns)
-            ->orderBy('categories.tree_path')
-            ->orderBy('categories.sort_order')
-            ->orderBy('categories.name')
-            ->get();
-
-        if ($descendants->isNotEmpty() || ! $category->parent_id) {
-            return $descendants;
+        if (! $category->isLeaf()) {
+            return $category->descendants()
+                ->select($columns)
+                ->whereDoesntHave('children')
+                ->orderBy('categories.tree_path')
+                ->orderBy('categories.sort_order')
+                ->orderBy('categories.name')
+                ->get();
         }
 
+        $rootId = DB::table('category_closure')
+            ->where('descendant_id', $category->id)
+            ->orderByDesc('depth')
+            ->value('ancestor_id') ?: $category->id;
+
         return Category::query()
+            ->leaf()
             ->select($columns)
-            ->whereIn('categories.id', function ($query) use ($category): void {
+            ->whereIn('categories.id', function ($query) use ($rootId): void {
                 $query->select('descendant_id')
                     ->from('category_closure')
-                    ->where('ancestor_id', $category->parent_id)
-                    ->where('descendant_id', '!=', $category->parent_id);
+                    ->where('ancestor_id', $rootId);
             })
             ->where('categories.id', '!=', $category->id)
             ->orderBy('categories.tree_path')
             ->orderBy('categories.sort_order')
             ->orderBy('categories.name')
             ->get();
+    }
+
+    /** @return array<int, int> */
+    private function listingCategoryIds(Category $category): array
+    {
+        return collect($this->treeService->descendantIds((int) $category->id, true))
+            ->push((int) $category->id)
+            ->map(fn ($id): int => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     public function syncLegacyAssignments(): RedirectResponse
@@ -169,10 +200,9 @@ class CategoryProductController extends Controller
         return back()->with(
             'status',
             sprintf(
-                'Category assignments rebuilt. %d old rows removed, %d trusted assignments created, %d parent assignments created, %d products checked.',
+                'Leaf-only category assignments rebuilt. %d old rows removed, %d trusted leaf assignments created, %d products checked.',
                 $stats['assignments_deleted'],
                 $stats['legacy_assignments_created'] + $stats['trusted_rule_assignments_created'],
-                $stats['ancestor_assignments_created'] + $stats['trusted_rule_ancestor_assignments_created'],
                 $stats['products_scanned']
             )
         );
@@ -201,6 +231,12 @@ class CategoryProductController extends Controller
 
         $assignmentAction = (string) ($validated['assignment_action'] ?? 'save_category_changes');
 
+        if ($assignmentAction === 'attach_products' && ! $category->isLeaf()) {
+            return back()->withErrors([
+                'attach_product_ids' => 'Products can only be assigned to a last-level category. Choose one of this category’s leaf children first.',
+            ]);
+        }
+
         $visibleIds = collect($validated['visible_product_ids'] ?? [])->map(fn ($id) => (int) $id)->unique()->values();
         $visibleIdSet = $visibleIds->flip();
         $attachProductIds = collect($validated['attach_product_ids'] ?? [])
@@ -220,6 +256,26 @@ class CategoryProductController extends Controller
             ->filter(fn (int $id): bool => $id > 0)
             ->unique()
             ->values();
+
+        $requestedAddCategoryIds = $bulkCategoryIds
+            ->merge($rowUpdates->flatMap(function ($input): array {
+                return is_array($input) ? (array) ($input['add_category_ids'] ?? []) : [];
+            }))
+            ->map(fn ($id): int => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $nonLeafCategoryNames = Category::query()
+            ->whereIn('id', $requestedAddCategoryIds->all())
+            ->whereHas('children')
+            ->pluck('name');
+
+        if ($nonLeafCategoryNames->isNotEmpty()) {
+            return back()->withErrors([
+                'bulk_category_ids' => 'Products can only be assigned to last-level categories. Remove: '.$nonLeafCategoryNames->join(', ').'.',
+            ])->withInput();
+        }
 
         if ($assignmentAction === 'attach_products' && $attachProductIds->isEmpty()) {
             return back()
@@ -372,7 +428,11 @@ class CategoryProductController extends Controller
             }
         }
 
-        $expandedAddCategoryIds = $this->expandCategoryIdsWithAncestors($addCategoryIds);
+        $leafAddCategoryIds = collect($addCategoryIds)
+            ->map(fn ($id): int => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
 
         $existingIds = DB::table('category_product')
             ->where('product_id', $productId)
@@ -380,7 +440,7 @@ class CategoryProductController extends Controller
             ->map(fn ($id) => (int) $id)
             ->flip();
 
-        foreach ($expandedAddCategoryIds as $categoryId) {
+        foreach ($leafAddCategoryIds as $categoryId) {
             $categoryId = (int) $categoryId;
 
             if ($existingIds->has($categoryId)) {
@@ -404,34 +464,24 @@ class CategoryProductController extends Controller
     }
 
 
-    /** @param array<int, int> $categoryIds @return array<int, int> */
-    private function expandCategoryIdsWithAncestors(array $categoryIds): array
-    {
-        $categoryIds = collect($categoryIds)
-            ->map(fn ($id) => (int) $id)
-            ->filter(fn (int $id): bool => $id > 0)
-            ->unique()
-            ->values();
-
-        if ($categoryIds->isEmpty()) {
-            return [];
-        }
-
-        $ancestorIds = DB::table('category_closure')
-            ->whereIn('descendant_id', $categoryIds->all())
-            ->pluck('ancestor_id')
-            ->map(fn ($id) => (int) $id);
-
-        return $categoryIds
-            ->merge($ancestorIds)
-            ->filter(fn (int $id): bool => $id > 0)
-            ->unique()
-            ->values()
-            ->all();
-    }
-
     private function normalizePrimaryCategory(int $productId): void
     {
+        $leafCategoryIds = Category::query()
+            ->leaf()
+            ->whereIn('id', DB::table('category_product')->where('product_id', $productId)->select('category_id'))
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        DB::table('category_product')
+            ->where('product_id', $productId)
+            ->when(
+                $leafCategoryIds === [],
+                fn ($query) => $query,
+                fn ($query) => $query->whereNotIn('category_id', $leafCategoryIds)
+            )
+            ->delete();
+
         $assignments = DB::table('category_product')
             ->where('product_id', $productId)
             ->orderByDesc('is_primary')

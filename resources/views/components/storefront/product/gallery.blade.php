@@ -13,27 +13,32 @@
 
 <div class="np-product-gallery-column min-w-0">
     <div class="product-gallery-frame relative">
-        <div class="np-product-gallery-main relative">
-            <template x-for="(image, index) in config.gallery" :key="index">
+        <div
+            class="np-product-gallery-main relative"
+            x-init="$el.dataset.galleryReady = 'true'; $nextTick(() => window.nextPlayLockGalleryStage?.($el))"
+        >
+            @foreach($gallery as $index => $image)
                 <button
                     type="button"
-                    x-show="galleryIndex === index"
-                    x-transition.opacity
                     class="np-product-gallery-slide block w-full cursor-zoom-in border-0 bg-transparent p-0 leading-none shadow-none"
-                    style="margin:0;padding:0;border:0;border-radius:0;box-shadow:none;background:transparent;line-height:0;"
-                    @click="$dispatch('open-product-image', currentImage())"
-                    :aria-label="`Enlarge ${image.alt || 'product image'}`"
+                    :class="galleryIndex === {{ $index }} ? 'is-active' : 'is-inactive'"
+                    :aria-hidden="galleryIndex === {{ $index }} ? 'false' : 'true'"
+                    :tabindex="galleryIndex === {{ $index }} ? 0 : -1"
+                    @click="$dispatch('open-product-image', config.gallery[{{ $index }}])"
+                    aria-label="Enlarge {{ $image['alt'] ?? 'product image' }}"
                 >
                     <img
-                        :src="image.url"
-                        :alt="image.alt"
+                        src="{{ $image['url'] }}"
+                        alt="{{ $image['alt'] ?? '' }}"
                         class="np-product-gallery-image block h-auto w-full"
-                        style="display:block;width:100%;height:auto;margin:0;padding:0;border:0;border-radius:0;box-shadow:none;background:transparent;"
                         width="900"
                         height="900"
+                        decoding="async"
+                        loading="{{ $index === 0 ? 'eager' : 'lazy' }}"
+                        @load="$el.closest('.np-product-gallery-slide')?.classList.add('is-loaded')"
                     >
                 </button>
-            </template>
+            @endforeach
 
             <button
                 type="button"
@@ -69,27 +74,37 @@
             @foreach($gallery as $index => $image)
                 <button
                     type="button"
-                    @click="galleryIndex={{ $index }}"
+                    @click="
+                        const nextIndex = {{ $index }};
+                        if (galleryIndex === nextIndex) return;
+                        const targetUrl = config.gallery?.[nextIndex]?.url;
+                        const activate = () => window.requestAnimationFrame(() => { galleryIndex = nextIndex; });
+                        if (!targetUrl) { activate(); return; }
+                        const preloader = new Image();
+                        preloader.decoding = 'async';
+                        preloader.onload = activate;
+                        preloader.onerror = activate;
+                        preloader.src = targetUrl;
+                        if (preloader.complete) activate();
+                    "
                     :aria-current="galleryIndex === {{ $index }} ? 'true' : 'false'"
-                    :class="galleryIndex === {{ $index }} ? 'opacity-100' : 'opacity-70 hover:opacity-100'"
+                    :class="galleryIndex === {{ $index }} ? 'opacity-100 is-active' : 'opacity-70 hover:opacity-100'"
                     class="np-product-gallery-thumb border-0 bg-transparent p-0 leading-none shadow-none transition-opacity focus-visible:outline-none"
-                    style="margin:0;padding:0;border:0;border-radius:0;outline:0;box-shadow:none;background:transparent;line-height:0;"
                     aria-label="View image {{ $index + 1 }}"
                 >
                     <img
                         src="{{ $image['url'] }}"
                         alt="{{ $image['alt'] ?? '' }}"
                         class="np-product-gallery-thumb-image block h-auto w-full"
-                        style="display:block;width:100%;height:auto;margin:0;padding:0;border:0;border-radius:0;box-shadow:none;background:transparent;"
                         width="150"
                         height="150"
                         loading="lazy"
+                        decoding="async"
                     >
                 </button>
             @endforeach
         </div>
     @endif
-
 
     <p class="sr-only" role="status" aria-live="polite" aria-atomic="true" x-text="socialStatus"></p>
 </div>

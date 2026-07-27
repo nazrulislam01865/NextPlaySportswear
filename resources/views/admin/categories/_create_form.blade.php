@@ -95,7 +95,7 @@
 
             <x-admin.section-card
                 title="Category Thumbnail"
-                description="Upload the main image used on category cards. This image is also used on homepage category sections, including Popular Custom Sportswear, when the category is a sport category or under a sport category."
+                description="Upload the main image used on category cards and other category-driven homepage sections."
             >
                 <div class="grid gap-5 md:grid-cols-[190px_minmax(0,1fr)] md:items-start">
                     <div class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">

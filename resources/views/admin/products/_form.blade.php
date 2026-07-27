@@ -1045,9 +1045,9 @@ window.adminProductFormFabric = function (initial = {}) {
                                 <div class="np-product-spec-toolbar flex flex-wrap gap-1.5 border-b border-slate-200 bg-slate-50 p-2">
                                     <button type="button" class="admin-editor-button" @click="command('formatBlock', 'h2')">H2</button>
                                     <button type="button" class="admin-editor-button" @click="command('formatBlock', 'h3')">H3</button>
-                                    <button type="button" class="admin-editor-button font-black" @click="command('bold')">B</button>
-                                    <button type="button" class="admin-editor-button italic" @click="command('italic')">I</button>
-                                    <button type="button" class="admin-editor-button underline" @click="command('underline')">U</button>
+                                    <button type="button" class="admin-editor-button font-black" aria-label="Bold" title="Bold" @click="command('bold')">B</button>
+                                    <button type="button" class="admin-editor-button italic" aria-label="Italic" title="Italic" @click="command('italic')">I</button>
+                                    <button type="button" class="admin-editor-button underline" aria-label="Underline" title="Underline" @click="command('underline')">U</button>
                                     <button type="button" class="admin-editor-button" @click="command('insertUnorderedList')">• List</button>
                                     <button type="button" class="admin-editor-button" @click="command('insertOrderedList')">1. List</button>
                                     <button type="button" class="admin-editor-button" @click="command('formatBlock', 'blockquote')">Quote</button>
@@ -1099,21 +1099,21 @@ Lead Time:"></div>
                             <span>Category <span class="text-brand-red">*</span></span>
                             <input type="hidden" name="primary_category_id" x-model="categoryId" required>
                             <button type="button" class="np-searchable-trigger" :class="categoryDropdownOpen ? 'is-open' : ''" @click="toggleCategoryDropdown()" @keydown.enter.prevent="toggleCategoryDropdown()" @keydown.space.prevent="toggleCategoryDropdown()">
-                                <span x-text="selectedCategoryName() || 'Select a category'"></span>
+                                <span x-text="selectedCategoryName() || 'Select a last-level category'"></span>
                                 <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                             </button>
                             <div x-show="categoryDropdownOpen" x-cloak x-transition class="np-searchable-panel">
                                 <div class="np-searchable-panel__head">
-                                    <strong>Select category</strong>
+                                    <strong>Select last-level category</strong>
                                     <button type="button" @click="closeCategoryDropdown()" aria-label="Close category dropdown">×</button>
                                 </div>
                                 <label class="np-searchable-search" aria-label="Search category">
                                     <span>⌕</span>
-                                    <input x-ref="categorySearchInput" type="search" x-model="categorySearch" placeholder="Search category..." @keydown.escape.prevent="closeCategoryDropdown()">
+                                    <input x-ref="categorySearchInput" type="search" x-model="categorySearch" placeholder="Search last-level category..." @keydown.escape.prevent="closeCategoryDropdown()">
                                 </label>
                                 <div class="np-searchable-list" role="listbox">
                                     <button type="button" class="np-searchable-option" :class="!categoryId ? 'is-selected' : ''" @click="selectCategory('', '')">
-                                        <span class="np-searchable-option__title">Select a category</span>
+                                        <span class="np-searchable-option__title">Select a last-level category</span>
                                         <small>Clear current selection</small>
                                     </button>
                                     <template x-for="category in filteredCategories()" :key="category.id">
@@ -1124,8 +1124,9 @@ Lead Time:"></div>
                                         </button>
                                     </template>
                                 </div>
-                                <p class="np-searchable-empty" x-show="filteredCategories().length === 0">No matching category found.</p>
+                                <p class="np-searchable-empty" x-show="filteredCategories().length === 0">No matching last-level category found.</p>
                             </div>
+                            <small class="np-field-help">Only a category without child categories can hold products. Parent categories are used for grouping and storefront filtering.</small>
                         </div>
 
                         <label class="admin-label">Tags
@@ -1625,7 +1626,7 @@ Lead Time:"></div>
                 <div class="np-side-divider"></div>
                 <p class="np-side-label">Categories</p>
                 <div class="mt-2 flex flex-wrap gap-2">
-                    <span class="np-chip" x-text="selectedCategoryName() || 'Select a category'"></span>
+                    <span class="np-chip" x-text="selectedCategoryName() || 'Select a last-level category'"></span>
                     <span class="np-chip is-primary" x-show="categoryId" x-cloak>Primary</span>
                 </div>
                 <div class="np-side-divider"></div>
@@ -1644,7 +1645,7 @@ Lead Time:"></div>
                         <input type="checkbox" name="show_in_category_page" value="1" x-model="showInCategoryPage" :disabled="!categoryId">
                         <span>
                             <strong>Show on selected category page</strong>
-                            <small x-text="categoryId ? `List it under ${selectedCategoryName()}` : 'Select a category first to enable this option.'"></small>
+                            <small x-text="categoryId ? `List it under ${selectedCategoryName()}` : 'Select a last-level category first to enable this option.'"></small>
                         </span>
                     </label>
                 </div>

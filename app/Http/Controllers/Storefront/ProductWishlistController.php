@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Storefront;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductWishlist;
+use App\Services\Wishlist\WishlistHeaderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -69,6 +70,14 @@ class ProductWishlistController extends Controller
         return response()->json([
             'products' => $products,
         ]);
+    }
+
+    public function preview(Request $request, WishlistHeaderService $wishlistHeader): JsonResponse
+    {
+        $user = $request->user('web');
+        abort_unless($user && $user->isCustomer(), 403);
+
+        return response()->json($wishlistHeader->summary($user, 4));
     }
 
     public function status(Request $request): JsonResponse

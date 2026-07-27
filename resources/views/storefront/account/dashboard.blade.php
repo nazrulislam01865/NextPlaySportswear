@@ -1,7 +1,7 @@
 <x-layouts.storefront :seo="$seo">
     <x-storefront.account.shell
         title="My Account"
-        subtitle="Your custom sportswear account center for orders, proofs, quotes, saved designs, delivery details, and support."
+        subtitle="Your custom sportswear account center for orders, proofs, quotes, delivery details, returns, and support."
         :account="$account"
         :navigation="$navigation"
         :full-width="true"
@@ -24,7 +24,7 @@
                         </div>
 
                         <p class="mt-6 max-w-2xl text-sm leading-7 text-white/75 md:text-base">
-                            Manage team orders, proof approvals, saved quotes, artwork, and checkout details from one organized dashboard.
+                            Manage team orders, proof approvals, artwork, delivery details, returns, and checkout information from one organized dashboard.
                         </p>
 
                         <div class="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -51,7 +51,6 @@
                                     <p class="mt-1 text-sm font-black text-brand-ink">{{ $account['summary']['membership'] ?? 'Customer account' }}</p>
                                 </div>
                                 <div class="flex flex-wrap gap-2">
-                                    <span class="rounded-full bg-brand-red px-3 py-1 text-xs font-black uppercase text-white">Rewards {{ $account['summary']['rewardBalance'] ?? '$0.00' }}</span>
                                     <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black uppercase text-emerald-700">Secure session</span>
                                 </div>
                             </div>
@@ -66,7 +65,7 @@
                         <p class="text-xs font-black uppercase tracking-[0.24em] text-brand-red">Account center</p>
                         <h2 class="mt-2 text-3xl font-black tracking-tight text-brand-ink">Choose what you want to manage</h2>
                         <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-                            Quick access to the most important custom sportswear actions: order history, repeat orders, saved designs, quotes, delivery details, and support.
+                            Quick access to order history, repeat orders, quotes, saved addresses, payment methods, downloads, returns, and support.
                         </p>
                     </div>
 

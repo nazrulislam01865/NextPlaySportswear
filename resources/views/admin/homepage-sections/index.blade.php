@@ -30,7 +30,7 @@
                                 ])>{{ $section['is_active'] ? 'Active' : 'Hidden' }}</span>
                             </div>
                             <h3 class="mt-3 truncate text-xl font-black text-brand-ink">{{ $section['name'] }}</h3>
-                            <p class="mt-2 line-clamp-2 text-sm font-medium leading-6 text-slate-600">{{ $section['title'] ?: $section['description'] ?: 'This section controls display and order only.' }}</p>
+                            <p class="mt-2 line-clamp-2 text-sm font-medium leading-6 text-slate-600">{{ ($section['title'] ?? null) ?: ($section['description'] ?? null) ?: 'This section controls display and order only.' }}</p>
                         </div>
                         <div class="shrink-0 rounded-2xl bg-brand-dark px-4 py-3 text-center text-white">
                             <span class="block text-[10px] font-black uppercase tracking-[.18em] text-slate-300">Order</span>

@@ -506,7 +506,7 @@
 
                     @if(in_array('category_id', $itemFields, true))
                         <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm font-bold leading-6 text-brand-dark">
-                            Select one or several exact <strong>categories</strong>, <strong>subcategories</strong>, or <strong>sub-subcategories</strong> and add them together. Multi-selection and duplicate protection work for every category-driven homepage section, including What Are You Looking For?, Popular Custom Sportswear Categories, Shop by Sport, and Best-Selling Team Gear. If the list is empty, the section falls back to its automatic catalog selection.
+                            Select one or several exact <strong>categories</strong>, <strong>subcategories</strong>, or <strong>sub-subcategories</strong> and add them together. Multi-selection and duplicate protection work for every category-driven homepage section, including What Are You Looking For?, Shop by Sport, and Best-Selling Team Gear. If the list is empty, the section falls back to its automatic catalog selection.
                         </div>
 
                         <div x-show="duplicateCategoryMessages().length > 0" x-cloak class="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">

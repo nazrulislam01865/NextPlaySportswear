@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\CategoryImportRequest;
 use App\Http\Requests\Admin\CategoryReorderRequest;
 use App\Models\Category;
 use App\Services\Catalog\CategoryTreeService;
+use App\Services\Catalog\LeafCategoryAssignmentService;
 use App\Services\Catalog\NavigationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +25,7 @@ class CategoryOperationsController extends Controller
 
     public function __construct(
         private readonly CategoryTreeService $treeService,
+        private readonly LeafCategoryAssignmentService $leafAssignmentService,
         private readonly NavigationService $navigationService,
     ) {
     }
@@ -128,9 +130,14 @@ class CategoryOperationsController extends Controller
             $this->treeService->rebuildClosure();
         });
 
+        $normalizedProducts = $this->leafAssignmentService->enforce();
         $this->navigationService->flushCache();
 
-        return redirect()->route('admin.categories.ordering')->with('status', 'Category order updated successfully.');
+        $message = $normalizedProducts > 0
+            ? "Category order updated successfully. {$normalizedProducts} product assignment(s) were normalized to keep products on last-level categories only."
+            : 'Category order updated successfully.';
+
+        return redirect()->route('admin.categories.ordering')->with('status', $message);
     }
 
     public function export(): StreamedResponse
@@ -257,9 +264,15 @@ class CategoryOperationsController extends Controller
             $this->treeService->rebuildClosure();
         });
 
+        $normalizedProducts = $this->leafAssignmentService->enforce();
         $this->navigationService->flushCache();
 
-        return redirect()->route('admin.categories.index')->with('status', count($records).' categories imported or updated.');
+        $message = count($records).' categories imported or updated.';
+        if ($normalizedProducts > 0) {
+            $message .= " {$normalizedProducts} product assignment(s) were normalized to last-level categories.";
+        }
+
+        return redirect()->route('admin.categories.index')->with('status', $message);
     }
 
     /** @return array<int, array<string, string|null>> */

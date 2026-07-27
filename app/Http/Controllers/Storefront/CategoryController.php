@@ -19,7 +19,7 @@ class CategoryController extends Controller
 
     public function index(): View
     {
-        $collections = $this->catalog->collections();
+        $collections = $this->catalog->allProductCategories();
         $sports = $this->catalog->sports();
 
         return view('storefront.categories.index', [
@@ -54,9 +54,23 @@ class CategoryController extends Controller
         }
         $products = $this->catalog->productsFor($category, $filters);
         $breadcrumbs = $this->catalog->breadcrumbs($category);
-        $hasFilters = $filters['q'] !== '' || $filters['subcategory'] !== [] || $filters['attributes'] !== []
-            || $filters['min_price'] !== null || $filters['max_price'] !== null || $filters['in_stock']
-            || $filters['customizable'] || $filters['sort'] !== ($category->default_product_sort ?: 'featured');
+        $defaultSort = $category->default_product_sort ?: 'featured';
+        $activeFilterCount = $this->activeFilterCount($filters);
+        $hasFilters = $filters['q'] !== ''
+            || $filters['subcategory'] !== []
+            || $filters['sports'] !== []
+            || $filters['product_types'] !== []
+            || $filters['colors'] !== []
+            || $filters['materials'] !== []
+            || $filters['artwork_methods'] !== []
+            || $filters['attributes'] !== []
+            || $filters['min_price'] !== null
+            || $filters['max_price'] !== null
+            || $filters['moq'] !== []
+            || $filters['customization'] !== []
+            || $filters['availability'] !== []
+            || $filters['min_rating'] !== null
+            || $filters['sort'] !== $defaultSort;
         $categoryData = $this->catalog->categoryData($category);
 
         $schemas = [[
@@ -86,6 +100,7 @@ class CategoryController extends Controller
             'products' => $products,
             'filters' => $filters,
             'filterOptions' => $this->catalog->filterOptions($category),
+            'activeFilterCount' => $activeFilterCount,
             'relatedCategories' => $this->catalog->relatedCategories($category),
             'contentBlocks' => $this->content->resolve($category),
             'hasFilters' => $hasFilters,
@@ -100,5 +115,25 @@ class CategoryController extends Controller
             ],
             'structuredData' => $schemas,
         ]);
+    }
+
+    /** @param array<string, mixed> $filters */
+    private function activeFilterCount(array $filters): int
+    {
+        $count = filled($filters['q'] ?? null) ? 1 : 0;
+
+        foreach (['subcategory', 'sports', 'product_types', 'colors', 'materials', 'artwork_methods', 'moq', 'customization', 'availability'] as $key) {
+            $count += count((array) ($filters[$key] ?? []));
+        }
+
+        foreach ((array) ($filters['attributes'] ?? []) as $values) {
+            $count += count((array) $values);
+        }
+
+        $count += ($filters['min_price'] ?? null) !== null ? 1 : 0;
+        $count += ($filters['max_price'] ?? null) !== null ? 1 : 0;
+        $count += ($filters['min_rating'] ?? null) !== null ? 1 : 0;
+
+        return $count;
     }
 }

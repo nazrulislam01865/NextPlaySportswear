@@ -1,15 +1,213 @@
 <x-layouts.storefront :seo="$seo" :structured-data="$structuredData">
-@php($showsProducts = $products->total() > 0 || !in_array($categoryModel->page_template, ['quote_only','content_landing','navigation_only'], true))
-<section class="relative isolate overflow-hidden bg-brand-dark text-white">
-    <picture><source media="(max-width:640px)" srcset="{{ $category['mobile_banner'] }}"><img src="{{ $category['banner'] }}" alt="{{ $category['banner_alt'] }}" class="absolute inset-0 -z-20 h-full w-full object-cover opacity-35" fetchpriority="high"></picture><div class="absolute inset-0 -z-10 bg-gradient-to-r from-brand-dark via-brand-navy/95 to-brand-navy/35"></div>
-    <div class="site-container py-12 sm:py-16"><nav aria-label="Breadcrumb" class="flex flex-wrap gap-2 text-xs font-bold text-blue-100"><a href="{{ route('home') }}">Home</a><span>/</span><a href="{{ route('categories.index') }}">Categories</a>@foreach($breadcrumbs as $crumb)<span>/</span>@if($loop->last)<span class="text-white" aria-current="page">{{ $crumb->name }}</span>@else<a href="{{ route('categories.show',$crumb->slug) }}">{{ $crumb->name }}</a>@endif @endforeach</nav><div class="mt-8 max-w-3xl"><p class="text-xs font-black uppercase tracking-[.22em] text-red-200">{{ $category['eyebrow'] }}</p><h1 class="mt-3 font-display text-4xl font-bold uppercase leading-tight sm:text-6xl lg:text-7xl">{{ $category['title'] }}</h1><p class="mt-5 text-lg leading-8 text-blue-50">{{ $category['description'] }}</p><div class="mt-7 flex flex-wrap gap-3">@if($showsProducts)<a href="#category-products" class="btn btn-red">Shop products</a>@else<a href="{{ route('quote.request') }}" class="btn btn-red">Request a category quote</a>@endif<a href="{{ route('quote.request') }}" class="btn border border-white/30 bg-white/10 text-white">Request Bulk Quote</a></div></div></div>
-</section>
-@if($categoryModel->children->isNotEmpty())<section class="site-container py-10"><div class="flex items-end justify-between"><div><p class="text-xs font-black uppercase tracking-[.2em] text-brand-red">Browse deeper</p><h2 class="mt-2 font-display text-4xl font-bold uppercase text-brand-ink">Shop by category</h2></div></div><div class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">@foreach($categoryModel->children as $child)<a href="{{ route('categories.show',$child->slug) }}" class="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card"><img src="{{ $child->thumbnailUrl() }}" alt="{{ $child->thumbnail_alt ?: $child->name }}" class="np-category-square-image transition duration-300 group-hover:scale-105" loading="lazy"><div class="p-4"><strong class="text-brand-ink">{{ $child->name }}</strong><p class="mt-1 text-xs text-slate-500">{{ $child->products_count }} products</p></div></a>@endforeach</div></section>@endif
-@if($showsProducts)<section id="category-products" class="scroll-mt-32 bg-slate-50 py-10 sm:py-14"><div class="site-container np-products-catalog-container" x-data="{filtersOpen:false}"><div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><p class="text-sm font-bold text-slate-500">{{ $products->total() }} matching products</p><h2 class="mt-1 font-display text-4xl font-bold uppercase text-brand-ink sm:text-5xl">Shop {{ $category['short_title'] }}</h2></div><div class="flex flex-col gap-3 sm:flex-row"><button type="button" class="btn btn-white w-full sm:w-auto lg:hidden" x-on:click="filtersOpen=true">Filters</button><label class="sr-only" for="category-sort">Sort products</label><select id="category-sort" name="sort" class="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold sm:w-auto" onchange="const url=new URL(window.location.href);url.searchParams.set('sort',this.value);url.searchParams.delete('page');window.location.assign(url.toString())"><option value="featured" @selected($filters['sort']==='featured')>Featured</option><option value="newest" @selected($filters['sort']==='newest')>Newest</option><option value="price-low" @selected($filters['sort']==='price-low')>Price: Low to High</option><option value="price-high" @selected($filters['sort']==='price-high')>Price: High to Low</option><option value="name-asc" @selected($filters['sort']==='name-asc')>Name: A to Z</option></select></div></div>
-<div class="np-product-layout has-filters grid gap-4"><aside class="np-category-facet-shell hidden self-start rounded-2xl border border-slate-200 bg-white p-4 shadow-card lg:sticky lg:top-32 lg:block"><div class="mb-5 flex justify-between"><h3 class="font-display text-2xl font-bold uppercase">Filters</h3>@if($hasFilters)<a href="{{ $category['url'] }}" class="text-xs font-black uppercase text-brand-red">Reset</a>@endif</div><x-storefront.category.filter-panel :category="$category" :filters="$filters" :options="$filterOptions" id-prefix="desktop-filter" /></aside><div>@if($products->count())<p class="mb-5 text-sm font-semibold text-slate-500">Showing {{ $products->firstItem() }}–{{ $products->lastItem() }} of {{ $products->total() }} products</p><div class="np-product-listing-grid np-product-listing-grid--three grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">@foreach($products as $product)<x-storefront.product-card :product="$product" :show-category="true" />@endforeach</div><div class="mt-8">{{ $products->links() }}</div>@else<div class="rounded-3xl border border-dashed border-slate-300 bg-white p-14 text-center"><h3 class="font-display text-3xl font-bold uppercase">No matching products</h3><p class="mt-2 text-slate-500">Change the selected facets or clear all filters.</p><a class="btn btn-red mt-5" href="{{ $category['url'] }}">Clear Filters</a></div>@endif</div></div>
-<div x-cloak x-show="filtersOpen" class="fixed inset-0 z-50 lg:hidden"><div class="absolute inset-0 bg-slate-950/60" x-on:click="filtersOpen=false"></div><aside class="absolute inset-y-0 right-0 w-[min(92vw,380px)] overflow-y-auto bg-white p-5"><div class="mb-5 flex items-center justify-between"><h3 class="font-display text-2xl font-bold uppercase">Filters</h3><button type="button" class="text-2xl" x-on:click="filtersOpen=false">×</button></div><x-storefront.category.filter-panel :category="$category" :filters="$filters" :options="$filterOptions" id-prefix="mobile-filter" /></aside></div></div></section>@endif
-@foreach($contentBlocks as $block)<x-storefront.category.content-block :block="$block" />@endforeach
-@if($categoryModel->description_html)<section class="site-container py-10"><div class="prose prose-slate max-w-none rounded-3xl border border-slate-200 bg-white p-7 shadow-card">{!! $categoryModel->description_html !!}</div></section>@endif
-@if($categoryModel->faqs->where('is_active',true)->isNotEmpty())<section class="site-container py-12"><h2 class="font-display text-4xl font-bold uppercase text-brand-ink">Frequently Asked Questions</h2><div class="mt-6 grid gap-3">@foreach($categoryModel->faqs->where('is_active',true) as $faq)<details class="rounded-2xl border border-slate-200 bg-white p-5"><summary class="cursor-pointer font-black text-brand-ink">{{ $faq->question }}</summary><div class="prose prose-sm mt-4 max-w-none text-slate-600">{!! $faq->answer_html !!}</div></details>@endforeach</div></section>@endif
-@if($relatedCategories!==[])<section class="bg-slate-50 py-12"><div class="site-container"><h2 class="font-display text-4xl font-bold uppercase text-brand-ink">Related categories</h2><div class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">@foreach($relatedCategories as $related)<a href="{{ $related['url'] }}" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-card"><strong>{{ $related['title'] }}</strong><p class="mt-2 text-sm text-slate-500">{{ $related['description'] }}</p></a>@endforeach</div></div></section>@endif
+    @php
+        $showsProducts = $products->total() > 0
+            || ! in_array($categoryModel->page_template, ['quote_only', 'content_landing', 'navigation_only'], true);
+    @endphp
+
+    <section class="relative isolate overflow-hidden bg-brand-dark text-white">
+        <picture>
+            <source media="(max-width:640px)" srcset="{{ $category['mobile_banner'] }}">
+            <img
+                src="{{ $category['banner'] }}"
+                alt="{{ $category['banner_alt'] }}"
+                class="absolute inset-0 -z-20 h-full w-full object-cover opacity-35"
+                fetchpriority="high"
+            >
+        </picture>
+        <div class="absolute inset-0 -z-10 bg-gradient-to-r from-brand-dark via-brand-navy/95 to-brand-navy/35"></div>
+
+        <div class="site-container py-12 sm:py-16">
+            <nav aria-label="Breadcrumb" class="flex flex-wrap gap-2 text-xs font-bold text-blue-100">
+                <a href="{{ route('home') }}">Home</a>
+                <span>/</span>
+                <a href="{{ route('categories.index') }}">Categories</a>
+                @foreach($breadcrumbs as $crumb)
+                    <span>/</span>
+                    @if($loop->last)
+                        <span class="text-white" aria-current="page">{{ $crumb->name }}</span>
+                    @else
+                        <a href="{{ route('categories.show', $crumb->slug) }}">{{ $crumb->name }}</a>
+                    @endif
+                @endforeach
+            </nav>
+
+            <div class="mt-8 max-w-3xl">
+                <p class="text-xs font-black uppercase tracking-[.22em] text-red-200">{{ $category['eyebrow'] }}</p>
+                <h1 class="mt-3 font-display text-4xl font-bold uppercase leading-tight sm:text-6xl lg:text-7xl">{{ $category['title'] }}</h1>
+                <p class="mt-5 text-lg leading-8 text-blue-50">{{ $category['description'] }}</p>
+                <div class="mt-7 flex flex-wrap gap-3">
+                    @if($showsProducts)
+                        <a href="#category-products" class="btn btn-red">Shop products</a>
+                    @else
+                        <a href="{{ route('quote.request') }}" class="btn btn-red">Request a category quote</a>
+                    @endif
+                    <a href="{{ route('quote.request') }}" class="btn border border-white/30 bg-white/10 text-white">Request Bulk Quote</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    @if($categoryModel->children->isNotEmpty())
+        <section class="site-container py-10">
+            <div class="flex items-end justify-between">
+                <div>
+                    <p class="text-xs font-black uppercase tracking-[.2em] text-brand-red">Browse deeper</p>
+                    <h2 class="mt-2 font-display text-4xl font-bold uppercase text-brand-ink">Shop by category</h2>
+                </div>
+            </div>
+
+            <div class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                @foreach($categoryModel->children as $child)
+                    <a href="{{ route('categories.show', $child->slug) }}" class="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
+                        <img
+                            src="{{ $child->thumbnailUrl() }}"
+                            alt="{{ $child->thumbnail_alt ?: $child->name }}"
+                            class="np-category-square-image transition duration-300 group-hover:scale-105"
+                            loading="lazy"
+                        >
+                        <div class="p-4">
+                            <strong class="text-brand-ink">{{ $child->name }}</strong>
+                            <p class="mt-1 text-xs text-slate-500">{{ $child->products_count }} products</p>
+                        </div>
+                    </a>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
+    @if($showsProducts)
+        <section id="category-products" class="scroll-mt-32 bg-slate-50 py-10 sm:py-14">
+            <div class="site-container np-products-catalog-container" x-data="{ filtersOpen: false }">
+                <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                        <p class="text-sm font-bold text-slate-500">{{ number_format($products->total()) }} matching product{{ $products->total() === 1 ? '' : 's' }}</p>
+                        <h2 class="mt-1 font-display text-4xl font-bold uppercase text-brand-ink sm:text-5xl">Shop {{ $category['short_title'] }}</h2>
+                    </div>
+
+                    <button type="button" class="btn btn-white w-full sm:w-auto lg:hidden" x-on:click="filtersOpen=true">
+                        <span>Filters</span>
+                        @if($activeFilterCount > 0)
+                            <span class="np-mobile-filter-count">{{ $activeFilterCount }}</span>
+                        @endif
+                    </button>
+                </div>
+
+                <div class="np-catalog-active-bar mb-5">
+                    <div class="np-catalog-active-summary">
+                        <strong>{{ number_format($products->total()) }} results</strong>
+                        @if($activeFilterCount > 0)
+                            <span class="np-catalog-active-pill">{{ $activeFilterCount }} filter{{ $activeFilterCount === 1 ? '' : 's' }} active</span>
+                            <a href="{{ $category['url'] }}" class="font-extrabold text-brand-red hover:underline">Clear all</a>
+                        @else
+                            <span>Refine this category by size, color, product type, material, price, and more.</span>
+                        @endif
+                    </div>
+
+                    <div class="np-catalog-sort">
+                        <label for="category-sort">Sort by</label>
+                        <select
+                            id="category-sort"
+                            name="sort"
+                            onchange="const url=new URL(window.location.href);url.searchParams.set('sort',this.value);url.searchParams.delete('page');window.location.assign(url.toString())"
+                        >
+                            <option value="featured" @selected($filters['sort'] === 'featured')>Featured</option>
+                            <option value="best-selling" @selected($filters['sort'] === 'best-selling')>Best selling</option>
+                            <option value="newest" @selected($filters['sort'] === 'newest')>Newest</option>
+                            <option value="price-low" @selected($filters['sort'] === 'price-low')>Price: Low to High</option>
+                            <option value="price-high" @selected($filters['sort'] === 'price-high')>Price: High to Low</option>
+                            @if(($filterOptions['rating_options'] ?? []) !== [])
+                                <option value="rating-high" @selected($filters['sort'] === 'rating-high')>Highest rated</option>
+                            @endif
+                            <option value="name-asc" @selected($filters['sort'] === 'name-asc')>Name: A to Z</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="np-product-layout has-filters grid gap-4">
+                    <aside class="np-category-facet-shell hidden self-start lg:block">
+                        <x-storefront.category.filter-panel
+                            :category="$category"
+                            :filters="$filters"
+                            :options="$filterOptions"
+                            id-prefix="desktop-filter"
+                        />
+                    </aside>
+
+                    <div>
+                        @if($products->count())
+                            <div class="np-product-listing-grid np-product-listing-grid--three grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                @foreach($products as $product)
+                                    <x-storefront.product-card :product="$product" :show-category="true" />
+                                @endforeach
+                            </div>
+                            <div class="mt-7 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-card">
+                                {{ $products->links('pagination.nextplay', ['itemName' => 'product']) }}
+                            </div>
+                        @else
+                            <div class="rounded-3xl border border-dashed border-slate-300 bg-white p-14 text-center">
+                                <h3 class="font-display text-3xl font-bold uppercase">No matching products</h3>
+                                <p class="mt-2 text-slate-500">Change the selected filters or clear all filters.</p>
+                                <a class="btn btn-red mt-5" href="{{ $category['url'] }}">Clear Filters</a>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                <div x-cloak x-show="filtersOpen" class="fixed inset-0 z-50 lg:hidden">
+                    <div class="absolute inset-0 bg-slate-950/60" x-on:click="filtersOpen=false"></div>
+                    <aside class="np-filter-drawer absolute inset-y-0 right-0">
+                        <button type="button" class="np-filter-close" x-on:click="filtersOpen=false" aria-label="Close filters">×</button>
+                        <x-storefront.category.filter-panel
+                            :category="$category"
+                            :filters="$filters"
+                            :options="$filterOptions"
+                            id-prefix="mobile-filter"
+                        />
+                    </aside>
+                </div>
+            </div>
+        </section>
+    @endif
+
+    @foreach($contentBlocks as $block)
+        <x-storefront.category.content-block :block="$block" />
+    @endforeach
+
+    @if($categoryModel->description_html)
+        <section class="site-container py-10">
+            <div class="prose prose-slate max-w-none rounded-3xl border border-slate-200 bg-white p-7 shadow-card">
+                {!! $categoryModel->description_html !!}
+            </div>
+        </section>
+    @endif
+
+    @if($categoryModel->faqs->where('is_active', true)->isNotEmpty())
+        <section class="site-container py-12">
+            <h2 class="font-display text-4xl font-bold uppercase text-brand-ink">Frequently Asked Questions</h2>
+            <div class="mt-6 grid gap-3">
+                @foreach($categoryModel->faqs->where('is_active', true) as $faq)
+                    <details class="rounded-2xl border border-slate-200 bg-white p-5">
+                        <summary class="cursor-pointer font-black text-brand-ink">{{ $faq->question }}</summary>
+                        <div class="prose prose-sm mt-4 max-w-none text-slate-600">{!! $faq->answer_html !!}</div>
+                    </details>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
+    @if($relatedCategories !== [])
+        <section class="bg-slate-50 py-12">
+            <div class="site-container">
+                <h2 class="font-display text-4xl font-bold uppercase text-brand-ink">Related categories</h2>
+                <div class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    @foreach($relatedCategories as $related)
+                        <a href="{{ $related['url'] }}" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
+                            <strong>{{ $related['title'] }}</strong>
+                            <p class="mt-2 text-sm text-slate-500">{{ $related['description'] }}</p>
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        </section>
+    @endif
 </x-layouts.storefront>

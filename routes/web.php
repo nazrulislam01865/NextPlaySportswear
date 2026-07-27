@@ -5,6 +5,8 @@ use App\Http\Controllers\Storefront\Account\AddressController;
 use App\Http\Controllers\Storefront\Account\PaymentMethodController;
 use App\Http\Controllers\Storefront\Account\ProfileController;
 use App\Http\Controllers\Storefront\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Storefront\Auth\NewPasswordController;
+use App\Http\Controllers\Storefront\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Storefront\Auth\RegisteredUserController;
 use App\Http\Controllers\Storefront\BulkQuoteController;
 use App\Http\Controllers\Storefront\CartController;
@@ -206,6 +208,12 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::group([], function (): void {
             Route::get('/orders', [\App\Http\Controllers\Admin\OrderController::class, 'index'])->name('orders.index');
             Route::get('/orders/{order}', [\App\Http\Controllers\Admin\OrderController::class, 'show'])->name('orders.show');
+            Route::get('/orders/{order}/items/{orderItem}/artwork/{artworkIndex}', [\App\Http\Controllers\Admin\OrderController::class, 'artwork'])
+                ->whereNumber('artworkIndex')
+                ->name('orders.artwork.show');
+            Route::patch('/orders/{order}/approve', [\App\Http\Controllers\Admin\OrderController::class, 'approve'])
+                ->middleware('throttle:10,1')
+                ->name('orders.approve');
             Route::patch('/orders/{order}', [\App\Http\Controllers\Admin\OrderController::class, 'update'])->middleware('throttle:20,1')->name('orders.update');
             Route::post('/orders/{order}/shipments', [\App\Http\Controllers\Admin\OrderShipmentController::class, 'store'])->middleware('throttle:20,1')->name('orders.shipments.store');
             Route::patch('/orders/{order}/shipments/{shipment}', [\App\Http\Controllers\Admin\OrderShipmentController::class, 'update'])->middleware('throttle:20,1')->name('orders.shipments.update');
@@ -222,7 +230,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         });
 
         Route::get('/module/{module}', [\App\Http\Controllers\Admin\ModuleController::class, 'show'])
-            ->whereIn('module', ['orders', 'customers', 'inventory', 'discounts', 'reviews', 'content', 'reports', 'shipping', 'taxes', 'payments', 'settings'])
+            ->whereIn('module', ['orders', 'inventory', 'discounts', 'content', 'shipping', 'payments'])
             ->name('modules.show');
     });
 });
@@ -238,12 +246,17 @@ Route::middleware(['guest:web', 'not.admin'])->group(function () {
         ->middleware('throttle:5,1')
         ->name('register.store');
 
-    Route::get('/forgot-password', function () {
-        return view('storefront.placeholder', [
-            'title' => 'Password Reset',
-            'message' => 'Password reset email flow will be connected with the mail service in the authentication phase.',
-        ]);
-    })->name('password.request');
+    Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])
+        ->name('password.request');
+    Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
+        ->middleware('throttle:password-reset-link')
+        ->name('password.email');
+    Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])
+        ->name('password.reset');
+    Route::post('/reset-password', [NewPasswordController::class, 'store'])
+        ->middleware('throttle:password-reset')
+        ->name('password.store');
+
 });
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
@@ -282,7 +295,7 @@ Route::middleware(['not.admin', 'auth:web', 'customer'])->prefix('account')->nam
     Route::post('/orders/{order}/pay', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'storePayment'])->middleware('throttle:5,1')->name('orders.pay.store');
     Route::get('/orders/{order}/retry-payment', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'retry'])->name('orders.payment.retry');
     Route::get('/orders/{order}/reorder', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'reorder'])->name('orders.reorder');
-    Route::post('/orders/{order}/reorder', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'storeReorder'])->middleware('throttle:10,1')->name('orders.reorder.store');
+    Route::post('/orders/{order}/reorder', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'storeReorder'])->middleware('throttle:order-reorder')->name('orders.reorder.store');
     Route::get('/orders/{order}/cancel-request', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'cancel'])->name('orders.cancel');
     Route::post('/orders/{order}/cancel-request', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'storeCancel'])->middleware('throttle:5,1')->name('orders.cancel.store');
     Route::get('/orders/{order}/change-request', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'change'])->name('orders.change');
@@ -308,7 +321,6 @@ Route::middleware(['not.admin', 'auth:web', 'customer'])->prefix('account')->nam
     Route::get('/order-downloads', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'downloads'])->name('downloads.index');
     Route::get('/order-downloads/{download}', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'download'])->middleware('signed')->name('downloads.download');
 
-    Route::get('/{section}', [AccountController::class, 'section'])->name('section');
 });
 
 Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
@@ -332,6 +344,9 @@ Route::post('/wishlist/guest-products', [ProductWishlistController::class, 'gues
 Route::get('/wishlist/status', [ProductWishlistController::class, 'status'])
     ->middleware(['not.admin', 'auth:web', 'customer', 'throttle:60,1'])
     ->name('wishlist.status');
+Route::get('/wishlist/preview', [ProductWishlistController::class, 'preview'])
+    ->middleware(['not.admin', 'auth:web', 'customer', 'throttle:120,1'])
+    ->name('wishlist.preview');
 Route::put('/wishlist/products/{product}', [ProductWishlistController::class, 'update'])
     ->middleware(['not.admin', 'auth:web', 'customer', 'throttle:60,1'])
     ->name('wishlist.products.update');

@@ -2,9 +2,6 @@
     @php
         $searchValue = $filters['q'] ?? '';
         $attachProductSearch = $filters['assign_q'] ?? '';
-        $from = $products->firstItem();
-        $to = $products->lastItem();
-        $total = $products->total();
         $optionDepthPadding = static fn ($item): string => str_repeat('— ', max(0, (int) $item->depth - (int) $category->depth - 1));
     @endphp
 
@@ -27,7 +24,7 @@
                         </span>
                     </nav>
                     <p class="mt-3 max-w-4xl text-sm font-medium leading-6 text-slate-500">
-                        This list is filtered to <strong class="font-black text-brand-ink">{{ $category->name }}</strong> only. Use the tags to review parent, primary, and optional subcategories, then apply changes.
+                        This page includes products assigned anywhere inside the <strong class="font-black text-brand-ink">{{ $category->name }}</strong> subtree. Products are stored only on last-level categories that have no children.
                     </p>
                 </div>
 
@@ -69,91 +66,116 @@
             </div>
         </form>
 
-        <section class="category-product-attach-card" aria-label="Add existing products to this category">
-            <div class="category-product-attach-header">
-                <div>
-                    <span class="category-product-attach-eyebrow">Add products</span>
-                    <h2>Add existing products to {{ $category->name }}</h2>
-                    <p>Use this picker when the category is newly created or empty. Selected products will be attached to this category and its parent path, then the count refreshes automatically.</p>
+        @if($categoryIsLeaf)
+            <section class="category-product-attach-card" aria-label="Add existing products to this last-level category">
+                <div class="category-product-attach-header">
+                    <div>
+                        <span class="category-product-attach-eyebrow">Add products</span>
+                        <h2>Add existing products to {{ $category->name }}</h2>
+                        <p>This is a last-level category, so products can be assigned directly to it. Parent categories are used only for grouping and filtering.</p>
+                    </div>
+
+                    <form method="GET" action="{{ route('admin.categories.products.index', $category) }}" class="category-product-attach-search">
+                        @if($searchValue !== '')
+                            <input type="hidden" name="q" value="{{ $searchValue }}">
+                        @endif
+                        <label class="sr-only" for="assign-product-search">Search products to add</label>
+                        <input
+                            id="assign-product-search"
+                            name="assign_q"
+                            value="{{ $attachProductSearch }}"
+                            placeholder="Search all products by name, SKU, or slug"
+                            autocomplete="off"
+                            maxlength="100"
+                        >
+                        <button type="submit">Search</button>
+                        @if($attachProductSearch !== '')
+                            <a href="{{ $searchValue !== '' ? route('admin.categories.products.index', ['category' => $category, 'q' => $searchValue]) : route('admin.categories.products.index', $category) }}">Clear</a>
+                        @endif
+                    </form>
                 </div>
 
-                <form method="GET" action="{{ route('admin.categories.products.index', $category) }}" class="category-product-attach-search">
-                    @if($searchValue !== '')
-                        <input type="hidden" name="q" value="{{ $searchValue }}">
-                    @endif
-                    <label class="sr-only" for="assign-product-search">Search products to add</label>
-                    <input
-                        id="assign-product-search"
-                        name="assign_q"
-                        value="{{ $attachProductSearch }}"
-                        placeholder="Search all products by name, SKU, or slug"
-                        autocomplete="off"
-                        maxlength="100"
-                    >
-                    <button type="submit">Search</button>
-                    @if($attachProductSearch !== '')
-                        <a href="{{ $searchValue !== '' ? route('admin.categories.products.index', ['category' => $category, 'q' => $searchValue]) : route('admin.categories.products.index', $category) }}">Clear</a>
-                    @endif
-                </form>
-            </div>
+                <form method="POST" action="{{ route('admin.categories.products.update', $category) }}" class="category-product-attach-form" data-attach-products-form>
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" name="assignment_action" value="attach_products">
 
-            <form method="POST" action="{{ route('admin.categories.products.update', $category) }}" class="category-product-attach-form" data-attach-products-form>
-                @csrf
-                @method('PUT')
-                <input type="hidden" name="assignment_action" value="attach_products">
-
-                <div class="category-product-attach-toolbar">
-                    <label class="category-product-attach-select-all">
-                        <input id="attach-product-check-all" type="checkbox" data-attach-product-check-all>
-                        <span><span data-attach-selected-count>0</span> selected</span>
-                    </label>
-                    <p>Showing up to 100 products that are not already assigned to {{ $category->name }}.</p>
-                    <button type="submit" data-attach-products-submit disabled>Add selected products</button>
-                </div>
-
-                <div class="category-product-attach-results">
-                    @forelse($assignableProductOptions as $assignableProduct)
-                        @php
-                            $categoryLabel = $assignableProduct->subcategory?->name
-                                ?: $assignableProduct->category?->name
-                                ?: 'No primary category';
-                        @endphp
-                        <label class="category-product-attach-row" data-attach-product-row>
-                            <input
-                                type="checkbox"
-                                name="attach_product_ids[]"
-                                value="{{ $assignableProduct->id }}"
-                                data-attach-product-check
-                            >
-                            <span class="category-product-attach-thumb" aria-hidden="true">
-                                <img
-                                    src="{{ $assignableProduct->primaryImageUrl() }}"
-                                    alt=""
-                                    loading="lazy"
-                                    decoding="async"
-                                >
-                            </span>
-                            <span class="category-product-attach-main">
-                                <strong>{{ $assignableProduct->name }}</strong>
-                                <small>{{ $assignableProduct->sku ?: $assignableProduct->slug }}</small>
-                            </span>
-                            <span class="category-product-attach-meta">{{ $categoryLabel }}</span>
-                            <span class="category-product-attach-status {{ $assignableProduct->status === 'active' && $assignableProduct->is_active ? 'is-active' : '' }}">
-                                {{ $assignableProduct->status === 'active' && $assignableProduct->is_active ? 'Active' : ucfirst($assignableProduct->status) }}
-                            </span>
+                    <div class="category-product-attach-toolbar">
+                        <label class="category-product-attach-select-all">
+                            <input id="attach-product-check-all" type="checkbox" data-attach-product-check-all>
+                            <span><span data-attach-selected-count>0</span> selected</span>
                         </label>
+                        <p>Showing up to 100 products that are not already assigned to {{ $category->name }}.</p>
+                        <button type="submit" data-attach-products-submit disabled>Add selected products</button>
+                    </div>
+
+                    <div class="category-product-attach-results">
+                        @forelse($assignableProductOptions as $assignableProduct)
+                            @php
+                                $categoryLabel = $assignableProduct->subcategory?->name
+                                    ?: $assignableProduct->category?->name
+                                    ?: 'No primary category';
+                            @endphp
+                            <label class="category-product-attach-row" data-attach-product-row>
+                                <input
+                                    type="checkbox"
+                                    name="attach_product_ids[]"
+                                    value="{{ $assignableProduct->id }}"
+                                    data-attach-product-check
+                                >
+                                <span class="category-product-attach-thumb" aria-hidden="true">
+                                    <img
+                                        src="{{ $assignableProduct->primaryImageUrl() }}"
+                                        alt=""
+                                        loading="lazy"
+                                        decoding="async"
+                                    >
+                                </span>
+                                <span class="category-product-attach-main">
+                                    <strong>{{ $assignableProduct->name }}</strong>
+                                    <small>{{ $assignableProduct->sku ?: $assignableProduct->slug }}</small>
+                                </span>
+                                <span class="category-product-attach-meta">{{ $categoryLabel }}</span>
+                                <span class="category-product-attach-status {{ $assignableProduct->status === 'active' && $assignableProduct->is_active ? 'is-active' : '' }}">
+                                    {{ $assignableProduct->status === 'active' && $assignableProduct->is_active ? 'Active' : ucfirst($assignableProduct->status) }}
+                                </span>
+                            </label>
+                        @empty
+                            <div class="category-product-attach-empty">
+                                @if($attachProductSearch !== '')
+                                    No unassigned products matched “{{ $attachProductSearch }}”. Try another name, SKU, or slug.
+                                @else
+                                    No assignable products are available. All products may already be attached to this category.
+                                @endif
+                            </div>
+                        @endforelse
+                    </div>
+                </form>
+            </section>
+        @else
+            <section class="category-product-attach-card" aria-label="Choose a last-level category">
+                <div class="category-product-attach-header">
+                    <div>
+                        <span class="category-product-attach-eyebrow">Parent category</span>
+                        <h2>Products cannot be assigned directly to {{ $category->name }}</h2>
+                        <p>This category has children. Choose a last-level category below; only a category without children can hold products.</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-3 border-t border-slate-200 px-5 py-5 sm:px-6">
+                    @forelse($leafDestinationOptions as $leafCategory)
+                        <a
+                            href="{{ route('admin.categories.products.index', $leafCategory) }}"
+                            class="inline-flex min-h-11 items-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-extrabold text-brand-navy shadow-sm transition hover:border-brand-blue hover:text-brand-blue"
+                        >
+                            {{ str_repeat('— ', max(0, (int) $leafCategory->depth - (int) $category->depth - 1)) }}{{ $leafCategory->name }}
+                        </a>
                     @empty
-                        <div class="category-product-attach-empty">
-                            @if($attachProductSearch !== '')
-                                No unassigned products matched “{{ $attachProductSearch }}”. Try another name, SKU, or slug.
-                            @else
-                                No assignable products are available. All products may already be attached to this category.
-                            @endif
-                        </div>
+                        <p class="text-sm font-semibold text-slate-500">No last-level child category is available yet. Add a child category first.</p>
                     @endforelse
                 </div>
-            </form>
-        </section>
+            </section>
+        @endif
 
         <form id="category-products-form" method="POST" action="{{ route('admin.categories.products.update', $category) }}" class="space-y-4">
             @csrf
@@ -176,7 +198,7 @@
                     <div class="category-picker-panel">
                         <label class="category-picker-search">
                             <span class="sr-only">Search categories</span>
-                            <input type="search" placeholder="Search categories..." data-category-picker-search>
+                            <input type="search" placeholder="Search last-level categories..." data-category-picker-search>
                         </label>
                         <div class="category-picker-options" data-category-picker-options>
                             @foreach($bulkCategoryOptions as $option)
@@ -190,7 +212,7 @@
                     </div>
                 </details>
 
-                <p class="category-product-bulk-note">Select products, choose one or more categories, then Apply. Primary category tags are protected.</p>
+                <p class="category-product-bulk-note">Select products, choose one or more last-level categories, then Apply. Parent categories are never assigned directly.</p>
             </section>
 
             <section class="overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-card">
@@ -282,12 +304,12 @@
 
                                             <details class="category-picker category-picker--row" data-category-picker>
                                                 <summary>
-                                                    <span>+ Add subcategory</span>
+                                                    <span>+ Add last-level category</span>
                                                 </summary>
                                                 <div class="category-picker-panel">
                                                     <label class="category-picker-search">
-                                                        <span class="sr-only">Search subcategories</span>
-                                                        <input type="search" placeholder="Search subcategories..." data-category-picker-search>
+                                                        <span class="sr-only">Search last-level categories</span>
+                                                        <input type="search" placeholder="Search last-level categories..." data-category-picker-search>
                                                     </label>
                                                     <div class="category-picker-options" data-category-picker-options>
                                                         @forelse($rowSubcategoryOptions as $option)
@@ -296,7 +318,7 @@
                                                                 <span>{{ $optionDepthPadding($option) }}{{ $option->name }}</span>
                                                             </label>
                                                         @empty
-                                                            <p class="category-picker-empty">No more subcategories available.</p>
+                                                            <p class="category-picker-empty">No more last-level categories available.</p>
                                                         @endforelse
                                                     </div>
                                                     <button class="category-picker-apply" type="submit" name="assignment_action" value="save_category_changes">Apply</button>
@@ -343,23 +365,15 @@
                     </table>
                 </div>
 
-                <div class="flex flex-col gap-4 border-t border-slate-100 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
-                    <p class="text-sm font-medium text-slate-600">
-                        @if($total > 0)
-                            Showing {{ $from }}–{{ $to }} of {{ $total }} filtered {{ \Illuminate\Support\Str::plural('product', $total) }} in {{ $category->name }}
-                        @else
-                            Showing 0 products in {{ $category->name }}
-                        @endif
-                    </p>
-
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-                        <div class="admin-pagination">{{ $products->onEachSide(1)->links() }}</div>
-                        @if($products->count() > 0)
+                <div class="border-t border-slate-100 px-6 py-5">
+                    <div class="admin-pagination">{{ $products->links('pagination.nextplay', ['itemName' => 'product']) }}</div>
+                    @if($products->count() > 0)
+                        <div class="mt-4 flex justify-end">
                             <button class="inline-flex min-h-12 items-center justify-center rounded-xl bg-brand-navy px-5 text-sm font-extrabold text-white shadow-card transition hover:-translate-y-0.5 hover:bg-brand-dark" type="submit" name="assignment_action" value="save_category_changes">
                                 Apply Changes
                             </button>
-                        @endif
-                    </div>
+                        </div>
+                    @endif
                 </div>
             </section>
         </form>

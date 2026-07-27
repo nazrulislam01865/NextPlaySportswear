@@ -77,7 +77,7 @@ class OrderWorkflowService
     public function reorder(Order $order, array $payload): int
     {
         $selected = collect($payload['items'])->keyBy(fn (array $item): int => (int) $item['id']);
-        $added = 0;
+        $cartPayloads = [];
 
         $order->loadMissing('items');
         foreach ($order->items as $item) {
@@ -87,22 +87,19 @@ class OrderWorkflowService
             }
 
             $customization = (array) $item->customization;
-            try {
-                $this->cart->store([
-                    'product_slug' => $item->product_slug,
-                    'quantity' => (int) $selection['quantity'],
-                    'design_option' => $customization['design_option'] ?? 'Repeat order configuration',
-                    'delivery_preference' => $customization['delivery_preference'] ?? 'Standard production',
-                    'size_summary' => $customization['size_summary'] ?? 'Review sizes before checkout',
-                    'artwork_status' => $customization['artwork_status'] ?? 'Reuse prior artwork after review',
-                    'notes' => trim(($customization['notes'] ?? '')."\nRepeat of order {$order->order_number}; verify current availability and proof."),
-                    'configuration' => $customization['configuration'] ?? [],
-                ]);
-                $added++;
-            } catch (\Throwable) {
-                // Products removed from the live catalog are skipped rather than creating stale cart lines.
-            }
+            $cartPayloads[] = [
+                'product_slug' => $item->product_slug,
+                'quantity' => (int) $selection['quantity'],
+                'design_option' => $customization['design_option'] ?? 'Repeat order configuration',
+                'delivery_preference' => $customization['delivery_preference'] ?? 'Standard production',
+                'size_summary' => $customization['size_summary'] ?? 'Review sizes before checkout',
+                'artwork_status' => $customization['artwork_status'] ?? 'Reuse prior artwork after review',
+                'notes' => trim(($customization['notes'] ?? '')."\nRepeat of order {$order->order_number}; verify current availability and proof."),
+                'configuration' => $customization['configuration'] ?? [],
+            ];
         }
+
+        $added = $this->cart->storeMany($cartPayloads);
 
         if ($added === 0) {
             throw ValidationException::withMessages(['items' => 'None of the selected products are currently available for reorder.']);
@@ -243,6 +240,35 @@ class OrderWorkflowService
 
             throw $exception;
         }
+    }
+
+    public function approveAfterPayment(Order $order, User $admin): Order
+    {
+        return DB::transaction(function () use ($order, $admin): Order {
+            $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
+
+            if (! $locked->canApproveAfterPayment()) {
+                throw ValidationException::withMessages([
+                    'approval' => 'This order can only be approved after payment is marked as paid and before design review begins.',
+                ]);
+            }
+
+            $locked->update([
+                'status' => 'design_review',
+                'paid_at' => $locked->paid_at ?: now(),
+            ]);
+
+            $this->recordHistory(
+                $locked,
+                'design_review',
+                'Order approved for design review',
+                'Payment was confirmed and the order was approved to begin artwork and design review.',
+                $admin,
+                ['approved_after_payment' => true],
+            );
+
+            return $locked->fresh(['items', 'payments', 'histories']);
+        });
     }
 
     public function updateOrder(Order $order, User $admin, array $payload): Order

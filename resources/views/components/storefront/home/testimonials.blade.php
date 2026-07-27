@@ -1069,6 +1069,222 @@
             .np-review-platform-brand small { font-size: 13px; }
         }
 
+        /* Final compact customer-words sizing: shorter section and calmer typography. */
+        .np-testimonials-v2 {
+            padding: 18px 0 52px;
+        }
+
+        .np-testimonials-hero {
+            grid-template-columns: minmax(0, 1.28fr) minmax(460px, .92fr);
+            gap: clamp(36px, 4vw, 62px);
+            margin-bottom: 38px;
+        }
+
+        .np-testimonials-hero > div:first-child {
+            padding-top: 6px;
+        }
+
+        .np-testimonials-eyebrow {
+            font-size: 14px;
+            font-weight: 650;
+        }
+
+        .np-testimonials-eyebrow::before {
+            width: 31px;
+            height: 3px;
+        }
+
+        .np-testimonials-title {
+            max-width: 700px;
+            margin: 18px 0 16px;
+            font-size: clamp(48px, 4vw, 64px);
+            line-height: 1.01;
+            font-weight: 650;
+            letter-spacing: -.045em;
+        }
+
+        .np-testimonials-lead {
+            max-width: 760px;
+            font-size: clamp(17px, 1.25vw, 21px);
+            line-height: 1.48;
+        }
+
+        .np-testimonials-actions {
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .np-testimonials-btn {
+            min-height: 50px;
+            padding: 12px 21px;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .np-testimonials-btn.is-red {
+            padding-inline: 24px;
+            box-shadow: 0 12px 24px rgba(239, 35, 60, .18);
+        }
+
+        .np-review-platforms {
+            margin-top: 24px;
+            border-radius: 22px;
+            padding: 20px 20px 17px;
+            box-shadow: 0 14px 30px rgba(15, 23, 42, .07);
+        }
+
+        .np-review-platforms-header h3 {
+            margin-bottom: 6px;
+            font-size: 17px;
+            font-weight: 650;
+            letter-spacing: .075em;
+        }
+
+        .np-review-platforms-header p {
+            font-size: 15px;
+            line-height: 1.35;
+        }
+
+        .np-review-platforms-grid {
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .np-review-platform-card {
+            min-height: 126px;
+            gap: 11px;
+            padding: 14px 14px 13px;
+            border-radius: 16px;
+        }
+
+        .np-review-platform-icon {
+            width: 40px;
+            height: 40px;
+        }
+
+        .np-review-platform-brand {
+            gap: 9px;
+        }
+
+        .np-review-platform-brand strong {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .np-review-platform-brand small {
+            margin-top: 2px;
+            font-size: 12.5px;
+        }
+
+        .np-review-platform-brand .np-stars {
+            font-size: 15px;
+            letter-spacing: 1px;
+        }
+
+        .np-review-platform-action {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .np-review-platform-external {
+            width: 23px;
+            height: 23px;
+        }
+
+        .np-review-platforms-note {
+            margin-top: 13px;
+            padding-top: 12px;
+            font-size: 13.5px;
+        }
+
+        .np-featured-review {
+            min-height: 650px;
+            border-radius: 30px;
+            padding: 34px 32px 32px;
+            box-shadow: 0 20px 44px rgba(15, 23, 42, .12);
+        }
+
+        .np-featured-review::after {
+            top: -82px;
+            right: -64px;
+            width: 225px;
+            height: 225px;
+        }
+
+        .np-featured-rating {
+            gap: 13px;
+            font-size: 45px;
+            font-weight: 650;
+        }
+
+        .np-featured-rating .np-stars {
+            font-size: 42px;
+            letter-spacing: 3px;
+        }
+
+        .np-featured-quote {
+            max-width: 500px;
+            margin: 50px 0 28px;
+            font-size: clamp(31px, 2.35vw, 39px);
+            font-weight: 600;
+            line-height: 1.24;
+            letter-spacing: -.028em;
+        }
+
+        .np-testimonial-avatar {
+            width: 58px;
+            height: 58px;
+            border-radius: 16px;
+            font-size: 15px;
+        }
+
+        .np-featured-person strong {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .np-featured-person small {
+            margin-top: 5px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 1180px) and (min-width: 981px) {
+            .np-testimonials-hero {
+                grid-template-columns: minmax(0, 1.14fr) minmax(400px, .86fr);
+                gap: 30px;
+            }
+            .np-testimonials-title { font-size: clamp(44px, 4.6vw, 56px); }
+            .np-featured-review { min-height: 590px; padding: 30px 28px; }
+            .np-featured-rating { font-size: 40px; }
+            .np-featured-rating .np-stars { font-size: 35px; }
+            .np-featured-quote { margin-top: 40px; font-size: clamp(29px, 3vw, 35px); }
+            .np-review-platform-card { min-height: 120px; padding-inline: 11px; }
+            .np-review-platform-icon { width: 36px; height: 36px; }
+            .np-review-platform-brand strong { font-size: 14px; }
+            .np-review-platform-brand small { font-size: 11.5px; }
+            .np-review-platform-action { font-size: 12px; }
+        }
+
+        @media (max-width: 980px) {
+            .np-testimonials-v2 { padding-top: 36px; }
+            .np-testimonials-hero { grid-template-columns: minmax(0, 1fr); gap: 30px; }
+            .np-featured-review { min-height: 470px; }
+        }
+
+        @media (max-width: 700px) {
+            .np-testimonials-v2 { padding: 38px 0 48px; }
+            .np-testimonials-title { margin-top: 15px; font-size: clamp(36px, 10vw, 48px); }
+            .np-testimonials-lead { font-size: 16px; line-height: 1.5; }
+            .np-testimonials-actions { margin-top: 22px; }
+            .np-testimonials-btn { min-height: 46px; padding: 11px 16px; font-size: 13.5px; }
+            .np-review-platforms { margin-top: 22px; padding: 17px 15px 15px; }
+            .np-review-platform-card { min-height: 116px; padding: 13px; }
+            .np-featured-review { min-height: 430px; padding: 27px 22px; border-radius: 25px; }
+            .np-featured-rating { font-size: 36px; }
+            .np-featured-rating .np-stars { font-size: 28px; letter-spacing: 2px; }
+            .np-featured-quote { margin-top: 34px; font-size: clamp(26px, 7.8vw, 34px); }
+        }
+
     </style>
 
     <div class="np-testimonials-shell">

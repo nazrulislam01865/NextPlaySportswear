@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CategoryFormRequest;
 use App\Models\CatalogAttribute;
 use App\Models\Category;
-use App\Models\MenuItem;
 use App\Models\UrlRedirect;
+use App\Services\Catalog\CategoryDeletionService;
 use App\Services\Catalog\CategoryMediaService;
+use App\Services\Catalog\CategoryProductCountService;
 use App\Services\Catalog\CategoryTreeService;
+use App\Services\Catalog\LeafCategoryAssignmentService;
 use App\Services\Catalog\NavigationService;
 use App\Services\Security\SafeHtmlService;
 use Illuminate\Http\RedirectResponse;
@@ -24,6 +26,9 @@ class CategoryController extends Controller
 {
     public function __construct(
         private readonly CategoryTreeService $treeService,
+        private readonly CategoryDeletionService $deletionService,
+        private readonly CategoryProductCountService $productCountService,
+        private readonly LeafCategoryAssignmentService $leafAssignmentService,
         private readonly CategoryMediaService $mediaService,
         private readonly NavigationService $navigationService,
         private readonly SafeHtmlService $safeHtml,
@@ -42,6 +47,13 @@ class CategoryController extends Controller
             'empty' => $request->boolean('empty'),
         ];
 
+        $categoryProductCounts = $this->productCountService->allCounts();
+        $emptyCategoryIds = collect($categoryProductCounts)
+            ->filter(fn (int $count): bool => $count === 0)
+            ->keys()
+            ->map(fn ($id): int => (int) $id)
+            ->values();
+
         $query = Category::query()
             ->select([
                 'id', 'parent_id', 'name', 'menu_label', 'slug', 'category_type', 'page_template',
@@ -49,7 +61,7 @@ class CategoryController extends Controller
                 'is_featured', 'icon_path', 'icon_url', 'icon_alt', 'sort_order', 'updated_at', 'updated_by',
             ])
             ->with(['parent:id,name', 'updater:id,name'])
-            ->withCount(['children', 'products']);
+            ->withCount('children');
 
         if ($filters['q'] !== '') {
             $search = addcslashes($filters['q'], '\\%_');
@@ -69,17 +81,40 @@ class CategoryController extends Controller
         }
 
         if ($filters['empty']) {
-            $query->doesntHave('products');
+            if ($emptyCategoryIds->isEmpty()) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->whereIn('categories.id', $emptyCategoryIds->all());
+            }
         }
 
+        $categories = $query
+            ->orderBy('tree_path')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->paginate(40)
+            ->withQueryString();
+
+        $categoryDeleteImpacts = $this->deletionService->impactsFor($categories->getCollection());
+
+        $categories->getCollection()->each(function (Category $category) use ($categoryProductCounts): void {
+            $category->setAttribute(
+                'products_count',
+                (int) ($categoryProductCounts[(int) $category->id] ?? 0)
+            );
+        });
+
+        $emptyCategoryCount = $emptyCategoryIds->count();
+
         return view('admin.categories.index', [
-            'categories' => $query->orderBy('tree_path')->orderBy('sort_order')->orderBy('name')->paginate(40)->withQueryString(),
+            'categories' => $categories,
+            'categoryDeleteImpacts' => $categoryDeleteImpacts,
             'filters' => $filters,
             'analytics' => [
                 'total' => Category::query()->count(),
                 'active' => Category::query()->where('status', 'active')->where('is_active', true)->count(),
                 'featured' => Category::query()->whereNull('parent_id')->where('is_featured', true)->count(),
-                'empty' => Category::query()->doesntHave('products')->count(),
+                'empty' => $emptyCategoryCount,
                 'max_depth' => (int) Category::query()->max('depth'),
             ],
         ]);
@@ -130,9 +165,14 @@ class CategoryController extends Controller
             return $category;
         });
 
+        $normalizedProducts = $this->leafAssignmentService->enforce();
         $this->navigationService->flushCache();
 
-        return redirect()->route('admin.categories.edit', $category)->with('status', 'Category created successfully.');
+        $message = $normalizedProducts > 0
+            ? "Category created successfully. {$normalizedProducts} product(s) were made categoryless or moved to another valid leaf assignment because their former category now has children."
+            : 'Category created successfully.';
+
+        return redirect()->route('admin.categories.edit', $category)->with('status', $message);
     }
 
     public function edit(Category $category): View
@@ -177,7 +217,13 @@ class CategoryController extends Controller
             $this->navigationService->flushCache();
         });
 
-        return redirect()->route('admin.categories.edit', $category)->with('status', 'Category updated successfully.');
+        $normalizedProducts = $this->leafAssignmentService->enforce();
+
+        $message = $normalizedProducts > 0
+            ? "Category updated successfully. {$normalizedProducts} product assignment(s) were normalized because products can only stay on last-level categories."
+            : 'Category updated successfully.';
+
+        return redirect()->route('admin.categories.edit', $category)->with('status', $message);
     }
 
     public function duplicate(Category $category): RedirectResponse
@@ -237,26 +283,18 @@ class CategoryController extends Controller
 
     public function destroy(Category $category): RedirectResponse
     {
-        if ($category->children()->exists()) {
-            return back()->withErrors(['category' => 'Move or archive the child categories before deleting this category.']);
-        }
+        $categoryName = $category->name;
+        $impact = $this->deletionService->deleteSubtree($category);
 
-        if ($category->products()->exists() || $category->legacyProducts()->exists() || $category->subcategoryProducts()->exists()) {
-            return back()->withErrors(['category' => 'This category is assigned to products. Remove those assignments before deleting it.']);
-        }
-
-        if (MenuItem::query()->where('category_id', $category->id)->exists()) {
-            return back()->withErrors(['category' => 'This category is used by a navigation menu. Remove the menu links first.']);
-        }
-
-        DB::transaction(function () use ($category): void {
-            $this->mediaService->deleteAll($category);
-            $category->delete();
-            $this->treeService->rebuildClosure();
-            $this->navigationService->flushCache();
-        });
-
-        return redirect()->route('admin.categories.index')->with('status', 'Category moved to trash.');
+        return redirect()->route('admin.categories.index')->with(
+            'status',
+            sprintf(
+                '%s deleted with %d child category record(s). %d affected product(s) were kept and made categoryless.',
+                $categoryName,
+                $impact['child_category_count'],
+                $impact['product_count'],
+            )
+        );
     }
 
     private function formView(string $view, Category $category): View

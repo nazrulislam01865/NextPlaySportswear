@@ -46,6 +46,15 @@ class ProductConfigurationBackendTest extends TestCase
         $this->assertSame('nba', $item['customization']['configuration']['selections']['fabric']);
         $this->assertCount(2, $item['customization']['configuration']['roster']);
         $this->assertSame('S', $item['customization']['configuration']['roster'][0]['size_label']);
+        $this->assertSame('Adult: S × 2', $item['customization']['size_summary']);
+        $this->assertSame([
+            'group_id' => 'adult',
+            'group_label' => 'Adult',
+            'size_code' => 's',
+            'size_label' => 'S',
+            'quantity' => 2,
+        ], $item['customization']['size_breakdown'][0]);
+        $this->assertSame('Name', $item['customization']['roster_fields'][0]['label']);
         $this->assertEqualsWithDelta(5.50, $item['customization_unit_price'], 0.001);
         $this->assertEqualsWithDelta(23.00, $item['line_total'], 0.001);
     }

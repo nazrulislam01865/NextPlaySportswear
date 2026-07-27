@@ -129,18 +129,63 @@ class CategoryTreeService
             });
     }
 
+    /** @return Collection<int, Category> */
+    public function leafOptions(): Collection
+    {
+        return Category::query()
+            ->leaf()
+            ->orderBy('tree_path')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(function (Category $category): Category {
+                $category->setAttribute('indented_name', str_repeat('— ', $category->depth).$category->name);
+
+                return $category;
+            });
+    }
+
     /** @return array<int> */
     public function descendantIds(int $categoryId, bool $includeSelf = false): array
     {
-        $query = DB::table('category_closure')
+        $closureIds = DB::table('category_closure')
             ->where('ancestor_id', $categoryId)
-            ->orderBy('depth');
+            ->when(! $includeSelf, fn ($query) => $query->where('depth', '>', 0))
+            ->orderBy('depth')
+            ->pluck('descendant_id')
+            ->map(fn ($id): int => (int) $id);
 
-        if (! $includeSelf) {
-            $query->where('depth', '>', 0);
-        }
+        // Imported or recently-reordered trees can briefly have incomplete
+        // closure rows. Follow parent_id as a safe fallback so parent category
+        // product pages and recursive totals never become empty or inconsistent.
+        $categoriesByParent = Category::query()
+            ->get(['id', 'parent_id'])
+            ->groupBy(fn (Category $category): int => (int) ($category->parent_id ?? 0));
 
-        return $query->pluck('descendant_id')->map(fn ($id) => (int) $id)->all();
+        $fallbackIds = [];
+        $visited = [];
+        $walk = function (int $id) use (&$walk, &$fallbackIds, &$visited, $categoriesByParent): void {
+            if (isset($visited[$id])) {
+                return;
+            }
+
+            $visited[$id] = true;
+            $fallbackIds[] = $id;
+
+            foreach (($categoriesByParent->get($id) ?? collect()) as $child) {
+                $walk((int) $child->id);
+            }
+        };
+        $walk($categoryId);
+
+        return $closureIds
+            ->merge($fallbackIds)
+            ->map(fn ($id): int => (int) $id)
+            ->when(! $includeSelf, fn (Collection $ids): Collection => $ids->reject(fn (int $id): bool => $id === $categoryId))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /** @return Collection<int, Category> */
@@ -190,7 +235,7 @@ class CategoryTreeService
 
     public function rebuildClosure(): void
     {
-        $categories = Category::query()->withTrashed()->select(['id', 'parent_id'])->get()->keyBy('id');
+        $categories = Category::query()->select(['id', 'parent_id'])->get()->keyBy('id');
         $resolved = [];
         $visiting = [];
         $rows = [];

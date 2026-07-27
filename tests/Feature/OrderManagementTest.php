@@ -71,6 +71,118 @@ class OrderManagementTest extends TestCase
             ->assertSee($order->order_number);
     }
 
+    public function test_admin_order_view_shows_sizes_roster_and_private_artwork(): void
+    {
+        Storage::fake('local');
+        $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $order = $this->orderFor($this->customer(), [
+            'status' => 'payment_review',
+            'payment_status' => 'paid',
+            'paid_at' => now(),
+        ]);
+        $item = $order->items()->firstOrFail();
+        $artworkPath = 'customer-artwork/testing/team-logo.png';
+        Storage::disk('local')->put($artworkPath, 'fake-png-content');
+
+        $item->update([
+            'customization' => [
+                'design_option' => 'Fabric: Pro Mesh; Color: Navy',
+                'size_summary' => 'Adult: Medium × 1, Large × 1',
+                'size_breakdown' => [
+                    ['group_label' => 'Adult', 'size_code' => 'M', 'size_label' => 'Medium', 'quantity' => 1],
+                    ['group_label' => 'Adult', 'size_code' => 'L', 'size_label' => 'Large', 'quantity' => 1],
+                ],
+                'roster_fields' => [
+                    ['key' => 'player_name', 'label' => 'Player Name', 'type' => 'text'],
+                    ['key' => 'jersey_number', 'label' => 'Jersey Number', 'type' => 'number'],
+                ],
+                'configuration' => [
+                    'roster_enabled' => true,
+                    'roster' => [
+                        [
+                            'size_group_label' => 'Adult',
+                            'size_code' => 'M',
+                            'size_label' => 'Medium',
+                            'values' => ['player_name' => 'Alex Morgan', 'jersey_number' => '13'],
+                        ],
+                        [
+                            'size_group_label' => 'Adult',
+                            'size_code' => 'L',
+                            'size_label' => 'Large',
+                            'values' => ['player_name' => 'Sam Lee', 'jersey_number' => '8'],
+                        ],
+                    ],
+                ],
+                'artwork_files' => [
+                    [
+                        'path' => $artworkPath,
+                        'original_name' => 'team-logo.png',
+                        'size' => 2048,
+                        'mime_type' => 'image/png',
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.orders.show', $order))
+            ->assertOk()
+            ->assertSee('Selected Sizes')
+            ->assertSee('Medium')
+            ->assertSee('Large')
+            ->assertSee('Roster Details')
+            ->assertSee('Alex Morgan')
+            ->assertSee('Jersey Number')
+            ->assertSee('team-logo.png')
+            ->assertSee('Approve Order &amp; Start Design Review', false);
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.orders.artwork.show', [$order, $item, 0]))
+            ->assertOk()
+            ->assertHeader('content-type', 'image/png')
+            ->assertHeader('content-disposition', 'inline; filename="team-logo.png"');
+    }
+
+    public function test_paid_order_can_be_approved_for_design_review(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $order = $this->orderFor($this->customer(), [
+            'status' => 'payment_review',
+            'payment_status' => 'paid',
+            'paid_at' => now(),
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->patch(route('admin.orders.approve', $order))
+            ->assertRedirect();
+
+        $order->refresh();
+        $this->assertSame('design_review', $order->status);
+        $this->assertSame('paid', $order->payment_status);
+        $this->assertDatabaseHas('order_status_histories', [
+            'order_id' => $order->id,
+            'status' => 'design_review',
+            'title' => 'Order approved for design review',
+        ]);
+    }
+
+    public function test_unpaid_order_cannot_be_approved(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $order = $this->orderFor($this->customer(), [
+            'status' => 'payment_review',
+            'payment_status' => 'pending',
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->from(route('admin.orders.show', $order))
+            ->patch(route('admin.orders.approve', $order))
+            ->assertRedirect(route('admin.orders.show', $order))
+            ->assertSessionHasErrors('approval');
+
+        $this->assertSame('payment_review', $order->fresh()->status);
+    }
+
     public function test_shipment_status_updates_drive_order_fulfillment_without_duplicate_allocation(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);

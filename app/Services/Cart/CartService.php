@@ -15,6 +15,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class CartService
 {
@@ -22,6 +23,9 @@ class CartService
     private const SESSION_COUPON_KEY = 'nextplay_cart.coupon_code';
 
     private ?bool $databaseCartIsAvailable = null;
+
+    /** @var array<int, array<string, mixed>> */
+    private array $headerSummaryCache = [];
 
     public function __construct(
         private readonly ProductCatalogService $products,
@@ -76,6 +80,93 @@ class CartService
             'checkout_ready' => count($items) > 0,
             'trust_points' => $this->trustPoints(),
             'payment_badges' => ['Visa', 'Mastercard', 'PayPal', 'Stripe', 'Bank Transfer'],
+        ];
+    }
+
+
+    /**
+     * Return the small, read-only cart payload used by the global header.
+     *
+     * This intentionally uses the persisted cart item snapshot and calculated
+     * totals. It never reloads the full product builder configuration, reprices
+     * items, validates coupons, or writes to the database while rendering a page.
+     *
+     * @return array<string, mixed>
+     */
+    public function headerSummary(int $limit = 4): array
+    {
+        $limit = max(1, min($limit, 8));
+
+        if (array_key_exists($limit, $this->headerSummaryCache)) {
+            return $this->headerSummaryCache[$limit];
+        }
+
+        $legacyItems = collect((array) session(self::SESSION_ITEMS_KEY, []))
+            ->map(fn (mixed $item): array => $this->headerItemFromArray((array) $item))
+            ->filter()
+            ->values();
+
+        $databaseItems = collect();
+        $databaseItemCount = 0;
+        $databaseQuantity = 0;
+        $databaseTotal = 0.0;
+
+        if ($this->databaseCartAvailable()) {
+            $cart = $this->currentCartReadOnly();
+
+            if ($cart instanceof ShoppingCart) {
+                $totals = $cart->items()
+                    ->selectRaw('COUNT(*) as item_count')
+                    ->selectRaw('COALESCE(SUM(quantity), 0) as total_quantity')
+                    ->selectRaw('COALESCE(SUM(line_subtotal + customization_total), 0) as current_total')
+                    ->first();
+
+                $databaseItemCount = (int) ($totals?->item_count ?? 0);
+                $databaseQuantity = (int) ($totals?->total_quantity ?? 0);
+                $databaseTotal = (float) ($totals?->current_total ?? 0);
+
+                $databaseItems = $cart->items()
+                    ->select([
+                        'item_key',
+                        'product_slug',
+                        'quantity',
+                        'unit_price',
+                        'line_subtotal',
+                        'customization_total',
+                        'line_total',
+                        'product_snapshot',
+                        'created_at',
+                    ])
+                    ->orderBy('created_at')
+                    ->limit($limit)
+                    ->get()
+                    ->map(fn (ShoppingCartItem $item): array => $this->headerItemFromRecord($item))
+                    ->filter()
+                    ->values();
+            }
+        }
+
+        $legacyItemCount = $legacyItems->count();
+        $legacyQuantity = (int) $legacyItems->sum('quantity');
+        $legacyTotal = (float) $legacyItems->sum('line_total');
+        $items = $databaseItems
+            ->concat($legacyItems)
+            ->take($limit)
+            ->values();
+
+        $totalItems = $databaseItemCount + $legacyItemCount;
+        $quantity = $databaseQuantity + $legacyQuantity;
+        $total = round($databaseTotal + $legacyTotal, 2);
+
+        return $this->headerSummaryCache[$limit] = [
+            'items' => $items->all(),
+            'total_items' => $totalItems,
+            'remaining_items' => max(0, $totalItems - $items->count()),
+            'quantity' => $quantity,
+            'subtotal' => $total,
+            'total' => $total,
+            'is_empty' => $totalItems === 0,
+            'checkout_ready' => $totalItems > 0,
         ];
     }
 
@@ -142,24 +233,7 @@ class CartService
 
     public function store(array $payload): array
     {
-        $product = $this->products->findBySlug($payload['product_slug']);
-
-        abort_if($product === null, 404);
-
-        $customization = $this->sanitizeCustomization($payload, $product, (int) ($payload['quantity'] ?? 1));
-        $configuredQuantity = (int) collect($customization['configuration']['quantities'] ?? [])->sum();
-        $quantity = $this->sanitizeQuantity($configuredQuantity > 0 ? $configuredQuantity : (int) ($payload['quantity'] ?? 1), $product);
-        $this->validateRequiredConfiguration($product, $customization);
-        $key = $this->makeItemKey($product['slug'], $customization);
-
-        $item = $this->repriceItem([
-            'key' => $key,
-            'product_slug' => $product['slug'],
-            'quantity' => $quantity,
-            'customization' => $customization,
-            'created_at' => now()->toIso8601String(),
-            'updated_at' => now()->toIso8601String(),
-        ]);
+        $item = $this->prepareCartItem($payload);
 
         if (! $this->databaseCartAvailable()) {
             return $this->storeSessionItem($item, true);
@@ -175,6 +249,60 @@ class CartService
         return $this->summary();
     }
 
+    /**
+     * Add several prepared product selections while resolving and touching the
+     * active cart only once. This is used by Order Again to avoid recalculating
+     * the complete cart after every individual order item.
+     *
+     * Invalid or unpublished products are skipped, matching the existing
+     * repeat-order behaviour.
+     *
+     * @param  array<int, array<string, mixed>>  $payloads
+     */
+    public function storeMany(array $payloads): int
+    {
+        if ($payloads === []) {
+            return 0;
+        }
+
+        if (! $this->databaseCartAvailable()) {
+            $added = 0;
+
+            foreach ($payloads as $payload) {
+                try {
+                    $this->store((array) $payload);
+                    $added++;
+                } catch (HttpExceptionInterface) {
+                    // Removed or invalid catalog products are skipped.
+                }
+            }
+
+            return $added;
+        }
+
+        $cart = $this->currentCart(true);
+        abort_unless($cart instanceof ShoppingCart, 500, 'Unable to create a shopping cart.');
+
+        $this->importLegacySessionCart($cart);
+        $added = 0;
+
+        foreach ($payloads as $payload) {
+            try {
+                $item = $this->prepareCartItem((array) $payload);
+                $this->persistCartItem($cart, $item, true);
+                $added++;
+            } catch (HttpExceptionInterface) {
+                // Removed or invalid catalog products are skipped.
+            }
+        }
+
+        if ($added > 0) {
+            $this->touchCart($cart);
+        }
+
+        return $added;
+    }
+
     public function replace(string $key, array $payload): array
     {
         $existing = $this->findItem($key);
@@ -186,7 +314,7 @@ class CartService
             'The selected product does not match this cart item.'
         );
 
-        $product = $this->products->findBySlug((string) $payload['product_slug']);
+        $product = $this->products->findFullBySlug((string) $payload['product_slug']);
 
         abort_if($product === null, 404);
 
@@ -261,7 +389,7 @@ class CartService
         $record = $cart->items()->where('item_key', $key)->first();
 
         if ($record instanceof ShoppingCartItem) {
-            $product = $this->products->findBySlug((string) $record->product_slug);
+            $product = $this->products->findFullBySlug((string) $record->product_slug);
             $quantity = $product ? $this->sanitizeQuantity($quantity, $product) : max(1, $quantity);
             $record->quantity = $quantity;
             if ($product) {
@@ -490,6 +618,107 @@ class CartService
         });
     }
 
+
+    private function currentCartReadOnly(): ?ShoppingCart
+    {
+        $user = $this->currentUser();
+        $sessionId = $this->sessionId();
+
+        if ($user instanceof User) {
+            return ShoppingCart::query()
+                ->where('user_id', $user->id)
+                ->where('status', 'active')
+                ->latest('updated_at')
+                ->first();
+        }
+
+        if ($sessionId === '') {
+            return null;
+        }
+
+        return ShoppingCart::query()
+            ->whereNull('user_id')
+            ->where('session_id', $sessionId)
+            ->where('status', 'active')
+            ->latest('updated_at')
+            ->first();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function headerItemFromRecord(ShoppingCartItem $record): array
+    {
+        return $this->headerItemFromArray([
+            'key' => $record->item_key,
+            'product_slug' => $record->product_slug,
+            'quantity' => (int) $record->quantity,
+            'unit_price' => (float) $record->unit_price,
+            'line_subtotal' => (float) $record->line_subtotal,
+            'customization_total' => (float) $record->customization_total,
+            'line_total' => (float) $record->line_total,
+            'product' => (array) ($record->product_snapshot ?? []),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function headerItemFromArray(array $item): array
+    {
+        $slug = trim((string) ($item['product_slug'] ?? data_get($item, 'product.slug', '')));
+        $quantity = max(0, (int) ($item['quantity'] ?? 0));
+
+        if ($slug === '' || $quantity < 1) {
+            return [];
+        }
+
+        $product = (array) ($item['product'] ?? $item['product_snapshot'] ?? []);
+        $title = trim((string) ($product['short_title'] ?? $product['title'] ?? ''));
+
+        if ($title === '') {
+            $title = str($slug)->replace('-', ' ')->headline()->toString();
+        }
+
+        $unitPrice = (float) ($item['unit_price'] ?? $product['base_price'] ?? 0);
+        $hasMerchandiseBreakdown = array_key_exists('line_subtotal', $item)
+            || array_key_exists('customization_total', $item);
+        $lineTotal = $hasMerchandiseBreakdown
+            ? (float) ($item['line_subtotal'] ?? ($unitPrice * $quantity))
+                + (float) ($item['customization_total'] ?? 0)
+            : (float) ($item['line_total'] ?? 0);
+
+        if ($lineTotal <= 0) {
+            $lineTotal = ($unitPrice + (float) ($item['customization_unit_price'] ?? 0)) * $quantity;
+        }
+
+        $product = array_merge([
+            'slug' => $slug,
+            'title' => $title,
+            'short_title' => $title,
+            'image' => asset('images/product-placeholder.svg'),
+            'alt' => $title,
+            'url' => route('products.show', $slug),
+        ], $product);
+
+        if (blank($product['url'] ?? null)) {
+            $product['url'] = route('products.show', $slug);
+        }
+
+        if (blank($product['image'] ?? null)) {
+            $product['image'] = asset('images/product-placeholder.svg');
+        }
+
+        return [
+            'key' => (string) ($item['key'] ?? ''),
+            'product_slug' => $slug,
+            'product' => $product,
+            'quantity' => $quantity,
+            'unit_price' => round($unitPrice, 2),
+            'line_total' => round($lineTotal, 2),
+        ];
+    }
+
     private function databaseCartAvailable(): bool
     {
         return $this->databaseCartIsAvailable ??= Schema::hasTable('shopping_carts')
@@ -593,12 +822,38 @@ class CartService
         return $priced;
     }
 
+    /** @return array<string, mixed> */
+    private function prepareCartItem(array $payload): array
+    {
+        $product = $this->products->findFullBySlug((string) ($payload['product_slug'] ?? ''));
+
+        abort_if($product === null, 404);
+
+        $customization = $this->sanitizeCustomization($payload, $product, (int) ($payload['quantity'] ?? 1));
+        $configuredQuantity = (int) collect($customization['configuration']['quantities'] ?? [])->sum();
+        $quantity = $this->sanitizeQuantity(
+            $configuredQuantity > 0 ? $configuredQuantity : (int) ($payload['quantity'] ?? 1),
+            $product
+        );
+        $this->validateRequiredConfiguration($product, $customization);
+        $key = $this->makeItemKey($product['slug'], $customization);
+
+        return $this->repriceItem([
+            'key' => $key,
+            'product_slug' => $product['slug'],
+            'quantity' => $quantity,
+            'customization' => $customization,
+            'created_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
+    }
+
     private function persistCartItem(ShoppingCart $cart, array $item, bool $merge): ShoppingCartItem
     {
         $record = $cart->items()->where('item_key', $item['key'])->first();
 
         if ($record instanceof ShoppingCartItem && $merge) {
-            $product = $this->products->findBySlug((string) $item['product_slug']);
+            $product = $this->products->findFullBySlug((string) $item['product_slug']);
             $record->quantity = $product
                 ? $this->sanitizeQuantity(((int) $record->quantity) + ((int) $item['quantity']), $product)
                 : ((int) $record->quantity) + ((int) $item['quantity']);
@@ -728,7 +983,7 @@ class CartService
         $existingIndex = collect($items)->search(fn (array $cartItem): bool => $cartItem['key'] === $item['key']);
 
         if ($existingIndex !== false && $merge) {
-            $product = $this->products->findBySlug((string) $item['product_slug']);
+            $product = $this->products->findFullBySlug((string) $item['product_slug']);
             $items[$existingIndex]['quantity'] = $product
                 ? $this->sanitizeQuantity((int) $items[$existingIndex]['quantity'] + (int) $item['quantity'], $product)
                 : (int) $items[$existingIndex]['quantity'] + (int) $item['quantity'];
@@ -747,7 +1002,7 @@ class CartService
         $items = collect($this->sessionItems())
             ->map(function (array $item) use ($key, $quantity): array {
                 if (hash_equals($item['key'], $key)) {
-                    $product = $this->products->findBySlug((string) $item['product_slug']);
+                    $product = $this->products->findFullBySlug((string) $item['product_slug']);
                     $quantity = $product ? $this->sanitizeQuantity($quantity, $product) : max(1, $quantity);
                     $item['quantity'] = $quantity;
                     if ($product) {
@@ -780,7 +1035,7 @@ class CartService
 
     private function repriceItem(array $item): array
     {
-        $product = $this->products->findBySlug((string) ($item['product_slug'] ?? ''));
+        $product = $this->products->findFullBySlug((string) ($item['product_slug'] ?? ''));
 
         if ($product === null) {
             return [];
@@ -887,11 +1142,16 @@ class CartService
         }
 
         $firstArtwork = $artworkFiles->first();
+        $sizeBreakdown = $this->sizeBreakdown($configuration, $product);
+        $rosterFields = $this->rosterFieldSnapshot($product);
+        $normalizedSizeSummary = $this->resolvedSizeSummary($sizeSummary, $sizeBreakdown);
 
         return [
             'design_option' => $designOption === '' ? 'Configured product' : $designOption,
             'delivery_preference' => $secureDeliveryLabels ?: ($deliveryPreference === '' ? 'Standard production' : $deliveryPreference),
-            'size_summary' => $sizeSummary === '' ? 'Sizes selected in configuration' : $sizeSummary,
+            'size_summary' => $normalizedSizeSummary,
+            'size_breakdown' => $sizeBreakdown,
+            'roster_fields' => $rosterFields,
             'artwork_status' => $artworkFiles->isNotEmpty()
                 ? $artworkFiles->count().' artwork file'.($artworkFiles->count() === 1 ? '' : 's').' uploaded'
                 : ($artworkStatus === '' ? 'No artwork uploaded' : $artworkStatus),
@@ -903,6 +1163,84 @@ class CartService
             'artwork_path' => $firstArtwork['path'] ?? null,
             'artwork_original_name' => $firstArtwork['original_name'] ?? null,
         ];
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function sizeBreakdown(array $configuration, array $product): array
+    {
+        $quantities = (array) ($configuration['quantities'] ?? []);
+
+        return collect((array) ($product['size_groups'] ?? []))
+            ->flatMap(function (array $group) use ($quantities): array {
+                $groupId = (string) ($group['id'] ?? '');
+                $groupLabel = (string) ($group['label'] ?? 'Sizes');
+
+                return collect((array) ($group['sizes'] ?? []))
+                    ->map(function (array $size) use ($quantities, $groupId, $groupLabel): ?array {
+                        $sizeCode = (string) ($size['code'] ?? '');
+                        $quantity = max(0, (int) ($quantities[$groupId.':'.$sizeCode] ?? 0));
+
+                        if ($quantity < 1) {
+                            return null;
+                        }
+
+                        return [
+                            'group_id' => $groupId,
+                            'group_label' => $groupLabel,
+                            'size_code' => $sizeCode,
+                            'size_label' => (string) ($size['label'] ?? $sizeCode),
+                            'quantity' => $quantity,
+                        ];
+                    })
+                    ->filter()
+                    ->values()
+                    ->all();
+            })
+            ->values()
+            ->all();
+    }
+
+    /** @return array<int, array{key:string,label:string,type:string}> */
+    private function rosterFieldSnapshot(array $product): array
+    {
+        return collect((array) data_get($product, 'jersey_roster.fields', []))
+            ->filter(fn ($field): bool => is_array($field) && (bool) ($field['enabled'] ?? true) && filled($field['key'] ?? null))
+            ->map(fn (array $field): array => [
+                'key' => (string) $field['key'],
+                'label' => (string) ($field['label'] ?? Str::headline((string) $field['key'])),
+                'type' => (string) ($field['type'] ?? 'text'),
+            ])
+            ->unique('key')
+            ->values()
+            ->all();
+    }
+
+    /** @param array<int, array<string, mixed>> $sizeBreakdown */
+    private function resolvedSizeSummary(string $submittedSummary, array $sizeBreakdown): string
+    {
+        $submittedSummary = trim($submittedSummary);
+        $genericSummary = $submittedSummary === ''
+            || strcasecmp($submittedSummary, 'Sizes selected in configuration') === 0;
+
+        if (! $genericSummary) {
+            return $submittedSummary;
+        }
+
+        $generated = collect($sizeBreakdown)
+            ->groupBy(fn (array $line): string => (string) ($line['group_label'] ?? 'Sizes'))
+            ->map(function ($lines, string $groupLabel): string {
+                $sizes = $lines->map(fn (array $line): string => sprintf(
+                    '%s × %d',
+                    (string) ($line['size_label'] ?? $line['size_code'] ?? 'Size'),
+                    (int) ($line['quantity'] ?? 0),
+                ))->filter()->implode(', ');
+
+                return $sizes === '' ? '' : $groupLabel.': '.$sizes;
+            })
+            ->filter()
+            ->implode('; ');
+
+        return $generated !== '' ? $generated : 'Sizes selected in configuration';
     }
 
     /**
@@ -1721,7 +2059,7 @@ class CartService
 
         return collect($preview)
             ->map(function (array $item): array {
-                $product = $this->products->findBySlug($item['product_slug']);
+                $product = $this->products->findFullBySlug($item['product_slug']);
                 if ($product === null) {
                     return [];
                 }

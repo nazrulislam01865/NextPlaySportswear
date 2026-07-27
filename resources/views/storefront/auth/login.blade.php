@@ -50,12 +50,11 @@
                 />
 
                 <div>
-                    <div class="mb-2 flex items-center justify-between gap-3">
+                    <div class="mb-2 flex items-center justify-between gap-4">
                         <label for="password" class="block text-sm font-black text-slate-800">
                             Password <span class="text-brand-red">*</span>
                         </label>
-
-                        <a href="{{ route('password.request') }}" class="text-sm font-black text-brand-blue hover:text-brand-red">
+                        <a href="{{ route('password.request') }}" class="text-sm font-black text-brand-blue transition hover:text-brand-red focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/15">
                             Forgot password?
                         </a>
                     </div>

@@ -31,6 +31,7 @@
     x-effect="document.documentElement.classList.toggle('overflow-hidden', sidebarOpen)"
     @keydown.escape.window="sidebarOpen = false"
 >
+    <a class="admin-skip-link" href="#admin-main-content">Skip to main content</a>
     <div class="min-h-screen lg:grid lg:grid-cols-[var(--admin-sidebar-width,256px)_minmax(0,1fr)] lg:items-start" data-admin-shell>
         <div x-cloak x-show="sidebarOpen" x-transition.opacity class="fixed inset-0 z-40 bg-slate-950/60 lg:hidden" @click="sidebarOpen = false" aria-hidden="true"></div>
 
@@ -59,7 +60,7 @@
                     <x-admin.sidebar-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')" icon="▦">Dashboard</x-admin.sidebar-link>
                 @endif
 
-                @if($canAdmin('products.view') || $canAdmin('categories.view') || $canAdmin('attributes.view') || $canAdmin('menus.view') || $canAdmin('inventory.view'))
+                @if($canAdmin('products.view') || $canAdmin('categories.view') || $canAdmin('attributes.view') || $canAdmin('menus.view'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Catalog</p>
                     @if($canAdmin('products.view'))
                         <x-admin.sidebar-link :href="route('admin.products.index')" :active="request()->routeIs('admin.products.*')" icon="◇">Products</x-admin.sidebar-link>
@@ -86,9 +87,6 @@
                     @endif
                     @if($canAdmin('menus.view'))
                         <x-admin.sidebar-link :href="route('admin.menus.index')" :active="request()->routeIs('admin.menus.*')" icon="☷">Navigation Menus</x-admin.sidebar-link>
-                    @endif
-                    @if($canAdmin('inventory.view'))
-                        <x-admin.sidebar-link :href="route('admin.modules.show', 'inventory')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'inventory'" icon="▤">Inventory</x-admin.sidebar-link>
                     @endif
                 @endif
 
@@ -251,7 +249,7 @@
                     </x-admin.sidebar-group>
                 @endif
 
-                @if($canAdmin('orders.view') || $canAdmin('returns.view') || $canAdmin('customers.view') || $canAdmin('coupons.view') || $canAdmin('reviews.view'))
+                @if($canAdmin('orders.view') || $canAdmin('returns.view') || $canAdmin('coupons.view'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Commerce</p>
                     @if($canAdmin('orders.view'))
                         <x-admin.sidebar-link :href="route('admin.orders.index')" :active="request()->routeIs('admin.orders.*')" icon="▣">Orders</x-admin.sidebar-link>
@@ -259,18 +257,12 @@
                     @if($canAdmin('returns.view'))
                         <x-admin.sidebar-link :href="route('admin.returns.index')" :active="request()->routeIs('admin.returns.*')" icon="↶">Returns & Exchanges</x-admin.sidebar-link>
                     @endif
-                    @if($canAdmin('customers.view'))
-                        <x-admin.sidebar-link :href="route('admin.modules.show', 'customers')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'customers'" icon="♙">Customers</x-admin.sidebar-link>
-                    @endif
                     @if($canAdmin('coupons.view'))
                         <x-admin.sidebar-link :href="route('admin.coupons.index')" :active="request()->routeIs('admin.coupons.*')" icon="%">Discounts & Coupons</x-admin.sidebar-link>
                     @endif
-                    @if($canAdmin('reviews.view'))
-                        <x-admin.sidebar-link :href="route('admin.modules.show', 'reviews')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'reviews'" icon="★">Reviews</x-admin.sidebar-link>
-                    @endif
                 @endif
 
-                @if($canAdmin('homepage_sections.view') || $canAdmin('homepage_slides.view') || $canAdmin('content.view') || $canAdmin('newsletters.view') || $canAdmin('rural_surcharges.view') || $canAdmin('taxes.view') || $canAdmin('payment_methods.view') || $canAdmin('reports.view') || $canAdmin('settings.view'))
+                @if($canAdmin('homepage_sections.view') || $canAdmin('homepage_slides.view') || $canAdmin('newsletters.view') || $canAdmin('rural_surcharges.view') || $canAdmin('payment_methods.view'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Store</p>
                     @if($canAdmin('homepage_sections.view'))
                         @php($homepageDefinitions = \App\Support\HomepageSectionRegistry::orderedDefinitions())
@@ -293,26 +285,14 @@
                     @elseif($canAdmin('homepage_slides.view'))
                         <x-admin.sidebar-link :href="route('admin.homepage-slides.index')" :active="request()->routeIs('admin.homepage-slides.*')" icon="▧">Homepage Slider</x-admin.sidebar-link>
                     @endif
-                    @if($canAdmin('content.view'))
-                        <x-admin.sidebar-link :href="route('admin.modules.show', 'content')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'content'" icon="✎">Content & Navigation</x-admin.sidebar-link>
-                    @endif
                     @if($canAdmin('newsletters.view'))
                         <x-admin.sidebar-link :href="route('admin.newsletter-subscribers.index')" :active="request()->routeIs('admin.newsletter-subscribers.*')" icon="@">Newsletter Emails</x-admin.sidebar-link>
                     @endif
                     @if($canAdmin('rural_surcharges.view'))
                         <x-admin.sidebar-link :href="route('admin.rural-area-surcharges.index')" :active="request()->routeIs('admin.rural-area-surcharges.*')" icon="⌁">Rural Surcharges</x-admin.sidebar-link>
                     @endif
-                    @if($canAdmin('taxes.view'))
-                        <x-admin.sidebar-link :href="route('admin.modules.show', 'taxes')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'taxes'" icon="§">Taxes</x-admin.sidebar-link>
-                    @endif
                     @if($canAdmin('payment_methods.view'))
                         <x-admin.sidebar-link :href="route('admin.payment-methods.index')" :active="request()->routeIs('admin.payment-methods.*')" icon="$">Payment Methods</x-admin.sidebar-link>
-                    @endif
-                    @if($canAdmin('reports.view'))
-                        <x-admin.sidebar-link :href="route('admin.modules.show', 'reports')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'reports'" icon="↗">Reports</x-admin.sidebar-link>
-                    @endif
-                    @if($canAdmin('settings.view'))
-                        <x-admin.sidebar-link :href="route('admin.modules.show', 'settings')" :active="request()->routeIs('admin.modules.show') && request()->route('module') === 'settings'" icon="⚙">Settings</x-admin.sidebar-link>
                     @endif
                 @endif
 
@@ -380,7 +360,7 @@
                 </div>
             </header>
 
-            <main class="min-w-0 p-4 sm:p-6 lg:p-8">
+            <main id="admin-main-content" tabindex="-1" class="min-w-0 p-4 sm:p-6 lg:p-8">
                 @if (session('status'))
                     <div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
                 @endif

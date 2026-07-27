@@ -1,0 +1,42 @@
+CATEGORY_DELETE_AND_LEAF_ASSIGNMENT_UPDATE.md
+app/Http/Controllers/Admin/CategoryController.php
+app/Http/Controllers/Admin/CategoryOperationsController.php
+app/Http/Controllers/Admin/CategoryProductController.php
+app/Http/Controllers/Admin/ProductController.php
+app/Http/Requests/Admin/ProductFormRequest.php
+app/Models/Category.php
+app/Services/Catalog/CategoryDeletionService.php
+app/Services/Catalog/CategoryMediaService.php
+app/Services/Catalog/CategoryProductAssignmentSyncService.php
+app/Services/Catalog/CategoryTreeService.php
+app/Services/Catalog/LeafCategoryAssignmentService.php
+database/migrations/2026_07_27_000001_enforce_leaf_category_product_assignments.php
+database/seeders/CatalogNavigationSeeder.php
+resources/views/admin/categories/index.blade.php
+resources/views/admin/categories/products.blade.php
+resources/views/admin/products/_form.blade.php
+tests/Feature/CategoryDeletionAndLeafAssignmentTest.php
+tests/Feature/StorefrontCategoryTest.php
+
+Recursive category product counts:
+- app/Services/Catalog/CategoryProductCountService.php
+- app/Http/Controllers/Admin/CategoryController.php
+- resources/views/admin/categories/index.blade.php
+- tests/Feature/CategoryRecursiveProductCountTest.php
+- CATEGORY_RECURSIVE_PRODUCT_COUNT_UPDATE.md
+- app/Services/Catalog/CategoryTreeService.php
+
+Removed homepage sections:
+- HOMEPAGE_POPULAR_AND_USE_CASES_REMOVAL.md
+- app/Services/Storefront/CategoryCatalogService.php
+- app/Services/Storefront/HomePageService.php
+- app/Services/Storefront/HomepageSectionService.php
+- app/Support/HomepageSectionRegistry.php
+- database/migrations/2026_07_27_000002_remove_popular_categories_and_use_cases_sections.php
+- resources/css/storefront.css
+- resources/views/admin/categories/_create_form.blade.php
+- resources/views/admin/homepage-sections/edit.blade.php
+- resources/views/storefront/home.blade.php
+- tests/Unit/HomepageSectionOrderTest.php
+- removed: resources/views/components/storefront/home/popular-categories.blade.php
+- removed: resources/views/components/storefront/home/use-cases.blade.php

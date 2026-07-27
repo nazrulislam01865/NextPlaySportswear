@@ -28,7 +28,6 @@ class HomePageService
             'latestProducts' => $latestProductsFeed['products'],
             'latestProductsSignature' => $latestProductsFeed['signature'],
             'bestSellingProducts' => $this->bestSellingProducts(),
-            'popularSportsCategories' => $this->popularSportsCategories(),
             'bestSellingGearCategories' => $this->bestSellingGearCategories(),
             'sports' => $this->sports(),
             'processSteps' => $this->sectionItems('process'),
@@ -143,13 +142,6 @@ class HomePageService
     private function bestSellingProducts(): array
     {
         return $this->productCatalog->bestSelling(5);
-    }
-
-    private function popularSportsCategories(): array
-    {
-        return $this->categoriesForSection('popular_categories', fn (): array => collect($this->categoryCatalog->popularSportswearCategories(null))
-            ->values()
-            ->all());
     }
 
     private function bestSellingGearCategories(): array

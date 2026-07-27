@@ -11,7 +11,15 @@
     $canonical = $seo['canonical'] ?? url()->current();
     $ogTitle = $seo['og_title'] ?? $title;
     $ogDescription = $seo['og_description'] ?? $description;
-    $ogImage = $seo['og_image'] ?? asset('images/og-default.jpg');
+    $configuredOgImage = (string) config('storefront.og_image', 'images/og-default.jpg');
+    $defaultOgImage = preg_match('/^https?:\/\//i', $configuredOgImage)
+        ? $configuredOgImage
+        : asset(ltrim($configuredOgImage, '/'));
+    $configuredLogo = (string) config('storefront.logo', '/images/logo.png');
+    $organizationLogo = preg_match('/^https?:\/\//i', $configuredLogo)
+        ? $configuredLogo
+        : asset(ltrim($configuredLogo, '/'));
+    $ogImage = $seo['og_image'] ?? $defaultOgImage;
     $ogType = $seo['og_type'] ?? 'website';
     $locale = str_replace('-', '_', app()->getLocale());
 
@@ -20,14 +28,14 @@
         '@type' => 'Organization',
         'name' => $siteName,
         'url' => config('storefront.url'),
-        'logo' => config('storefront.logo'),
+        'logo' => $organizationLogo,
         'contactPoint' => [
             [
                 '@type' => 'ContactPoint',
                 'contactType' => 'customer support',
                 'email' => config('storefront.email'),
-                'areaServed' => 'US',
-                'availableLanguage' => ['English'],
+                'areaServed' => config('storefront.area_served', 'Worldwide'),
+                'availableLanguage' => config('storefront.available_languages', ['English']),
             ],
         ],
     ];
@@ -70,6 +78,7 @@
     <meta name="robots" content="{{ $robots }}">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <link rel="canonical" href="{{ $canonical }}">
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="{{ route('sitemap') }}">
 
     <meta property="og:site_name" content="{{ $siteName }}">
     <meta property="og:locale" content="{{ $locale }}">
@@ -84,6 +93,7 @@
     <meta name="twitter:title" content="{{ $ogTitle }}">
     <meta name="twitter:description" content="{{ $ogDescription }}">
     <meta name="twitter:image" content="{{ $ogImage }}">
+    <meta name="twitter:image:alt" content="{{ $seo['og_image_alt'] ?? $ogTitle }}">
 
     <meta name="theme-color" content="#15345d">
 
@@ -110,56 +120,18 @@
     @endforeach
 
     @vite(['resources/css/storefront.css', 'resources/js/storefront.js'])
-
-    <style>
-        img.np-image-placeholder-active,
-        img[src*="product-placeholder.svg"] {
-            box-sizing: border-box !important;
-            object-fit: contain !important;
-            object-position: center center !important;
-            background: #f3f6fb !important;
-            padding: clamp(0.5rem, 4%, 2rem) !important;
-        }
-    </style>
-
-    <script>
-        window.NextPlayImagePlaceholder = @json(asset('images/product-placeholder.svg'));
-        window.NextPlayProductActivityUrl = @json(route('products.visitor-activity'));
-
-        window.nextPlayUseImagePlaceholder = function (image, fallbackSrc) {
-            if (! image || String(image.tagName || '').toLowerCase() !== 'img') {
-                return;
-            }
-
-            const fallback = fallbackSrc || image.getAttribute('data-fallback-src') || window.NextPlayImagePlaceholder;
-            const current = image.currentSrc || image.getAttribute('src') || '';
-
-            if (! fallback || current === fallback || current.endsWith('/images/product-placeholder.svg')) {
-                return;
-            }
-
-            image.removeAttribute('srcset');
-            image.setAttribute('src', fallback);
-            image.classList.add('np-image-placeholder-active');
-        };
-
-        document.addEventListener('error', function (event) {
-            window.nextPlayUseImagePlaceholder(event.target);
-        }, true);
-
-        document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('img[src*="product-placeholder.svg"]').forEach(function (image) {
-                image.classList.add('np-image-placeholder-active');
-            });
-        });
-    </script>
 </head>
-<body class="storefront-clean-ui">
+<body
+    class="storefront-clean-ui"
+    data-image-placeholder-url="{{ asset('images/product-placeholder.svg') }}"
+    data-product-activity-url="{{ route('products.visitor-activity') }}"
+>
+    <a class="np-skip-link" href="#main-content">Skip to main content</a>
     <x-storefront.topbar />
     <x-storefront.header />
     <x-storefront.toast-center />
 
-    <main>
+    <main id="main-content" tabindex="-1">
         {{ $slot }}
     </main>
 
