@@ -138,7 +138,7 @@
                     <x-admin.sidebar-group
                         label="Master Data"
                         icon="◈"
-                        :active="$isCustomizationActive || $isSizeOptionActive || $isTrainingVestCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*')"
+                        :active="$isCustomizationActive || $isSizeOptionActive || $isTrainingVestCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*') || request()->routeIs('admin.faqs.*')"
                     >
                         @if($canAdmin('customization.view'))
                         @foreach($customizationMenuGroups as $groupKey => $customizationGroup)
@@ -245,6 +245,13 @@
                                 :href="route('admin.shipping-methods.index')"
                                 :active="request()->routeIs('admin.shipping-methods.*')"
                             >1.21 Shipping Methods</x-admin.sidebar-sub-link>
+                        @endif
+
+                        @if($canAdmin('customization.view'))
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.faqs.index')"
+                                :active="request()->routeIs('admin.faqs.*')"
+                            >1.22 FAQs</x-admin.sidebar-sub-link>
                         @endif
                     </x-admin.sidebar-group>
                 @endif

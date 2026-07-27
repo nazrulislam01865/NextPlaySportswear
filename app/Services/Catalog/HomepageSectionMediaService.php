@@ -5,6 +5,7 @@ namespace App\Services\Catalog;
 use App\Models\HomepageSection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class HomepageSectionMediaService
 {
@@ -47,7 +48,81 @@ class HomepageSectionMediaService
             $section->mobile_image_url = $mobileImageUrl;
         }
 
+        if ((string) $section->key === 'hero') {
+            $this->syncHeroSlides($section, $request);
+        }
+
         $section->save();
+    }
+
+    private function syncHeroSlides(HomepageSection $section, Request $request): void
+    {
+        $existingSlides = collect(is_array($section->hero_slides) ? $section->hero_slides : [])
+            ->filter(fn ($slide): bool => is_array($slide))
+            ->mapWithKeys(function (array $slide, int $index): array {
+                $id = trim((string) ($slide['id'] ?? '')) ?: 'stored-'.($index + 1);
+
+                return [$id => $slide];
+            });
+
+        $submittedRows = $request->input('hero_slides', []);
+        $submittedRows = is_array($submittedRows) ? array_values($submittedRows) : [];
+        $savedSlides = [];
+        $seenIds = [];
+
+        foreach ($submittedRows as $index => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $id = trim((string) ($row['id'] ?? ''));
+            if ($id === '' || isset($seenIds[$id])) {
+                $id = (string) Str::uuid();
+            }
+            $seenIds[$id] = true;
+
+            $existing = $existingSlides->get($id, []);
+            $existingPath = trim((string) ($existing['image_path'] ?? '')) ?: null;
+            $existingUrl = trim((string) ($existing['image_url'] ?? $existing['image'] ?? '')) ?: null;
+            $uploaded = $request->file("hero_slides.{$index}.image_file");
+            $submittedUrl = trim((string) ($row['image_url'] ?? '')) ?: null;
+            $imagePath = $existingPath;
+            $imageUrl = $existingUrl;
+
+            if ($uploaded) {
+                $this->deletePath($existingPath);
+                $imagePath = $uploaded->store('homepage/sections/hero/slides', 'public');
+                $imageUrl = null;
+            } elseif ($submittedUrl !== null) {
+                if ($submittedUrl !== $existingUrl) {
+                    $this->deletePath($existingPath);
+                    $imagePath = null;
+                }
+                $imageUrl = $submittedUrl;
+            } elseif ($existingPath === null) {
+                $submittedPath = trim((string) ($row['image_path'] ?? ''));
+                if ($submittedPath !== '') {
+                    $imagePath = $submittedPath;
+                }
+            }
+
+            if ($imagePath === null && $imageUrl === null) {
+                continue;
+            }
+
+            $savedSlides[] = [
+                'id' => $id,
+                'image_path' => $imagePath,
+                'image_url' => $imageUrl,
+                'image_alt' => trim(strip_tags((string) ($row['image_alt'] ?? $existing['image_alt'] ?? ''))) ?: 'Custom team sportswear',
+            ];
+        }
+
+        $existingSlides
+            ->reject(fn (array $slide, string $id): bool => isset($seenIds[$id]))
+            ->each(fn (array $slide) => $this->deletePath(trim((string) ($slide['image_path'] ?? '')) ?: null));
+
+        $section->hero_slides = array_values($savedSlides);
     }
 
     private function deletePath(?string $path): void

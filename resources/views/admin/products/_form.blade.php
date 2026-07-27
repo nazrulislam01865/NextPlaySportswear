@@ -458,7 +458,13 @@
         ['key' => 'number', 'label' => 'Player number', 'type' => 'number', 'max_length' => 4, 'required' => false, 'enabled' => true],
     ];
     $rosterFieldValues = old('jersey_roster_fields', $product->jersey_roster_fields ?: $defaultRosterFields);
-    $faqValues = old('faqs', $product->relationLoaded('faqs') ? $product->faqs->where('is_active', true)->map(fn($faq) => $faq->only(['question','answer','is_active']))->values()->all() : []);
+    $selectedFaqIds = collect(session()->hasOldInput()
+        ? old('faq_ids', [])
+        : ($product->relationLoaded('faqs') ? $product->faqs->pluck('id')->all() : []))
+        ->map(fn ($id) => (int) $id)
+        ->filter()
+        ->unique()
+        ->values();
     $optionGroupValidationErrors = collect($errors->getMessages())
         ->reduce(function (array $grouped, array $messages, string $key): array {
             if (preg_match('/^option_groups\.(\d+)\./', $key, $matches) !== 1) {
@@ -481,6 +487,7 @@
     ])->values()->all();
     $initial = [
         'productName' => old('name', $product->name),
+        'productSku' => old('sku', $storedSpecificationRows->get('SKU') ?: $product->sku),
         'shortDescription' => old('short_description', $product->short_description),
         'descriptionHtml' => old('description_html', $product->description_html),
         'fulfillmentHtml' => old('fulfillment_html', $product->fulfillment_html),
@@ -534,7 +541,6 @@
         'artworkUploadMaxFiles' => (int) old('artwork_upload_max_files', $product->artwork_upload_max_files ?: 5),
         'artworkUploadMaxFileSizeMb' => (int) old('artwork_upload_max_file_size_mb', $product->artwork_upload_max_file_size_mb ?: 15),
         'artworkUploadAcceptedTypes' => old('artwork_upload_accepted_types', $product->artwork_upload_accepted_types ?: 'pdf,svg,png,jpg,jpeg,webp'),
-        'faqs' => $faqValues,
     ];
     $currentProductStatus = old('status', $product->status ?: 'draft');
     $validationErrorMessages = collect($errors->getMessages())->map(fn ($messages) => $messages[0] ?? 'Please review this field.')->all();
@@ -981,6 +987,50 @@ window.adminProductFormFabric = function (initial = {}) {
         },
     });
 };
+
+window.productFaqSelector = function (initial = {}) {
+    return {
+        faqOptions: Array.isArray(initial.options) ? initial.options : [],
+        selectedFaqIds: Array.isArray(initial.selected)
+            ? [...new Set(initial.selected.map(id => Number(id)).filter(id => id > 0))]
+            : [],
+        faqPickerOpen: false,
+        faqPickerSearch: '',
+        openFaqPicker() {
+            this.faqPickerSearch = '';
+            this.faqPickerOpen = true;
+            document.documentElement.classList.add('overflow-hidden');
+        },
+        closeFaqPicker() {
+            this.faqPickerOpen = false;
+            document.documentElement.classList.remove('overflow-hidden');
+        },
+        filteredFaqOptions() {
+            const query = String(this.faqPickerSearch || '').trim().toLowerCase();
+            return this.faqOptions.filter(faq => !query
+                || String(faq.question || '').toLowerCase().includes(query)
+                || String(faq.answer || '').toLowerCase().includes(query));
+        },
+        selectedFaqOptions() {
+            const selected = new Set(this.selectedFaqIds.map(id => Number(id)));
+            return this.faqOptions.filter(faq => selected.has(Number(faq.id)));
+        },
+        isFaqSelected(id) {
+            return this.selectedFaqIds.some(selectedId => Number(selectedId) === Number(id));
+        },
+        toggleFaq(id) {
+            const normalizedId = Number(id);
+            if (!normalizedId) return;
+            this.selectedFaqIds = this.isFaqSelected(normalizedId)
+                ? this.selectedFaqIds.filter(selectedId => Number(selectedId) !== normalizedId)
+                : [...this.selectedFaqIds, normalizedId];
+        },
+        removeFaq(id) {
+            const normalizedId = Number(id);
+            this.selectedFaqIds = this.selectedFaqIds.filter(selectedId => Number(selectedId) !== normalizedId);
+        },
+    };
+};
 </script>
 @endonce
 
@@ -1026,17 +1076,17 @@ window.adminProductFormFabric = function (initial = {}) {
                 </header>
 
                 <div class="np-field-stack">
-                    <label class="admin-label">Product title <span class="text-brand-red">*</span>
+                    <label class="admin-label np-emphasis-label">Product title <span class="text-brand-red">*</span>
                         <input class="admin-input" name="name" x-model="productName" @input="updateSlug()" required maxlength="220" placeholder="e.g., Custom Baseball Jersey">
                     </label>
 
-                    <label class="admin-label">Short product summary <span class="text-brand-red">*</span>
+                    <label class="admin-label np-emphasis-label">Short product summary <span class="text-brand-red">*</span>
                         <textarea class="admin-textarea np-textarea-sm" name="short_description" maxlength="1500" x-model="shortDescription" placeholder="Describe your product in a few words..."></textarea>
                     </label>
 
                     <div class="np-product-spec-card rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm" data-field-name="product_specification_text" x-data="productSpecificationEditor(@js($productSpecificationText), @js($productSpecificationAutoValues))" x-init="init()">
                         <div class="mb-4 flex items-center justify-between gap-3">
-                            <label class="admin-label mb-0 text-base">Product Specification</label>
+                            <label class="admin-label np-emphasis-label mb-0 text-base">Product Specification</label>
                             <button type="button" class="np-link-button" @click="resetTemplate()">Reset template</button>
                         </div>
 
@@ -1096,7 +1146,7 @@ Lead Time:"></div>
 
                     <div class="grid gap-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)]">
                         <div class="admin-label np-category-field np-category-field--plain" data-field-name="primary_category_id" @click.outside="closeCategoryDropdown()">
-                            <span>Category <span class="text-brand-red">*</span></span>
+                            <span class="np-emphasis-label">Category <span class="text-brand-red">*</span></span>
                             <input type="hidden" name="primary_category_id" x-model="categoryId" required>
                             <button type="button" class="np-searchable-trigger" :class="categoryDropdownOpen ? 'is-open' : ''" @click="toggleCategoryDropdown()" @keydown.enter.prevent="toggleCategoryDropdown()" @keydown.space.prevent="toggleCategoryDropdown()">
                                 <span x-text="selectedCategoryName() || 'Select a last-level category'"></span>
@@ -1129,20 +1179,20 @@ Lead Time:"></div>
                             <small class="np-field-help">Only a category without child categories can hold products. Parent categories are used for grouping and storefront filtering.</small>
                         </div>
 
-                        <label class="admin-label">Tags
+                        <label class="admin-label np-emphasis-label">Tags
                             <textarea class="admin-textarea np-tags-textarea" name="tags_text" rows="3" placeholder="Add tags separated by commas">{{ old('tags_text',implode(', ',$product->tags ?? [])) }}</textarea>
                             <small class="np-field-help">Separate multiple tags with commas. The field wraps to new lines automatically.</small>
                         </label>
                     </div>
 
-                    <label class="admin-label">Gallery badge label <span class="text-xs font-bold text-slate-400">(optional)</span>
+                    <label class="admin-label np-emphasis-label">Gallery badge label <span class="text-xs font-bold text-slate-400">(optional)</span>
                         <input class="admin-input" name="badge_label" value="{{ old('badge_label',$product->badge_label) }}" maxlength="80" placeholder="Customizable, New, Best Seller">
                     </label>
 
                     <input type="hidden" name="new_image_primary_index" :value="newImagePrimaryIndex()">
                     <div>
                         <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-                            <label class="admin-label mb-0">Gallery images <span class="text-brand-red">*</span></label>
+                            <label class="admin-label np-emphasis-label mb-0">Gallery images <span class="text-brand-red">*</span></label>
                             <div class="np-gallery-source-actions">
                                 <button type="button" class="np-secondary-button" @click="chooseProductImages()">Upload from device</button>
                                 <button type="button" class="np-secondary-button" @click="openMediaLibrary()">Choose from image gallery</button>
@@ -1450,7 +1500,7 @@ Lead Time:"></div>
                 </details>
             </section>
 
-            <section id="artwork" class="np-card"><header class="np-card__header"><div><h2>4. Custom Artwork Upload</h2><p>Allow customers to upload custom artwork for this product.</p></div></header><div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,.7fr)]"><div class="np-field-stack"><div class="grid gap-4 sm:grid-cols-2"><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4"><input type="hidden" name="artwork_upload_enabled" :value="artworkUploadEnabled ? 1 : 0"><input type="checkbox" x-model="artworkUploadEnabled"><span><strong class="block text-sm">Show artwork upload step</strong><small class="text-xs text-slate-500">The section disappears when disabled.</small></span></label><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4" :class="!artworkUploadEnabled && 'opacity-50'"><input type="hidden" name="artwork_upload_required" :value="artworkUploadRequired ? 1 : 0"><input type="checkbox" x-model="artworkUploadRequired" :disabled="!artworkUploadEnabled"><span><strong class="block text-sm">Artwork is required</strong><small class="text-xs text-slate-500">At least one file must be selected.</small></span></label></div><div x-show="artworkUploadEnabled" class="grid gap-4 sm:grid-cols-2"><label class="admin-label sm:col-span-2">Section title<input class="admin-input" name="artwork_upload_title" x-model="artworkUploadTitle" maxlength="180"></label><label class="admin-label sm:col-span-2">Upload instructions<textarea class="admin-textarea np-textarea-sm" name="artwork_upload_description" x-model="artworkUploadDescription" maxlength="3000"></textarea></label><label class="admin-label">Accepted extensions<input class="admin-input font-mono" name="artwork_upload_accepted_types" x-model="artworkUploadAcceptedTypes" placeholder="pdf,ai,png,jpg,jpeg,eps"></label><label class="admin-label">Maximum file size (MB)<input class="admin-input" type="number" min="1" max="25" name="artwork_upload_max_file_size_mb" x-model.number="artworkUploadMaxFileSizeMb"></label><label class="admin-label sm:col-span-2">Maximum files<input class="admin-input" type="number" min="1" max="12" name="artwork_upload_max_files" x-model.number="artworkUploadMaxFiles"></label></div></div><div x-show="artworkUploadEnabled" class="np-artwork-preview"><span>☁</span><strong>Upload area will appear on product page</strong><small>Drag &amp; drop or click to upload</small></div></div></section>
+            <section id="artwork" class="np-card"><header class="np-card__header"><div><h2>4. Custom Artwork Upload</h2><p>Allow customers to upload custom artwork for this product.</p></div></header><div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,.7fr)]"><div class="np-field-stack"><div class="grid gap-4 sm:grid-cols-2"><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4"><input type="hidden" name="artwork_upload_enabled" :value="artworkUploadEnabled ? 1 : 0"><input type="checkbox" x-model="artworkUploadEnabled"><span><strong class="block text-sm">Show artwork upload step</strong><small class="text-xs text-slate-500">The section disappears when disabled.</small></span></label><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4" :class="!artworkUploadEnabled && 'opacity-50'"><input type="hidden" name="artwork_upload_required" :value="artworkUploadRequired ? 1 : 0"><input type="checkbox" x-model="artworkUploadRequired" :disabled="!artworkUploadEnabled"><span><strong class="block text-sm">Artwork is required</strong><small class="text-xs text-slate-500">At least one file must be selected.</small></span></label></div><div x-show="artworkUploadEnabled" class="grid gap-4 sm:grid-cols-2"><label class="admin-label np-emphasis-label sm:col-span-2">Section title<input class="admin-input" name="artwork_upload_title" x-model="artworkUploadTitle" maxlength="180"></label><label class="admin-label np-emphasis-label sm:col-span-2">Upload instructions<textarea class="admin-textarea np-textarea-sm" name="artwork_upload_description" x-model="artworkUploadDescription" maxlength="3000"></textarea></label><label class="admin-label np-emphasis-label">Accepted extensions<input class="admin-input font-mono" name="artwork_upload_accepted_types" x-model="artworkUploadAcceptedTypes" placeholder="pdf,ai,png,jpg,jpeg,eps"></label><label class="admin-label">Maximum file size (MB)<input class="admin-input" type="number" min="1" max="25" name="artwork_upload_max_file_size_mb" x-model.number="artworkUploadMaxFileSizeMb"></label><label class="admin-label sm:col-span-2">Maximum files<input class="admin-input" type="number" min="1" max="12" name="artwork_upload_max_files" x-model.number="artworkUploadMaxFiles"></label></div></div><div x-show="artworkUploadEnabled" class="np-artwork-preview"><span>☁</span><strong>Upload area will appear on product page</strong><small>Drag &amp; drop or click to upload</small></div></div></section>
 
             <section id="fulfillment" class="np-card">
                 <header class="np-card__header">
@@ -1609,12 +1659,131 @@ Lead Time:"></div>
                 />
             </section>
 
-            <section id="faq" class="np-card"><header class="np-card__header"><div><h2>7. FAQ</h2><p>Add frequently asked questions and their answers.</p></div><button type="button" class="np-secondary-button" @click="addFaq()">＋ Add FAQ</button></header><div class="space-y-3"><template x-for="(faq,index) in faqs" :key="index"><div class="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2"><input type="hidden" :name="`faqs[${index}][is_active]`" value="1"><label class="admin-label">Question<input class="admin-input" :name="`faqs[${index}][question]`" x-model="faq.question" placeholder="e.g., What is the minimum order quantity?"></label><label class="admin-label">Answer<textarea class="admin-textarea np-textarea-sm" :name="`faqs[${index}][answer]`" x-model="faq.answer" placeholder="e.g., The minimum order quantity is 12 items"></textarea></label><div class="md:col-span-2 text-right"><button type="button" class="np-danger-link" @click="faqs.splice(index,1)">Remove FAQ</button></div></div></template></div></section>
+            <section
+                id="faq"
+                class="np-card"
+                x-data="productFaqSelector({
+                    options: @js(collect($faqOptions)->map(fn ($faq) => [
+                        'id' => (int) $faq->id,
+                        'question' => (string) $faq->question,
+                        'answer' => (string) $faq->answer,
+                        'is_active' => (bool) $faq->is_active,
+                    ])->values()->all()),
+                    selected: @js($selectedFaqIds->all()),
+                })"
+            >
+                <header class="np-card__header">
+                    <div>
+                        <h2>7. Product FAQs</h2>
+                        <p>Add only the reusable FAQs that should appear on this product.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <a class="np-secondary-button" href="{{ route('admin.faqs.index') }}">Manage FAQs</a>
+                        @if($faqOptions->isNotEmpty())
+                            <button type="button" class="np-secondary-button" @click="openFaqPicker()">＋ Add FAQs</button>
+                        @endif
+                    </div>
+                </header>
+
+                <template x-for="faqId in selectedFaqIds" :key="`faq-input-${faqId}`">
+                    <input type="hidden" name="faq_ids[]" :value="faqId">
+                </template>
+
+                @if($faqOptions->isEmpty())
+                    <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+                        <p class="font-black text-brand-ink">No FAQ master data is available.</p>
+                        <p class="mt-2 text-sm text-slate-500">Create FAQs first, then return here to assign them to this product.</p>
+                        <a class="btn btn-white mt-4" href="{{ route('admin.faqs.create') }}">Create FAQ</a>
+                    </div>
+                @else
+                    <div x-show="selectedFaqOptions().length > 0" class="grid gap-3 lg:grid-cols-2">
+                        <template x-for="faq in selectedFaqOptions()" :key="faq.id">
+                            <article class="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+                                <span class="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blue-50 text-sm font-black text-brand-blue">?</span>
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex flex-wrap items-start justify-between gap-3">
+                                        <div class="min-w-0">
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <strong class="text-sm font-black leading-5 text-brand-ink" x-text="faq.question"></strong>
+                                                <span x-show="!faq.is_active" class="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-slate-500">Inactive</span>
+                                            </div>
+                                            <p class="mt-2 line-clamp-3 text-xs leading-5 text-slate-500" x-text="faq.answer"></p>
+                                        </div>
+                                        <button type="button" class="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 text-lg leading-none text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600" @click="removeFaq(faq.id)" :aria-label="`Remove ${faq.question}`">×</button>
+                                    </div>
+                                </div>
+                            </article>
+                        </template>
+                    </div>
+
+                    <div x-show="selectedFaqOptions().length === 0" class="rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center">
+                        <p class="font-black text-brand-ink">No FAQ has been added to this product.</p>
+                        <p class="mt-2 text-sm text-slate-500">Choose <strong>Add FAQs</strong> to select reusable questions from Master Data.</p>
+                        <button type="button" class="np-secondary-button mt-4" @click="openFaqPicker()">＋ Add FAQs</button>
+                    </div>
+
+                    @error('faq_ids')<p class="mt-3 text-xs font-bold text-red-600">{{ $message }}</p>@enderror
+                    @error('faq_ids.*')<p class="mt-3 text-xs font-bold text-red-600">{{ $message }}</p>@enderror
+                @endif
+
+    <div x-cloak x-show="faqPickerOpen" x-transition.opacity class="fixed inset-0 z-[115] grid place-items-center bg-slate-950/65 p-4" role="dialog" aria-modal="true" aria-labelledby="faq-picker-title" @click.self="closeFaqPicker()" @keydown.escape.window="closeFaqPicker()">
+        <div x-show="faqPickerOpen" x-transition class="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+            <div class="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-7">
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-[.14em] text-brand-blue">Master Data</p>
+                    <h2 id="faq-picker-title" class="mt-2 text-2xl font-black text-brand-ink">Add Product FAQs</h2>
+                    <p class="mt-2 text-sm text-slate-500">Check the FAQs that should be shown with this product. You can select more than one.</p>
+                </div>
+                <button type="button" class="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-200 text-xl text-slate-500 hover:bg-slate-50" @click="closeFaqPicker()" aria-label="Close">×</button>
+            </div>
+
+            <div class="border-b border-slate-200 p-4 sm:px-7">
+                <input class="admin-input mt-0" type="search" x-model.debounce.150ms="faqPickerSearch" placeholder="Search FAQ questions or answers">
+            </div>
+
+            <div class="min-h-0 flex-1 overflow-y-auto p-5 sm:p-7">
+                <div class="grid gap-3 lg:grid-cols-2">
+                    <template x-for="faq in filteredFaqOptions()" :key="faq.id">
+                        <label class="flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition" :class="isFaqSelected(faq.id) ? 'border-brand-blue bg-blue-50/30' : 'border-slate-200 bg-white hover:border-brand-blue/40'">
+                            <input
+                                class="mt-1 h-5 w-5 shrink-0 rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
+                                type="checkbox"
+                                :checked="isFaqSelected(faq.id)"
+                                @change="toggleFaq(faq.id)"
+                            >
+                            <span class="min-w-0 flex-1">
+                                <span class="flex flex-wrap items-center gap-2">
+                                    <strong class="text-sm font-black leading-5 text-brand-ink" x-text="faq.question"></strong>
+                                    <span x-show="!faq.is_active" class="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-slate-500">Inactive</span>
+                                </span>
+                                <span class="mt-2 block text-xs leading-5 text-slate-500" x-text="faq.answer"></span>
+                            </span>
+                        </label>
+                    </template>
+                </div>
+
+                <div x-show="filteredFaqOptions().length === 0" class="rounded-2xl border-2 border-dashed border-slate-200 p-10 text-center">
+                    <p class="font-black text-brand-ink">No matching FAQ was found.</p>
+                    <p class="mt-2 text-sm text-slate-500">Try another search or create a new FAQ in Master Data.</p>
+                    <a href="{{ route('admin.faqs.create') }}" class="btn btn-white mt-5">Create FAQ</a>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 p-4 sm:px-7">
+                <span class="text-sm font-bold text-slate-500"><strong class="text-brand-ink" x-text="selectedFaqIds.length"></strong> selected</span>
+                <button type="button" class="btn btn-white" @click="closeFaqPicker()">Done</button>
+            </div>
+        </div>
+    </div>
+            </section>
         </section>
 
         <aside class="np-product-builder__aside">
             <section class="np-side-card">
-                <h3>Publish</h3>
+                <div class="np-publish-heading">
+                    <h3>Publish</h3>
+                </div>
+                <span class="np-publish-sku np-publish-sku--below" data-publish-sku-badge style="{{ trim((string) ($productSpecificationAutoValues['SKU'] ?? '')) === '' ? 'display:none' : '' }}">SKU: <strong data-publish-sku-value>{{ trim((string) ($productSpecificationAutoValues['SKU'] ?? '')) }}</strong></span>
                 <label class="admin-label mt-4">Product status <span class="text-brand-red">*</span>
                     <select x-ref="productStatus" class="admin-input" name="status">
                         <option value="draft" @selected($currentProductStatus === 'draft')>Draft</option>
@@ -1893,6 +2062,9 @@ Lead Time:"></div>
     </div>
 
 
+
+
+
         <div x-cloak x-show="sizeGroupPickerOpen" x-transition.opacity class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-4" @keydown.escape.window="closeSizeGroupPicker()">
             <div class="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl" @click.outside="closeSizeGroupPicker()">
                 <div class="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-5 sm:px-7">
@@ -2073,3 +2245,42 @@ Lead Time:"></div>
         </script>
     @endif
 </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.np-product-form').forEach(function (form) {
+        const editor = form.querySelector('[data-field-name="product_specification_text"] [contenteditable="true"]');
+        const badge = form.querySelector('[data-publish-sku-badge]');
+        const output = form.querySelector('[data-publish-sku-value]');
+
+        if (!editor || !badge || !output) return;
+
+        const syncPublishSku = function () {
+            const lines = String(editor.innerText || '').split(/\r?\n/);
+            let sku = '';
+
+            for (const line of lines) {
+                const match = line.match(/^\s*(?:SKU|Style No|Style Number)\s*:\s*(.*?)\s*$/i);
+                if (match) {
+                    sku = String(match[1] || '').trim();
+                    break;
+                }
+            }
+
+            output.textContent = sku;
+            badge.style.display = sku ? '' : 'none';
+        };
+
+        editor.addEventListener('input', syncPublishSku);
+        new MutationObserver(syncPublishSku).observe(editor, {
+            childList: true,
+            subtree: true,
+            characterData: true,
+        });
+
+        syncPublishSku();
+        window.setTimeout(syncPublishSku, 250);
+    });
+});
+</script>
+

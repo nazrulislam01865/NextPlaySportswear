@@ -269,10 +269,8 @@ class ProductFormRequest extends FormRequest
             'shipping_methods.*.is_default' => ['nullable', 'boolean'],
             'shipping_methods.*.is_active' => ['nullable', 'boolean'],
 
-            'faqs' => ['nullable', 'array', 'max:100'],
-            'faqs.*.question' => ['nullable', 'string', 'max:500'],
-            'faqs.*.answer' => ['nullable', 'string', 'max:5000'],
-            'faqs.*.is_active' => ['nullable', 'boolean'],
+            'faq_ids' => ['nullable', 'array', 'max:100'],
+            'faq_ids.*' => ['integer', 'distinct', Rule::exists('faqs', 'id')],
 
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string', 'max:1000'],
@@ -1203,8 +1201,7 @@ class ProductFormRequest extends FormRequest
             'production_table_rows.*.cells.*.production_time.max' => 'Keep the production time within 60 characters, for example 5-15 days or To be confirmed.',
             'production_speeds.*.maximum_quantity.gte' => 'The production quantity maximum must be greater than or equal to the minimum quantity.',
             'production_speeds.*.maximum_days.gte' => 'The production maximum days must be greater than or equal to the minimum days.',
-            'faqs.*.question.max' => 'Keep the FAQ question within 500 characters.',
-            'faqs.*.answer.max' => 'Keep the FAQ answer within 5000 characters.',
+            'faq_ids.*.exists' => 'Choose a valid FAQ from Master Data.',
             'schema_json_text.json' => 'Enter valid JSON-LD schema or leave this field blank.',
         ];
     }
@@ -1232,8 +1229,7 @@ class ProductFormRequest extends FormRequest
             'images.*' => 'product image',
             'image_urls.*.url' => 'product image URL',
             'option_groups.*.values.*.jersey_customization_option_id' => 'customization item',
-            'faqs.*.question' => 'FAQ question',
-            'faqs.*.answer' => 'FAQ answer',
+            'faq_ids.*' => 'FAQ',
         ];
     }
 }

@@ -398,6 +398,7 @@ class AdminRbac
             'homepage-slides' => 'homepage_slides',
             'production-methods' => 'shipping',
             'shipping-methods' => 'shipping',
+            'faqs' => 'customization',
             'rural-area-surcharges' => 'rural_surcharges',
             'payment-methods' => 'payment_methods',
             'newsletter-subscribers' => 'newsletters',

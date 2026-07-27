@@ -163,7 +163,7 @@
                     </table>
                 </div>
 
-                <div class="border-t border-slate-100 p-5">{{ $options->links() }}</div>
+                <div class="border-t border-slate-100 p-5">{{ $options->links('pagination.nextplay') }}</div>
             </section>
 
             <aside class="rounded-3xl border border-slate-200 bg-white p-5 shadow-card sm:p-6 xl:sticky xl:top-36 xl:self-start">

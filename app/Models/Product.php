@@ -178,9 +178,14 @@ class Product extends Model
         return $this->hasMany(ProductShippingMethod::class)->orderBy('sort_order');
     }
 
-    public function faqs(): HasMany
+    public function faqs(): BelongsToMany
     {
-        return $this->hasMany(ProductFaq::class)->orderBy('sort_order');
+        return $this->belongsToMany(Faq::class)
+            ->withPivot('sort_order')
+            ->withTimestamps()
+            ->orderByPivot('sort_order')
+            ->orderBy('faqs.sort_order')
+            ->orderBy('faqs.question');
     }
 
     public function primaryImageUrl(): string

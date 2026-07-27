@@ -122,7 +122,6 @@
         <div class="np-product-card-price-row">
             <span class="np-product-card-price">{{ $product['price'] }}</span>
             @if (!empty($product['has_bulk_pricing']))
-                <span class="np-product-card-bulk">Bulk quotes available</span>
             @endif
         </div>
 

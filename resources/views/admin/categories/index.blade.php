@@ -176,7 +176,7 @@
                         </label>
                     </div>
 
-                    <button class="category-import-button" type="submit">
+                    <button class="category-import-button category-import-button--compact" type="submit">
                         Import
                     </button>
                 </form>
@@ -201,7 +201,7 @@
             </select>
 
             <button
-                class="category-bulk-button"
+                class="category-bulk-button category-bulk-button--compact"
                 type="submit"
                 onclick="return confirm('Apply this action to the selected categories?')"
             >

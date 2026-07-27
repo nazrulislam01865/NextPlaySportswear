@@ -74,6 +74,23 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        RateLimiter::for('storefront-login', function (Request $request): array {
+            $ip = (string) ($request->ip() ?: 'unknown');
+            $email = strtolower(trim((string) $request->input('email')));
+            $emailFingerprint = hash('sha256', substr($email, 0, 190));
+
+            // Keep brute-force protection while avoiding false HTTP 429
+            // responses from normal validation retries or accidental double
+            // submissions. The account bucket is independent from the IP
+            // bucket so users behind the same office/mobile network do not
+            // block one another after only a few attempts.
+            return [
+                Limit::perMinute(60)->by('storefront-login-ip:'.$ip),
+                Limit::perMinute(20)->by('storefront-login-account-minute:'.$emailFingerprint),
+                Limit::perHour(100)->by('storefront-login-account-hour:'.$emailFingerprint),
+            ];
+        });
+
         RateLimiter::for('password-reset-link', function (Request $request): array {
             $ip = (string) ($request->ip() ?: 'unknown');
             $email = strtolower(trim((string) $request->input('email')));

@@ -35,6 +35,12 @@ class HomepageSectionRequest extends FormRequest
             'mobile_image_url' => ['nullable', 'string', 'max:2048', new SafePublicUrl()],
             'mobile_image_alt' => ['nullable', 'string', 'max:255'],
             'remove_mobile_image' => ['nullable', 'boolean'],
+            'hero_slides' => ['nullable', 'array', 'max:12'],
+            'hero_slides.*.id' => ['nullable', 'string', 'max:80'],
+            'hero_slides.*.image_path' => ['nullable', 'string', 'max:2048'],
+            'hero_slides.*.image_url' => ['nullable', 'string', 'max:2048', new SafePublicUrl()],
+            'hero_slides.*.image_alt' => ['nullable', 'string', 'max:255'],
+            'hero_slides.*.image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:10240'],
             'items' => ['nullable', 'array'],
             'items.*.icon' => ['nullable', 'string', 'max:20'],
             'items.*.title' => ['nullable', 'string', 'max:255'],
@@ -56,6 +62,11 @@ class HomepageSectionRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'hero_slides.array' => 'The hero slider image list could not be read. Please refresh the page and try again.',
+            'hero_slides.max' => 'The hero slider can contain up to 12 images.',
+            'hero_slides.*.image_file.image' => 'Each hero slider upload must be a valid image.',
+            'hero_slides.*.image_file.mimes' => 'Hero slider images must be JPG, PNG, WebP, or AVIF files.',
+            'hero_slides.*.image_file.max' => 'Each hero slider image must be no larger than 10 MB.',
             'items.array' => 'The homepage item list could not be read. Please refresh the page and try again.',
             'items.*.category_id.integer' => 'One of the selected homepage categories is invalid. Please select it again.',
             'items.*.category_id.exists' => 'One of the selected categories is no longer available. Please choose another category.',
@@ -72,6 +83,9 @@ class HomepageSectionRequest extends FormRequest
     public function attributes(): array
     {
         return [
+            'hero_slides.*.image_url' => 'hero slider image URL',
+            'hero_slides.*.image_alt' => 'hero slider image description',
+            'hero_slides.*.image_file' => 'hero slider image',
             'items.*.icon' => 'item icon or initials',
             'items.*.title' => 'item title',
             'items.*.subtitle' => 'item subtitle',
@@ -124,7 +138,7 @@ class HomepageSectionRequest extends FormRequest
     /** @return array<string, mixed> */
     public function payload(): array
     {
-        $data = $this->safe()->except(['image_file', 'image_url', 'remove_image', 'mobile_image_file', 'mobile_image_url', 'remove_mobile_image']);
+        $data = $this->safe()->except(['image_file', 'image_url', 'remove_image', 'mobile_image_file', 'mobile_image_url', 'remove_mobile_image', 'hero_slides']);
 
         foreach (['eyebrow', 'title', 'description', 'primary_label', 'primary_url', 'secondary_label', 'secondary_url', 'image_alt', 'mobile_image_alt'] as $field) {
             if (array_key_exists($field, $data) && is_string($data[$field])) {

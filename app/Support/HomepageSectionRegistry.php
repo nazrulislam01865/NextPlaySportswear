@@ -14,6 +14,8 @@ final class HomepageSectionRegistry
         'final_cta',
         'popular_categories',
         'use_cases',
+        'design_jersey',
+        'bulk_order',
     ];
 
     /** @return array<int, string> */
@@ -57,13 +59,30 @@ final class HomepageSectionRegistry
                 'mobile_image_path' => null,
                 'mobile_image_url' => null,
                 'mobile_image_alt' => 'Custom sportswear mobile hero banner',
+                'hero_slides' => [
+                    [
+                        'id' => 'real-team-gear',
+                        'image_url' => '/images/storefront/home/hero-slide-real-team-gear.webp',
+                        'image_alt' => 'Custom team jerseys displayed in navy, white, and red colors',
+                    ],
+                    [
+                        'id' => 'uniform-detail',
+                        'image_url' => '/images/storefront/home/hero-slide-uniform-detail.webp',
+                        'image_alt' => 'Custom jersey product images showing personalization options',
+                    ],
+                    [
+                        'id' => 'product-lineup',
+                        'image_url' => '/images/storefront/home/hero-slide-product-lineup.webp',
+                        'image_alt' => 'Custom sportswear product lineup with jerseys and team apparel',
+                    ],
+                ],
                 'items' => [
                     ['title' => 'Custom names, numbers, logos, and colors'],
                     ['title' => 'Team uniforms for football, baseball, basketball, soccer, and more'],
                     ['title' => 'Bulk pricing available for schools, clubs, leagues, and businesses'],
                     ['title' => 'Design support before production'],
                 ],
-                'fields' => ['text', 'buttons', 'image', 'items'],
+                'fields' => ['text', 'buttons', 'hero_slides', 'items'],
                 'item_label' => 'Checklist Lines',
                 'item_fields' => ['title'],
             ],
@@ -96,52 +115,6 @@ final class HomepageSectionRegistry
                 'fields' => ['text', 'items'],
                 'item_label' => 'Buyer Cards',
                 'item_fields' => ['icon', 'title', 'description', 'url', 'label'],
-            ],
-            [
-                'key' => 'design_jersey',
-                'name' => 'Design Jersey',
-                'component' => 'design_jersey',
-                'sort_order' => 60,
-                'eyebrow' => 'Design your own',
-                'title' => 'Design Your Own Jersey',
-                'description' => 'Add your team logo, player names, numbers, colors, and style preferences. Whether you need one custom jersey or a full team set, we make the process simple. Share your design idea, upload your logo, or tell us what style you want. Our team can help prepare the mockup before production.',
-                'primary_label' => 'Start Your Order',
-                'primary_url' => '#products',
-                'secondary_label' => 'Request Bulk Quote',
-                'secondary_url' => '#bulk',
-                'image_url' => '/storage/storefront/home/hero.webp',
-                'image_alt' => 'Custom jersey mockup with team colors',
-                'items' => [
-                    ['title' => 'Choose product style', 'description' => 'Select jersey type, sport, fabric direction, and quantity.'],
-                    ['title' => 'Add logo, name, number, and colors', 'description' => 'Send the exact details you want on each jersey.'],
-                    ['title' => 'Review design proof', 'description' => 'Artwork or mockup can be reviewed before custom production.'],
-                    ['title' => 'Confirm order and production', 'description' => 'Approve the details, price, timeline, and shipping needs.'],
-                ],
-                'fields' => ['text', 'buttons', 'image', 'items'],
-                'item_label' => 'Design Steps',
-                'item_fields' => ['title', 'description'],
-            ],
-            [
-                'key' => 'bulk_order',
-                'name' => 'Bulk Order',
-                'component' => 'bulk_order',
-                'sort_order' => 70,
-                'eyebrow' => 'Team, School, League & Event',
-                'title' => 'Ordering for a team, school, league, or event?',
-                'description' => 'Larger orders need a little more care. Share your quantity, sizes, artwork, delivery date, and shipping needs. Our team will review everything and send a clear bulk quote.',
-                'primary_label' => 'Request Bulk Quote →',
-                'primary_url' => '/bulk-quote',
-                'secondary_label' => 'Explore Team Products',
-                'secondary_url' => '/products',
-                'items' => [
-                    ['title' => 'Products & quantity', 'description' => 'Item type, estimated quantity, sizes, and player details.'],
-                    ['title' => 'Artwork & branding', 'description' => 'Logo, colors, names, numbers, placement, and references.'],
-                    ['title' => 'Delivery timing', 'description' => 'Needed-by date, event date, and production urgency.'],
-                    ['title' => 'Shipping details', 'description' => 'Address, preferred shipping method, and special notes.'],
-                ],
-                'fields' => ['text', 'buttons', 'items'],
-                'item_label' => 'Quote Checklist',
-                'item_fields' => ['title', 'description'],
             ],
             [
                 'key' => 'process',
@@ -336,6 +309,7 @@ final class HomepageSectionRegistry
             'mobile_image_path' => self::nullableString($definition['mobile_image_path'] ?? null),
             'mobile_image_url' => self::nullableString($definition['mobile_image_url'] ?? null),
             'mobile_image_alt' => self::nullableString($definition['mobile_image_alt'] ?? null),
+            'hero_slides' => $definition['hero_slides'] ?? null,
             'items' => $definition['items'] ?? null,
             'is_active' => true,
             'sort_order' => (int) ($definition['sort_order'] ?? 0),
@@ -384,6 +358,31 @@ final class HomepageSectionRegistry
         $merged['image'] = PublicMedia::url($merged['image_path'] ?? null, $merged['image_url'] ?? null, null);
         $merged['mobile_image'] = PublicMedia::url($merged['mobile_image_path'] ?? null, $merged['mobile_image_url'] ?? null, null);
         $merged['mobile_image_alt'] = self::nullableString($merged['mobile_image_alt'] ?? null) ?: ($merged['image_alt'] ?? null);
+        $merged['hero_slides'] = collect(is_array($merged['hero_slides'] ?? null) ? $merged['hero_slides'] : [])
+            ->map(function ($slide, int $index): ?array {
+                if (! is_array($slide)) {
+                    return null;
+                }
+
+                $imagePath = self::nullableString($slide['image_path'] ?? null);
+                $imageUrl = self::nullableString($slide['image_url'] ?? $slide['image'] ?? null);
+                $image = PublicMedia::url($imagePath, $imageUrl, null);
+
+                if ($image === null) {
+                    return null;
+                }
+
+                return [
+                    'id' => self::nullableString($slide['id'] ?? null) ?: 'hero-slide-'.($index + 1),
+                    'image_path' => $imagePath,
+                    'image_url' => $imageUrl,
+                    'image' => $image,
+                    'image_alt' => self::nullableString($slide['image_alt'] ?? $slide['alt'] ?? null) ?: 'Custom team sportswear',
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
 
         return $merged;
     }

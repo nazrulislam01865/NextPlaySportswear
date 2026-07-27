@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Category;
+use App\Models\Faq;
 use App\Models\Product;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -167,13 +168,21 @@ class ProductSeeder extends Seeder
 
     private function seedFaqs(Product $product): void
     {
-        $product->faqs()->delete();
+        $product->faqs()->detach();
+
         foreach ([
             ['Can this product have different customization options?', 'Yes. Administrators can add, remove, reorder, require, or disable product-specific option groups and values.'],
             ['Can the quantity pricing table be different?', 'Yes. Each product has its own visible price table, and those same rows drive live quantity pricing.'],
             ['Will I receive a proof?', 'The available artwork and proof options are configured per product. When enabled, artwork is reviewed before production.'],
         ] as $index => [$question, $answer]) {
-            $product->faqs()->create(['question' => $question, 'answer' => $answer, 'is_active' => true, 'sort_order' => $index]);
+            $faq = Faq::query()->firstOrCreate(
+                ['question' => $question],
+                ['answer' => $answer, 'is_active' => true, 'sort_order' => $index * 10]
+            );
+
+            $product->faqs()->syncWithoutDetaching([
+                $faq->id => ['sort_order' => $index],
+            ]);
         }
     }
 

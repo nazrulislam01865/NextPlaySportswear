@@ -3,12 +3,31 @@
     $hasText = in_array('text', $fields, true);
     $hasButtons = in_array('buttons', $fields, true);
     $hasImage = in_array('image', $fields, true);
+    $hasHeroSlides = in_array('hero_slides', $fields, true);
     $hasItems = in_array('items', $fields, true);
     $itemFields = $definition['item_fields'] ?? ['title', 'description'];
     $currentImage = \App\Support\PublicMedia::url($section->image_path, $section->image_url, '');
     $currentMobileImage = \App\Support\PublicMedia::url($section->mobile_image_path, $section->mobile_image_url, '');
     $items = old('items', $section->items ?: ($definition['items'] ?? []));
     $items = is_array($items) ? array_values($items) : [];
+    $heroSlides = old('hero_slides', data_get($viewSection, 'hero_slides', []));
+    $heroSlides = collect(is_array($heroSlides) ? $heroSlides : [])->map(function ($slide, $index): array {
+        $slide = is_array($slide) ? $slide : [];
+        $imagePath = trim((string) ($slide['image_path'] ?? ''));
+        $imageUrl = trim((string) ($slide['image_url'] ?? ''));
+        $preview = trim((string) ($slide['image'] ?? ''));
+        if ($preview === '') {
+            $preview = \App\Support\PublicMedia::url($imagePath ?: null, $imageUrl ?: null, '') ?: '';
+        }
+
+        return [
+            'id' => trim((string) ($slide['id'] ?? '')) ?: 'hero-slide-'.($index + 1),
+            'image_path' => $imagePath,
+            'image_url' => $imageUrl,
+            'image_alt' => trim((string) ($slide['image_alt'] ?? '')),
+            'preview' => $preview,
+        ];
+    })->values()->all();
     $categoryOptionRows = collect($categoryOptions ?? [])->map(fn ($option) => [
         'id' => (string) ($option['id'] ?? ''),
         'label' => (string) ($option['label'] ?? ''),
@@ -50,6 +69,8 @@
             removeMobileImage: false,
             itemFields: @js(array_values($itemFields)),
             itemFieldLabels: @js($fieldLabels),
+            heroSlides: @js($heroSlides),
+            heroSlideLimit: 12,
             categoryOptions: @js($categoryOptions),
             categoryOptionList: @js($categoryOptionRows),
             categorySearch: '',
@@ -355,6 +376,48 @@
                 this.submittingAfterDraftSync = true;
                 this.$nextTick(() => event.target.submit());
             },
+            addHeroSlide() {
+                if (this.heroSlides.length >= this.heroSlideLimit) {
+                    window.alert(`You can add up to ${this.heroSlideLimit} hero slider images.`);
+                    return;
+                }
+
+                this.heroSlides.push({
+                    id: `new-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                    image_path: '',
+                    image_url: '',
+                    image_alt: '',
+                    preview: '',
+                });
+                this.$nextTick(() => this.$refs.heroSlidesEnd?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+            },
+            removeHeroSlide(index) {
+                const slide = this.heroSlides[index];
+                if (!slide) return;
+                if (!window.confirm('Remove this image from the hero slider?')) return;
+                if (String(slide.preview || '').startsWith('blob:')) URL.revokeObjectURL(slide.preview);
+                this.heroSlides.splice(index, 1);
+            },
+            moveHeroSlide(index, direction) {
+                const target = index + direction;
+                if (target < 0 || target >= this.heroSlides.length) return;
+                const moved = this.heroSlides.splice(index, 1)[0];
+                this.heroSlides.splice(target, 0, moved);
+            },
+            previewHeroSlide(event, index) {
+                const file = event.target.files?.[0];
+                if (!file || !this.heroSlides[index]) return;
+                const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
+                if (!allowed.includes(file.type) || file.size > 10 * 1024 * 1024) {
+                    event.target.value = '';
+                    window.alert('Choose a JPG, PNG, WebP, or AVIF image no larger than 10 MB.');
+                    return;
+                }
+                const previous = String(this.heroSlides[index].preview || '');
+                if (previous.startsWith('blob:')) URL.revokeObjectURL(previous);
+                this.heroSlides[index].preview = URL.createObjectURL(file);
+                this.heroSlides[index].image_url = '';
+            },
             previewFile(event, target = 'desktop') {
                 const file = event.target.files?.[0];
                 if (!file) return;
@@ -432,6 +495,73 @@
                             <label class="admin-label">Destination<input type="text" name="secondary_url" value="{{ old('secondary_url', $section->secondary_url) }}" class="admin-input @error('secondary_url') border-red-400 @enderror" maxlength="2048" placeholder="/bulk-quote or #bulk"></label>
                             @error('secondary_url')<span class="block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
                         </div>
+                    </div>
+                </div>
+            </x-admin.section-card>
+        @endif
+
+        @if($hasHeroSlides)
+            <x-admin.section-card title="Hero Image Slider" description="Upload and order the images shown inside the homepage hero card.">
+                <div class="space-y-5">
+                    <div class="admin-hero-slide-guidelines grid gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-brand-dark">
+                        <div><span class="block text-xs font-black uppercase tracking-[.12em] text-blue-700">Recommended size</span><strong>1200 × 820 px</strong></div>
+                        <div><span class="block text-xs font-black uppercase tracking-[.12em] text-blue-700">Aspect ratio</span><strong>60:41 (about 1.46:1)</strong></div>
+                        <div><span class="block text-xs font-black uppercase tracking-[.12em] text-blue-700">Accepted files</span><strong>JPG, PNG, WebP, AVIF · 10 MB max</strong></div>
+                        <p class="admin-hero-slide-guidelines-note text-xs font-semibold text-slate-600">Keep important jersey details near the center because the responsive storefront may crop a small amount from the image edges.</p>
+                    </div>
+
+                    @php
+                        $heroSlideErrors = collect($errors->messages())
+                            ->filter(fn ($messages, $field) => $field === 'hero_slides' || str_starts_with((string) $field, 'hero_slides.'))
+                            ->flatten()->filter()->unique()->values();
+                    @endphp
+                    @if($heroSlideErrors->isNotEmpty())
+                        <div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
+                            @foreach($heroSlideErrors as $message)<p>{{ $message }}</p>@endforeach
+                        </div>
+                    @endif
+
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p class="font-black text-brand-ink"><span x-text="heroSlides.length"></span> slider image<span x-show="heroSlides.length !== 1">s</span></p>
+                            <p class="text-xs font-semibold text-slate-500">The first image loads first on the storefront.</p>
+                        </div>
+                        <button type="button" class="admin-hero-add-button btn btn-navy" @click="addHeroSlide" :disabled="heroSlides.length >= heroSlideLimit">+ Add Slider Image</button>
+                    </div>
+
+                    <div class="space-y-4">
+                        <template x-for="(slide, index) in heroSlides" :key="slide.id">
+                            <article class="admin-hero-slide-row grid gap-4 rounded-2xl border border-slate-200 bg-white p-4">
+                                <div class="space-y-3">
+                                    <div class="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-100" style="aspect-ratio: 60 / 41;">
+                                        <template x-if="slide.preview"><img :src="slide.preview" :alt="slide.image_alt || `Hero slide ${index + 1}`" class="h-full w-full object-cover"></template>
+                                        <div x-show="!slide.preview" class="grid h-full place-items-center p-5 text-center text-sm font-bold text-slate-500">Choose an image or enter a URL</div>
+                                        <span class="absolute left-3 top-3 rounded-full bg-brand-navy px-3 py-1 text-xs font-black text-white" x-text="`Slide ${index + 1}`"></span>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <button type="button" class="btn btn-white px-3" @click="moveHeroSlide(index, -1)" :disabled="index === 0" aria-label="Move image earlier">↑</button>
+                                        <button type="button" class="btn btn-white px-3" @click="moveHeroSlide(index, 1)" :disabled="index === heroSlides.length - 1" aria-label="Move image later">↓</button>
+                                        <button type="button" class="btn border border-red-200 bg-red-50 px-3 text-red-700" @click="removeHeroSlide(index)" aria-label="Remove slider image">Remove</button>
+                                    </div>
+                                </div>
+
+                                <div class="admin-hero-slide-fields grid gap-4">
+                                    <input type="hidden" :name="`hero_slides[${index}][id]`" :value="slide.id">
+                                    <input type="hidden" :name="`hero_slides[${index}][image_path]`" :value="slide.image_path || ''">
+                                    <label class="admin-label">Upload image
+                                        <input type="file" :name="`hero_slides[${index}][image_file]`" accept="image/jpeg,image/png,image/webp,image/avif" class="admin-input" @change="previewHeroSlide($event, index)">
+                                    </label>
+                                    <label class="admin-label">Image URL (optional alternative)
+                                        <input type="text" :name="`hero_slides[${index}][image_url]`" x-model="slide.image_url" class="admin-input" maxlength="2048" placeholder="https://... or /images/..." @input="if (slide.image_url) slide.preview = slide.image_url">
+                                    </label>
+                                    <label class="admin-label">Image alt text
+                                        <input type="text" :name="`hero_slides[${index}][image_alt]`" x-model="slide.image_alt" class="admin-input" maxlength="255" placeholder="Describe the jerseys or sportswear in this image">
+                                    </label>
+                                </div>
+                            </article>
+                        </template>
+                        <div x-show="heroSlides.length === 0" class="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm font-bold text-slate-500">No custom slider images selected. The storefront will use the built-in default images until you add one.</div>
+                        <div x-ref="heroSlidesEnd"></div>
                     </div>
                 </div>
             </x-admin.section-card>

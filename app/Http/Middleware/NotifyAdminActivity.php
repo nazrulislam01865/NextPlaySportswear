@@ -153,6 +153,7 @@ class NotifyAdminActivity
             'rural-area-surcharges.' => 'Rural area surcharge',
             'payment-methods.' => 'Payment method',
             'shipping-methods.' => 'Shipping method',
+            'faqs.' => 'FAQ',
             'homepage-slides.' => 'Homepage slide',
             'role-matrix.roles.' => 'Admin role',
             'role-matrix.' => 'Role matrix',

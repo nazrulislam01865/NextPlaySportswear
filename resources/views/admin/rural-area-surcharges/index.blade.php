@@ -61,5 +61,5 @@
         </div>
     </div>
 
-    <div class="mt-5">{{ $surcharges->links() }}</div>
+    <div class="mt-5">{{ $surcharges->links('pagination.nextplay') }}</div>
 </x-layouts.admin>

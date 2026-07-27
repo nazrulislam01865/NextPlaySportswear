@@ -29,14 +29,11 @@
         ],
     ];
 
-    $configuredHeroSlides = collect(data_get($section, 'hero_slides', data_get($section, 'slides', [])))
+    $configuredHeroSlides = collect(data_get($section, 'hero_slides', []))
         ->filter(fn ($slide) => filled(data_get($slide, 'image')))
         ->map(fn ($slide) => [
             'image' => (string) data_get($slide, 'image'),
-            'heading' => (string) data_get($slide, 'heading', data_get($slide, 'title', 'Custom Team Gear')),
-            'text' => (string) data_get($slide, 'text', data_get($slide, 'description', 'Custom sportswear made for your team.')),
-            'label' => (string) data_get($slide, 'label', data_get($slide, 'badge', 'Team Gear')),
-            'alt' => (string) data_get($slide, 'alt', data_get($slide, 'image_alt', data_get($slide, 'heading', 'Custom team sportswear'))),
+            'alt' => (string) data_get($slide, 'image_alt', data_get($slide, 'alt', 'Custom team sportswear')),
         ])
         ->values();
 

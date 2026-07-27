@@ -135,7 +135,7 @@
                     </tbody>
                 </table>
             </div>
-            <div class="p-5">{{ $users->links() }}</div>
+            <div class="p-5">{{ $users->links('pagination.nextplay') }}</div>
         </section>
     </div>
 </x-layouts.admin>

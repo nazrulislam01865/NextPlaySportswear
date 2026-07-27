@@ -135,7 +135,7 @@
             <option value="delete">Delete / Move to trash</option>
         </select>
 
-        <button class="category-bulk-button" type="submit">
+        <button class="category-bulk-button category-bulk-button--compact" type="submit">
             Apply
         </button>
 

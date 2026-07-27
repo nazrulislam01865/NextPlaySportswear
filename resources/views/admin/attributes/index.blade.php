@@ -14,5 +14,5 @@
         @empty<tr><td colspan="6" class="px-5 py-14 text-center text-slate-500">No catalog attributes found.</td></tr>@endforelse
         </tbody></table></div>
     </div>
-    <div class="mt-5">{{ $attributes->links() }}</div>
+    <div class="mt-5">{{ $attributes->links('pagination.nextplay') }}</div>
 </x-layouts.admin>

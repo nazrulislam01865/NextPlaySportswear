@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\ProductBulkRequest;
 use App\Http\Requests\Admin\ProductFormRequest;
 use App\Models\CatalogAttribute;
 use App\Models\Category;
+use App\Models\Faq;
 use App\Models\JerseyCustomizationOption;
 use App\Models\MediaLibraryImage;
 use App\Models\Product;
@@ -404,11 +405,18 @@ class ProductController extends Controller
                     $newGroup->sizes()->create(Arr::except($size->toArray(), ['id', 'product_size_group_id', 'created_at', 'updated_at']));
                 }
             }
-            foreach (['priceTiers', 'productionSpeeds', 'shippingMethods', 'faqs'] as $relation) {
+            foreach (['priceTiers', 'productionSpeeds', 'shippingMethods'] as $relation) {
                 foreach ($product->{$relation} as $item) {
                     $copy->{$relation}()->create(Arr::except($item->toArray(), ['id', 'product_id', 'created_at', 'updated_at']));
                 }
             }
+            $copy->faqs()->sync(
+                $product->faqs
+                    ->mapWithKeys(fn (Faq $faq, int $index): array => [$faq->id => [
+                        'sort_order' => (int) ($faq->pivot->sort_order ?? $index),
+                    ]])
+                    ->all()
+            );
             foreach ($product->fabricPriceTables as $table) {
                 $newTable = $copy->fabricPriceTables()->create(Arr::except($table->toArray(), ['id', 'product_id', 'created_at', 'updated_at']));
                 foreach ($table->tiers as $tier) {
@@ -532,6 +540,10 @@ class ProductController extends Controller
             ->orderBy('name')
             ->get();
 
+        $faqOptions = Faq::query()
+            ->ordered()
+            ->get();
+
         return view($view, [
             'product' => $product,
             'categoryOptions' => $this->categoryTreeService->leafOptions(),
@@ -541,6 +553,7 @@ class ProductController extends Controller
             'sizeOptionGroups' => $sizeOptionGroups,
             'productionMethodOptions' => $productionMethodOptions,
             'shippingMethodOptions' => $shippingMethodOptions,
+            'faqOptions' => $faqOptions,
         ]);
     }
 
@@ -1404,7 +1417,14 @@ class ProductController extends Controller
             'per_item_price', 'free_shipping_minimum', 'minimum_days', 'maximum_days',
             'starts_after_artwork_approval', 'is_quote_based', 'is_default', 'is_active',
         ]);
-        $this->replaceSimpleRelation($product, 'faqs', $data['faqs'] ?? [], ['question', 'answer'], ['question', 'answer', 'is_active']);
+        $faqAssignments = collect($data['faq_ids'] ?? [])
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->mapWithKeys(fn (int $id, int $index): array => [$id => ['sort_order' => $index]])
+            ->all();
+        $product->faqs()->sync($faqAssignments);
     }
 
     /**

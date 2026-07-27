@@ -8,6 +8,7 @@ use App\Support\StorefrontRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
@@ -30,8 +31,9 @@ class AuthenticatedSessionController extends Controller
     public function store(LoginRequest $request): RedirectResponse
     {
         $data = $request->validated();
+        $email = Str::lower(trim($data['email']));
         $credentials = [
-            'email' => $data['email'],
+            'email' => $email,
             'password' => $data['password'],
             'role' => 'customer',
             'is_active' => true,
@@ -48,6 +50,9 @@ class AuthenticatedSessionController extends Controller
         Auth::guard('admin')->logout();
         Auth::shouldUse('web');
         $request->session()->regenerate();
+
+        $customer = Auth::guard('web')->user();
+        $customer?->forceFill(['last_login_at' => now()])->saveQuietly();
 
         $destination = StorefrontRedirect::intended($request, route('account.dashboard'));
 

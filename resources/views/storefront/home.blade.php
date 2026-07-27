@@ -18,13 +18,7 @@
                     <x-storefront.home.buyer-paths :buyer-paths="$section['items'] ?? $buyerPaths ?? []" :section="$section" />
                     @break
 
-                @case('design_jersey')
-                    <x-storefront.home.design-jersey :section="$section" />
-                    @break
 
-                @case('bulk_order')
-                    <x-storefront.home.bulk-order :section="$section" />
-                    @break
 
                 @case('process')
                     <x-storefront.home.process :steps="$section['items'] ?? $processSteps" :section="$section" />

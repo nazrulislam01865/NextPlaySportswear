@@ -73,6 +73,6 @@
             </div>
         </div>
 
-        <div class="mt-5">{{ $groups->links() }}</div>
+        <div class="mt-5">{{ $groups->links('pagination.nextplay') }}</div>
     </div>
 </x-layouts.admin>

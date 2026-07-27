@@ -184,6 +184,8 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::resource('shipping-methods', \App\Http\Controllers\Admin\ShippingMethodController::class)
             ->parameters(['shipping-methods' => 'shippingMethod'])
             ->except('show');
+        Route::resource('faqs', \App\Http\Controllers\Admin\FaqController::class)
+            ->except('show');
         Route::resource('payment-methods', \App\Http\Controllers\Admin\PaymentMethodController::class)
             ->parameters(['payment-methods' => 'paymentMethod'])
             ->except('show');
@@ -238,7 +240,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
 Route::middleware(['guest:web', 'not.admin'])->group(function () {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])
-        ->middleware('throttle:5,1')
+        ->middleware('throttle:storefront-login')
         ->name('login.store');
 
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');

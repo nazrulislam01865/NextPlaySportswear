@@ -42,6 +42,6 @@
                 </tbody>
             </table>
         </div>
-        @if($slides->hasPages())<div class="border-t border-slate-100 p-5">{{ $slides->links() }}</div>@endif
+        @if($slides->hasPages())<div class="border-t border-slate-100 p-5">{{ $slides->links('pagination.nextplay') }}</div>@endif
     </div>
 </x-layouts.admin>

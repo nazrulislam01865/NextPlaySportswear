@@ -27,7 +27,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('register.store') }}" class="grid gap-5" novalidate>
+            <form method="POST" action="{{ route('register.store') }}" class="grid gap-5" novalidate data-single-submit>
                 @csrf
                 @if (! empty($redirectUrl))
                     <input type="hidden" name="redirect" value="{{ $redirectUrl }}">

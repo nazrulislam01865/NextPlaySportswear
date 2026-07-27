@@ -43,7 +43,7 @@ class AuthenticationSeparationTest extends TestCase
         $this->assertGuest('admin');
     }
 
-    public function test_admin_session_uses_only_admin_guard_and_is_redirected_from_customer_area(): void
+    public function test_admin_session_stays_separate_from_storefront_customer_access(): void
     {
         $admin = User::factory()->create([
             'role' => 'super_admin',
@@ -59,8 +59,10 @@ class AuthenticationSeparationTest extends TestCase
         $this->assertAuthenticatedAs($admin, 'admin');
         $this->assertGuest('web');
 
-        $this->get(route('login'))->assertRedirect(route('admin.dashboard'));
-        $this->get(route('account.dashboard'))->assertRedirect(route('admin.dashboard'));
+        // Storefront customer authentication remains independent from the
+        // active admin guard and never redirects back into the admin panel.
+        $this->get(route('login'))->assertOk();
+        $this->get(route('account.dashboard'))->assertRedirect(route('login'));
     }
 
 
@@ -137,4 +139,34 @@ class AuthenticationSeparationTest extends TestCase
         $this->assertAuthenticatedAs($customer, 'web');
         $this->assertGuest('admin');
     }
+
+    public function test_customer_registration_persists_a_hashed_database_account_used_by_login(): void
+    {
+        $this->post(route('register.store'), [
+            'name' => 'NextPlay Customer',
+            'email' => 'CUSTOMER@EXAMPLE.COM',
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+            'terms' => '1',
+            'website' => '',
+        ])->assertRedirect(route('account.dashboard'));
+
+        $customer = User::query()->where('email', 'customer@example.com')->firstOrFail();
+
+        $this->assertSame('customer', $customer->role);
+        $this->assertTrue($customer->is_active);
+        $this->assertTrue(Hash::check('Password123', $customer->password));
+        $this->assertNotSame('Password123', $customer->password);
+
+        $this->post(route('logout'))->assertRedirect(route('home'));
+
+        $this->post(route('login.store'), [
+            'email' => ' Customer@Example.Com ',
+            'password' => 'Password123',
+        ])->assertRedirect(route('account.dashboard'));
+
+        $this->assertAuthenticatedAs($customer->fresh(), 'web');
+        $this->assertNotNull($customer->fresh()->last_login_at);
+    }
+
 }

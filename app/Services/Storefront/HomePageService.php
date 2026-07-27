@@ -41,7 +41,7 @@ class HomePageService
     {
         return [
             'title' => 'Custom Sportswear, Team Uniforms & Jerseys | ' . config('storefront.name'),
-            'description' => 'Shop custom sportswear, team uniforms, jerseys, hoodies, caps, bags, and promotional products. Bulk quotes available for teams and events.',
+            'description' => 'Shop custom sportswear, team uniforms, jerseys, hoodies, caps, bags, and promotional products for teams and events.',
             'robots' => 'index, follow',
             'canonical' => route('home'),
             'og_title' => 'Custom Sportswear, Team Uniforms & Jerseys | ' . config('storefront.name'),

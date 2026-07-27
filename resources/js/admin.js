@@ -30,6 +30,7 @@ window.adminSizeOptionRows = (initial = []) => ({
 
 window.adminProductForm = (initial = {}) => ({
     productName: initial.productName || '',
+    productSku: initial.productSku || '',
     shortDescription: initial.shortDescription || '',
     descriptionHtml: initial.descriptionHtml || '',
     slug: initial.slug || '',
@@ -124,7 +125,6 @@ window.adminProductForm = (initial = {}) => ({
         { key: 'front', label: 'Front text / position', type: 'text', max_length: 80, required: false, enabled: false },
         { key: 'back', label: 'Back text / position', type: 'text', max_length: 80, required: false, enabled: false },
     ],
-    faqs: initial.faqs?.length ? initial.faqs : [{ question: '', answer: '', is_active: true }],
     steps: [
         { id: 'header', label: 'Basics' },
         { id: 'pricing', label: 'Pricing' },
@@ -1742,7 +1742,6 @@ window.adminProductForm = (initial = {}) => ({
     addShippingMethod() { this.shippingMethods.push({ name: '', code: '', description: '', price_adjustment: 0, charge_type: 'per_unit', minimum_days: 1, maximum_days: 1, is_default: this.shippingMethods.length === 0, is_active: true }); },
     setDefaultShipping(index) { this.shippingMethods.forEach((method, methodIndex) => method.is_default = methodIndex === index); },
     addRosterField() { this.rosterFields.push({ key: '', label: '', type: 'text', max_length: 60, required: false, enabled: true }); },
-    addFaq() { this.faqs.push({ question: '', answer: '', is_active: true }); },
 });
 
 window.productSpecificationEditor = (initial = '', autoValues = {}) => ({
@@ -1841,6 +1840,9 @@ window.productSpecificationEditor = (initial = '', autoValues = {}) => ({
     },
     sync() {
         this.value = this.$refs.editor?.innerText || '';
+        const skuRow = this.rowsFromText(this.value).find((row) => this.normalizeLabel(row.label) === 'SKU');
+        const sku = String(skuRow?.value || this.autoValues?.SKU || '').trim();
+        this.$dispatch('product-specification-updated', { sku });
     },
     rowsFromPastedHtml(html = '') {
         if (!html.trim()) return [];

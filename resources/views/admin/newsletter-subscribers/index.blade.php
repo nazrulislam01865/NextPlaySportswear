@@ -115,5 +115,5 @@
         </div>
     </div>
 
-    <div class="mt-5">{{ $subscribers->links() }}</div>
+    <div class="mt-5">{{ $subscribers->links('pagination.nextplay') }}</div>
 </x-layouts.admin>

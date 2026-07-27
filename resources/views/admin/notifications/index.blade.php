@@ -66,7 +66,7 @@
             </div>
 
             @if(method_exists($notifications, 'links'))
-                <div class="admin-pagination mt-5">{{ $notifications->links() }}</div>
+                <div class="admin-pagination mt-5">{{ $notifications->links('pagination.nextplay') }}</div>
             @endif
         </section>
     </div>

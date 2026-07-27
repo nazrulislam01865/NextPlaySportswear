@@ -32,24 +32,23 @@
     $productsActive = request()->routeIs('products.*');
     $howActive = request()->routeIs('how-to-order');
     $shippingActive = request()->routeIs('shipping');
+    $dealsActive = request()->routeIs('products.index') && request()->boolean('deals');
     $cartActive = request()->routeIs('cart.*');
     $wishlistActive = request()->routeIs('wishlist.*');
     $contactActive = request()->routeIs('contact') || request()->routeIs('contact.store');
     $trackActive = request()->routeIs('orders.track') || request()->routeIs('orders.track.lookup');
 
     $storefrontReturnUrl = request()->routeIs('login', 'register') ? null : request()->fullUrl();
-    $accountHref = auth('admin')->check()
-        ? route('admin.dashboard')
-        : (auth('web')->check()
-            ? route('account.dashboard')
-            : route('login', array_filter(['redirect' => $storefrontReturnUrl])));
-    $adminAuthenticated = auth('admin')->check();
     $customerAuthenticated = auth('web')->check();
-    $accountAuthenticated = $adminAuthenticated || $customerAuthenticated;
-    $accountLabel = $adminAuthenticated
-        ? 'Admin Dashboard'
-        : ($customerAuthenticated ? 'My Account' : 'Login');
-    $accountActive = request()->routeIs('admin.*', 'account.*');
+    $customer = auth('web')->user();
+    $accountHref = $customerAuthenticated
+        ? route('account.dashboard')
+        : route('login', array_filter(['redirect' => $storefrontReturnUrl]));
+    $accountLabel = $customerAuthenticated ? 'My Account' : 'Sign in';
+    $accountGreeting = $customerAuthenticated
+        ? 'Hello, '.str((string) ($customer?->name ?: 'customer'))->before(' ')->limit(18, '')->toString()
+        : 'Hello, sign in';
+    $accountActive = request()->routeIs('account.*');
 
     $whatsappDigits = preg_replace('/\D+/', '', (string) config('storefront.whatsapp'));
     $whatsappUrl = config('storefront.whatsapp_url') ?: ($whatsappDigits ? 'https://wa.me/'.$whatsappDigits : '#');
@@ -57,7 +56,7 @@
 @endphp
 
 <header
-    x-data="{ open: false }"
+    x-data="{ open: false, accountOpen: false }"
     x-effect="document.documentElement.classList.toggle('overflow-hidden', open)"
     @keydown.escape.window="open = false"
     class="storefront-site-header np-site-header sticky top-0 z-40 bg-white"
@@ -104,6 +103,13 @@
                     autocomplete="off"
                     class="np-header-search-input"
                 >
+                <button type="submit" class="np-header-search-submit" aria-label="Search products">
+                    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="7"></circle>
+                        <path d="m21 21-4.3-4.3"></path>
+                    </svg>
+                    <span>Search</span>
+                </button>
                 <div
                     class="storefront-search-suggestions np-search-suggestions hidden"
                     data-storefront-search-suggestions
@@ -113,26 +119,65 @@
             </form>
 
             <div class="np-header-actions">
-                <a href="{{ route('products.index') }}" class="np-header-btn np-header-btn-light np-shop-now-btn" data-header-analytics="header_cta_click" data-header-analytics-label="shop_now">Shop Now</a>
-                @if($accountAuthenticated)
-                    <a
-                        href="{{ $accountHref }}"
-                        class="np-icon-action np-profile-action {{ $accountActive ? 'is-active' : '' }}"
-                        aria-label="{{ $accountLabel }}"
-                        title="{{ $accountLabel }}"
-                        @if($accountActive) aria-current="page" @endif
+                <div
+                    class="np-account-menu {{ $accountActive ? 'is-active' : '' }}"
+                    @mouseenter="accountOpen = true"
+                    @mouseleave="accountOpen = false"
+                    @focusin="accountOpen = true"
+                    @focusout="setTimeout(() => { if (!$el.contains(document.activeElement)) accountOpen = false }, 0)"
+                    @click.outside="accountOpen = false"
+                    @keydown.escape.window="accountOpen = false"
+                >
+                    <button
+                        type="button"
+                        class="np-account-trigger"
+                        :aria-expanded="accountOpen.toString()"
+                        aria-haspopup="true"
+                        aria-controls="storefront-account-menu"
+                        @click="accountOpen = !accountOpen"
                         data-header-analytics="header_cta_click"
-                        data-header-analytics-label="{{ $adminAuthenticated ? 'admin_profile' : 'customer_profile' }}"
+                        data-header-analytics-label="{{ $customerAuthenticated ? 'customer_account_menu' : 'login_menu' }}"
                     >
-                        <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <circle cx="12" cy="8" r="4"></circle>
-                            <path d="M4 21a8 8 0 0 1 16 0"></path>
+                        <span class="np-account-trigger-copy">
+                            <span class="np-account-greeting">{{ $accountGreeting }}</span>
+                            <span class="np-account-title">Account &amp; Lists</span>
+                        </span>
+                        <svg class="np-account-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="m6 9 6 6 6-6"></path>
                         </svg>
-                        <span class="sr-only">{{ $accountLabel }}</span>
-                    </a>
-                @else
-                    <a href="{{ $accountHref }}" class="np-header-btn np-header-btn-light np-account-action" data-header-analytics="header_cta_click" data-header-analytics-label="login">Login</a>
-                @endif
+                    </button>
+
+                    <div
+                        id="storefront-account-menu"
+                        x-cloak
+                        x-show="accountOpen"
+                        x-transition:enter="transition ease-out duration-150"
+                        x-transition:enter-start="opacity-0 -translate-y-1"
+                        x-transition:enter-end="opacity-100 translate-y-0"
+                        x-transition:leave="transition ease-in duration-100"
+                        x-transition:leave-start="opacity-100 translate-y-0"
+                        x-transition:leave-end="opacity-0 -translate-y-1"
+                        class="np-account-dropdown"
+                        role="menu"
+                        aria-label="Account options"
+                    >
+                        <span class="np-account-dropdown-arrow" aria-hidden="true"></span>
+
+                        @if($customerAuthenticated)
+                            <a href="{{ route('account.dashboard') }}" class="np-account-primary-action" role="menuitem">My Account</a>
+                            <form method="POST" action="{{ route('logout') }}" class="np-account-secondary-form">
+                                @csrf
+                                <button type="submit" class="np-account-secondary-action" role="menuitem">Sign out</button>
+                            </form>
+                        @else
+                            <a href="{{ $accountHref }}" class="np-account-primary-action" role="menuitem">Sign in</a>
+                            <p class="np-account-new-customer">
+                                <span>New customer?</span>
+                                <a href="{{ route('register') }}" role="menuitem">Start here.</a>
+                            </p>
+                        @endif
+                    </div>
+                </div>
 
                 <div class="storefront-wishlist-hover np-wishlist-action-wrap">
                     <a
@@ -404,7 +449,8 @@
                     @endif
                 </div>
 
-                <a href="{{ route('products.index') }}" class="np-category-link {{ $productsActive ? 'is-active' : '' }}" @if($productsActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="all_products">All Products</a>
+                <a href="{{ route('products.index') }}" class="np-category-link {{ $productsActive && ! $dealsActive ? 'is-active' : '' }}" @if($productsActive && ! $dealsActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="all_products">All Products</a>
+                <a href="{{ route('products.index', ['sort' => 'featured', 'deals' => 1]) }}" class="np-category-link {{ $dealsActive ? 'is-active' : '' }}" @if($dealsActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="deals">Deals</a>
                 <a href="{{ route('how-to-order') }}" class="np-category-link {{ $howActive ? 'is-active' : '' }}" @if($howActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="how_it_works">How It Works</a>
             </nav>
 
@@ -469,20 +515,20 @@
                         </div>
                     </details>
 
-                    <a href="{{ route('products.index') }}" class="np-mobile-nav-link {{ $productsActive ? 'is-active' : '' }}" @if($productsActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_all_products">All Products</a>
+                    <a href="{{ route('products.index') }}" class="np-mobile-nav-link {{ $productsActive && ! $dealsActive ? 'is-active' : '' }}" @if($productsActive && ! $dealsActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_all_products">All Products</a>
+                    <a href="{{ route('products.index', ['sort' => 'featured', 'deals' => 1]) }}" class="np-mobile-nav-link {{ $dealsActive ? 'is-active' : '' }}" @if($dealsActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_deals">Deals</a>
                     <a href="{{ route('how-to-order') }}" class="np-mobile-nav-link {{ $howActive ? 'is-active' : '' }}" @if($howActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_how_it_works">How It Works</a>
                     <a href="{{ route('shipping') }}" class="np-mobile-nav-link np-mobile-shipping-link {{ $shippingActive ? 'is-active' : '' }}" @if($shippingActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_usa_shipping">USA Shipping</a>
                 </div>
 
-                <div class="np-mobile-utility-list" @click="if ($event.target.closest('a')) open = false">
+                <div class="np-mobile-utility-list" @click="if ($event.target.closest('a, button')) open = false">
                     <a href="{{ $whatsappUrl }}" target="_blank" rel="noopener noreferrer" class="np-mobile-nav-link" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_whatsapp">WhatsApp Us</a>
-                    <a href="{{ $accountHref }}" class="np-mobile-nav-link" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_account">{{ $accountLabel }}</a>
-                    @if(auth('admin')->check())
-                        <form method="POST" action="{{ route('admin.logout') }}">@csrf<button class="np-mobile-nav-link np-mobile-nav-button">Admin Logout</button></form>
-                    @elseif(auth('web')->check())
-                        <form method="POST" action="{{ route('logout') }}">@csrf<button class="np-mobile-nav-link np-mobile-nav-button">Logout</button></form>
+                    @if($customerAuthenticated)
+                        <a href="{{ route('account.dashboard') }}" class="np-mobile-nav-link" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_account">My Account</a>
+                        <form method="POST" action="{{ route('logout') }}">@csrf<button class="np-mobile-nav-link np-mobile-nav-button">Sign out</button></form>
                     @else
-                        <a href="{{ route('register') }}" class="np-mobile-nav-link" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_create_account">Create Account</a>
+                        <a href="{{ $accountHref }}" class="np-mobile-nav-link" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_sign_in">Sign in</a>
+                        <a href="{{ route('register') }}" class="np-mobile-nav-link" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_create_account">New customer? Start here.</a>
                     @endif
                 </div>
 

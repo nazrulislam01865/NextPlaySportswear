@@ -80,5 +80,5 @@
         </div>
     </div>
 
-    <div class="mt-5">{{ $coupons->links() }}</div>
+    <div class="mt-5">{{ $coupons->links('pagination.nextplay') }}</div>
 </x-layouts.admin>
