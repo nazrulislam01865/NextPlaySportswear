@@ -33,7 +33,7 @@ class NotificationController extends Controller
                 $query->whereNull('read_at');
             }
 
-            $notifications = $query->latest()->paginate(20)->withQueryString();
+            $notifications = $query->latest()->paginate($this->adminPerPage(20))->withQueryString();
         } else {
             $notifications = collect();
         }

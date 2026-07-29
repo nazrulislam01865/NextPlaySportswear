@@ -31,7 +31,7 @@ class AttributeController extends Controller
         }
 
         return view('admin.attributes.index', [
-            'attributes' => $query->ordered()->paginate(30)->withQueryString(),
+            'attributes' => $query->ordered()->paginate($this->adminPerPage(30))->withQueryString(),
             'filters' => $request->only(['q', 'active']),
         ]);
     }

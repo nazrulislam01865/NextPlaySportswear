@@ -13,7 +13,7 @@ class ShippingMethodController extends Controller
     public function index(): View
     {
         return view('admin.shipping-methods.index', [
-            'methods' => ShippingMethod::query()->orderBy('sort_order')->latest()->paginate(20),
+            'methods' => ShippingMethod::query()->orderBy('sort_order')->latest()->paginate($this->adminPerPage(20))->withQueryString(),
         ]);
     }
 

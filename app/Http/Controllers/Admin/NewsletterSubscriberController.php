@@ -22,7 +22,7 @@ class NewsletterSubscriberController extends Controller
 
         $this->applyFilters($query, $filters);
 
-        $subscribers = $query->paginate(30)->withQueryString();
+        $subscribers = $query->paginate($this->adminPerPage(30))->withQueryString();
 
         $stats = [
             'total' => NewsletterSubscriber::query()->count(),

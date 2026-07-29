@@ -36,7 +36,7 @@ class OrderReturnController extends Controller
         }
 
         return view('admin.returns.index', [
-            'returns' => $returns->latest('requested_at')->paginate(25)->withQueryString(),
+            'returns' => $returns->latest('requested_at')->paginate($this->adminPerPage(25))->withQueryString(),
             'returnStatuses' => config('commerce.return_statuses', []),
         ]);
     }

@@ -55,7 +55,7 @@ class TrainingVestCustomizationOptionController extends Controller
         }
 
         return view('admin.training-vest-customization-options.type-index', [
-            'options' => $query->ordered()->paginate(20)->withQueryString(),
+            'options' => $query->ordered()->paginate($this->adminPerPage(20))->withQueryString(),
             'type' => $selectedType,
             'typeLinks' => $this->typeLinks(),
             'filters' => $request->only(['q']),
@@ -222,7 +222,7 @@ class TrainingVestCustomizationOptionController extends Controller
         }
 
         return view('admin.training-vest-customization-options.size-index', [
-            'groups' => $query->ordered()->paginate(30)->withQueryString(),
+            'groups' => $query->ordered()->paginate($this->adminPerPage(30))->withQueryString(),
             'audiences' => SizeAudience::options(),
             'filters' => $request->only(['q', 'audience']),
             'type' => $selectedType,

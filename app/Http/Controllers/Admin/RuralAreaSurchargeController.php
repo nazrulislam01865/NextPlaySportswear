@@ -13,7 +13,7 @@ class RuralAreaSurchargeController extends Controller
     public function index(): View
     {
         return view('admin.rural-area-surcharges.index', [
-            'surcharges' => RuralAreaSurcharge::query()->latest()->paginate(20),
+            'surcharges' => RuralAreaSurcharge::query()->latest()->paginate($this->adminPerPage(20))->withQueryString(),
         ]);
     }
 

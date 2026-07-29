@@ -3,6 +3,18 @@
         $searchValue = $filters['q'] ?? '';
         $attachProductSearch = $filters['assign_q'] ?? '';
         $optionDepthPadding = static fn ($item): string => str_repeat('— ', max(0, (int) $item->depth - (int) $category->depth - 1));
+        $removableCategoriesFor = static function ($product) use ($category) {
+            $assignments = $product->categories->values();
+            $hasCurrentCategory = $assignments->contains(fn ($item): bool => (int) $item->id === (int) $category->id);
+            $hasLegacyDirectAssignment = (int) $product->subcategory_id === (int) $category->id
+                || ($product->subcategory_id === null && (int) $product->category_id === (int) $category->id);
+
+            if (! $hasCurrentCategory && $hasLegacyDirectAssignment) {
+                $assignments = $assignments->push($category);
+            }
+
+            return $assignments;
+        };
     @endphp
 
     <div class="space-y-6" data-category-products-page>
@@ -233,7 +245,7 @@
                         <tbody class="divide-y divide-slate-100">
                             @forelse($products as $product)
                                 @php
-                                    $assignedCategories = $product->categories->values();
+                                    $assignedCategories = $removableCategoriesFor($product);
                                     $primaryCategory = $assignedCategories->first(fn ($item) => (bool) ($item->pivot?->is_primary ?? false))
                                         ?? $assignedCategories->firstWhere('id', $product->subcategory_id)
                                         ?? $assignedCategories->firstWhere('id', $category->id)
@@ -287,7 +299,7 @@
                                                 @endif
 
                                                 @if($primaryCategory)
-                                                    <span class="category-assignment-tag category-assignment-tag--primary" title="Primary category is protected">
+                                                    <span class="category-assignment-tag category-assignment-tag--primary" title="Primary category. It can be removed from the Actions menu.">
                                                         {{ $primaryCategory->name }}
                                                         <small>Primary</small>
                                                     </span>
@@ -349,6 +361,18 @@
                                             <div class="category-row-menu-panel">
                                                 <a href="{{ route('admin.products.edit', $product) }}">Edit product</a>
                                                 <a href="{{ route('products.show', $product->slug) }}" target="_blank" rel="noopener">Preview</a>
+                                                @foreach($assignedCategories as $assignedCategory)
+                                                    <button
+                                                        type="submit"
+                                                        form="remove-category-{{ $assignedCategory->id }}-product-{{ $product->id }}"
+                                                        class="category-row-menu-danger"
+                                                    >
+                                                        Remove from {{ $assignedCategory->name }}
+                                                        @if((bool) ($assignedCategory->pivot?->is_primary ?? false))
+                                                            (primary)
+                                                        @endif
+                                                    </button>
+                                                @endforeach
                                             </div>
                                         </details>
                                     </td>
@@ -377,6 +401,22 @@
                 </div>
             </section>
         </form>
+
+        @foreach($products as $product)
+            @foreach($removableCategoriesFor($product) as $assignedCategory)
+                <form
+                    id="remove-category-{{ $assignedCategory->id }}-product-{{ $product->id }}"
+                    method="POST"
+                    action="{{ route('admin.categories.products.destroy', [$assignedCategory, $product]) }}"
+                    class="hidden"
+                    data-category-product-remove-form
+                    data-confirm="Remove {{ $product->name }} from {{ $assignedCategory->name }}? The product itself will not be deleted."
+                >
+                    @csrf
+                    @method('DELETE')
+                </form>
+            @endforeach
+        @endforeach
     </div>
 
     <script>
@@ -495,6 +535,15 @@
 
                 categoryPickers.forEach((picker) => {
                     picker.open = false;
+                });
+            });
+
+            page.querySelectorAll('[data-category-product-remove-form]').forEach((removeForm) => {
+                removeForm.addEventListener('submit', (event) => {
+                    const message = removeForm.dataset.confirm || 'Remove this product from the category?';
+                    if (!window.confirm(message)) {
+                        event.preventDefault();
+                    }
                 });
             });
 

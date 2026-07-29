@@ -121,6 +121,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::post('/categories/products/sync-legacy', [\App\Http\Controllers\Admin\CategoryProductController::class, 'syncLegacyAssignments'])->name('categories.products.sync-legacy');
         Route::get('/categories/{category}/products', [\App\Http\Controllers\Admin\CategoryProductController::class, 'index'])->name('categories.products.index');
         Route::put('/categories/{category}/products', [\App\Http\Controllers\Admin\CategoryProductController::class, 'update'])->name('categories.products.update');
+        Route::delete('/categories/{category}/products/{product}', [\App\Http\Controllers\Admin\CategoryProductController::class, 'destroy'])->name('categories.products.destroy');
         Route::resource('categories', \App\Http\Controllers\Admin\CategoryController::class)->except('show');
         Route::resource('attributes', \App\Http\Controllers\Admin\AttributeController::class)->except('show');
         Route::get(

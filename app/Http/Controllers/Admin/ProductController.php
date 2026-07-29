@@ -77,7 +77,7 @@ class ProductController extends Controller
         }
 
         return view('admin.products.index', [
-            'products' => $query->latest()->paginate(25)->withQueryString(),
+            'products' => $query->latest()->paginate($this->adminPerPage(25))->withQueryString(),
             'filters' => $request->only(['q', 'status', 'category_id', 'featured']),
             'categoryOptions' => $this->categoryTreeService->flatOptions(),
             'productStats' => $this->productStats(),

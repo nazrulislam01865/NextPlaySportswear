@@ -92,7 +92,7 @@ class CategoryProductController extends Controller
             'leafDestinationOptions' => $subcategoryOptions,
             'breadcrumbs' => $category->ancestors->values()->push($category),
             'categoryProductCount' => $categoryProductCount,
-            'products' => $query->paginate(30)->withQueryString(),
+            'products' => $query->paginate($this->adminPerPage(30))->withQueryString(),
             'filters' => [
                 'q' => $search,
                 'assign_q' => $attachProductSearch,
@@ -383,6 +383,51 @@ class CategoryProductController extends Controller
             : 'No changes were saved because no product/category changes were selected.';
 
         return back()->withErrors(['category_assignment' => $message]);
+    }
+
+    public function destroy(Category $category, Product $product): RedirectResponse
+    {
+        $removed = false;
+
+        DB::transaction(function () use ($category, $product, &$removed): void {
+            Product::query()->whereKey($product->id)->lockForUpdate()->first();
+            DB::table('category_product')
+                ->where('product_id', $product->id)
+                ->lockForUpdate()
+                ->get();
+
+            $deletedPivotRows = DB::table('category_product')
+                ->where('product_id', $product->id)
+                ->where('category_id', $category->id)
+                ->delete();
+
+            $legacyDirectAssignment = (int) $product->subcategory_id === (int) $category->id
+                || ($product->subcategory_id === null && (int) $product->category_id === (int) $category->id);
+
+            if ($deletedPivotRows === 0 && ! $legacyDirectAssignment) {
+                return;
+            }
+
+            $removed = true;
+            $this->normalizePrimaryCategory((int) $product->id);
+        });
+
+        if (! $removed) {
+            return back()->withErrors([
+                'category_assignment' => "{$product->name} is not directly assigned to {$category->name}.",
+            ]);
+        }
+
+        Product::query()->whereKey($product->id)->update([
+            'last_update_summary' => 'Removed from category '.$category->name,
+            'updated_by' => auth('admin')->id(),
+            'updated_at' => now(),
+        ]);
+
+        $this->treeService->flushCache();
+        $this->productCatalogCache->flush();
+
+        return back()->with('status', "{$product->name} was removed from {$category->name}.");
     }
 
     private function markCategoryAsPrimary(int $productId, int $categoryId): void

@@ -28,7 +28,7 @@ class CouponController extends Controller
             })
             ->when($filters['active'] !== '', fn ($query) => $query->where('is_active', $filters['active'] === '1'))
             ->latest()
-            ->paginate(15)
+            ->paginate($this->adminPerPage(15))
             ->withQueryString();
 
         return view('admin.coupons.index', compact('coupons', 'filters'));

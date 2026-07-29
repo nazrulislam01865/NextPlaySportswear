@@ -209,6 +209,56 @@ class CategoryDeletionAndLeafAssignmentTest extends TestCase
         $this->assertSame($leaf->id, $product->subcategory_id);
     }
 
+    public function test_admin_can_remove_a_product_from_any_assigned_category_including_primary(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'super_admin',
+            'is_active' => true,
+        ]);
+        $root = $this->category('Wrong Root');
+        $wrongLeaf = $this->category('Wrong Category', $root);
+        $rightLeaf = $this->category('Correct Category');
+        app(CategoryTreeService::class)->rebuildClosure();
+
+        $product = $this->product('Misassigned Product', $root, $wrongLeaf);
+        $product->categories()->attach([
+            $wrongLeaf->id => ['is_primary' => true, 'is_featured' => false, 'sort_order' => 0],
+            $rightLeaf->id => ['is_primary' => false, 'is_featured' => false, 'sort_order' => 1],
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->from(route('admin.categories.products.index', $wrongLeaf))
+            ->delete(route('admin.categories.products.destroy', [$wrongLeaf, $product]))
+            ->assertRedirect(route('admin.categories.products.index', $wrongLeaf))
+            ->assertSessionHas('status');
+
+        $this->assertDatabaseMissing('category_product', [
+            'product_id' => $product->id,
+            'category_id' => $wrongLeaf->id,
+        ]);
+        $this->assertDatabaseHas('category_product', [
+            'product_id' => $product->id,
+            'category_id' => $rightLeaf->id,
+            'is_primary' => true,
+        ]);
+
+        $product->refresh();
+        $this->assertSame($rightLeaf->id, $product->category_id);
+        $this->assertNull($product->subcategory_id);
+
+        $this->actingAs($admin, 'admin')
+            ->from(route('admin.categories.products.index', $rightLeaf))
+            ->delete(route('admin.categories.products.destroy', [$rightLeaf, $product]))
+            ->assertRedirect(route('admin.categories.products.index', $rightLeaf))
+            ->assertSessionHas('status');
+
+        $product->refresh();
+        $this->assertSame(0, $product->categories()->count());
+        $this->assertNull($product->category_id);
+        $this->assertNull($product->subcategory_id);
+        $this->assertSame('Removed from category Correct Category', $product->last_update_summary);
+    }
+
     private function category(string $name, ?Category $parent = null): Category
     {
         return Category::query()->create([

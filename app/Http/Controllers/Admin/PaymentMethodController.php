@@ -13,7 +13,7 @@ class PaymentMethodController extends Controller
     public function index(): View
     {
         return view('admin.payment-methods.index', [
-            'methods' => PaymentMethod::query()->orderBy('sort_order')->latest()->paginate(20),
+            'methods' => PaymentMethod::query()->orderBy('sort_order')->latest()->paginate($this->adminPerPage(20))->withQueryString(),
         ]);
     }
 

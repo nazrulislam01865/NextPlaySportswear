@@ -13,7 +13,7 @@ class ProductionMethodController extends Controller
     public function index(): View
     {
         return view('admin.production-methods.index', [
-            'methods' => ProductionMethod::query()->orderBy('sort_order')->latest()->paginate(20),
+            'methods' => ProductionMethod::query()->orderBy('sort_order')->latest()->paginate($this->adminPerPage(20))->withQueryString(),
         ]);
     }
 

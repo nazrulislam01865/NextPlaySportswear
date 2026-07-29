@@ -27,7 +27,7 @@ class HomepageSlideController extends Controller
                 ->with(['creator:id,name', 'updater:id,name'])
                 ->orderBy('sort_order')
                 ->orderBy('id')
-                ->paginate(30),
+                ->paginate($this->adminPerPage(30))->withQueryString(),
         ]);
     }
 

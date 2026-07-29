@@ -58,6 +58,26 @@
         $visiblePages[] = $pageNumber;
         $previousVisiblePage = $pageNumber;
     }
+
+    $showPerPageSelector = (bool) ($showPerPage ?? (
+        request()->routeIs('admin.*') && $paginator->getPageName() === 'page'
+    ));
+    $perPageOptions = \App\Support\AdminPagination::OPTIONS;
+    $currentPerPage = (int) $paginator->perPage();
+
+    if (! in_array($currentPerPage, $perPageOptions, true)) {
+        $perPageOptions[] = $currentPerPage;
+        sort($perPageOptions);
+    }
+
+    $perPageUrls = [];
+    $baseQuery = request()->query();
+    unset($baseQuery[$paginator->getPageName()], $baseQuery['per_page']);
+
+    foreach ($perPageOptions as $perPageOption) {
+        $query = array_merge($baseQuery, ['per_page' => $perPageOption]);
+        $perPageUrls[$perPageOption] = request()->url().($query === [] ? '' : '?'.\Illuminate\Support\Arr::query($query));
+    }
 @endphp
 
 <nav class="nextplay-pagination" role="navigation" aria-label="Pagination Navigation">
@@ -69,39 +89,54 @@
         @endif
     </p>
 
-    @if($paginator->hasPages())
-        <div class="nextplay-pagination__scroller">
-            <div class="nextplay-pagination__controls">
-                @if($paginator->onFirstPage())
-                    <span class="nextplay-pagination__item nextplay-pagination__item--disabled" aria-disabled="true" aria-label="Previous page">
-                        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 15 7.5 10l5-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"/></svg>
-                    </span>
-                @else
-                    <a class="nextplay-pagination__item" href="{{ $paginator->previousPageUrl() }}" rel="prev" aria-label="Previous page">
-                        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 15 7.5 10l5-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"/></svg>
-                    </a>
-                @endif
-
-                @foreach($visiblePages as $page)
-                    @if(is_string($page))
-                        <span class="nextplay-pagination__item nextplay-pagination__item--ellipsis" aria-hidden="true">…</span>
-                    @elseif($page === $currentPage)
-                        <span class="nextplay-pagination__item nextplay-pagination__item--active" aria-current="page">{{ $page }}</span>
+    <div class="nextplay-pagination__actions">
+        @if($paginator->hasPages())
+            <div class="nextplay-pagination__scroller">
+                <div class="nextplay-pagination__controls">
+                    @if($paginator->onFirstPage())
+                        <span class="nextplay-pagination__item nextplay-pagination__item--disabled" aria-disabled="true" aria-label="Previous page">
+                            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 15 7.5 10l5-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"/></svg>
+                        </span>
                     @else
-                        <a class="nextplay-pagination__item" href="{{ $paginator->url($page) }}" aria-label="Go to page {{ $page }}">{{ $page }}</a>
+                        <a class="nextplay-pagination__item" href="{{ $paginator->previousPageUrl() }}" rel="prev" aria-label="Previous page">
+                            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 15 7.5 10l5-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"/></svg>
+                        </a>
                     @endif
-                @endforeach
 
-                @if($paginator->hasMorePages())
-                    <a class="nextplay-pagination__item" href="{{ $paginator->nextPageUrl() }}" rel="next" aria-label="Next page">
-                        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7.5 5 5 5-5 5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"/></svg>
-                    </a>
-                @else
-                    <span class="nextplay-pagination__item nextplay-pagination__item--disabled" aria-disabled="true" aria-label="Next page">
-                        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7.5 5 5 5-5 5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"/></svg>
-                    </span>
-                @endif
+                    @foreach($visiblePages as $page)
+                        @if(is_string($page))
+                            <span class="nextplay-pagination__item nextplay-pagination__item--ellipsis" aria-hidden="true">…</span>
+                        @elseif($page === $currentPage)
+                            <span class="nextplay-pagination__item nextplay-pagination__item--active" aria-current="page">{{ $page }}</span>
+                        @else
+                            <a class="nextplay-pagination__item" href="{{ $paginator->url($page) }}" aria-label="Go to page {{ $page }}">{{ $page }}</a>
+                        @endif
+                    @endforeach
+
+                    @if($paginator->hasMorePages())
+                        <a class="nextplay-pagination__item" href="{{ $paginator->nextPageUrl() }}" rel="next" aria-label="Next page">
+                            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7.5 5 5 5-5 5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"/></svg>
+                        </a>
+                    @else
+                        <span class="nextplay-pagination__item nextplay-pagination__item--disabled" aria-disabled="true" aria-label="Next page">
+                            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7.5 5 5 5-5 5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"/></svg>
+                        </span>
+                    @endif
+                </div>
             </div>
-        </div>
-    @endif
+        @endif
+
+        @if($showPerPageSelector)
+            <label class="nextplay-pagination__per-page">
+                <span>Items per page</span>
+                <select aria-label="Items per page" onchange="window.location.assign(this.value)">
+                    @foreach($perPageOptions as $perPageOption)
+                        <option value="{{ $perPageUrls[$perPageOption] }}" @selected($currentPerPage === $perPageOption)>
+                            {{ $perPageOption }}
+                        </option>
+                    @endforeach
+                </select>
+            </label>
+        @endif
+    </div>
 </nav>

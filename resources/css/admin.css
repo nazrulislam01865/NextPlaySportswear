@@ -5655,3 +5655,14 @@ body.admin-clean-ui main .category-bulk-card {
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+/* CATEGORY_PRODUCT_REMOVE_ACTION_UPDATE */
+.category-row-menu-panel .category-row-menu-danger {
+    border-top: 1px solid #fee2e2;
+    color: #b91c1c;
+}
+
+.category-row-menu-panel .category-row-menu-danger:hover {
+    background: #fef2f2;
+    color: #991b1b;
+}

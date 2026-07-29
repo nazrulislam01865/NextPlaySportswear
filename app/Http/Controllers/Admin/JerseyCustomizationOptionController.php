@@ -54,7 +54,7 @@ class JerseyCustomizationOptionController extends Controller
         }
 
         return view('admin.jersey-customization-options.type-index', [
-            'options' => $query->ordered()->paginate(20)->withQueryString(),
+            'options' => $query->ordered()->paginate($this->adminPerPage(20))->withQueryString(),
             'type' => $selectedType,
             'typeLinks' => $this->typeLinks($selectedType),
             'filters' => $request->only(['q']),

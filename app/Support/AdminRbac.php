@@ -376,7 +376,11 @@ class AdminRbac
         }
 
         if (Str::startsWith($name, 'categories.products.')) {
-            return (Str::endsWith($name, '.update') || Str::endsWith($name, '.sync-legacy')) ? 'categories.manage' : 'categories.view';
+            return (
+                Str::endsWith($name, '.update')
+                || Str::endsWith($name, '.destroy')
+                || Str::endsWith($name, '.sync-legacy')
+            ) ? 'categories.manage' : 'categories.view';
         }
 
         if (Str::startsWith($name, 'categories.ordering')) {
@@ -449,6 +453,10 @@ class AdminRbac
 
     public static function requiresDeletePermission(Request $request): bool
     {
+        if ($request->routeIs('admin.categories.products.destroy')) {
+            return false;
+        }
+
         return $request->isMethod('DELETE');
     }
 

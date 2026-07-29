@@ -44,7 +44,7 @@ class OrderController extends Controller
         }
 
         return view('admin.orders.index', [
-            'orders' => $orders->latest('placed_at')->paginate(25)->withQueryString(),
+            'orders' => $orders->latest('placed_at')->paginate($this->adminPerPage(25))->withQueryString(),
             'orderStatuses' => config('commerce.order_statuses', []),
             'paymentStatuses' => config('commerce.payment_statuses', []),
         ]);

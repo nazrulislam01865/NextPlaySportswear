@@ -25,7 +25,7 @@ class AdminUserController extends Controller
             ->whereIn('role', $allAdminRoleSlugs)
             ->orderByRaw("FIELD(role, 'super_admin', 'admin', 'catalog_manager', 'order_manager', 'support_agent', 'content_manager')")
             ->orderBy('name')
-            ->paginate(20);
+            ->paginate($this->adminPerPage(20))->withQueryString();
 
         return view('admin.users.index', [
             'users' => $users,

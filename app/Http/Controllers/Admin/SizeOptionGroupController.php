@@ -39,7 +39,7 @@ class SizeOptionGroupController extends Controller
         }
 
         return view('admin.size-option-groups.index', [
-            'groups' => $query->ordered()->paginate(30)->withQueryString(),
+            'groups' => $query->ordered()->paginate($this->adminPerPage(30))->withQueryString(),
             'audiences' => SizeAudience::options(),
             'filters' => $request->only(['q', 'audience']),
             'customizationContext' => $context,

@@ -33,7 +33,7 @@ class FaqController extends Controller
         }
 
         return view('admin.faqs.index', [
-            'faqs' => $query->ordered()->paginate(20)->withQueryString(),
+            'faqs' => $query->ordered()->paginate($this->adminPerPage(20))->withQueryString(),
             'filters' => $request->only(['q', 'status']),
         ]);
     }

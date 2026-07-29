@@ -92,7 +92,7 @@ class CategoryController extends Controller
             ->orderBy('tree_path')
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->paginate(40)
+            ->paginate($this->adminPerPage(40))
             ->withQueryString();
 
         $categoryDeleteImpacts = $this->deletionService->impactsFor($categories->getCollection());
