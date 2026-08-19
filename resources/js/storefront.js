@@ -1283,7 +1283,7 @@ window.productBuilder = (config = {}) => ({
     },
 
     priceAdjustments() {
-        const breakdown = { perUnit: 0, fixed: 0, shippingPerUnit: 0, shippingFixed: 0 };
+        const breakdown = { perUnit: 0, fixed: 0, sizeTotal: 0, shippingPerUnit: 0, shippingFixed: 0 };
 
         (config.option_groups || []).forEach(group => {
             if ((group.display_mode || 'customer') === 'hidden') return;
@@ -1329,13 +1329,20 @@ window.productBuilder = (config = {}) => ({
             }
         }
 
+        (config.size_groups || []).forEach(group => {
+            (group.sizes || []).forEach(size => {
+                const quantity = Math.max(0, Number(this.quantities[`${group.id}:${size.code}`] || 0));
+                breakdown.sizeTotal += quantity * Math.max(0, Number(size.price_delta || 0));
+            });
+        });
+
         return breakdown;
     },
 
     optionSurcharge() {
         const quantity = this.totalQuantity();
         const breakdown = this.priceAdjustments();
-        return breakdown.perUnit + (quantity > 0 ? breakdown.fixed / quantity : 0);
+        return breakdown.perUnit + (quantity > 0 ? (breakdown.fixed + breakdown.sizeTotal) / quantity : 0);
     },
 
     fixedOrderSurcharge() {
@@ -1354,7 +1361,7 @@ window.productBuilder = (config = {}) => ({
         const quantity = this.totalQuantity();
         if (quantity <= 0) return 0;
         const breakdown = this.priceAdjustments();
-        return Math.max(0, (this.tierPrice() + breakdown.perUnit) * quantity + breakdown.fixed);
+        return Math.max(0, (this.tierPrice() + breakdown.perUnit) * quantity + breakdown.fixed + breakdown.sizeTotal);
     },
 
     sizeSummary() {
@@ -1367,7 +1374,9 @@ window.productBuilder = (config = {}) => ({
         (config.size_groups || []).forEach(group => {
             const sizes = (group.sizes || []).map(size => {
                 const quantity = Number(this.quantities[`${group.id}:${size.code}`] || 0);
-                return quantity > 0 ? `${size.label} × ${quantity}` : null;
+                if (quantity <= 0) return null;
+                const extra = Math.max(0, Number(size.price_delta || 0));
+                return `${size.label} × ${quantity}${extra > 0 ? ` (+${this.money(extra)} / piece)` : ''}`;
             }).filter(Boolean);
             if (sizes.length) parts.push(`${group.label}: ${sizes.join(', ')}`);
         });

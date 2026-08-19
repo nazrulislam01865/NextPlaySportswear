@@ -1051,7 +1051,9 @@ class CartService
         $unitPrice = $this->unitPriceForQuantity($product, $quantity, $customization);
         $shippingCharge = $this->productShippingCharge($product, $customization, $quantity);
         $customization = $this->withFulfillmentPricing($customization, $shippingCharge, $quantity);
-        $customizationUnitPrice = $this->customizationUnitPrice($product, $customization, $quantity);
+        $customizationPricing = $this->customizationPricing($product, $customization, $quantity);
+        $customizationUnitPrice = (float) $customizationPricing['unit'];
+        $customizationTotal = (float) $customizationPricing['total'];
         $productShippingTotal = round((float) ($shippingCharge['total'] ?? 0), 2);
         $shippingUnitPrice = $quantity > 0 ? round($productShippingTotal / $quantity, 4) : 0.0;
 
@@ -1066,8 +1068,8 @@ class CartService
             'customization_unit_price' => $customizationUnitPrice,
             'shipping_unit_price' => $shippingUnitPrice,
             'line_subtotal' => round($unitPrice * $quantity, 2),
-            'customization_total' => round($customizationUnitPrice * $quantity, 2),
-            'line_total' => round((($unitPrice + $customizationUnitPrice) * $quantity) + $productShippingTotal, 2),
+            'customization_total' => $customizationTotal,
+            'line_total' => round(($unitPrice * $quantity) + $customizationTotal + $productShippingTotal, 2),
             'product_shipping_total' => $productShippingTotal,
             'uses_product_shipping' => ! empty($product['shipping_methods']),
         ]);
@@ -1563,7 +1565,7 @@ class CartService
                 $group['id'].':'.$size['code'] => [
                     'group' => $group['id'], 'group_label' => $group['label'],
                     'size' => $size['code'], 'size_label' => $size['label'],
-                    'price_delta' => 0.0,
+                    'price_delta' => max(0, (float) ($size['price_delta'] ?? 0)),
                 ],
             ])->all();
         });
@@ -1864,7 +1866,8 @@ class CartService
         );
     }
 
-    private function customizationUnitPrice(array $product, array $customization, int $quantity): float
+    /** @return array{unit: float, total: float} */
+    private function customizationPricing(array $product, array $customization, int $quantity): array
     {
         $configuration = $customization['configuration'] ?? [];
         $groups = collect($product['option_groups'] ?? [])->keyBy('id');
@@ -1902,13 +1905,20 @@ class CartService
             ->firstWhere('id', $configuration['production_speed'] ?? null);
         $perUnit += (float) ($speed['price_delta'] ?? 0);
 
-        if ($quantity > 0) {
-            // Sizes determine only the total quantity. The price tier chosen for that
-            // total quantity determines the base unit price; sizes never add a price.
-            $perUnit += $fixedOrder / $quantity;
-        }
+        $sizePrices = collect($product['size_groups'] ?? [])->flatMap(function (array $group): array {
+            return collect($group['sizes'] ?? [])->mapWithKeys(fn (array $size) => [
+                $group['id'].':'.$size['code'] => max(0, (float) ($size['price_delta'] ?? 0)),
+            ])->all();
+        });
+        $sizeChargeTotal = collect((array) ($configuration['quantities'] ?? []))->sum(
+            fn ($count, $key): float => max(0, (int) $count) * (float) ($sizePrices->get((string) $key, 0))
+        );
+        $total = ($perUnit * max(0, $quantity)) + $fixedOrder + $sizeChargeTotal;
 
-        return round($perUnit, 2);
+        return [
+            'unit' => $quantity > 0 ? round($total / $quantity, 4) : round($perUnit, 4),
+            'total' => round($total, 2),
+        ];
     }
 
     /**

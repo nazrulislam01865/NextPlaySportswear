@@ -113,7 +113,7 @@ class SizeOptionGroupController extends Controller
     {
         $context = (string) ($request->query('customization') ?: $request->input('_customization_context') ?: $request->input('customization_group'));
 
-        return array_key_exists($context, JerseyCustomizationType::menuGroups()) && ProductSizing::supports($context) ? $context : null;
+        return array_key_exists($context, JerseyCustomizationType::menuGroups()) && ProductSizing::supportsMasterDataSizeOptions($context) ? $context : null;
     }
 
     private function customizationLabel(string $context): string

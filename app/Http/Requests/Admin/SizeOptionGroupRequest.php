@@ -127,7 +127,7 @@ class SizeOptionGroupRequest extends FormRequest
     private function sizeEnabledCustomizationGroups(): array
     {
         return collect(array_keys(JerseyCustomizationType::menuGroups()))
-            ->filter(static fn (string $group): bool => ProductSizing::supports($group))
+            ->filter(static fn (string $group): bool => ProductSizing::supportsMasterDataSizeOptions($group))
             ->values()
             ->all();
     }

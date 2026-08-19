@@ -1432,6 +1432,7 @@ class ProductCatalogService
                 : null);
         $primaryImage = $product->images->first();
         $unitPrice = $this->displayUnitPrice($product);
+        $cardPricing = $this->productCardPricing($product, $unitPrice);
 
         return [
             'id' => $product->id,
@@ -1442,8 +1443,16 @@ class ProductCatalogService
             'sku' => $product->sku,
             'category' => $primaryCategory?->name ?: 'Custom Sportswear',
             'sport' => $primaryCategory?->name ?: 'Custom Sportswear',
-            'price' => $this->formatDisplayPrice($unitPrice),
+            'price' => $this->formatDisplayPrice($cardPricing['unit_price']),
             'base_price' => (float) $product->base_price,
+            'display_unit_price' => $cardPricing['unit_price'],
+            'discount_price' => $cardPricing['discount_price'],
+            'original_price' => $cardPricing['original_price'],
+            'original_price_label' => $cardPricing['original_price_label'],
+            'compare_at_price' => $product->compare_at_price ? (float) $product->compare_at_price : null,
+            'display_compare_at_price' => $cardPricing['compare_at_price'],
+            'compare_at_price_label' => $cardPricing['compare_at_price_label'],
+            'discount_percentage' => $cardPricing['discount_percentage'],
             'currency' => $product->currency,
             'image' => $primaryImage?->publicUrl() ?: asset('images/product-placeholder.svg'),
             'alt' => $primaryImage?->alt_text ?: $product->name,
@@ -1766,6 +1775,7 @@ class ProductCatalogService
             ->values();
 
         $unitPrice = $this->displayUnitPrice($product);
+        $cardPricing = $this->productCardPricing($product, $unitPrice);
 
         $detailInformation = $this->normalizeDetailInformation($product->specifications ?? []);
         $summaryDetailInformation = $this->summaryDetailInformation($detailInformation, $product);
@@ -1780,8 +1790,16 @@ class ProductCatalogService
             'short_title' => $product->name,
             'summary' => $product->short_description ?: str(strip_tags((string) $product->description_html))->limit(130)->toString(),
             'description' => strip_tags((string) $product->description_html),
-            'price' => $this->formatDisplayPrice($unitPrice),
+            'price' => $this->formatDisplayPrice($cardPricing['unit_price']),
             'base_price' => (float) $product->base_price,
+            'display_unit_price' => $cardPricing['unit_price'],
+            'discount_price' => $cardPricing['discount_price'],
+            'original_price' => $cardPricing['original_price'],
+            'original_price_label' => $cardPricing['original_price_label'],
+            'compare_at_price' => $product->compare_at_price ? (float) $product->compare_at_price : null,
+            'display_compare_at_price' => $cardPricing['compare_at_price'],
+            'compare_at_price_label' => $cardPricing['compare_at_price_label'],
+            'discount_percentage' => $cardPricing['discount_percentage'],
             'currency' => $product->currency,
             'minimum_quantity' => $product->minimum_quantity,
             'maximum_quantity' => $product->maximum_quantity,
@@ -1918,6 +1936,77 @@ class ProductCatalogService
     private function formatDisplayPrice(float $unitPrice): string
     {
         return 'From $'.number_format($unitPrice, 2);
+    }
+
+    /**
+     * Resolve sale pricing for a product card.
+     *
+     * The lowest visible quantity-tier price is the original/current unit price.
+     * The existing compare_at_price column is used by the admin form as the
+     * optional discount unit price. A discount is valid only when it is greater
+     * than zero and lower than the original/current unit price.
+     *
+     * @return array{
+     *     unit_price: float,
+     *     discount_price: float|null,
+     *     original_price: float|null,
+     *     original_price_label: string|null,
+     *     compare_at_price: float|null,
+     *     compare_at_price_label: string|null,
+     *     discount_percentage: int|null
+     * }
+     */
+    private function productCardPricing(Product $product, ?float $originalUnitPrice = null): array
+    {
+        $originalPrice = $originalUnitPrice ?? $this->displayUnitPrice($product);
+        $discountPrice = null;
+
+        if ($product->relationLoaded('priceTiers')) {
+            $displayTier = $product->priceTiers
+                ->filter(fn ($tier): bool => is_numeric($tier->unit_price))
+                ->sortBy('minimum_quantity')
+                ->last();
+            $tierDiscountPrice = $displayTier?->compare_at_price;
+
+            if (is_numeric($tierDiscountPrice)
+                && (float) $tierDiscountPrice > 0
+                && (float) $tierDiscountPrice < $originalPrice) {
+                $discountPrice = (float) $tierDiscountPrice;
+            }
+        }
+
+        $productDiscountPrice = $product->compare_at_price;
+        if ($discountPrice === null
+            && is_numeric($productDiscountPrice)
+            && (float) $productDiscountPrice > 0
+            && (float) $productDiscountPrice < $originalPrice) {
+            $discountPrice = (float) $productDiscountPrice;
+        }
+
+        if ($originalPrice <= 0 || $discountPrice === null) {
+            return [
+                'unit_price' => (float) $originalPrice,
+                'discount_price' => null,
+                'original_price' => null,
+                'original_price_label' => null,
+                'compare_at_price' => null,
+                'compare_at_price_label' => null,
+                'discount_percentage' => null,
+            ];
+        }
+
+        $originalPrice = (float) $originalPrice;
+
+        return [
+            'unit_price' => $discountPrice,
+            'discount_price' => $discountPrice,
+            'original_price' => $originalPrice,
+            'original_price_label' => '$'.number_format($originalPrice, 2),
+            // Backward-compatible aliases used by the existing card markup.
+            'compare_at_price' => $originalPrice,
+            'compare_at_price_label' => '$'.number_format($originalPrice, 2),
+            'discount_percentage' => max(1, min(99, (int) round((1 - ($discountPrice / $originalPrice)) * 100))),
+        ];
     }
 
     private function genuineProductRating(Product $product): ?float
@@ -2320,6 +2409,8 @@ class ProductCatalogService
         $specificationSku = trim((string) (($summaryDetailInformation['SKU'] ?? null) ?: ($detailInformation['SKU'] ?? '')));
         $productProfile = $product->product_profile ?: 'standard';
         $supportsSizeOptions = ProductSizing::supports($productProfile);
+        $displayUnitPrice = $this->displayUnitPrice($product, $priceTiers);
+        $cardPricing = $this->productCardPricing($product, $displayUnitPrice);
         $rating = $this->genuineProductRating($product);
         $reviewsCount = $this->genuineProductReviewsCount($product);
         $reviewItems = $this->genuineProductReviewItems($product);
@@ -2335,9 +2426,16 @@ class ProductCatalogService
             'detail_information_html' => $product->detail_information_html,
             'customization_artwork_html' => $product->customization_artwork_html,
             'fulfillment_html' => $product->fulfillment_html,
-            'price' => $this->formatDisplayPrice($this->displayUnitPrice($product, $priceTiers)),
+            'price' => $this->formatDisplayPrice($cardPricing['unit_price']),
             'base_price' => (float) $product->base_price,
+            'display_unit_price' => $cardPricing['unit_price'],
+            'discount_price' => $cardPricing['discount_price'],
+            'original_price' => $cardPricing['original_price'],
+            'original_price_label' => $cardPricing['original_price_label'],
             'compare_at_price' => $product->compare_at_price ? (float) $product->compare_at_price : null,
+            'display_compare_at_price' => $cardPricing['compare_at_price'],
+            'compare_at_price_label' => $cardPricing['compare_at_price_label'],
+            'discount_percentage' => $cardPricing['discount_percentage'],
             'currency' => $product->currency,
             'minimum_quantity' => $product->minimum_quantity,
             'maximum_quantity' => $product->maximum_quantity,
@@ -2392,8 +2490,7 @@ class ProductCatalogService
                 'sizes' => $group->sizes->where('is_active', true)->map(fn ($size) => [
                     'code' => $size->code,
                     'label' => $size->label,
-                    // Sizes select quantity only. Total quantity chooses the price tier.
-                    'price_delta' => 0.0,
+                    'price_delta' => (float) $size->price_adjustment,
                 ])->values()->all(),
                 'chart' => [
                     'enabled' => (bool) $group->chart_enabled && (filled($group->chart_html) || filled($group->chartImageUrl()) || (! empty($group->chart_columns) && ! empty($group->chart_rows))),
@@ -2840,6 +2937,30 @@ class ProductCatalogService
         $product['size_selector'] = $product['size_selector'] ?? $this->defaultSizeSelector($product);
         $product['size_chart'] = $product['size_chart'] ?? $this->defaultSizeChart($product);
         $product['price_tiers'] = $product['price_tiers'] ?? $this->defaultPriceTiers((float) ($product['base_price'] ?? 39));
+        $displayTier = collect($product['price_tiers'])
+            ->filter(fn ($tier): bool => is_array($tier) && is_numeric($tier['unit'] ?? null))
+            ->sortBy(fn (array $tier): int => (int) ($tier['min'] ?? 0))
+            ->last();
+        $originalUnitPrice = (float) ($displayTier['unit'] ?? $product['base_price'] ?? 0);
+        $discountPrice = is_numeric($displayTier['compare_at'] ?? null)
+            ? (float) $displayTier['compare_at']
+            : (is_numeric($product['compare_at_price'] ?? null) ? (float) $product['compare_at_price'] : null);
+        if ($discountPrice === null || $discountPrice <= 0 || $discountPrice >= $originalUnitPrice) {
+            $discountPrice = null;
+        }
+
+        $product['display_unit_price'] = $discountPrice ?? $originalUnitPrice;
+        $product['discount_price'] = $discountPrice;
+        $product['original_price'] = $discountPrice !== null ? $originalUnitPrice : null;
+        $product['original_price_label'] = $discountPrice !== null
+            ? '$'.number_format($originalUnitPrice, 2)
+            : null;
+        $product['display_compare_at_price'] = $product['original_price'];
+        $product['compare_at_price_label'] = $product['original_price_label'];
+        $product['discount_percentage'] = $discountPrice !== null && $originalUnitPrice > 0
+            ? max(1, min(99, (int) round((1 - ($discountPrice / $originalUnitPrice)) * 100)))
+            : null;
+        $product['price'] = $this->formatDisplayPrice((float) $product['display_unit_price']);
         $product['detail_information'] = $product['detail_information'] ?? $this->defaultDetailInformation($product);
         $fallbackFabricLabel = $this->preferredFabricDetailLabel($product['detail_information'] ?? []);
         $product['summary_detail_information'] = $product['summary_detail_information'] ?? collect($product['detail_information'] ?? [])

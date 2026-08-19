@@ -21,6 +21,8 @@ use App\Services\Catalog\ProductChangeSummaryService;
 use App\Services\AdminNotificationService;
 use App\Services\Security\SafeHtmlService;
 use App\Services\Storefront\ProductCatalogCacheService;
+use App\Support\ProductSizing;
+use App\Support\ProductSizeExtraCharges;
 use App\Support\ProductionTime;
 use App\Support\PublicMedia;
 use Illuminate\Http\JsonResponse;
@@ -509,6 +511,7 @@ class ProductController extends Controller
             ->with(['sizes' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order')])
             ->ordered()
             ->get()
+            ->filter(static fn (SizeOptionGroup $group): bool => ProductSizing::supportsMasterDataSizeOptions($group->customization_group))
             ->map(static fn (SizeOptionGroup $group): array => [
                 'id' => $group->id,
                 'name' => $group->name,
@@ -519,6 +522,7 @@ class ProductController extends Controller
                 'customization_group_label' => JerseyCustomizationType::menuGroups()[$group->customization_group]['label'] ?? 'Product Customization',
                 'description_html' => $group->description_html,
                 'sizes' => $group->sizes->pluck('label')->values()->all(),
+                'size_codes' => $group->sizes->mapWithKeys(fn ($size) => [$size->label => $size->code])->all(),
                 'chart_enabled' => filled($group->chart_html) || filled($group->chartImageUrl()),
                 'chart_html' => $group->chart_html,
                 'chart_title' => $group->chart_title,
@@ -548,7 +552,7 @@ class ProductController extends Controller
             'product' => $product,
             'categoryOptions' => $this->categoryTreeService->leafOptions(),
             'catalogAttributes' => CatalogAttribute::query()->active()->with(['values' => fn ($query) => $query->active()->orderBy('sort_order')])->ordered()->get(),
-            'jerseyCustomizationTypes' => JerseyCustomizationType::masterDataOptions(),
+            'jerseyCustomizationTypes' => JerseyCustomizationType::productConfigurationOptions(),
             'jerseyCustomizationOptions' => $jerseyCustomizationOptions,
             'sizeOptionGroups' => $sizeOptionGroups,
             'productionMethodOptions' => $productionMethodOptions,
@@ -1342,10 +1346,15 @@ class ProductController extends Controller
                     'sort_order' => $sizeSortOrder++,
                 ]);
 
+                $sizePriceAdjustments = ProductSizeExtraCharges::adjustments($groupData);
+                $hasSizeExtraCharges = ProductSizeExtraCharges::enabled($groupData);
                 foreach ($master->sizes as $sizeIndex => $size) {
                     $group->sizes()->create([
                         'label' => $size->label,
                         'code' => $size->code,
+                        'price_adjustment' => $hasSizeExtraCharges
+                            ? ProductSizeExtraCharges::amountFor($sizePriceAdjustments, (string) $size->code, (string) $size->label)
+                            : 0,
                         'sort_order' => $sizeIndex,
                         'is_active' => true,
                     ]);
@@ -1397,8 +1406,19 @@ class ProductController extends Controller
             ]);
             $sizes = collect(preg_split('/[,\r\n]+/', (string) ($groupData['sizes_text'] ?? '')))
                 ->map(fn ($size) => trim((string) $size))->filter()->unique()->values();
+            $sizePriceAdjustments = ProductSizeExtraCharges::adjustments($groupData);
+            $hasSizeExtraCharges = ProductSizeExtraCharges::enabled($groupData);
             foreach ($sizes as $sizeIndex => $size) {
-                $group->sizes()->create(['label' => $size, 'code' => Str::slug($size), 'sort_order' => $sizeIndex, 'is_active' => true]);
+                $code = Str::slug($size);
+                $group->sizes()->create([
+                    'label' => $size,
+                    'code' => $code,
+                    'price_adjustment' => $hasSizeExtraCharges
+                        ? ProductSizeExtraCharges::amountFor($sizePriceAdjustments, $code, (string) $size)
+                        : 0,
+                    'sort_order' => $sizeIndex,
+                    'is_active' => true,
+                ]);
             }
         }
 

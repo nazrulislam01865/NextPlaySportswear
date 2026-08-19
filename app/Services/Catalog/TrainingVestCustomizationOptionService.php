@@ -12,13 +12,18 @@ use Illuminate\Validation\ValidationException;
 
 class TrainingVestCustomizationOptionService
 {
+    public function __construct(private readonly TrainingVestSharedCustomizationSyncService $sharedSync)
+    {
+    }
     public function create(TrainingVestCustomizationOptionRequest $request): TrainingVestCustomizationOption
     {
         return DB::transaction(function () use ($request): TrainingVestCustomizationOption {
             $option = TrainingVestCustomizationOption::query()->create($this->optionPayload($request));
             $this->syncImages($option, $request);
+            $option->load('images');
+            $this->sharedSync->syncLegacyOption($option);
 
-            return $option->load('images');
+            return $option;
         });
     }
 
@@ -27,10 +32,14 @@ class TrainingVestCustomizationOptionService
         TrainingVestCustomizationOptionRequest $request
     ): TrainingVestCustomizationOption {
         return DB::transaction(function () use ($option, $request): TrainingVestCustomizationOption {
+            $previousType = $option->type;
+            $previousSlug = $option->slug;
             $option->update($this->optionPayload($request, $option));
             $this->syncImages($option, $request);
+            $option = $option->refresh()->load('images');
+            $this->sharedSync->syncLegacyOption($option, $previousType, $previousSlug);
 
-            return $option->refresh()->load('images');
+            return $option;
         });
     }
 
@@ -38,6 +47,8 @@ class TrainingVestCustomizationOptionService
     {
         DB::transaction(function () use ($option): void {
             $option->load('images');
+
+            $this->sharedSync->deleteLegacyOptionMirror($option);
 
             foreach ($option->images as $image) {
                 $this->deleteStoredImage($image->image_path);

@@ -279,6 +279,7 @@
         ? collect($submittedSizeValues)->map(fn ($group) => array_merge([
             'existing_id' => '', 'size_option_group_id' => '', 'name' => '', 'code' => '',
             'audience_label' => '', 'description_html' => '', 'sizes' => [], 'sizes_text' => '',
+            'size_codes' => [], 'size_price_adjustments' => [], 'has_size_extra_charges' => false,
             'chart_enabled' => false, 'chart_html' => '', 'chart_title' => '', 'chart_note' => '',
             'chart_columns' => [], 'chart_rows' => [], 'chart_columns_text' => '', 'chart_rows_text' => '',
             'chart_image_url' => '', 'chart_image_preview' => '', 'is_active' => true,
@@ -293,6 +294,15 @@
             'chart_html' => $group->chart_html,
             'sizes' => $group->sizes->pluck('label')->values()->all(),
             'sizes_text' => $group->sizes->pluck('label')->implode(', '),
+            'size_codes' => $group->sizes->mapWithKeys(fn($size) => [$size->label => $size->code])->all(),
+            'size_price_adjustments' => $group->sizes->flatMap(
+                fn($size) => \App\Support\ProductSizeExtraCharges::editorAdjustmentAliases(
+                    (string) $size->code,
+                    (string) $size->label,
+                    $size->price_adjustment
+                )
+            )->all(),
+            'has_size_extra_charges' => $group->sizes->contains(fn($size) => (float) $size->price_adjustment > 0),
             'chart_enabled' => $group->chart_enabled,
             'chart_title' => $group->chart_title,
             'chart_note' => $group->chart_note,
@@ -1347,6 +1357,27 @@ Lead Time:"></div>
                 <p x-show="priceImportStatus" x-cloak class="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700" x-text="priceImportStatus"></p>
                 <p x-show="priceImportError" x-cloak class="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700" x-text="priceImportError"></p>
 
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                    <label class="admin-label">Discount unit price
+                        <div class="relative mt-2">
+                            <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-black text-slate-400">$</span>
+                            <input
+                                class="admin-input mt-0"
+                                style="padding-left: 2rem;"
+                                type="number"
+                                name="compare_at_price"
+                                min="0"
+                                max="999999999.99"
+                                step="0.01"
+                                inputmode="decimal"
+                                value="{{ old('compare_at_price', $product->compare_at_price) }}"
+                                placeholder="4.20"
+                            >
+                        </div>
+                        <small class="np-field-help">Optional. Enter a price lower than the card's current “From” price. The storefront shows this as the new discounted price, crosses out the original/current price, and calculates the discount percentage automatically.</small>
+                    </label>
+                </div>
+
                 <div class="np-table-wrap mt-4">
                     <table class="np-simple-table">
                         <thead>
@@ -1409,7 +1440,7 @@ Lead Time:"></div>
                                 <input type="hidden" :name="`option_groups[${gIndex}][name]`" :value="group.name"><input type="hidden" :name="`option_groups[${gIndex}][code]`" :value="group.code"><input type="hidden" :name="`option_groups[${gIndex}][jersey_customization_type]`" :value="group.jersey_customization_type || ''"><input type="hidden" :name="`option_groups[${gIndex}][section]`" value="product"><input type="hidden" :name="`option_groups[${gIndex}][display_mode]`" value="customer"><input type="hidden" :name="`option_groups[${gIndex}][fixed_value_code]`" value=""><input type="hidden" :name="`option_groups[${gIndex}][fixed_text_value]`" value=""><input type="hidden" :name="`option_groups[${gIndex}][show_in_summary]`" value="1"><input type="hidden" :name="`option_groups[${gIndex}][use_as_filter]`" value="0"><input type="hidden" :name="`option_groups[${gIndex}][description]`" value=""><input type="hidden" :name="`option_groups[${gIndex}][placeholder]`" value=""><input type="hidden" :name="`option_groups[${gIndex}][is_required]`" value="0"><input type="hidden" :name="`option_groups[${gIndex}][minimum_selections]`" value=""><input type="hidden" :name="`option_groups[${gIndex}][maximum_selections]`" value=""><input type="hidden" :name="`option_groups[${gIndex}][accepted_file_types]`" value=""><input type="hidden" :name="`option_groups[${gIndex}][maximum_file_size_mb]`" value="15"><input type="hidden" :name="`option_groups[${gIndex}][is_active]`" value="1">
                                 <div class="flex flex-wrap items-start justify-between gap-3"><div><p class="text-[10px] font-black uppercase tracking-[.14em] text-brand-blue">Feature <span x-text="gIndex + 1"></span></p><h3 class="mt-1 text-lg font-black text-brand-ink" x-text="group.name"></h3></div><button type="button" class="np-danger-link" @click="removeOptionGroup(gIndex)">Remove feature</button></div>
                                 <div x-show="optionGroupHasError(gIndex)" x-cloak class="mt-4 rounded-2xl border border-red-200 bg-white px-4 py-3 text-sm text-red-800" role="alert"><strong class="block font-black">Fix this customization feature</strong><template x-for="message in optionGroupErrorMessages(gIndex)" :key="message"><p class="mt-1" x-text="message"></p></template></div>
-                                <div class="mt-4 grid gap-4 md:grid-cols-[260px_minmax(0,1fr)]"><label class="admin-label">Customer input style<select class="admin-input" :name="`option_groups[${gIndex}][type]`" x-model="group.type"><option value="image">Image choices</option><option value="swatch">Color swatches</option><option value="buttons">Buttons</option><option value="select">Dropdown</option><option value="checkbox">Checkboxes</option></select></label><div class="rounded-2xl border border-slate-200 bg-white p-4"><div class="flex flex-wrap items-center justify-between gap-3"><div><h4 class="font-black">Selected items</h4><p class="text-xs text-slate-500">Add reusable items available under <strong x-text="group.name"></strong>.</p></div><button type="button" class="np-secondary-button" @click="openMasterItemPicker(gIndex)">＋ Add item</button></div><div class="mt-4 space-y-4"><template x-for="(value,vIndex) in group.values" :key="value.client_key || vIndex">@include('admin.products.partials._selected-jersey-option-item')</template><div x-show="group.values.length === 0" class="rounded-2xl border-2 border-dashed border-slate-200 p-7 text-center text-sm text-slate-500">No item selected. Choose <strong>+ Add Item</strong> to view available items.</div></div></div></div>
+                                <div class="mt-4 grid gap-4 md:grid-cols-[260px_minmax(0,1fr)]"><label class="admin-label">Customer input style<select class="admin-input" :name="`option_groups[${gIndex}][type]`" x-model="group.type"><option value="image">Image choices</option><option value="swatch">Color swatches</option><option value="buttons">Buttons</option><option value="select">Dropdown</option><option value="checkbox">Checkboxes</option></select></label><div class="rounded-2xl border border-slate-200 bg-white p-4"><div class="flex flex-wrap items-center justify-between gap-3"><div><h4 class="font-black">Selected items</h4><p class="text-xs text-slate-500">Add reusable items available under <strong x-text="group.name"></strong>. Each selected item can have its own additional charge.</p></div><button type="button" class="np-secondary-button" @click="openMasterItemPicker(gIndex)">＋ Add item</button></div><div class="mt-4 space-y-4"><template x-for="(value,vIndex) in group.values" :key="value.client_key || vIndex">@include('admin.products.partials._selected-customization-option-item')</template><div x-show="group.values.length === 0" class="rounded-2xl border-2 border-dashed border-slate-200 p-7 text-center text-sm text-slate-500">No item selected. Choose <strong>+ Add Item</strong> to view available items.</div></div></div></div>
                             </article>
                         </template>
                         <div x-show="optionGroups.length === 0" class="rounded-2xl border-2 border-dashed border-slate-300 p-8 text-center"><p class="font-black text-brand-ink">No customizable feature has been added.</p><button type="button" class="np-primary-button mt-4" @click="openNewFeatureDialog()">＋ Add New Feature</button></div>
@@ -1420,7 +1451,7 @@ Lead Time:"></div>
                     <summary>Sizes &amp; quantities setup</summary>
                     <div class="mt-4 space-y-4">
                         <template x-for="(group,index) in sizeGroups" :key="group.client_key || index">
-                            <article class="np-nested-card"><input type="hidden" :name="`size_groups[${index}][existing_id]`" :value="group.existing_id || ''"><input type="hidden" :name="`size_groups[${index}][size_option_group_id]`" :value="group.size_option_group_id || ''"><input type="hidden" :name="`size_groups[${index}][name]`" :value="group.name"><input type="hidden" :name="`size_groups[${index}][code]`" :value="group.code"><input type="hidden" :name="`size_groups[${index}][description_html]`" :value="group.description_html || ''"><input type="hidden" :name="`size_groups[${index}][chart_html]`" :value="group.chart_html || ''"><input type="hidden" :name="`size_groups[${index}][chart_title]`" :value="group.chart_title || ''"><input type="hidden" :name="`size_groups[${index}][chart_note]`" :value="group.chart_note || ''"><input type="hidden" :name="`size_groups[${index}][chart_image_url]`" :value="group.chart_image_url || ''"><input type="hidden" :name="`size_groups[${index}][chart_columns_text]`" :value="(group.chart_columns || []).join(', ')"><input type="hidden" :name="`size_groups[${index}][chart_rows_text]`" :value="(group.chart_rows || []).map(row => row.join(' | ')).join('\n')"><input type="hidden" :name="`size_groups[${index}][clear_chart_image]`" value="0"><input type="hidden" :name="`size_groups[${index}][chart_enabled]`" :value="group.chart_enabled ? 1 : 0"><input type="hidden" :name="`size_groups[${index}][sizes_text]`" :value="(group.sizes || []).join(', ')"><input type="hidden" :name="`size_groups[${index}][is_active]`" value="1"><div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><p class="text-[10px] font-black uppercase tracking-[.14em] text-brand-blue" x-text="group.audience_label || 'Size Option'"></p><h3 class="mt-1 text-lg font-black text-brand-ink" x-text="group.name"></h3><div class="mt-3 flex flex-wrap gap-2"><template x-for="size in (group.sizes || [])" :key="size"><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-black text-slate-700" x-text="size"></span></template></div></div><div class="flex shrink-0 items-start gap-3"><img x-show="group.chart_image_preview" :src="group.chart_image_preview" :alt="`${group.name} size chart`" class="h-20 w-20 rounded-xl border border-slate-200 bg-slate-50 object-contain"><button type="button" class="np-danger-button" @click="sizeGroups.splice(index,1)">Remove</button></div></div></article>
+                            <x-admin.product-size-group-card />
                         </template>
                         <div x-show="sizeGroups.length === 0" class="rounded-2xl border-2 border-dashed border-slate-300 p-8 text-center"><p class="font-black text-brand-ink">No size option has been added.</p><button type="button" class="np-secondary-button mt-4" @click="openSizeGroupPicker()">Add Size Option</button></div>
                     </div>

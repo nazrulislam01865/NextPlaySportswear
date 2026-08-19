@@ -86,40 +86,13 @@
                 </button>
             </div>
         @else
-            <div class="home-product-desktop grid-4">
+            <div class="home-product-grid home-product-grid--five">
                 @forelse($products as $product)
                     <x-storefront.product-card :product="$product" />
                 @empty
-                    <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500 sm:col-span-2 lg:col-span-4">
+                    <div class="home-product-grid-empty rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
                         {{ $emptyMessage }}
                     </div>
-                @endforelse
-            </div>
-
-            <div class="home-product-mobile-list" role="list">
-                @forelse($products as $product)
-                    <article class="home-product-mobile-item" role="listitem">
-                        <a
-                            href="{{ $product['url'] }}"
-                            class="home-product-mobile-media"
-                            aria-label="View {{ $product['title'] }}"
-                        >
-                            <img
-                                src="{{ $product['image'] }}"
-                                alt="{{ $product['alt'] }}"
-                                loading="lazy"
-                                decoding="async"
-                                width="180"
-                                height="180"
-                            >
-                        </a>
-
-                        <h3 class="home-product-mobile-title">
-                            <a href="{{ $product['url'] }}">{{ $product['title'] }}</a>
-                        </h3>
-                    </article>
-                @empty
-                    <p class="home-product-mobile-empty">{{ $emptyMessage }}</p>
                 @endforelse
             </div>
         @endif

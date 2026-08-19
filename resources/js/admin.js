@@ -197,6 +197,8 @@ window.adminProductForm = (initial = {}) => ({
                 group.audience_label = String(master.audience_label || '');
                 group.description_html = String(master.description_html || '');
                 group.sizes = Array.isArray(master.sizes) ? [...master.sizes] : [];
+                group.size_codes = { ...(master.size_codes || {}), ...(group.size_codes || {}) };
+                this.normalizeSizeExtraCharges(group);
                 group.chart_enabled = Boolean(master.chart_enabled);
                 group.chart_html = String(master.chart_html || '');
                 group.chart_title = String(master.chart_title || '');
@@ -216,6 +218,7 @@ window.adminProductForm = (initial = {}) => ({
                 group.chart_image_url ||= '';
                 group.chart_image_preview ||= group.chart_image_url || '';
                 group.description_html ||= '';
+                this.normalizeSizeExtraCharges(group);
             }
         });
         this.shippingMethods.forEach(method => {
@@ -1375,17 +1378,165 @@ window.adminProductForm = (initial = {}) => ({
 
         return candidate;
     },
+    inferProductScopedCustomizationType(plain, scopePattern, rules) {
+        if (!scopePattern.test(plain)) return '';
+
+        return rules.find(([pattern]) => pattern.test(plain))?.[1] || '';
+    },
     inferJerseyCustomizationType(name) {
         const plain = String(name || '').trim().toLowerCase();
         const normalized = plain.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-        const direct = Object.entries(this.jerseyCustomizationTypes)
-            .find(([type, label]) => type === normalized || String(label).trim().toLowerCase() === plain)?.[0];
-        if (direct) return direct;
+        const entries = Object.entries(this.jerseyCustomizationTypes);
+        const exactType = entries.find(([type]) => type === normalized)?.[0];
+        if (exactType) return exactType;
+
+        // A label such as "Imprint Option" can exist in more than one product
+        // customization group. Only infer from a label when it is unambiguous;
+        // otherwise require the product context in the feature name below.
+        const labelMatches = entries.filter(([, label]) => String(label).trim().toLowerCase() === plain);
+        if (labelMatches.length === 1) return labelMatches[0][0];
+        if (labelMatches.length > 1) return '';
+
+        const trainingVestType = this.inferProductScopedCustomizationType(plain, /\btraining[-_\s]*vests?\b/, [
+            [/\bvest.*type|type.*vest\b/, 'training_vest_vest_type_option'],
+            [/\bimprint\b/, 'training_vest_imprint_option'],
+            [/\blogo\b/, 'training_vest_logo_option'],
+            [/\bfabric\b/, 'training_vest_fabric_option'],
+            [/\bsize\b/, 'training_vest_size_option'],
+            [/\bcolou?r\b/, 'training_vest_color_option'],
+        ]);
+        if (trainingVestType) return trainingVestType;
+
+        const premiumScarfType = this.inferProductScopedCustomizationType(plain, /\bpremium[-_\s]*scarfs?\b|\bpremium[-_\s]*scarves\b/, [
+            [/\bimprint.*size|size.*imprint\b/, 'premium_scarf_imprint_size_option'],
+            [/\byarn.*colou?r|colou?r.*yarn\b/, 'premium_scarf_yarn_color_option'],
+            [/\b(material|matirial|fabric)\b/, 'premium_scarf_material_option'],
+            [/\bcraft\b/, 'premium_scarf_craft_option'],
+            [/\blayer\b/, 'premium_scarf_layer_option'],
+            [/\bsize\b/, 'premium_scarf_size_option'],
+        ]);
+        if (premiumScarfType) return premiumScarfType;
+
+        const bagType = this.inferProductScopedCustomizationType(plain, /\bbags?\b/, [
+            [/\bsize\b/, 'bag_size_option'],
+            [/\b(fabric|material)\b/, 'bag_fabric_option'],
+        ]);
+        if (bagType) return bagType;
+
+        const headwearType = this.inferProductScopedCustomizationType(plain, /\b(headwear|caps?)\b/, [
+            [/\bclosure\b/, 'headwear_closure_option'],
+            [/\bcrown\b/, 'headwear_crown_option'],
+            [/\bvisor\b/, 'headwear_visor_option'],
+            [/\bpanels?\b/, 'headwear_panels_option'],
+            [/\b(fabric|material)\b/, 'headwear_fabric_option'],
+        ]);
+        if (headwearType) return headwearType;
+
+        const drinkwareType = this.inferProductScopedCustomizationType(plain, /\bdrinkware\b/, [
+            [/\bsample.*charge|charge.*sample\b/, 'drinkware_sample_charge_option'],
+            [/\b(material|fabric)\b/, 'drinkware_material_option'],
+        ]);
+        if (drinkwareType) return drinkwareType;
+
+        const lanyardType = this.inferProductScopedCustomizationType(plain, /\blanyards?\b/, [
+            [/\battachment.*surcharge|surcharge.*attachment\b/, 'lanyard_attachment_surcharge_options'],
+            [/\bstandard.*attachment|attachment.*standard\b/, 'lanyard_standard_attachment_option'],
+            [/\b(material|fabric)\b/, 'lanyard_material_option'],
+        ]);
+        if (lanyardType) return lanyardType;
+
+        const headbandType = this.inferProductScopedCustomizationType(plain, /\bheadbands?\b/, [
+            [/\bimprint.*method|method.*imprint\b/, 'headband_imprint_method_option'],
+            [/\b(material|fabric)\b/, 'headband_material_option'],
+            [/\bsize\b/, 'headband_size_option'],
+        ]);
+        if (headbandType) return headbandType;
+
+        const towelType = this.inferProductScopedCustomizationType(plain, /\btowels?\b/, [
+            [/\bavailable.*backing.*colou?r|backing.*colou?r/, 'towel_available_backing_color_option'],
+            [/\bimprint.*size|size.*imprint\b/, 'towel_imprint_size_option'],
+            [/\bfront.*fabric|fabric.*front\b/, 'towel_front_fabric_option'],
+            [/\bback.*fabric|fabric.*back\b/, 'towel_back_fabric_option'],
+            [/\b(material|matirial)\b/, 'towel_material_option'],
+            [/\bsize\b/, 'towel_size_option'],
+        ]);
+        if (towelType) return towelType;
+
+        const armsleeveType = this.inferProductScopedCustomizationType(plain, /\barm[-_\s]*sleeves?\b|\barmsleeves?\b/, [
+            [/\bimprint.*method|method.*imprint\b/, 'armsleeve_imprint_method_option'],
+            [/\b(fabric|material|matirial)\b/, 'armsleeve_fabric_option'],
+            [/\bsize\b/, 'armsleeve_size_option'],
+        ]);
+        if (armsleeveType) return armsleeveType;
+
+        const fabricWristbandType = this.inferProductScopedCustomizationType(plain, /\bfabric[-_\s]*wristbands?\b/, [
+            [/\blocking.*closure|closure.*locking\b/, 'fabric_wristband_locking_closures_option'],
+            [/\bstandard.*attachment|attachment.*standard\b/, 'fabric_wristband_standard_attachment_option'],
+            [/\bimprint.*method|method.*imprint\b/, 'fabric_wristband_imprint_method_option'],
+            [/\b(material|matirial)\b/, 'fabric_wristband_material_option'],
+            [/\bsize\b/, 'fabric_wristband_size_option'],
+        ]);
+        if (fabricWristbandType) return fabricWristbandType;
+
+        const knittedGlovesType = this.inferProductScopedCustomizationType(plain, /\bknitted[-_\s]*gloves?\b/, [
+            [/\btouch.*screen|screen.*touch\b/, 'knitted_gloves_touch_screen_function_option'],
+            [/\binner.*lining|lining.*inner\b/, 'knitted_gloves_inner_lining_option'],
+            [/\bfabric.*feature|feature.*fabric\b/, 'knitted_gloves_fabric_feature_option'],
+            [/\bcuff.*type|type.*cuff|\bcuff\b/, 'knitted_gloves_cuff_type_option'],
+            [/\blogo\b/, 'knitted_gloves_logo_option'],
+            [/\b(material|matirial|fabric)\b/, 'knitted_gloves_material_option'],
+            [/\bcolou?r\b/, 'knitted_gloves_color_option'],
+            [/\bsize\b/, 'knitted_gloves_size_option'],
+        ]);
+        if (knittedGlovesType) return knittedGlovesType;
+
+        const bandanaType = this.inferProductScopedCustomizationType(plain, /\bbandanas?\b/, [
+            [/\bimprint.*method|method.*imprint\b/, 'bandana_imprint_method_option'],
+            [/\bmask.*layers?|layers?.*mask\b/, 'bandana_mask_layers_option'],
+            [/\b(fabric|material|matirial)\b/, 'bandana_fabric_option'],
+            [/\bsize\b/, 'bandana_size_option'],
+        ]);
+        if (bandanaType) return bandanaType;
+
+        const siliconeWristbandType = this.inferProductScopedCustomizationType(plain, /\bsilicone[-_\s]*wristbands?\b/, [
+            [/\bimprint.*method|method.*imprint\b/, 'silicone_wristband_imprint_method_option'],
+            [/\bcustomi[sz]ed?\b/, 'silicone_wristband_customized_options'],
+            [/\b(material|matirial|fabric)\b/, 'silicone_wristband_material_option'],
+            [/\b(product.*size|size.*product|size)\b/, 'silicone_wristband_product_size_option'],
+        ]);
+        if (siliconeWristbandType) return siliconeWristbandType;
+
+        const baseballBeltType = this.inferProductScopedCustomizationType(plain, /\bbaseball[-_\s]*belts?\b/, [
+            [/\bimprint.*area|area.*imprint\b/, 'baseball_belt_imprint_area_option'],
+            [/\bimprint.*size|size.*imprint\b/, 'baseball_belt_imprint_size_option'],
+            [/\bimprint\b/, 'baseball_belt_imprint_option'],
+            [/\b(material|matirial|fabric)\b/, 'baseball_belt_material_option'],
+            [/\bcolou?r\b/, 'baseball_belt_color_option'],
+            [/\bsize\b/, 'baseball_belt_size_option'],
+        ]);
+        if (baseballBeltType) return baseballBeltType;
+
         if (/\bsize\b/.test(plain)) return '';
         if (/shorts?.*colou?r|colou?r.*shorts?/.test(plain)) return 'shorts_color';
         if (/shorts?.*(fabric|material)|(fabric|material).*shorts?/.test(plain)) return 'shorts_fabric';
-
         if (/shorts?.*pocket|pocket.*shorts?/.test(plain)) return 'shorts_pocket_option';
+        if (/shorts?.*(rope|drawstring)|(rope|drawstring).*shorts?/.test(plain)) return 'shorts_rope_option';
+        if (/shorts?.*(elastic.*waist|waist.*elastic|drawcord)|(elastic.*waist|waist.*elastic|drawcord).*shorts?/.test(plain)) return 'shorts_elastic_waist_drawcord_option';
+        if (/shorts?.*imprint|imprint.*shorts?/.test(plain)) return 'shorts_imprint_option';
+        if (/hoodie.*(different.*name.*number|name.*number)|(different.*name.*number|name.*number).*hoodie/.test(plain)) return 'hoodie_different_name_and_number_option';
+        if (/hoodie.*imprint.*area|imprint.*area.*hoodie/.test(plain)) return 'hoodie_imprint_area_option';
+        if (/hoodie.*imprint|imprint.*hoodie/.test(plain)) return 'hoodie_imprint_option';
+        if (/polo.*imprint.*method|imprint.*method.*polo/.test(plain)) return 'polo_imprint_method_option';
+        if (/polo.*back.*detail|back.*detail.*polo/.test(plain)) return 'polo_back_detail_option';
+        if (/polo.*imprint|imprint.*polo/.test(plain)) return 'polo_imprint_option';
+        if (/(t[-\s_]*shirt|tshirt).*(different.*name.*number|name.*number)|(different.*name.*number|name.*number).*(t[-\s_]*shirt|tshirt)/.test(plain)) return 'tshirt_different_name_and_number_option';
+        if (/(t[-\s_]*shirt|tshirt).*imprint.*area|imprint.*area.*(t[-\s_]*shirt|tshirt)/.test(plain)) return 'tshirt_imprint_area_option';
+        if (/(t[-\s_]*shirt|tshirt).*back.*detail|back.*detail.*(t[-\s_]*shirt|tshirt)/.test(plain)) return 'tshirt_back_detail_option';
+        if (/(t[-\s_]*shirt|tshirt).*pocket|pocket.*(t[-\s_]*shirt|tshirt)/.test(plain)) return 'tshirt_pocket_option';
+        if (/(t[-\s_]*shirt|tshirt).*imprint|imprint.*(t[-\s_]*shirt|tshirt)/.test(plain)) return 'tshirt_imprint_option';
+        if (/jersey.*imprint|imprint.*jersey/.test(plain)) return 'jersey_imprint_option';
+        if (/jersey.*logo|logo.*jersey/.test(plain)) return 'jersey_logo_option';
+        if (/jersey.*piping|piping.*jersey/.test(plain)) return 'jersey_piping_option';
         if (/uniform.*type|type.*uniform/.test(plain)) return 'uniform_type';
         if (/reversible|standard/.test(plain) && /uniform/.test(plain)) return 'uniform_style';
         if (/uniform.*neck|neck.*uniform|uniform.*collar|collar.*uniform/.test(plain)) return 'uniform_neckline';
@@ -1400,17 +1551,38 @@ window.adminProductForm = (initial = {}) => ({
         if (/quarter[-\s_]*zip.*(fabric|material)|(fabric|material).*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_fabric';
         if (/quarter[-\s_]*zip.*zipper|zipper.*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_zipper';
         if (/quarter[-\s_]*zip.*sleeve|sleeve.*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_sleeve';
+        if (/quarter[-\s_]*zip.*imprint|imprint.*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_imprint_option';
+        if (/quarter[-\s_]*zip.*pocket|pocket.*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_pocket_option';
+        if (/quarter[-\s_]*zip.*neck|neck.*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_neck_option';
+        if (/jacket.*(different.*name.*number|name.*number)|(different.*name.*number|name.*number).*jacket/.test(plain)) return 'jacket_different_name_and_number_option';
+        if (/jacket.*imprint.*area|imprint.*area.*jacket/.test(plain)) return 'jacket_imprint_area_option';
+        if (/jacket.*imprint|imprint.*jacket/.test(plain)) return 'jacket_imprint_option';
 
+        if (/tank[-\s_]*top.*(different.*name.*number|name.*number)|(different.*name.*number|name.*number).*tank[-\s_]*top/.test(plain)) return 'tank_top_different_name_and_number_charges_option';
+        if (/tank[-\s_]*top.*imprint.*area|imprint.*area.*tank[-\s_]*top/.test(plain)) return 'tank_top_imprint_area_option';
+        if (/tank[-\s_]*top.*back.*detail|back.*detail.*tank[-\s_]*top/.test(plain)) return 'tank_top_back_detail_option';
+        if (/tank[-\s_]*top.*pocket|pocket.*tank[-\s_]*top/.test(plain)) return 'tank_top_pocket_option';
+        if (/tank[-\s_]*top.*neck|neck.*tank[-\s_]*top/.test(plain)) return 'tank_top_neck_option';
+        if (/tank[-\s_]*top.*imprint|imprint.*tank[-\s_]*top/.test(plain)) return 'tank_top_imprint_option';
         if (/tank[-\s_]*top.*colou?r|colou?r.*tank[-\s_]*top/.test(plain)) return 'tank_top_color';
         if (/tank[-\s_]*top.*(fabric|material)|(fabric|material).*tank[-\s_]*top/.test(plain)) return 'tank_top_fabric';
         if (/tank[-\s_]*top.*style|style.*tank[-\s_]*top/.test(plain)) return 'tank_top_style';
 
+        if (/compression.*wear.*imprint|imprint.*compression.*wear/.test(plain)) return 'compression_wear_imprint_option';
         if (/compression.*wear.*colou?r|colou?r.*compression.*wear/.test(plain)) return 'compression_wear_color';
         if (/compression.*wear.*(material|fabric)|(material|fabric).*compression.*wear/.test(plain)) return 'compression_wear_materials';
         if (/compression.*wear.*pattern|pattern.*compression.*wear/.test(plain)) return 'compression_wear_pattern';
+        if (/socks?.*imprint.*method|imprint.*method.*socks?/.test(plain)) return 'socks_imprint_method_option';
+        if (/socks?.*thickness|thickness.*socks?/.test(plain)) return 'socks_thickness_option';
+        if (/socks?.*yarn|yarn.*socks?/.test(plain)) return 'socks_yarn_option';
+        if (/socks?.*types?|types?.*socks?/.test(plain)) return 'socks_types_option';
         if (/socks?.*colou?r|colou?r.*socks?/.test(plain)) return 'socks_color';
         if (/socks?.*pattern|pattern.*socks?/.test(plain)) return 'socks_pattern';
         if (/socks?.*(material|construction)|(material|construction).*socks?/.test(plain)) return 'socks_material_construction';
+        if (/sweatshirt.*(different.*name.*number|name.*number)|(different.*name.*number|name.*number).*sweatshirt/.test(plain)) return 'sweatshirt_different_name_and_number_surcharge_option';
+        if (/sweatshirt.*imprint.*area|imprint.*area.*sweatshirt/.test(plain)) return 'sweatshirt_imprint_area_option';
+        if (/sweatshirt.*d[-\s_]*back|d[-\s_]*back.*sweatshirt/.test(plain)) return 'sweatshirt_d_back_option';
+        if (/sweatshirt.*imprint|imprint.*sweatshirt/.test(plain)) return 'sweatshirt_imprint_option';
         if (/collar|neck/.test(plain)) return 'neck_and_collar';
         if (/fabric|material/.test(plain)) return 'fabric';
         if (/colou?r/.test(plain)) return 'color';
@@ -1621,6 +1793,77 @@ window.adminProductForm = (initial = {}) => ({
         }
         return '';
     },
+    sizeCode(group, size) {
+        const label = String(size || '');
+        return String(group?.size_codes?.[label] || slugify(label));
+    },
+    sizeChargeKeys(group, size) {
+        const label = String(size || '').trim();
+        return [...new Set([
+            this.sizeCode(group, label),
+            label,
+            slugify(label),
+        ].filter(Boolean))];
+    },
+    sizeChargeAmount(group, size) {
+        const adjustments = group?.size_price_adjustments && typeof group.size_price_adjustments === 'object'
+            ? group.size_price_adjustments
+            : {};
+
+        for (const key of this.sizeChargeKeys(group, size)) {
+            if (!Object.prototype.hasOwnProperty.call(adjustments, key)) continue;
+            const amount = Number(adjustments[key] || 0);
+            if (Number.isFinite(amount) && amount > 0) return amount;
+        }
+
+        return 0;
+    },
+    sizeChargeValue(group, size) {
+        const amount = this.sizeChargeAmount(group, size);
+        return amount > 0 ? amount : '';
+    },
+    setSizeChargeValue(group, size, value) {
+        group.size_price_adjustments = group.size_price_adjustments && typeof group.size_price_adjustments === 'object'
+            ? group.size_price_adjustments
+            : {};
+        const amount = Number(value || 0);
+        const normalizedAmount = Number.isFinite(amount) && amount > 0 ? amount : 0;
+        this.sizeChargeKeys(group, size).forEach(key => {
+            group.size_price_adjustments[key] = normalizedAmount;
+        });
+    },
+    normalizeSizeExtraCharges(group) {
+        group.size_codes = group.size_codes && typeof group.size_codes === 'object' ? group.size_codes : {};
+        group.size_price_adjustments = group.size_price_adjustments && typeof group.size_price_adjustments === 'object'
+            ? group.size_price_adjustments
+            : {};
+
+        (group.sizes || []).forEach(size => {
+            const label = String(size || '');
+            const code = this.sizeCode(group, label);
+            if (!group.size_codes[label]) group.size_codes[label] = code;
+            const amount = this.sizeChargeAmount(group, label);
+            this.sizeChargeKeys(group, label).forEach(key => {
+                group.size_price_adjustments[key] = amount;
+            });
+        });
+
+        const hasSavedCharge = Object.values(group.size_price_adjustments).some(value => Number(value || 0) > 0);
+        group.has_size_extra_charges = this.booleanValue(group.has_size_extra_charges, hasSavedCharge) || hasSavedCharge;
+    },
+    toggleSizeExtraCharges(group) {
+        if (!group.has_size_extra_charges) {
+            group.size_price_adjustments = group.size_price_adjustments && typeof group.size_price_adjustments === 'object'
+                ? group.size_price_adjustments
+                : {};
+            Object.keys(group.size_price_adjustments).forEach(code => {
+                group.size_price_adjustments[code] = 0;
+            });
+            return;
+        }
+
+        this.normalizeSizeExtraCharges(group);
+    },
     filteredSizeOptionGroups() {
         const query = String(this.sizeGroupPickerSearch || '').trim().toLowerCase();
         const context = String(this.sizeGroupPickerContext || '');
@@ -1648,6 +1891,11 @@ window.adminProductForm = (initial = {}) => ({
             customization_group_label: String(master.customization_group_label || ''),
             description_html: String(master.description_html || ''),
             sizes: Array.isArray(master.sizes) ? [...master.sizes] : [],
+            size_codes: { ...(master.size_codes || {}) },
+            size_price_adjustments: Object.fromEntries(
+                Object.values(master.size_codes || {}).map(code => [String(code), 0])
+            ),
+            has_size_extra_charges: false,
             chart_enabled: Boolean(master.chart_enabled),
             chart_html: String(master.chart_html || ''),
             chart_title: String(master.chart_title || ''),

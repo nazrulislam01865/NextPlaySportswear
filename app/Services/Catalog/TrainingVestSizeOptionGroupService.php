@@ -10,8 +10,10 @@ use Illuminate\Support\Facades\Storage;
 
 class TrainingVestSizeOptionGroupService
 {
-    public function __construct(private readonly SafeHtmlService $safeHtml)
-    {
+    public function __construct(
+        private readonly SafeHtmlService $safeHtml,
+        private readonly TrainingVestSharedCustomizationSyncService $sharedSync,
+    ) {
     }
 
     public function create(TrainingVestSizeOptionGroupRequest $request): TrainingVestSizeOptionGroup
@@ -20,8 +22,10 @@ class TrainingVestSizeOptionGroupService
             $group = TrainingVestSizeOptionGroup::query()->create($this->payload($request));
             $this->syncSizes($group, $request->validated('sizes', []));
             $this->syncChartImage($group, $request);
+            $group = $group->refresh()->load('sizes');
+            $this->sharedSync->syncSizeGroup($group);
 
-            return $group->refresh()->load('sizes');
+            return $group;
         });
     }
 
@@ -31,14 +35,17 @@ class TrainingVestSizeOptionGroupService
             $group->update($this->payload($request, $group));
             $this->syncSizes($group, $request->validated('sizes', []));
             $this->syncChartImage($group, $request);
+            $group = $group->refresh()->load('sizes');
+            $this->sharedSync->syncSizeGroup($group);
 
-            return $group->refresh()->load('sizes');
+            return $group;
         });
     }
 
     public function delete(TrainingVestSizeOptionGroup $group): void
     {
         DB::transaction(function () use ($group): void {
+            $this->sharedSync->deleteSizeGroupMirrors($group);
             $this->deleteStoredImage($group->chart_image_path);
             $group->delete();
         });

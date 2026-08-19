@@ -59,6 +59,548 @@ class JerseyCustomizationOptionTest extends TestCase
     }
 
 
+    public function test_jersey_imprint_logo_and_piping_values_are_stored_separately(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        foreach ([
+            JerseyCustomizationType::JerseyImprintOption,
+            JerseyCustomizationType::JerseyLogoOption,
+            JerseyCustomizationType::JerseyPipingOption,
+        ] as $type) {
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                [
+                    'name' => 'Standard',
+                    'type' => $type->value,
+                ]
+            )->assertSessionDoesntHaveErrors();
+
+            $this->assertDatabaseHas('jersey_customization_options', [
+                'type' => $type->value,
+                'slug' => 'standard',
+            ]);
+        }
+
+        $this->assertSame(3, JerseyCustomizationOption::query()->where('slug', 'standard')->count());
+    }
+
+    public function test_shorts_rope_elastic_waist_drawcord_and_imprint_values_are_stored_separately(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        foreach ([
+            JerseyCustomizationType::ShortsRopeOption,
+            JerseyCustomizationType::ShortsElasticWaistDrawcordOption,
+            JerseyCustomizationType::ShortsImprintOption,
+        ] as $type) {
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                [
+                    'name' => 'Standard',
+                    'type' => $type->value,
+                ]
+            )->assertSessionDoesntHaveErrors();
+
+            $this->assertDatabaseHas('jersey_customization_options', [
+                'type' => $type->value,
+                'slug' => 'standard',
+            ]);
+        }
+
+        $this->assertSame(3, JerseyCustomizationOption::query()
+            ->whereIn('type', [
+                JerseyCustomizationType::ShortsRopeOption->value,
+                JerseyCustomizationType::ShortsElasticWaistDrawcordOption->value,
+                JerseyCustomizationType::ShortsImprintOption->value,
+            ])
+            ->where('slug', 'standard')
+            ->count());
+    }
+
+    public function test_hoodie_name_number_imprint_and_imprint_area_values_are_stored_separately(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        foreach ([
+            JerseyCustomizationType::HoodieDifferentNameAndNumberOption,
+            JerseyCustomizationType::HoodieImprintOption,
+            JerseyCustomizationType::HoodieImprintAreaOption,
+        ] as $type) {
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                [
+                    'name' => 'Standard',
+                    'type' => $type->value,
+                ]
+            )->assertSessionDoesntHaveErrors();
+
+            $this->assertDatabaseHas('jersey_customization_options', [
+                'type' => $type->value,
+                'slug' => 'standard',
+            ]);
+        }
+
+        $this->assertSame(3, JerseyCustomizationOption::query()
+            ->whereIn('type', [
+                JerseyCustomizationType::HoodieDifferentNameAndNumberOption->value,
+                JerseyCustomizationType::HoodieImprintOption->value,
+                JerseyCustomizationType::HoodieImprintAreaOption->value,
+            ])
+            ->where('slug', 'standard')
+            ->count());
+    }
+
+    public function test_polo_customization_values_are_stored_separately(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $types = [
+            JerseyCustomizationType::PoloImprintMethodOption,
+            JerseyCustomizationType::PoloBackDetailOption,
+            JerseyCustomizationType::PoloImprintOption,
+        ];
+
+        foreach ($types as $type) {
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                ['name' => 'Standard', 'type' => $type->value]
+            )->assertSessionDoesntHaveErrors();
+
+            $this->assertDatabaseHas('jersey_customization_options', [
+                'type' => $type->value,
+                'slug' => 'standard',
+            ]);
+        }
+
+        $this->assertSame(3, JerseyCustomizationOption::query()
+            ->whereIn('type', array_map(static fn (JerseyCustomizationType $type): string => $type->value, $types))
+            ->where('slug', 'standard')
+            ->count());
+    }
+
+    public function test_tshirt_customization_values_are_stored_separately(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $types = [
+            JerseyCustomizationType::TshirtPocketOption,
+            JerseyCustomizationType::TshirtImprintOption,
+            JerseyCustomizationType::TshirtImprintAreaOption,
+            JerseyCustomizationType::TshirtBackDetailOption,
+            JerseyCustomizationType::TshirtDifferentNameAndNumberOption,
+        ];
+
+        foreach ($types as $type) {
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                ['name' => 'Standard', 'type' => $type->value]
+            )->assertSessionDoesntHaveErrors();
+
+            $this->assertDatabaseHas('jersey_customization_options', [
+                'type' => $type->value,
+                'slug' => 'standard',
+            ]);
+        }
+
+        $this->assertSame(5, JerseyCustomizationOption::query()
+            ->whereIn('type', array_map(static fn (JerseyCustomizationType $type): string => $type->value, $types))
+            ->where('slug', 'standard')
+            ->count());
+    }
+
+    public function test_quarter_zip_customization_values_are_stored_separately(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $types = [
+            JerseyCustomizationType::QuarterZipImprintOption,
+            JerseyCustomizationType::QuarterZipPocketOption,
+            JerseyCustomizationType::QuarterZipNeckOption,
+        ];
+
+        foreach ($types as $type) {
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                ['name' => 'Standard', 'type' => $type->value]
+            )->assertSessionDoesntHaveErrors();
+
+            $this->assertDatabaseHas('jersey_customization_options', [
+                'type' => $type->value,
+                'slug' => 'standard',
+            ]);
+        }
+
+        $this->assertSame(3, JerseyCustomizationOption::query()
+            ->whereIn('type', array_map(static fn (JerseyCustomizationType $type): string => $type->value, $types))
+            ->where('slug', 'standard')
+            ->count());
+    }
+
+    public function test_jacket_customization_values_are_stored_separately(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $types = [
+            JerseyCustomizationType::JacketImprintOption,
+            JerseyCustomizationType::JacketImprintAreaOption,
+            JerseyCustomizationType::JacketDifferentNameAndNumberOption,
+        ];
+
+        foreach ($types as $type) {
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                ['name' => 'Standard', 'type' => $type->value]
+            )->assertSessionDoesntHaveErrors();
+
+            $this->assertDatabaseHas('jersey_customization_options', [
+                'type' => $type->value,
+                'slug' => 'standard',
+            ]);
+        }
+
+        $this->assertSame(3, JerseyCustomizationOption::query()
+            ->whereIn('type', array_map(static fn (JerseyCustomizationType $type): string => $type->value, $types))
+            ->where('slug', 'standard')
+            ->count());
+    }
+
+    public function test_tank_top_and_compression_wear_customization_values_are_stored_separately(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $types = [
+            JerseyCustomizationType::TankTopImprintOption,
+            JerseyCustomizationType::TankTopImprintAreaOption,
+            JerseyCustomizationType::TankTopNeckOption,
+            JerseyCustomizationType::TankTopBackDetailOption,
+            JerseyCustomizationType::TankTopPocketOption,
+            JerseyCustomizationType::TankTopDifferentNameAndNumberChargesOption,
+            JerseyCustomizationType::CompressionWearImprintOption,
+        ];
+
+        foreach ($types as $type) {
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                ['name' => 'Standard', 'type' => $type->value]
+            )->assertSessionDoesntHaveErrors();
+
+            $this->assertDatabaseHas('jersey_customization_options', [
+                'type' => $type->value,
+                'slug' => 'standard',
+            ]);
+        }
+
+        $this->assertSame(7, JerseyCustomizationOption::query()
+            ->whereIn('type', array_map(static fn (JerseyCustomizationType $type): string => $type->value, $types))
+            ->where('slug', 'standard')
+            ->count());
+    }
+
+    public function test_socks_and_sweatshirt_customization_values_are_stored_separately(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $types = [
+            JerseyCustomizationType::SocksThicknessOption,
+            JerseyCustomizationType::SocksYarnOption,
+            JerseyCustomizationType::SocksTypesOption,
+            JerseyCustomizationType::SocksImprintMethodOption,
+            JerseyCustomizationType::SweatshirtImprintOption,
+            JerseyCustomizationType::SweatshirtImprintAreaOption,
+            JerseyCustomizationType::SweatshirtDifferentNameAndNumberSurchargeOption,
+            JerseyCustomizationType::SweatshirtDBackOption,
+        ];
+
+        foreach ($types as $type) {
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                ['name' => 'Standard', 'type' => $type->value]
+            )->assertSessionDoesntHaveErrors();
+
+            $this->assertDatabaseHas('jersey_customization_options', [
+                'type' => $type->value,
+                'slug' => 'standard',
+            ]);
+        }
+
+        $this->assertSame(8, JerseyCustomizationOption::query()
+            ->whereIn('type', array_map(static fn (JerseyCustomizationType $type): string => $type->value, $types))
+            ->where('slug', 'standard')
+            ->count());
+    }
+
+    public function test_bag_and_headwear_customization_values_are_stored_separately(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $types = [
+            JerseyCustomizationType::BagSizeOption,
+            JerseyCustomizationType::BagFabricOption,
+            JerseyCustomizationType::HeadwearClosureOption,
+            JerseyCustomizationType::HeadwearCrownOption,
+            JerseyCustomizationType::HeadwearVisorOption,
+            JerseyCustomizationType::HeadwearPanelsOption,
+            JerseyCustomizationType::HeadwearFabricOption,
+        ];
+
+        foreach ($types as $type) {
+            $payload = ['name' => 'Standard', 'type' => $type->value];
+            if ($type->usesDescription()) {
+                $payload['description'] = 'Reusable material description.';
+            }
+
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                $payload
+            )->assertSessionDoesntHaveErrors();
+
+            $this->assertDatabaseHas('jersey_customization_options', [
+                'type' => $type->value,
+                'slug' => 'standard',
+            ]);
+        }
+
+        $this->assertSame(7, JerseyCustomizationOption::query()
+            ->whereIn('type', array_map(static fn (JerseyCustomizationType $type): string => $type->value, $types))
+            ->where('slug', 'standard')
+            ->count());
+    }
+
+    public function test_drinkware_lanyard_and_headband_customization_values_are_stored_separately(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $types = [
+            JerseyCustomizationType::DrinkwareMaterialOption,
+            JerseyCustomizationType::DrinkwareSampleChargeOption,
+            JerseyCustomizationType::LanyardMaterialOption,
+            JerseyCustomizationType::LanyardStandardAttachmentOption,
+            JerseyCustomizationType::LanyardAttachmentSurchargeOptions,
+            JerseyCustomizationType::HeadbandSizeOption,
+            JerseyCustomizationType::HeadbandMaterialOption,
+            JerseyCustomizationType::HeadbandImprintMethodOption,
+        ];
+
+        foreach ($types as $type) {
+            $payload = ['name' => 'Standard', 'type' => $type->value];
+            if ($type->usesDescription()) {
+                $payload['description'] = 'Reusable material description.';
+            }
+
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                $payload
+            )->assertSessionDoesntHaveErrors();
+        }
+
+        $this->assertSame(8, JerseyCustomizationOption::query()
+            ->whereIn('type', array_map(static fn (JerseyCustomizationType $type): string => $type->value, $types))
+            ->where('slug', 'standard')
+            ->count());
+    }
+
+    public function test_silicone_wristband_and_baseball_belt_customization_values_are_stored_separately(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $types = [
+            JerseyCustomizationType::SiliconeWristbandProductSizeOption,
+            JerseyCustomizationType::SiliconeWristbandMaterialOption,
+            JerseyCustomizationType::SiliconeWristbandImprintMethodOption,
+            JerseyCustomizationType::SiliconeWristbandCustomizedOptions,
+            JerseyCustomizationType::BaseballBeltSizeOption,
+            JerseyCustomizationType::BaseballBeltMaterialOption,
+            JerseyCustomizationType::BaseballBeltImprintOption,
+            JerseyCustomizationType::BaseballBeltImprintAreaOption,
+            JerseyCustomizationType::BaseballBeltImprintSizeOption,
+            JerseyCustomizationType::BaseballBeltColorOption,
+        ];
+
+        foreach ($types as $type) {
+            $payload = ['name' => 'Standard', 'type' => $type->value];
+            if ($type->usesDescription()) {
+                $payload['description'] = 'Reusable material description.';
+            }
+            if ($type->usesColorValue()) {
+                $payload['color_hex'] = '#112233';
+            }
+
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                $payload
+            )->assertSessionDoesntHaveErrors();
+        }
+
+        $this->assertSame(10, JerseyCustomizationOption::query()
+            ->whereIn('type', array_map(static fn (JerseyCustomizationType $type): string => $type->value, $types))
+            ->where('slug', 'standard')
+            ->count());
+    }
+
+    public function test_towel_armsleeve_and_fabric_wristband_values_are_stored_separately(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $types = [
+            JerseyCustomizationType::TowelSizeOption,
+            JerseyCustomizationType::TowelMaterialOption,
+            JerseyCustomizationType::TowelFrontFabricOption,
+            JerseyCustomizationType::TowelBackFabricOption,
+            JerseyCustomizationType::TowelImprintSizeOption,
+            JerseyCustomizationType::TowelAvailableBackingColorOption,
+            JerseyCustomizationType::ArmsleeveSizeOption,
+            JerseyCustomizationType::ArmsleeveFabricOption,
+            JerseyCustomizationType::ArmsleeveImprintMethodOption,
+            JerseyCustomizationType::FabricWristbandSizeOption,
+            JerseyCustomizationType::FabricWristbandMaterialOption,
+            JerseyCustomizationType::FabricWristbandStandardAttachmentOption,
+            JerseyCustomizationType::FabricWristbandImprintMethodOption,
+            JerseyCustomizationType::FabricWristbandLockingClosuresOption,
+        ];
+
+        foreach ($types as $type) {
+            $payload = ['name' => 'Standard', 'type' => $type->value];
+            if ($type->usesDescription()) {
+                $payload['description'] = 'Reusable material description.';
+            }
+            if ($type->usesColorValue()) {
+                $payload['color_hex'] = '#112233';
+            }
+
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                $payload
+            )->assertSessionDoesntHaveErrors();
+        }
+
+        $this->assertSame(14, JerseyCustomizationOption::query()
+            ->whereIn('type', array_map(static fn (JerseyCustomizationType $type): string => $type->value, $types))
+            ->where('slug', 'standard')
+            ->count());
+    }
+
+    public function test_knitted_gloves_and_bandana_values_are_stored_separately(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $types = [
+            JerseyCustomizationType::KnittedGlovesSizeOption,
+            JerseyCustomizationType::KnittedGlovesLogoOption,
+            JerseyCustomizationType::KnittedGlovesMaterialOption,
+            JerseyCustomizationType::KnittedGlovesColorOption,
+            JerseyCustomizationType::KnittedGlovesTouchScreenFunctionOption,
+            JerseyCustomizationType::KnittedGlovesInnerLiningOption,
+            JerseyCustomizationType::KnittedGlovesCuffTypeOption,
+            JerseyCustomizationType::KnittedGlovesFabricFeatureOption,
+            JerseyCustomizationType::BandanaSizeOption,
+            JerseyCustomizationType::BandanaFabricOption,
+            JerseyCustomizationType::BandanaMaskLayersOption,
+            JerseyCustomizationType::BandanaImprintMethodOption,
+        ];
+
+        foreach ($types as $type) {
+            $payload = ['name' => 'Standard', 'type' => $type->value];
+            if ($type->usesDescription()) {
+                $payload['description'] = 'Reusable material description.';
+            }
+            if ($type->usesColorValue()) {
+                $payload['color_hex'] = '#112233';
+            }
+
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                $payload
+            )->assertSessionDoesntHaveErrors();
+        }
+
+        $this->assertSame(12, JerseyCustomizationOption::query()
+            ->whereIn('type', array_map(static fn (JerseyCustomizationType $type): string => $type->value, $types))
+            ->where('slug', 'standard')
+            ->count());
+    }
+
+    public function test_premium_scarf_and_training_vest_extension_values_are_stored_separately(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $types = [
+            JerseyCustomizationType::TrainingVestImprintOption,
+            JerseyCustomizationType::TrainingVestLogoOption,
+            JerseyCustomizationType::PremiumScarfSizeOption,
+            JerseyCustomizationType::PremiumScarfMaterialOption,
+            JerseyCustomizationType::PremiumScarfCraftOption,
+            JerseyCustomizationType::PremiumScarfLayerOption,
+            JerseyCustomizationType::PremiumScarfImprintSizeOption,
+            JerseyCustomizationType::PremiumScarfYarnColorOption,
+        ];
+
+        foreach ($types as $type) {
+            $payload = ['name' => 'Standard', 'type' => $type->value];
+            if ($type->usesDescription()) {
+                $payload['description'] = 'Reusable material description.';
+            }
+            if ($type->usesColorValue()) {
+                $payload['color_hex'] = '#112233';
+            }
+
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                $payload
+            )->assertSessionDoesntHaveErrors();
+        }
+
+        $this->assertSame(8, JerseyCustomizationOption::query()
+            ->whereIn('type', array_map(static fn (JerseyCustomizationType $type): string => $type->value, $types))
+            ->where('slug', 'standard')
+            ->count());
+    }
+
     public function test_same_option_slug_is_stored_separately_for_sweatshirt_and_jacket(): void
     {
         $admin = User::factory()->create([

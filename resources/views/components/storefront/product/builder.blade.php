@@ -291,7 +291,10 @@ window.productBuilderFabricPricing = function (config = {}) {
                                             @php $key = $group['id'].':'.$size['code']; @endphp
                                             <div class="rounded-2xl bg-slate-50 p-4">
                                                 <div class="flex items-center justify-between gap-3">
-                                                    <strong class="text-base text-brand-ink">{{ $size['label'] }}</strong>
+                                                    <div>
+                                                        <strong class="text-base text-brand-ink">{{ $size['label'] }}</strong>
+                                                        <x-storefront.product.size-charge-label :amount="$size['price_delta'] ?? 0" class="mt-1 block text-xs" />
+                                                    </div>
                                                     <div class="grid h-11 w-32 grid-cols-[40px_1fr_40px] overflow-hidden rounded-xl border border-slate-300 bg-white">
                                                         <button type="button" class="bg-slate-100 font-black" @click="changeQuantity(@js($key), Number(quantities[@js($key)] || 0)-1)" aria-label="Decrease {{ $size['label'] }} quantity">−</button>
                                                         <input class="min-w-0 border-0 text-center font-black" type="number" min="0" :max="config.maximum_quantity || 999" :value="quantities[@js($key)]" @change="changeQuantity(@js($key), $event.target.value)" aria-label="{{ $size['label'] }} quantity">
@@ -304,12 +307,15 @@ window.productBuilderFabricPricing = function (config = {}) {
 
                                     <div class="touch-scroll-x hidden sm:block" tabindex="0" aria-label="Size quantity table">
                                         <table class="w-full min-w-[600px] text-sm">
-                                            <thead class="bg-slate-50 text-left text-[10px] font-black uppercase tracking-[.12em] text-slate-500"><tr><th class="px-4 py-3">Size</th><th class="px-4 py-3">Quantity</th></tr></thead>
+                                            <thead class="bg-slate-50 text-left text-[10px] font-black uppercase tracking-[.12em] text-slate-500"><tr><th class="px-4 py-3">Size</th><th class="px-4 py-3">Extra charge</th><th class="px-4 py-3">Quantity</th></tr></thead>
                                             <tbody class="divide-y divide-slate-100">
                                                 @foreach($group['sizes'] as $size)
                                                     @php $key = $group['id'].':'.$size['code']; @endphp
                                                     <tr>
                                                         <td class="px-4 py-3 font-black">{{ $size['label'] }}</td>
+                                                        <td class="px-4 py-3">
+                                                            <x-storefront.product.size-charge-label :amount="$size['price_delta'] ?? 0" />
+                                                        </td>
                                                         <td class="px-4 py-3"><div class="grid h-10 w-32 grid-cols-[36px_1fr_36px] overflow-hidden rounded-xl border border-slate-300"><button type="button" class="bg-slate-100 font-black" aria-label="Decrease {{ $size['label'] }} quantity" @click="changeQuantity(@js($key), Number(quantities[@js($key)] || 0)-1)">−</button><input class="min-w-0 border-0 text-center font-black" type="number" min="0" :max="config.maximum_quantity || 999" :value="quantities[@js($key)]" @change="changeQuantity(@js($key), $event.target.value)"><button type="button" class="bg-slate-100 font-black" aria-label="Increase {{ $size['label'] }} quantity" @click="changeQuantity(@js($key), Number(quantities[@js($key)] || 0)+1)">+</button></div></td>
                                                     </tr>
                                                 @endforeach

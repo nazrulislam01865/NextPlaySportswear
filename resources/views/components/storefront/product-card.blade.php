@@ -13,10 +13,17 @@
     $productUrl = (string) ($product['url'] ?? '#');
     $configureUrl = $productUrl === '#' ? '#' : $productUrl.'#configure-product';
     $categoryLabel = trim((string) (($product['category'] ?? '') ?: ($product['sport'] ?? '')));
-    $allCustomizationOptions = collect($product['customization_options'] ?? [])
-        ->filter(fn ($option) => filled($option))
-        ->values();
-    $customizationOptions = $allCustomizationOptions->take(2)->values();
+    $sku = trim((string) ($product['sku'] ?? ''));
+    $isCustomizable = (bool) ($product['is_customizable'] ?? false);
+    $displayUnitPrice = (float) ($product['display_unit_price'] ?? $product['base_price'] ?? 0);
+    $originalPrice = (float) ($product['original_price'] ?? $product['display_compare_at_price'] ?? 0);
+    $hasDiscount = $displayUnitPrice > 0 && $originalPrice > $displayUnitPrice;
+    $discountPercentage = $hasDiscount
+        ? (int) ($product['discount_percentage'] ?? round((1 - ($displayUnitPrice / $originalPrice)) * 100))
+        : null;
+    $originalPriceLabel = $hasDiscount
+        ? (string) ($product['original_price_label'] ?? $product['compare_at_price_label'] ?? '$'.number_format($originalPrice, 2))
+        : null;
     $rating = $product['rating'] ?? null;
     $reviewsCount = $product['reviews_count'] ?? null;
 
@@ -37,11 +44,11 @@
     $wishlistEndpoint = $productId > 0
         ? route('wishlist.products.update', ['product' => $productId])
         : '';
-    $wishlistPrice = (float) ($product['base_price'] ?? 0);
+    $wishlistPrice = $displayUnitPrice;
     $wishlistCurrency = (string) ($product['currency'] ?? 'USD');
 @endphp
 
-<article class="np-product-card np-product-card--nextplay group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card card-hover" data-product-card data-product-id="{{ $product['id'] ?? '' }}">
+<article class="np-product-card np-product-card--nextplay np-product-card--canonical group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card card-hover" data-product-card data-product-id="{{ $product['id'] ?? '' }}">
     <div class="np-product-card-media-wrap relative">
         <a href="{{ $productUrl }}" class="np-product-square-media np-product-card-media relative block overflow-hidden" aria-label="View {{ $product['title'] }}">
             <img
@@ -54,7 +61,12 @@
             >
         </a>
 
-        @if (filled($product['tag'] ?? null))
+        @if ($isCustomizable)
+            <span class="np-product-card-customizable">
+                <span class="np-product-card-customizable-dot" aria-hidden="true"></span>
+                Customizable
+            </span>
+        @elseif (filled($product['tag'] ?? null))
             <span class="np-product-card-badge {{ $tagClass }}">
                 {{ $product['tag'] }}
             </span>
@@ -93,15 +105,8 @@
             </a>
         </h3>
 
-        @if ($customizationOptions->isNotEmpty())
-            <div class="np-product-card-options" aria-label="Customization options">
-                @foreach ($customizationOptions as $option)
-                    <span>
-                        <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M7.7 13.3 4.4 10l-1.2 1.2 4.5 4.5 9-9-1.2-1.2-7.8 7.8Z" /></svg>
-                        {{ $option }}
-                    </span>
-                @endforeach
-            </div>
+        @if ($sku !== '')
+            <p class="np-product-card-sku">SKU: {{ $sku }}</p>
         @endif
 
         @if ($hasReviews)
@@ -119,9 +124,11 @@
 
         <div class="np-product-card-divider" aria-hidden="true"></div>
 
-        <div class="np-product-card-price-row">
+        <div class="np-product-card-price-row{{ $hasDiscount ? ' has-discount' : '' }}">
             <span class="np-product-card-price">{{ $product['price'] }}</span>
-            @if (!empty($product['has_bulk_pricing']))
+            @if ($hasDiscount)
+                <span class="np-product-card-compare-price">{{ $originalPriceLabel }}</span>
+                <span class="np-product-card-discount">{{ $discountPercentage }}% OFF</span>
             @endif
         </div>
 

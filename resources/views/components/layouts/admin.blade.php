@@ -7,6 +7,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="robots" content="noindex,nofollow">
     <title>{{ $title }} | NextPlay Admin</title>
+    <x-admin.sidebar-prepaint-state />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
@@ -94,6 +95,10 @@
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Master Data</p>
                     @php
                         $customizationMenuGroups = \App\Enums\JerseyCustomizationType::menuGroups();
+                        $primaryCustomizationMenuGroups = array_filter(
+                            $customizationMenuGroups,
+                            static fn (array $group): bool => version_compare($group['number'], '1.19', '<')
+                        );
                         $isCustomizationActive = request()->routeIs('admin.jersey-customization-options.*');
                         $isSizeOptionActive = request()->routeIs('admin.size-option-groups.*');
                         $activeCustomizationType = request()->route('type');
@@ -113,6 +118,10 @@
                         $activeCustomizationGroup = $activeCustomizationTypeEnum?->group();
                         $activeSizeCustomizationGroup = request()->query('customization', 'jersey');
                         $trainingVestMenuGroups = \App\Enums\TrainingVestCustomizationType::menuGroups();
+                        $trainingVestExtensionGroup = $customizationMenuGroups['training_vest'] ?? null;
+                        $isTrainingVestExtensionActive = $isCustomizationActive && $activeCustomizationGroup === 'training_vest';
+                        $afterTrainingVestCustomizationGroups = \App\Support\ProductCustomizationMenuRegistry::afterTrainingVestGroups($customizationMenuGroups);
+                        $trailingMasterDataNumbers = \App\Support\ProductCustomizationMenuRegistry::trailingMasterDataNumbers();
                         $isTrainingVestCustomizationActive = request()->routeIs('admin.training-vest-customization-options.*') || request()->routeIs('admin.training-vest-size-option-groups.*');
                         $activeTrainingVestCustomizationType = request()->route('type');
                         $activeTrainingVestCustomizationOption = request()->route('trainingVestCustomizationOption');
@@ -131,7 +140,7 @@
                             $activeTrainingVestCustomizationType = old('type');
                         }
 
-                        if (! array_key_exists((string) $activeSizeCustomizationGroup, $customizationMenuGroups) || ! \App\Support\ProductSizing::supports((string) $activeSizeCustomizationGroup)) {
+                        if (! array_key_exists((string) $activeSizeCustomizationGroup, $customizationMenuGroups) || ! \App\Support\ProductSizing::supportsMasterDataSizeOptions((string) $activeSizeCustomizationGroup)) {
                             $activeSizeCustomizationGroup = 'jersey';
                         }
                     @endphp
@@ -141,98 +150,60 @@
                         :active="$isCustomizationActive || $isSizeOptionActive || $isTrainingVestCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*') || request()->routeIs('admin.faqs.*')"
                     >
                         @if($canAdmin('customization.view'))
-                        @foreach($customizationMenuGroups as $groupKey => $customizationGroup)
-                            @php($isCurrentCustomizationGroup = ($isCustomizationActive && $activeCustomizationGroup === $groupKey) || ($isSizeOptionActive && $activeSizeCustomizationGroup === $groupKey))
-                            <details class="space-y-1" data-sidebar-disclosure data-sidebar-nested-disclosure @if($isCurrentCustomizationGroup) open @endif>
-                                <summary
-                                    class="flex min-h-10 w-full min-w-0 cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-black text-slate-400 transition hover:bg-white/10 hover:text-white"
-                                    data-sidebar-disclosure-toggle
-                                    aria-label="{{ $customizationGroup['label'] }}"
-                                    data-sidebar-tooltip="{{ $customizationGroup['label'] }}"
-                                >
-                                    <span class="text-[10px] text-slate-500">{{ $customizationGroup['number'] }}</span>
-                                    <span class="min-w-0 flex-1 truncate" data-sidebar-label>{{ $customizationGroup['label'] }}</span>
-                                    <span class="text-[10px] transition-transform" data-sidebar-arrow>⌄</span>
-                                </summary>
-
-                                <div
-                                    class="space-y-1 pl-4"
-                                    data-sidebar-disclosure-panel
-                                >
-                                    @foreach($customizationGroup['types'] as $customizationType)
-                                        <a
-                                            href="{{ route('admin.jersey-customization-options.type', $customizationType->value) }}"
-                                            aria-label="{{ $customizationType->label() }}"
-                                            data-sidebar-tooltip="{{ $customizationType->label() }}"
-                                            @if($isCustomizationActive && $activeCustomizationType === $customizationType->value) data-sidebar-active="true" @endif
-                                            @class([
-                                                'flex min-h-9 min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold transition',
-                                                'bg-brand-red text-white' => $isCustomizationActive && $activeCustomizationType === $customizationType->value,
-                                                'text-slate-400 hover:bg-white/10 hover:text-white' => ! ($isCustomizationActive && $activeCustomizationType === $customizationType->value),
-                                            ])
-                                        >
-                                            <span class="shrink-0 text-[10px] opacity-80">{{ $customizationType->menuNumber() }}</span>
-                                            <span class="min-w-0 truncate" data-sidebar-label>{{ $customizationType->label() }}</span>
-                                        </a>
-                                    @endforeach
-
-                                    @if(\App\Support\ProductSizing::supports($groupKey))
-                                        @php($sizeOptionMenuNumber = \App\Enums\JerseyCustomizationType::sizeOptionMenuNumberForGroup($groupKey))
-                                        @php($isCurrentSizeOptionLink = $isSizeOptionActive && $activeSizeCustomizationGroup === $groupKey)
-                                        <a
-                                            href="{{ route('admin.size-option-groups.index', ['customization' => $groupKey]) }}"
-                                            aria-label="Size Options"
-                                            data-sidebar-tooltip="Size Options"
-                                            @if($isCurrentSizeOptionLink) data-sidebar-active="true" @endif
-                                            @class([
-                                                'flex min-h-9 min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold transition',
-                                                'bg-brand-red text-white' => $isCurrentSizeOptionLink,
-                                                'text-slate-400 hover:bg-white/10 hover:text-white' => ! $isCurrentSizeOptionLink,
-                                            ])
-                                        >
-                                            <span class="shrink-0 text-[10px] opacity-80">{{ $sizeOptionMenuNumber }}</span>
-                                            <span class="min-w-0 truncate" data-sidebar-label>Size Options</span>
-                                        </a>
-                                    @endif
-                                </div>
-                            </details>
+                        @foreach($primaryCustomizationMenuGroups as $groupKey => $customizationGroup)
+                            <x-admin.sidebar-product-customization-group
+                                :group-key="$groupKey"
+                                :group="$customizationGroup"
+                                :is-customization-active="$isCustomizationActive"
+                                :is-size-option-active="$isSizeOptionActive"
+                                :active-customization-type="$activeCustomizationType"
+                                :active-customization-group="$activeCustomizationGroup"
+                                :active-size-customization-group="$activeSizeCustomizationGroup"
+                            />
                         @endforeach
 
                         @foreach($trainingVestMenuGroups as $groupKey => $trainingVestGroup)
-                            <details class="space-y-1" data-sidebar-disclosure data-sidebar-nested-disclosure @if($isTrainingVestCustomizationActive) open @endif>
-                                <summary
-                                    class="flex min-h-10 w-full min-w-0 cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-black text-slate-400 transition hover:bg-white/10 hover:text-white"
-                                    data-sidebar-disclosure-toggle
-                                    aria-label="{{ $trainingVestGroup['label'] }}"
-                                    data-sidebar-tooltip="{{ $trainingVestGroup['label'] }}"
-                                >
-                                    <span class="text-[10px] text-slate-500">{{ $trainingVestGroup['number'] }}</span>
-                                    <span class="min-w-0 flex-1 truncate" data-sidebar-label>{{ $trainingVestGroup['label'] }}</span>
-                                    <span class="text-[10px] transition-transform" data-sidebar-arrow>⌄</span>
-                                </summary>
+                            <x-admin.sidebar-customization-group
+                                :number="$trainingVestGroup['number']"
+                                :label="$trainingVestGroup['label']"
+                                :active="$isTrainingVestCustomizationActive || $isTrainingVestExtensionActive"
+                            >
+                                    <x-admin.sidebar-customization-type-links
+                                        :types="$trainingVestGroup['types']"
+                                        route-name="admin.training-vest-customization-options.type"
+                                        :is-active="$isTrainingVestCustomizationActive"
+                                        :active-type="$activeTrainingVestCustomizationType"
+                                    />
 
-                                <div
-                                    class="space-y-1 pl-4"
-                                    data-sidebar-disclosure-panel
-                                >
-                                    @foreach($trainingVestGroup['types'] as $trainingVestType)
-                                        <a
-                                            href="{{ route('admin.training-vest-customization-options.type', $trainingVestType->value) }}"
-                                            aria-label="{{ $trainingVestType->label() }}"
-                                            data-sidebar-tooltip="{{ $trainingVestType->label() }}"
-                                            @if($isTrainingVestCustomizationActive && $activeTrainingVestCustomizationType === $trainingVestType->value) data-sidebar-active="true" @endif
-                                            @class([
-                                                'flex min-h-9 min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold transition',
-                                                'bg-brand-red text-white' => $isTrainingVestCustomizationActive && $activeTrainingVestCustomizationType === $trainingVestType->value,
-                                                'text-slate-400 hover:bg-white/10 hover:text-white' => ! ($isTrainingVestCustomizationActive && $activeTrainingVestCustomizationType === $trainingVestType->value),
-                                            ])
-                                        >
-                                            <span class="shrink-0 text-[10px] opacity-80">{{ $trainingVestType->menuNumber() }}</span>
-                                            <span class="min-w-0 truncate" data-sidebar-label>{{ $trainingVestType->label() }}</span>
-                                        </a>
-                                    @endforeach
-                                </div>
-                            </details>
+                                    @if($trainingVestExtensionGroup)
+                                        <x-admin.sidebar-customization-type-links
+                                            :types="$trainingVestExtensionGroup['types']"
+                                            route-name="admin.jersey-customization-options.type"
+                                            :is-active="$isCustomizationActive"
+                                            :active-type="$activeCustomizationType"
+                                        />
+                                    @endif
+                            </x-admin.sidebar-customization-group>
+                        @endforeach
+
+                        @foreach($afterTrainingVestCustomizationGroups as $groupKey => $customizationGroup)
+                            @if(isset($customizationGroup['types']))
+                                <x-admin.sidebar-product-customization-group
+                                    :group-key="$groupKey"
+                                    :group="$customizationGroup"
+                                    :is-customization-active="$isCustomizationActive"
+                                    :is-size-option-active="$isSizeOptionActive"
+                                    :active-customization-type="$activeCustomizationType"
+                                    :active-customization-group="$activeCustomizationGroup"
+                                    :active-size-customization-group="$activeSizeCustomizationGroup"
+                                />
+                            @else
+                                <x-admin.sidebar-customization-group
+                                    :number="$customizationGroup['number']"
+                                    :label="$customizationGroup['label']"
+                                    :has-items="false"
+                                />
+                            @endif
                         @endforeach
                         @endif
 
@@ -240,18 +211,18 @@
                             <x-admin.sidebar-sub-link
                                 :href="route('admin.production-methods.index')"
                                 :active="request()->routeIs('admin.production-methods.*')"
-                            >1.20 Production Methods</x-admin.sidebar-sub-link>
+                            >{{ $trailingMasterDataNumbers['production_methods'] }} Production Methods</x-admin.sidebar-sub-link>
                             <x-admin.sidebar-sub-link
                                 :href="route('admin.shipping-methods.index')"
                                 :active="request()->routeIs('admin.shipping-methods.*')"
-                            >1.21 Shipping Methods</x-admin.sidebar-sub-link>
+                            >{{ $trailingMasterDataNumbers['shipping_methods'] }} Shipping Methods</x-admin.sidebar-sub-link>
                         @endif
 
                         @if($canAdmin('customization.view'))
                             <x-admin.sidebar-sub-link
                                 :href="route('admin.faqs.index')"
                                 :active="request()->routeIs('admin.faqs.*')"
-                            >1.22 FAQs</x-admin.sidebar-sub-link>
+                            >{{ $trailingMasterDataNumbers['faqs'] }} FAQs</x-admin.sidebar-sub-link>
                         @endif
                     </x-admin.sidebar-group>
                 @endif
@@ -313,6 +284,7 @@
                     @endif
                 @endif
             </nav>
+            <x-admin.sidebar-scroll-restore />
 
             <div class="shrink-0 border-t border-white/10 p-3">
                 <p class="mb-3 px-1 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Manage Store</p>

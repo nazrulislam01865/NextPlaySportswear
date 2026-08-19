@@ -10,6 +10,7 @@ use App\Models\ProductionMethod;
 use App\Models\ShippingMethod;
 use App\Support\ProductionTime;
 use App\Support\ProductSizing;
+use App\Support\ProductSizeExtraCharges;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -186,7 +187,7 @@ class ProductFormRequest extends FormRequest
             'option_groups.*.values.*.image_files' => ['nullable', 'array', 'max:12'],
             'option_groups.*.values.*.image_files.*' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,avif', 'mimetypes:image/jpeg,image/png,image/webp,image/avif', 'max:5120'],
             'option_groups.*.values.*.clear_images' => ['nullable', 'boolean'],
-            'option_groups.*.values.*.price_adjustment' => ['nullable', 'numeric', 'min:-999999999.99', 'max:999999999.99'],
+            'option_groups.*.values.*.price_adjustment' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'option_groups.*.values.*.charge_type' => ['nullable', Rule::in(['included', 'per_unit', 'fixed_order'])],
             'option_groups.*.values.*.stock_quantity' => ['nullable', 'integer', 'min:0'],
             'option_groups.*.values.*.is_default' => ['nullable', 'boolean'],
@@ -209,6 +210,13 @@ class ProductFormRequest extends FormRequest
             'size_groups.*.chart_image_url' => ['nullable', 'url', 'max:2048'],
             'size_groups.*.chart_image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,avif', 'mimetypes:image/jpeg,image/png,image/webp,image/avif', 'max:5120'],
             'size_groups.*.clear_chart_image' => ['nullable', 'boolean'],
+            'size_groups.*.has_size_extra_charges' => ['nullable', 'boolean'],
+            'size_groups.*.size_price_adjustments' => ['nullable', 'array', 'max:100'],
+            'size_groups.*.size_price_adjustments.*' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'size_groups.*.size_charges' => ['nullable', 'array', 'max:100'],
+            'size_groups.*.size_charges.*.code' => ['nullable', 'string', 'max:80'],
+            'size_groups.*.size_charges.*.label' => ['nullable', 'string', 'max:80'],
+            'size_groups.*.size_charges.*.amount' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
 
             'artwork_methods' => ['nullable', 'array', 'max:50'],
             'artwork_methods.*.name' => ['nullable', 'string', 'max:160'],
@@ -477,6 +485,12 @@ class ProductFormRequest extends FormRequest
         $sizeGroups = ProductSizing::supports($productProfile)
             ? $normalizeRowsWithCodes((array) $this->input('size_groups', []))
             : [];
+        $sizeGroups = collect($sizeGroups)->map(static function (array $group): array {
+            $group['size_price_adjustments'] = ProductSizeExtraCharges::adjustments($group);
+            $group['has_size_extra_charges'] = ProductSizeExtraCharges::enabled($group);
+
+            return $group;
+        })->values()->all();
 
         $this->merge([
             'option_groups' => $optionGroups,
@@ -564,6 +578,28 @@ class ProductFormRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            $discountPrice = $this->input('compare_at_price');
+            if (is_numeric($discountPrice) && (float) $discountPrice > 0) {
+                $lastVisibleTier = collect($this->input('price_tiers', []))
+                    ->filter(fn ($tier): bool => is_array($tier)
+                        && is_numeric($tier['unit_price'] ?? null)
+                        && is_numeric($tier['minimum_quantity'] ?? null))
+                    ->sortBy(fn (array $tier): int => (int) $tier['minimum_quantity'])
+                    ->last();
+                $originalCardPrice = is_array($lastVisibleTier)
+                    ? ($lastVisibleTier['unit_price'] ?? $this->input('base_price'))
+                    : $this->input('base_price');
+
+                if (is_numeric($originalCardPrice)
+                    && (float) $originalCardPrice > 0
+                    && (float) $discountPrice >= (float) $originalCardPrice) {
+                    $validator->errors()->add(
+                        'compare_at_price',
+                        'The discount unit price must be lower than the current storefront “From” price of $'.number_format((float) $originalCardPrice, 2).'.'
+                    );
+                }
+            }
+
             $submittedCategoryIds = collect([$this->input('primary_category_id')])
                 ->merge((array) $this->input('category_assignments', []))
                 ->filter(fn ($id): bool => filter_var($id, FILTER_VALIDATE_INT) !== false)
@@ -1165,6 +1201,10 @@ class ProductFormRequest extends FormRequest
             'option_groups.*.code.regex' => 'This customization feature has an invalid internal identifier. Refresh the page and try saving again.',
             'option_groups.*.code.distinct' => 'The same customization feature cannot be added more than once.',
             'option_groups.*.values.*.color_hex.regex' => 'Enter a valid HEX color such as #15345D or 15345D.',
+            'option_groups.*.values.*.price_adjustment.numeric' => 'Enter the customization additional charge as a valid number.',
+            'option_groups.*.values.*.price_adjustment.min' => 'The customization additional charge cannot be negative.',
+            'size_groups.*.size_charges.*.amount.numeric' => 'Enter the size extra charge as a valid number.',
+            'size_groups.*.size_charges.*.amount.min' => 'The size extra charge cannot be negative.',
             'option_groups.*.values.*.image_file.image' => 'Each option image must be a valid image file.',
             'option_groups.*.values.*.image_file.mimes' => 'Option images must be JPG, PNG, WebP, or AVIF files.',
             'option_groups.*.values.*.image_file.max' => 'Each option image must not exceed 5 MB.',
@@ -1220,6 +1260,7 @@ class ProductFormRequest extends FormRequest
             'customization_artwork_html' => 'customization and artwork guideline',
             'fulfillment_html' => 'fulfillment tab content',
             'base_price' => 'base price',
+            'compare_at_price' => 'discount unit price',
             'minimum_quantity' => 'minimum order quantity',
             'maximum_quantity' => 'maximum quantity',
             'price_table_headers.*' => 'price-table column heading',
