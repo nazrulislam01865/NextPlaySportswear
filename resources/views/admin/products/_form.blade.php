@@ -520,9 +520,11 @@
         'optionGroupErrors' => $optionGroupValidationErrors,
         'jerseyCustomizationTypes' => $jerseyCustomizationTypes,
         'customizationTypeGroups' => collect(\App\Enums\JerseyCustomizationType::menuGroups())
-            ->map(fn ($group) => [
+            ->map(fn ($group, $groupKey) => [
+                'key' => $groupKey,
                 'number' => $group['number'],
                 'label' => $group['label'],
+                'size_options_enabled' => \App\Support\ProductSizing::supportsMasterDataSizeOptions($groupKey),
                 'types' => collect($group['types'])->map(fn ($type) => [
                     'value' => $type->value,
                     'label' => $type->label(),
@@ -579,8 +581,42 @@ window.adminProductFormFabric = function (initial = {}) {
     const basePreparePriceImportMapping = form.preparePriceImportMapping || null;
     const baseClosePriceImportMapping = form.closePriceImportMapping || null;
     const baseApplyPriceImportMapping = form.applyPriceImportMapping || null;
+    const baseConfirmNewFeature = form.confirmNewFeature || null;
+    const baseOpenSizeGroupPicker = form.openSizeGroupPicker || null;
 
     return Object.assign(form, {
+        confirmNewFeature() {
+            const type = String(this.newFeatureType || '');
+            if (type.startsWith('__size_options__:')) {
+                const context = type.slice('__size_options__:'.length);
+                if (!context) {
+                    this.newFeatureNameError = 'Choose a valid size option section before continuing.';
+                    return;
+                }
+
+                this.closeNewFeatureDialog();
+                this.$nextTick(() => this.openSizeGroupPicker(context));
+                return;
+            }
+
+            if (baseConfirmNewFeature) {
+                return baseConfirmNewFeature.call(this);
+            }
+        },
+        openSizeGroupPicker(preferredContext = '') {
+            const explicitContext = String(preferredContext || '').trim();
+            if (!explicitContext && baseOpenSizeGroupPicker) {
+                return baseOpenSizeGroupPicker.call(this);
+            }
+
+            this.sizeGroupPickerSearch = '';
+            const validContexts = new Set((this.customizationTypeGroups || [])
+                .map(group => String(group.key || group.types?.[0]?.group || '').trim())
+                .filter(Boolean));
+            this.sizeGroupPickerContext = validContexts.has(explicitContext) ? explicitContext : '';
+            this.sizeGroupPickerOpen = true;
+            document.documentElement.classList.add('overflow-hidden');
+        },
         fabricPriceTables: initial.fabricPriceTables || {},
         fabricCustomizationTypes: initial.fabricCustomizationTypes || [],
         priceImportTargetTable: null,
@@ -2034,6 +2070,9 @@ Lead Time:"></div>
                             <template x-for="feature in group.types" :key="feature.value">
                                 <option :value="feature.value" x-text="feature.label"></option>
                             </template>
+                            <template x-if="group.size_options_enabled">
+                                <option :value="`__size_options__:${group.key}`">Size Options</option>
+                            </template>
                         </optgroup>
                     </template>
                 </select>
@@ -2111,7 +2150,7 @@ Lead Time:"></div>
                     <select class="admin-input mt-0" x-model="sizeGroupPickerContext">
                         <option value="">All clothing sections</option>
                         <template x-for="group in customizationTypeGroups" :key="group.label">
-                            <option :value="(group.types[0] && group.types[0].group) || ''" x-text="group.label"></option>
+                            <option :value="group.key || (group.types[0] && group.types[0].group) || ''" x-text="group.label"></option>
                         </template>
                     </select>
                     <input class="admin-input mt-0" x-model="sizeGroupPickerSearch" placeholder="Search by group, type, or size">

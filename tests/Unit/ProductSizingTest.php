@@ -28,7 +28,7 @@ class ProductSizingTest extends TestCase
 
     public function test_other_size_enabled_customization_groups_keep_generic_size_options_master_data(): void
     {
-        foreach (['jersey', 'shorts', 'hoodie', 'polo', 'tshirt'] as $group) {
+        foreach (['jersey', 'shorts', 'hoodie', 'polo', 'tshirt', 'socks'] as $group) {
             $this->assertTrue(ProductSizing::supportsMasterDataSizeOptions($group));
         }
     }

@@ -1629,6 +1629,19 @@ window.adminProductForm = (initial = {}) => ({
     },
     confirmNewFeature() {
         const type = String(this.newFeatureType || '');
+
+        if (type.startsWith('__size_options__:')) {
+            const context = type.slice('__size_options__:'.length);
+            if (!context) {
+                this.newFeatureNameError = 'Choose a valid size option section before continuing.';
+                return;
+            }
+
+            this.closeNewFeatureDialog();
+            this.$nextTick(() => this.openSizeGroupPicker(context));
+            return;
+        }
+
         const name = String(this.jerseyCustomizationTypes[type] || '');
 
         if (!type || !name) {
@@ -1773,12 +1786,22 @@ window.adminProductForm = (initial = {}) => ({
         group.values.forEach((value, index) => value.is_default = index === valueIndex);
         group.fixed_value_code = group.values[valueIndex]?.code || '';
     },
-    openSizeGroupPicker() {
+    openSizeGroupPicker(preferredContext = '') {
         this.sizeGroupPickerSearch = '';
-        const selectedGroups = [...new Set((this.optionGroups || [])
-            .map(group => this.customizationGroupForType(group.jersey_customization_type))
-            .filter(Boolean))];
-        this.sizeGroupPickerContext = selectedGroups.length === 1 ? selectedGroups[0] : '';
+        const explicitContext = String(preferredContext || '').trim();
+        const validContexts = new Set((this.customizationTypeGroups || [])
+            .map(group => String(group.key || group.types?.[0]?.group || '').trim())
+            .filter(Boolean));
+
+        if (explicitContext && validContexts.has(explicitContext)) {
+            this.sizeGroupPickerContext = explicitContext;
+        } else {
+            const selectedGroups = [...new Set((this.optionGroups || [])
+                .map(group => this.customizationGroupForType(group.jersey_customization_type))
+                .filter(Boolean))];
+            this.sizeGroupPickerContext = selectedGroups.length === 1 ? selectedGroups[0] : '';
+        }
+
         this.sizeGroupPickerOpen = true;
         document.documentElement.classList.add('overflow-hidden');
     },
