@@ -122,6 +122,21 @@
                         $isTrainingVestExtensionActive = $isCustomizationActive && $activeCustomizationGroup === 'training_vest';
                         $afterTrainingVestCustomizationGroups = \App\Support\ProductCustomizationMenuRegistry::afterTrainingVestGroups($customizationMenuGroups);
                         $trailingMasterDataNumbers = \App\Support\ProductCustomizationMenuRegistry::trailingMasterDataNumbers();
+                        $isWorldCupCustomizationActive = request()->routeIs('admin.world-cup-customization-options.*');
+                        $activeWorldCupCustomizationType = request()->route('type');
+                        $activeWorldCupCustomizationOption = request()->route('worldCupCustomizationOption');
+                        if (! $activeWorldCupCustomizationType && $activeWorldCupCustomizationOption instanceof \App\Models\WorldCupCustomizationOption) {
+                            $activeWorldCupCustomizationType = $activeWorldCupCustomizationOption->type instanceof \App\Enums\WorldCupCustomizationType
+                                ? $activeWorldCupCustomizationOption->type->value
+                                : (string) $activeWorldCupCustomizationOption->type;
+                        }
+                        if (! $activeWorldCupCustomizationType && request()->routeIs('admin.world-cup-customization-options.*') && old('type')) {
+                            $activeWorldCupCustomizationType = old('type');
+                        }
+                        $activeWorldCupTypeEnum = \App\Enums\WorldCupCustomizationType::tryFrom((string) $activeWorldCupCustomizationType);
+                        $activeWorldCupCategory = $activeWorldCupTypeEnum?->categoryKey();
+                        $worldCupCustomizationCategories = \App\Support\WorldCupCustomizationRegistry::menuCategories();
+
                         $isTrainingVestCustomizationActive = request()->routeIs('admin.training-vest-customization-options.*') || request()->routeIs('admin.training-vest-size-option-groups.*');
                         $activeTrainingVestCustomizationType = request()->route('type');
                         $activeTrainingVestCustomizationOption = request()->route('trainingVestCustomizationOption');
@@ -147,7 +162,7 @@
                     <x-admin.sidebar-group
                         label="Master Data"
                         icon="◈"
-                        :active="$isCustomizationActive || $isSizeOptionActive || $isTrainingVestCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*') || request()->routeIs('admin.faqs.*')"
+                        :active="$isCustomizationActive || $isSizeOptionActive || $isTrainingVestCustomizationActive || $isWorldCupCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*') || request()->routeIs('admin.faqs.*')"
                     >
                         @if($canAdmin('customization.view'))
                         @foreach($primaryCustomizationMenuGroups as $groupKey => $customizationGroup)
@@ -187,7 +202,28 @@
                         @endforeach
 
                         @foreach($afterTrainingVestCustomizationGroups as $groupKey => $customizationGroup)
-                            @if(isset($customizationGroup['types']))
+                            @if($groupKey === 'world_cup')
+                                <x-admin.sidebar-customization-group
+                                    :number="$customizationGroup['number']"
+                                    :label="$customizationGroup['label']"
+                                    :active="$isWorldCupCustomizationActive"
+                                >
+                                    @foreach($worldCupCustomizationCategories as $worldCupCategoryKey => $worldCupCategory)
+                                        <x-admin.sidebar-customization-group
+                                            :number="$worldCupCategory['number']"
+                                            :label="$worldCupCategory['label']"
+                                            :active="$isWorldCupCustomizationActive && $activeWorldCupCategory === $worldCupCategoryKey"
+                                        >
+                                            <x-admin.sidebar-customization-type-links
+                                                :types="$worldCupCategory['types']"
+                                                route-name="admin.world-cup-customization-options.type"
+                                                :is-active="$isWorldCupCustomizationActive"
+                                                :active-type="$activeWorldCupCustomizationType"
+                                            />
+                                        </x-admin.sidebar-customization-group>
+                                    @endforeach
+                                </x-admin.sidebar-customization-group>
+                            @elseif(isset($customizationGroup['types']))
                                 <x-admin.sidebar-product-customization-group
                                     :group-key="$groupKey"
                                     :group="$customizationGroup"

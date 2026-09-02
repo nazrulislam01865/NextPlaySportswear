@@ -267,9 +267,11 @@ class ProductConfigurationBackendTest extends TestCase
     {
         $product = $this->jerseyFixture();
         $types = [
-            'polo_imprint_method_option',
+            'polo_imprint_area_option',
             'polo_back_detail_option',
             'polo_imprint_option',
+            'polo_different_name_and_number_option',
+            'polo_size_additional_charges_option',
             'tshirt_pocket_option',
             'tshirt_imprint_option',
             'tshirt_imprint_area_option',
@@ -327,9 +329,9 @@ class ProductConfigurationBackendTest extends TestCase
 
         $item = $summary['items'][0];
 
-        // Four $1.25 per-piece charges + four $2.50 fixed-order charges = $30 customization total.
-        $this->assertEqualsWithDelta(7.50, $item['customization_unit_price'], 0.001);
-        $this->assertEqualsWithDelta(54.00, $item['line_total'], 0.001);
+        // Four $1.25 per-piece charges + six $2.50 fixed-order charges = $35 customization total.
+        $this->assertEqualsWithDelta(8.75, $item['customization_unit_price'], 0.001);
+        $this->assertEqualsWithDelta(59.00, $item['line_total'], 0.001);
     }
 
     public function test_quarter_zip_and_jacket_master_data_customizations_use_reusable_additional_charges(): void
@@ -989,6 +991,84 @@ class ProductConfigurationBackendTest extends TestCase
 
         $this->assertStringContainsString("'size_price_adjustments' => \$group->sizes->mapWithKeys", $form);
         $this->assertStringContainsString("'has_size_extra_charges' => \$group->sizes->contains", $form);
+    }
+
+
+    public function test_sample_request_is_server_authoritative_and_added_once_to_the_total(): void
+    {
+        $product = $this->jerseyFixture();
+        $product['option_groups'] = [];
+        $product['shipping_methods'] = [];
+        $product['production_speeds'] = [];
+        $product['jersey_roster']['enabled'] = false;
+        $product['sample'] = ['available' => true, 'charge' => 12.50, 'charge_type' => 'fixed_order'];
+
+        $catalog = new class($product) extends ProductCatalogService
+        {
+            public function __construct(private readonly array $fixture) {}
+            public function findBySlug(string $slug): ?array
+            {
+                return $slug === $this->fixture['slug'] ? $this->fixture : null;
+            }
+        };
+
+        $summary = (new CartService($catalog, new CouponService))->store([
+            'product_slug' => 'test-jersey',
+            'quantity' => 2,
+            'configuration_json' => json_encode([
+                'quantities' => ['adult:s' => 2],
+                'sample_requested' => true,
+            ], JSON_THROW_ON_ERROR),
+        ]);
+
+        $item = $summary['items'][0];
+        $this->assertTrue($item['customization']['configuration']['sample_requested']);
+        $this->assertTrue($item['customization']['sample']['requested']);
+        $this->assertEqualsWithDelta(12.50, $item['customization']['sample']['charge'], 0.001);
+        $this->assertEqualsWithDelta(12.50, $item['customization_total'], 0.001);
+        $this->assertEqualsWithDelta(24.50, $item['line_total'], 0.001);
+
+        $product['sample'] = ['available' => false, 'charge' => 999.00, 'charge_type' => 'fixed_order'];
+        $catalogWithoutSample = new class($product) extends ProductCatalogService
+        {
+            public function __construct(private readonly array $fixture) {}
+            public function findBySlug(string $slug): ?array
+            {
+                return $slug === $this->fixture['slug'] ? $this->fixture : null;
+            }
+        };
+
+        $summary = (new CartService($catalogWithoutSample, new CouponService))->store([
+            'product_slug' => 'test-jersey',
+            'quantity' => 2,
+            'configuration_json' => json_encode([
+                'quantities' => ['adult:s' => 2],
+                'sample_requested' => true,
+            ], JSON_THROW_ON_ERROR),
+        ]);
+
+        $item = $summary['items'][0];
+        $this->assertFalse($item['customization']['configuration']['sample_requested']);
+        $this->assertEqualsWithDelta(0.0, $item['customization_total'], 0.001);
+        $this->assertEqualsWithDelta(12.0, $item['line_total'], 0.001);
+    }
+
+    public function test_sample_option_is_wired_through_admin_storefront_and_server_pricing(): void
+    {
+        $form = file_get_contents(resource_path('views/admin/products/_form.blade.php'));
+        $builder = file_get_contents(resource_path('views/components/storefront/product/builder.blade.php'));
+        $adminSample = file_get_contents(resource_path('views/components/admin/product-sample-settings.blade.php'));
+        $storefrontSample = file_get_contents(resource_path('views/components/storefront/product/sample-option.blade.php'));
+        $storefrontJs = file_get_contents(resource_path('js/storefront.js'));
+        $cartService = file_get_contents(app_path('Services/Cart/CartService.php'));
+
+        $this->assertStringContainsString('<x-admin.product-sample-settings', $form);
+        $this->assertStringContainsString('name="sample_available"', $adminSample);
+        $this->assertStringContainsString('name="sample_charge"', $adminSample);
+        $this->assertStringContainsString('<x-storefront.product.sample-option', $builder);
+        $this->assertStringContainsString('Sample Available', $storefrontSample);
+        $this->assertStringContainsString('sample_requested', $storefrontJs);
+        $this->assertStringContainsString("data_get(\$product, 'sample.charge'", $cartService);
     }
 
     private function jerseyFixture(): array

@@ -11,6 +11,7 @@ class ProductSizingTest extends TestCase
     {
         $groups = [
             'premium_scarf',
+            'wristbands',
             'bandana',
             'knitted_gloves',
             'fabric_wristband',

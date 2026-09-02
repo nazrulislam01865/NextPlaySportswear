@@ -3,8 +3,10 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\JerseyCustomizationType;
+use App\Enums\WorldCupCustomizationType;
 use App\Models\Category;
 use App\Models\JerseyCustomizationOption;
+use App\Models\WorldCupCustomizationOption;
 use App\Models\Product;
 use App\Models\ProductionMethod;
 use App\Models\ShippingMethod;
@@ -87,6 +89,8 @@ class ProductFormRequest extends FormRequest
             'jersey_roster_fields.*.max_length' => ['nullable', 'integer', 'min:1', 'max:120'],
             'jersey_roster_fields.*.required' => ['nullable', 'boolean'],
             'jersey_roster_fields.*.enabled' => ['nullable', 'boolean'],
+            'sample_available' => ['nullable', 'boolean'],
+            'sample_charge' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'artwork_upload_enabled' => ['nullable', 'boolean'],
             'artwork_upload_required' => ['nullable', 'boolean'],
             'artwork_upload_title' => ['nullable', 'string', 'max:180'],
@@ -161,7 +165,7 @@ class ProductFormRequest extends FormRequest
             'option_groups.*.code' => ['nullable', 'string', 'max:160', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', 'distinct'],
             'option_groups.*.section' => ['nullable', Rule::in(['product', 'decoration'])],
             'option_groups.*.type' => ['nullable', Rule::in(['image', 'swatch', 'buttons', 'select', 'checkbox', 'text', 'textarea', 'number', 'file', 'date'])],
-            'option_groups.*.jersey_customization_type' => ['nullable', Rule::in(array_keys(JerseyCustomizationType::options()))],
+            'option_groups.*.jersey_customization_type' => ['nullable', Rule::in(array_keys(array_merge(JerseyCustomizationType::options(), WorldCupCustomizationType::options())))],
             'option_groups.*.display_mode' => ['nullable', Rule::in(['hidden', 'fixed', 'customer'])],
             'option_groups.*.fixed_value_code' => ['nullable', 'string', 'max:180'],
             'option_groups.*.fixed_text_value' => ['nullable', 'string', 'max:2000'],
@@ -180,6 +184,7 @@ class ProductFormRequest extends FormRequest
             'option_groups.*.values.*.code' => ['nullable', 'string', 'max:180', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
             'option_groups.*.values.*.existing_id' => ['nullable', 'integer', 'min:1'],
             'option_groups.*.values.*.jersey_customization_option_id' => ['nullable', 'integer', 'distinct', 'exists:jersey_customization_options,id'],
+            'option_groups.*.values.*.world_cup_customization_option_id' => ['nullable', 'integer', 'distinct', 'exists:world_cup_customization_options,id'],
             'option_groups.*.values.*.description' => ['nullable', 'string', 'max:2000'],
             'option_groups.*.values.*.color_hex' => ['nullable', 'regex:/^#[0-9A-F]{6}$/'],
             'option_groups.*.values.*.image_url' => ['nullable', 'url', 'max:2048'],
@@ -346,9 +351,22 @@ class ProductFormRequest extends FormRequest
             ->get()
             ->keyBy('id');
 
+        $submittedWorldCupOptionIds = collect($this->input('option_groups', []))
+            ->flatMap(static fn ($group) => collect(is_array($group) ? ($group['values'] ?? []) : [])
+                ->pluck('world_cup_customization_option_id'))
+            ->filter()
+            ->map(static fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
+        $worldCupMasterOptionLookup = WorldCupCustomizationOption::query()
+            ->active()
+            ->whereIn('id', $submittedWorldCupOptionIds)
+            ->get()
+            ->keyBy('id');
+
         $usedGroupCodes = [];
         $optionGroups = collect($this->input('option_groups', []))
-            ->map(function ($group, int $groupIndex) use (&$usedGroupCodes, $masterOptionLookup): array {
+            ->map(function ($group, int $groupIndex) use (&$usedGroupCodes, $masterOptionLookup, $worldCupMasterOptionLookup): array {
                 if (! is_array($group)) {
                     return [];
                 }
@@ -360,13 +378,14 @@ class ProductFormRequest extends FormRequest
                 while (in_array($groupCode, $usedGroupCodes, true)) {
                     $groupCode = $baseGroupCode.'-'.$suffix++;
                 }
-                $masterType = JerseyCustomizationType::tryFrom((string) ($group['jersey_customization_type'] ?? ''));
+                $masterTypeValue = (string) ($group['jersey_customization_type'] ?? '');
+                $legacyMasterType = JerseyCustomizationType::tryFrom($masterTypeValue);
+                $worldCupMasterType = WorldCupCustomizationType::tryFrom($masterTypeValue);
+                $masterType = $legacyMasterType ?: $worldCupMasterType;
                 if ($masterType) {
                     $group['name'] = $masterType->label();
-                    // Enum values use underscores for stable PHP/database identifiers,
-                    // while product option-group codes are URL-style slugs. Always
-                    // regenerate the hidden code here so an internal field can never
-                    // block an administrator from saving the product.
+                    // Customization type values are stable database identifiers; the
+                    // customer-facing option-group code remains a URL-style slug.
                     $baseGroupCode = $masterType->productCode() ?: 'feature-'.($groupIndex + 1);
                     $groupCode = $baseGroupCode;
                     $suffix = 2;
@@ -393,18 +412,24 @@ class ProductFormRequest extends FormRequest
                     && ($group['display_mode'] ?? 'customer') !== 'hidden';
 
                 $group['values'] = collect($group['values'] ?? [])
-                    ->map(function ($value, int $valueIndex) use ($masterOptionLookup): array {
+                    ->map(function ($value, int $valueIndex) use ($masterOptionLookup, $worldCupMasterOptionLookup): array {
                         if (! is_array($value)) {
                             return [];
                         }
                         $masterOptionId = filter_var($value['jersey_customization_option_id'] ?? null, FILTER_VALIDATE_INT);
+                        $worldCupMasterOptionId = filter_var($value['world_cup_customization_option_id'] ?? null, FILTER_VALIDATE_INT);
                         $value['jersey_customization_option_id'] = $masterOptionId !== false ? $masterOptionId : null;
-                        $masterOption = $masterOptionId !== false ? $masterOptionLookup->get((int) $masterOptionId) : null;
+                        $value['world_cup_customization_option_id'] = $worldCupMasterOptionId !== false ? $worldCupMasterOptionId : null;
+                        $legacyMasterOption = $masterOptionId !== false ? $masterOptionLookup->get((int) $masterOptionId) : null;
+                        $worldCupMasterOption = $worldCupMasterOptionId !== false ? $worldCupMasterOptionLookup->get((int) $worldCupMasterOptionId) : null;
+                        $masterOption = $worldCupMasterOption ?: $legacyMasterOption;
                         if ($masterOption) {
+                            $value['jersey_customization_option_id'] = $worldCupMasterOption ? null : $legacyMasterOption?->id;
+                            $value['world_cup_customization_option_id'] = $worldCupMasterOption?->id;
                             $value['label'] = $masterOption->name;
                             $value['code'] = $masterOption->slug;
                             $value['description'] = $masterOption->description;
-                            $value['color_hex'] = $masterOption->color_hex;
+                            $value['color_hex'] = $worldCupMasterOption ? null : $legacyMasterOption?->color_hex;
                             $value['image_url'] = null;
                         } else {
                             $value['code'] = Str::slug((string) ($value['code'] ?? $value['label'] ?? '')) ?: 'value-'.($valueIndex + 1);
@@ -625,36 +650,53 @@ class ProductFormRequest extends FormRequest
             $groups = collect($this->input('option_groups', []))->values();
             $masterIds = $groups
                 ->flatMap(static fn ($group) => collect($group['values'] ?? [])->pluck('jersey_customization_option_id'))
-                ->filter()
-                ->map(static fn ($id): int => (int) $id)
-                ->unique()
-                ->values();
+                ->filter()->map(static fn ($id): int => (int) $id)->unique()->values();
+            $worldCupMasterIds = $groups
+                ->flatMap(static fn ($group) => collect($group['values'] ?? [])->pluck('world_cup_customization_option_id'))
+                ->filter()->map(static fn ($id): int => (int) $id)->unique()->values();
             $masterOptions = JerseyCustomizationOption::query()
                 ->whereIn('id', $masterIds)
                 ->get(['id', 'type', 'is_active'])
                 ->keyBy('id');
+            $worldCupMasterOptions = WorldCupCustomizationOption::query()
+                ->whereIn('id', $worldCupMasterIds)
+                ->get(['id', 'category_key', 'type', 'is_active'])
+                ->keyBy('id');
 
             foreach ($groups as $groupIndex => $group) {
-                $masterType = JerseyCustomizationType::tryFrom((string) data_get($group, 'jersey_customization_type', ''));
-                $selectedIds = collect(data_get($group, 'values', []))
-                    ->pluck('jersey_customization_option_id')
-                    ->filter()
-                    ->map(static fn ($id): int => (int) $id)
-                    ->values();
+                $typeValue = (string) data_get($group, 'jersey_customization_type', '');
+                $legacyType = JerseyCustomizationType::tryFrom($typeValue);
+                $worldCupType = WorldCupCustomizationType::tryFrom($typeValue);
+                $values = collect(data_get($group, 'values', []))->values();
+                $legacySelectedIds = $values->pluck('jersey_customization_option_id')->filter()->map(static fn ($id): int => (int) $id)->values();
+                $worldCupSelectedIds = $values->pluck('world_cup_customization_option_id')->filter()->map(static fn ($id): int => (int) $id)->values();
 
-                if ($selectedIds->duplicates()->isNotEmpty()) {
+                if ($legacySelectedIds->duplicates()->isNotEmpty() || $worldCupSelectedIds->duplicates()->isNotEmpty()) {
                     $validator->errors()->add("option_groups.{$groupIndex}.values", 'The same customization item cannot be selected more than once.');
                 }
 
-                foreach ($selectedIds as $valueIndex => $selectedId) {
-                    $masterOption = $masterOptions->get($selectedId);
-                    if (! $masterOption || ! $masterOption->is_active) {
-                        $validator->errors()->add("option_groups.{$groupIndex}.values.{$valueIndex}.jersey_customization_option_id", 'The selected customization item is unavailable.');
+                foreach ($values as $valueIndex => $value) {
+                    $legacyId = (int) data_get($value, 'jersey_customization_option_id', 0);
+                    $worldCupId = (int) data_get($value, 'world_cup_customization_option_id', 0);
+                    if ($legacyId > 0 && $worldCupId > 0) {
+                        $validator->errors()->add("option_groups.{$groupIndex}.values.{$valueIndex}.world_cup_customization_option_id", 'A customization value cannot use two master-data sources.');
                         continue;
                     }
-
-                    if (! $masterType || $masterOption->type !== $masterType) {
-                        $validator->errors()->add("option_groups.{$groupIndex}.values.{$valueIndex}.jersey_customization_option_id", 'The selected customization item does not belong to this feature type.');
+                    if ($legacyId > 0) {
+                        $masterOption = $masterOptions->get($legacyId);
+                        if (! $masterOption || ! $masterOption->is_active) {
+                            $validator->errors()->add("option_groups.{$groupIndex}.values.{$valueIndex}.jersey_customization_option_id", 'The selected customization item is unavailable.');
+                        } elseif (! $legacyType || $masterOption->type !== $legacyType) {
+                            $validator->errors()->add("option_groups.{$groupIndex}.values.{$valueIndex}.jersey_customization_option_id", 'The selected customization item does not belong to this feature type.');
+                        }
+                    }
+                    if ($worldCupId > 0) {
+                        $masterOption = $worldCupMasterOptions->get($worldCupId);
+                        if (! $masterOption || ! $masterOption->is_active) {
+                            $validator->errors()->add("option_groups.{$groupIndex}.values.{$valueIndex}.world_cup_customization_option_id", 'The selected World Cup customization item is unavailable.');
+                        } elseif (! $worldCupType || $masterOption->type !== $worldCupType || $masterOption->category_key !== $worldCupType->categoryKey()) {
+                            $validator->errors()->add("option_groups.{$groupIndex}.values.{$valueIndex}.world_cup_customization_option_id", 'The selected World Cup item does not belong to this product customization type.');
+                        }
                     }
                 }
             }
@@ -1270,6 +1312,7 @@ class ProductFormRequest extends FormRequest
             'images.*' => 'product image',
             'image_urls.*.url' => 'product image URL',
             'option_groups.*.values.*.jersey_customization_option_id' => 'customization item',
+            'option_groups.*.values.*.world_cup_customization_option_id' => 'World Cup customization item',
             'faq_ids.*' => 'FAQ',
         ];
     }

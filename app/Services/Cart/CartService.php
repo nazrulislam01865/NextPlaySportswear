@@ -1159,6 +1159,12 @@ class CartService
                 : ($artworkStatus === '' ? 'No artwork uploaded' : $artworkStatus),
             'notes' => $notes,
             'configuration' => $configuration,
+            'sample' => [
+                'requested' => (bool) ($configuration['sample_requested'] ?? false),
+                'charge' => (bool) ($configuration['sample_requested'] ?? false)
+                    ? max(0, round((float) data_get($product, 'sample.charge', 0), 2))
+                    : 0.0,
+            ],
             'fulfillment' => $fulfillment,
             'artwork_files' => $artworkFiles->all(),
             // Legacy first-file fields remain for existing order/cart views.
@@ -1601,6 +1607,10 @@ class CartService
         $shippingIds = $shippingMethods->pluck('id')->map(fn ($id) => (string) $id)->all();
         $defaultShipping = $shippingMethods->firstWhere('default', true)['id'] ?? ($shippingIds[0] ?? null);
 
+        $sampleSettings = (array) ($product['sample'] ?? []);
+        $sampleRequested = (bool) ($sampleSettings['available'] ?? false)
+            && filter_var($raw['sample_requested'] ?? false, FILTER_VALIDATE_BOOL);
+
         $rosterSettings = $product['jersey_roster'] ?? [];
         $rosterAvailable = ProductRoster::supports($product['product_profile'] ?? 'standard') && (bool) ($rosterSettings['enabled'] ?? false);
         $rosterEnabled = $rosterAvailable && (! (bool) ($rosterSettings['optional'] ?? true) || filter_var($raw['roster_enabled'] ?? false, FILTER_VALIDATE_BOOL));
@@ -1649,6 +1659,7 @@ class CartService
             'shipping_method' => in_array((string) ($raw['shipping_method'] ?? ''), $shippingIds, true) ? (string) $raw['shipping_method'] : $defaultShipping,
             'roster_enabled' => $rosterEnabled,
             'roster' => $roster,
+            'sample_requested' => $sampleRequested,
         ];
     }
 
@@ -1893,6 +1904,10 @@ class CartService
             foreach ((array) $valueIds as $valueId) {
                 $applyValue($values->get($valueId));
             }
+        }
+
+        if (($configuration['sample_requested'] ?? false) && data_get($product, 'sample.available', false)) {
+            $fixedOrder += max(0, (float) data_get($product, 'sample.charge', 0));
         }
 
         $speed = collect($product['production_speeds'] ?? [])

@@ -45,6 +45,7 @@
         'production_speeds' => $product['production_speeds'] ?? [],
         'shipping_methods' => $product['shipping_methods'] ?? [],
         'jersey_roster' => $product['jersey_roster'] ?? ['enabled' => false, 'optional' => true, 'fields' => []],
+        'sample' => $product['sample'] ?? ['available' => false, 'charge' => 0, 'charge_type' => 'fixed_order'],
         'price_tiers' => $product['price_tiers'] ?? [],
         'price_table' => $product['price_table'] ?? [],
         'fabric_price_tables' => $product['fabric_price_tables'] ?? [],
@@ -60,6 +61,7 @@
             'shipping_method' => $editConfiguration['shipping_method'] ?? null,
             'roster_enabled' => (bool) ($editConfiguration['roster_enabled'] ?? false),
             'roster' => array_values((array) ($editConfiguration['roster'] ?? [])),
+            'sample_requested' => (bool) ($editConfiguration['sample_requested'] ?? false),
             'artwork_files' => $existingArtwork,
         ] : null,
     ];
@@ -71,6 +73,7 @@
     $roster = $product['jersey_roster'] ?? [];
     $rosterEnabled = \App\Support\ProductRoster::supports($product['product_profile'] ?? 'standard') && (bool) ($roster['enabled'] ?? false);
     $artworkUpload = $product['artwork_upload'] ?? ['enabled' => false];
+    $sample = $product['sample'] ?? ['available' => false, 'charge' => 0, 'charge_type' => 'fixed_order'];
     $stepNumber = 1;
 @endphp
 
@@ -256,6 +259,12 @@ window.productBuilderFabricPricing = function (config = {}) {
                             @foreach($customerOptionGroups as $group)<x-storefront.product.option-group :group="$group" />@endforeach
                         </div>
                     </section>
+                @endif
+
+
+
+                @if((bool) ($sample['available'] ?? false))
+                    <x-storefront.product.sample-option :sample="$sample" :step-number="$stepNumber++" />
                 @endif
 
                 @if(!empty($product['size_groups']))
@@ -640,6 +649,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                     <div class="flex justify-between gap-3"><span class="text-slate-500">Selections</span><strong class="min-w-0 break-words text-right" x-text="selectionSummary() || 'No options selected'"></strong></div>
                     <div class="flex justify-between gap-3"><span class="text-slate-500">Sizes</span><strong class="min-w-0 break-words text-right" x-text="sizeSummary() || 'No quantities selected'"></strong></div>
                     @if($rosterEnabled)<div class="flex justify-between gap-3"><span class="text-slate-500">Roster details</span><strong class="text-right" x-text="rosterSummary()"></strong></div>@endif
+                    @if((bool) ($sample['available'] ?? false))<div class="flex justify-between gap-3"><span class="text-slate-500">Sample</span><strong class="text-right" x-text="sampleSummary()"></strong></div>@endif
                     @if((bool) ($artworkUpload['enabled'] ?? false))<div class="flex justify-between gap-3"><span class="text-slate-500">Artwork</span><strong class="text-right" x-text="artworkLabel()"></strong></div>@endif
                     @if(!empty($product['production_speeds']))<div x-show="currentProductionSpeed()" class="flex justify-between gap-3"><span class="text-slate-500">Production</span><strong class="text-right" x-text="`${speedLabel()} · ${chargeLabel(currentProductionSpeed())}`"></strong></div>@endif
                     @if(!empty($product['shipping_methods']))<div class="flex justify-between gap-3"><span class="text-slate-500">Shipping</span><strong class="text-right" x-text="shippingLabel()"></strong></div>@endif

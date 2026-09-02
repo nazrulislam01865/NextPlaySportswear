@@ -1,6 +1,7 @@
 <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
     <input type="hidden" :name="`option_groups[${gIndex}][values][${vIndex}][existing_id]`" :value="value.existing_id || ''">
     <input type="hidden" :name="`option_groups[${gIndex}][values][${vIndex}][jersey_customization_option_id]`" :value="value.jersey_customization_option_id || ''">
+    <input type="hidden" :name="`option_groups[${gIndex}][values][${vIndex}][world_cup_customization_option_id]`" :value="value.world_cup_customization_option_id || ''">
     <input type="hidden" :name="`option_groups[${gIndex}][values][${vIndex}][label]`" :value="value.label">
     <input type="hidden" :name="`option_groups[${gIndex}][values][${vIndex}][code]`" :value="value.code">
     <input type="hidden" :name="`option_groups[${gIndex}][values][${vIndex}][description]`" :value="value.description || ''">

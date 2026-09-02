@@ -139,6 +139,16 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
             'jersey-customization-options' => 'jerseyCustomizationOption',
         ])->except('show');
         Route::get(
+            '/world-cup-customization-options/type/{type}',
+            [\App\Http\Controllers\Admin\WorldCupCustomizationOptionController::class, 'typeIndex']
+        )->name('world-cup-customization-options.type');
+        Route::resource(
+            'world-cup-customization-options',
+            \App\Http\Controllers\Admin\WorldCupCustomizationOptionController::class
+        )->parameters([
+            'world-cup-customization-options' => 'worldCupCustomizationOption',
+        ])->except('show');
+        Route::get(
             '/training-vest-customization-options/type/{type}',
             [\App\Http\Controllers\Admin\TrainingVestCustomizationOptionController::class, 'typeIndex']
         )->name('training-vest-customization-options.type');

@@ -175,7 +175,7 @@
         'accepted_file_types' => $group->accepted_file_types, 'maximum_file_size_mb' => $group->maximum_file_size_mb,
         'is_active' => true,
         'values' => $group->values->where('is_active', true)->map(fn($value) => [
-            'existing_id' => $value->id, 'jersey_customization_option_id' => $value->jersey_customization_option_id,
+            'existing_id' => $value->id, 'jersey_customization_option_id' => $value->jersey_customization_option_id, 'world_cup_customization_option_id' => $value->world_cup_customization_option_id,
             'label' => $value->label, 'code' => $value->code, 'description' => $value->description,
             'color_hex' => $value->color_hex ?: '', 'image_url' => $value->image_url,
             'image_previews' => collect($value->publicImages())->pluck('url')->values()->all(),
@@ -531,9 +531,21 @@
                     'group' => $type->group(),
                 ])->values()->all(),
             ])
+            ->concat(collect(\App\Support\WorldCupCustomizationRegistry::menuCategories())->map(fn ($category, $categoryKey) => [
+                'key' => 'world_cup:'.$categoryKey,
+                'number' => $category['number'],
+                'label' => 'World Cup / '.$category['label'],
+                'size_options_enabled' => false,
+                'types' => collect($category['types'])->map(fn ($type) => [
+                    'value' => $type->value,
+                    'label' => $type->label(),
+                    'group' => 'world_cup:'.$type->categoryKey(),
+                ])->values()->all(),
+            ]))
             ->values()
             ->all(),
         'jerseyCustomizationOptions' => $jerseyCustomizationOptions,
+        'worldCupCustomizationOptions' => $worldCupCustomizationOptions,
         'sizeOptionGroups' => $sizeOptionGroups,
         'sizeGroups' => $sizeValues,
         'productionHeaders' => $productionHeaderValues->all(),
@@ -1466,6 +1478,7 @@ Lead Time:"></div>
                     <article><span class="np-option-tiles__icon purple">✦</span><div><strong>Customizable Features</strong><small>Add features customers can personalize.</small></div><button type="button" class="np-secondary-button" @click="openNewFeatureDialog()">＋ Add feature</button></article>
                     <article><span class="np-option-tiles__icon amber">✎</span><div><strong>Sizes &amp; Quantities</strong><small>Define available sizes and quantity rules.</small></div><button type="button" class="np-secondary-button" @click="openSizeGroupPicker()">＋ Add size option</button></article>
                     <article><span class="np-option-tiles__icon teal">♙</span><div><strong>Jersey Roster</strong><small>Collect player names and jersey numbers.</small></div><button type="button" class="np-secondary-button" @click="jerseyRosterPanelOpen = !jerseyRosterPanelOpen" x-text="jerseyRosterPanelOpen ? 'Hide jersey fields' : 'Show jersey fields'"></button></article>
+                    <x-admin.product-sample-settings :product="$product" />
                 </div>
 
                 <details class="np-config-panel" open x-show="optionGroups.length > 0" x-cloak>
@@ -1565,6 +1578,7 @@ Lead Time:"></div>
                         Jersey roster is currently hidden from customers. Enable “Show jersey roster step to customers” to customize its heading and fields.
                     </div>
                 </details>
+
             </section>
 
             <section id="artwork" class="np-card"><header class="np-card__header"><div><h2>4. Custom Artwork Upload</h2><p>Allow customers to upload custom artwork for this product.</p></div></header><div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,.7fr)]"><div class="np-field-stack"><div class="grid gap-4 sm:grid-cols-2"><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4"><input type="hidden" name="artwork_upload_enabled" :value="artworkUploadEnabled ? 1 : 0"><input type="checkbox" x-model="artworkUploadEnabled"><span><strong class="block text-sm">Show artwork upload step</strong><small class="text-xs text-slate-500">The section disappears when disabled.</small></span></label><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4" :class="!artworkUploadEnabled && 'opacity-50'"><input type="hidden" name="artwork_upload_required" :value="artworkUploadRequired ? 1 : 0"><input type="checkbox" x-model="artworkUploadRequired" :disabled="!artworkUploadEnabled"><span><strong class="block text-sm">Artwork is required</strong><small class="text-xs text-slate-500">At least one file must be selected.</small></span></label></div><div x-show="artworkUploadEnabled" class="grid gap-4 sm:grid-cols-2"><label class="admin-label np-emphasis-label sm:col-span-2">Section title<input class="admin-input" name="artwork_upload_title" x-model="artworkUploadTitle" maxlength="180"></label><label class="admin-label np-emphasis-label sm:col-span-2">Upload instructions<textarea class="admin-textarea np-textarea-sm" name="artwork_upload_description" x-model="artworkUploadDescription" maxlength="3000"></textarea></label><label class="admin-label np-emphasis-label">Accepted extensions<input class="admin-input font-mono" name="artwork_upload_accepted_types" x-model="artworkUploadAcceptedTypes" placeholder="pdf,ai,png,jpg,jpeg,eps"></label><label class="admin-label">Maximum file size (MB)<input class="admin-input" type="number" min="1" max="25" name="artwork_upload_max_file_size_mb" x-model.number="artworkUploadMaxFileSizeMb"></label><label class="admin-label sm:col-span-2">Maximum files<input class="admin-input" type="number" min="1" max="12" name="artwork_upload_max_files" x-model.number="artworkUploadMaxFiles"></label></div></div><div x-show="artworkUploadEnabled" class="np-artwork-preview"><span>☁</span><strong>Upload area will appear on product page</strong><small>Drag &amp; drop or click to upload</small></div></div></section>
@@ -2100,7 +2114,7 @@ Lead Time:"></div>
             <div class="overflow-y-auto p-5 sm:p-7">
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <template x-for="item in availableMasterItems()" :key="item.id">
-                        <article class="rounded-2xl border border-slate-200 p-4" :class="isMasterItemSelected(item.id) ? 'bg-slate-50 opacity-60' : 'bg-white'">
+                        <article class="rounded-2xl border border-slate-200 p-4" :class="isMasterItemSelected(item) ? 'bg-slate-50 opacity-60' : 'bg-white'">
                             <div class="flex items-start gap-3">
                                 <div class="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
                                     <img x-show="masterItemPrimaryImage(item)" :src="masterItemPrimaryImage(item)" :alt="item.name" class="h-full w-full object-cover">
@@ -2113,7 +2127,7 @@ Lead Time:"></div>
                                     <span x-show="item.color_hex" class="mt-2 inline-flex rounded-full border border-slate-200 px-2 py-1 font-mono text-[10px]" x-text="item.color_hex"></span>
                                 </div>
                             </div>
-                            <button type="button" class="btn btn-white mt-4 w-full" :disabled="isMasterItemSelected(item.id)" @click="selectMasterItem(item)" x-text="isMasterItemSelected(item.id) ? 'Already selected' : 'Add item'"></button>
+                            <button type="button" class="btn btn-white mt-4 w-full" :disabled="isMasterItemSelected(item)" @click="selectMasterItem(item)" x-text="isMasterItemSelected(item) ? 'Already selected' : 'Add item'"></button>
                         </article>
                     </template>
                 </div>

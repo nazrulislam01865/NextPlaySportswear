@@ -121,7 +121,7 @@ class ProductChangeSummaryService
                 'is_active' => (bool) $group->is_active,
                 'sort_order' => (int) $group->sort_order,
                 'values' => $this->relationRows($group->values, [
-                    'jersey_customization_option_id', 'label', 'code', 'description',
+                    'jersey_customization_option_id', 'world_cup_customization_option_id', 'label', 'code', 'description',
                     'color_hex', 'image_path', 'image_url', 'image_gallery', 'price_adjustment',
                     'charge_type', 'stock_quantity', 'is_default', 'is_active', 'sort_order',
                 ]),

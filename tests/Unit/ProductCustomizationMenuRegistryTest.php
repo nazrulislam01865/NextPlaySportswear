@@ -15,7 +15,7 @@ class ProductCustomizationMenuRegistryTest extends TestCase
         $this->assertSame(['world_cup'], array_keys($groups));
         $this->assertSame(['1.24'], array_column($groups, 'number'));
 
-        foreach (['towel', 'silicone_wristband', 'armsleeve', 'baseball_belt', 'fabric_wristband', 'knitted_gloves', 'bandana', 'premium_scarf'] as $configuredGroup) {
+        foreach (['towel', 'silicone_wristband', 'armsleeve', 'baseball_belt', 'fabric_wristband', 'knitted_gloves', 'bandana', 'premium_scarf', 'wristbands'] as $configuredGroup) {
             $this->assertArrayNotHasKey($configuredGroup, $groups);
         }
     }
@@ -34,13 +34,14 @@ class ProductCustomizationMenuRegistryTest extends TestCase
             'knitted_gloves',
             'bandana',
             'premium_scarf',
+            'wristbands',
         ], array_keys($groups));
 
         $this->assertSame([
-            '1.20', '1.21', '1.22', '1.23', '1.24', '1.25', '1.26', '1.27', '1.28',
+            '1.20', '1.21', '1.22', '1.23', '1.24', '1.25', '1.26', '1.27', '1.28', '1.29',
         ], array_column($groups, 'number'));
 
-        foreach (['towel', 'silicone_wristband', 'armsleeve', 'baseball_belt', 'fabric_wristband', 'knitted_gloves', 'bandana', 'premium_scarf'] as $configuredGroup) {
+        foreach (['towel', 'silicone_wristband', 'armsleeve', 'baseball_belt', 'fabric_wristband', 'knitted_gloves', 'bandana', 'premium_scarf', 'wristbands'] as $configuredGroup) {
             $this->assertNotEmpty($groups[$configuredGroup]['types']);
         }
         $this->assertArrayNotHasKey('types', $groups['world_cup']);
@@ -49,9 +50,9 @@ class ProductCustomizationMenuRegistryTest extends TestCase
     public function test_following_master_data_numbers_stay_after_the_reserved_customization_menus(): void
     {
         $this->assertSame([
-            'production_methods' => '1.29',
-            'shipping_methods' => '1.30',
-            'faqs' => '1.31',
+            'production_methods' => '1.30',
+            'shipping_methods' => '1.31',
+            'faqs' => '1.32',
         ], ProductCustomizationMenuRegistry::trailingMasterDataNumbers());
     }
 }

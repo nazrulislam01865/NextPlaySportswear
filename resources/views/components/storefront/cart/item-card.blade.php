@@ -57,6 +57,12 @@
                             <dt>Sizes</dt>
                             <dd>{{ $customization['size_summary'] }}</dd>
                         </div>
+                        @if((bool) data_get($customization, 'sample.requested', false))
+                            <div class="cart-info-row">
+                                <dt>Sample</dt>
+                                <dd>Requested <span class="block text-xs font-bold text-brand-red">+${{ number_format((float) data_get($customization, 'sample.charge', 0), 2) }} / order</span></dd>
+                            </div>
+                        @endif
                         <div class="cart-info-row">
                             <dt>Artwork</dt>
                             <dd>

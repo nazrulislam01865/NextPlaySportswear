@@ -9,7 +9,7 @@ use App\Support\PublicMedia;
 class ProductOptionValue extends Model
 {
     protected $fillable = [
-        'product_option_group_id', 'jersey_customization_option_id', 'label', 'code', 'description', 'color_hex', 'image_path',
+        'product_option_group_id', 'jersey_customization_option_id', 'world_cup_customization_option_id', 'label', 'code', 'description', 'color_hex', 'image_path',
         'image_url', 'image_gallery', 'price_adjustment', 'charge_type', 'stock_quantity',
         'is_default', 'is_active', 'sort_order',
     ];
@@ -33,6 +33,11 @@ class ProductOptionValue extends Model
     public function jerseyCustomizationOption(): BelongsTo
     {
         return $this->belongsTo(JerseyCustomizationOption::class, 'jersey_customization_option_id');
+    }
+
+    public function worldCupCustomizationOption(): BelongsTo
+    {
+        return $this->belongsTo(WorldCupCustomizationOption::class, 'world_cup_customization_option_id');
     }
 
     public function publicImageUrl(): ?string

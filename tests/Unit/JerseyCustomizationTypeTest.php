@@ -40,7 +40,27 @@ class JerseyCustomizationTypeTest extends TestCase
         $this->assertNotSame(JerseyCustomizationType::JerseyLogoOption->value, JerseyCustomizationType::BagLogo->value);
     }
 
-    public function test_shorts_rope_elastic_waist_drawcord_and_imprint_are_separate_reusable_master_data_types(): void
+    public function test_jersey_fabric_pattern_is_a_separate_reusable_master_data_type(): void
+    {
+        $jerseyTypes = collect(JerseyCustomizationType::menuGroups()['jersey']['types'])
+            ->map(static fn (JerseyCustomizationType $type): string => $type->value)
+            ->all();
+
+        $this->assertContains(JerseyCustomizationType::JerseyFabricPatternOption->value, $jerseyTypes);
+        $this->assertSame('jersey', JerseyCustomizationType::JerseyFabricPatternOption->group());
+        $this->assertSame('Fabric Pattern Option', JerseyCustomizationType::JerseyFabricPatternOption->label());
+        $this->assertSame('1.1.9', JerseyCustomizationType::JerseyFabricPatternOption->menuNumber());
+        $this->assertArrayHasKey(
+            JerseyCustomizationType::JerseyFabricPatternOption->value,
+            JerseyCustomizationType::masterDataOptions()
+        );
+        $this->assertNotSame(
+            JerseyCustomizationType::JerseyFabricPatternOption->value,
+            JerseyCustomizationType::CompressionWearPattern->value
+        );
+    }
+
+    public function test_shorts_rope_elastic_waist_drawcord_imprint_and_imprint_area_are_separate_reusable_master_data_types(): void
     {
         $groups = JerseyCustomizationType::menuGroups();
         $shortsTypes = collect($groups['shorts']['types'])
@@ -50,63 +70,112 @@ class JerseyCustomizationTypeTest extends TestCase
         $this->assertContains(JerseyCustomizationType::ShortsRopeOption->value, $shortsTypes);
         $this->assertContains(JerseyCustomizationType::ShortsElasticWaistDrawcordOption->value, $shortsTypes);
         $this->assertContains(JerseyCustomizationType::ShortsImprintOption->value, $shortsTypes);
+        $this->assertContains(JerseyCustomizationType::ShortsImprintAreaOption->value, $shortsTypes);
         $this->assertSame('shorts', JerseyCustomizationType::ShortsRopeOption->group());
         $this->assertSame('shorts', JerseyCustomizationType::ShortsElasticWaistDrawcordOption->group());
         $this->assertSame('shorts', JerseyCustomizationType::ShortsImprintOption->group());
+        $this->assertSame('shorts', JerseyCustomizationType::ShortsImprintAreaOption->group());
         $this->assertSame('1.2.4', JerseyCustomizationType::ShortsRopeOption->menuNumber());
         $this->assertSame('1.2.5', JerseyCustomizationType::ShortsElasticWaistDrawcordOption->menuNumber());
         $this->assertSame('1.2.6', JerseyCustomizationType::ShortsImprintOption->menuNumber());
-        $this->assertSame('1.2.7', JerseyCustomizationType::sizeOptionMenuNumberForGroup('shorts'));
+        $this->assertSame('1.2.7', JerseyCustomizationType::ShortsImprintAreaOption->menuNumber());
+        $this->assertSame('1.2.8', JerseyCustomizationType::sizeOptionMenuNumberForGroup('shorts'));
         $this->assertArrayHasKey(JerseyCustomizationType::ShortsRopeOption->value, JerseyCustomizationType::masterDataOptions());
         $this->assertArrayHasKey(JerseyCustomizationType::ShortsElasticWaistDrawcordOption->value, JerseyCustomizationType::masterDataOptions());
         $this->assertArrayHasKey(JerseyCustomizationType::ShortsImprintOption->value, JerseyCustomizationType::masterDataOptions());
+        $this->assertArrayHasKey(JerseyCustomizationType::ShortsImprintAreaOption->value, JerseyCustomizationType::masterDataOptions());
         $this->assertNotSame(JerseyCustomizationType::ShortsImprintOption->value, JerseyCustomizationType::JerseyImprintOption->value);
     }
 
-    public function test_hoodie_name_number_imprint_and_imprint_area_are_separate_reusable_master_data_types(): void
+    public function test_pants_requested_customizations_are_separate_reusable_master_data_types(): void
+    {
+        $pantsTypes = collect(JerseyCustomizationType::menuGroups()['pants']['types'])
+            ->map(static fn (JerseyCustomizationType $type): string => $type->value)
+            ->all();
+
+        $expected = [
+            [JerseyCustomizationType::PantsPocketOption, '1.4.4'],
+            [JerseyCustomizationType::PantsRopeOption, '1.4.5'],
+            [JerseyCustomizationType::PantsElasticWaistDrawcordOption, '1.4.6'],
+            [JerseyCustomizationType::PantsImprintOption, '1.4.7'],
+            [JerseyCustomizationType::PantsImprintAreaOption, '1.4.8'],
+            [JerseyCustomizationType::PantsLogoOption, '1.4.9'],
+            [JerseyCustomizationType::PantsPipingOption, '1.4.10'],
+        ];
+
+        foreach ($expected as [$type, $menuNumber]) {
+            $this->assertContains($type->value, $pantsTypes);
+            $this->assertSame('pants', $type->group());
+            $this->assertSame($menuNumber, $type->menuNumber());
+            $this->assertArrayHasKey($type->value, JerseyCustomizationType::masterDataOptions());
+        }
+
+        $this->assertSame('1.4.11', JerseyCustomizationType::sizeOptionMenuNumberForGroup('pants'));
+        $this->assertNotSame(JerseyCustomizationType::PantsPocketOption->value, JerseyCustomizationType::ShortsPocketOption->value);
+        $this->assertNotSame(JerseyCustomizationType::PantsImprintOption->value, JerseyCustomizationType::ShortsImprintOption->value);
+        $this->assertNotSame(JerseyCustomizationType::PantsLogoOption->value, JerseyCustomizationType::JerseyLogoOption->value);
+        $this->assertNotSame(JerseyCustomizationType::PantsPipingOption->value, JerseyCustomizationType::JerseyPipingOption->value);
+    }
+
+    public function test_hoodie_requested_customizations_are_separate_reusable_master_data_types(): void
     {
         $groups = JerseyCustomizationType::menuGroups();
         $hoodieTypes = collect($groups['hoodie']['types'])
             ->map(static fn (JerseyCustomizationType $type): string => $type->value)
             ->all();
 
-        $this->assertContains(JerseyCustomizationType::HoodieDifferentNameAndNumberOption->value, $hoodieTypes);
-        $this->assertContains(JerseyCustomizationType::HoodieImprintOption->value, $hoodieTypes);
-        $this->assertContains(JerseyCustomizationType::HoodieImprintAreaOption->value, $hoodieTypes);
-        $this->assertSame('hoodie', JerseyCustomizationType::HoodieDifferentNameAndNumberOption->group());
-        $this->assertSame('hoodie', JerseyCustomizationType::HoodieImprintOption->group());
-        $this->assertSame('hoodie', JerseyCustomizationType::HoodieImprintAreaOption->group());
+        $expected = [
+            JerseyCustomizationType::HoodieDifferentNameAndNumberOption,
+            JerseyCustomizationType::HoodieImprintOption,
+            JerseyCustomizationType::HoodieImprintAreaOption,
+            JerseyCustomizationType::HoodieHoodDrawstringOption,
+        ];
+
+        foreach ($expected as $type) {
+            $this->assertContains($type->value, $hoodieTypes);
+            $this->assertSame('hoodie', $type->group());
+            $this->assertArrayHasKey($type->value, JerseyCustomizationType::masterDataOptions());
+        }
+
         $this->assertSame('1.5.8', JerseyCustomizationType::HoodieDifferentNameAndNumberOption->menuNumber());
         $this->assertSame('1.5.9', JerseyCustomizationType::HoodieImprintOption->menuNumber());
         $this->assertSame('1.5.10', JerseyCustomizationType::HoodieImprintAreaOption->menuNumber());
-        $this->assertSame('1.5.11', JerseyCustomizationType::sizeOptionMenuNumberForGroup('hoodie'));
-        $this->assertArrayHasKey(JerseyCustomizationType::HoodieDifferentNameAndNumberOption->value, JerseyCustomizationType::masterDataOptions());
-        $this->assertArrayHasKey(JerseyCustomizationType::HoodieImprintOption->value, JerseyCustomizationType::masterDataOptions());
-        $this->assertArrayHasKey(JerseyCustomizationType::HoodieImprintAreaOption->value, JerseyCustomizationType::masterDataOptions());
-        $this->assertNotSame(JerseyCustomizationType::HoodieImprintOption->value, JerseyCustomizationType::JerseyImprintOption->value);
-        $this->assertNotSame(JerseyCustomizationType::HoodieImprintOption->value, JerseyCustomizationType::ShortsImprintOption->value);
+        $this->assertSame('1.5.11', JerseyCustomizationType::HoodieHoodDrawstringOption->menuNumber());
+        $this->assertSame('1.5.12', JerseyCustomizationType::sizeOptionMenuNumberForGroup('hoodie'));
+        $this->assertNotSame(JerseyCustomizationType::HoodieHoodDrawstringOption->value, JerseyCustomizationType::ShortsRopeOption->value);
+        $this->assertNotSame(JerseyCustomizationType::HoodieHoodDrawstringOption->value, JerseyCustomizationType::PantsRopeOption->value);
     }
 
-    public function test_polo_imprint_method_back_detail_and_imprint_are_separate_reusable_master_data_types(): void
+    public function test_polo_revised_and_requested_customizations_are_separate_reusable_master_data_types(): void
     {
         $groups = JerseyCustomizationType::menuGroups();
         $poloTypes = collect($groups['polo']['types'])
             ->map(static fn (JerseyCustomizationType $type): string => $type->value)
             ->all();
 
-        $this->assertContains(JerseyCustomizationType::PoloImprintMethodOption->value, $poloTypes);
-        $this->assertContains(JerseyCustomizationType::PoloBackDetailOption->value, $poloTypes);
-        $this->assertContains(JerseyCustomizationType::PoloImprintOption->value, $poloTypes);
-        $this->assertSame('polo', JerseyCustomizationType::PoloImprintMethodOption->group());
-        $this->assertSame('polo', JerseyCustomizationType::PoloBackDetailOption->group());
-        $this->assertSame('polo', JerseyCustomizationType::PoloImprintOption->group());
-        $this->assertSame('1.6.6', JerseyCustomizationType::PoloImprintMethodOption->menuNumber());
+        $expected = [
+            JerseyCustomizationType::PoloImprintAreaOption,
+            JerseyCustomizationType::PoloBackDetailOption,
+            JerseyCustomizationType::PoloImprintOption,
+            JerseyCustomizationType::PoloDifferentNameAndNumberOption,
+            JerseyCustomizationType::PoloSizeAdditionalChargesOption,
+        ];
+
+        foreach ($expected as $type) {
+            $this->assertContains($type->value, $poloTypes);
+            $this->assertSame('polo', $type->group());
+            $this->assertArrayHasKey($type->value, JerseyCustomizationType::masterDataOptions());
+            $this->assertArrayHasKey($type->value, JerseyCustomizationType::productConfigurationOptions());
+        }
+
+        $this->assertNotContains(JerseyCustomizationType::PoloImprintMethodOption->value, $poloTypes);
+        $this->assertArrayNotHasKey(JerseyCustomizationType::PoloImprintMethodOption->value, JerseyCustomizationType::masterDataOptions());
+        $this->assertSame('1.6.6', JerseyCustomizationType::PoloImprintAreaOption->menuNumber());
         $this->assertSame('1.6.7', JerseyCustomizationType::PoloBackDetailOption->menuNumber());
         $this->assertSame('1.6.8', JerseyCustomizationType::PoloImprintOption->menuNumber());
-        $this->assertArrayHasKey(JerseyCustomizationType::PoloImprintMethodOption->value, JerseyCustomizationType::masterDataOptions());
-        $this->assertArrayHasKey(JerseyCustomizationType::PoloBackDetailOption->value, JerseyCustomizationType::masterDataOptions());
-        $this->assertArrayHasKey(JerseyCustomizationType::PoloImprintOption->value, JerseyCustomizationType::masterDataOptions());
-        $this->assertNotSame(JerseyCustomizationType::PoloImprintOption->value, JerseyCustomizationType::HoodieImprintOption->value);
+        $this->assertSame('1.6.9', JerseyCustomizationType::PoloDifferentNameAndNumberOption->menuNumber());
+        $this->assertSame('1.6.10', JerseyCustomizationType::PoloSizeAdditionalChargesOption->menuNumber());
+        $this->assertNotSame(JerseyCustomizationType::PoloDifferentNameAndNumberOption->value, JerseyCustomizationType::HoodieDifferentNameAndNumberOption->value);
     }
 
     public function test_tshirt_customizations_are_separate_reusable_master_data_types(): void
@@ -241,6 +310,61 @@ class JerseyCustomizationTypeTest extends TestCase
         $this->assertNotSame(JerseyCustomizationType::CompressionWearImprintOption->value, JerseyCustomizationType::TankTopImprintOption->value);
     }
 
+    public function test_requested_compression_sweatshirt_cap_and_beanie_customizations_are_separate_master_data_types(): void
+    {
+        $groups = JerseyCustomizationType::menuGroups();
+
+        $expectedByGroup = [
+            'compression_wear' => [
+                JerseyCustomizationType::CompressionWearWaistType,
+                JerseyCustomizationType::CompressionWearLegLength,
+                JerseyCustomizationType::CompressionWearPocketDrawstringOption,
+            ],
+            'sweatshirt' => [
+                JerseyCustomizationType::SweatshirtZipperOption,
+            ],
+            'headwear' => [
+                JerseyCustomizationType::CapPipingOption,
+                JerseyCustomizationType::BeanieSizeOption,
+                JerseyCustomizationType::BeanieKnittingStyleOption,
+                JerseyCustomizationType::BeanieImprintMethodOption,
+                JerseyCustomizationType::BeanieColorOption,
+            ],
+        ];
+
+        foreach ($expectedByGroup as $group => $types) {
+            foreach ($types as $type) {
+                $this->assertContains($type, $groups[$group]['types']);
+                $this->assertSame($group, $type->group());
+                $this->assertArrayHasKey($type->value, JerseyCustomizationType::masterDataOptions());
+                $this->assertArrayHasKey($type->value, JerseyCustomizationType::productConfigurationOptions());
+                $this->assertNotSame('', $type->placeholder());
+                $this->assertNotSame('', $type->helpText());
+                $this->assertNotSame('', $type->imageTitle());
+                $this->assertNotSame('', $type->imageDescription());
+                $this->assertNotSame('', $type->imageCta());
+                $this->assertLessThanOrEqual(60, strlen($type->value));
+            }
+        }
+
+        $this->assertSame('1.10.5', JerseyCustomizationType::CompressionWearWaistType->menuNumber());
+        $this->assertSame('1.10.6', JerseyCustomizationType::CompressionWearLegLength->menuNumber());
+        $this->assertSame('1.10.7', JerseyCustomizationType::CompressionWearPocketDrawstringOption->menuNumber());
+        $this->assertSame('1.12.13', JerseyCustomizationType::SweatshirtZipperOption->menuNumber());
+        $this->assertSame('1.15.14', JerseyCustomizationType::CapPipingOption->menuNumber());
+        $this->assertSame('1.15.15', JerseyCustomizationType::BeanieSizeOption->menuNumber());
+        $this->assertSame('1.15.16', JerseyCustomizationType::BeanieKnittingStyleOption->menuNumber());
+        $this->assertSame('1.15.17', JerseyCustomizationType::BeanieImprintMethodOption->menuNumber());
+        $this->assertSame('1.15.18', JerseyCustomizationType::BeanieColorOption->menuNumber());
+        $this->assertTrue(JerseyCustomizationType::BeanieColorOption->usesColorValue());
+
+        $this->assertNotSame(JerseyCustomizationType::CapPipingOption->value, JerseyCustomizationType::JerseyPipingOption->value);
+        $this->assertNotSame(JerseyCustomizationType::CapPipingOption->value, JerseyCustomizationType::PantsPipingOption->value);
+        $this->assertNotSame(JerseyCustomizationType::BeanieColorOption->value, JerseyCustomizationType::HeadwearColor->value);
+        $this->assertNotSame(JerseyCustomizationType::BeanieSizeOption->value, JerseyCustomizationType::HeadwearFabricOption->value);
+        $this->assertNotSame(JerseyCustomizationType::SweatshirtZipperOption->value, JerseyCustomizationType::QuarterZipZipper->value);
+    }
+
     public function test_socks_customizations_are_separate_reusable_master_data_types(): void
     {
         $groups = JerseyCustomizationType::menuGroups();
@@ -265,7 +389,7 @@ class JerseyCustomizationTypeTest extends TestCase
         $this->assertSame('1.11.5', JerseyCustomizationType::SocksYarnOption->menuNumber());
         $this->assertSame('1.11.6', JerseyCustomizationType::SocksTypesOption->menuNumber());
         $this->assertSame('1.11.7', JerseyCustomizationType::SocksImprintMethodOption->menuNumber());
-        $this->assertNotSame(JerseyCustomizationType::SocksImprintMethodOption->value, JerseyCustomizationType::PoloImprintMethodOption->value);
+        $this->assertNotSame(JerseyCustomizationType::SocksImprintMethodOption->value, JerseyCustomizationType::PoloImprintAreaOption->value);
     }
 
     public function test_sweatshirt_customizations_are_separate_reusable_master_data_types(): void
@@ -292,7 +416,7 @@ class JerseyCustomizationTypeTest extends TestCase
         $this->assertSame('1.12.10', JerseyCustomizationType::SweatshirtImprintAreaOption->menuNumber());
         $this->assertSame('1.12.11', JerseyCustomizationType::SweatshirtDifferentNameAndNumberSurchargeOption->menuNumber());
         $this->assertSame('1.12.12', JerseyCustomizationType::SweatshirtDBackOption->menuNumber());
-        $this->assertSame('1.12.13', JerseyCustomizationType::sizeOptionMenuNumberForGroup('sweatshirt'));
+        $this->assertSame('1.12.14', JerseyCustomizationType::sizeOptionMenuNumberForGroup('sweatshirt'));
         $this->assertNotSame(JerseyCustomizationType::SweatshirtImprintOption->value, JerseyCustomizationType::HoodieImprintOption->value);
         $this->assertNotSame(JerseyCustomizationType::SweatshirtImprintAreaOption->value, JerseyCustomizationType::JacketImprintAreaOption->value);
     }
@@ -438,6 +562,11 @@ class JerseyCustomizationTypeTest extends TestCase
                 [JerseyCustomizationType::PremiumScarfImprintSizeOption, '1.28.5'],
                 [JerseyCustomizationType::PremiumScarfYarnColorOption, '1.28.6'],
             ],
+            'wristbands' => [
+                [JerseyCustomizationType::WristbandsSizeOption, '1.29.1'],
+                [JerseyCustomizationType::WristbandsMaterialOption, '1.29.2'],
+                [JerseyCustomizationType::WristbandsImprintMethodOption, '1.29.3'],
+            ],
         ];
 
         foreach ($expectedByGroup as $group => $types) {
@@ -477,6 +606,7 @@ class JerseyCustomizationTypeTest extends TestCase
         $this->assertContains(JerseyCustomizationType::TowelBackFabricOption, JerseyCustomizationType::fabricTypes());
         $this->assertContains(JerseyCustomizationType::ArmsleeveFabricOption, JerseyCustomizationType::fabricTypes());
         $this->assertContains(JerseyCustomizationType::FabricWristbandMaterialOption, JerseyCustomizationType::fabricTypes());
+        $this->assertContains(JerseyCustomizationType::WristbandsMaterialOption, JerseyCustomizationType::fabricTypes());
         $this->assertTrue(JerseyCustomizationType::KnittedGlovesColorOption->usesColorValue());
         $this->assertContains(JerseyCustomizationType::KnittedGlovesMaterialOption, JerseyCustomizationType::fabricTypes());
         $this->assertContains(JerseyCustomizationType::KnittedGlovesInnerLiningOption, JerseyCustomizationType::fabricTypes());
@@ -514,7 +644,7 @@ class JerseyCustomizationTypeTest extends TestCase
             JerseyCustomizationType::JacketSize->value,
             JerseyCustomizationType::masterDataOptions()
         );
-        $this->assertSame('1.12.13', JerseyCustomizationType::sizeOptionMenuNumberForGroup('sweatshirt'));
+        $this->assertSame('1.12.14', JerseyCustomizationType::sizeOptionMenuNumberForGroup('sweatshirt'));
         $this->assertSame('1.13.14', JerseyCustomizationType::sizeOptionMenuNumberForGroup('jacket'));
     }
 

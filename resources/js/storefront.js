@@ -652,6 +652,7 @@ window.productBuilder = (config = {}) => ({
     shippingMethod: config.shipping_methods?.find(method => method.default)?.id || config.shipping_methods?.[0]?.id || null,
     rosterEnabled: Boolean(config.jersey_roster?.enabled && !config.jersey_roster?.optional),
     rosterRows: [],
+    sampleRequested: false,
     sizeChartOpen: false,
     activeChartGroup: null,
     configurationJson: '{}',
@@ -742,6 +743,7 @@ window.productBuilder = (config = {}) => ({
 
             this.productionSpeed = initial.production_speed ? String(initial.production_speed) : null;
             this.rosterEnabled = Boolean(initial.roster_enabled);
+            this.sampleRequested = Boolean(config.sample?.available && initial.sample_requested);
             this.rosterRows = Array.isArray(initial.roster)
                 ? initial.roster.map(row => ({
                     ...row,
@@ -1295,6 +1297,10 @@ window.productBuilder = (config = {}) => ({
             }
         });
 
+        if (this.sampleRequested && config.sample?.available) {
+            breakdown.fixed += Math.max(0, Number(config.sample?.charge || 0));
+        }
+
         const speed = this.currentProductionSpeed();
         breakdown.perUnit += Number(speed?.price_delta || 0);
 
@@ -1383,6 +1389,32 @@ window.productBuilder = (config = {}) => ({
         return parts.join('; ');
     },
 
+    sampleCharge() {
+        return config.sample?.available ? Math.max(0, Number(config.sample?.charge || 0)) : 0;
+    },
+
+    sampleChargeLabel() {
+        const amount = this.sampleCharge();
+        return amount > 0 ? `+${this.money(amount)} / order` : 'Included';
+    },
+
+    sampleSummary() {
+        return this.sampleRequested ? `Requested · ${this.sampleChargeLabel()}` : 'Not requested';
+    },
+
+    toggleSample(requested) {
+        const next = Boolean(config.sample?.available && requested);
+        if (next === this.sampleRequested) return;
+        this.sampleRequested = next;
+        this.sync();
+        this.notifyCustomization(
+            next ? 'Added' : 'Removed',
+            next ? `Sample request added (${this.sampleChargeLabel()}).` : 'Sample request removed.',
+            'sample-request',
+            next ? 'success' : 'info',
+        );
+    },
+
     selectionSummary() {
         const parts = [];
         (config.option_groups || []).forEach(group => {
@@ -1400,6 +1432,7 @@ window.productBuilder = (config = {}) => ({
                 parts.push(`${group.label}: ${this.inputs[group.id]}`);
             }
         });
+        if (this.sampleRequested) parts.push('Sample: Requested');
         return parts.join('; ');
     },
 
@@ -1749,6 +1782,7 @@ window.productBuilder = (config = {}) => ({
             shipping_method: this.shippingMethod,
             roster_enabled: this.rosterEnabled,
             roster: this.rosterRows,
+            sample_requested: this.sampleRequested,
         });
     },
 

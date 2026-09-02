@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\JerseyCustomizationType;
+use App\Enums\WorldCupCustomizationType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ProductBulkRequest;
 use App\Http\Requests\Admin\ProductFormRequest;
@@ -10,6 +11,7 @@ use App\Models\CatalogAttribute;
 use App\Models\Category;
 use App\Models\Faq;
 use App\Models\JerseyCustomizationOption;
+use App\Models\WorldCupCustomizationOption;
 use App\Models\MediaLibraryImage;
 use App\Models\Product;
 use App\Models\ProductionMethod;
@@ -22,6 +24,7 @@ use App\Services\AdminNotificationService;
 use App\Services\Security\SafeHtmlService;
 use App\Services\Storefront\ProductCatalogCacheService;
 use App\Support\ProductSizing;
+use App\Support\WorldCupCustomizationRegistry;
 use App\Support\ProductSizeExtraCharges;
 use App\Support\ProductionTime;
 use App\Support\PublicMedia;
@@ -276,6 +279,7 @@ class ProductController extends Controller
             'price_table_highlight_column' => 1,
             'is_active' => true, 'is_customizable' => true, 'robots_index' => true,
             'robots_follow' => true, 'low_stock_threshold' => 5,
+            'sample_available' => false, 'sample_charge' => 0,
             'artwork_upload_enabled' => false, 'artwork_upload_required' => false,
             'artwork_upload_title' => 'Upload Custom Artwork',
             'artwork_upload_description' => 'Upload one or more artwork files for the production team.',
@@ -482,9 +486,10 @@ class ProductController extends Controller
     {
         $jerseyCustomizationOptions = JerseyCustomizationOption::query()
             ->active()
-            ->with('images')
+            ->whereIn('type', array_keys(JerseyCustomizationType::productConfigurationOptions()))
+            ->with(['images:id,jersey_customization_option_id,name,image_path,image_url,is_primary,sort_order'])
             ->ordered()
-            ->get()
+            ->get(['id', 'type', 'name', 'slug', 'description', 'color_hex'])
             ->map(static fn (JerseyCustomizationOption $option): array => [
                 'id' => $option->id,
                 'type' => $option->type->value,
@@ -493,6 +498,34 @@ class ProductController extends Controller
                 'slug' => $option->slug,
                 'description' => $option->description,
                 'color_hex' => $option->color_hex,
+                'images' => $option->images
+                    ->map(static fn ($image): array => [
+                        'name' => $image->name,
+                        'url' => $image->publicUrl(),
+                        'is_primary' => (bool) $image->is_primary,
+                    ])
+                    ->filter(static fn (array $image): bool => filled($image['url']))
+                    ->values()
+                    ->all(),
+            ])
+            ->values()
+            ->all();
+
+        $worldCupCustomizationOptions = WorldCupCustomizationOption::query()
+            ->active()
+            ->whereIn('type', array_keys(WorldCupCustomizationRegistry::configurationOptions()))
+            ->with(['images:id,world_cup_customization_option_id,name,image_path,image_url,is_primary,sort_order'])
+            ->ordered()
+            ->get(['id', 'category_key', 'type', 'name', 'slug', 'description'])
+            ->map(static fn (WorldCupCustomizationOption $option): array => [
+                'id' => $option->id,
+                'source' => 'world_cup',
+                'type' => $option->type->value,
+                'type_label' => $option->type->label(),
+                'name' => $option->name,
+                'slug' => $option->slug,
+                'description' => $option->description,
+                'color_hex' => null,
                 'images' => $option->images
                     ->map(static fn ($image): array => [
                         'name' => $image->name,
@@ -552,8 +585,12 @@ class ProductController extends Controller
             'product' => $product,
             'categoryOptions' => $this->categoryTreeService->leafOptions(),
             'catalogAttributes' => CatalogAttribute::query()->active()->with(['values' => fn ($query) => $query->active()->orderBy('sort_order')])->ordered()->get(),
-            'jerseyCustomizationTypes' => JerseyCustomizationType::productConfigurationOptions(),
+            'jerseyCustomizationTypes' => array_merge(
+                JerseyCustomizationType::productConfigurationOptions(),
+                WorldCupCustomizationRegistry::configurationOptions()
+            ),
             'jerseyCustomizationOptions' => $jerseyCustomizationOptions,
+            'worldCupCustomizationOptions' => $worldCupCustomizationOptions,
             'sizeOptionGroups' => $sizeOptionGroups,
             'productionMethodOptions' => $productionMethodOptions,
             'shippingMethodOptions' => $shippingMethodOptions,
@@ -628,7 +665,7 @@ class ProductController extends Controller
             'favorites_count', 'recent_orders_count', 'minimum_quantity', 'maximum_quantity', 'is_featured',
             'is_customizable', 'is_active', 'track_inventory', 'stock_quantity', 'low_stock_threshold',
             'allow_backorder', 'weight', 'shipping_class', 'production_methods_enabled', 'shipping_methods_enabled', 'jersey_roster_enabled',
-            'jersey_roster_optional', 'jersey_roster_title', 'artwork_upload_enabled',
+            'jersey_roster_optional', 'jersey_roster_title', 'sample_available', 'sample_charge', 'artwork_upload_enabled',
             'artwork_upload_required', 'artwork_upload_title', 'artwork_upload_description',
             'artwork_upload_max_files', 'artwork_upload_max_file_size_mb',
             'artwork_upload_accepted_types', 'tax_class', 'price_table_highlight_column',
@@ -695,6 +732,9 @@ class ProductController extends Controller
         if ($tags !== null) {
             $payload['tags'] = $tags;
         }
+        $payload['sample_available'] = (bool) ($data['sample_available'] ?? false);
+        $payload['sample_charge'] = max(0, round((float) ($data['sample_charge'] ?? 0), 2));
+
         if (! (bool) ($payload['artwork_upload_enabled'] ?? false)) {
             $payload['artwork_upload_required'] = false;
         }
@@ -1149,11 +1189,12 @@ class ProductController extends Controller
         $this->syncImages($product, $request, $data);
 
         $existingOptionMedia = $product->optionGroups()
-            ->with('values:id,product_option_group_id,jersey_customization_option_id,image_path,image_url,image_gallery')
+            ->with('values:id,product_option_group_id,jersey_customization_option_id,world_cup_customization_option_id,image_path,image_url,image_gallery')
             ->get()
             ->flatMap(fn ($group) => $group->values)
             ->mapWithKeys(fn ($value) => [(int) $value->id => [
-                'master_id' => $value->jersey_customization_option_id,
+                'jersey_master_id' => $value->jersey_customization_option_id,
+                'world_cup_master_id' => $value->world_cup_customization_option_id,
                 'path' => $value->image_path,
                 'url' => $value->image_url,
                 'gallery' => $value->image_gallery ?? [],
@@ -1169,11 +1210,27 @@ class ProductController extends Controller
             ->unique()
             ->values();
 
+        $submittedWorldCupOptionIds = collect($data['option_groups'] ?? [])
+            ->flatMap(static fn ($group): array => collect($group['values'] ?? [])
+                ->pluck('world_cup_customization_option_id')
+                ->filter()
+                ->map(static fn ($id): int => (int) $id)
+                ->all())
+            ->unique()
+            ->values();
+
+        $worldCupMasterOptions = WorldCupCustomizationOption::query()
+            ->active()
+            ->with(['images:id,world_cup_customization_option_id,name,image_path,image_url,is_primary,sort_order'])
+            ->whereIn('id', $submittedWorldCupOptionIds)
+            ->get(['id', 'category_key', 'type', 'name', 'slug', 'description'])
+            ->keyBy('id');
+
         $masterOptions = JerseyCustomizationOption::query()
             ->active()
-            ->with('images')
+            ->with(['images:id,jersey_customization_option_id,name,image_path,image_url,is_primary,sort_order'])
             ->whereIn('id', $submittedMasterOptionIds)
-            ->get()
+            ->get(['id', 'type', 'name', 'slug', 'description', 'color_hex'])
             ->keyBy('id');
 
         $product->optionGroups()->delete();
@@ -1207,26 +1264,38 @@ class ProductController extends Controller
 
             foreach (collect($groupData['values'] ?? [])->filter(fn ($value) => filled($value['label'] ?? null) && filled($value['code'] ?? null)) as $valueInputIndex => $valueData) {
                 $masterOptionId = (int) ($valueData['jersey_customization_option_id'] ?? 0);
-                $masterOption = $masterOptionId > 0 ? $masterOptions->get($masterOptionId) : null;
+                $worldCupMasterOptionId = (int) ($valueData['world_cup_customization_option_id'] ?? 0);
+                $legacyMasterOption = $masterOptionId > 0 ? $masterOptions->get($masterOptionId) : null;
+                $worldCupMasterOption = $worldCupMasterOptionId > 0 ? $worldCupMasterOptions->get($worldCupMasterOptionId) : null;
+                $masterOption = $worldCupMasterOption ?: $legacyMasterOption;
+                $masterSource = $worldCupMasterOption ? 'world_cup' : ($legacyMasterOption ? 'jersey' : null);
                 $existingId = (int) ($valueData['existing_id'] ?? 0);
-                $existing = $existingOptionMedia[$existingId] ?? ['master_id' => null, 'path' => null, 'url' => null, 'gallery' => []];
+                $existing = $existingOptionMedia[$existingId] ?? [
+                    'jersey_master_id' => null,
+                    'world_cup_master_id' => null,
+                    'path' => null,
+                    'url' => null,
+                    'gallery' => [],
+                ];
 
                 if ($masterOption) {
                     $label = $masterOption->name;
                     $code = $masterOption->slug;
                     $description = $masterOption->description;
-                    $colorHex = $masterOption->color_hex;
+                    $colorHex = $masterSource === 'jersey' ? $masterOption->color_hex : null;
 
-                    if ((int) ($existing['master_id'] ?? 0) === (int) $masterOption->id && ! empty($existing['gallery'])) {
+                    if (($masterSource === 'world_cup'
+                        ? (int) ($existing['world_cup_master_id'] ?? 0)
+                        : (int) ($existing['jersey_master_id'] ?? 0)) === (int) $masterOption->id && ! empty($existing['gallery'])) {
                         $gallery = collect($existing['gallery'])->filter(fn ($item) => is_array($item))->values()->all();
                     } else {
                         $gallery = $masterOption->images
-                            ->map(function ($image) use ($product, $masterOption): array {
+                            ->map(function ($image) use ($product, $masterOption, $masterSource): array {
                                 $path = null;
                                 if (filled($image->image_path) && Storage::disk('public')->exists($image->image_path)) {
                                     $extension = pathinfo($image->image_path, PATHINFO_EXTENSION);
                                     $path = "products/{$product->id}/options/"
-                                        ."master-{$masterOption->id}-".Str::uuid()
+                                        .($masterSource === 'world_cup' ? "world-cup-master-{$masterOption->id}-" : "master-{$masterOption->id}-").Str::uuid()
                                         .($extension !== '' ? ".{$extension}" : '');
                                     Storage::disk('public')->copy($image->image_path, $path);
                                 }
@@ -1283,7 +1352,8 @@ class ProductController extends Controller
                 $firstImage = $gallery[0] ?? [];
 
                 $group->values()->create([
-                    'jersey_customization_option_id' => $masterOption?->id,
+                    'jersey_customization_option_id' => $masterSource === 'jersey' ? $masterOption?->id : null,
+                    'world_cup_customization_option_id' => $masterSource === 'world_cup' ? $masterOption?->id : null,
                     'label' => $label,
                     'code' => $code,
                     'description' => $description,

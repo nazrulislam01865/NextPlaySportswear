@@ -1,6 +1,5 @@
 @php
     $typeLabel = $type->label();
-    $isColor = $type->usesColorValue();
     $showsDescription = $type->usesDescription();
     $placeholder = $type->placeholder();
     $helpText = $type->helpText();
@@ -11,17 +10,17 @@
 
 <x-layouts.admin
     :title="$typeLabel"
-    :eyebrow="'Master Data / '.$type->groupNumber().' '.$type->groupLabel()"
+    :eyebrow="'Master Data / 1.24 World Cup Customization / '.$type->categoryNumber().' '.$type->categoryLabel()"
     :subtitle="$helpText"
     compact-header
 >
     <div class="space-y-6">
         <x-admin.customization-type-tabs
-            :heading="$type->groupNumber().' '.$type->groupLabel().' Submenus'"
-            :aria-label="$type->groupLabel().' type navigation'"
+            :heading="$type->categoryNumber().' '.$type->categoryLabel().' Customization Submenus'"
+            :aria-label="$type->categoryLabel().' customization navigation'"
             :links="$typeLinks"
             :active-type="$type"
-            route-name="admin.training-vest-customization-options.type"
+            route-name="admin.world-cup-customization-options.type"
         />
 
         <x-admin.customization-option-workspace
@@ -29,14 +28,13 @@
             :type-value="$type->value"
             :options="$options"
             :filters="$filters"
-            :store-route="route('admin.training-vest-customization-options.store')"
-            edit-route-name="admin.training-vest-customization-options.edit"
-            destroy-route-name="admin.training-vest-customization-options.destroy"
+            :store-route="route('admin.world-cup-customization-options.store')"
+            edit-route-name="admin.world-cup-customization-options.edit"
+            destroy-route-name="admin.world-cup-customization-options.destroy"
             :placeholder="$placeholder"
             :image-title="$imageTitle"
             :image-hint="$imageHint"
             :image-cta="$imageCta"
-            :is-color="$isColor"
             :shows-description="$showsDescription"
         />
     </div>

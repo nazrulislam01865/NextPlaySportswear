@@ -38,9 +38,9 @@ final class ProductCustomizationMenuRegistry
     public static function trailingMasterDataNumbers(): array
     {
         return [
-            'production_methods' => '1.29',
-            'shipping_methods' => '1.30',
-            'faqs' => '1.31',
+            'production_methods' => '1.30',
+            'shipping_methods' => '1.31',
+            'faqs' => '1.32',
         ];
     }
 }

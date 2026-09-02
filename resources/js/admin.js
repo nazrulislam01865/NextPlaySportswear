@@ -99,6 +99,7 @@ window.adminProductForm = (initial = {}) => ({
     jerseyCustomizationTypes: initial.jerseyCustomizationTypes || {},
     customizationTypeGroups: Array.isArray(initial.customizationTypeGroups) ? initial.customizationTypeGroups : [],
     jerseyCustomizationOptions: initial.jerseyCustomizationOptions || [],
+    worldCupCustomizationOptions: initial.worldCupCustomizationOptions || [],
     newFeatureDialogOpen: false,
     newFeatureType: '',
     newFeatureNameError: '',
@@ -173,6 +174,7 @@ window.adminProductForm = (initial = {}) => ({
                 value.client_key ||= this.clientKey();
                 value.existing_id ||= '';
                 value.jersey_customization_option_id ||= '';
+                value.world_cup_customization_option_id ||= '';
                 value.image_url ||= '';
                 value.image_previews = Array.isArray(value.image_previews) ? value.image_previews : (value.image_preview ? [value.image_preview] : []);
                 value.image_error = false;
@@ -181,7 +183,7 @@ window.adminProductForm = (initial = {}) => ({
                 value.is_default = this.booleanValue(value.is_default, false);
                 value.is_active = this.booleanValue(value.is_active, true);
                 value.clear_images = this.booleanValue(value.clear_images, false);
-                const masterItem = this.masterItemById(value.jersey_customization_option_id);
+                const masterItem = this.masterItemForValue(value);
                 if (masterItem) this.hydrateValueFromMaster(value, masterItem);
                 value.primary_image_url ||= value.image_previews?.[0] || value.image_url || '';
             });
@@ -1355,7 +1357,7 @@ window.adminProductForm = (initial = {}) => ({
     },
     optionValueTemplate(overrides = {}) {
         return {
-            existing_id: '', jersey_customization_option_id: '', client_key: this.clientKey(), label: '', code: '', description: '',
+            existing_id: '', jersey_customization_option_id: '', world_cup_customization_option_id: '', client_key: this.clientKey(), label: '', code: '', description: '',
             color_hex: '', image_url: '', image_previews: [], primary_image_url: '', image_error: false, clear_images: false,
             price_adjustment: 0, charge_type: 'per_unit', stock_quantity: '', is_default: false,
             is_active: true, ...overrides,
@@ -1516,6 +1518,28 @@ window.adminProductForm = (initial = {}) => ({
         ]);
         if (baseballBeltType) return baseballBeltType;
 
+        // Keep category-specific master data isolated before the generic size/fabric/color fallbacks.
+        if (/\bcap\b.*piping|piping.*\bcap\b/.test(plain)) return 'cap_piping_option';
+        if (/beanie.*size|size.*beanie/.test(plain)) return 'beanie_size_option';
+        if (/beanie.*knit|knit.*beanie/.test(plain)) return 'beanie_knitting_style_option';
+        if (/beanie.*imprint.*method|imprint.*method.*beanie/.test(plain)) return 'beanie_imprint_method_option';
+        if (/beanie.*colou?r|colou?r.*beanie/.test(plain)) return 'beanie_color_option';
+        if (/compression.*wear.*waist|waist.*compression.*wear/.test(plain)) return 'compression_wear_waist_type';
+        if (/compression.*wear.*leg.*length|leg.*length.*compression.*wear/.test(plain)) return 'compression_wear_leg_length';
+        if (/compression.*wear.*(pocket|drawstring)|(pocket|drawstring).*compression.*wear/.test(plain)) return 'compression_wear_pocket_drawstring_option';
+        if (/sweatshirt.*zipper|zipper.*sweatshirt/.test(plain)) return 'sweatshirt_zipper_option';
+        if (/hoodie.*(hood.*drawstring|drawstring)|(hood.*drawstring|drawstring).*hoodie/.test(plain)) return 'hoodie_hood_drawstring_option';
+        if (/polo.*imprint.*(method|area)|(imprint.*(method|area)).*polo/.test(plain)) return 'polo_imprint_area_option';
+        if (/polo.*different.*name.*number|different.*name.*number.*polo/.test(plain)) return 'polo_different_name_and_number_option';
+        if (/polo.*size.*additional.*charge|size.*additional.*charge.*polo/.test(plain)) return 'polo_size_additional_charges_option';
+
+        const wristbandsType = this.inferProductScopedCustomizationType(plain, /\bwristbands?\b/, [
+            [/\bimprint.*method|method.*imprint\b/, 'wristbands_imprint_method_option'],
+            [/\b(material|matirial|fabric)\b/, 'wristbands_material_option'],
+            [/\bsize\b/, 'wristbands_size_option'],
+        ]);
+        if (wristbandsType) return wristbandsType;
+
         if (/\bsize\b/.test(plain)) return '';
         if (/shorts?.*colou?r|colou?r.*shorts?/.test(plain)) return 'shorts_color';
         if (/shorts?.*(fabric|material)|(fabric|material).*shorts?/.test(plain)) return 'shorts_fabric';
@@ -1526,7 +1550,7 @@ window.adminProductForm = (initial = {}) => ({
         if (/hoodie.*(different.*name.*number|name.*number)|(different.*name.*number|name.*number).*hoodie/.test(plain)) return 'hoodie_different_name_and_number_option';
         if (/hoodie.*imprint.*area|imprint.*area.*hoodie/.test(plain)) return 'hoodie_imprint_area_option';
         if (/hoodie.*imprint|imprint.*hoodie/.test(plain)) return 'hoodie_imprint_option';
-        if (/polo.*imprint.*method|imprint.*method.*polo/.test(plain)) return 'polo_imprint_method_option';
+        if (/polo.*imprint.*method|imprint.*method.*polo/.test(plain)) return 'polo_imprint_area_option';
         if (/polo.*back.*detail|back.*detail.*polo/.test(plain)) return 'polo_back_detail_option';
         if (/polo.*imprint|imprint.*polo/.test(plain)) return 'polo_imprint_option';
         if (/(t[-\s_]*shirt|tshirt).*(different.*name.*number|name.*number)|(different.*name.*number|name.*number).*(t[-\s_]*shirt|tshirt)/.test(plain)) return 'tshirt_different_name_and_number_option';
@@ -1590,9 +1614,22 @@ window.adminProductForm = (initial = {}) => ({
         if (/jersey\s*style|uniform\s*style|\bstyle\b/.test(plain)) return 'jersey_style';
         return '';
     },
-    masterItemById(id) {
+    allMasterCustomizationItems() {
+        return [
+            ...(this.jerseyCustomizationOptions || []).map(item => ({ ...item, source: item.source || 'jersey' })),
+            ...(this.worldCupCustomizationOptions || []).map(item => ({ ...item, source: 'world_cup' })),
+        ];
+    },
+    masterItemById(id, source = 'jersey') {
         const numericId = Number(id || 0);
-        return this.jerseyCustomizationOptions.find(item => Number(item.id) === numericId) || null;
+        const items = source === 'world_cup' ? this.worldCupCustomizationOptions : this.jerseyCustomizationOptions;
+        return (items || []).find(item => Number(item.id) === numericId) || null;
+    },
+    masterItemForValue(value) {
+        const worldCupId = Number(value?.world_cup_customization_option_id || 0);
+        if (worldCupId > 0) return this.masterItemById(worldCupId, 'world_cup');
+        const jerseyId = Number(value?.jersey_customization_option_id || 0);
+        return jerseyId > 0 ? this.masterItemById(jerseyId, 'jersey') : null;
     },
     masterItemPrimaryImage(item) {
         if (!item) return '';
@@ -1600,7 +1637,13 @@ window.adminProductForm = (initial = {}) => ({
         return images.find(image => image.is_primary)?.url || images[0]?.url || '';
     },
     hydrateValueFromMaster(value, item) {
-        value.jersey_customization_option_id = Number(item.id);
+        if (String(item.source || 'jersey') === 'world_cup') {
+            value.world_cup_customization_option_id = Number(item.id);
+            value.jersey_customization_option_id = '';
+        } else {
+            value.jersey_customization_option_id = Number(item.id);
+            value.world_cup_customization_option_id = '';
+        }
         value.label = String(item.name || '');
         value.code = String(item.slug || slugify(item.name));
         value.description = String(item.description || '');
@@ -1613,7 +1656,7 @@ window.adminProductForm = (initial = {}) => ({
     },
     defaultInputStyleForFeature(type) {
         if (String(type || '').includes('color')) return 'swatch';
-        const options = this.jerseyCustomizationOptions.filter(item => item.type === type);
+        const options = this.allMasterCustomizationItems().filter(item => item.type === type);
         return options.some(item => this.masterItemPrimaryImage(item)) ? 'image' : 'buttons';
     },
     openNewFeatureDialog() {
@@ -1691,19 +1734,20 @@ window.adminProductForm = (initial = {}) => ({
     availableMasterItems() {
         const group = this.activeMasterItemGroup();
         if (!group?.jersey_customization_type) return [];
-        return this.jerseyCustomizationOptions.filter(item => item.type === group.jersey_customization_type);
+        return this.allMasterCustomizationItems().filter(item => item.type === group.jersey_customization_type);
     },
-    isMasterItemSelected(itemId) {
+    isMasterItemSelected(item) {
         const group = this.activeMasterItemGroup();
-        return Boolean(group?.values?.some(value => Number(value.jersey_customization_option_id) === Number(itemId)));
+        if (!group || !item) return false;
+        const source = String(item.source || 'jersey');
+        return Boolean(group.values?.some(value => source === 'world_cup'
+            ? Number(value.world_cup_customization_option_id) === Number(item.id)
+            : Number(value.jersey_customization_option_id) === Number(item.id)));
     },
     selectMasterItem(item) {
         const group = this.activeMasterItemGroup();
-        if (!group || !item || item.type !== group.jersey_customization_type || this.isMasterItemSelected(item.id)) return;
-        const value = this.optionValueTemplate({
-            jersey_customization_option_id: Number(item.id),
-            is_default: group.values.length === 0,
-        });
+        if (!group || !item || item.type !== group.jersey_customization_type || this.isMasterItemSelected(item)) return;
+        const value = this.optionValueTemplate({ is_default: group.values.length === 0 });
         this.hydrateValueFromMaster(value, item);
         group.values.push(value);
         this.handleProgressChange();

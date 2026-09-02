@@ -2477,6 +2477,11 @@ class ProductCatalogService
                 'title' => $product->jersey_roster_title ?: 'Add player names and numbers',
                 'fields' => collect($product->jersey_roster_fields ?? [])->filter(fn ($field) => (bool) ($field['enabled'] ?? true))->values()->all(),
             ],
+            'sample' => [
+                'available' => (bool) ($product->sample_available ?? false),
+                'charge' => max(0, (float) ($product->sample_charge ?? 0)),
+                'charge_type' => 'fixed_order',
+            ],
             'is_featured' => $product->is_featured,
             'is_customizable' => $product->is_customizable,
             'track_inventory' => $product->track_inventory,

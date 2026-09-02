@@ -34,6 +34,7 @@ class ProductSizing
         'knitted_gloves',
         'bandana',
         'premium_scarf',
+        'wristbands',
     ];
 
     public static function supports(?string $productProfile): bool

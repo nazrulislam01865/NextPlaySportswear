@@ -376,6 +376,31 @@ final class ProductCustomizationOptionRegistry
                 ],
             ],
         ],
+        'wristbands' => [
+            'number' => '1.29',
+            'label' => 'Wristbands Customization',
+            'options' => [
+                'wristbands_size_option' => [
+                    'label' => 'Size Option',
+                    'placeholder' => 'Example: Adult / 202 mm',
+                    'help_text' => 'Add standalone Wristbands size choices. These values are isolated from Silicone Wristband and Fabric Wristband master data.',
+                    'visual' => 'size',
+                ],
+                'wristbands_material_option' => [
+                    'label' => 'Material Option',
+                    'placeholder' => 'Example: Polyester Blend',
+                    'help_text' => 'Add standalone Wristbands material choices with an optional construction description. These values are not shared with Silicone Wristband or Fabric Wristband material data.',
+                    'visual' => 'material',
+                    'uses_description' => true,
+                ],
+                'wristbands_imprint_method_option' => [
+                    'label' => 'Imprint Method Option',
+                    'placeholder' => 'Example: Dye Sublimation',
+                    'help_text' => 'Add standalone Wristbands imprint methods. These values remain separate from Silicone Wristband and Fabric Wristband imprint methods.',
+                    'visual' => 'imprint',
+                ],
+            ],
+        ],
     ];
 
     /** @var array<string, array{image_title: string, image_description: string, image_cta: string}> */

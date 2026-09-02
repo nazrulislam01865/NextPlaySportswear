@@ -124,7 +124,47 @@ class JerseyCustomizationOptionTest extends TestCase
             ->count());
     }
 
-    public function test_hoodie_name_number_imprint_and_imprint_area_values_are_stored_separately(): void
+    public function test_requested_jersey_shorts_and_pants_values_are_stored_by_their_own_master_data_type(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $types = [
+            JerseyCustomizationType::JerseyFabricPatternOption,
+            JerseyCustomizationType::ShortsImprintAreaOption,
+            JerseyCustomizationType::PantsPocketOption,
+            JerseyCustomizationType::PantsRopeOption,
+            JerseyCustomizationType::PantsElasticWaistDrawcordOption,
+            JerseyCustomizationType::PantsImprintOption,
+            JerseyCustomizationType::PantsImprintAreaOption,
+            JerseyCustomizationType::PantsLogoOption,
+            JerseyCustomizationType::PantsPipingOption,
+        ];
+
+        foreach ($types as $type) {
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                [
+                    'name' => 'Standard',
+                    'type' => $type->value,
+                ]
+            )->assertSessionDoesntHaveErrors();
+
+            $this->assertDatabaseHas('jersey_customization_options', [
+                'type' => $type->value,
+                'slug' => 'standard',
+            ]);
+        }
+
+        $this->assertSame(count($types), JerseyCustomizationOption::query()
+            ->whereIn('type', array_map(static fn (JerseyCustomizationType $type): string => $type->value, $types))
+            ->where('slug', 'standard')
+            ->count());
+    }
+
+    public function test_hoodie_requested_customization_values_are_stored_separately(): void
     {
         $admin = User::factory()->create([
             'role' => 'admin',
@@ -135,6 +175,7 @@ class JerseyCustomizationOptionTest extends TestCase
             JerseyCustomizationType::HoodieDifferentNameAndNumberOption,
             JerseyCustomizationType::HoodieImprintOption,
             JerseyCustomizationType::HoodieImprintAreaOption,
+            JerseyCustomizationType::HoodieHoodDrawstringOption,
         ] as $type) {
             $this->actingAs($admin, 'admin')->post(
                 route('admin.jersey-customization-options.store'),
@@ -150,11 +191,12 @@ class JerseyCustomizationOptionTest extends TestCase
             ]);
         }
 
-        $this->assertSame(3, JerseyCustomizationOption::query()
+        $this->assertSame(4, JerseyCustomizationOption::query()
             ->whereIn('type', [
                 JerseyCustomizationType::HoodieDifferentNameAndNumberOption->value,
                 JerseyCustomizationType::HoodieImprintOption->value,
                 JerseyCustomizationType::HoodieImprintAreaOption->value,
+                JerseyCustomizationType::HoodieHoodDrawstringOption->value,
             ])
             ->where('slug', 'standard')
             ->count());
@@ -168,9 +210,11 @@ class JerseyCustomizationOptionTest extends TestCase
         ]);
 
         $types = [
-            JerseyCustomizationType::PoloImprintMethodOption,
+            JerseyCustomizationType::PoloImprintAreaOption,
             JerseyCustomizationType::PoloBackDetailOption,
             JerseyCustomizationType::PoloImprintOption,
+            JerseyCustomizationType::PoloDifferentNameAndNumberOption,
+            JerseyCustomizationType::PoloSizeAdditionalChargesOption,
         ];
 
         foreach ($types as $type) {
@@ -185,7 +229,7 @@ class JerseyCustomizationOptionTest extends TestCase
             ]);
         }
 
-        $this->assertSame(3, JerseyCustomizationOption::query()
+        $this->assertSame(5, JerseyCustomizationOption::query()
             ->whereIn('type', array_map(static fn (JerseyCustomizationType $type): string => $type->value, $types))
             ->where('slug', 'standard')
             ->count());
@@ -519,6 +563,43 @@ class JerseyCustomizationOptionTest extends TestCase
             ->count());
     }
 
+    public function test_standalone_wristbands_values_do_not_share_silicone_or_fabric_wristband_types(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $types = [
+            JerseyCustomizationType::WristbandsSizeOption,
+            JerseyCustomizationType::WristbandsMaterialOption,
+            JerseyCustomizationType::WristbandsImprintMethodOption,
+            JerseyCustomizationType::SiliconeWristbandProductSizeOption,
+            JerseyCustomizationType::SiliconeWristbandMaterialOption,
+            JerseyCustomizationType::SiliconeWristbandImprintMethodOption,
+            JerseyCustomizationType::FabricWristbandSizeOption,
+            JerseyCustomizationType::FabricWristbandMaterialOption,
+            JerseyCustomizationType::FabricWristbandImprintMethodOption,
+        ];
+
+        foreach ($types as $type) {
+            $payload = ['name' => 'Standard', 'type' => $type->value];
+            if ($type->usesDescription()) {
+                $payload['description'] = 'Category-specific material description.';
+            }
+
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                $payload
+            )->assertSessionDoesntHaveErrors();
+        }
+
+        $this->assertSame(9, JerseyCustomizationOption::query()
+            ->whereIn('type', array_map(static fn (JerseyCustomizationType $type): string => $type->value, $types))
+            ->where('slug', 'standard')
+            ->count());
+    }
+
     public function test_knitted_gloves_and_bandana_values_are_stored_separately(): void
     {
         $admin = User::factory()->create([
@@ -633,6 +714,79 @@ class JerseyCustomizationOptionTest extends TestCase
         $this->assertSame(2, JerseyCustomizationOption::query()->where('slug', 'black')->count());
     }
 
+
+    public function test_requested_compression_sweatshirt_cap_and_beanie_values_remain_isolated_by_master_data_type(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $types = [
+            JerseyCustomizationType::CompressionWearWaistType,
+            JerseyCustomizationType::CompressionWearLegLength,
+            JerseyCustomizationType::CompressionWearPocketDrawstringOption,
+            JerseyCustomizationType::SweatshirtZipperOption,
+            JerseyCustomizationType::CapPipingOption,
+            JerseyCustomizationType::BeanieSizeOption,
+            JerseyCustomizationType::BeanieKnittingStyleOption,
+            JerseyCustomizationType::BeanieImprintMethodOption,
+            JerseyCustomizationType::BeanieColorOption,
+        ];
+
+        foreach ($types as $type) {
+            $payload = [
+                'name' => 'Standard',
+                'type' => $type->value,
+            ];
+
+            if ($type->usesColorValue()) {
+                $payload['color_hex'] = '#112233';
+            }
+
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                $payload
+            )->assertSessionDoesntHaveErrors();
+
+            $this->assertDatabaseHas('jersey_customization_options', [
+                'type' => $type->value,
+                'slug' => 'standard',
+            ]);
+        }
+
+        $this->assertSame(count($types), JerseyCustomizationOption::query()
+            ->whereIn('type', array_map(static fn (JerseyCustomizationType $type): string => $type->value, $types))
+            ->where('slug', 'standard')
+            ->count());
+    }
+
+    public function test_beanie_color_does_not_share_generic_headwear_color_values(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        foreach ([JerseyCustomizationType::HeadwearColor, JerseyCustomizationType::BeanieColorOption] as $type) {
+            $this->actingAs($admin, 'admin')->post(
+                route('admin.jersey-customization-options.store'),
+                [
+                    'name' => 'Black',
+                    'type' => $type->value,
+                    'color_hex' => '#000000',
+                ]
+            )->assertSessionDoesntHaveErrors();
+        }
+
+        $this->assertSame(2, JerseyCustomizationOption::query()
+            ->whereIn('type', [
+                JerseyCustomizationType::HeadwearColor->value,
+                JerseyCustomizationType::BeanieColorOption->value,
+            ])
+            ->where('slug', 'black')
+            ->count());
+    }
 
     public function test_color_value_is_required_only_for_color_options(): void
     {
