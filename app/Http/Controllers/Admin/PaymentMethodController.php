@@ -5,15 +5,21 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PaymentMethodRequest;
 use App\Models\PaymentMethod;
+use App\Payments\PaymentGatewayManager;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 class PaymentMethodController extends Controller
 {
+    public function __construct(private readonly PaymentGatewayManager $gateways)
+    {
+    }
+
     public function index(): View
     {
         return view('admin.payment-methods.index', [
             'methods' => PaymentMethod::query()->orderBy('sort_order')->latest()->paginate($this->adminPerPage(20))->withQueryString(),
+            'gatewayStatuses' => $this->gateways->statuses(),
         ]);
     }
 
@@ -27,6 +33,7 @@ class PaymentMethodController extends Controller
                 'is_active' => true,
                 'sort_order' => 0,
             ]),
+            'providers' => $this->gateways->registeredProviders(),
         ]);
     }
 
@@ -36,13 +43,14 @@ class PaymentMethodController extends Controller
         $this->syncDefault($method);
 
         return redirect()->route('admin.payment-methods.index')
-            ->with('status', 'Payment method created successfully.');
+            ->with('status', 'Payment method created successfully. Provider credentials remain server-side only.');
     }
 
     public function edit(PaymentMethod $paymentMethod): View
     {
         return view('admin.payment-methods.edit', [
             'method' => $paymentMethod,
+            'providers' => $this->gateways->registeredProviders(),
         ]);
     }
 

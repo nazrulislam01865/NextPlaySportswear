@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Services\Email\TransactionalEmailManager;
 use App\Support\AdminRbac;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,7 +16,7 @@ use Illuminate\Notifications\Notifiable;
 
 #[Fillable(['name', 'email', 'phone', 'company_name', 'preferred_sport', 'marketing_consent', 'password'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
@@ -70,6 +71,25 @@ class User extends Authenticatable
         return $this->belongsTo(AdminRole::class, 'role', 'slug');
     }
 
+    public function sendEmailVerificationNotification(): void
+    {
+        app(TransactionalEmailManager::class)->emailVerification($this);
+    }
+
+    /**
+     * email
+     */
+    public function sendPasswordResetNotification(
+        $token
+    ): void {
+        app(
+            TransactionalEmailManager::class
+        )->passwordReset(
+            $this,
+            (string) $token
+        );
+    }
+
     public function isAdmin(): bool
     {
         return $this->is_active && AdminRbac::roleIsAdmin($this->role);
@@ -114,10 +134,12 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'welcome_email_sent_at' => 'datetime',
             'password' => 'hashed',
             'marketing_consent' => 'boolean',
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
+            'auth_session_version' => 'integer',
         ];
     }
 }

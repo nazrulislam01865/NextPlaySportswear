@@ -10,9 +10,15 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use App\Services\Email\TransactionalEmailManager;
 
 class BulkQuoteController extends Controller
 {
+    //Email Constructor
+    public function __construct(
+        private readonly TransactionalEmailManager $emails
+    ) {
+    }
     public function create(): View
     {
         $faqItems = [
@@ -85,6 +91,7 @@ class BulkQuoteController extends Controller
                 'occurred_at' => now()->toIso8601String(),
             ]);
         }
+        $this->emails->bulkQuoteReceived($quote);
 
         return redirect()
             ->route('quote.request')

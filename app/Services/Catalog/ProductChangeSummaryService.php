@@ -165,7 +165,7 @@ class ProductChangeSummaryService
                     'is_active', 'sort_order',
                 ]),
             ],
-            'Jersey roster' => $this->attributes($product, [
+            'Roster fields' => $this->attributes($product, [
                 'jersey_roster_enabled', 'jersey_roster_optional', 'jersey_roster_title',
                 'jersey_roster_fields',
             ]),

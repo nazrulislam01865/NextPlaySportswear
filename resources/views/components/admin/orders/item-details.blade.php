@@ -6,6 +6,7 @@
     $selectedSizes = collect($item->selectedSizes());
     $rosterRows = collect($item->rosterRows());
     $rosterFields = collect($item->rosterFields());
+    $hasRosterSizes = $rosterRows->contains(fn (array $row): bool => filled($row['size_label'] ?? null) || filled($row['size_group_label'] ?? null));
     $artworkFiles = collect($item->artworkFiles());
     $rosterEnabled = (bool) data_get($customization, 'configuration.roster_enabled', false);
 @endphp
@@ -118,7 +119,7 @@
             <div class="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
                 <div>
                     <h5 class="font-black text-brand-ink">Roster Details</h5>
-                    <p class="text-xs text-slate-500">Per-piece size, player name, number, and any additional roster fields captured at checkout.</p>
+                    <p class="text-xs text-slate-500">Per-item roster fields captured at checkout. Size is shown only when the product uses size quantities.</p>
                 </div>
                 <span class="w-fit rounded-full bg-brand-dark px-3 py-1.5 text-xs font-black text-white">{{ $rosterRows->count() }} roster row(s)</span>
             </div>
@@ -129,7 +130,7 @@
                         <thead class="bg-slate-50 text-xs font-black uppercase tracking-wide text-slate-500">
                             <tr>
                                 <th class="px-4 py-3">#</th>
-                                <th class="px-4 py-3">Size</th>
+                                @if($hasRosterSizes)<th class="px-4 py-3">Size</th>@endif
                                 @foreach($rosterFields as $field)
                                     <th class="px-4 py-3">{{ data_get($field, 'label', 'Field') }}</th>
                                 @endforeach
@@ -139,10 +140,12 @@
                             @foreach($rosterRows as $row)
                                 <tr>
                                     <td class="px-4 py-3 font-black text-slate-500">{{ $loop->iteration }}</td>
-                                    <td class="whitespace-nowrap px-4 py-3">
-                                        <b>{{ data_get($row, 'size_label', data_get($row, 'size_code', '—')) }}</b>
-                                        @if(data_get($row, 'size_group_label'))<span class="block text-xs text-slate-500">{{ data_get($row, 'size_group_label') }}</span>@endif
-                                    </td>
+                                    @if($hasRosterSizes)
+                                        <td class="whitespace-nowrap px-4 py-3">
+                                            <b>{{ data_get($row, 'size_label') ?: data_get($row, 'size_code') ?: '—' }}</b>
+                                            @if(data_get($row, 'size_group_label'))<span class="block text-xs text-slate-500">{{ data_get($row, 'size_group_label') }}</span>@endif
+                                        </td>
+                                    @endif
                                     @foreach($rosterFields as $field)
                                         @php($value = data_get($row, 'values.'.data_get($field, 'key')))
                                         <td class="px-4 py-3 font-semibold text-slate-700">{{ filled($value) ? $value : '—' }}</td>

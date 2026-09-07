@@ -15,6 +15,7 @@ final class StorefrontRedirect
     public static function capture(Request $request): ?string
     {
         $candidates = [
+            $request->input('redirect'),
             $request->query('redirect'),
             $request->session()->get('url.intended'),
             $request->session()->get(self::SESSION_KEY),

@@ -39,6 +39,16 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+        $middleware->validateCsrfTokens(except: ['webhooks/stripe']);
+
+        // Bind every authenticated customer browser session to the user's
+        // security version. A password reset increments that version, so all
+        // previously issued customer sessions are rejected on their next web
+        // request regardless of whether sessions are stored in Redis, SQL or
+        // files.
+        $middleware->web(append: [
+            \App\Http\Middleware\EnforceCustomerSessionVersion::class,
+        ]);
         $middleware->redirectGuestsTo(fn (Request $request): string => $request->is('admin/*')
             ? route('admin.login')
             : route('login'));

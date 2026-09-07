@@ -12,6 +12,9 @@ use App\Models\OrderDownload;
 use App\Models\OrderShipment;
 use App\Services\Order\OrderPdfService;
 use App\Services\Order\OrderWorkflowService;
+use App\Services\Payments\PaymentOrchestrator;
+use App\Services\Payments\PaymentMethodService;
+use App\Payments\Exceptions\PaymentGatewayException;
 use App\Services\Storefront\CustomerAccountService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\View\View;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -28,6 +32,8 @@ class OrderCenterController extends Controller
         private readonly CustomerAccountService $accounts,
         private readonly OrderWorkflowService $workflow,
         private readonly OrderPdfService $pdf,
+        private readonly PaymentOrchestrator $payments,
+        private readonly PaymentMethodService $paymentMethods,
     ) {
     }
 
@@ -85,7 +91,7 @@ class OrderCenterController extends Controller
 
         return $this->view('storefront.account.orders.pay', $request, [
             'order' => $order->load('items'),
-            'savedPaymentMethods' => $request->user()->customerPaymentMethods()->orderByDesc('is_default')->get(),
+            'paymentOptions' => $this->paymentMethods->availableMethods(['total' => $order->outstandingAmount()], $request->user()),
             'retryMode' => false,
         ], 'Pay for Order');
     }
@@ -97,16 +103,33 @@ class OrderCenterController extends Controller
 
         return $this->view('storefront.account.orders.retry-payment', $request, [
             'order' => $order->load(['items','payments' => fn ($q) => $q->latest()]),
-            'savedPaymentMethods' => $request->user()->customerPaymentMethods()->orderByDesc('is_default')->get(),
+            'paymentOptions' => $this->paymentMethods->availableMethods(['total' => $order->outstandingAmount()], $request->user()),
             'retryMode' => true,
         ], 'Retry Failed Payment');
     }
 
     public function storePayment(PayOrderRequest $request, Order $order): RedirectResponse
     {
-        $payment = $this->workflow->createPaymentAttempt($order, $request->validated());
+        $data = $request->validated();
 
-        return redirect()->route('account.orders.show', $order)->with('status', 'Payment attempt '.$payment->id.' was recorded. Complete payment through the configured secure provider; the order will update only after provider confirmation.');
+        try {
+            $handoff = $this->payments->initiateOrderPayment(
+                $order,
+                (string) $data['payment_method'],
+                (string) $data['idempotency_key'],
+            );
+        } catch (ValidationException $exception) {
+            return back()->withErrors($exception->errors())->withInput();
+        } catch (PaymentGatewayException $exception) {
+            return back()->withErrors(['payment_method' => $exception->getMessage()])->withInput();
+        }
+
+        if ($handoff->requiresRedirect()) {
+            return redirect()->away((string) $handoff->url);
+        }
+
+        return redirect()->route('account.orders.show', $order)
+            ->with('status', 'Payment request recorded and waiting for manual review.');
     }
 
     public function reorder(Request $request, Order $order): View

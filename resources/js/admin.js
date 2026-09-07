@@ -38,9 +38,9 @@ window.adminProductForm = (initial = {}) => ({
     productProfile: initial.productProfile || 'standard',
     productionMethodsEnabled: Boolean(initial.productionMethodsEnabled),
     shippingMethodsEnabled: Boolean(initial.shippingMethodsEnabled),
-    jerseyRosterEnabled: Boolean(initial.jerseyRosterEnabled),
-    jerseyRosterPanelOpen: initial.jerseyRosterPanelOpen !== false,
-    jerseyRosterOptional: initial.jerseyRosterOptional !== false,
+    rosterEnabled: Boolean(initial.rosterEnabled),
+    rosterPanelOpen: initial.rosterPanelOpen !== false,
+    rosterOptional: initial.rosterOptional !== false,
     categoryId: String(initial.primaryCategoryId || initial.categoryId || ''),
     categoryName: initial.primaryCategoryName || '',
     isFeatured: Boolean(initial.isFeatured),
@@ -121,10 +121,8 @@ window.adminProductForm = (initial = {}) => ({
     productionRows: initial.productionRows?.length ? initial.productionRows : [{ range: '1+', cells: [] }],
     shippingMethods: initial.shippingMethods?.length ? initial.shippingMethods : [],
     rosterFields: initial.rosterFields?.length ? initial.rosterFields : [
-        { key: 'name', label: 'Player name', type: 'text', max_length: 60, required: false, enabled: true },
-        { key: 'number', label: 'Player number', type: 'number', max_length: 4, required: false, enabled: true },
-        { key: 'front', label: 'Front text / position', type: 'text', max_length: 80, required: false, enabled: false },
-        { key: 'back', label: 'Back text / position', type: 'text', max_length: 80, required: false, enabled: false },
+        { key: 'name', label: 'Name', type: 'text', max_length: 60, required: false, enabled: true },
+        { key: 'number', label: 'Number', type: 'number', max_length: 12, required: false, enabled: true },
     ],
     steps: [
         { id: 'header', label: 'Basics' },
@@ -384,7 +382,7 @@ window.adminProductForm = (initial = {}) => ({
                 && this.checklistDone('image');
         }
         if (stepId === 'pricing') return this.checklistDone('pricing');
-        if (stepId === 'options') return this.checklistDone('size') || this.checklistDone('features') || this.jerseyRosterEnabled;
+        if (stepId === 'options') return this.checklistDone('size') || this.checklistDone('features') || this.rosterEnabled;
         if (stepId === 'artwork') {
             return this.artworkUploadEnabled
                 && this.textFilled(this.artworkUploadTitle)
@@ -2358,8 +2356,7 @@ window.adminRichEditor = (initial = '', name = '') => ({
 
 
 
-const rosterExcludedProductProfiles = ['bag', 'headwear', 'drinkware', 'drinkwear', 'lanyard', 'lyniard', 'headband'];
-const rosterSupportsProductProfile = (profile = '') => !rosterExcludedProductProfiles.includes(String(profile || '').trim().toLowerCase());
+const productRosterSettings = (config = {}) => config.roster || config.jersey_roster || {};
 
 window.productBuilder = (config = {}) => ({
     config,
@@ -2368,11 +2365,12 @@ window.productBuilder = (config = {}) => ({
     multiSelections: {},
     inputs: {},
     quantities: {},
+    orderQuantity: Number(config.minimum_quantity || 1),
     activeSizeGroup: config.size_groups?.[0]?.id || null,
     artworkFiles: [],
     productionSpeed: null,
     shippingMethod: config.shipping_methods?.find(method => method.default)?.id || config.shipping_methods?.[0]?.id || null,
-    rosterEnabled: Boolean(config.jersey_roster?.enabled && !config.jersey_roster?.optional),
+    rosterEnabled: Boolean(productRosterSettings(config).enabled && !productRosterSettings(config).optional),
     rosterRows: [],
     sizeChartOpen: false,
     activeChartGroup: null,
@@ -2457,6 +2455,10 @@ window.productBuilder = (config = {}) => ({
     },
 
     totalQuantity() {
+        if (!(config.size_groups || []).length) {
+            return Math.max(0, Number(this.orderQuantity || 0));
+        }
+
         return Object.values(this.quantities).reduce((sum, value) => sum + Number(value || 0), 0);
     },
 
@@ -2715,21 +2717,40 @@ window.productBuilder = (config = {}) => ({
     },
 
     blankRosterValues() {
-        return Object.fromEntries((config.jersey_roster?.fields || [])
+        return Object.fromEntries((productRosterSettings(config).fields || [])
             .filter(field => field.enabled !== false)
             .map(field => [field.key, '']));
     },
 
     syncRosterRows() {
-        if (!config.jersey_roster?.enabled || !rosterSupportsProductProfile(config.product_profile)) {
+        const rosterSettings = productRosterSettings(config);
+        if (!rosterSettings.enabled) {
             this.rosterEnabled = false;
             this.rosterRows = [];
             return;
         }
 
-        if (!config.jersey_roster?.optional) this.rosterEnabled = true;
+        if (!rosterSettings.optional) this.rosterEnabled = true;
         if (!this.rosterEnabled) {
             this.rosterRows = [];
+            return;
+        }
+
+        const sizeGroups = config.size_groups || [];
+        if (!sizeGroups.length) {
+            const count = Math.max(0, Math.min(250, Number(this.orderQuantity || 0)));
+            const existingRows = this.rosterRows || [];
+            this.rosterRows = Array.from({ length: count }, (_, index) => {
+                const old = existingRows[index];
+                return {
+                    size_key: 'item',
+                    size_group: '',
+                    size_group_label: '',
+                    size_code: '',
+                    size_label: '',
+                    values: old?.values ? { ...this.blankRosterValues(), ...old.values } : this.blankRosterValues(),
+                };
+            });
             return;
         }
 
@@ -2740,7 +2761,7 @@ window.productBuilder = (config = {}) => ({
         });
 
         const rows = [];
-        (config.size_groups || []).forEach(group => (group.sizes || []).forEach(size => {
+        sizeGroups.forEach(group => (group.sizes || []).forEach(size => {
             const key = `${group.id}:${size.code}`;
             const count = Math.max(0, Number(this.quantities[key] || 0));
             const reusable = existingBySize.get(key) || [];
@@ -2859,12 +2880,12 @@ window.productBuilder = (config = {}) => ({
         }
 
         if (this.rosterEnabled) {
-            if (this.rosterRows.length > 250) {
+            if (this.totalQuantity() > 250) {
                 window.alert('Per-item details are limited to 250 pieces per configured cart line.');
                 return false;
             }
 
-            const requiredFields = (config.jersey_roster?.fields || []).filter(field => field.enabled !== false && field.required);
+            const requiredFields = (productRosterSettings(config).fields || []).filter(field => field.enabled !== false && field.required);
             for (let rowIndex = 0; rowIndex < this.rosterRows.length; rowIndex += 1) {
                 for (const field of requiredFields) {
                     if (!String(this.rosterRows[rowIndex]?.values?.[field.key] || '').trim()) {
@@ -3118,9 +3139,9 @@ const initializeResizableAdminSidebar = () => {
 
     const storageKey = 'nextplay.admin.sidebar.width';
     const root = document.documentElement;
-    const minWidth = Number(handle.getAttribute('aria-valuemin')) || 220;
+    const minWidth = Number(handle.getAttribute('aria-valuemin')) || 200;
     const maxWidth = Number(handle.getAttribute('aria-valuemax')) || 380;
-    const defaultWidth = 256;
+    const defaultWidth = 228;
 
     const clampWidth = (value) => Math.min(maxWidth, Math.max(minWidth, Math.round(value)));
     const applyWidth = (value, persist = false) => {
@@ -3169,9 +3190,9 @@ const initializeResizableAdminSidebar = () => {
         } catch (_) {}
     });
 
-    handle.addEventListener('pointermove', dragSidebar);
-    handle.addEventListener('pointerup', finishDragging);
-    handle.addEventListener('pointercancel', finishDragging);
+    window.addEventListener('pointermove', dragSidebar, { passive: false });
+    window.addEventListener('pointerup', finishDragging);
+    window.addEventListener('pointercancel', finishDragging);
     handle.addEventListener('dblclick', () => applyWidth(defaultWidth, true));
     handle.addEventListener('keydown', (event) => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;

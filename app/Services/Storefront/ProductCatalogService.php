@@ -704,7 +704,7 @@ class ProductCatalogService
             ['value' => 'customizable', 'label' => 'Customizable', 'count' => $products->where('is_customizable', true)->count()],
             ['value' => 'ready-made', 'label' => 'Ready-made / standard', 'count' => $products->where('is_customizable', false)->count()],
             ['value' => 'artwork-upload', 'label' => 'Artwork upload available', 'count' => $products->where('artwork_upload_enabled', true)->count()],
-            ['value' => 'player-details', 'label' => 'Player names & numbers', 'count' => $products->where('jersey_roster_enabled', true)->count()],
+            ['value' => 'player-details', 'label' => 'Roster fields available', 'count' => $products->where('jersey_roster_enabled', true)->count()],
         ];
         $customization = collect($customization)->filter(fn (array $option): bool => $option['count'] > 0)->values()->all();
 
@@ -2414,6 +2414,7 @@ class ProductCatalogService
         $rating = $this->genuineProductRating($product);
         $reviewsCount = $this->genuineProductReviewsCount($product);
         $reviewItems = $this->genuineProductReviewItems($product);
+        $rosterSettings = ProductRoster::forProduct($product);
 
         return [
             'id' => $product->id,
@@ -2471,12 +2472,9 @@ class ProductCatalogService
             'brand' => $product->brand ?: config('storefront.name'),
             'product_type' => $product->product_type,
             'product_profile' => $productProfile,
-            'jersey_roster' => [
-                'enabled' => (bool) $product->jersey_roster_enabled && ProductRoster::supports($productProfile),
-                'optional' => (bool) $product->jersey_roster_optional,
-                'title' => $product->jersey_roster_title ?: 'Add player names and numbers',
-                'fields' => collect($product->jersey_roster_fields ?? [])->filter(fn ($field) => (bool) ($field['enabled'] ?? true))->values()->all(),
-            ],
+            'roster' => $rosterSettings,
+            // Deprecated alias for existing carts/tests/cached clients.
+            'jersey_roster' => $rosterSettings,
             'sample' => [
                 'available' => (bool) ($product->sample_available ?? false),
                 'charge' => max(0, (float) ($product->sample_charge ?? 0)),
@@ -3006,7 +3004,8 @@ class ProductCatalogService
         $product['shipping_methods'] = $product['shipping_methods'] ?? [];
         $product['production_methods_enabled'] = $product['production_methods_enabled'] ?? false;
         $product['shipping_methods_enabled'] = $product['shipping_methods_enabled'] ?? false;
-        $product['jersey_roster'] = $product['jersey_roster'] ?? ['enabled' => false, 'optional' => true, 'title' => 'Add player names and numbers', 'fields' => []];
+        $product['roster'] = $product['roster'] ?? $product['jersey_roster'] ?? ['enabled' => false, 'optional' => true, 'title' => ProductRoster::DEFAULT_TITLE, 'fields' => []];
+        $product['jersey_roster'] = $product['jersey_roster'] ?? $product['roster'];
         $product['production_speeds'] = ($product['production_methods_enabled'] ?? false)
             ? ($product['production_speeds'] ?? [
                 ['id' => 'standard', 'label' => 'Standard Production', 'description' => 'Standard schedule', 'price_delta' => 0, 'minimum_quantity' => 1, 'maximum_quantity' => null, 'minimum_days' => 14, 'maximum_days' => 18],

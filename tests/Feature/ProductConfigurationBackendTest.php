@@ -9,7 +9,7 @@ use Tests\TestCase;
 
 class ProductConfigurationBackendTest extends TestCase
 {
-    public function test_fixed_options_shipping_and_jersey_roster_are_enforced_server_side(): void
+    public function test_fixed_options_shipping_and_roster_are_enforced_server_side(): void
     {
         $product = $this->jerseyFixture();
         $catalog = new class($product) extends ProductCatalogService
@@ -58,6 +58,72 @@ class ProductConfigurationBackendTest extends TestCase
         $this->assertSame('Name', $item['customization']['roster_fields'][0]['label']);
         $this->assertEqualsWithDelta(5.50, $item['customization_unit_price'], 0.001);
         $this->assertEqualsWithDelta(23.00, $item['line_total'], 0.001);
+    }
+
+
+    public function test_roster_fields_work_for_any_product_profile_without_size_groups(): void
+    {
+        $product = $this->jerseyFixture();
+        $product['slug'] = 'test-bag';
+        $product['product_profile'] = 'bag';
+        $product['is_customizable'] = false;
+        $product['size_groups'] = [];
+        $product['minimum_quantity'] = 1;
+        $product['maximum_quantity'] = 20;
+        $product['option_groups'] = collect($product['option_groups'])
+            ->map(function (array $group): array {
+                $group['required'] = false;
+
+                return $group;
+            })->all();
+        $product['roster'] = $product['jersey_roster'];
+        unset($product['jersey_roster']);
+
+        $catalog = new class($product) extends ProductCatalogService
+        {
+            public function __construct(private readonly array $fixture)
+            {
+            }
+
+            public function findBySlug(string $slug): ?array
+            {
+                return $slug === $this->fixture['slug'] ? $this->fixture : null;
+            }
+        };
+
+        $summary = (new CartService($catalog, new CouponService))->store([
+            'product_slug' => 'test-bag',
+            'quantity' => 2,
+            'configuration_json' => json_encode([
+                'roster_enabled' => true,
+                'roster' => [
+                    ['values' => ['name' => 'Alpha']],
+                    ['values' => ['name' => 'Beta']],
+                ],
+            ], JSON_THROW_ON_ERROR),
+        ]);
+
+        $item = $summary['items'][0];
+        $rows = $item['customization']['configuration']['roster'];
+
+        $this->assertCount(2, $rows);
+        $this->assertSame('Alpha', $rows[0]['values']['name']);
+        $this->assertSame('Beta', $rows[1]['values']['name']);
+        $this->assertSame('', $rows[0]['size_label']);
+        $this->assertSame('Name', $item['customization']['roster_fields'][0]['label']);
+    }
+
+
+    public function test_admin_roster_editor_is_generic_and_preserves_product_profile(): void
+    {
+        $form = file_get_contents(resource_path('views/admin/products/_form.blade.php'));
+        $component = file_get_contents(resource_path('views/components/admin/product-roster-fields.blade.php'));
+
+        $this->assertStringContainsString('<x-admin.product-roster-fields :product="$product" />', $form);
+        $this->assertStringContainsString('name="product_profile" :value="productProfile"', $form);
+        $this->assertStringNotContainsString("rosterEnabled ? 'jersey' : 'standard'", $form);
+        $this->assertStringContainsString('Show roster step to customers', $component);
+        $this->assertStringContainsString('Fields shown for each item', $component);
     }
 
 

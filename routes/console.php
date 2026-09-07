@@ -3,6 +3,7 @@
 use App\Services\Catalog\CategoryProductAssignmentSyncService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -34,3 +35,6 @@ Artisan::command('catalog:sync-category-products {--keep-existing : Keep existin
     $this->line('Invalid category references skipped: '.$stats['invalid_category_references']);
     $this->line('Products without legacy category: '.$stats['products_without_category']);
 })->purpose('Clean and rebuild category_product assignments from trusted product category fields and safe category rules');
+
+// Webhooks are primary; reconciliation is the safety net for delayed or missed provider events.
+Schedule::command('payments:reconcile')->everyFifteenMinutes()->withoutOverlapping();

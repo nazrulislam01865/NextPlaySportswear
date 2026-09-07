@@ -31,7 +31,12 @@
             </label>
             <label class="admin-label">
                 Provider
-                <input type="text" name="provider" value="{{ old('provider', $method->provider ?? 'manual') }}" class="admin-input" maxlength="80" placeholder="stripe, paypal, manual">
+                <select name="provider" class="admin-input" required>
+                    @foreach($providers as $provider)
+                        <option value="{{ $provider }}" @selected(old('provider', $method->provider ?? 'manual') === $provider)>{{ str($provider)->headline() }}</option>
+                    @endforeach
+                </select>
+                <span class="mt-2 block text-xs font-medium text-slate-500">Only centrally registered gateways can be selected. API secrets are never stored here.</span>
             </label>
             <label class="admin-label">
                 Payment type

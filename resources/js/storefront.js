@@ -630,8 +630,7 @@ window.productImageViewer = () => ({
     },
 });
 
-const rosterExcludedProductProfiles = ['bag', 'headwear', 'drinkware', 'drinkwear', 'lanyard', 'lyniard', 'headband'];
-const rosterSupportsProductProfile = (profile = '') => !rosterExcludedProductProfiles.includes(String(profile || '').trim().toLowerCase());
+const productRosterSettings = (config = {}) => config.roster || config.jersey_roster || {};
 
 window.productBuilder = (config = {}) => ({
     ...createProductSocialActions(config.social || {}),
@@ -650,7 +649,7 @@ window.productBuilder = (config = {}) => ({
     artworkSequence: 0,
     productionSpeed: null,
     shippingMethod: config.shipping_methods?.find(method => method.default)?.id || config.shipping_methods?.[0]?.id || null,
-    rosterEnabled: Boolean(config.jersey_roster?.enabled && !config.jersey_roster?.optional),
+    rosterEnabled: Boolean(productRosterSettings(config).enabled && !productRosterSettings(config).optional),
     rosterRows: [],
     sampleRequested: false,
     sizeChartOpen: false,
@@ -947,6 +946,7 @@ window.productBuilder = (config = {}) => ({
         const next = Math.max(minimum, Math.min(maximum, Number(amount || minimum)));
         this.orderQuantity = next;
         this.syncProductionSpeed();
+        this.syncRosterRows();
         this.sync();
 
         if (next !== previous) {
@@ -1691,21 +1691,40 @@ window.productBuilder = (config = {}) => ({
     },
 
     blankRosterValues() {
-        return Object.fromEntries((config.jersey_roster?.fields || [])
+        return Object.fromEntries((productRosterSettings(config).fields || [])
             .filter(field => field.enabled !== false)
             .map(field => [field.key, '']));
     },
 
     syncRosterRows() {
-        if (!config.jersey_roster?.enabled || !rosterSupportsProductProfile(config.product_profile)) {
+        const rosterSettings = productRosterSettings(config);
+        if (!rosterSettings.enabled) {
             this.rosterEnabled = false;
             this.rosterRows = [];
             return;
         }
 
-        if (!config.jersey_roster?.optional) this.rosterEnabled = true;
+        if (!rosterSettings.optional) this.rosterEnabled = true;
         if (!this.rosterEnabled) {
             this.rosterRows = [];
+            return;
+        }
+
+        const sizeGroups = config.size_groups || [];
+        if (!sizeGroups.length) {
+            const count = Math.max(0, Math.min(250, Number(this.orderQuantity || 0)));
+            const existingRows = this.rosterRows || [];
+            this.rosterRows = Array.from({ length: count }, (_, index) => {
+                const old = existingRows[index];
+                return {
+                    size_key: 'item',
+                    size_group: '',
+                    size_group_label: '',
+                    size_code: '',
+                    size_label: '',
+                    values: old?.values ? { ...this.blankRosterValues(), ...old.values } : this.blankRosterValues(),
+                };
+            });
             return;
         }
 
@@ -1716,7 +1735,7 @@ window.productBuilder = (config = {}) => ({
         });
 
         const rows = [];
-        (config.size_groups || []).forEach(group => (group.sizes || []).forEach(size => {
+        sizeGroups.forEach(group => (group.sizes || []).forEach(size => {
             const key = `${group.id}:${size.code}`;
             const count = Math.max(0, Number(this.quantities[key] || 0));
             const reusable = existingBySize.get(key) || [];
@@ -1845,12 +1864,12 @@ window.productBuilder = (config = {}) => ({
         }
 
         if (this.rosterEnabled) {
-            if (this.rosterRows.length > 250) {
+            if (this.totalQuantity() > 250) {
                 window.alert('Per-item details are limited to 250 pieces per configured cart line.');
                 return false;
             }
 
-            const requiredFields = (config.jersey_roster?.fields || []).filter(field => field.enabled !== false && field.required);
+            const requiredFields = (productRosterSettings(config).fields || []).filter(field => field.enabled !== false && field.required);
             for (let rowIndex = 0; rowIndex < this.rosterRows.length; rowIndex += 1) {
                 for (const field of requiredFields) {
                     if (!String(this.rosterRows[rowIndex]?.values?.[field.key] || '').trim()) {

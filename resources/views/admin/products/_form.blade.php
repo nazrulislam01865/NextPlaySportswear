@@ -463,10 +463,7 @@
         ->map(fn ($code) => ['code' => $code, 'is_default' => $code === $defaultShippingCode])
         ->values()
         ->all();
-    $defaultRosterFields = [
-        ['key' => 'name', 'label' => 'Player name', 'type' => 'text', 'max_length' => 60, 'required' => false, 'enabled' => true],
-        ['key' => 'number', 'label' => 'Player number', 'type' => 'number', 'max_length' => 4, 'required' => false, 'enabled' => true],
-    ];
+    $defaultRosterFields = \App\Support\ProductRoster::defaultFields();
     $rosterFieldValues = old('jersey_roster_fields', $product->jersey_roster_fields ?: $defaultRosterFields);
     $selectedFaqIds = collect(session()->hasOldInput()
         ? old('faq_ids', [])
@@ -555,9 +552,9 @@
         'productProfile' => old('product_profile', $product->product_profile ?: 'standard'),
         'productionMethodsEnabled' => (bool) old('production_methods_enabled', $product->production_methods_enabled ?? false),
         'shippingMethodsEnabled' => (bool) old('shipping_methods_enabled', $product->shipping_methods_enabled ?? false),
-        'jerseyRosterEnabled' => (bool) old('jersey_roster_enabled', $product->jersey_roster_enabled ?? false),
-        'jerseyRosterPanelOpen' => true,
-        'jerseyRosterOptional' => (bool) old('jersey_roster_optional', $product->jersey_roster_optional ?? true),
+        'rosterEnabled' => (bool) old('jersey_roster_enabled', $product->jersey_roster_enabled ?? false),
+        'rosterPanelOpen' => true,
+        'rosterOptional' => (bool) old('jersey_roster_optional', $product->jersey_roster_optional ?? true),
         'artworkUploadEnabled' => (bool) old('artwork_upload_enabled', $product->artwork_upload_enabled ?? false),
         'artworkUploadRequired' => (bool) old('artwork_upload_required', $product->artwork_upload_required ?? false),
         'artworkUploadTitle' => old('artwork_upload_title', $product->artwork_upload_title ?: 'Upload Custom Artwork'),
@@ -1093,14 +1090,14 @@ window.productFaqSelector = function (initial = {}) {
 @endonce
 
 
-<form method="POST" enctype="multipart/form-data" action="{{ $isEdit ? route('admin.products.update', $product) : route('admin.products.store') }}" class="np-product-form" data-validation-errors='@json($validationErrorMessages)' data-validation-field-aliases='@json($validationFieldAliases)' x-data="adminProductFormFabric(@js($initial))" x-init="init()" @submit="syncProductImageInput()" @dragover.window="preventFileDropNavigation($event)" @drop.window="preventFileDropNavigation($event)" @input.debounce.300ms="handleProgressChange(false)" @change.debounce.300ms="handleProgressChange(false)" @admin-rich-editor-updated.window="if ($event.detail.name === 'description_html') { descriptionHtml = $event.detail.value; } handleProgressChange(false);">
+<form method="POST" enctype="multipart/form-data" action="{{ $isEdit ? route('admin.products.update', $product) : route('admin.products.store') }}" class="np-product-form{{ $isEdit ? '' : ' np-product-form--compact' }}" data-validation-errors='@json($validationErrorMessages)' data-validation-field-aliases='@json($validationFieldAliases)' x-data="adminProductFormFabric(@js($initial))" x-init="init()" @submit="syncProductImageInput()" @dragover.window="preventFileDropNavigation($event)" @drop.window="preventFileDropNavigation($event)" @input.debounce.300ms="handleProgressChange(false)" @change.debounce.300ms="handleProgressChange(false)" @admin-rich-editor-updated.window="if ($event.detail.name === 'description_html') { descriptionHtml = $event.detail.value; } handleProgressChange(false);">
     @csrf
     @if($isEdit) @method('PUT') @endif
 
 
     <input type="hidden" name="slug" x-model="slug">
     <input type="hidden" name="currency" value="{{ old('currency', $product->currency ?: 'USD') }}">
-    <input type="hidden" name="product_profile" :value="jerseyRosterEnabled ? 'jersey' : 'standard'">
+    <input type="hidden" name="product_profile" :value="productProfile">
     <input type="hidden" name="is_active" value="1">
     <input type="hidden" name="is_customizable" value="1">
     <input type="hidden" name="track_inventory" value="{{ old('track_inventory', (int) ($product->track_inventory ?? false)) }}">
@@ -1206,34 +1203,39 @@ Lead Time:"></div>
                         <div class="admin-label np-category-field np-category-field--plain" data-field-name="primary_category_id" @click.outside="closeCategoryDropdown()">
                             <span class="np-emphasis-label">Category <span class="text-brand-red">*</span></span>
                             <input type="hidden" name="primary_category_id" x-model="categoryId" required>
-                            <button type="button" class="np-searchable-trigger" :class="categoryDropdownOpen ? 'is-open' : ''" @click="toggleCategoryDropdown()" @keydown.enter.prevent="toggleCategoryDropdown()" @keydown.space.prevent="toggleCategoryDropdown()">
-                                <span x-text="selectedCategoryName() || 'Select a last-level category'"></span>
-                                <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            </button>
-                            <div x-show="categoryDropdownOpen" x-cloak x-transition class="np-searchable-panel">
-                                <div class="np-searchable-panel__head">
-                                    <strong>Select last-level category</strong>
-                                    <button type="button" @click="closeCategoryDropdown()" aria-label="Close category dropdown">×</button>
-                                </div>
-                                <label class="np-searchable-search" aria-label="Search category">
-                                    <span>⌕</span>
-                                    <input x-ref="categorySearchInput" type="search" x-model="categorySearch" placeholder="Search last-level category..." @keydown.escape.prevent="closeCategoryDropdown()">
-                                </label>
-                                <div class="np-searchable-list" role="listbox">
-                                    <button type="button" class="np-searchable-option" :class="!categoryId ? 'is-selected' : ''" @click="selectCategory('', '')">
-                                        <span class="np-searchable-option__title">Select a last-level category</span>
-                                        <small>Clear current selection</small>
-                                    </button>
-                                    <template x-for="category in filteredCategories()" :key="category.id">
-                                        <button type="button" class="np-searchable-option" :class="String(categoryId) === String(category.id) ? 'is-selected' : ''" @click="selectCategory(category.id, category.label)">
-                                            <span class="np-searchable-option__title" x-text="category.label"></span>
-                                            <small x-text="category.slug ? `/${category.slug}` : 'Product category'"></small>
-                                            <em x-show="String(categoryId) === String(category.id)">✓</em>
+
+                            {{-- Keep the dropdown anchored to the trigger itself. The help text below must not affect its top position. --}}
+                            <div class="np-searchable-control">
+                                <button type="button" class="np-searchable-trigger" :class="categoryDropdownOpen ? 'is-open' : ''" @click="toggleCategoryDropdown()" @keydown.enter.prevent="toggleCategoryDropdown()" @keydown.space.prevent="toggleCategoryDropdown()">
+                                    <span x-text="selectedCategoryName() || 'Select a last-level category'"></span>
+                                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+                                <div x-show="categoryDropdownOpen" x-cloak x-transition class="np-searchable-panel">
+                                    <div class="np-searchable-panel__head">
+                                        <strong>Select last-level category</strong>
+                                        <button type="button" @click="closeCategoryDropdown()" aria-label="Close category dropdown">×</button>
+                                    </div>
+                                    <label class="np-searchable-search" aria-label="Search category">
+                                        <span>⌕</span>
+                                        <input x-ref="categorySearchInput" type="search" x-model="categorySearch" placeholder="Search last-level category..." @keydown.escape.prevent="closeCategoryDropdown()">
+                                    </label>
+                                    <div class="np-searchable-list" role="listbox">
+                                        <button type="button" class="np-searchable-option" :class="!categoryId ? 'is-selected' : ''" @click="selectCategory('', '')">
+                                            <span class="np-searchable-option__title">Select a last-level category</span>
+                                            <small>Clear current selection</small>
                                         </button>
-                                    </template>
+                                        <template x-for="category in filteredCategories()" :key="category.id">
+                                            <button type="button" class="np-searchable-option" :class="String(categoryId) === String(category.id) ? 'is-selected' : ''" @click="selectCategory(category.id, category.label)">
+                                                <span class="np-searchable-option__title" x-text="category.label"></span>
+                                                <small x-text="category.slug ? `/${category.slug}` : 'Product category'"></small>
+                                                <em x-show="String(categoryId) === String(category.id)">✓</em>
+                                            </button>
+                                        </template>
+                                    </div>
+                                    <p class="np-searchable-empty" x-show="filteredCategories().length === 0">No matching last-level category found.</p>
                                 </div>
-                                <p class="np-searchable-empty" x-show="filteredCategories().length === 0">No matching last-level category found.</p>
                             </div>
+
                             <small class="np-field-help">Only a category without child categories can hold products. Parent categories are used for grouping and storefront filtering.</small>
                         </div>
 
@@ -1460,9 +1462,9 @@ Lead Time:"></div>
                     </table>
                 </div>
 
-                <div class="mt-4 flex flex-wrap gap-3">
-                    <button type="button" class="np-secondary-button" @click="addPriceRow()">＋ Add tier</button>
-                    <button type="button" class="np-secondary-button" @click="addPriceHeader()">＋ Add price column</button>
+                <div class="np-price-tier-actions mt-4 flex flex-wrap items-end gap-3">
+                    <button type="button" class="np-secondary-button np-price-tier-action" @click="addPriceRow()">＋ Add tier</button>
+                    <button type="button" class="np-secondary-button np-price-tier-action" @click="addPriceHeader()">＋ Add price column</button>
                     <label class="admin-label max-w-[190px]">Highlight column
                         <input class="admin-input" type="number" min="1" name="price_table_highlight_column" x-model.number="priceHighlightColumn">
                     </label>
@@ -1474,14 +1476,14 @@ Lead Time:"></div>
 
             <section id="options" class="np-card">
                 <header class="np-card__header"><div><h2>3. Product Options</h2></div></header>
-                <div class="np-option-tiles">
-                    <article><span class="np-option-tiles__icon purple">✦</span><div><strong>Customizable Features</strong><small>Add features customers can personalize.</small></div><button type="button" class="np-secondary-button" @click="openNewFeatureDialog()">＋ Add feature</button></article>
-                    <article><span class="np-option-tiles__icon amber">✎</span><div><strong>Sizes &amp; Quantities</strong><small>Define available sizes and quantity rules.</small></div><button type="button" class="np-secondary-button" @click="openSizeGroupPicker()">＋ Add size option</button></article>
-                    <article><span class="np-option-tiles__icon teal">♙</span><div><strong>Jersey Roster</strong><small>Collect player names and jersey numbers.</small></div><button type="button" class="np-secondary-button" @click="jerseyRosterPanelOpen = !jerseyRosterPanelOpen" x-text="jerseyRosterPanelOpen ? 'Hide jersey fields' : 'Show jersey fields'"></button></article>
-                    <x-admin.product-sample-settings :product="$product" />
-                </div>
+                <div class="grid gap-3">
+                    {{-- Keep every option editor directly under the option that owns it. --}}
+                    <div class="grid gap-3">
+                        <div class="np-option-tiles">
+                            <article><span class="np-option-tiles__icon purple">✦</span><div><strong>Customizable Features</strong><small>Add features customers can personalize.</small></div><button type="button" class="np-secondary-button" @click="openNewFeatureDialog()">＋ Add feature</button></article>
+                        </div>
 
-                <details class="np-config-panel" open x-show="optionGroups.length > 0" x-cloak>
+                        <details class="np-config-panel" open x-show="optionGroups.length > 0" x-cloak>
                     <summary>Customizable feature setup</summary>
                     <div class="mt-4 space-y-4">
                         <template x-for="(group,gIndex) in optionGroups" :key="group.client_key || gIndex">
@@ -1494,9 +1496,15 @@ Lead Time:"></div>
                         </template>
                         <div x-show="optionGroups.length === 0" class="rounded-2xl border-2 border-dashed border-slate-300 p-8 text-center"><p class="font-black text-brand-ink">No customizable feature has been added.</p><button type="button" class="np-primary-button mt-4" @click="openNewFeatureDialog()">＋ Add New Feature</button></div>
                     </div>
-                </details>
+                        </details>
+                    </div>
 
-                <details class="np-config-panel" open x-show="sizeGroups.length > 0" x-cloak>
+                    <div class="grid gap-3">
+                        <div class="np-option-tiles">
+                            <article><span class="np-option-tiles__icon amber">✎</span><div><strong>Sizes &amp; Quantities</strong><small>Define available sizes and quantity rules.</small></div><button type="button" class="np-secondary-button" @click="openSizeGroupPicker()">＋ Add size option</button></article>
+                        </div>
+
+                        <details class="np-config-panel" open x-show="sizeGroups.length > 0" x-cloak>
                     <summary>Sizes &amp; quantities setup</summary>
                     <div class="mt-4 space-y-4">
                         <template x-for="(group,index) in sizeGroups" :key="group.client_key || index">
@@ -1504,80 +1512,15 @@ Lead Time:"></div>
                         </template>
                         <div x-show="sizeGroups.length === 0" class="rounded-2xl border-2 border-dashed border-slate-300 p-8 text-center"><p class="font-black text-brand-ink">No size option has been added.</p><button type="button" class="np-secondary-button mt-4" @click="openSizeGroupPicker()">Add Size Option</button></div>
                     </div>
-                </details>
-
-                <details
-                    class="np-config-panel"
-                    :open="jerseyRosterPanelOpen"
-                    @toggle="jerseyRosterPanelOpen = $el.open"
-                >
-                    <summary>Jersey roster fields</summary>
-                    <div class="mt-4 flex flex-wrap items-start justify-between gap-4">
-                        <div>
-                            <h3 class="font-black">Player names and numbers</h3>
-                            <p class="mt-1 max-w-3xl text-xs leading-5 text-slate-500">The editor stays open by default. Enable the storefront step only when customers should enter jersey details.</p>
-                        </div>
-                        <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold">
-                            <input type="hidden" name="jersey_roster_enabled" :value="jerseyRosterEnabled ? 1 : 0">
-                            <input type="checkbox" x-model="jerseyRosterEnabled">
-                            Show jersey roster step to customers
-                        </label>
+                        </details>
                     </div>
 
-                    <div x-show="jerseyRosterEnabled" x-cloak class="mt-4 rounded-2xl border border-slate-200 p-4 sm:p-5">
-                        <div class="grid gap-4 md:grid-cols-2">
-                            <label class="admin-label">Customer heading
-                                <input class="admin-input" name="jersey_roster_title" value="{{ old('jersey_roster_title', $product->jersey_roster_title ?: 'Add player names and numbers') }}">
-                            </label>
-                            <label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4">
-                                <input type="hidden" name="jersey_roster_optional" :value="jerseyRosterOptional ? 1 : 0">
-                                <input type="checkbox" x-model="jerseyRosterOptional">
-                                <span>
-                                    <strong class="block text-sm">Customer may skip roster details</strong>
-                                    <small class="text-xs text-slate-500">When disabled, every enabled roster field marked required must be completed.</small>
-                                </span>
-                            </label>
-                        </div>
+                    <x-admin.product-roster-fields :product="$product" />
 
-                        <div class="mt-5 flex items-center justify-between gap-3">
-                            <div>
-                                <h4 class="font-black">Fields shown for each jersey</h4>
-                                <p class="text-xs text-slate-500">The size is generated automatically from selected size quantities.</p>
-                            </div>
-                            <button type="button" class="np-secondary-button" @click="addRosterField()">＋ Add Field</button>
-                        </div>
-
-                        <div class="mt-4 space-y-3">
-                            <template x-for="(field,index) in rosterFields" :key="index">
-                                <div class="grid gap-3 rounded-2xl border border-slate-200 p-4 sm:grid-cols-2 lg:grid-cols-[1.5fr_150px_130px_auto] lg:items-end">
-                                    <input type="hidden" :name="`jersey_roster_fields[${index}][key]`" x-model="field.key">
-                                    <input type="hidden" :name="`jersey_roster_fields[${index}][enabled]`" value="1">
-                                    <label class="admin-label">Customer label
-                                        <input class="admin-input" :name="`jersey_roster_fields[${index}][label]`" x-model="field.label" @blur="if(!field.key) field.key = field.label.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')" placeholder="Player name">
-                                    </label>
-                                    <label class="admin-label">Input type
-                                        <select class="admin-input" :name="`jersey_roster_fields[${index}][type]`" x-model="field.type">
-                                            <option value="text">Text</option>
-                                            <option value="number">Number</option>
-                                        </select>
-                                    </label>
-                                    <label class="admin-label">Max length
-                                        <input class="admin-input" type="number" min="1" max="120" :name="`jersey_roster_fields[${index}][max_length]`" x-model="field.max_length">
-                                    </label>
-                                    <div class="flex flex-wrap gap-3 pb-3">
-                                        <input type="hidden" :name="`jersey_roster_fields[${index}][required]`" :value="field.required ? 1 : 0">
-                                        <label class="text-xs font-bold"><input type="checkbox" x-model="field.required"> Required</label>
-                                        <button type="button" class="np-danger-link" @click="rosterFields.splice(index,1)">Remove</button>
-                                    </div>
-                                </div>
-                            </template>
-                        </div>
+                    <div class="np-option-tiles">
+                        <x-admin.product-sample-settings :product="$product" />
                     </div>
-
-                    <div x-show="!jerseyRosterEnabled" x-cloak class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-500">
-                        Jersey roster is currently hidden from customers. Enable “Show jersey roster step to customers” to customize its heading and fields.
-                    </div>
-                </details>
+                </div>
 
             </section>
 

@@ -13,6 +13,7 @@ use App\Models\OrderReturnRequest;
 use App\Models\OrderShipment;
 use App\Models\User;
 use App\Services\Cart\CartService;
+use App\Services\Email\TransactionalEmailManager;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -22,8 +23,10 @@ use Illuminate\Validation\ValidationException;
 
 class OrderWorkflowService
 {
-    public function __construct(private readonly CartService $cart)
-    {
+    public function __construct(
+        private readonly CartService $cart,
+        private readonly TransactionalEmailManager $emails,
+    ) {
     }
 
     public function createPaymentAttempt(Order $order, array $payload): OrderPayment
@@ -110,7 +113,7 @@ class OrderWorkflowService
 
     public function createCancellationRequest(Order $order, User $user, array $payload): OrderChangeRequest
     {
-        return DB::transaction(function () use ($order, $user, $payload): OrderChangeRequest {
+        $request = DB::transaction(function () use ($order, $user, $payload): OrderChangeRequest {
             $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
             if (! $locked->canRequestCancellation()) {
                 throw ValidationException::withMessages(['scope' => 'A cancellation request is not available for this order.']);
@@ -138,11 +141,15 @@ class OrderWorkflowService
 
             return $request;
         });
+
+        $this->emails->changeRequestSubmitted($request);
+
+        return $request;
     }
 
     public function createChangeRequest(Order $order, User $user, array $payload): OrderChangeRequest
     {
-        return DB::transaction(function () use ($order, $user, $payload): OrderChangeRequest {
+        $request = DB::transaction(function () use ($order, $user, $payload): OrderChangeRequest {
             $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
             if (! $locked->canRequestChange()) {
                 throw ValidationException::withMessages(['requested_changes' => 'Changes are no longer available for this order.']);
@@ -164,6 +171,10 @@ class OrderWorkflowService
 
             return $request;
         });
+
+        $this->emails->changeRequestSubmitted($request);
+
+        return $request;
     }
 
     public function createReturnRequest(Order $order, User $user, array $payload, string $type): OrderReturnRequest
@@ -171,7 +182,7 @@ class OrderWorkflowService
         $storedPaths = [];
 
         try {
-            return DB::transaction(function () use ($order, $user, $payload, $type, &$storedPaths): OrderReturnRequest {
+            $returnRequest = DB::transaction(function () use ($order, $user, $payload, $type, &$storedPaths): OrderReturnRequest {
                 $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
                 $eligible = $type === 'exchange' ? $locked->canRequestExchange() : $locked->canRequestReturn();
                 if (! $eligible) {
@@ -240,11 +251,19 @@ class OrderWorkflowService
 
             throw $exception;
         }
+
+        $this->emails->returnSubmitted($returnRequest);
+
+        return $returnRequest;
     }
 
     public function approveAfterPayment(Order $order, User $admin): Order
     {
-        return DB::transaction(function () use ($order, $admin): Order {
+        $oldStatus = (string) $order->status;
+        $oldPayment = (string) $order->payment_status;
+        $oldFulfillment = (string) $order->fulfillment_status;
+
+        $updated = DB::transaction(function () use ($order, $admin): Order {
             $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
 
             if (! $locked->canApproveAfterPayment()) {
@@ -269,11 +288,19 @@ class OrderWorkflowService
 
             return $locked->fresh(['items', 'payments', 'histories']);
         });
+
+        $this->emails->orderUpdated($updated, $oldStatus, $oldPayment, $oldFulfillment);
+
+        return $updated;
     }
 
     public function updateOrder(Order $order, User $admin, array $payload): Order
     {
-        return DB::transaction(function () use ($order, $admin, $payload): Order {
+        $oldStatus = (string) $order->status;
+        $oldPayment = (string) $order->payment_status;
+        $oldFulfillment = (string) $order->fulfillment_status;
+
+        $updated = DB::transaction(function () use ($order, $admin, $payload): Order {
             $locked = Order::query()->lockForUpdate()->with('items.shipmentItems')->findOrFail($order->id);
             $oldStatus = $locked->status;
             $oldPayment = $locked->payment_status;
@@ -382,11 +409,15 @@ class OrderWorkflowService
 
             return $locked->fresh(['items', 'payments']);
         });
+
+        $this->emails->orderUpdated($updated, $oldStatus, $oldPayment, $oldFulfillment);
+
+        return $updated;
     }
 
     public function createShipment(Order $order, User $admin, array $payload): OrderShipment
     {
-        return DB::transaction(function () use ($order, $admin, $payload): OrderShipment {
+        $shipment = DB::transaction(function () use ($order, $admin, $payload): OrderShipment {
             $locked = Order::query()->lockForUpdate()->with('items.shipmentItems')->findOrFail($order->id);
             $items = $this->validatedOrderItemQuantities($locked, $payload['items'], 'fulfill');
             if ($items === []) {
@@ -429,11 +460,19 @@ class OrderWorkflowService
 
             return $shipment->load('items.orderItem');
         });
+
+        $this->emails->shipmentUpdated($shipment, created: true);
+
+        return $shipment;
     }
 
     public function updateShipment(OrderShipment $shipment, User $admin, array $payload): OrderShipment
     {
-        return DB::transaction(function () use ($shipment, $admin, $payload): OrderShipment {
+        $oldStatus = (string) $shipment->status;
+        $oldTrackingNumber = (string) ($shipment->tracking_number ?? '');
+        $oldTrackingUrl = (string) ($shipment->tracking_url ?? '');
+
+        $updated = DB::transaction(function () use ($shipment, $admin, $payload): OrderShipment {
             $locked = OrderShipment::query()
                 ->lockForUpdate()
                 ->with('order')
@@ -482,11 +521,17 @@ class OrderWorkflowService
 
             return $locked->fresh(['items.orderItem', 'order']);
         });
+
+        $this->emails->shipmentUpdated($updated, $oldStatus, $oldTrackingNumber, $oldTrackingUrl);
+
+        return $updated;
     }
 
     public function resolveChangeRequest(OrderChangeRequest $request, User $admin, array $payload): OrderChangeRequest
     {
-        return DB::transaction(function () use ($request, $admin, $payload): OrderChangeRequest {
+        $oldStatus = (string) $request->status;
+
+        $updated = DB::transaction(function () use ($request, $admin, $payload): OrderChangeRequest {
             $locked = OrderChangeRequest::query()
                 ->lockForUpdate()
                 ->with('order.items.shipmentItems')
@@ -555,11 +600,18 @@ class OrderWorkflowService
 
             return $locked->fresh(['order.items', 'user', 'resolver']);
         });
+
+        $this->emails->changeRequestUpdated($updated, $oldStatus);
+
+        return $updated;
     }
 
     public function updateReturn(OrderReturnRequest $request, User $admin, array $payload): OrderReturnRequest
     {
-        return DB::transaction(function () use ($request, $admin, $payload): OrderReturnRequest {
+        $oldStatus = (string) $request->status;
+        $oldRefundStatus = $request->refunds()->first()?->status;
+
+        $updated = DB::transaction(function () use ($request, $admin, $payload): OrderReturnRequest {
             $locked = OrderReturnRequest::query()->lockForUpdate()->with(['order','items.orderItem','refunds'])->findOrFail($request->id);
             $oldStatus = $locked->status;
             $allowedStatuses = config('commerce.return_status_transitions.'.$oldStatus, [$oldStatus]);
@@ -664,6 +716,10 @@ class OrderWorkflowService
 
             return $locked->fresh(['order','items.orderItem','refunds.creditNote']);
         });
+
+        $this->emails->returnUpdated($updated, $oldStatus, $oldRefundStatus);
+
+        return $updated;
     }
 
     public function storeDownload(Order $order, User $admin, array $payload, UploadedFile $file): OrderDownload

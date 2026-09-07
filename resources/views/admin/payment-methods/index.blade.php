@@ -29,6 +29,8 @@
                                 <strong>{{ str($method->provider)->headline() }}</strong>
                                 <span class="block text-xs font-semibold text-slate-500">{{ str($method->payment_type)->replace('_', ' ')->headline() }}</span>
                                 @if($method->badge)<span class="mt-1 inline-block rounded-full bg-slate-100 px-2 py-1 text-xs font-black text-slate-700">{{ $method->badge }}</span>@endif
+                                @php($gatewayReady = (bool) data_get($gatewayStatuses, $method->provider.'.configured', false))
+                                <span class="mt-1 inline-block rounded-full px-2 py-1 text-xs font-black {{ $gatewayReady ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700' }}">{{ $gatewayReady ? 'Gateway ready' : 'Gateway not configured' }}</span>
                             </td>
                             <td class="px-5 py-4 text-xs font-semibold leading-5 text-slate-600">
                                 <span class="block">Min: {{ $method->minimum_total ? '$'.number_format((float) $method->minimum_total, 2) : 'Any' }}</span>

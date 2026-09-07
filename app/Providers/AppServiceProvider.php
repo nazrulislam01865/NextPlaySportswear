@@ -2,12 +2,14 @@
 
 namespace App\Providers;
 
+use App\Listeners\Auth\SendWelcomeEmailAfterVerification;
 use App\Services\Cart\CartService;
 use App\Services\Catalog\NavigationService;
 use App\Services\Storefront\HomepageSliderService;
 use App\Services\Storefront\HomepageSectionService;
 use App\Services\Wishlist\WishlistHeaderService;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Verified;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
@@ -37,6 +39,8 @@ class AppServiceProvider extends ServiceProvider
             File::ensureDirectoryExists($compiledViewPath, 0755, true);
         }
 
+
+        Event::listen(Verified::class, SendWelcomeEmailAfterVerification::class);
 
         Event::listen(Login::class, function (Login $event): void {
             if ($event->user instanceof \App\Models\User) {
@@ -91,14 +95,34 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        RateLimiter::for('email-verification-send', function (Request $request): array {
+            $ip = (string) ($request->ip() ?: 'unknown');
+            $userId = (string) ($request->user('web')?->getAuthIdentifier() ?: 'guest');
+
+            return [
+                Limit::perMinute(max(1, (int) config('security.email_verification.resend.ip_per_minute', 6)))
+                    ->by('email-verification-ip-minute:'.$ip),
+                Limit::perMinute(max(1, (int) config('security.email_verification.resend.account_per_minute', 3)))
+                    ->by('email-verification-account-minute:'.$userId),
+                Limit::perHour(max(1, (int) config('security.email_verification.resend.account_per_hour', 10)))
+                    ->by('email-verification-account-hour:'.$userId),
+            ];
+        });
+
         RateLimiter::for('password-reset-link', function (Request $request): array {
             $ip = (string) ($request->ip() ?: 'unknown');
             $email = strtolower(trim((string) $request->input('email')));
             $fingerprint = hash('sha256', substr($email, 0, 190));
 
             return [
-                Limit::perMinute(3)->by('password-reset-link-ip:'.$ip),
-                Limit::perHour(8)->by('password-reset-link-account:'.$fingerprint),
+                Limit::perMinute(max(1, (int) config('security.password_reset.request.ip_per_minute', 3)))
+                    ->by('password-reset-link-ip-minute:'.$ip),
+                Limit::perHour(max(1, (int) config('security.password_reset.request.ip_per_hour', 12)))
+                    ->by('password-reset-link-ip-hour:'.$ip),
+                Limit::perMinute(max(1, (int) config('security.password_reset.request.email_per_minute', 2)))
+                    ->by('password-reset-link-email-minute:'.$fingerprint),
+                Limit::perHour(max(1, (int) config('security.password_reset.request.email_per_hour', 5)))
+                    ->by('password-reset-link-email-hour:'.$fingerprint),
             ];
         });
 
@@ -108,8 +132,14 @@ class AppServiceProvider extends ServiceProvider
             $fingerprint = hash('sha256', substr($email, 0, 190));
 
             return [
-                Limit::perMinute(5)->by('password-reset-ip:'.$ip),
-                Limit::perHour(15)->by('password-reset-account:'.$fingerprint),
+                Limit::perMinute(max(1, (int) config('security.password_reset.submit.ip_per_minute', 5)))
+                    ->by('password-reset-submit-ip-minute:'.$ip),
+                Limit::perHour(max(1, (int) config('security.password_reset.submit.ip_per_hour', 20)))
+                    ->by('password-reset-submit-ip-hour:'.$ip),
+                Limit::perMinute(max(1, (int) config('security.password_reset.submit.email_per_minute', 3)))
+                    ->by('password-reset-submit-email-minute:'.$fingerprint),
+                Limit::perHour(max(1, (int) config('security.password_reset.submit.email_per_hour', 10)))
+                    ->by('password-reset-submit-email-hour:'.$fingerprint),
             ];
         });
 

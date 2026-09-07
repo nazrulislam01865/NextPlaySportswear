@@ -44,7 +44,9 @@
         'artwork_upload' => $product['artwork_upload'] ?? ['enabled' => false],
         'production_speeds' => $product['production_speeds'] ?? [],
         'shipping_methods' => $product['shipping_methods'] ?? [],
-        'jersey_roster' => $product['jersey_roster'] ?? ['enabled' => false, 'optional' => true, 'fields' => []],
+        'roster' => \App\Support\ProductRoster::settings($product),
+        // Legacy alias keeps older cached JS/templates compatible during rollout.
+        'jersey_roster' => \App\Support\ProductRoster::settings($product),
         'sample' => $product['sample'] ?? ['available' => false, 'charge' => 0, 'charge_type' => 'fixed_order'],
         'price_tiers' => $product['price_tiers'] ?? [],
         'price_table' => $product['price_table'] ?? [],
@@ -70,8 +72,8 @@
     $fixedGroups = $allGroups->where('display_mode', 'fixed');
     $customerOptionGroups = $allGroups->where('display_mode', 'customer');
     $sizeGroupsWithCharts = collect($product['size_groups'] ?? [])->filter(fn ($group) => (bool) data_get($group, 'chart.enabled'));
-    $roster = $product['jersey_roster'] ?? [];
-    $rosterEnabled = \App\Support\ProductRoster::supports($product['product_profile'] ?? 'standard') && (bool) ($roster['enabled'] ?? false);
+    $roster = \App\Support\ProductRoster::settings($product);
+    $rosterEnabled = (bool) ($roster['enabled'] ?? false);
     $artworkUpload = $product['artwork_upload'] ?? ['enabled' => false];
     $sample = $product['sample'] ?? ['available' => false, 'charge' => 0, 'charge_type' => 'fixed_order'];
     $stepNumber = 1;
@@ -365,43 +367,14 @@ window.productBuilderFabricPricing = function (config = {}) {
                 @endif
 
                 @if($rosterEnabled)
-                    <section class="rounded-[28px] border border-slate-200 bg-white shadow-card" id="product-roster">
-                        <div class="flex items-start gap-4 border-b border-slate-200 bg-gradient-to-r from-white to-blue-50 p-5 sm:p-6">
-                            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-dark font-black text-white">{{ $stepNumber++ }}</span>
-                            <div class="min-w-0 flex-1"><h3 class="text-xl font-black leading-tight text-brand-ink sm:text-2xl">{{ $roster['title'] ?? 'Add Player Names and Numbers' }}</h3><p class="mt-1 text-sm leading-6 text-slate-500">A separate row is generated for every selected item, with its size locked to the chosen size quantity.</p></div>
-                        </div>
-                        <div class="p-5 sm:p-6">
-                            @if($roster['optional'] ?? true)
-                                <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                    <input type="checkbox" class="mt-1" :checked="rosterEnabled" @change="toggleRoster($event.target.checked)">
-                                    <span><strong class="block text-sm text-brand-ink">Add individual details for each item</strong><small class="mt-1 block text-xs leading-5 text-slate-500">Turn this on to enter names, numbers, front text, back text, or other fields offered by the administrator.</small></span>
-                                </label>
-                            @endif
-
-                            <div x-show="rosterEnabled" x-cloak class="mt-5">
-                                <div x-show="totalQuantity() === 0" class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">Select sizes and quantities first. The individual roster list will then appear here.</div>
-                                <div x-show="totalQuantity() > 250" class="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-bold text-amber-900">Individual roster details support up to 250 pieces in one configured cart line.</div>
-                                <div x-show="rosterRows.length" class="space-y-3">
-                                    <template x-for="(row, rowIndex) in rosterRows" :key="`${row.size_key}:${rowIndex}`">
-                                        <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                            <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-                                                <strong class="text-sm text-brand-ink">Item <span x-text="rowIndex + 1"></span></strong>
-                                                <span class="rounded-full bg-brand-dark px-3 py-1 text-xs font-black text-white"><span x-text="row.size_group_label"></span> · <span x-text="row.size_label"></span></span>
-                                            </div>
-                                            <div class="grid gap-3 sm:grid-cols-2">
-                                                @foreach(collect($roster['fields'] ?? [])->filter(fn ($field) => ($field['enabled'] ?? true)) as $field)
-                                                    <label class="text-xs font-black uppercase tracking-[.08em] text-slate-500">
-                                                        {{ $field['label'] }} @if($field['required'] ?? false)<span class="text-brand-red">*</span>@endif
-                                                        <input class="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold normal-case tracking-normal text-brand-ink" type="{{ ($field['type'] ?? 'text') === 'number' ? 'text' : 'text' }}" @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif maxlength="{{ min(120, max(1, (int) ($field['max_length'] ?? 60))) }}" x-model="row.values[@js($field['key'])]" @input="sync()" @change="commitRosterField(rowIndex, @js($field), $event.target.value)" placeholder="{{ $field['label'] }}">
-                                                    </label>
-                                                @endforeach
-                                            </div>
-                                        </article>
-                                    </template>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
+                    <x-storefront.product.roster-fields
+                        :roster="$roster"
+                        :step-number="$stepNumber"
+                        :has-size-groups="! empty($product['size_groups'])"
+                    />
+                    @php
+                        $stepNumber++;
+                    @endphp
                 @endif
 
                 @once
@@ -442,85 +415,89 @@ window.productBuilderFabricPricing = function (config = {}) {
                         $artworkMaxFiles = max(1, min(12, (int) ($artworkUpload['max_files'] ?? 5)));
                         $artworkMaxSize = max(1, min(25, (int) ($artworkUpload['max_file_size_mb'] ?? 15)));
                     @endphp
-                    <section class="rounded-[28px] border border-slate-200 bg-white shadow-card" id="artwork-upload">
-                        <div class="flex items-start gap-4 border-b border-slate-200 bg-gradient-to-r from-white to-red-50 p-5 sm:p-6">
+                    <section class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-card sm:p-6" id="artwork-upload">
+                        <div class="flex items-start gap-4">
                             <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-dark font-black text-white">{{ $stepNumber++ }}</span>
-                            <div>
+
+                            <div class="min-w-0 flex-1">
                                 <h3 class="text-xl font-black leading-tight text-brand-ink sm:text-2xl">{{ $artworkUpload['title'] ?? 'Upload Custom Artwork' }}</h3>
                                 <p class="mt-1 text-sm leading-6 text-slate-500">{{ $artworkUpload['description'] ?? 'Upload one or more artwork files for the production team.' }}</p>
-                            </div>
-                        </div>
-                        <div class="p-5 sm:p-6">
-                            <label class="block rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-5 text-center transition hover:border-brand-blue hover:bg-blue-50/40 sm:p-8">
-                                <span class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-white text-2xl font-black text-brand-blue shadow-sm">⇧</span>
-                                <strong class="mt-4 block text-base text-brand-ink">Upload one or multiple artwork files @if($artworkUpload['required'] ?? false)<span class="text-brand-red">*</span>@endif</strong>
-                                <small class="mt-2 block text-xs leading-5 text-slate-500">
-                                    Up to {{ $artworkMaxFiles }} files · {{ $artworkMaxSize }} MB each · {{ $artworkTypes->map(fn ($type) => strtoupper($type))->implode(', ') }}
-                                </small>
-                                <input
-                                    x-ref="artworkInput"
-                                    class="mt-4 w-full text-sm"
-                                    type="file"
-                                    name="artwork_files[]"
-                                    multiple
-                                    accept="{{ $artworkAccept }}"
-                                    @change="handleArtworkFiles($event)"
-                                    @if(($artworkUpload['required'] ?? false) && empty($existingArtwork)) required @endif
-                                >
-                            </label>
 
-                            <div x-show="artworkFiles.length" x-cloak class="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                                <div class="flex items-center justify-between gap-3">
-                                    <div>
-                                        <strong class="text-sm text-brand-ink">Selected artwork</strong>
-                                        <p class="mt-1 text-xs text-slate-500">Image files are shown below immediately. Use View for a larger preview or supported document files.</p>
+                                {{-- Restore the compact artwork control used by the older storefront design.
+                                     Keep the current multi-file handling, validation and edit-cart support. --}}
+                                <label class="mt-5 grid gap-2 text-sm font-black text-slate-800">
+                                    <span>
+                                        Artwork / logo files
+                                        @if($artworkUpload['required'] ?? false)<span class="text-brand-red">*</span>@endif
+                                    </span>
+                                    <input
+                                        x-ref="artworkInput"
+                                        type="file"
+                                        name="artwork_files[]"
+                                        multiple
+                                        accept="{{ $artworkAccept }}"
+                                        @change="handleArtworkFiles($event)"
+                                        @if(($artworkUpload['required'] ?? false) && empty($existingArtwork)) required @endif
+                                        class="w-full rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-brand-ink file:px-4 file:py-2 file:text-sm file:font-black file:text-white hover:border-brand-blue focus-within:border-brand-blue"
+                                    >
+                                    <span class="text-xs font-medium leading-5 text-slate-500">
+                                        Upload logo or reference artwork. Up to {{ $artworkMaxFiles }} files · {{ $artworkMaxSize }} MB each · {{ $artworkTypes->map(fn ($type) => strtoupper($type))->implode(', ') }}.
+                                    </span>
+                                </label>
+
+                                <div x-show="artworkFiles.length" x-cloak class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <div>
+                                            <strong class="text-sm text-brand-ink">Selected artwork</strong>
+                                            <p class="mt-1 text-xs text-slate-500">Review or remove files before adding the configured product.</p>
+                                        </div>
+                                        <span class="shrink-0 text-xs font-black text-brand-blue"><span x-text="artworkFiles.length"></span> / {{ $artworkMaxFiles }} files</span>
                                     </div>
-                                    <span class="shrink-0 text-xs font-black text-brand-blue"><span x-text="artworkFiles.length"></span> / {{ $artworkMaxFiles }} files</span>
+
+                                    <ul class="np-artwork-preview-grid">
+                                        <template x-for="(file, fileIndex) in artworkFiles" :key="file.key || `${file.name}:${file.size}:${fileIndex}`">
+                                            <li class="np-artwork-preview-card">
+                                                <div class="np-artwork-preview-media">
+                                                    <template x-if="artworkCanPreview(file)">
+                                                        <img
+                                                            :src="artworkFileUrl(file)"
+                                                            :alt="`Preview of ${file.name}`"
+                                                            class="np-artwork-preview-image"
+                                                        >
+                                                    </template>
+                                                    <template x-if="!artworkCanPreview(file)">
+                                                        <div class="np-artwork-file-icon" aria-hidden="true">
+                                                            <span x-text="artworkExtension(file)"></span>
+                                                        </div>
+                                                    </template>
+                                                </div>
+
+                                                <div class="np-artwork-preview-copy">
+                                                    <strong class="np-artwork-preview-name" x-text="file.name"></strong>
+                                                    <span class="np-artwork-preview-meta" x-text="file.existing ? `${file.sizeLabel} · Saved` : `${file.sizeLabel} · New`"></span>
+                                                </div>
+
+                                                <div class="np-artwork-preview-actions">
+                                                    <a
+                                                        x-show="artworkCanOpen(file)"
+                                                        x-cloak
+                                                        :href="artworkFileUrl(file)"
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        class="np-artwork-view-button"
+                                                        :aria-label="`View ${file.name}`"
+                                                    >View</a>
+                                                    <button
+                                                        type="button"
+                                                        class="np-artwork-remove-button"
+                                                        @click="removeArtworkFile(fileIndex)"
+                                                        :aria-label="`Remove ${file.name}`"
+                                                    >×</button>
+                                                </div>
+                                            </li>
+                                        </template>
+                                    </ul>
                                 </div>
-
-                                <ul class="np-artwork-preview-grid">
-                                    <template x-for="(file, fileIndex) in artworkFiles" :key="file.key || `${file.name}:${file.size}:${fileIndex}`">
-                                        <li class="np-artwork-preview-card">
-                                            <div class="np-artwork-preview-media">
-                                                <template x-if="artworkCanPreview(file)">
-                                                    <img
-                                                        :src="artworkFileUrl(file)"
-                                                        :alt="`Preview of ${file.name}`"
-                                                        class="np-artwork-preview-image"
-                                                    >
-                                                </template>
-                                                <template x-if="!artworkCanPreview(file)">
-                                                    <div class="np-artwork-file-icon" aria-hidden="true">
-                                                        <span x-text="artworkExtension(file)"></span>
-                                                    </div>
-                                                </template>
-                                            </div>
-
-                                            <div class="np-artwork-preview-copy">
-                                                <strong class="np-artwork-preview-name" x-text="file.name"></strong>
-                                                <span class="np-artwork-preview-meta" x-text="file.existing ? `${file.sizeLabel} · Saved` : `${file.sizeLabel} · New`"></span>
-                                            </div>
-
-                                            <div class="np-artwork-preview-actions">
-                                                <a
-                                                    x-show="artworkCanOpen(file)"
-                                                    x-cloak
-                                                    :href="artworkFileUrl(file)"
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    class="np-artwork-view-button"
-                                                    :aria-label="`View ${file.name}`"
-                                                >View</a>
-                                                <button
-                                                    type="button"
-                                                    class="np-artwork-remove-button"
-                                                    @click="removeArtworkFile(fileIndex)"
-                                                    :aria-label="`Remove ${file.name}`"
-                                                >×</button>
-                                            </div>
-                                        </li>
-                                    </template>
-                                </ul>
                             </div>
                         </div>
                     </section>

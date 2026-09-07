@@ -100,7 +100,7 @@ class Order extends Model
     public function canPay(): bool
     {
         return in_array($this->status, config('commerce.payable_statuses', []), true)
-            && in_array($this->payment_status, ['pending', 'failed'], true)
+            && in_array($this->payment_status, ['pending', 'failed', 'processing'], true)
             && $this->grand_total > 0;
     }
 

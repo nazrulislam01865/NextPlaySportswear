@@ -1,5 +1,14 @@
 <?php
 
+$parseMailerList = static function (?string $value, array $fallback): array {
+    $mailers = array_values(array_filter(array_map(
+        static fn (string $mailer): string => trim($mailer),
+        explode(',', (string) $value),
+    ), static fn (string $mailer): bool => $mailer !== ''));
+
+    return $mailers !== [] ? $mailers : $fallback;
+};
+
 return [
 
     /*
@@ -45,7 +54,7 @@ return [
             'port' => env('MAIL_PORT', 2525),
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
-            'timeout' => null,
+            'timeout' => (int) env('MAIL_TIMEOUT', 10),
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
@@ -81,20 +90,24 @@ return [
 
         'failover' => [
             'transport' => 'failover',
-            'mailers' => [
-                'smtp',
-                'log',
-            ],
-            'retry_after' => 60,
+
+            // Keep delivery providers configurable. Do not silently fall back
+            // to the log transport for transactional mail because that could
+            // report a successful send without delivering anything.
+            'mailers' => $parseMailerList(
+                env('MAIL_FAILOVER_MAILERS'),
+                ['smtp']
+            ),
+            'retry_after' => (int) env('MAIL_FAILOVER_RETRY_AFTER', 60),
         ],
 
         'roundrobin' => [
             'transport' => 'roundrobin',
-            'mailers' => [
-                'ses',
-                'postmark',
-            ],
-            'retry_after' => 60,
+            'mailers' => $parseMailerList(
+                env('MAIL_ROUNDROBIN_MAILERS'),
+                ['ses', 'postmark']
+            ),
+            'retry_after' => (int) env('MAIL_ROUNDROBIN_RETRY_AFTER', 60),
         ],
 
     ],

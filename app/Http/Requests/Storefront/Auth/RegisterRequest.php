@@ -10,6 +10,7 @@ class RegisterRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
+            'name' => trim((string) $this->input('name')),
             'email' => strtolower(trim((string) $this->input('email'))),
         ]);
     }
@@ -26,7 +27,9 @@ class RegisterRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'min:2', 'max:120'],
-            'email' => ['required', 'email:rfc,dns', 'max:255', 'unique:users,email'],
+            // Verification proves ownership/deliverability, so registration
+            // avoids network-dependent DNS validation on the request path.
+            'email' => ['required', 'email:rfc', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
             'website' => ['nullable', 'max:0'],
             'terms' => ['accepted'],
@@ -42,6 +45,7 @@ class RegisterRequest extends FormRequest
         return [
             'terms.accepted' => 'Please accept the privacy, return, and custom order terms before creating an account.',
             'website.max' => 'The registration request could not be accepted.',
+            'email.unique' => 'A customer account already exists with this email address. Please sign in or reset your password.',
         ];
     }
 }

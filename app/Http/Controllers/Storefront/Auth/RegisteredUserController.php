@@ -4,17 +4,22 @@ namespace App\Http\Controllers\Storefront\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Storefront\Auth\RegisterRequest;
-use App\Models\User;
+use App\Services\Auth\CustomerRegistrationService;
 use App\Support\StorefrontRedirect;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Throwable;
 
 class RegisteredUserController extends Controller
 {
+    public function __construct(
+        private readonly CustomerRegistrationService $registration,
+    ) {
+    }
+
     public function create(Request $request): View
     {
         return view('storefront.auth.register', [
@@ -29,28 +34,38 @@ class RegisteredUserController extends Controller
 
     public function store(RegisterRequest $request): RedirectResponse
     {
-        $data = $request->validated();
+        $user = $this->registration->register($request->validated());
+        $verificationDeliveryFailed = false;
 
-        $user = new User();
-        $user->forceFill([
-            'name' => trim(strip_tags($data['name'])),
-            'email' => Str::lower($data['email']),
-            'role' => 'customer',
-            'is_active' => true,
-            'password' => $data['password'],
-        ])->save();
-
-        event(new Registered($user));
+        try {
+            // Laravel's Registered listener calls the user's verification
+            // notification method when the model implements MustVerifyEmail.
+            event(new Registered($user));
+        } catch (Throwable $exception) {
+            $verificationDeliveryFailed = true;
+            report($exception);
+        }
 
         Auth::guard('admin')->logout();
         Auth::guard('web')->login($user);
         Auth::shouldUse('web');
         $request->session()->regenerate();
 
-        $destination = StorefrontRedirect::intended($request, route('account.dashboard'));
+        // Preserve a safe storefront destination (for example checkout) until
+        // verification succeeds. The verified middleware will enforce access.
+        StorefrontRedirect::capture($request);
 
-        return redirect()
-            ->to($destination)
-            ->with('status', 'Your account has been created. You can now manage quotes, orders, and custom design proofs.');
+        $response = redirect()->route('verification.notice');
+
+        if ($verificationDeliveryFailed) {
+            $response->with(
+                'verification_delivery_failed',
+                'Your account was created, but the verification email could not be sent. Use the resend button below to try again.'
+            );
+        } else {
+            $response->with('status', 'verification-link-sent');
+        }
+
+        return $response;
     }
 }

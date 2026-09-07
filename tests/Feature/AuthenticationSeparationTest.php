@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class AuthenticationSeparationTest extends TestCase
@@ -142,6 +143,8 @@ class AuthenticationSeparationTest extends TestCase
 
     public function test_customer_registration_persists_a_hashed_database_account_used_by_login(): void
     {
+        Queue::fake();
+
         $this->post(route('register.store'), [
             'name' => 'NextPlay Customer',
             'email' => 'CUSTOMER@EXAMPLE.COM',
@@ -149,7 +152,7 @@ class AuthenticationSeparationTest extends TestCase
             'password_confirmation' => 'Password123',
             'terms' => '1',
             'website' => '',
-        ])->assertRedirect(route('account.dashboard'));
+        ])->assertRedirect(route('verification.notice'));
 
         $customer = User::query()->where('email', 'customer@example.com')->firstOrFail();
 
@@ -157,6 +160,9 @@ class AuthenticationSeparationTest extends TestCase
         $this->assertTrue($customer->is_active);
         $this->assertTrue(Hash::check('Password123', $customer->password));
         $this->assertNotSame('Password123', $customer->password);
+        $this->assertNull($customer->email_verified_at);
+
+        $customer->markEmailAsVerified();
 
         $this->post(route('logout'))->assertRedirect(route('home'));
 

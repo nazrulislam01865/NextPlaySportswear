@@ -1211,7 +1211,9 @@ class CartService
     /** @return array<int, array{key:string,label:string,type:string}> */
     private function rosterFieldSnapshot(array $product): array
     {
-        return collect((array) data_get($product, 'jersey_roster.fields', []))
+        $rosterSettings = ProductRoster::settings($product);
+
+        return collect((array) ($rosterSettings['fields'] ?? []))
             ->filter(fn ($field): bool => is_array($field) && (bool) ($field['enabled'] ?? true) && filled($field['key'] ?? null))
             ->map(fn (array $field): array => [
                 'key' => (string) $field['key'],
@@ -1611,8 +1613,8 @@ class CartService
         $sampleRequested = (bool) ($sampleSettings['available'] ?? false)
             && filter_var($raw['sample_requested'] ?? false, FILTER_VALIDATE_BOOL);
 
-        $rosterSettings = $product['jersey_roster'] ?? [];
-        $rosterAvailable = ProductRoster::supports($product['product_profile'] ?? 'standard') && (bool) ($rosterSettings['enabled'] ?? false);
+        $rosterSettings = ProductRoster::settings($product);
+        $rosterAvailable = (bool) ($rosterSettings['enabled'] ?? false);
         $rosterEnabled = $rosterAvailable && (! (bool) ($rosterSettings['optional'] ?? true) || filter_var($raw['roster_enabled'] ?? false, FILTER_VALIDATE_BOOL));
         $roster = [];
 
@@ -1627,6 +1629,21 @@ class CartService
                         'size_group_label' => $size['group_label'],
                         'size_code' => $size['size'],
                         'size_label' => $size['size_label'],
+                    ];
+                }
+            }
+
+            // Products without size groups still get one roster row per ordered
+            // item. This is what makes roster fields reusable for every product
+            // profile instead of being coupled to jersey/size selection.
+            if ($sizeLookup->isEmpty()) {
+                for ($index = 0; $index < max(0, $fallbackQuantity); $index++) {
+                    $desiredRows[] = [
+                        'size_key' => 'item',
+                        'size_group' => '',
+                        'size_group_label' => '',
+                        'size_code' => '',
+                        'size_label' => '',
                     ];
                 }
             }
@@ -1665,25 +1682,27 @@ class CartService
 
     private function validateRequiredConfiguration(array $product, array $customization): void
     {
-        if (! ($product['is_customizable'] ?? false)) {
-            return;
-        }
-
         $configuration = $customization['configuration'] ?? [];
-        foreach (($product['option_groups'] ?? []) as $group) {
-            if (($group['display_mode'] ?? 'customer') !== 'customer' || ! ($group['required'] ?? false)) {
-                continue;
+
+        // Standard option groups remain tied to the product's customizable
+        // flag, while reusable modules such as roster/artwork validate their
+        // own enablement independently below.
+        if ($product['is_customizable'] ?? false) {
+            foreach (($product['option_groups'] ?? []) as $group) {
+                if (($group['display_mode'] ?? 'customer') !== 'customer' || ! ($group['required'] ?? false)) {
+                    continue;
+                }
+
+                $groupId = (string) $group['id'];
+                $valid = match ($group['type']) {
+                    'checkbox' => count($configuration['multi_selections'][$groupId] ?? []) >= max(1, (int) ($group['minimum_selections'] ?? 1)),
+                    'image', 'swatch', 'buttons', 'select' => filled($configuration['selections'][$groupId] ?? null),
+                    'file' => count($customization['artwork_files'] ?? []) > 0,
+                    default => filled($configuration['inputs'][$groupId] ?? null),
+                };
+
+                abort_unless($valid, 422, 'A required product customization is missing: '.$group['label']);
             }
-
-            $groupId = (string) $group['id'];
-            $valid = match ($group['type']) {
-                'checkbox' => count($configuration['multi_selections'][$groupId] ?? []) >= max(1, (int) ($group['minimum_selections'] ?? 1)),
-                'image', 'swatch', 'buttons', 'select' => filled($configuration['selections'][$groupId] ?? null),
-                'file' => count($customization['artwork_files'] ?? []) > 0,
-                default => filled($configuration['inputs'][$groupId] ?? null),
-            };
-
-            abort_unless($valid, 422, 'A required product customization is missing: '.$group['label']);
         }
 
         $artworkSettings = $product['artwork_upload'] ?? ['enabled' => false];
@@ -1695,8 +1714,8 @@ class CartService
             abort(422, 'Too many custom artwork files were uploaded.');
         }
 
-        $rosterSettings = $product['jersey_roster'] ?? [];
-        if (ProductRoster::supports($product['product_profile'] ?? 'standard') && ($rosterSettings['enabled'] ?? false)) {
+        $rosterSettings = ProductRoster::settings($product);
+        if ($rosterSettings['enabled'] ?? false) {
             if (! ($rosterSettings['optional'] ?? true)) {
                 abort_unless((bool) ($configuration['roster_enabled'] ?? false), 422, 'Roster details are required for this product.');
             }

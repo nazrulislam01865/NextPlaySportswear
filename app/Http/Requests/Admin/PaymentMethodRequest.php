@@ -31,7 +31,7 @@ class PaymentMethodRequest extends FormRequest
             'is_online' => $this->boolean('is_online'),
             'requires_provider_redirect' => $this->boolean('requires_provider_redirect'),
             'requires_manual_review' => $this->boolean('requires_manual_review'),
-            'allows_saved_methods' => $this->boolean('allows_saved_methods'),
+            'allows_saved_methods' => Str::slug((string) ($this->input('provider') ?: 'manual')) === 'stripe' ? false : $this->boolean('allows_saved_methods'),
             'is_default' => $this->boolean('is_default'),
             'is_active' => $this->boolean('is_active'),
             'sort_order' => (int) $this->input('sort_order', 0),
@@ -41,11 +41,12 @@ class PaymentMethodRequest extends FormRequest
     public function rules(): array
     {
         $methodId = $this->route('paymentMethod')?->id;
+        $providers = array_keys((array) config('payments.gateways', []));
 
         return [
             'name' => ['required', 'string', 'max:160'],
             'code' => ['required', 'string', 'max:160', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', Rule::unique('payment_methods', 'code')->ignore($methodId)],
-            'provider' => ['required', 'string', 'max:80', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
+            'provider' => ['required', 'string', 'max:80', Rule::in($providers)],
             'payment_type' => ['required', 'string', 'max:50', 'regex:/^[a-z0-9_]+$/'],
             'badge' => ['nullable', 'string', 'max:80'],
             'description' => ['nullable', 'string', 'max:2000'],
@@ -66,7 +67,7 @@ class PaymentMethodRequest extends FormRequest
     {
         return [
             'code.regex' => 'The code may contain lowercase letters, numbers, and hyphens only.',
-            'provider.regex' => 'The provider may contain lowercase letters, numbers, and hyphens only.',
+            'provider.in' => 'Choose a provider that is registered in config/payments.php.',
             'payment_type.regex' => 'The payment type may contain lowercase letters, numbers, and underscores only.',
         ];
     }

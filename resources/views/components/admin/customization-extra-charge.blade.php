@@ -1,11 +1,11 @@
 <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4" data-customization-extra-charge>
-    <div class="grid gap-4 lg:grid-cols-2">
-        <label class="block">
+    <div class="np-extra-charge-grid grid gap-4 lg:grid-cols-2">
+        <label class="np-extra-charge-field block">
             <span class="text-sm font-black text-slate-700">Additional charge</span>
-            <div class="mt-2 flex overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm focus-within:border-brand-blue focus-within:ring-2 focus-within:ring-brand-blue/10">
+            <div class="np-extra-charge-control mt-2 flex overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm focus-within:border-brand-blue focus-within:ring-2 focus-within:ring-brand-blue/10">
                 <span class="grid min-w-11 place-items-center border-r border-slate-200 bg-slate-50 px-3 text-sm font-black text-slate-500">$</span>
                 <input
-                    class="min-w-0 flex-1 border-0 bg-white px-3 py-2.5 text-sm font-bold text-slate-800 outline-none focus:ring-0"
+                    class="np-extra-charge-input min-w-0 flex-1 border-0 bg-white px-3 py-2.5 text-sm font-bold text-slate-800 outline-none focus:ring-0"
                     type="number"
                     min="0"
                     max="999999999.99"
@@ -19,10 +19,10 @@
             </div>
         </label>
 
-        <label class="block">
+        <label class="np-extra-charge-field block">
             <span class="text-sm font-black text-slate-700">Charge basis</span>
             <select
-                class="admin-input !mt-2"
+                class="admin-input np-extra-charge-control !mt-2"
                 :id="`option-charge-basis-${gIndex}-${vIndex}`"
                 :name="`option_groups[${gIndex}][values][${vIndex}][charge_type]`"
                 x-model="value.charge_type"

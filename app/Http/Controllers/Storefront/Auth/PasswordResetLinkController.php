@@ -3,16 +3,20 @@
 namespace App\Http\Controllers\Storefront\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Http\Requests\Storefront\Auth\ForgotPasswordRequest;
+use App\Services\Auth\CustomerPasswordResetService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Throwable;
 
 class PasswordResetLinkController extends Controller
 {
+    public function __construct(
+        private readonly CustomerPasswordResetService $passwordResets,
+    ) {
+    }
+
     public function create(): View
     {
         return view('storefront.auth.forgot-password', [
@@ -24,45 +28,56 @@ class PasswordResetLinkController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(ForgotPasswordRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'email' => ['required', 'string', 'email:rfc', 'max:255'],
-        ]);
+        $email = (string) $request->validated('email');
+        $expiresInMinutes = max(
+            1,
+            (int) config('auth.passwords.users.expire', 15)
+        );
 
-        $email = Str::lower(trim((string) $validated['email']));
-        $genericStatus = 'If an active customer account matches that email, a password reset link has been sent.';
-
-        // Keep the customer and admin recovery flows isolated. Return the same
-        // response for unknown addresses so this endpoint cannot enumerate users.
-        $isActiveCustomer = User::query()
-            ->where('email', $email)
-            ->where('role', 'customer')
-            ->where('is_active', true)
-            ->exists();
-
-        if (! $isActiveCustomer) {
-            return back()->with('status', $genericStatus);
-        }
+        $genericStatus = sprintf(
+            'If an active customer account matches that email, a password reset link will be sent. The link expires in %d minutes and can only be used once.',
+            $expiresInMinutes,
+        );
 
         try {
-            $status = Password::broker('users')->sendResetLink([
-                'email' => $email,
-            ]);
+            $status = $this->passwordResets->sendResetLink($email);
         } catch (Throwable $exception) {
+            /*
+             * Keep the public response indistinguishable from an unknown
+             * account. The exception is still reported for operations, and
+             * CustomerPasswordResetService removes any token created before a
+             * provider/queue failure.
+             */
             report($exception);
 
             return back()
-                ->withErrors(['email' => 'The reset email could not be sent right now. Please try again shortly.'])
+                ->with('status', $genericStatus)
                 ->withInput($request->only('email'));
         }
 
-        if ($status === Password::ResetThrottled) {
+        /*
+         * InvalidUser, ResetLinkSent and ResetThrottled deliberately return
+         * the same response. This prevents the public recovery endpoint from
+         * confirming whether a customer email exists or was recently used.
+         */
+        if (in_array($status, [
+            Password::InvalidUser,
+            Password::ResetLinkSent,
+            Password::ResetThrottled,
+        ], true)) {
             return back()
-                ->withErrors(['email' => 'Please wait before requesting another password reset email.'])
+                ->with('status', $genericStatus)
                 ->withInput($request->only('email'));
         }
 
-        return back()->with('status', $genericStatus);
+        report(new \RuntimeException(
+            'Unexpected password-reset broker status: '.(string) $status
+        ));
+
+        return back()
+            ->with('status', $genericStatus)
+            ->withInput($request->only('email'));
     }
 }

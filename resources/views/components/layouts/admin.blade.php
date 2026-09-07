@@ -23,11 +23,7 @@
     @endphp
 </head>
 <body
-    @class([
-        'admin-clean-ui bg-slate-100 text-slate-900',
-        'admin-ui-reference' => request()->routeIs('admin.dashboard') || request()->routeIs('admin.products.*'),
-        'admin-ui-minimalize' => ! request()->routeIs('admin.dashboard') && ! request()->routeIs('admin.products.*'),
-    ])
+    class="admin-clean-ui admin-ui-compact bg-slate-100 text-slate-900"
     x-data="{ sidebarOpen: false }"
     x-effect="document.documentElement.classList.toggle('overflow-hidden', sidebarOpen)"
     @keydown.escape.window="sidebarOpen = false"
@@ -340,9 +336,9 @@
                 role="separator"
                 aria-orientation="vertical"
                 aria-label="Resize admin menu"
-                aria-valuemin="220"
+                aria-valuemin="200"
                 aria-valuemax="380"
-                aria-valuenow="256"
+                aria-valuenow="228"
                 tabindex="0"
             ></div>
         </aside>

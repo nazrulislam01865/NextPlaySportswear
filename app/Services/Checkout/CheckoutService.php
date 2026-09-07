@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Services\Email\TransactionalEmailManager;
 
 class CheckoutService
 {
@@ -27,6 +28,7 @@ class CheckoutService
         private readonly RuralAreaSurchargeService $ruralSurcharges,
         private readonly ShippingMethodService $shipping,
         private readonly PaymentMethodService $payments,
+        private readonly TransactionalEmailManager $emails,
     ) {
     }
 
@@ -302,6 +304,7 @@ class CheckoutService
             $this->mergeState('placed_order', $snapshot);
             return $snapshot;
         }
+        $createdNewOrder = true;
 
         try {
             $order = DB::transaction(function () use ($state, $cart, $summary, $idempotencyKey, $user, $couponValidation): Order {
@@ -381,6 +384,7 @@ class CheckoutService
             if (! $order) {
                 throw $exception;
             }
+            $createdNewOrder = false;
         }
 
         $this->cart->recordCouponRedemption($order, (float) $order->discount_total, $user);
@@ -394,6 +398,9 @@ class CheckoutService
             'status' => $order->status,
             'user_id' => $order->user_id,
         ]);
+        if ($createdNewOrder) {
+            $this->emails->orderPlaced($order);
+        }
 
         return $snapshot;
     }

@@ -5,17 +5,21 @@ namespace App\Http\Controllers\Storefront\Account;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Storefront\Account\UpdatePasswordRequest;
 use App\Http\Requests\Storefront\Account\UpdateProfileRequest;
+use App\Services\Email\TransactionalEmailManager;
 use App\Services\Storefront\CustomerAccountService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Throwable;
 
 class ProfileController extends Controller
 {
-    public function __construct(private readonly CustomerAccountService $accountService)
-    {
+    public function __construct(
+        private readonly CustomerAccountService $accountService,
+        private readonly TransactionalEmailManager $emails,
+    ) {
     }
 
     public function edit(Request $request): View
@@ -36,6 +40,7 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         $data = $request->validated();
+        $oldEmail = (string) $user->email;
 
         $user->fill([
             'name' => $this->clean($data['name']),
@@ -50,17 +55,42 @@ class ProfileController extends Controller
             $user->email_verified_at = null;
         }
 
+        $emailChanged = $user->isDirty('email');
         $user->save();
+
+        if ($emailChanged) {
+            $this->emails->emailAddressChanged($user, $oldEmail);
+
+            try {
+                $user->sendEmailVerificationNotification();
+
+                return redirect()
+                    ->route('verification.notice')
+                    ->with('status', 'verification-link-sent');
+            } catch (Throwable $exception) {
+                report($exception);
+
+                return redirect()
+                    ->route('verification.notice')
+                    ->with(
+                        'verification_delivery_failed',
+                        'Your profile was updated, but we could not send the verification email to your new address. Please use the resend button.'
+                    );
+            }
+        }
 
         return back()->with('status', 'Your profile has been updated securely.');
     }
 
     public function updatePassword(UpdatePasswordRequest $request): RedirectResponse
     {
-        $request->user()->forceFill([
+        $user = $request->user();
+
+        $user->forceFill([
             'password' => Hash::make($request->validated('password')),
         ])->save();
 
+        $this->emails->passwordChanged($user);
         $request->session()->regenerate();
 
         return back()->with('password_status', 'Your password has been updated.');

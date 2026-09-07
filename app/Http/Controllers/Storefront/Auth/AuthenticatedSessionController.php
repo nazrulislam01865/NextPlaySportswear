@@ -54,7 +54,22 @@ class AuthenticatedSessionController extends Controller
         $customer = Auth::guard('web')->user();
         $customer?->forceFill(['last_login_at' => now()])->saveQuietly();
 
-        $destination = StorefrontRedirect::intended($request, route('account.dashboard'));
+        if (! $customer?->hasVerifiedEmail()) {
+            // Keep the original safe destination (for example checkout) in
+            // session until the signed email-verification link succeeds. Do
+            // not consume it here, otherwise the verification-success page
+            // would lose the customer's intended continuation target.
+            StorefrontRedirect::capture($request);
+
+            return redirect()
+                ->route('verification.notice')
+                ->with('status', 'Please verify your email address to unlock your customer account and checkout.');
+        }
+
+        $destination = StorefrontRedirect::intended(
+            $request,
+            route('account.dashboard')
+        );
 
         return redirect()
             ->to($destination)

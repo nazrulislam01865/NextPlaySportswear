@@ -5,6 +5,7 @@ use App\Http\Controllers\Storefront\Account\AddressController;
 use App\Http\Controllers\Storefront\Account\PaymentMethodController;
 use App\Http\Controllers\Storefront\Account\ProfileController;
 use App\Http\Controllers\Storefront\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Storefront\Auth\EmailVerificationController;
 use App\Http\Controllers\Storefront\Auth\NewPasswordController;
 use App\Http\Controllers\Storefront\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Storefront\Auth\RegisteredUserController;
@@ -20,7 +21,14 @@ use App\Http\Controllers\Storefront\OrderController;
 use App\Http\Controllers\Storefront\ProductController;
 use App\Http\Controllers\Storefront\ProductActivityController;
 use App\Http\Controllers\Storefront\ProductWishlistController;
+use App\Http\Controllers\Payments\PaymentReturnController;
+use App\Http\Controllers\Webhooks\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
+
+Route::post('/webhooks/stripe', StripeWebhookController::class)->name('webhooks.stripe');
+Route::get('/payments/{provider}/return', PaymentReturnController::class)
+    ->where('provider', '[a-z0-9-]+')
+    ->name('payments.return');
 
 Route::get('/', HomeController::class)->name('home');
 Route::get('/homepage/latest-products', [HomeController::class, 'latestProducts'])
@@ -272,11 +280,27 @@ Route::middleware(['guest:web', 'not.admin'])->group(function () {
 
 });
 
+Route::get('/email/verify', [EmailVerificationController::class, 'notice'])
+    ->middleware(['not.admin', 'auth:web', 'customer'])
+    ->name('verification.notice');
+
+Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+    ->middleware(['not.admin', 'auth:web', 'customer', 'signed', 'throttle:30,1'])
+    ->name('verification.verify');
+
+Route::get('/email/verified', [EmailVerificationController::class, 'success'])
+    ->middleware(['not.admin', 'auth:web', 'customer', 'verified'])
+    ->name('verification.success');
+
+Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])
+    ->middleware(['not.admin', 'auth:web', 'customer', 'throttle:email-verification-send'])
+    ->name('verification.send');
+
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware(['auth:web', 'customer'])
     ->name('logout');
 
-Route::middleware(['not.admin', 'auth:web', 'customer'])->prefix('account')->name('account.')->group(function () {
+Route::middleware(['not.admin', 'auth:web', 'customer', 'verified'])->prefix('account')->name('account.')->group(function () {
     Route::get('/', [AccountController::class, 'index'])->name('dashboard');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])
@@ -294,9 +318,6 @@ Route::middleware(['not.admin', 'auth:web', 'customer'])->prefix('account')->nam
     Route::delete('/addresses/{address}', [AddressController::class, 'destroy'])->name('addresses.destroy');
 
     Route::get('/payment-methods', [PaymentMethodController::class, 'index'])->name('payment-methods.index');
-    Route::post('/payment-methods', [PaymentMethodController::class, 'store'])
-        ->middleware('throttle:5,1')
-        ->name('payment-methods.store');
     Route::patch('/payment-methods/{paymentMethod}/default', [PaymentMethodController::class, 'makeDefault'])->name('payment-methods.default');
     Route::delete('/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'destroy'])->name('payment-methods.destroy');
 
@@ -388,7 +409,7 @@ Route::post('/track-order', [OrderController::class, 'lookup'])->middleware('thr
 Route::get('/invoice-download', [OrderController::class, 'invoice'])->name('orders.invoice.legacy');
 Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->where('orderNumber', '[A-Za-z0-9\-]+')->name('orders.invoice');
 
-Route::prefix('checkout')->name('checkout.')->middleware(['not.admin', 'auth:web', 'customer'])->group(function () {
+Route::prefix('checkout')->name('checkout.')->middleware(['not.admin', 'auth:web', 'customer', 'verified'])->group(function () {
     Route::get('/', [CheckoutController::class, 'information'])->name('index');
     Route::get('/information', [CheckoutController::class, 'information'])->name('information');
     Route::post('/information', [CheckoutController::class, 'storeInformation'])->middleware('throttle:checkout-step')->name('information.store');

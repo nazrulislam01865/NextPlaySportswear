@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Storefront\Checkout;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
+use App\Payments\Exceptions\PaymentGatewayException;
 use App\Http\Requests\Storefront\Checkout\BillingAddressRequest;
 use App\Http\Requests\Storefront\Checkout\CheckoutInformationRequest;
 use App\Http\Requests\Storefront\Checkout\PaymentMethodRequest;
@@ -10,14 +12,18 @@ use App\Http\Requests\Storefront\Checkout\PlaceOrderRequest;
 use App\Http\Requests\Storefront\Checkout\ReviewConfirmationRequest;
 use App\Http\Requests\Storefront\Checkout\ShippingAddressRequest;
 use App\Services\Checkout\CheckoutService;
+use App\Services\Payments\PaymentOrchestrator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Illuminate\Validation\ValidationException;
 
 class CheckoutController extends Controller
 {
-    public function __construct(private readonly CheckoutService $checkout)
-    {
+    public function __construct(
+        private readonly CheckoutService $checkout,
+        private readonly PaymentOrchestrator $payments,
+    ) {
     }
 
     public function information(Request $request): View|RedirectResponse
@@ -203,9 +209,24 @@ class CheckoutController extends Controller
 
         $validated = $request->validated();
         $this->checkout->confirmReview($validated);
-        $order = $this->checkout->placeOrder($validated, $request->user());
+        $snapshot = $this->checkout->placeOrder($validated, $request->user());
+        $order = Order::query()->findOrFail((int) $snapshot['id']);
 
-        return redirect()->route('order.confirmation')->with('status', 'Order snapshot created securely.');
+        try {
+            $handoff = $this->payments->initiateCheckout($order, (string) $validated['idempotency_key']);
+        } catch (ValidationException $exception) {
+            return redirect()->route('account.orders.show', $order)->withErrors($exception->errors());
+        } catch (PaymentGatewayException $exception) {
+            return redirect()->route('account.orders.show', $order)->withErrors([
+                'payment_method' => $exception->getMessage(),
+            ]);
+        }
+
+        if ($handoff->requiresRedirect()) {
+            return redirect()->away((string) $handoff->url);
+        }
+
+        return redirect()->route('order.confirmation')->with('status', 'Order created and submitted for payment review.');
     }
 
     public function success(Request $request): RedirectResponse

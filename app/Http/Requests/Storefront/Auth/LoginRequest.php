@@ -24,7 +24,10 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'email:rfc,dns', 'max:255'],
+            // The account already exists at login time. Avoid a live DNS lookup here;
+            // email ownership is enforced by the verification flow, and DNS outages
+            // must never prevent an existing customer from signing in.
+            'email' => ['required', 'email:rfc', 'max:255'],
             'password' => ['required', 'string', 'max:255'],
             'remember' => ['nullable', 'boolean'],
             'redirect' => ['nullable', 'string', 'max:2048'],

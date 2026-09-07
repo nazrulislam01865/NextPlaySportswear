@@ -9,15 +9,15 @@
             <div class="mb-6 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-3">
                 <div class="rounded-xl bg-white p-3 text-center shadow-sm">
                     <p class="text-xl font-black text-brand-red">1</p>
-                    <p class="mt-1 text-xs font-black uppercase tracking-wide text-slate-600">Save details</p>
+                    <p class="mt-1 text-xs font-black uppercase tracking-wide text-slate-600">Create account</p>
                 </div>
                 <div class="rounded-xl bg-white p-3 text-center shadow-sm">
                     <p class="text-xl font-black text-brand-red">2</p>
-                    <p class="mt-1 text-xs font-black uppercase tracking-wide text-slate-600">Track proof</p>
+                    <p class="mt-1 text-xs font-black uppercase tracking-wide text-slate-600">Verify email</p>
                 </div>
                 <div class="rounded-xl bg-white p-3 text-center shadow-sm">
                     <p class="text-xl font-black text-brand-red">3</p>
-                    <p class="mt-1 text-xs font-black uppercase tracking-wide text-slate-600">Repeat order</p>
+                    <p class="mt-1 text-xs font-black uppercase tracking-wide text-slate-600">Manage orders</p>
                 </div>
             </div>
 
@@ -94,6 +94,10 @@
                     @error('website')
                         <p class="mt-2 text-sm font-bold text-brand-red">{{ $message }}</p>
                     @enderror
+                </div>
+
+                <div class="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold leading-6 text-slate-600">
+                    After registration, we will email you a secure verification link. Your account and checkout remain protected until the email address is verified.
                 </div>
 
                 <button type="submit" class="btn btn-red h-12 w-full rounded-2xl text-base">

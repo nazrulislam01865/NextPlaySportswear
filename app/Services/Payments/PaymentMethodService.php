@@ -4,17 +4,26 @@ namespace App\Services\Payments;
 
 use App\Models\PaymentMethod;
 use App\Models\User;
+use App\Payments\PaymentGatewayManager;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 
 class PaymentMethodService
 {
+    public function __construct(private readonly PaymentGatewayManager $gateways)
+    {
+    }
+
     public function availableMethods(array $summary, ?User $user = null): array
     {
         $total = max(0, (float) ($summary['total'] ?? 0));
 
         return $this->methodRecords()
             ->filter(function (PaymentMethod $method) use ($total): bool {
+                if (! $this->gateways->isAvailable((string) $method->provider)) {
+                    return false;
+                }
+
                 if ($method->minimum_total !== null && $total < (float) $method->minimum_total) {
                     return false;
                 }
@@ -99,13 +108,13 @@ class PaymentMethodService
                 'code' => 'card',
                 'provider' => 'stripe',
                 'payment_type' => 'card',
-                'badge' => 'Secure',
-                'description' => 'Pay securely by card through a PCI-compliant hosted payment provider.',
-                'instructions' => 'Raw card numbers and CVV are never stored in the application database.',
+                'badge' => 'Stripe Secure Checkout',
+                'description' => 'Pay securely on Stripe-hosted Checkout.',
+                'instructions' => 'Raw card number and CVV never pass through this application.',
                 'is_online' => true,
                 'requires_provider_redirect' => true,
                 'requires_manual_review' => false,
-                'allows_saved_methods' => true,
+                'allows_saved_methods' => false,
                 'is_default' => true,
                 'is_active' => true,
                 'sort_order' => 10,
