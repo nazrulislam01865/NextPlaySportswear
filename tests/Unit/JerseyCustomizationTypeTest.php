@@ -219,6 +219,7 @@ class JerseyCustomizationTypeTest extends TestCase
             JerseyCustomizationType::QuarterZipImprintOption,
             JerseyCustomizationType::QuarterZipPocketOption,
             JerseyCustomizationType::QuarterZipNeckOption,
+            JerseyCustomizationType::QuarterZipDifferentNameAndNumberOption,
         ];
 
         foreach ($expected as $type) {
@@ -230,7 +231,8 @@ class JerseyCustomizationTypeTest extends TestCase
         $this->assertSame('1.8.5', JerseyCustomizationType::QuarterZipImprintOption->menuNumber());
         $this->assertSame('1.8.6', JerseyCustomizationType::QuarterZipPocketOption->menuNumber());
         $this->assertSame('1.8.7', JerseyCustomizationType::QuarterZipNeckOption->menuNumber());
-        $this->assertSame('1.8.8', JerseyCustomizationType::sizeOptionMenuNumberForGroup('quarter_zip'));
+        $this->assertSame('1.8.8', JerseyCustomizationType::QuarterZipDifferentNameAndNumberOption->menuNumber());
+        $this->assertSame('1.8.9', JerseyCustomizationType::sizeOptionMenuNumberForGroup('quarter_zip'));
         $this->assertNotSame(JerseyCustomizationType::QuarterZipImprintOption->value, JerseyCustomizationType::TshirtImprintOption->value);
         $this->assertNotSame(JerseyCustomizationType::QuarterZipPocketOption->value, JerseyCustomizationType::TshirtPocketOption->value);
     }
@@ -428,6 +430,7 @@ class JerseyCustomizationTypeTest extends TestCase
         $bagTypes = [
             JerseyCustomizationType::BagSizeOption,
             JerseyCustomizationType::BagFabricOption,
+            JerseyCustomizationType::BagProductFeatureOption,
         ];
         foreach ($bagTypes as $type) {
             $this->assertContains($type, $groups['bag']['types']);
@@ -436,6 +439,7 @@ class JerseyCustomizationTypeTest extends TestCase
         }
         $this->assertSame('1.14.6', JerseyCustomizationType::BagSizeOption->menuNumber());
         $this->assertSame('1.14.7', JerseyCustomizationType::BagFabricOption->menuNumber());
+        $this->assertSame('1.14.8', JerseyCustomizationType::BagProductFeatureOption->menuNumber());
 
         $headwearTypes = [
             JerseyCustomizationType::HeadwearClosureOption,
@@ -473,6 +477,7 @@ class JerseyCustomizationTypeTest extends TestCase
                 [JerseyCustomizationType::LanyardMaterialOption, '1.17.4'],
                 [JerseyCustomizationType::LanyardStandardAttachmentOption, '1.17.5'],
                 [JerseyCustomizationType::LanyardAttachmentSurchargeOptions, '1.17.6'],
+                [JerseyCustomizationType::LanyardProductSizeOption, '1.17.7'],
             ],
             'headband' => [
                 [JerseyCustomizationType::HeadbandSizeOption, '1.18.5'],
@@ -596,6 +601,19 @@ class JerseyCustomizationTypeTest extends TestCase
             $this->assertArrayNotHasKey($type->value, JerseyCustomizationType::masterDataOptions());
             $this->assertArrayHasKey($type->value, JerseyCustomizationType::productConfigurationOptions());
         }
+
+        $trainingVestProductTypes = JerseyCustomizationType::productConfigurationTypesForGroup('training_vest');
+        foreach ([
+            JerseyCustomizationType::TrainingVestColorOption,
+            JerseyCustomizationType::TrainingVestFabricOption,
+            JerseyCustomizationType::TrainingVestSizeOption,
+            JerseyCustomizationType::TrainingVestVestTypeOption,
+            JerseyCustomizationType::TrainingVestImprintOption,
+            JerseyCustomizationType::TrainingVestLogoOption,
+        ] as $type) {
+            $this->assertContains($type, $trainingVestProductTypes);
+        }
+        $this->assertSame('Size Options', JerseyCustomizationType::TrainingVestSizeOption->label());
 
         $this->assertTrue(JerseyCustomizationType::BaseballBeltColorOption->usesColorValue());
         $this->assertTrue(JerseyCustomizationType::TowelAvailableBackingColorOption->usesColorValue());

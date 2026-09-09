@@ -522,7 +522,7 @@
                 'number' => $group['number'],
                 'label' => $group['label'],
                 'size_options_enabled' => \App\Support\ProductSizing::supportsMasterDataSizeOptions($groupKey),
-                'types' => collect($group['types'])->map(fn ($type) => [
+                'types' => collect(\App\Enums\JerseyCustomizationType::productConfigurationTypesForGroup($groupKey))->map(fn ($type) => [
                     'value' => $type->value,
                     'label' => $type->label(),
                     'group' => $type->group(),

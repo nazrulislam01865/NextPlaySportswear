@@ -14,7 +14,7 @@ enum TrainingVestCustomizationType: string
         return match ($this) {
             self::Color => 'Color',
             self::Fabric => 'Fabric',
-            self::Size => 'Size',
+            self::Size => 'Size Options',
             self::VestType => 'Vest Type',
         };
     }
@@ -67,7 +67,7 @@ enum TrainingVestCustomizationType: string
         return match ($this) {
             self::Color => 'Add training vest colors with exact color values. These colors are stored separately from jersey, jacket, hoodie, and other customization colors.',
             self::Fabric => 'Add training vest fabric choices with useful details such as mesh, lightweight polyester, breathable fabric, or reversible material.',
-            self::Size => 'Add training vest-specific size values such as youth, adult, or numbered training bib sizes.',
+            self::Size => 'Add training vest-specific size options such as youth, adult, or numbered training bib sizes. These values are mirrored into the reusable product customization picker.',
             self::VestType => 'Add training vest type choices such as scrimmage vest, reversible vest, numbered vest, or goalkeeper training vest.',
         };
     }

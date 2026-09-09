@@ -19,6 +19,7 @@ class ProductSizingTest extends TestCase
             'armsleeve',
             'silicone_wristband',
             'towel',
+            'training_vest',
         ];
 
         foreach ($groups as $group) {

@@ -27,6 +27,7 @@ class ProductSizing
      */
     public const DEDICATED_CUSTOMIZATION_SIZE_PROFILES = [
         'towel',
+        'training_vest',
         'silicone_wristband',
         'armsleeve',
         'baseball_belt',

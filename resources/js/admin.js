@@ -1418,6 +1418,7 @@ window.adminProductForm = (initial = {}) => ({
         if (premiumScarfType) return premiumScarfType;
 
         const bagType = this.inferProductScopedCustomizationType(plain, /\bbags?\b/, [
+            [/\bproduct.*features?\b|\bfeatures?.*product\b|\bfeatures?\b/, 'bag_product_feature_option'],
             [/\bsize\b/, 'bag_size_option'],
             [/\b(fabric|material)\b/, 'bag_fabric_option'],
         ]);
@@ -1439,6 +1440,7 @@ window.adminProductForm = (initial = {}) => ({
         if (drinkwareType) return drinkwareType;
 
         const lanyardType = this.inferProductScopedCustomizationType(plain, /\blanyards?\b/, [
+            [/\bproduct.*size|size.*product\b|\bsize\b/, 'lanyard_product_size_option'],
             [/\battachment.*surcharge|surcharge.*attachment\b/, 'lanyard_attachment_surcharge_options'],
             [/\bstandard.*attachment|attachment.*standard\b/, 'lanyard_standard_attachment_option'],
             [/\b(material|fabric)\b/, 'lanyard_material_option'],
@@ -1573,6 +1575,7 @@ window.adminProductForm = (initial = {}) => ({
         if (/quarter[-\s_]*zip.*(fabric|material)|(fabric|material).*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_fabric';
         if (/quarter[-\s_]*zip.*zipper|zipper.*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_zipper';
         if (/quarter[-\s_]*zip.*sleeve|sleeve.*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_sleeve';
+        if (/quarter[-\s_]*zip.*(different.*name.*number|name.*number)|(different.*name.*number|name.*number).*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_different_name_and_number_option';
         if (/quarter[-\s_]*zip.*imprint|imprint.*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_imprint_option';
         if (/quarter[-\s_]*zip.*pocket|pocket.*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_pocket_option';
         if (/quarter[-\s_]*zip.*neck|neck.*quarter[-\s_]*zip/.test(plain)) return 'quarter_zip_neck_option';

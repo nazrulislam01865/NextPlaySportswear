@@ -90,6 +90,7 @@ enum JerseyCustomizationType: string
     case QuarterZipPocketOption = 'quarter_zip_pocket_option';
     case QuarterZipNeckOption = 'quarter_zip_neck_option';
     case QuarterZipSize = 'quarter_zip_size';
+    case QuarterZipDifferentNameAndNumberOption = 'quarter_zip_different_name_and_number_option';
 
     case TankTopColor = 'tank_top_color';
     case TankTopFabric = 'tank_top_fabric';
@@ -156,6 +157,7 @@ enum JerseyCustomizationType: string
     case BagColorMode = 'bag_color_mode';
     case BagSizeOption = 'bag_size_option';
     case BagFabricOption = 'bag_fabric_option';
+    case BagProductFeatureOption = 'bag_product_feature_option';
 
     case HeadwearWovenLogo = 'headwear_woven_logo';
     case HeadwearHeatLogo = 'headwear_heat_logo';
@@ -194,6 +196,7 @@ enum JerseyCustomizationType: string
     case LanyardMaterialOption = 'lanyard_material_option';
     case LanyardStandardAttachmentOption = 'lanyard_standard_attachment_option';
     case LanyardAttachmentSurchargeOptions = 'lanyard_attachment_surcharge_options';
+    case LanyardProductSizeOption = 'lanyard_product_size_option';
 
     case HeadbandLogo = 'headband_logo';
     case HeadbandPattern = 'headband_pattern';
@@ -342,6 +345,7 @@ enum JerseyCustomizationType: string
             self::QuarterZipPocketOption => 'Pocket Option',
             self::QuarterZipNeckOption => 'Neck Option',
             self::QuarterZipSize => 'Quarter-Zip Size',
+            self::QuarterZipDifferentNameAndNumberOption => 'Different Name and Number Option',
             self::TankTopColor => 'Tank Top Color',
             self::TankTopFabric => 'Tank Top Fabric',
             self::TankTopStyle => 'Tank Top Style',
@@ -401,6 +405,7 @@ enum JerseyCustomizationType: string
             self::BagColorMode => 'Single / Multicolor',
             self::BagSizeOption => 'Size Option',
             self::BagFabricOption => 'Fabric Option',
+            self::BagProductFeatureOption => 'Product Feature Option',
             self::HeadwearWovenLogo => 'Logo',
             self::HeadwearHeatLogo => 'Heat Logo',
             self::HeadwearMultiPosition => 'Multi Position',
@@ -436,6 +441,7 @@ enum JerseyCustomizationType: string
             self::LanyardMaterialOption => 'Material Option',
             self::LanyardStandardAttachmentOption => 'Standard Attachment Option',
             self::LanyardAttachmentSurchargeOptions => 'Attachment Surcharge & Options',
+            self::LanyardProductSizeOption => 'Product Size Option',
             self::HeadbandLogo => 'Logo',
             self::HeadbandPattern => 'Pattern',
             self::HeadbandAngle => 'Wrap',
@@ -524,7 +530,8 @@ enum JerseyCustomizationType: string
             self::QuarterZipImprintOption,
             self::QuarterZipPocketOption,
             self::QuarterZipNeckOption,
-            self::QuarterZipSize => 'quarter_zip',
+            self::QuarterZipSize,
+            self::QuarterZipDifferentNameAndNumberOption => 'quarter_zip',
             self::TankTopColor,
             self::TankTopFabric,
             self::TankTopStyle,
@@ -583,7 +590,8 @@ enum JerseyCustomizationType: string
             self::BagPrintSize,
             self::BagColorMode,
             self::BagSizeOption,
-            self::BagFabricOption => 'bag',
+            self::BagFabricOption,
+            self::BagProductFeatureOption => 'bag',
             self::HeadwearWovenLogo,
             self::HeadwearHeatLogo,
             self::HeadwearMultiPosition,
@@ -618,7 +626,8 @@ enum JerseyCustomizationType: string
             self::LanyardLogo,
             self::LanyardMaterialOption,
             self::LanyardStandardAttachmentOption,
-            self::LanyardAttachmentSurchargeOptions => 'lanyard',
+            self::LanyardAttachmentSurchargeOptions,
+            self::LanyardProductSizeOption => 'lanyard',
             self::HeadbandLogo,
             self::HeadbandPattern,
             self::HeadbandAngle,
@@ -810,6 +819,7 @@ enum JerseyCustomizationType: string
             self::QuarterZipPocketOption => 'Example: Zippered Side Pocket',
             self::QuarterZipNeckOption => 'Example: Mock Neck',
             self::QuarterZipSize => 'Example: Adult Large',
+            self::QuarterZipDifferentNameAndNumberOption => 'Example: Different Player Name and Number',
             self::TankTopColor => 'Example: Team Red',
             self::TankTopFabric => 'Example: Lightweight Mesh',
             self::TankTopStyle => 'Example: Racerback Tank',
@@ -869,6 +879,7 @@ enum JerseyCustomizationType: string
             self::BagColorMode => 'Example: Single Color',
             self::BagSizeOption => 'Example: Medium Duffel',
             self::BagFabricOption => 'Example: 600D Polyester',
+            self::BagProductFeatureOption => 'Example: Reinforced Shoe Compartment',
             self::HeadwearWovenLogo => 'Example: Front logo',
             self::HeadwearHeatLogo => 'Example: Heat Transfer Logo',
             self::HeadwearMultiPosition => 'Example: Front + Side',
@@ -904,6 +915,7 @@ enum JerseyCustomizationType: string
             self::LanyardMaterialOption => 'Example: Polyester',
             self::LanyardStandardAttachmentOption => 'Example: Metal Lobster Clip',
             self::LanyardAttachmentSurchargeOptions => 'Example: Premium Badge Reel Upgrade',
+            self::LanyardProductSizeOption => 'Example: 20 mm x 900 mm',
             self::HeadbandLogo => 'Example: Front logo',
             self::HeadbandPattern => 'Example: Stripe pattern',
             self::HeadbandAngle => 'Example: Full wrap artwork',
@@ -993,6 +1005,7 @@ enum JerseyCustomizationType: string
             self::QuarterZipPocketOption => 'Add quarter-zip-only pocket choices such as no pocket, side pocket, zip pocket, or chest pocket.',
             self::QuarterZipNeckOption => 'Add quarter-zip-only neck choices such as mock neck, stand neck, funnel neck, or contrast neck. These values stay separate from T-shirt and other neckline master data.',
             self::QuarterZipSize => 'Add quarter-zip-specific size values only when they are different from the main Size Options master data.',
+            self::QuarterZipDifferentNameAndNumberOption => 'Add quarter-zip-only different name and number choices for personalized team orders. Configure the actual per-product surcharge with the shared Additional charge controls.',
             self::TankTopColor => 'Add common tank top color choices with exact color values for product configuration.',
             self::TankTopFabric => 'Add tank top fabric choices with short details when the material needs explanation.',
             self::TankTopStyle => 'Add tank top style choices such as racerback, classic athletic cut, or reversible tank.',
@@ -1052,6 +1065,7 @@ enum JerseyCustomizationType: string
             self::BagColorMode => 'Add choices such as single color, multicolor, or full color print.',
             self::BagSizeOption => 'Add bag-only size choices such as small, medium, large, backpack, tote, or duffel sizes. Keep these separate from apparel size master data.',
             self::BagFabricOption => 'Add bag-only fabric choices such as polyester, nylon, canvas, mesh, or other bag materials. These values stay separate from apparel fabrics.',
+            self::BagProductFeatureOption => 'Add reusable bag product features such as reinforced base, shoe compartment, bottle pocket, padded strap, or waterproof lining. Configure any feature surcharge per product with the shared Additional charge controls.',
             self::HeadwearWovenLogo => 'Add headwear-only logo choices for caps, hats, and related items.',
             self::HeadwearHeatLogo => 'Add heat-transfer logo choices for headwear.',
             self::HeadwearMultiPosition => 'Add position choices such as front, side, back, or multiple positions.',
@@ -1087,6 +1101,7 @@ enum JerseyCustomizationType: string
             self::LanyardMaterialOption => 'Add lanyard material choices such as polyester, nylon, recycled PET, satin, or woven material.',
             self::LanyardStandardAttachmentOption => 'Add standard lanyard attachment choices such as lobster clip, swivel hook, split ring, or badge clip.',
             self::LanyardAttachmentSurchargeOptions => 'Add premium attachment choices that may carry a surcharge. Configure the actual amount per product with the shared Additional charge controls.',
+            self::LanyardProductSizeOption => 'Add reusable lanyard product-size choices such as width and finished length combinations. Keep these separate from apparel sizing and configure any surcharge per product.',
             self::HeadbandLogo => 'Add logo choices for headband customization.',
             self::HeadbandPattern => 'Add pattern choices such as solid, stripe, gradient, or custom pattern.',
             self::HeadbandAngle => 'Add headband-only wrap choices for full-wrap or partial-wrap artwork.',
@@ -1183,6 +1198,7 @@ enum JerseyCustomizationType: string
             self::JacketImprintAreaOption => 'Optional imprint area reference image',
             self::PoloDifferentNameAndNumberOption,
             self::TshirtDifferentNameAndNumberOption,
+            self::QuarterZipDifferentNameAndNumberOption,
             self::TankTopDifferentNameAndNumberChargesOption,
             self::SweatshirtDifferentNameAndNumberSurchargeOption,
             self::JacketDifferentNameAndNumberOption => 'Optional name/number reference image',
@@ -1250,8 +1266,10 @@ enum JerseyCustomizationType: string
             self::BagPrintSize,
             self::BagSizeOption,
             self::LanyardWidth,
+            self::LanyardProductSizeOption,
             self::HeadbandSizeOption => 'Optional size reference image',
             self::BagColorMode,
+            self::BagProductFeatureOption,
             self::HeadwearMultiPosition,
             self::Headwear3dPuff,
             self::HeadwearFlatEmbroidery,
@@ -1354,6 +1372,7 @@ enum JerseyCustomizationType: string
             self::TshirtImprintAreaOption => 'Optional. Add a T-shirt placement reference image showing the imprint area.',
             self::TshirtBackDetailOption => 'Optional. Add a T-shirt back-detail reference image when the panel or finish needs a visual preview.',
             self::TshirtDifferentNameAndNumberOption => 'Optional. Add a T-shirt name/number placement reference image when the personalization choice needs a visual preview.',
+            self::QuarterZipDifferentNameAndNumberOption => 'Optional. Add a quarter-zip name/number placement reference image when the personalization choice needs a visual preview.',
             self::QuarterZipImprintOption => 'Optional. Add a quarter-zip imprint reference image when the finished decoration needs a visual preview.',
             self::TankTopImprintOption => 'Optional. Add a tank top imprint reference image when the finished decoration needs a visual preview.',
             self::TankTopImprintAreaOption => 'Optional. Add a tank top placement reference image showing the imprint area.',
@@ -1433,8 +1452,10 @@ enum JerseyCustomizationType: string
             self::BagPrintSize,
             self::BagSizeOption,
             self::LanyardWidth,
+            self::LanyardProductSizeOption,
             self::HeadbandSizeOption => 'Optional. Add only when a size reference helps the admin or customer.',
             self::BagColorMode,
+            self::BagProductFeatureOption,
             self::HeadwearMultiPosition,
             self::Headwear3dPuff,
             self::HeadwearFlatEmbroidery,
@@ -1549,6 +1570,7 @@ enum JerseyCustomizationType: string
             self::JacketImprintAreaOption => 'Choose imprint area image',
             self::PoloDifferentNameAndNumberOption,
             self::TshirtDifferentNameAndNumberOption,
+            self::QuarterZipDifferentNameAndNumberOption,
             self::TankTopDifferentNameAndNumberChargesOption,
             self::SweatshirtDifferentNameAndNumberSurchargeOption,
             self::JacketDifferentNameAndNumberOption => 'Choose name/number image',
@@ -1616,8 +1638,10 @@ enum JerseyCustomizationType: string
             self::BagPrintSize,
             self::BagSizeOption,
             self::LanyardWidth,
+            self::LanyardProductSizeOption,
             self::HeadbandSizeOption => 'Choose size image',
             self::BagColorMode,
+            self::BagProductFeatureOption,
             self::HeadwearMultiPosition,
             self::Headwear3dPuff,
             self::HeadwearFlatEmbroidery,
@@ -1691,6 +1715,15 @@ enum JerseyCustomizationType: string
 
     /** @return array<int, self> */
     public static function menuTypesForGroup(string $group): array
+    {
+        return collect(self::typesForGroup($group))
+            ->reject(static fn (self $type): bool => $type->isSizeChartType())
+            ->values()
+            ->all();
+    }
+
+    /** @return array<int, self> */
+    public static function productConfigurationTypesForGroup(string $group): array
     {
         return collect(self::typesForGroup($group))
             ->reject(static fn (self $type): bool => $type->isSizeChartType())
@@ -1799,6 +1832,7 @@ enum JerseyCustomizationType: string
                 self::QuarterZipPocketOption,
                 self::QuarterZipNeckOption,
                 self::QuarterZipSize,
+                self::QuarterZipDifferentNameAndNumberOption,
             ],
             'tank_top' => [
                 self::TankTopColor,
@@ -1870,6 +1904,7 @@ enum JerseyCustomizationType: string
                 self::BagColorMode,
                 self::BagSizeOption,
                 self::BagFabricOption,
+                self::BagProductFeatureOption,
             ],
             'headwear' => [
                 self::HeadwearWovenLogo,
@@ -1906,6 +1941,7 @@ enum JerseyCustomizationType: string
                 self::LanyardMaterialOption,
                 self::LanyardStandardAttachmentOption,
                 self::LanyardAttachmentSurchargeOptions,
+                self::LanyardProductSizeOption,
             ],
             'headband' => [
                 self::HeadbandLogo,

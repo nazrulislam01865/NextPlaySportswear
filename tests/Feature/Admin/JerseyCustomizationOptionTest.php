@@ -279,6 +279,7 @@ class JerseyCustomizationOptionTest extends TestCase
             JerseyCustomizationType::QuarterZipImprintOption,
             JerseyCustomizationType::QuarterZipPocketOption,
             JerseyCustomizationType::QuarterZipNeckOption,
+            JerseyCustomizationType::QuarterZipDifferentNameAndNumberOption,
         ];
 
         foreach ($types as $type) {
@@ -293,7 +294,7 @@ class JerseyCustomizationOptionTest extends TestCase
             ]);
         }
 
-        $this->assertSame(3, JerseyCustomizationOption::query()
+        $this->assertSame(4, JerseyCustomizationOption::query()
             ->whereIn('type', array_map(static fn (JerseyCustomizationType $type): string => $type->value, $types))
             ->where('slug', 'standard')
             ->count());
@@ -411,6 +412,7 @@ class JerseyCustomizationOptionTest extends TestCase
         $types = [
             JerseyCustomizationType::BagSizeOption,
             JerseyCustomizationType::BagFabricOption,
+            JerseyCustomizationType::BagProductFeatureOption,
             JerseyCustomizationType::HeadwearClosureOption,
             JerseyCustomizationType::HeadwearCrownOption,
             JerseyCustomizationType::HeadwearVisorOption,
@@ -435,7 +437,7 @@ class JerseyCustomizationOptionTest extends TestCase
             ]);
         }
 
-        $this->assertSame(7, JerseyCustomizationOption::query()
+        $this->assertSame(8, JerseyCustomizationOption::query()
             ->whereIn('type', array_map(static fn (JerseyCustomizationType $type): string => $type->value, $types))
             ->where('slug', 'standard')
             ->count());
@@ -454,6 +456,7 @@ class JerseyCustomizationOptionTest extends TestCase
             JerseyCustomizationType::LanyardMaterialOption,
             JerseyCustomizationType::LanyardStandardAttachmentOption,
             JerseyCustomizationType::LanyardAttachmentSurchargeOptions,
+            JerseyCustomizationType::LanyardProductSizeOption,
             JerseyCustomizationType::HeadbandSizeOption,
             JerseyCustomizationType::HeadbandMaterialOption,
             JerseyCustomizationType::HeadbandImprintMethodOption,
@@ -471,7 +474,7 @@ class JerseyCustomizationOptionTest extends TestCase
             )->assertSessionDoesntHaveErrors();
         }
 
-        $this->assertSame(8, JerseyCustomizationOption::query()
+        $this->assertSame(9, JerseyCustomizationOption::query()
             ->whereIn('type', array_map(static fn (JerseyCustomizationType $type): string => $type->value, $types))
             ->where('slug', 'standard')
             ->count());
