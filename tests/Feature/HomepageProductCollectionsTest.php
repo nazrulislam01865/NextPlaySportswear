@@ -30,8 +30,9 @@ class HomepageProductCollectionsTest extends TestCase
             ->assertSee('Featured Products')
             ->assertSee('Latest')
             ->assertSee('Best Selling')
-            ->assertSee('home-product-mobile-list', false)
-            ->assertSee('home-product-mobile-item', false);
+            ->assertSee('home-product-grid', false)
+            ->assertSee('data-product-card', false)
+            ->assertDontSee('home-product-mobile-list', false);
     }
 
     public function test_latest_products_are_ordered_by_publication_date(): void

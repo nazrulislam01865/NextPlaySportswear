@@ -1,7 +1,12 @@
-<x-layouts.admin title="Dynamic Categories">
+<x-layouts.admin title="Categories" :compact-header="true">
     @php
         $categoryStatuses = ['draft', 'active', 'inactive', 'archived'];
         $categoryTypes = ['standard', 'sport', 'collection', 'apparel', 'accessory', 'promotional', 'sale', 'new-arrival', 'navigation-only'];
+
+        $hasActiveFilters = filled($filters['q'] ?? null)
+            || filled($filters['status'] ?? null)
+            || filled($filters['type'] ?? null)
+            || (bool) ($filters['empty'] ?? false);
 
         $stats = [
             ['label' => 'Total Categories', 'value' => $analytics['total'], 'note' => 'All catalog nodes', 'icon' => 'tree', 'tone' => 'slate'],
@@ -12,17 +17,8 @@
         ];
     @endphp
 
-    <div class="category-admin-page space-y-6">
-        <section class="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-            <div class="max-w-3xl">
-                <p class="text-xs font-black uppercase tracking-[.22em] text-brand-red">Catalog Architecture</p>
-                <p class="mt-3 text-base font-medium leading-8 text-slate-600 sm:text-lg">
-                    Manage a secure multi-level category tree, storefront visibility, category-specific facets,
-                    SEO, landing content, product assignments, menus, imports, and ordering without
-                    changing storefront templates.
-                </p>
-            </div>
-
+    <div class="category-admin-page">
+        <section class="category-page-toolbar" aria-label="Category actions">
             <div class="category-top-actions">
                 <a href="{{ route('admin.categories.ordering') }}" class="category-header-action category-header-action-light">
                     <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -54,7 +50,7 @@
             </div>
         </section>
 
-        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <section class="category-stats-grid" aria-label="Category summary">
             @foreach($stats as $stat)
                 <article class="category-stat-card">
                     <span class="category-stat-icon category-stat-icon-{{ $stat['tone'] }}" aria-hidden="true">
@@ -89,7 +85,7 @@
                 <form method="GET" class="category-filter-form">
                     <label class="category-field relative block">
                         <span class="sr-only">Search categories</span>
-                        <span class="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true">
+                        <span class="category-filter-leading-icon" aria-hidden="true">
                             <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none">
                                 <path d="m21 21-4.3-4.3M10.8 18.2a7.4 7.4 0 1 1 0-14.8 7.4 7.4 0 0 1 0 14.8Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                             </svg>
@@ -114,7 +110,7 @@
                                 </option>
                             @endforeach
                         </select>
-                        <span class="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true">
+                        <span class="category-filter-select-icon" aria-hidden="true">
                             <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none">
                                 <path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                             </svg>
@@ -131,7 +127,7 @@
                                 </option>
                             @endforeach
                         </select>
-                        <span class="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true">
+                        <span class="category-filter-select-icon" aria-hidden="true">
                             <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none">
                                 <path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                             </svg>
@@ -143,9 +139,14 @@
                         <span>Empty only</span>
                     </label>
 
-                    <button class="category-filter-button" type="submit">
-                        Filter
-                    </button>
+                    <div class="category-filter-actions">
+                        <button class="category-filter-button" type="submit">
+                            Filter
+                        </button>
+                        @if($hasActiveFilters)
+                            <a href="{{ route('admin.categories.index') }}" class="category-filter-clear">Clear</a>
+                        @endif
+                    </div>
                 </form>
 
                 <form
@@ -213,7 +214,7 @@
             </span>
         </form>
 
-        <section class="rounded-[18px] border border-slate-200 bg-white shadow-card">
+        <section class="category-table-card">
             <div class="category-management-scroll" tabindex="0" aria-label="Category tree table">
                 <table class="category-management-table w-full text-sm">
                     <thead>
@@ -257,22 +258,22 @@
                                         @endif
                                         <div class="min-w-0">
                                             <div class="flex min-w-0 flex-wrap items-center gap-2">
-                                                <strong class="truncate text-brand-ink">{{ $category->name }}</strong>
+                                                <strong class="category-name truncate">{{ $category->name }}</strong>
                                                 @if($category->is_featured)
-                                                    <span class="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-[.08em] text-amber-700">Featured</span>
+                                                    <span class="category-featured-pill">Featured</span>
                                                 @endif
                                             </div>
-                                            <p class="mt-1 font-mono text-xs font-medium text-slate-500">/category/{{ $category->slug }}</p>
+                                            <p class="category-slug">/category/{{ $category->slug }}</p>
                                             @if($category->parent)
-                                                <p class="mt-1 text-xs font-medium text-slate-400">Parent: {{ $category->parent->name }}</p>
+                                                <p class="category-parent">Parent: {{ $category->parent->name }}</p>
                                             @endif
                                         </div>
                                     </div>
                                 </td>
 
                                 <td class="px-6 py-5" data-label="Type / Template">
-                                    <strong class="block text-sm font-semibold text-slate-800">{{ ucwords(str_replace('-', ' ', $category->category_type)) }}</strong>
-                                    <span class="mt-1 block text-sm text-slate-500">{{ ucwords(str_replace('_', ' ', $category->page_template)) }}</span>
+                                    <strong class="category-type">{{ ucwords(str_replace('-', ' ', $category->category_type)) }}</strong>
+                                    <span class="category-template">{{ ucwords(str_replace('_', ' ', $category->page_template)) }}</span>
                                 </td>
 
                                 <td class="px-6 py-5 text-center" data-label="Products">
@@ -286,17 +287,17 @@
                                         <small aria-hidden="true">›</small>
                                     </a>
                                 </td>
-                                <td class="px-6 py-5 text-center text-base font-semibold text-brand-ink" data-label="Children">{{ number_format($category->children_count) }}</td>
+                                <td class="category-children-count" data-label="Children">{{ number_format($category->children_count) }}</td>
 
                                 <td class="px-6 py-5" data-label="Visibility">
-                                    <span class="admin-status-pill px-3 py-1.5 text-xs font-black {{ $category->status === 'active' ? 'bg-emerald-50 text-emerald-700' : ($category->status === 'draft' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600') }}">{{ ucfirst($category->status) }}</span>
-                                    <p class="mt-2 text-xs font-medium text-slate-500">Catalog: {{ $category->is_visible_in_catalog ? 'Yes' : 'No' }} · Menu: {{ $category->is_visible_in_menu ? 'Yes' : 'No' }}</p>
+                                    <span class="category-status-pill category-status-pill--{{ $category->status }}">{{ ucfirst($category->status) }}</span>
+                                    <p class="category-visibility-meta">Catalog {{ $category->is_visible_in_catalog ? 'on' : 'off' }} · Menu {{ $category->is_visible_in_menu ? 'on' : 'off' }}</p>
                                 </td>
 
-                                <td class="px-6 py-5 text-sm text-slate-500" data-label="Updated">
-                                    <span class="whitespace-nowrap">{{ $category->updated_at?->format('M j, Y g:i A') }}</span>
+                                <td class="category-updated-cell" data-label="Updated">
+                                    <span>{{ $category->updated_at?->format('M j, Y g:i A') }}</span>
                                     @if($category->updater)
-                                        <span class="mt-1 block text-xs">by {{ $category->updater->name }}</span>
+                                        <small>by {{ $category->updater->name }}</small>
                                     @endif
                                 </td>
 
@@ -337,7 +338,7 @@
                                                 </form>
                                                 <button
                                                     type="button"
-                                                    class="text-red-700"
+                                                    class="category-row-danger-action"
                                                     data-category-delete-trigger
                                                     data-delete-url="{{ route('admin.categories.destroy', $category) }}"
                                                     data-category-name="{{ $category->name }}"
@@ -358,8 +359,8 @@
                         @empty
                             <tr>
                                 <td colspan="8" class="px-8 py-16 text-center">
-                                    <p class="text-lg font-black text-brand-ink">No categories found</p>
-                                    <p class="mt-2 text-sm font-medium text-slate-500">Try another keyword, status, type, or empty-category filter.</p>
+                                    <p class="category-empty-title">No categories found</p>
+                                    <p class="category-empty-copy">Try another keyword, status, type, or empty-category filter.</p>
                                 </td>
                             </tr>
                         @endforelse
@@ -373,54 +374,54 @@
         </section>
     </div>
 
-    <dialog id="category-delete-dialog" class="m-auto w-[min(94vw,720px)] overflow-hidden rounded-[22px] border-0 bg-transparent p-0 shadow-2xl backdrop:bg-slate-950/60">
-        <div class="overflow-hidden rounded-[22px] bg-white">
-            <div class="flex items-start justify-between gap-5 border-b border-slate-200 px-6 py-5 sm:px-7">
+    <dialog id="category-delete-dialog" class="category-delete-dialog">
+        <div class="category-delete-panel">
+            <div class="category-delete-header">
                 <div>
-                    <p class="text-xs font-black uppercase tracking-[.18em] text-red-600">Category-tree deletion</p>
-                    <h2 class="mt-2 text-xl font-black text-brand-ink sm:text-2xl">Delete <span data-category-delete-name></span>?</h2>
-                    <p class="mt-2 text-sm font-semibold leading-6 text-slate-600">The selected category and every child category below it will be deleted together.</p>
+                    <p class="category-delete-eyebrow">Category-tree deletion</p>
+                    <h2 class="category-delete-title">Delete <span data-category-delete-name></span>?</h2>
+                    <p class="category-delete-intro">The selected category and every child category below it will be deleted together.</p>
                 </div>
-                <button type="button" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-2xl leading-none text-slate-500 transition hover:bg-slate-50 hover:text-slate-900" aria-label="Close delete dialog" data-category-delete-close>×</button>
+                <button type="button" class="category-delete-close-button" aria-label="Close delete dialog" data-category-delete-close>×</button>
             </div>
 
-            <div class="space-y-5 px-6 py-6 sm:px-7">
-                <div class="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-semibold leading-6 text-red-900">
+            <div class="category-delete-body">
+                <div class="category-delete-warning">
                     Affected products will not be deleted. They will become completely categoryless, with all of their category assignments removed. Menu links pointing to deleted categories will be disabled.
                 </div>
 
-                <div class="grid gap-3 sm:grid-cols-3">
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <strong class="block text-2xl font-black text-brand-ink" data-category-delete-total-categories>0</strong>
-                        <span class="mt-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Categories deleted</span>
+                <div class="category-delete-metrics">
+                    <div class="category-delete-metric">
+                        <strong data-category-delete-total-categories>0</strong>
+                        <span>Categories deleted</span>
                     </div>
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <strong class="block text-2xl font-black text-brand-ink" data-category-delete-products>0</strong>
-                        <span class="mt-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Products categoryless</span>
+                    <div class="category-delete-metric">
+                        <strong data-category-delete-products>0</strong>
+                        <span>Products categoryless</span>
                     </div>
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <strong class="block text-2xl font-black text-brand-ink" data-category-delete-menus>0</strong>
-                        <span class="mt-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Menu links disabled</span>
+                    <div class="category-delete-metric">
+                        <strong data-category-delete-menus>0</strong>
+                        <span>Menu links disabled</span>
                     </div>
                 </div>
 
-                <div class="grid gap-4 md:grid-cols-2">
-                    <section class="rounded-2xl border border-slate-200 p-4" data-category-delete-children-section>
-                        <h3 class="text-sm font-black text-brand-ink">Child categories affected</h3>
-                        <ul class="mt-3 max-h-36 space-y-2 overflow-auto text-sm font-semibold text-slate-600" data-category-delete-children></ul>
+                <div class="category-delete-detail-grid">
+                    <section class="category-delete-detail-card" data-category-delete-children-section>
+                        <h3>Child categories affected</h3>
+                        <ul data-category-delete-children></ul>
                     </section>
-                    <section class="rounded-2xl border border-slate-200 p-4" data-category-delete-products-section>
-                        <h3 class="text-sm font-black text-brand-ink">Products affected</h3>
-                        <ul class="mt-3 max-h-36 space-y-2 overflow-auto text-sm font-semibold text-slate-600" data-category-delete-product-names></ul>
+                    <section class="category-delete-detail-card" data-category-delete-products-section>
+                        <h3>Products affected</h3>
+                        <ul data-category-delete-product-names></ul>
                     </section>
                 </div>
             </div>
 
-            <form method="POST" class="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-6 py-5 sm:flex-row sm:justify-end sm:px-7" data-category-delete-form>
+            <form method="POST" class="category-delete-footer" data-category-delete-form>
                 @csrf
                 @method('DELETE')
-                <button type="button" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-extrabold text-brand-navy transition hover:bg-slate-100" data-category-delete-close>Cancel</button>
-                <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-xl bg-red-600 px-5 text-sm font-extrabold text-white shadow-sm transition hover:bg-red-700">Delete affected category tree</button>
+                <button type="button" class="category-delete-cancel-button" data-category-delete-close>Cancel</button>
+                <button type="submit" class="category-delete-confirm-button">Delete affected category tree</button>
             </form>
         </div>
     </dialog>
@@ -456,7 +457,7 @@
                 if (extraCount > 0) {
                     const item = document.createElement('li');
                     item.textContent = `+ ${extraCount} more`;
-                    item.className = 'font-black text-slate-800';
+                    item.className = 'category-delete-more-item';
                     list.appendChild(item);
                 }
             };

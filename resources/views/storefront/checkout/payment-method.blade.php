@@ -11,7 +11,7 @@
                         <p class="mt-2 text-sm font-bold text-blue-100">
                             Product fulfillment: {{ $summary['shipping_method']['title'] ?? 'Selected with products' }} · {{ $summary['shipping_method']['display_price'] ?? 'Included' }}
                             @if(($summary['rural_surcharge'] ?? 0) > 0)
-                                · Rural surcharge ${{ number_format((float) $summary['rural_surcharge'], 2) }}
+                                · Remote area surcharge ${{ number_format((float) $summary['rural_surcharge'], 2) }}
                             @endif
                         </p>
                     </div>

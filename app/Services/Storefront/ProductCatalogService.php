@@ -1268,10 +1268,16 @@ class ProductCatalogService
             return 'products.base_price';
         }
 
-        return 'COALESCE((SELECT ppt.unit_price'
+        $expression = 'COALESCE((SELECT ppt.unit_price'
             .' FROM product_price_tiers AS ppt'
             .' WHERE ppt.product_id = products.id'
             .' ORDER BY ppt.minimum_quantity DESC, ppt.id DESC LIMIT 1), products.base_price)';
+
+        // SQLite binds raw query values without the numeric affinity MySQL applies to DECIMAL columns.
+        // Keep production SQL unchanged and normalize only the in-memory/test driver expression.
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? 'CAST('.$expression.' AS REAL)'
+            : $expression;
     }
 
     private function listingPageSize(?int $perPage = null): int

@@ -6,7 +6,7 @@ use App\Contracts\EmailService;
 use App\Data\EmailMessage;
 use App\Jobs\SendTransactionalEmail;
 use App\Mail\TransactionalEmail;
-use Illuminate\Mail\MailManager;
+use Illuminate\Contracts\Mail\Factory as MailFactory;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use Throwable;
@@ -14,7 +14,7 @@ use Throwable;
 final class CentralEmailService implements EmailService
 {
     public function __construct(
-        private readonly MailManager $mailManager
+        private readonly MailFactory $mailManager
     ) {
     }
 

@@ -17,7 +17,6 @@ class AdminRbac
     /** Permissions for launch-hidden modules that used to appear in Role Matrix. */
     private const RETIRED_PERMISSION_KEYS = [
         'inventory.view',
-        'customers.view',
         'reviews.view',
         'content.view',
         'content.manage',
@@ -98,11 +97,15 @@ class AdminRbac
             self::permission('customization.manage', 'Catalog', 'Manage', 'Manage Customization Master Data', 'Create and update product customization options and size option groups.', 'admin.jersey-customization-options.store', 51),
             self::permission('menus.view', 'Catalog', 'View', 'View Navigation Menus', 'Open admin navigation menu records.', 'admin.menus.index', 60),
             self::permission('menus.manage', 'Catalog', 'Manage', 'Manage Navigation Menus', 'Create and update storefront navigation menus.', 'admin.menus.store', 61),
+            self::permission('media.view', 'Catalog', 'View', 'View Media Library', 'Open uploaded media used by catalog and storefront content.', 'admin.media-library.index', 70),
+            self::permission('media.manage', 'Catalog', 'Manage', 'Manage Media Library', 'Upload and maintain reusable catalog and storefront media.', 'admin.media-library.store', 71),
 
             self::permission('orders.view', 'Commerce', 'View', 'View Orders', 'Open orders, order details, shipments, order downloads and customer change requests.', 'admin.orders.index', 100),
             self::permission('orders.manage', 'Commerce', 'Manage', 'Manage Orders', 'Update order status, payment status, fulfillment status, shipments, change requests and order downloads.', 'admin.orders.update', 101),
             self::permission('returns.view', 'Commerce', 'View', 'View Returns & Exchanges', 'Open return and exchange requests and their attachments.', 'admin.returns.index', 110),
             self::permission('returns.manage', 'Commerce', 'Manage', 'Manage Returns & Exchanges', 'Update return and exchange status, refunds and review notes.', 'admin.returns.update', 111),
+            self::permission('customers.view', 'Commerce', 'View', 'View Customers', 'Open storefront customer accounts, profile details, addresses, order history, return activity and safe payment metadata.', 'admin.customers.index', 120),
+            self::permission('customers.manage', 'Commerce', 'Manage', 'Manage Customer Access', 'Suspend and reactivate storefront customer accounts. Suspension immediately blocks authenticated customer access.', 'admin.customers.suspend', 121),
             self::permission('coupons.view', 'Commerce', 'View', 'View Coupons', 'Open discounts and coupon lists.', 'admin.coupons.index', 130),
             self::permission('coupons.manage', 'Commerce', 'Manage', 'Manage Coupons', 'Create and update discounts and coupons.', 'admin.coupons.store', 131),
 
@@ -112,8 +115,8 @@ class AdminRbac
             self::permission('homepage_slides.manage', 'Storefront', 'Manage', 'Manage Homepage Slider', 'Create, update and toggle homepage slides.', 'admin.homepage-slides.store', 171),
             self::permission('shipping.view', 'Catalog', 'View', 'View Shipping Methods', 'Open shipping method master data records.', 'admin.shipping-methods.index', 190),
             self::permission('shipping.manage', 'Catalog', 'Manage', 'Manage Shipping Methods', 'Create and update shipping method master data records.', 'admin.shipping-methods.store', 191),
-            self::permission('rural_surcharges.view', 'Storefront', 'View', 'View Rural Surcharges', 'Open rural area surcharge records.', 'admin.rural-area-surcharges.index', 200),
-            self::permission('rural_surcharges.manage', 'Storefront', 'Manage', 'Manage Rural Surcharges', 'Create and update rural area surcharges.', 'admin.rural-area-surcharges.store', 201),
+            self::permission('rural_surcharges.view', 'Storefront', 'View', 'View Remote Surcharges', 'Open remote and extended area surcharge records.', 'admin.rural-area-surcharges.index', 200),
+            self::permission('rural_surcharges.manage', 'Storefront', 'Manage', 'Manage Remote Surcharges', 'Create, import, and update remote area surcharges.', 'admin.rural-area-surcharges.store', 201),
             self::permission('payment_methods.view', 'Storefront', 'View', 'View Payment Methods', 'Open and manage the payment methods presented during checkout.', 'admin.payment-methods.index', 210),
             self::permission('payment_methods.manage', 'Storefront', 'Manage', 'Manage Payment Methods', 'Create and update payment methods.', 'admin.payment-methods.store', 211),
             self::permission('newsletters.view', 'Storefront', 'View', 'View Newsletter Subscribers', 'Open homepage newsletter subscriber emails and export filtered subscriber lists.', 'admin.newsletter-subscribers.index', 215),
@@ -137,6 +140,7 @@ class AdminRbac
             'attributes.view', 'attributes.manage',
             'customization.view', 'customization.manage',
             'menus.view', 'menus.manage',
+            'media.view', 'media.manage',
             'homepage_sections.view', 'homepage_sections.manage',
             'homepage_slides.view', 'homepage_slides.manage',
             'newsletters.view', 'newsletters.manage',
@@ -146,11 +150,13 @@ class AdminRbac
             'dashboard.view',
             'orders.view', 'orders.manage',
             'returns.view', 'returns.manage',
+            'customers.view',
         ];
 
         $contentAll = [
             'dashboard.view',
             'menus.view', 'menus.manage',
+            'media.view', 'media.manage',
             'homepage_sections.view', 'homepage_sections.manage',
             'homepage_slides.view', 'homepage_slides.manage',
             'shipping.view', 'shipping.manage',
@@ -170,7 +176,7 @@ class AdminRbac
             'admin' => $adminAllExceptProtected,
             'catalog_manager' => $catalogAll,
             'order_manager' => $commerceAll,
-            'support_agent' => ['dashboard.view', 'orders.view', 'returns.view'],
+            'support_agent' => ['dashboard.view', 'orders.view', 'returns.view', 'customers.view'],
             'content_manager' => $contentAll,
         ];
     }
@@ -339,9 +345,19 @@ class AdminRbac
             'products.view' => 'admin.products.index',
             'orders.view' => 'admin.orders.index',
             'categories.view' => 'admin.categories.index',
+            'attributes.view' => 'admin.attributes.index',
+            'customization.view' => 'admin.jersey-customization-options.index',
+            'menus.view' => 'admin.menus.index',
+            'media.view' => 'admin.media-library.index',
             'homepage_sections.view' => 'admin.homepage.sections.index',
             'homepage_slides.view' => 'admin.homepage-slides.index',
             'coupons.view' => 'admin.coupons.index',
+            'customers.view' => 'admin.customers.index',
+            'returns.view' => 'admin.returns.index',
+            'shipping.view' => 'admin.shipping-methods.index',
+            'rural_surcharges.view' => 'admin.rural-area-surcharges.index',
+            'payment_methods.view' => 'admin.payment-methods.index',
+            'newsletters.view' => 'admin.newsletter-subscribers.index',
             'users.view' => 'admin.users.index',
             'role_matrix.view' => 'admin.role-matrix.index',
         ];
@@ -394,6 +410,10 @@ class AdminRbac
             return self::resourcePermission($name, 'categories');
         }
 
+        if (Str::startsWith($name, 'media-library.')) {
+            return self::resourcePermission($name, 'media');
+        }
+
         foreach ([
             'attributes' => 'attributes',
             'menus' => 'menus',
@@ -407,19 +427,32 @@ class AdminRbac
             'payment-methods' => 'payment_methods',
             'newsletter-subscribers' => 'newsletters',
             'users' => 'users',
+            'customers' => 'customers',
         ] as $routePrefix => $permissionPrefix) {
             if (Str::startsWith($name, $routePrefix.'.')) {
                 return self::resourcePermission($name, $permissionPrefix);
             }
         }
 
+        if ($name === 'jersey-customization-options.import-fabrics') {
+            return 'customization.manage';
+        }
+
         if (
             Str::startsWith($name, 'jersey-customization-options.')
+            || Str::startsWith($name, 'world-cup-customization-options.')
             || Str::startsWith($name, 'training-vest-customization-options.')
             || Str::startsWith($name, 'training-vest-size-option-groups.')
             || Str::startsWith($name, 'size-option-groups.')
         ) {
             return self::resourcePermission($name, 'customization');
+        }
+
+        // Bulk quote requests are part of commerce/order operations. Reuse the
+        // existing Orders permission so current Order Manager and Support roles
+        // gain read access without introducing a migration-only permission gap.
+        if (Str::startsWith($name, 'bulk-quotes.')) {
+            return self::resourcePermission($name, 'orders');
         }
 
         if (Str::startsWith($name, 'orders.')) {
@@ -465,7 +498,7 @@ class AdminRbac
         $manageActions = [
             'create', 'store', 'edit', 'update', 'destroy', 'duplicate', 'toggle', 'bulk', 'import',
             'ordering.update', 'sync-legacy', 'approve', 'shipments.store', 'shipments.update', 'requests.update',
-            'downloads.store', 'downloads.destroy', 'roles.store',
+            'downloads.store', 'downloads.destroy', 'roles.store', 'suspend', 'reactivate', 'retry-sync', 'upload',
         ];
 
         foreach ($manageActions as $action) {

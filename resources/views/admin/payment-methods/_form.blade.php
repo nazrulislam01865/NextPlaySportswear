@@ -57,7 +57,7 @@
         </div>
     </x-admin.section-card>
 
-    <x-admin.section-card title="Amount Rules" description="Restrict payment methods by final checkout grand total after shipping, rural surcharge, tax, and discounts.">
+    <x-admin.section-card title="Amount Rules" description="Restrict payment methods by final checkout grand total after shipping, remote area surcharge, tax, and discounts.">
         <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
             <label class="admin-label">
                 Minimum order total

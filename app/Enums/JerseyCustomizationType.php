@@ -738,7 +738,7 @@ enum JerseyCustomizationType: string
 
     public function usesDescription(): bool
     {
-        return in_array($this, self::fabricTypes(), true);
+        return in_array($this, self::fabricTypes(), true) || $this->usesColorValue();
     }
 
     public function placeholder(): string

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\EnforceCustomerSessionVersion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -113,7 +114,9 @@ class AuthenticationSeparationTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->actingAs($customer, 'web')
+        $this->withSession([
+            EnforceCustomerSessionVersion::SESSION_KEY => (int) $customer->auth_session_version,
+        ])->actingAs($customer, 'web')
             ->get(route('admin.dashboard'))
             ->assertNotFound();
     }
@@ -126,11 +129,15 @@ class AuthenticationSeparationTest extends TestCase
             'password' => Hash::make('Password123'),
         ]);
 
-        $this->actingAs($customer, 'web')
+        $this->withSession([
+            EnforceCustomerSessionVersion::SESSION_KEY => (int) $customer->auth_session_version,
+        ])->actingAs($customer, 'web')
             ->get(route('admin.login'))
             ->assertNotFound();
 
-        $this->actingAs($customer, 'web')
+        $this->withSession([
+            EnforceCustomerSessionVersion::SESSION_KEY => (int) $customer->auth_session_version,
+        ])->actingAs($customer, 'web')
             ->post(route('admin.login.store'), [
                 'email' => $customer->email,
                 'password' => 'Password123',

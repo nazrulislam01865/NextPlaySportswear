@@ -22,7 +22,7 @@
 @endphp
 
 <x-storefront.checkout.shell :seo="$seo" :steps="$steps" :current-step="$currentStep" title="Shipping Method" description="Select a shipping method based on order timeline, production needs, and delivery urgency." :summary="$summary">
-    <x-storefront.checkout.panel title="Shipping Method" description="Shipping options are loaded from admin settings and recalculated with your shipping ZIP, cart quantity, subtotal, and rural surcharge rules.">
+    <x-storefront.checkout.panel title="Shipping Method" description="Shipping options are loaded from admin settings and recalculated with your shipping ZIP, cart quantity, subtotal, and remote area surcharge rules.">
         <form data-single-submit method="POST" action="{{ route('checkout.shipping-method.store') }}" class="grid gap-6" x-data="{ selected: @js($selectedShippingCode), previews: @js($methodPreview), current(){ return this.previews[this.selected] || {}; }, notify(){ this.$dispatch('checkout-shipping-preview', this.current()); }, init(){ this.$nextTick(() => this.notify()); } }">
             @csrf
 
@@ -86,7 +86,7 @@
             @endif
 
             <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold leading-6 text-amber-900">
-                Rush delivery does not replace design proof approval. Custom production starts only after artwork, names, numbers, and sizes are confirmed. @if(!empty($summary['rural_surcharge_details'])) Rural surcharge is controlled by admin ZIP/postal rules and has already been included in the prices above. @endif
+                Rush delivery does not replace design proof approval. Custom production starts only after artwork, names, numbers, and sizes are confirmed. @if(!empty($summary['rural_surcharge_details'])) Remote area surcharge is controlled by admin ZIP/postal rules and has already been included in the prices above. @endif
             </div>
 
             <div class="flex flex-col-reverse gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">

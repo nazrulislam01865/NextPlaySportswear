@@ -54,7 +54,7 @@
                     <div class="mt-4 grid gap-2 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm font-bold text-brand-navy sm:grid-cols-2">
                         <p>Shipping charges: <strong>${{ number_format((float) ($summary['shipping'] ?? 0), 2) }}</strong></p>
                         @if(($summary['rural_surcharge'] ?? 0) > 0)
-                            <p>Includes rural surcharge: <strong>${{ number_format((float) $summary['rural_surcharge'], 2) }}</strong></p>
+                            <p>Includes remote area surcharge: <strong>${{ number_format((float) $summary['rural_surcharge'], 2) }}</strong></p>
                         @endif
                     </div>
                 </div>

@@ -64,6 +64,8 @@ class AdminUserController extends Controller
 
     public function update(Request $request, User $user): RedirectResponse
     {
+        $this->authorizeAdminTarget($request, $user);
+
         $roleSlugs = $this->assignableRoles()->pluck('slug')->all();
 
         $validated = $request->validate([
@@ -96,6 +98,19 @@ class AdminUserController extends Controller
         return redirect()
             ->route('admin.users.index')
             ->with('status', 'Admin user updated successfully.');
+    }
+
+    private function authorizeAdminTarget(Request $request, User $user): void
+    {
+        $isKnownAdminRole = AdminRbac::schemaReady()
+            ? AdminRole::query()->where('slug', $user->role)->exists()
+            : in_array($user->role, ['super_admin', 'admin', 'catalog_manager', 'order_manager', 'support_agent', 'content_manager'], true);
+
+        abort_unless($isKnownAdminRole, 404);
+
+        if ($user->role === 'super_admin' && ! $request->user('admin')?->isSuperAdmin()) {
+            abort(403, 'Only a Super Admin can modify another Super Admin account.');
+        }
     }
 
     private function assignableRoles()

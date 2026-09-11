@@ -1,6 +1,6 @@
 <x-layouts.admin title="Payment Methods" subtitle="Manage checkout payment choices, amount rules, provider behavior, and manual review settings.">
     <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p class="max-w-3xl text-sm font-semibold leading-6 text-slate-500">These payment methods are loaded dynamically in checkout. The payment step always receives the final server-side grand total from the selected shipping method, rural surcharge, discount, and tax.</p>
+        <p class="max-w-3xl text-sm font-semibold leading-6 text-slate-500">These payment methods are loaded dynamically in checkout. The payment step always receives the final server-side grand total from the selected shipping method, remote area surcharge, discount, and tax.</p>
         <a href="{{ route('admin.payment-methods.create') }}" class="btn btn-red">+ Add Payment Method</a>
     </div>
 

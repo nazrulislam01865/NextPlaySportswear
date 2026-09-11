@@ -77,7 +77,7 @@ class AdminNotificationService
         ?string $url = null,
         array $extra = []
     ): int {
-        $action = in_array($action, ['created', 'updated', 'deleted', 'duplicated', 'imported'], true) ? $action : 'updated';
+        $action = in_array($action, ['created', 'updated', 'deleted', 'duplicated', 'imported', 'suspended', 'reactivated'], true) ? $action : 'updated';
         $resource = trim($resource) !== '' ? trim($resource) : 'Admin record';
         $resourceName = trim((string) $resourceName);
         $actorName = trim((string) ($actor?->name ?: $actor?->email ?: 'An administrator'));
@@ -87,6 +87,8 @@ class AdminNotificationService
             'deleted' => $resource.' deleted',
             'duplicated' => $resource.' duplicated',
             'imported' => $resource.' imported',
+            'suspended' => $resource.' suspended',
+            'reactivated' => $resource.' reactivated',
             default => $resource.' edited',
         };
 
@@ -95,6 +97,8 @@ class AdminNotificationService
             'deleted' => 'deleted',
             'duplicated' => 'duplicated',
             'imported' => 'imported',
+            'suspended' => 'suspended',
+            'reactivated' => 'reactivated',
             default => 'updated',
         };
 
@@ -103,6 +107,8 @@ class AdminNotificationService
             'deleted' => '×',
             'duplicated' => '⧉',
             'imported' => '⇧',
+            'suspended' => '!',
+            'reactivated' => '✓',
             default => '✎',
         };
 

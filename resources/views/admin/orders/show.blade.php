@@ -3,6 +3,8 @@
         $shipping = (array) data_get($order->shipping_address, 'address', $order->shipping_address ?? []);
         $billing = (array) data_get($order->billing_address, 'address', $order->billing_address ?? []);
         $orderItemsById = $order->items->keyBy('id');
+        $canManageOrders = (bool) (auth('admin')->user()?->canAdmin('orders.manage') ?? false);
+        $flowTrackResponse = $canManageOrders && is_array($order->flowtrack_response) ? $order->flowtrack_response : [];
     @endphp
 
     <div class="mb-6 flex flex-col justify-between gap-4 rounded-3xl bg-brand-dark p-6 text-white shadow-card md:flex-row md:items-start">
@@ -17,6 +19,29 @@
             <x-storefront.account.orders.status-pill :status="$order->fulfillment_status" />
         </div>
     </div>
+
+    @if($hasFlowTrackSync)
+        <div class="mb-6">
+            <x-admin.integration-sync-panel
+                title="FlowTrack Order Sync"
+                description="Persistent delivery state for this NextPlay order. Failures remain visible and can be retried without affecting the stored customer order."
+                :status="$order->flowtrack_sync_status"
+                :attempts="$order->flowtrack_sync_attempts"
+                :remote-number="$order->flowtrack_order_number"
+                remote-number-label="FlowTrack Order Number"
+                :remote-id="$order->flowtrack_order_id"
+                remote-id-label="FlowTrack Order ID"
+                :job-id="$order->flowtrack_job_id"
+                :last-attempt-at="$order->flowtrack_last_attempt_at"
+                :synced-at="$order->flowtrack_synced_at"
+                :error="$order->flowtrack_sync_error"
+                :response="$flowTrackResponse"
+                :retry-action="route('admin.orders.retry-sync', $order)"
+                :can-retry="$canManageOrders"
+                retry-label="Retry Order Sync"
+            />
+        </div>
+    @endif
 
     <div class="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(340px,.8fr)] xl:items-start">
         <div class="space-y-6">

@@ -60,6 +60,12 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Order::class)->latest('placed_at');
     }
 
+    /** @return HasMany<BulkQuoteRequest> */
+    public function bulkQuoteRequests(): HasMany
+    {
+        return $this->hasMany(BulkQuoteRequest::class)->latest();
+    }
+
     /** @return HasMany<OrderReturnRequest> */
     public function orderReturnRequests(): HasMany
     {
@@ -69,6 +75,16 @@ class User extends Authenticatable implements MustVerifyEmail
     public function adminRole(): BelongsTo
     {
         return $this->belongsTo(AdminRole::class, 'role', 'slug');
+    }
+
+    public function suspendedBy(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'suspended_by');
+    }
+
+    public function reactivatedBy(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'reactivated_by');
     }
 
     public function sendEmailVerificationNotification(): void
@@ -140,6 +156,8 @@ class User extends Authenticatable implements MustVerifyEmail
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
             'auth_session_version' => 'integer',
+            'suspended_at' => 'datetime',
+            'reactivated_at' => 'datetime',
         ];
     }
 }

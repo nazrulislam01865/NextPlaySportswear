@@ -3133,7 +3133,474 @@ const preserveAdminSidebarPosition = () => {
 preserveAdminSidebarPosition();
 
 
+
+window.adminRemoteAreaImporter = (config = {}) => ({
+    importOpen: false,
+    file: null,
+    carrier: 'UPS',
+    extraCharge: '0.00',
+    replaceExisting: true,
+    busy: false,
+    progress: 0,
+    statusText: '',
+    error: '',
+    success: '',
+
+    selectFile(event) {
+        this.error = '';
+        this.success = '';
+        this.progress = 0;
+        this.file = event.target.files?.[0] || null;
+
+        if (!this.file) return;
+
+        const extension = String(this.file.name || '').split('.').pop().toLowerCase();
+        if (extension !== 'xlsx') {
+            this.error = 'Upload an XLSX workbook.';
+            this.file = null;
+            event.target.value = '';
+            return;
+        }
+        if (this.file.size > 10 * 1024 * 1024) {
+            this.error = 'The XLSX workbook must not exceed 10 MB.';
+            this.file = null;
+            event.target.value = '';
+        }
+    },
+
+    normalizeHeader(value) {
+        return String(value ?? '')
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim();
+    },
+
+    findHeaderRow(matrix) {
+        const required = [
+            'country',
+            'iata code',
+            'low',
+            'high',
+            'city',
+            'origin surcharge',
+            'destination surcharge',
+        ];
+
+        for (let index = 0; index < Math.min(matrix.length, 50); index += 1) {
+            const normalized = (matrix[index] || []).map(value => this.normalizeHeader(value));
+            if (required.every(header => normalized.includes(header))) {
+                return { index, normalized };
+            }
+        }
+
+        throw new Error('The workbook header was not found. Expected the UPS EAS Definitions columns.');
+    },
+
+    spreadsheetRows(matrix) {
+        const header = this.findHeaderRow(matrix);
+        const columnIndex = Object.fromEntries(header.normalized.map((name, index) => [name, index]));
+        const rows = [];
+
+        for (let index = header.index + 1; index < matrix.length; index += 1) {
+            const source = matrix[index] || [];
+            const country = String(source[columnIndex['country']] ?? '').trim();
+            const iataCode = String(source[columnIndex['iata code']] ?? '').trim().toUpperCase();
+            const low = String(source[columnIndex['low']] ?? '').trim();
+            const high = String(source[columnIndex['high']] ?? '').trim();
+            const cityValue = String(source[columnIndex['city']] ?? '').trim();
+            const city = cityValue === '0' ? '' : cityValue;
+            const origin = String(source[columnIndex['origin surcharge']] ?? '').trim();
+            const destination = String(source[columnIndex['destination surcharge']] ?? '').trim();
+
+            if (![country, iataCode, low, high, city, origin, destination].some(Boolean)) continue;
+            if (!country || !iataCode || !low || !high || !origin || !destination) {
+                throw new Error(`Spreadsheet row ${index + 1} is missing a required UPS remote-area value.`);
+            }
+
+            rows.push({
+                source_row: index + 1,
+                country,
+                iata_code: iataCode,
+                postal_code_low: low,
+                postal_code_high: high,
+                city: city || null,
+                origin_surcharge: origin,
+                destination_surcharge: destination,
+            });
+        }
+
+        if (!rows.length) throw new Error('The workbook does not contain any remote-area rows.');
+        if (rows.length > 100000) throw new Error('A maximum of 100,000 remote-area rows can be imported at once.');
+
+        return rows;
+    },
+
+    async request(url, payload) {
+        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const response = await fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': token,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        let data = null;
+        try {
+            data = await response.json();
+        } catch (_) {
+            data = null;
+        }
+
+        if (!response.ok) {
+            const firstValidationError = data?.errors
+                ? Object.values(data.errors).flat().find(Boolean)
+                : null;
+            throw new Error(firstValidationError || data?.message || `Import request failed with HTTP ${response.status}.`);
+        }
+
+        return data || {};
+    },
+
+    async runImport() {
+        if (this.busy) return;
+
+        this.error = '';
+        this.success = '';
+        this.progress = 0;
+
+        const charge = Number(this.extraCharge);
+        if (!this.file) {
+            this.error = 'Choose the UPS XLSX workbook first.';
+            return;
+        }
+        if (!Number.isFinite(charge) || charge < 0 || charge > 999999.99) {
+            this.error = 'Enter a valid extra charge between 0 and 999999.99.';
+            return;
+        }
+        if (!String(this.carrier || '').trim()) {
+            this.error = 'Carrier is required.';
+            return;
+        }
+
+        this.busy = true;
+        this.statusText = 'Reading workbook...';
+
+        try {
+            // read-excel-file already ships with the admin bundle for product spreadsheet imports.
+            // Parse locally, then upload normalized rows in small chunks to avoid PHP post-size limits.
+            const { readSheet } = await import('read-excel-file/browser');
+            const matrix = await readSheet(this.file);
+            const rows = this.spreadsheetRows(matrix);
+            this.progress = 5;
+            this.statusText = `Preparing ${rows.length.toLocaleString()} rows...`;
+
+            const started = await this.request(config.startUrl, {
+                carrier: String(this.carrier).trim().toUpperCase(),
+                source_file: this.file.name,
+                extra_charge: charge,
+                replace_existing: Boolean(this.replaceExisting),
+                expected_rows: rows.length,
+            });
+
+            const batchId = started.batch_id;
+            const chunkSize = 1000;
+
+            for (let offset = 0; offset < rows.length; offset += chunkSize) {
+                const chunk = rows.slice(offset, offset + chunkSize);
+                await this.request(config.chunkUrl, {
+                    batch_id: batchId,
+                    rows: chunk,
+                });
+
+                const uploaded = Math.min(rows.length, offset + chunk.length);
+                this.progress = 5 + (uploaded / rows.length) * 85;
+                this.statusText = `Uploading ${uploaded.toLocaleString()} of ${rows.length.toLocaleString()} rows...`;
+            }
+
+            this.progress = 92;
+            this.statusText = 'Finalizing indexed remote-area data...';
+            const finished = await this.request(config.finishUrl, { batch_id: batchId });
+
+            this.progress = 100;
+            this.statusText = 'Import completed.';
+            this.success = finished.message || `${rows.length.toLocaleString()} rows imported successfully.`;
+            this.file = null;
+            if (this.$refs.fileInput) this.$refs.fileInput.value = '';
+
+            // Refresh only after the successful atomic finalization so the new indexed rows are visible.
+            window.setTimeout(() => {
+                window.location.assign(config.indexUrl);
+            }, 800);
+        } catch (error) {
+            this.error = error instanceof Error ? error.message : 'The remote-area workbook could not be imported.';
+            this.statusText = 'Import stopped.';
+        } finally {
+            this.busy = false;
+        }
+    },
+});
+
 Alpine.start();
+
+/**
+ * Centralized admin button loading feedback (Option 1: spinner + keep text).
+ *
+ * Scope is deliberately limited to #admin-main-content. The persistent admin
+ * sidebar, brand/logo, disclosure controls and menu links are never touched.
+ *
+ * UX rules:
+ * - accepted form submits / real navigations stay busy while the next page loads;
+ * - client-only controls never show loading unless a real async action explicitly starts;
+ * - the original button width is NOT frozen (so compact/responsive buttons can
+ *   grow naturally instead of pushing their label outside the button);
+ * - a safety timeout guarantees that a stale busy state can never remain forever.
+ */
+const initializeAdminButtonLoading = () => {
+    const rootSelector = '#admin-main-content';
+    const buttonSelector = [
+        'button',
+        'input[type="submit"]',
+        'input[type="button"]',
+        'input[type="image"]',
+        'a[class*="btn"]',
+        'a[class*="button"]',
+        'a[class*="action"]',
+        '[role="button"]',
+    ].join(',');
+    const loadingClass = 'admin-button-loading';
+    const lockAttribute = 'data-admin-loading-lock';
+    const transientDuration = 620;
+    const maximumLockedDuration = 12000;
+    const buttonState = new WeakMap();
+    const loadingTimers = new WeakMap();
+    let lastSubmitInteraction = null;
+
+    const mainRoot = () => document.querySelector(rootSelector);
+
+    const resolveButton = (target) => {
+        if (!(target instanceof Element)) return null;
+
+        const button = target.closest(buttonSelector);
+        const root = mainRoot();
+
+        if (!button || !root || !root.contains(button)) return null;
+        if (button.closest('[data-admin-loading="off"]')) return null;
+        if (button.matches(':disabled, [aria-disabled="true"]')) return null;
+
+        return button;
+    };
+
+    const rememberState = (button) => {
+        if (buttonState.has(button)) return;
+
+        buttonState.set(button, {
+            ariaBusy: button.getAttribute('aria-busy'),
+            inlineMinWidth: button.style.minWidth,
+        });
+    };
+
+    const clearLoadingTimer = (button) => {
+        const activeTimer = loadingTimers.get(button);
+        if (!activeTimer) return;
+
+        window.clearTimeout(activeTimer);
+        loadingTimers.delete(button);
+    };
+
+    const stopLoading = (button) => {
+        if (!button) return;
+
+        clearLoadingTimer(button);
+
+        const state = buttonState.get(button);
+        button.classList.remove(loadingClass, `${loadingClass}--overlay`);
+        button.removeAttribute(lockAttribute);
+
+        if (state) {
+            if (state.ariaBusy === null) {
+                button.removeAttribute('aria-busy');
+            } else {
+                button.setAttribute('aria-busy', state.ariaBusy);
+            }
+            button.style.minWidth = state.inlineMinWidth;
+            buttonState.delete(button);
+        } else {
+            button.removeAttribute('aria-busy');
+            button.style.removeProperty('min-width');
+        }
+    };
+
+    const fitLoadingIndicator = (button) => {
+        // Most buttons are auto-sized and need no help. If a legacy/fixed-width
+        // control clips after the spinner is added, expand it only when its
+        // current container has room. Otherwise switch to an overlay spinner so
+        // the label always remains inside the button on narrow screens.
+        button.classList.remove(`${loadingClass}--overlay`);
+
+        const rect = button.getBoundingClientRect();
+        if (!rect.width || button.scrollWidth <= button.clientWidth + 1) return;
+
+        const requiredWidth = Math.ceil(button.scrollWidth + 2);
+        const parent = button.parentElement;
+        const parentRect = parent?.getBoundingClientRect();
+        const availableWidth = parentRect
+            ? Math.max(0, Math.floor(parentRect.right - rect.left))
+            : Math.max(0, Math.floor(window.innerWidth - rect.left));
+
+        if (requiredWidth <= availableWidth) {
+            button.style.minWidth = `${Math.max(Math.ceil(rect.width), requiredWidth)}px`;
+            return;
+        }
+
+        button.classList.add(`${loadingClass}--overlay`);
+    };
+
+    const scheduleStop = (button, duration) => {
+        clearLoadingTimer(button);
+        const timer = window.setTimeout(() => stopLoading(button), duration);
+        loadingTimers.set(button, timer);
+    };
+
+    const startLoading = (button, { lock = false, transient = false } = {}) => {
+        if (!button || !button.isConnected) return;
+
+        rememberState(button);
+        clearLoadingTimer(button);
+
+        button.classList.add(loadingClass);
+        button.setAttribute('aria-busy', 'true');
+        fitLoadingIndicator(button);
+
+        if (lock) {
+            button.setAttribute(lockAttribute, 'true');
+            scheduleStop(button, maximumLockedDuration);
+            return;
+        }
+
+        button.removeAttribute(lockAttribute);
+        if (transient) scheduleStop(button, transientDuration);
+    };
+
+    const resetCurrentPage = () => {
+        mainRoot()?.querySelectorAll(`.${loadingClass}`).forEach(stopLoading);
+    };
+
+    const isSubmitControl = (button) => {
+        if (!(button instanceof HTMLButtonElement) && !(button instanceof HTMLInputElement)) return false;
+        if (!button.closest('form')) return false;
+
+        const defaultType = button instanceof HTMLButtonElement ? 'submit' : '';
+        const type = (button.getAttribute('type') || defaultType).toLowerCase();
+        return type === 'submit' || type === 'image';
+    };
+
+    const isNavigatingLink = (button, event) => {
+        if (!(button instanceof HTMLAnchorElement)) return false;
+        if (!button.href || button.hasAttribute('download')) return false;
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return false;
+
+        const rawHref = button.getAttribute('href') || '';
+        return rawHref !== ''
+            && !rawHref.startsWith('#')
+            && !rawHref.toLowerCase().startsWith('javascript:');
+    };
+
+    // Capture is used only for a real submit control. Never remember generic
+    // buttons, dropdown toggles, modal controls, checkboxes, etc. as a possible
+    // form action. This prevents a later state change/programmatic submit from
+    // incorrectly putting an unrelated button into a loading state.
+    document.addEventListener('click', (event) => {
+        const button = resolveButton(event.target);
+        if (!button) return;
+
+        if (button.getAttribute(lockAttribute) === 'true') {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return;
+        }
+
+        if (isSubmitControl(button)) {
+            lastSubmitInteraction = {
+                button,
+                at: performance.now(),
+            };
+        }
+    }, true);
+
+    // Mark the submit button only after validation / confirm handlers have had
+    // a chance to cancel the submission. Cancelled or invalid submits therefore
+    // never leave a loader behind.
+    document.addEventListener('submit', (event) => {
+        const form = event.target;
+        const root = mainRoot();
+        if (!(form instanceof HTMLFormElement) || !root?.contains(form)) return;
+
+        let submitter = resolveButton(event.submitter);
+
+        if (!submitter && lastSubmitInteraction && performance.now() - lastSubmitInteraction.at < 1000) {
+            const candidate = lastSubmitInteraction.button;
+            if (candidate?.closest('form') === form && isSubmitControl(candidate)) submitter = candidate;
+        }
+
+        // Programmatic requestSubmit()/submit flows do not have a genuine
+        // clicked submitter. Never guess the first button in the form: doing so
+        // makes unrelated buttons appear to load when a dropdown/checkbox or
+        // page script submits the form automatically.
+        lastSubmitInteraction = null;
+        if (!submitter) return;
+
+        // Wait until every form-level/document-level validation or confirmation
+        // handler has run. A prevented/invalid/cancelled submit must never show
+        // loading. Soft admin requests start their loader explicitly from the
+        // request lifecycle instead.
+        queueMicrotask(() => {
+            if (!event.defaultPrevented && form.isConnected) {
+                startLoading(submitter, { lock: true });
+            }
+        });
+    }, true);
+
+    // A loader represents work, not a click. Only a link that will really
+    // navigate receives click-derived loading. Pure UI controls (dropdowns,
+    // modal buttons, tabs, toggles, pickers, add/remove-row controls, etc.) never
+    // start a loader merely because they were clicked. Their real async actions
+    // can opt in through the centralized nextplay:admin-action-start lifecycle.
+    document.addEventListener('click', (event) => {
+        const button = resolveButton(event.target);
+        if (!button || event.defaultPrevented || isSubmitControl(button)) return;
+        if (!isNavigatingLink(button, event)) return;
+
+        queueMicrotask(() => {
+            if (event.defaultPrevented) return;
+
+            const opensAnotherContext = button.target === '_blank' || button.target === '_new';
+            startLoading(button, opensAnotherContext ? { transient: true } : { lock: true });
+        });
+    });
+
+    // Soft admin actions prevent the browser's native submit/navigation, so the
+    // normal click/submit listeners intentionally do not lock the control. The
+    // centralized soft-navigation layer explicitly starts the same loader here.
+    document.addEventListener('nextplay:admin-action-start', (event) => {
+        const button = resolveButton(event.detail?.button);
+        if (button) startLoading(button, { lock: true });
+    });
+
+    // Reset on every lifecycle that can leave the current DOM alive (bfcache or
+    // the project's persistent admin navigation). A custom completion event is
+    // also supported for any future same-page async action.
+    window.addEventListener('pageshow', resetCurrentPage);
+    document.addEventListener('nextplay:admin-navigated', resetCurrentPage);
+    document.addEventListener('nextplay:admin-action-complete', resetCurrentPage);
+};
+
+initializeAdminButtonLoading();
 
 const initializeResizableAdminSidebar = () => {
     const sidebar = document.getElementById('admin-sidebar');
@@ -3368,3 +3835,806 @@ const initializeAdminSidebarTooltips = () => {
 
 initializeResizableAdminSidebar();
 initializeAdminSidebarTooltips();
+
+/**
+ * Persistent admin shell navigation + soft admin actions.
+ *
+ * Internal admin navigation and normal Laravel forms are progressively enhanced
+ * with fetch. The existing page stays visible while the request runs and only
+ * the header/main content is replaced after the server response is ready. This
+ * keeps the sidebar mounted and avoids a full document reload/flash after CRUD,
+ * filter, search and other standard admin actions.
+ *
+ * Safety first: unsupported/external requests keep their native browser
+ * behavior, and an explicit data-admin-navigation="off" opt-out is honored.
+ */
+const initializePersistentAdminNavigation = () => {
+    const sidebarNav = document.querySelector('[data-admin-sidebar-nav]');
+    const currentMain = () => document.getElementById('admin-main-content');
+
+    if (!sidebarNav || !currentMain() || !window.fetch || !window.DOMParser || !window.history?.pushState) {
+        return;
+    }
+
+    let activeRequest = null;
+    let activeRequestMethod = null;
+    let navigationSequence = 0;
+    let dynamicPageCleanup = null;
+    let explicitSubmitActivation = null;
+
+    const submitControlFor = (target) => {
+        if (!(target instanceof Element)) return null;
+
+        const control = target.closest('button, input[type=\"submit\"], input[type=\"image\"]');
+        if (!(control instanceof HTMLButtonElement) && !(control instanceof HTMLInputElement)) return null;
+
+        const type = String(control.getAttribute('type') || (control instanceof HTMLButtonElement ? 'submit' : '')).toLowerCase();
+        if (!['submit', 'image'].includes(type)) return null;
+
+        const form = control.form || control.closest('form');
+        if (!(form instanceof HTMLFormElement) || !currentMain()?.contains(form)) return null;
+
+        return { control, form };
+    };
+
+    const rememberExplicitSubmitActivation = (control, form) => {
+        explicitSubmitActivation = {
+            control,
+            form,
+            at: performance.now(),
+        };
+    };
+
+    const explicitSubmitActivationMatches = (form, submitter = null) => {
+        const activation = explicitSubmitActivation;
+        if (!activation || activation.form !== form) return false;
+        if (performance.now() - activation.at > 1200) return false;
+        if (!activation.control?.isConnected) return false;
+        if (submitter && activation.control !== submitter) return false;
+
+        return true;
+    };
+
+    const takeExplicitSubmitActivation = (form) => {
+        if (!explicitSubmitActivationMatches(form)) {
+            explicitSubmitActivation = null;
+            return null;
+        }
+
+        const activation = explicitSubmitActivation;
+        explicitSubmitActivation = null;
+        return activation;
+    };
+
+    // A manual action must come from a deliberate activation of its actual
+    // submit control. This distinguishes a real Apply/Save click from an
+    // implicit browser submit caused by changing/focusing a field. Keyboard
+    // activation of a focused submit button remains fully supported.
+    document.addEventListener('click', (event) => {
+        const match = submitControlFor(event.target);
+        if (!match || !event.isTrusted) return;
+
+        const isPointerActivation = Number(event.detail || 0) > 0;
+        const isFocusedKeyboardActivation = document.activeElement === match.control;
+        if (!isPointerActivation && !isFocusedKeyboardActivation) return;
+
+        rememberExplicitSubmitActivation(match.control, match.form);
+    }, true);
+
+    document.addEventListener('keydown', (event) => {
+        if (!event.isTrusted || !['Enter', ' '].includes(event.key)) return;
+
+        const match = submitControlFor(event.target);
+        if (!match || document.activeElement !== match.control) return;
+
+        rememberExplicitSubmitActivation(match.control, match.form);
+    }, true);
+
+    // Editing/selecting fields invalidates any old button intent immediately.
+    // A previous Apply click can therefore never leak into a later dropdown or
+    // checkbox interaction.
+    const clearExplicitSubmitActivation = () => {
+        explicitSubmitActivation = null;
+    };
+    document.addEventListener('input', clearExplicitSubmitActivation, true);
+    document.addEventListener('change', clearExplicitSubmitActivation, true);
+
+    const normalizedUrl = (value) => {
+        try {
+            const url = new URL(value, window.location.href);
+            url.hash = '';
+            return url.href;
+        } catch (_) {
+            return '';
+        }
+    };
+
+    const canHandleUrl = (value) => {
+        try {
+            const url = new URL(value, window.location.href);
+            return url.origin === window.location.origin
+                && url.pathname.startsWith('/admin')
+                && !url.pathname.startsWith('/admin/logout');
+        } catch (_) {
+            return false;
+        }
+    };
+
+    const syncSidebarState = (nextDocument) => {
+        const nextSidebar = nextDocument.getElementById('admin-sidebar');
+        const liveSidebar = document.getElementById('admin-sidebar');
+        const nextSidebarNav = nextSidebar?.querySelector('[data-admin-sidebar-nav]');
+        const liveSidebarNav = liveSidebar?.querySelector('[data-admin-sidebar-nav]');
+        if (!nextSidebar || !liveSidebar || !nextSidebarNav || !liveSidebarNav) return;
+
+        // Sync active styles only inside the actual menu navigation. The brand
+        // logo also links to the dashboard, so matching every sidebar anchor by
+        // URL caused the logo to inherit the Dashboard active/red classes.
+        const linkKey = (link) => [
+            normalizedUrl(link.href),
+            String(link.getAttribute('aria-label') || link.textContent || '').trim().replace(/\s+/g, ' '),
+        ].join('::');
+
+        const nextLinks = new Map();
+        nextSidebarNav.querySelectorAll('a[href]').forEach((link) => {
+            nextLinks.set(linkKey(link), link);
+        });
+
+        liveSidebarNav.querySelectorAll('a[href]').forEach((link) => {
+            const nextLink = nextLinks.get(linkKey(link));
+            if (!nextLink) return;
+
+            link.className = nextLink.className;
+            if (nextLink.hasAttribute('data-sidebar-active')) {
+                link.setAttribute('data-sidebar-active', 'true');
+            } else {
+                link.removeAttribute('data-sidebar-active');
+            }
+
+            if (nextLink.hasAttribute('aria-current')) {
+                link.setAttribute('aria-current', nextLink.getAttribute('aria-current') || 'page');
+            } else {
+                link.removeAttribute('aria-current');
+            }
+        });
+
+        const liveBrandLink = liveSidebar.querySelector(':scope > div:first-child a[href]');
+        const nextBrandLink = nextSidebar.querySelector(':scope > div:first-child a[href]');
+        if (liveBrandLink && nextBrandLink) {
+            liveBrandLink.className = nextBrandLink.className;
+            liveBrandLink.removeAttribute('data-sidebar-active');
+            liveBrandLink.removeAttribute('aria-current');
+        }
+
+        const nextGroups = new Map();
+        nextSidebar.querySelectorAll('details[data-sidebar-disclosure]').forEach((group) => {
+            const label = group.querySelector(':scope > summary')?.getAttribute('aria-label') || '';
+            if (label) nextGroups.set(label, group);
+        });
+
+        liveSidebar.querySelectorAll('details[data-sidebar-disclosure]').forEach((group) => {
+            const label = group.querySelector(':scope > summary')?.getAttribute('aria-label') || '';
+            const nextGroup = nextGroups.get(label);
+            if (!nextGroup) return;
+
+            group.open = nextGroup.open;
+        });
+    };
+
+    const syncHeader = (nextDocument) => {
+        const liveHeader = document.querySelector('[data-admin-page-header]');
+        const nextHeader = nextDocument.querySelector('[data-admin-page-header]');
+        if (!liveHeader || !nextHeader) return;
+
+        liveHeader.className = nextHeader.className;
+
+        const liveCopy = liveHeader.querySelector('[data-admin-header-copy]');
+        const nextCopy = nextHeader.querySelector('[data-admin-header-copy]');
+        if (liveCopy && nextCopy) {
+            liveCopy.innerHTML = nextCopy.innerHTML;
+        }
+
+        const liveStorefront = liveHeader.querySelector('[data-admin-storefront-link]');
+        const nextStorefront = nextHeader.querySelector('[data-admin-storefront-link]');
+        if (liveStorefront && nextStorefront) {
+            liveStorefront.href = nextStorefront.href;
+        }
+    };
+
+    const clearDynamicPageRuntime = () => {
+        if (!dynamicPageCleanup) return;
+
+        dynamicPageCleanup.intervals.forEach((id) => window.clearInterval(id));
+        dynamicPageCleanup.windowListeners.forEach(({ type, listener, options }) => {
+            window.removeEventListener(type, listener, options);
+        });
+        dynamicPageCleanup.documentListeners.forEach(({ type, listener, options }) => {
+            document.removeEventListener(type, listener, options);
+        });
+
+        dynamicPageCleanup = null;
+    };
+
+    const executePageScripts = async (scripts) => {
+        const cleanup = {
+            intervals: [],
+            windowListeners: [],
+            documentListeners: [],
+        };
+
+        const originalWindowAdd = window.addEventListener;
+        const originalDocumentAdd = document.addEventListener;
+        const originalSetInterval = window.setInterval;
+
+        const invokeListener = (listener, event) => {
+            try {
+                if (typeof listener === 'function') {
+                    listener.call(document, event);
+                } else if (listener && typeof listener.handleEvent === 'function') {
+                    listener.handleEvent(event);
+                }
+            } catch (error) {
+                window.setTimeout(() => { throw error; }, 0);
+            }
+        };
+
+        window.addEventListener = function (type, listener, options) {
+            cleanup.windowListeners.push({ type, listener, options });
+            return originalWindowAdd.call(window, type, listener, options);
+        };
+
+        document.addEventListener = function (type, listener, options) {
+            if (type === 'DOMContentLoaded' && document.readyState !== 'loading') {
+                queueMicrotask(() => invokeListener(listener, new Event('DOMContentLoaded')));
+                return;
+            }
+
+            cleanup.documentListeners.push({ type, listener, options });
+            return originalDocumentAdd.call(document, type, listener, options);
+        };
+
+        window.setInterval = function (...args) {
+            const id = originalSetInterval.apply(window, args);
+            cleanup.intervals.push(id);
+            return id;
+        };
+
+        try {
+            for (const descriptor of scripts) {
+                const script = document.createElement('script');
+
+                Array.from(descriptor.attributes || []).forEach((attribute) => {
+                    script.setAttribute(attribute.name, attribute.value);
+                });
+
+                if (descriptor.src) {
+                    await new Promise((resolve, reject) => {
+                        script.addEventListener('load', resolve, { once: true });
+                        script.addEventListener('error', reject, { once: true });
+                        script.src = descriptor.src;
+                        document.body.appendChild(script);
+                    });
+                    script.remove();
+                } else {
+                    script.textContent = descriptor.textContent || '';
+                    document.body.appendChild(script);
+                    script.remove();
+                }
+            }
+        } finally {
+            window.addEventListener = originalWindowAdd;
+            document.addEventListener = originalDocumentAdd;
+            window.setInterval = originalSetInterval;
+        }
+
+        dynamicPageCleanup = cleanup;
+    };
+
+    const replaceMain = async (nextDocument) => {
+        const liveMain = currentMain();
+        const nextMain = nextDocument.getElementById('admin-main-content');
+        if (!liveMain || !nextMain) {
+            throw new Error('Admin page shell was not found in the destination response.');
+        }
+
+        clearDynamicPageRuntime();
+
+        if (window.Alpine && typeof window.Alpine.destroyTree === 'function') {
+            window.Alpine.destroyTree(liveMain);
+        }
+
+        const scripts = Array.from(nextMain.querySelectorAll('script')).map((script) => ({
+            attributes: Array.from(script.attributes).map((attribute) => ({
+                name: attribute.name,
+                value: attribute.value,
+            })),
+            src: script.src || '',
+            textContent: script.textContent || '',
+        }));
+
+        nextMain.querySelectorAll('script').forEach((script) => script.remove());
+
+        liveMain.className = nextMain.className;
+        liveMain.innerHTML = nextMain.innerHTML;
+
+        await executePageScripts(scripts);
+
+        if (window.Alpine && typeof window.Alpine.initTree === 'function') {
+            window.Alpine.initTree(liveMain);
+        }
+    };
+
+    const requestStarted = (control = null) => {
+        const liveMain = currentMain();
+        liveMain?.setAttribute('aria-busy', 'true');
+        document.documentElement.classList.add('admin-partial-navigation-pending');
+        sidebarNav.setAttribute('aria-busy', 'true');
+
+        if (control instanceof Element) {
+            document.dispatchEvent(new CustomEvent('nextplay:admin-action-start', {
+                detail: { button: control },
+            }));
+        }
+    };
+
+    const requestFinished = () => {
+        currentMain()?.removeAttribute('aria-busy');
+        document.documentElement.classList.remove('admin-partial-navigation-pending');
+        sidebarNav.removeAttribute('aria-busy');
+        document.dispatchEvent(new CustomEvent('nextplay:admin-action-complete'));
+    };
+
+    const showSoftRequestError = (message) => {
+        const liveMain = currentMain();
+        if (!liveMain) return;
+
+        liveMain.querySelector('[data-admin-soft-request-error]')?.remove();
+
+        const alert = document.createElement('div');
+        alert.setAttribute('data-admin-soft-request-error', 'true');
+        alert.setAttribute('role', 'alert');
+        alert.className = 'mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 shadow-sm';
+        alert.textContent = message || 'The action could not be completed. Please try again.';
+        liveMain.prepend(alert);
+        alert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
+
+    const filenameFromDisposition = (value) => {
+        const utf8 = String(value || '').match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+        if (utf8) {
+            try { return decodeURIComponent(utf8); } catch (_) { return utf8; }
+        }
+
+        return String(value || '').match(/filename="?([^";]+)"?/i)?.[1] || 'download';
+    };
+
+    const deliverDownload = async (response) => {
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = filenameFromDisposition(response.headers.get('content-disposition'));
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    };
+
+    const responseMessage = async (response) => {
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+            const payload = await response.clone().json().catch(() => ({}));
+            return payload.message || Object.values(payload.errors || {})?.flat?.()?.[0] || '';
+        }
+        return '';
+    };
+
+    const performSoftRequest = async ({
+        destination,
+        method = 'GET',
+        body = null,
+        replace = false,
+        fromPopState = false,
+        preserveScroll = false,
+        control = null,
+        allowNativeFallback = true,
+    } = {}) => {
+        const targetUrl = new URL(destination, window.location.href);
+        const normalizedMethod = String(method || 'GET').toUpperCase();
+        const sourceUrl = window.location.href;
+
+        if (!canHandleUrl(targetUrl.href)) {
+            if (normalizedMethod === 'GET' && allowNativeFallback) {
+                window.location.assign(targetUrl.href);
+            }
+            return false;
+        }
+
+        // Never abort a mutation after it has been sent: the server may already
+        // have committed it. While POST is in flight, additional navigation is
+        // ignored until its response arrives, preventing duplicate/stale state.
+        if (activeRequest && activeRequestMethod && !['GET', 'HEAD'].includes(activeRequestMethod)) {
+            return false;
+        }
+
+        navigationSequence += 1;
+        const sequence = navigationSequence;
+        const previousScroll = { x: window.scrollX, y: window.scrollY };
+
+        activeRequest?.abort();
+        activeRequest = new AbortController();
+        activeRequestMethod = normalizedMethod;
+        requestStarted(control);
+
+        try {
+            const headers = {
+                Accept: 'text/html,application/xhtml+xml',
+                'X-NextPlay-Admin-Navigation': '1',
+            };
+
+            // Preserve the project's existing AJAX-aware GET behavior, while
+            // POST/PUT/PATCH/DELETE form actions remain normal Laravel HTML
+            // requests so controllers do not unexpectedly switch to JSON.
+            if (normalizedMethod === 'GET') {
+                headers['X-Requested-With'] = 'XMLHttpRequest';
+            }
+
+            const response = await fetch(targetUrl.href, {
+                method: normalizedMethod,
+                credentials: 'same-origin',
+                headers,
+                body: normalizedMethod === 'GET' || normalizedMethod === 'HEAD' ? null : body,
+                cache: 'no-store',
+                redirect: 'follow',
+                signal: activeRequest.signal,
+            });
+
+            if (sequence !== navigationSequence) return false;
+
+            const responseUrl = new URL(response.url || targetUrl.href, window.location.href);
+            const contentType = response.headers.get('content-type') || '';
+            const contentDisposition = response.headers.get('content-disposition') || '';
+            const isDownload = /\battachment\b/i.test(contentDisposition);
+
+            if (isDownload) {
+                await deliverDownload(response);
+                return true;
+            }
+
+            if (!contentType.includes('text/html')) {
+                const message = await responseMessage(response);
+                if (!response.ok) {
+                    throw new Error(message || `The server returned ${response.status}.`);
+                }
+
+                // A successful non-HTML GET is most likely a document/file route.
+                // Hand it to the browser without re-submitting any mutation.
+                if (normalizedMethod === 'GET' && allowNativeFallback) {
+                    window.location.assign(responseUrl.href);
+                    return true;
+                }
+
+                throw new Error(message || 'The action completed, but the admin page could not be refreshed safely.');
+            }
+
+            const html = await response.text();
+            if (sequence !== navigationSequence) return false;
+
+            const nextDocument = new DOMParser().parseFromString(html, 'text/html');
+            const nextMain = nextDocument.getElementById('admin-main-content');
+            const nextSidebar = nextDocument.getElementById('admin-sidebar');
+
+            if (!nextMain || !nextSidebar) {
+                // Session/login redirects are safe to follow because we navigate
+                // to the already-returned GET location rather than repeat the POST.
+                if (response.redirected && responseUrl.href !== targetUrl.href) {
+                    window.location.assign(responseUrl.href);
+                    return true;
+                }
+
+                throw new Error(response.ok
+                    ? 'The server response could not be displayed inside the admin workspace.'
+                    : `The server returned ${response.status}.`);
+            }
+
+            const nextCsrf = nextDocument.querySelector('meta[name="csrf-token"]')?.content;
+            const liveCsrf = document.querySelector('meta[name="csrf-token"]');
+            if (nextCsrf && liveCsrf) liveCsrf.content = nextCsrf;
+
+            syncSidebarState(nextDocument);
+            syncHeader(nextDocument);
+            await replaceMain(nextDocument);
+
+            document.title = nextDocument.title || document.title;
+
+            if (!fromPopState) {
+                const state = { nextplayAdminPartial: true, url: responseUrl.href };
+                const shouldReplace = replace || normalizedUrl(responseUrl.href) === normalizedUrl(window.location.href);
+                if (shouldReplace) {
+                    history.replaceState(state, '', responseUrl.href);
+                } else {
+                    history.pushState(state, '', responseUrl.href);
+                }
+            }
+
+            const shouldKeepScroll = preserveScroll === true
+                || (preserveScroll === 'same-page' && normalizedUrl(responseUrl.href) === normalizedUrl(sourceUrl));
+
+            if (shouldKeepScroll) {
+                window.scrollTo({ top: previousScroll.y, left: previousScroll.x, behavior: 'auto' });
+            } else if (responseUrl.hash) {
+                const hashTarget = document.getElementById(decodeURIComponent(responseUrl.hash.slice(1)));
+                hashTarget?.scrollIntoView({ block: 'start' });
+            } else {
+                window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+            }
+
+            document.dispatchEvent(new CustomEvent('nextplay:admin-navigated', {
+                detail: {
+                    url: responseUrl.href,
+                    method: normalizedMethod,
+                    soft: true,
+                },
+            }));
+
+            return true;
+        } catch (error) {
+            if (error?.name === 'AbortError') return false;
+
+            console.warn('Soft admin request failed.', error);
+            showSoftRequestError(error instanceof Error ? error.message : 'The action could not be completed. Please try again.');
+            return false;
+        } finally {
+            if (sequence === navigationSequence) {
+                requestFinished();
+                activeRequest = null;
+                activeRequestMethod = null;
+            }
+        }
+    };
+
+    const navigationOptedOut = (element) => Boolean(
+        element?.closest?.('[data-admin-navigation="off"], [data-admin-full-reload]')
+    );
+
+    const eligibleLink = (link, event) => {
+        if (!(link instanceof HTMLAnchorElement)) return false;
+        if (!currentMain()?.contains(link)) return false;
+        if (navigationOptedOut(link)) return false;
+        if (!link.href || link.hasAttribute('download')) return false;
+        if (link.target && !['_self', ''].includes(link.target.toLowerCase())) return false;
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
+        if (!canHandleUrl(link.href)) return false;
+
+        const targetUrl = new URL(link.href, window.location.href);
+        const liveUrl = new URL(window.location.href);
+        const sameDocumentHashOnly = targetUrl.origin === liveUrl.origin
+            && targetUrl.pathname === liveUrl.pathname
+            && targetUrl.search === liveUrl.search
+            && Boolean(targetUrl.hash);
+
+        return !sameDocumentHashOnly;
+    };
+
+    const eligibleForm = (form) => {
+        if (!(form instanceof HTMLFormElement)) return false;
+        if (!currentMain()?.contains(form)) return false;
+        if (navigationOptedOut(form)) return false;
+        if (form.target && !['_self', ''].includes(form.target.toLowerCase())) return false;
+
+        const method = String(form.getAttribute('method') || 'GET').toUpperCase();
+        if (!['GET', 'POST'].includes(method)) return false;
+        if ((form.enctype || '').toLowerCase() === 'text/plain') return false;
+
+        return canHandleUrl(form.action || window.location.href);
+    };
+
+    const isExplicitBulkActionForm = (form) => {
+        if (!(form instanceof HTMLFormElement)) return false;
+
+        const identity = [
+            form.id,
+            form.className,
+            ...Array.from(form.attributes)
+                .filter((attribute) => attribute.name.startsWith('data-'))
+                .map((attribute) => `${attribute.name}=${attribute.value}`),
+        ].join(' ');
+
+        if (/\bbulk\b/i.test(identity)) return true;
+
+        const controls = Array.from(form.elements || []);
+        const hasActionSelector = controls.some((control) =>
+            control instanceof HTMLSelectElement && control.name === 'action'
+        );
+        const hasArraySelection = controls.some((control) =>
+            control instanceof HTMLInputElement
+            && control.type === 'checkbox'
+            && /\[\]$/.test(control.name || '')
+        );
+
+        return hasActionSelector && hasArraySelection;
+    };
+
+    const validateExplicitBulkAction = (form) => {
+        const controls = Array.from(form.elements || []);
+        const selectable = controls.filter((control) =>
+            control instanceof HTMLInputElement
+            && control.type === 'checkbox'
+            && /\[\]$/.test(control.name || '')
+            && !control.disabled
+        );
+
+        if (selectable.length > 0 && !selectable.some((control) => control.checked)) {
+            window.alert('Please select at least one item first.');
+            return false;
+        }
+
+        const actionControl = controls.find((control) =>
+            control instanceof HTMLSelectElement && control.name === 'action'
+        );
+
+        if (actionControl && !String(actionControl.value || '').trim()) {
+            actionControl.focus();
+            if (typeof actionControl.reportValidity === 'function') {
+                actionControl.reportValidity();
+            } else {
+                window.alert('Please choose an action first.');
+            }
+            return false;
+        }
+
+        return true;
+    };
+
+    const formRequest = (form, submitter) => {
+        const buttonAction = submitter?.getAttribute?.('formaction');
+        const buttonMethod = submitter?.getAttribute?.('formmethod');
+        const buttonEnctype = submitter?.getAttribute?.('formenctype');
+        const destination = buttonAction || form.getAttribute('action') || window.location.href;
+        const method = String(buttonMethod || form.getAttribute('method') || 'GET').toUpperCase();
+        const enctype = String(buttonEnctype || form.getAttribute('enctype') || form.enctype || 'application/x-www-form-urlencoded').toLowerCase();
+
+        let formData;
+        try {
+            formData = submitter ? new FormData(form, submitter) : new FormData(form);
+        } catch (_) {
+            formData = new FormData(form);
+            if (submitter?.name) formData.append(submitter.name, submitter.value || '');
+        }
+
+        if (method === 'GET') {
+            const url = new URL(destination, window.location.href);
+            url.search = '';
+            formData.forEach((value, key) => {
+                url.searchParams.append(key, typeof value === 'string' ? value : value.name);
+            });
+            return { destination: url.href, method: 'GET', body: null };
+        }
+
+        if (enctype.includes('multipart/form-data')) {
+            return { destination, method, body: formData };
+        }
+
+        const params = new URLSearchParams();
+        formData.forEach((value, key) => {
+            params.append(key, typeof value === 'string' ? value : value.name);
+        });
+
+        return { destination, method, body: params };
+    };
+
+    // Stop accidental bulk/action submits during capture, before page-level
+    // submit handlers (confirmation dialogs, mutations, etc.) can run. This is
+    // what guarantees that merely choosing Archive/Activate/etc. can never
+    // execute or even open an action confirmation.
+    document.addEventListener('submit', (event) => {
+        const form = event.target;
+        if (!(form instanceof HTMLFormElement) || !currentMain()?.contains(form)) return;
+        if (!isExplicitBulkActionForm(form)) return;
+
+        const nativeSubmitter = event.submitter instanceof Element ? event.submitter : null;
+        if (explicitSubmitActivationMatches(form, nativeSubmitter)) return;
+
+        explicitSubmitActivation = null;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    }, true);
+
+    sidebarNav.addEventListener('click', (event) => {
+        if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+            return;
+        }
+
+        const link = event.target instanceof Element ? event.target.closest('a[href]') : null;
+        if (!link || !sidebarNav.contains(link) || link.target === '_blank' || link.hasAttribute('download')) {
+            return;
+        }
+
+        if (!canHandleUrl(link.href)) return;
+
+        event.preventDefault();
+        performSoftRequest({ destination: link.href });
+    });
+
+    // Progressively enhance links inside the admin workspace as well. Pagination,
+    // Edit/View links, filters represented as links, etc. now keep the shell alive.
+    document.addEventListener('click', (event) => {
+        if (event.defaultPrevented) return;
+
+        const link = event.target instanceof Element ? event.target.closest('a[href]') : null;
+        if (!eligibleLink(link, event)) return;
+
+        event.preventDefault();
+        performSoftRequest({
+            destination: link.href,
+            control: link,
+        });
+    });
+
+    // Standard Laravel forms (including @method PUT/PATCH/DELETE and multipart
+    // uploads) are submitted in the background. The browser never tears down the
+    // admin shell, but server-side validation, redirects and flash messages keep
+    // working because we render the final HTML response exactly as Laravel sent it.
+    document.addEventListener('submit', (event) => {
+        const form = event.target;
+        const activation = form instanceof HTMLFormElement
+            ? takeExplicitSubmitActivation(form)
+            : null;
+
+        if (event.defaultPrevented || !eligibleForm(form)) return;
+
+        const nativeSubmitter = event.submitter instanceof Element ? event.submitter : null;
+        const explicitBulkAction = isExplicitBulkActionForm(form);
+
+        if (explicitBulkAction) {
+            const explicitlyActivated = Boolean(
+                activation
+                && (!nativeSubmitter || activation.control === nativeSubmitter)
+            );
+
+            // Bulk/manual actions are never allowed to execute because a select,
+            // checkbox, browser implicit-submit behavior, or script happened to
+            // submit the form. The user must deliberately activate Apply.
+            if (!explicitlyActivated) {
+                event.preventDefault();
+                return;
+            }
+
+            // Keep this protection in the centralized layer as a fallback even
+            // if a page-specific validation script is missing after navigation.
+            if (!validateExplicitBulkAction(form)) {
+                event.preventDefault();
+                return;
+            }
+        }
+
+        // On older browsers event.submitter can be missing after an otherwise
+        // genuine button activation. Reuse only the exact control we just
+        // verified, never the form's first/default button.
+        const submitter = nativeSubmitter || activation?.control || null;
+        const request = formRequest(form, submitter);
+
+        event.preventDefault();
+        performSoftRequest({
+            ...request,
+            preserveScroll: 'same-page',
+            control: submitter,
+            allowNativeFallback: false,
+        });
+    });
+
+    window.addEventListener('popstate', () => {
+        if (canHandleUrl(window.location.href)) {
+            performSoftRequest({
+                destination: window.location.href,
+                replace: true,
+                fromPopState: true,
+            });
+        }
+    });
+
+    history.replaceState({ nextplayAdminPartial: true, url: window.location.href }, '', window.location.href);
+};
+
+initializePersistentAdminNavigation();

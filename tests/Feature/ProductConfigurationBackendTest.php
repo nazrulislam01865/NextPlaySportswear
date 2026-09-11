@@ -1055,7 +1055,8 @@ class ProductConfigurationBackendTest extends TestCase
         $this->assertStringContainsString('ProductSizeExtraCharges::adjustments($groupData)', $controller);
         $this->assertStringContainsString("\$groupData['size_charges']", $normalizer);
 
-        $this->assertStringContainsString("'size_price_adjustments' => \$group->sizes->mapWithKeys", $form);
+        $this->assertStringContainsString("'size_price_adjustments' => \$group->sizes->flatMap", $form);
+        $this->assertStringContainsString('ProductSizeExtraCharges::editorAdjustmentAliases', $form);
         $this->assertStringContainsString("'has_size_extra_charges' => \$group->sizes->contains", $form);
     }
 

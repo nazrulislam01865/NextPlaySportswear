@@ -5,20 +5,22 @@ namespace App\Http\Controllers\Storefront;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Storefront\StoreBulkQuoteRequest;
 use App\Models\BulkQuoteRequest;
+use App\Models\User;
 use App\Services\AdminNotificationService;
+use App\Services\Email\TransactionalEmailManager;
+use App\Services\Integrations\FlowTrack\FlowTrackInquirySyncManager;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
-use App\Services\Email\TransactionalEmailManager;
 
 class BulkQuoteController extends Controller
 {
-    //Email Constructor
     public function __construct(
-        private readonly TransactionalEmailManager $emails
+        private readonly TransactionalEmailManager $emails,
     ) {
     }
+
     public function create(): View
     {
         $faqItems = [
@@ -46,8 +48,11 @@ class BulkQuoteController extends Controller
         return view('storefront.bulk-quote.create', compact('faqItems', 'structuredData'));
     }
 
-    public function store(StoreBulkQuoteRequest $request, AdminNotificationService $notifications): RedirectResponse
-    {
+    public function store(
+        StoreBulkQuoteRequest $request,
+        AdminNotificationService $notifications,
+        FlowTrackInquirySyncManager $flowTrackSync,
+    ): RedirectResponse {
         $validated = $request->validated();
         unset($validated['company']);
 
@@ -67,12 +72,19 @@ class BulkQuoteController extends Controller
         $hashKey = (string) config('app.key');
         $ip = $request->ip();
         $userAgent = trim((string) $request->userAgent());
+        $user = $request->user();
+        $customer = $user instanceof User ? $user : null;
 
         $quote = BulkQuoteRequest::create([
             ...$validated,
             'reference' => $this->makeReference(),
+            'user_id' => $customer?->id,
+            'customer_account' => $this->customerAccountSnapshot($customer, $validated),
             'attachment' => $attachment,
             'status' => BulkQuoteRequest::STATUS_NEW,
+            'flowtrack_sync_status' => (bool) config('flowtrack.enabled')
+                ? BulkQuoteRequest::FLOWTRACK_SYNC_PENDING
+                : BulkQuoteRequest::FLOWTRACK_SYNC_DISABLED,
             'ip_hash' => $ip ? hash_hmac('sha256', $ip, $hashKey) : null,
             'user_agent_hash' => $userAgent !== '' ? hash_hmac('sha256', $userAgent, $hashKey) : null,
         ]);
@@ -91,12 +103,34 @@ class BulkQuoteController extends Controller
                 'occurred_at' => now()->toIso8601String(),
             ]);
         }
+
         $this->emails->bulkQuoteReceived($quote);
+
+        // The request has already been safely stored in NextPlay. FlowTrack
+        // availability must never roll back or falsify a successful submission.
+        $flowTrackSync->dispatch($quote);
 
         return redirect()
             ->route('quote.request')
             ->with('status', 'Thanks—your bulk quote request has been received. Reference: '.$quote->reference.'. Our team will review it and contact you soon.')
             ->withHeaders(['Cache-Control' => 'no-store, private']);
+    }
+
+    /**
+     * @param array<string,mixed> $validated
+     * @return array<string,mixed>
+     */
+    private function customerAccountSnapshot(?User $user, array $validated): array
+    {
+        return [
+            'is_registered' => $user !== null,
+            'source_user_id' => $user?->id,
+            'name' => (string) ($user?->name ?: ($validated['full_name'] ?? '')),
+            'email' => (string) ($user?->email ?: ($validated['email'] ?? '')),
+            'phone' => $user?->phone ?: ($validated['phone'] ?? null),
+            'company_name' => $user?->company_name,
+            'preferred_sport' => $user?->preferred_sport,
+        ];
     }
 
     private function makeReference(): string

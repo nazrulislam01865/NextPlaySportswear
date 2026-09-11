@@ -14,7 +14,7 @@
     ])
 </head>
 
-<body class="min-h-screen bg-slate-950 font-sans text-white">
+<body class="admin-auth-ui min-h-screen bg-slate-950 font-sans text-white">
 
     <main class="grid min-h-screen place-items-center p-5">
 

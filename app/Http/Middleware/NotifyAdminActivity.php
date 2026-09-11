@@ -80,6 +80,11 @@ class NotifyAdminActivity
             'admin.logout',
             'admin.notifications.',
             'admin.products.',
+            // Remote-area imports arrive in many 1,000-row chunks. Logging each network
+            // chunk would create dozens of duplicate audit notifications; only the final
+            // successful import endpoint is allowed to generate the activity event.
+            'admin.rural-area-surcharges.import.start',
+            'admin.rural-area-surcharges.import.chunk',
         ] as $excluded) {
             if ($routeName === $excluded || Str::startsWith($routeName, $excluded)) {
                 return false;
@@ -92,6 +97,14 @@ class NotifyAdminActivity
     private function actionFor(Request $request, string $routeName): string
     {
         $name = Str::after($routeName, 'admin.');
+
+        if (Str::endsWith($name, '.suspend')) {
+            return 'suspended';
+        }
+
+        if (Str::endsWith($name, '.reactivate')) {
+            return 'reactivated';
+        }
 
         if ($request->isMethod('DELETE') || Str::endsWith($name, '.destroy')) {
             return 'deleted';
@@ -150,7 +163,7 @@ class NotifyAdminActivity
             'categories.ordering' => 'Category ordering',
             'jersey-customization-options.' => 'Customization option',
             'size-option-groups.' => 'Size option group',
-            'rural-area-surcharges.' => 'Rural area surcharge',
+            'rural-area-surcharges.' => 'Remote area surcharge',
             'payment-methods.' => 'Payment method',
             'shipping-methods.' => 'Shipping method',
             'faqs.' => 'FAQ',
@@ -161,6 +174,7 @@ class NotifyAdminActivity
             'categories.' => 'Category',
             'menus.' => 'Navigation menu',
             'coupons.' => 'Coupon',
+            'customers.' => 'Customer account',
             'users.' => 'Admin user',
             'orders.' => 'Order',
             'returns.' => 'Return request',

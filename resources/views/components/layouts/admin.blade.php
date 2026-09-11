@@ -23,7 +23,7 @@
     @endphp
 </head>
 <body
-    class="admin-clean-ui admin-ui-compact bg-slate-100 text-slate-900"
+    class="admin-clean-ui admin-ui-compact"
     x-data="{ sidebarOpen: false }"
     x-effect="document.documentElement.classList.toggle('overflow-hidden', sidebarOpen)"
     @keydown.escape.window="sidebarOpen = false"
@@ -57,10 +57,12 @@
                     <x-admin.sidebar-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')" icon="▦">Dashboard</x-admin.sidebar-link>
                 @endif
 
-                @if($canAdmin('products.view') || $canAdmin('categories.view') || $canAdmin('attributes.view') || $canAdmin('menus.view'))
+                @if($canAdmin('products.view') || $canAdmin('categories.view') || $canAdmin('attributes.view') || $canAdmin('menus.view') || $canAdmin('media.view'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Catalog</p>
                     @if($canAdmin('products.view'))
                         <x-admin.sidebar-link :href="route('admin.products.index')" :active="request()->routeIs('admin.products.*')" icon="◇">Products</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('media.view'))
                         <x-admin.sidebar-group
                             label="Media"
                             icon="▧"
@@ -70,10 +72,12 @@
                                 :href="route('admin.media-library.index')"
                                 :active="request()->routeIs('admin.media-library.index')"
                             >Gallery</x-admin.sidebar-sub-link>
-                            <x-admin.sidebar-sub-link
-                                :href="route('admin.media-library.upload')"
-                                :active="request()->routeIs('admin.media-library.upload')"
-                            >Upload Media File</x-admin.sidebar-sub-link>
+                            @if($canAdmin('media.manage'))
+                                <x-admin.sidebar-sub-link
+                                    :href="route('admin.media-library.upload')"
+                                    :active="request()->routeIs('admin.media-library.upload')"
+                                >Upload Media File</x-admin.sidebar-sub-link>
+                            @endif
                         </x-admin.sidebar-group>
                     @endif
                     @if($canAdmin('categories.view'))
@@ -259,13 +263,17 @@
                     </x-admin.sidebar-group>
                 @endif
 
-                @if($canAdmin('orders.view') || $canAdmin('returns.view') || $canAdmin('coupons.view'))
+                @if($canAdmin('orders.view') || $canAdmin('returns.view') || $canAdmin('customers.view') || $canAdmin('coupons.view'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Commerce</p>
                     @if($canAdmin('orders.view'))
                         <x-admin.sidebar-link :href="route('admin.orders.index')" :active="request()->routeIs('admin.orders.*')" icon="▣">Orders</x-admin.sidebar-link>
+                        <x-admin.sidebar-link :href="route('admin.bulk-quotes.index')" :active="request()->routeIs('admin.bulk-quotes.*')" icon="▤">Bulk Quote Requests</x-admin.sidebar-link>
                     @endif
                     @if($canAdmin('returns.view'))
                         <x-admin.sidebar-link :href="route('admin.returns.index')" :active="request()->routeIs('admin.returns.*')" icon="↶">Returns & Exchanges</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('customers.view'))
+                        <x-admin.sidebar-link :href="route('admin.customers.index')" :active="request()->routeIs('admin.customers.*')" icon="◎">Customers</x-admin.sidebar-link>
                     @endif
                     @if($canAdmin('coupons.view'))
                         <x-admin.sidebar-link :href="route('admin.coupons.index')" :active="request()->routeIs('admin.coupons.*')" icon="%">Discounts & Coupons</x-admin.sidebar-link>
@@ -299,7 +307,7 @@
                         <x-admin.sidebar-link :href="route('admin.newsletter-subscribers.index')" :active="request()->routeIs('admin.newsletter-subscribers.*')" icon="@">Newsletter Emails</x-admin.sidebar-link>
                     @endif
                     @if($canAdmin('rural_surcharges.view'))
-                        <x-admin.sidebar-link :href="route('admin.rural-area-surcharges.index')" :active="request()->routeIs('admin.rural-area-surcharges.*')" icon="⌁">Rural Surcharges</x-admin.sidebar-link>
+                        <x-admin.sidebar-link :href="route('admin.rural-area-surcharges.index')" :active="request()->routeIs('admin.rural-area-surcharges.*')" icon="⌁">Remote Surcharges</x-admin.sidebar-link>
                     @endif
                     @if($canAdmin('payment_methods.view'))
                         <x-admin.sidebar-link :href="route('admin.payment-methods.index')" :active="request()->routeIs('admin.payment-methods.*')" icon="$">Payment Methods</x-admin.sidebar-link>
@@ -344,14 +352,14 @@
         </aside>
 
         <div class="min-w-0">
-            <header @class([
+            <header data-admin-page-header @class([
                 'sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-slate-200 bg-white/95 px-4 py-4 backdrop-blur sm:px-6 lg:px-8',
                 'min-h-[82px] lg:min-h-[92px]' => $compactHeader,
                 'min-h-[90px] lg:min-h-[104px]' => ! $compactHeader,
             ])>
                 <div class="flex min-w-0 items-center gap-4">
                     <button type="button" class="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-slate-200 text-xl lg:hidden" @click="sidebarOpen = true" aria-label="Open sidebar" aria-controls="admin-sidebar">☰</button>
-                    <div class="min-w-0">
+                    <div class="min-w-0" data-admin-header-copy>
                         <p class="text-[11px] font-black uppercase tracking-[.28em] text-brand-red">{{ $eyebrow ?? 'Administration' }}</p>
                         <h1 @class([
                             'truncate font-black leading-tight text-brand-ink',
@@ -367,7 +375,7 @@
                     @auth('admin')
                         <x-admin.notification-bell />
                     @endauth
-                    <a href="{{ $storefrontUrl ?: route('home') }}" target="_blank" rel="noopener" class="inline-flex min-h-10 shrink-0 items-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-brand-blue shadow-sm transition hover:bg-slate-50 sm:min-h-11"><span class="hidden sm:inline">View storefront&nbsp;</span>↗</a>
+                    <a data-admin-storefront-link href="{{ $storefrontUrl ?: route('home') }}" target="_blank" rel="noopener" class="inline-flex min-h-10 shrink-0 items-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-brand-blue shadow-sm transition hover:bg-slate-50 sm:min-h-11"><span class="hidden sm:inline">View storefront&nbsp;</span>↗</a>
                 </div>
             </header>
 

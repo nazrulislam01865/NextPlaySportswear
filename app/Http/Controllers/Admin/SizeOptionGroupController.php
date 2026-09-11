@@ -67,7 +67,7 @@ class SizeOptionGroupController extends Controller
     {
         $group = $this->service->create($request);
 
-        return redirect()->route('admin.size-option-groups.edit', $this->routeParameters($group, $request))
+        return redirect()->route('admin.size-option-groups.edit', $this->routeParameters($group))
             ->with('status', 'Size option group created successfully.');
     }
 
@@ -88,7 +88,7 @@ class SizeOptionGroupController extends Controller
     {
         $group = $this->service->update($sizeOptionGroup, $request);
 
-        return redirect()->route('admin.size-option-groups.edit', $this->routeParameters($group, $request))
+        return redirect()->route('admin.size-option-groups.edit', $this->routeParameters($group))
             ->with('status', 'Size option group updated successfully.');
     }
 
@@ -102,9 +102,13 @@ class SizeOptionGroupController extends Controller
     }
 
     /** @return array<int|string, mixed> */
-    private function routeParameters(SizeOptionGroup $group, Request $request): array
+    private function routeParameters(SizeOptionGroup $group): array
     {
         $context = (string) ($group->customization_group ?: 'jersey');
+
+        if ($context === 'jersey') {
+            return ['sizeOptionGroup' => $group];
+        }
 
         return ['sizeOptionGroup' => $group, 'customization' => $context];
     }

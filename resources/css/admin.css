@@ -4568,6 +4568,22 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     }
 }
 
+/* The admin sidebar is persistent during sidebar menu navigation.
+   Do not animate the shell while an in-place page request is pending. */
+html.admin-partial-navigation-pending #admin-sidebar {
+    pointer-events: auto;
+}
+
+/* Prevent Alpine/mobile transform transitions only during the initial server
+   render. In-place sidebar navigation does not recreate this element. */
+html.admin-sidebar-prepaint #admin-sidebar,
+html.admin-sidebar-prepaint #admin-sidebar *,
+html.admin-sidebar-prepaint [data-sidebar-disclosure-toggle],
+html.admin-sidebar-prepaint [data-sidebar-arrow] {
+    transition: none !important;
+    animation: none !important;
+}
+
 /* Resizable admin sidebar + readable long labels */
 :root {
     --admin-sidebar-width: 228px;
@@ -6651,542 +6667,24 @@ body.admin-ui-compact .np-field-help {
 }
 
 body.admin-ui-compact main table {
-    font-size: .77rem !important;
+    font-family: var(--admin-font-sans) !important;
+    font-size: var(--admin-table-body-font-size) !important;
+    font-weight: var(--admin-table-body-font-weight) !important;
 }
 
 body.admin-ui-compact main table th {
-    padding: .5rem .7rem !important;
-    font-size: .62rem !important;
-    font-weight: 600 !important;
+    padding: var(--admin-table-head-padding-y) var(--admin-table-cell-padding-x) !important;
+    font-size: var(--admin-table-head-font-size) !important;
+    font-weight: var(--admin-table-head-font-weight) !important;
+    line-height: var(--admin-table-head-line-height) !important;
     letter-spacing: .075em !important;
 }
 
 body.admin-ui-compact main table td {
-    padding: .58rem .7rem !important;
-    line-height: 1.3rem !important;
-}
-
-body.admin-ui-compact .admin-status-pill,
-body.admin-ui-compact main [class*="rounded-full"][class*="text-xs"] {
-    padding: .18rem .45rem !important;
-    font-size: .63rem !important;
-    font-weight: 600 !important;
-}
-
-body.admin-ui-compact main img[class*="h-16"][class*="w-16"],
-body.admin-ui-compact main img[class*="h-14"][class*="w-14"] {
-    width: 2.55rem !important;
-    height: 2.55rem !important;
-}
-
-body.admin-ui-compact main img[class*="h-12"][class*="w-12"] {
-    width: 2.3rem !important;
-    height: 2.3rem !important;
-}
-
-body.admin-ui-compact .np-product-builder,
-body.admin-ui-compact .np-product-builder__main,
-body.admin-ui-compact .np-product-builder__aside,
-body.admin-ui-compact .np-field-stack {
-    gap: .7rem !important;
-}
-
-body.admin-ui-compact .np-card,
-body.admin-ui-compact .np-side-card,
-body.admin-ui-compact .np-product-spec-card,
-body.admin-ui-compact .np-option-tiles article,
-body.admin-ui-compact .np-config-panel,
-body.admin-ui-compact .np-advanced-detail,
-body.admin-ui-compact .np-nested-card {
-    border-radius: .72rem !important;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, .03) !important;
-}
-
-body.admin-ui-compact .np-card,
-body.admin-ui-compact .np-side-card {
-    padding: .75rem !important;
-}
-
-body.admin-ui-compact .np-card__header {
-    margin-bottom: .7rem !important;
-    padding-bottom: .58rem !important;
-}
-
-body.admin-ui-compact .np-card__header h2,
-body.admin-ui-compact .np-side-card h3 {
-    font-size: .92rem !important;
-    font-weight: 600 !important;
-}
-
-body.admin-ui-compact .np-card__header p {
-    margin-top: .15rem !important;
-    font-size: .74rem !important;
-    line-height: 1.2rem !important;
-    font-weight: 400 !important;
-}
-
-body.admin-ui-compact .np-stepper {
-    padding: .5rem .6rem !important;
-    border-radius: .7rem !important;
-    box-shadow: none !important;
-}
-
-body.admin-ui-compact .np-stepper__item {
-    gap: .38rem !important;
-    font-size: .68rem !important;
-    font-weight: 500 !important;
-}
-
-body.admin-ui-compact .np-stepper__item span {
-    width: 1.6rem !important;
-    height: 1.6rem !important;
-    font-size: .66rem !important;
-}
-
-body.admin-ui-compact .np-option-tiles article,
-body.admin-ui-compact .np-config-panel,
-body.admin-ui-compact .np-advanced-detail,
-body.admin-ui-compact .np-nested-card {
-    padding: .65rem !important;
-}
-
-body.admin-ui-compact .category-stat-card {
-    min-height: 76px !important;
-    gap: .65rem !important;
-    padding: .75rem !important;
-    border-radius: .75rem !important;
-}
-
-body.admin-ui-compact .category-stat-card strong {
-    font-size: 1.35rem !important;
-    font-weight: 600 !important;
-}
-
-body.admin-ui-compact .category-stat-label,
-body.admin-ui-compact .category-header-action {
-    font-weight: 600 !important;
-}
-
-body.admin-ui-compact .admin-notification-panel {
-    border-radius: .75rem !important;
-    box-shadow: 0 14px 36px rgba(15, 23, 42, .16) !important;
-}
-
-body.admin-ui-compact .admin-notification-panel-head,
-body.admin-ui-compact .admin-notification-panel-foot,
-body.admin-ui-compact .admin-notification-item {
-    padding: .65rem .75rem !important;
-}
-
-body.admin-ui-compact .admin-notification-panel-head strong,
-body.admin-ui-compact .admin-notification-item-copy strong,
-body.admin-ui-compact .admin-notification-page-title-row strong {
-    font-weight: 600 !important;
-}
-
-@media (max-width: 639px) {
-    body.admin-ui-compact main {
-        padding: .65rem !important;
-    }
-
-    body.admin-ui-compact main .p-7,
-    body.admin-ui-compact main .p-6,
-    body.admin-ui-compact main .p-5,
-    body.admin-ui-compact main .p-4 {
-        padding: .7rem !important;
-    }
-}
-
-/* --------------------------------------------------------------------------
-   Global compact admin density
-   One reusable visual system for every authenticated admin screen. This is
-   deliberately scoped to .admin-ui-compact so storefront styles are untouched.
--------------------------------------------------------------------------- */
-body.admin-ui-compact {
-    font-size: 13.5px;
-    line-height: 1.45;
-    color: #243244;
-    background: #f7f8fb;
-}
-
-body.admin-ui-compact .font-black,
-body.admin-ui-compact .font-extrabold {
-    font-weight: 600 !important;
-}
-
-body.admin-ui-compact .font-bold,
-body.admin-ui-compact strong,
-body.admin-ui-compact b {
-    font-weight: 600 !important;
-}
-
-body.admin-ui-compact main h1,
-body.admin-ui-compact main h2,
-body.admin-ui-compact main h3,
-body.admin-ui-compact main h4 {
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
-    font-weight: 600 !important;
-    letter-spacing: -.018em !important;
-    color: #172033;
-}
-
-body.admin-ui-compact main h1 {
-    font-size: 1.45rem !important;
-    line-height: 1.2 !important;
-}
-
-body.admin-ui-compact main h2 {
-    font-size: 1.05rem !important;
-    line-height: 1.35 !important;
-}
-
-body.admin-ui-compact main h3 {
-    font-size: .95rem !important;
-    line-height: 1.4 !important;
-}
-
-body.admin-ui-compact main h4 {
-    font-size: .875rem !important;
-    line-height: 1.45 !important;
-}
-
-body.admin-ui-compact main .text-4xl {
-    font-size: 1.55rem !important;
-    line-height: 1.85rem !important;
-}
-
-body.admin-ui-compact main .text-3xl {
-    font-size: 1.35rem !important;
-    line-height: 1.7rem !important;
-}
-
-body.admin-ui-compact main .text-2xl {
-    font-size: 1.15rem !important;
-    line-height: 1.55rem !important;
-}
-
-body.admin-ui-compact main .text-xl {
-    font-size: 1rem !important;
-    line-height: 1.45rem !important;
-}
-
-body.admin-ui-compact main .text-lg {
-    font-size: .92rem !important;
-    line-height: 1.4rem !important;
-}
-
-@media (min-width: 1024px) {
-    body.admin-ui-compact > div.min-h-screen {
-        grid-template-columns: var(--admin-sidebar-width, 228px) minmax(0, 1fr) !important;
-    }
-}
-
-body.admin-ui-compact #admin-sidebar {
-    width: min(84vw, var(--admin-sidebar-width, 228px)) !important;
-}
-
-body.admin-ui-compact #admin-sidebar > div:first-child {
-    height: 58px !important;
-    padding-inline: .8rem !important;
-}
-
-body.admin-ui-compact #admin-sidebar > div:first-child a {
-    gap: .6rem !important;
-    font-weight: 600 !important;
-}
-
-body.admin-ui-compact #admin-sidebar > div:first-child a > span:first-child {
-    width: 2rem !important;
-    height: 2rem !important;
-    border-width: 1px !important;
-    border-radius: .55rem !important;
-}
-
-body.admin-ui-compact #admin-sidebar > div:first-child .text-lg {
-    font-size: .95rem !important;
-    font-weight: 600 !important;
-}
-
-body.admin-ui-compact #admin-sidebar nav {
-    padding: .55rem .5rem .8rem !important;
-    font-size: .78rem !important;
-}
-
-body.admin-ui-compact #admin-sidebar p[class*="uppercase"] {
-    margin-top: .75rem !important;
-    padding: 0 .6rem .28rem !important;
-    font-size: .56rem !important;
-    font-weight: 600 !important;
-    letter-spacing: .16em !important;
-}
-
-body.admin-ui-compact #admin-sidebar a,
-body.admin-ui-compact #admin-sidebar summary,
-body.admin-ui-compact #admin-sidebar button {
-    border-radius: .55rem !important;
-    font-size: .78rem !important;
-    font-weight: 500 !important;
-    line-height: 1.15rem !important;
-}
-
-body.admin-ui-compact #admin-sidebar a[class*="min-h-11"],
-body.admin-ui-compact #admin-sidebar summary[class*="min-h-11"],
-body.admin-ui-compact #admin-sidebar a[class*="min-h-10"] {
-    min-height: 2.15rem !important;
-    padding-top: .36rem !important;
-    padding-bottom: .36rem !important;
-}
-
-body.admin-ui-compact #admin-sidebar a[class*="mb-1"] {
-    margin-bottom: .12rem !important;
-}
-
-body.admin-ui-compact #admin-sidebar [class*="h-7"][class*="w-7"] {
-    width: 1.45rem !important;
-    height: 1.45rem !important;
-    border-radius: .42rem !important;
-    font-size: .66rem !important;
-}
-
-body.admin-ui-compact #admin-sidebar [data-sidebar-active="true"] {
-    font-weight: 600 !important;
-    box-shadow: none !important;
-}
-
-body.admin-ui-compact header {
-    min-height: 66px !important;
-    padding: .65rem .8rem !important;
-    gap: .75rem !important;
-    box-shadow: none !important;
-}
-
-@media (min-width: 640px) {
-    body.admin-ui-compact header {
-        padding-inline: 1rem !important;
-    }
-}
-
-@media (min-width: 1024px) {
-    body.admin-ui-compact header {
-        min-height: 70px !important;
-        padding-inline: 1.15rem !important;
-    }
-}
-
-body.admin-ui-compact header > div:first-child {
-    gap: .75rem !important;
-}
-
-body.admin-ui-compact header h1 {
-    font-size: clamp(1.15rem, 1.2vw + .55rem, 1.55rem) !important;
-    line-height: 1.18 !important;
-    font-weight: 600 !important;
-    letter-spacing: -.025em !important;
-}
-
-body.admin-ui-compact header p:first-child {
-    font-size: .58rem !important;
-    font-weight: 600 !important;
-    letter-spacing: .18em !important;
-}
-
-body.admin-ui-compact header p:not(:first-child) {
-    margin-top: .15rem !important;
-    font-size: .78rem !important;
-    line-height: 1.25rem !important;
-    font-weight: 400 !important;
-}
-
-body.admin-ui-compact header .admin-notification-bell,
-body.admin-ui-compact header a[target="_blank"] {
-    min-height: 2.2rem !important;
-    height: 2.2rem !important;
-    border-radius: .6rem !important;
-    padding-inline: .7rem !important;
-    font-size: .75rem !important;
-    font-weight: 600 !important;
-    box-shadow: none !important;
-}
-
-body.admin-ui-compact header button[class*="h-12"][class*="w-12"] {
-    width: 2.25rem !important;
-    height: 2.25rem !important;
-    border-radius: .6rem !important;
-}
-
-body.admin-ui-compact main {
-    padding: .8rem !important;
-    font-size: .84rem;
-}
-
-@media (min-width: 640px) {
-    body.admin-ui-compact main {
-        padding: .95rem !important;
-    }
-}
-
-@media (min-width: 1024px) {
-    body.admin-ui-compact main {
-        padding: 1rem 1.15rem 1.2rem !important;
-    }
-}
-
-body.admin-ui-compact main .mb-7,
-body.admin-ui-compact main .mb-6,
-body.admin-ui-compact main .mb-5 {
-    margin-bottom: .75rem !important;
-}
-
-body.admin-ui-compact main .mt-7,
-body.admin-ui-compact main .mt-6,
-body.admin-ui-compact main .mt-5 {
-    margin-top: .8rem !important;
-}
-
-body.admin-ui-compact main .gap-7,
-body.admin-ui-compact main .gap-6,
-body.admin-ui-compact main .gap-5,
-body.admin-ui-compact main .gap-4 {
-    gap: .7rem !important;
-}
-
-body.admin-ui-compact main .space-y-7 > :not([hidden]) ~ :not([hidden]),
-body.admin-ui-compact main .space-y-6 > :not([hidden]) ~ :not([hidden]),
-body.admin-ui-compact main .space-y-5 > :not([hidden]) ~ :not([hidden]),
-body.admin-ui-compact main .space-y-4 > :not([hidden]) ~ :not([hidden]) {
-    margin-top: .75rem !important;
-}
-
-body.admin-ui-compact main :is(section, article, div, form)[class*="border-slate-200"][class*="bg-white"] {
-    border-color: #e3e8ef !important;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, .035) !important;
-}
-
-body.admin-ui-compact main :is(section, article, div, form)[class*="rounded-3xl"],
-body.admin-ui-compact main :is(section, article, div, form)[class*="rounded-2xl"] {
-    border-radius: .78rem !important;
-}
-
-body.admin-ui-compact main .p-7,
-body.admin-ui-compact main .p-6,
-body.admin-ui-compact main .p-5 {
-    padding: .8rem !important;
-}
-
-body.admin-ui-compact main .p-4 {
-    padding: .7rem !important;
-}
-
-body.admin-ui-compact main .px-7,
-body.admin-ui-compact main .px-6,
-body.admin-ui-compact main .px-5,
-body.admin-ui-compact main .px-4 {
-    padding-left: .8rem !important;
-    padding-right: .8rem !important;
-}
-
-body.admin-ui-compact main .py-7,
-body.admin-ui-compact main .py-6,
-body.admin-ui-compact main .py-5,
-body.admin-ui-compact main .py-4 {
-    padding-top: .7rem !important;
-    padding-bottom: .7rem !important;
-}
-
-body.admin-ui-compact main p,
-body.admin-ui-compact main li,
-body.admin-ui-compact main dd,
-body.admin-ui-compact main dt {
-    line-height: 1.45 !important;
-}
-
-body.admin-ui-compact .admin-section-card {
-    padding: .8rem !important;
-    border-radius: .78rem !important;
-}
-
-body.admin-ui-compact .admin-section-card__header {
-    margin-bottom: .7rem !important;
-    padding-bottom: .6rem !important;
-}
-
-body.admin-ui-compact .admin-section-card__title {
-    font-size: 1rem !important;
-    font-weight: 600 !important;
-}
-
-body.admin-ui-compact .admin-section-card__description {
-    margin-top: .2rem !important;
-    font-size: .78rem !important;
-    line-height: 1.3rem !important;
-}
-
-body.admin-ui-compact .btn,
-body.admin-ui-compact .admin-row-action {
-    min-height: 2.2rem !important;
-    border-radius: .58rem !important;
-    padding: .46rem .72rem !important;
-    font-size: .76rem !important;
-    font-weight: 600 !important;
-    box-shadow: none !important;
-    transform: none !important;
-}
-
-body.admin-ui-compact .btn-red {
-    box-shadow: 0 3px 8px rgba(233, 29, 51, .12) !important;
-}
-
-body.admin-ui-compact .admin-label {
-    font-size: .77rem !important;
-    line-height: 1.15rem !important;
-    font-weight: 600 !important;
-    color: #475569 !important;
-}
-
-body.admin-ui-compact .admin-input,
-body.admin-ui-compact select.admin-input {
-    height: 2.4rem !important;
-    min-height: 2.4rem !important;
-    margin-top: .3rem !important;
-    border-radius: .6rem !important;
-    padding-inline: .72rem !important;
-    font-size: .82rem !important;
-    font-weight: 400 !important;
-    box-shadow: none !important;
-}
-
-body.admin-ui-compact .admin-textarea {
-    min-height: 92px !important;
-    margin-top: .3rem !important;
-    border-radius: .6rem !important;
-    padding: .65rem .72rem !important;
-    font-size: .82rem !important;
-    font-weight: 400 !important;
-    line-height: 1.4rem !important;
-    box-shadow: none !important;
-}
-
-body.admin-ui-compact .np-field-help {
-    margin-top: .25rem !important;
-    font-size: .7rem !important;
-    line-height: 1.15rem !important;
-    font-weight: 400 !important;
-}
-
-body.admin-ui-compact main table {
-    font-size: .77rem !important;
-}
-
-body.admin-ui-compact main table th {
-    padding: .5rem .7rem !important;
-    font-size: .62rem !important;
-    font-weight: 600 !important;
-    letter-spacing: .075em !important;
-}
-
-body.admin-ui-compact main table td {
-    padding: .58rem .7rem !important;
-    line-height: 1.3rem !important;
+    padding: var(--admin-table-cell-padding-y) var(--admin-table-cell-padding-x) !important;
+    font-size: var(--admin-table-body-font-size) !important;
+    font-weight: var(--admin-table-body-font-weight) !important;
+    line-height: var(--admin-table-body-line-height) !important;
 }
 
 body.admin-ui-compact .admin-status-pill,
@@ -7375,4 +6873,2927 @@ body.admin-ui-compact main :is(h1, h2, h3, h4)[class*="font-bold"],
 body.admin-ui-compact main :is(h1, h2, h3, h4)[class*="font-black"],
 body.admin-ui-compact main :is(h1, h2, h3, h4)[class*="font-extrabold"] {
     font-weight: 600 !important;
+}
+
+/* Centralized admin page button loading — Option 1: spinner + keep text.
+   The loader is scoped strictly to page content; the persistent sidebar/menu
+   shell can never inherit it. Buttons are allowed to size naturally so their
+   labels stay inside the control on desktop and mobile. */
+body.admin-clean-ui #admin-main-content .admin-button-loading {
+    position: relative;
+    box-sizing: border-box;
+    max-width: 100%;
+    cursor: wait;
+    white-space: normal !important;
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
+body.admin-clean-ui #admin-main-content .admin-button-loading::before {
+    content: '';
+    display: inline-block;
+    width: .875rem;
+    height: .875rem;
+    flex: 0 0 .875rem;
+    margin-right: .35rem;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 9999px;
+    box-sizing: border-box;
+    vertical-align: -.1em;
+    animation: admin-button-option-one-spin .65s linear infinite;
+}
+
+/* The spinner replaces a leading icon instead of stacking beside it. */
+body.admin-clean-ui #admin-main-content .admin-button-loading:not(.admin-button-loading--overlay) > .btn-icon,
+body.admin-clean-ui #admin-main-content .admin-button-loading:not(.admin-button-loading--overlay) > svg:first-child,
+body.admin-clean-ui #admin-main-content .admin-button-loading:not(.admin-button-loading--overlay) > [data-button-icon]:first-child {
+    display: none !important;
+}
+
+/* Fixed/full-width legacy controls that cannot expand use an out-of-flow
+   spinner. Their original content keeps exactly the same usable width. */
+body.admin-clean-ui #admin-main-content .admin-button-loading--overlay::before {
+    position: absolute;
+    top: calc(50% - .35rem);
+    left: .45rem;
+    width: .7rem;
+    height: .7rem;
+    margin: 0;
+    border-width: 1.5px;
+    pointer-events: none;
+}
+
+body.admin-clean-ui #admin-main-content .admin-button-loading--overlay > .btn-icon,
+body.admin-clean-ui #admin-main-content .admin-button-loading--overlay > svg:first-child,
+body.admin-clean-ui #admin-main-content .admin-button-loading--overlay > [data-button-icon]:first-child {
+    visibility: hidden !important;
+}
+
+body.admin-clean-ui #admin-main-content .admin-button-loading[data-admin-loading-lock='true'] {
+    pointer-events: none;
+    user-select: none;
+}
+
+@keyframes admin-button-option-one-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 639.98px) {
+    body.admin-clean-ui #admin-main-content .admin-button-loading::before {
+        width: .75rem;
+        height: .75rem;
+        flex-basis: .75rem;
+        margin-right: .3rem;
+        border-width: 1.5px;
+    }
+
+    body.admin-clean-ui #admin-main-content .admin-button-loading--overlay::before {
+        top: calc(50% - .3125rem);
+        left: .35rem;
+        width: .625rem;
+        height: .625rem;
+        margin: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.admin-clean-ui #admin-main-content .admin-button-loading::before {
+        animation-duration: 1.2s;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Shared admin design tokens
+   Every authenticated admin screen consumes these centralized typography,
+   button, control, table, spacing and theme values.
+-------------------------------------------------------------------------- */
+:root {
+    --admin-font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --admin-theme-primary: #15345d;
+    --admin-theme-primary-hover: #0d2545;
+    --admin-theme-accent: #2467b7;
+    --admin-theme-danger: #b42318;
+    --admin-theme-danger-hover: #912018;
+    --admin-theme-text: #172033;
+    --admin-theme-muted: #64748b;
+    --admin-theme-subtle: #94a3b8;
+    --admin-theme-border: #dce3ec;
+    --admin-theme-surface: #ffffff;
+    --admin-theme-soft: #f8fafc;
+    --admin-theme-cta: #e91d33;
+    --admin-theme-cta-hover: #c9152b;
+    --admin-theme-success: #15803d;
+    --admin-theme-success-soft: #f0fdf4;
+    --admin-theme-warning: #a16207;
+    --admin-theme-warning-soft: #fffbeb;
+    --admin-theme-info-soft: #eff6ff;
+    --admin-theme-violet: #7c3aed;
+    --admin-theme-violet-soft: #f5f3ff;
+    --admin-theme-orange: #c2410c;
+    --admin-theme-orange-soft: #fff7ed;
+    --admin-control-height: 2.4rem;
+    --admin-radius: .7rem;
+    --admin-gap: .75rem;
+    --admin-category-control-height: var(--admin-control-height);
+    --admin-category-radius: var(--admin-radius);
+    --admin-category-gap: var(--admin-gap);
+
+    /* Global admin table typography + density */
+    --admin-table-body-font-size: .76rem;
+    --admin-table-head-font-size: .62rem;
+    --admin-table-primary-font-size: .76rem;
+    --admin-table-value-font-size: .72rem;
+    --admin-table-secondary-font-size: .64rem;
+    --admin-table-badge-font-size: .6rem;
+    --admin-table-body-font-weight: 400;
+    --admin-table-head-font-weight: 600;
+    --admin-table-primary-font-weight: 600;
+    --admin-table-value-font-weight: 500;
+    --admin-table-body-line-height: 1.35;
+    --admin-table-head-line-height: 1.2;
+    --admin-table-head-padding-y: .55rem;
+    --admin-table-cell-padding-y: .58rem;
+    --admin-table-cell-padding-x: .7rem;
+
+    /* Admin-wide typography, forms, buttons, cards and semantic state tokens */
+    --admin-page-font-size: .82rem;
+    --admin-page-line-height: 1.45;
+    --admin-page-title-font-size: 1.45rem;
+    --admin-section-title-font-size: 1rem;
+    --admin-body-font-size: .78rem;
+    --admin-small-font-size: .68rem;
+    --admin-label-font-size: .76rem;
+    --admin-control-font-size: .78rem;
+    --admin-button-font-size: .76rem;
+    --admin-button-font-weight: 600;
+    --admin-card-radius: .75rem;
+    --admin-control-radius: .6rem;
+    --admin-card-padding: .75rem;
+    --admin-theme-canvas: #f7f8fb;
+    --admin-theme-border-soft: #edf1f5;
+    --admin-theme-success-border: #bbf7d0;
+    --admin-theme-danger-soft: #fff5f4;
+    --admin-theme-danger-border: #fecaca;
+    --admin-theme-warning-border: #fde68a;
+    --admin-theme-info: #1d4ed8;
+    --admin-theme-info-border: #bfdbfe;
+}
+
+
+body.admin-ui-compact {
+    font-family: var(--admin-font-sans);
+}
+
+body.admin-ui-compact .category-admin-page {
+    display: grid;
+    gap: var(--admin-category-gap);
+    min-width: 0;
+}
+
+body.admin-ui-compact .category-page-toolbar {
+    display: flex;
+    min-width: 0;
+    justify-content: flex-end;
+}
+
+body.admin-ui-compact .category-top-actions {
+    display: flex;
+    width: auto;
+    flex-flow: row wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .5rem;
+}
+
+body.admin-ui-compact .category-header-action,
+body.admin-ui-compact .category-filter-button,
+body.admin-ui-compact .category-filter-clear,
+body.admin-ui-compact .category-import-button,
+body.admin-ui-compact .category-bulk-button,
+body.admin-ui-compact .category-row-primary-action,
+body.admin-ui-compact .category-delete-cancel-button,
+body.admin-ui-compact .category-delete-confirm-button {
+    display: inline-flex;
+    min-height: var(--admin-category-control-height) !important;
+    height: var(--admin-category-control-height) !important;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+    border-radius: var(--admin-category-radius) !important;
+    padding: 0 .8rem !important;
+    font-family: var(--admin-font-sans);
+    font-size: .78rem !important;
+    font-weight: 600 !important;
+    line-height: 1;
+    letter-spacing: 0;
+    text-decoration: none;
+    white-space: nowrap;
+    box-shadow: none !important;
+    transition: border-color .16s ease, background-color .16s ease, color .16s ease, box-shadow .16s ease;
+}
+
+body.admin-ui-compact .category-header-action svg {
+    width: .95rem !important;
+    height: .95rem !important;
+}
+
+body.admin-ui-compact .category-header-action-light,
+body.admin-ui-compact .category-filter-clear,
+body.admin-ui-compact .category-import-button,
+body.admin-ui-compact .category-delete-cancel-button {
+    border: 1px solid var(--admin-theme-border);
+    background: var(--admin-theme-surface);
+    color: var(--admin-theme-primary);
+}
+
+body.admin-ui-compact .category-header-action-light:hover,
+body.admin-ui-compact .category-filter-clear:hover,
+body.admin-ui-compact .category-import-button:hover,
+body.admin-ui-compact .category-delete-cancel-button:hover {
+    border-color: #c8d2df;
+    background: var(--admin-theme-soft);
+}
+
+body.admin-ui-compact .category-header-action-primary,
+body.admin-ui-compact .category-filter-button,
+body.admin-ui-compact .category-bulk-button {
+    border: 1px solid var(--admin-theme-primary);
+    background: var(--admin-theme-primary);
+    color: #fff;
+}
+
+body.admin-ui-compact .category-header-action-primary:hover,
+body.admin-ui-compact .category-filter-button:hover,
+body.admin-ui-compact .category-bulk-button:hover {
+    border-color: var(--admin-theme-primary-hover);
+    background: var(--admin-theme-primary-hover);
+}
+
+body.admin-ui-compact .category-tools-menu > summary {
+    width: var(--admin-category-control-height) !important;
+    min-width: var(--admin-category-control-height);
+    height: var(--admin-category-control-height) !important;
+    min-height: var(--admin-category-control-height) !important;
+    padding: 0 !important;
+    border-radius: var(--admin-category-radius) !important;
+    border-color: var(--admin-theme-border);
+    box-shadow: none;
+}
+
+body.admin-ui-compact .category-tools-menu > summary svg {
+    width: 1rem !important;
+    height: 1rem !important;
+}
+
+body.admin-ui-compact .category-tools-panel,
+body.admin-ui-compact .category-row-menu-panel {
+    border-color: var(--admin-theme-border);
+    border-radius: .65rem;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, .12);
+}
+
+body.admin-ui-compact .category-tools-panel a,
+body.admin-ui-compact .category-row-menu-panel a,
+body.admin-ui-compact .category-row-menu-panel button {
+    padding: .55rem .7rem;
+    font-size: .76rem;
+    font-weight: 500 !important;
+}
+
+body.admin-ui-compact .category-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: .6rem;
+}
+
+body.admin-ui-compact .category-stat-card {
+    min-height: 68px !important;
+    gap: .65rem !important;
+    padding: .65rem .7rem !important;
+    border: 1px solid var(--admin-theme-border);
+    border-radius: .75rem !important;
+    background: var(--admin-theme-surface);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, .035) !important;
+}
+
+body.admin-ui-compact .category-stat-icon {
+    width: 2.2rem !important;
+    height: 2.2rem !important;
+    border-radius: .65rem;
+}
+
+body.admin-ui-compact .category-stat-icon svg {
+    width: 1.05rem !important;
+    height: 1.05rem !important;
+}
+
+body.admin-ui-compact .category-stat-label {
+    color: var(--admin-theme-muted);
+    font-size: .7rem !important;
+    font-weight: 500 !important;
+    line-height: 1.2;
+}
+
+body.admin-ui-compact .category-stat-card strong {
+    margin-top: .2rem !important;
+    color: var(--admin-theme-text);
+    font-size: 1.2rem !important;
+    font-weight: 600 !important;
+    line-height: 1;
+}
+
+body.admin-ui-compact .category-stat-card span:not(.category-stat-icon) {
+    margin-top: .22rem !important;
+    overflow: hidden;
+    color: var(--admin-theme-subtle);
+    font-size: .64rem !important;
+    font-weight: 400 !important;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body.admin-ui-compact .category-filter-card {
+    padding: .7rem !important;
+    border: 1px solid var(--admin-theme-border);
+    border-radius: .75rem !important;
+    background: var(--admin-theme-surface);
+    box-shadow: none !important;
+}
+
+body.admin-ui-compact .category-filter-shell {
+    gap: .65rem;
+}
+
+body.admin-ui-compact .category-filter-form {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.25fr) minmax(145px, .55fr) minmax(155px, .6fr) max-content max-content;
+    align-items: center;
+    gap: .5rem;
+}
+
+body.admin-ui-compact .category-field {
+    min-width: 0;
+}
+
+body.admin-ui-compact .category-control,
+body.admin-ui-compact .category-file-picker,
+body.admin-ui-compact .category-empty-filter {
+    height: var(--admin-category-control-height) !important;
+    min-height: var(--admin-category-control-height) !important;
+    border-radius: var(--admin-category-radius) !important;
+    font-family: var(--admin-font-sans);
+    font-size: .76rem !important;
+    font-weight: 500 !important;
+    box-shadow: none !important;
+}
+
+body.admin-ui-compact .category-control {
+    margin-top: 0 !important;
+    border-color: var(--admin-theme-border) !important;
+}
+
+body.admin-ui-compact .category-control:focus,
+body.admin-ui-compact .category-file-picker:focus-within {
+    border-color: var(--admin-theme-accent) !important;
+    box-shadow: 0 0 0 2px rgba(36, 103, 183, .09) !important;
+}
+
+body.admin-ui-compact .category-empty-filter {
+    padding: 0 .55rem;
+    gap: .4rem;
+    color: var(--admin-theme-text);
+    font-weight: 500 !important;
+}
+
+body.admin-ui-compact .category-empty-filter input,
+body.admin-ui-compact .category-row-check,
+body.admin-ui-compact #category-check-all {
+    width: .95rem;
+    height: .95rem;
+}
+
+body.admin-ui-compact .category-filter-actions {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+
+body.admin-ui-compact .category-filter-clear {
+    min-width: 3.7rem;
+}
+
+body.admin-ui-compact .category-import-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .5rem;
+    padding-top: .65rem;
+    border-top: 1px solid #edf1f5;
+}
+
+body.admin-ui-compact .category-import-field {
+    display: grid;
+    grid-template-columns: 128px minmax(0, 1fr);
+    align-items: center;
+    gap: .55rem;
+}
+
+body.admin-ui-compact .category-import-label {
+    min-width: 0;
+    color: var(--admin-theme-muted);
+    font-size: .7rem !important;
+    font-weight: 500 !important;
+    white-space: nowrap;
+}
+
+body.admin-ui-compact .category-file-picker {
+    border-color: var(--admin-theme-border);
+}
+
+body.admin-ui-compact .category-file-trigger {
+    min-width: 96px;
+    padding: 0 .65rem;
+    border-color: var(--admin-theme-border);
+    background: var(--admin-theme-soft);
+    color: var(--admin-theme-text);
+    font-size: .72rem !important;
+    font-weight: 500 !important;
+}
+
+body.admin-ui-compact .category-file-name {
+    padding: 0 .65rem;
+    color: var(--admin-theme-muted);
+    font-size: .72rem !important;
+    font-weight: 400 !important;
+}
+
+body.admin-ui-compact .category-import-button {
+    min-width: 5.25rem;
+}
+
+body.admin-ui-compact .category-bulk-card {
+    display: grid;
+    grid-template-columns: max-content minmax(230px, 360px) auto minmax(220px, 1fr);
+    align-items: center;
+    gap: .6rem;
+    min-width: 0;
+    padding: .65rem .7rem !important;
+    border: 1px solid var(--admin-theme-border);
+    border-radius: .75rem !important;
+    background: var(--admin-theme-surface);
+    box-shadow: none !important;
+}
+
+body.admin-ui-compact .category-bulk-card > strong {
+    color: var(--admin-theme-text);
+    font-size: .74rem;
+    font-weight: 500 !important;
+}
+
+body.admin-ui-compact .category-bulk-button {
+    width: auto;
+    min-width: 4.7rem;
+}
+
+body.admin-ui-compact .category-bulk-note {
+    color: var(--admin-theme-subtle);
+    font-size: .68rem;
+    font-weight: 400 !important;
+    line-height: 1.35;
+}
+
+body.admin-ui-compact .category-table-card {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--admin-theme-border);
+    border-radius: .75rem;
+    background: var(--admin-theme-surface);
+    box-shadow: none;
+}
+
+body.admin-ui-compact .category-management-table {
+    min-width: 1160px;
+    font-family: var(--admin-font-sans);
+    font-size: var(--admin-table-body-font-size) !important;
+}
+
+body.admin-ui-compact .category-management-table thead tr {
+    background: var(--admin-theme-soft) !important;
+    color: var(--admin-theme-muted);
+    font-size: var(--admin-table-head-font-size) !important;
+    font-weight: var(--admin-table-head-font-weight) !important;
+    line-height: var(--admin-table-head-line-height) !important;
+    letter-spacing: .075em !important;
+}
+
+body.admin-ui-compact .category-management-table th {
+    padding: var(--admin-table-head-padding-y) var(--admin-table-cell-padding-x) !important;
+    font-weight: var(--admin-table-head-font-weight) !important;
+}
+
+body.admin-ui-compact .category-management-table td {
+    padding: var(--admin-table-cell-padding-y) var(--admin-table-cell-padding-x) !important;
+    font-size: var(--admin-table-body-font-size) !important;
+    font-weight: var(--admin-table-body-font-weight) !important;
+    line-height: var(--admin-table-body-line-height) !important;
+}
+
+body.admin-ui-compact .category-management-table th:nth-child(2) { width: 285px !important; }
+body.admin-ui-compact .category-management-table th:nth-child(3) { width: 145px !important; }
+body.admin-ui-compact .category-management-table th:nth-child(4),
+body.admin-ui-compact .category-management-table th:nth-child(5) { width: 82px !important; }
+body.admin-ui-compact .category-management-table th:nth-child(6) { width: 175px !important; }
+body.admin-ui-compact .category-management-table th:nth-child(7) { width: 145px !important; }
+body.admin-ui-compact .category-management-table th:last-child { width: 265px !important; }
+
+body.admin-ui-compact .category-tree-cell {
+    align-items: center;
+    gap: .55rem !important;
+    padding-left: calc(var(--category-depth, 0) * 16px);
+}
+
+body.admin-ui-compact .category-branch-mark {
+    margin-top: 0;
+    color: #c4ccd7;
+    font-size: .8rem;
+}
+
+body.admin-ui-compact .category-folder-icon {
+    width: 1.8rem;
+    height: 1.8rem;
+    margin-top: 0;
+    padding: .2rem;
+    border-color: var(--admin-theme-border);
+    border-radius: .5rem;
+}
+
+body.admin-ui-compact .category-name {
+    color: var(--admin-theme-text);
+    font-size: var(--admin-table-primary-font-size);
+    font-weight: var(--admin-table-primary-font-weight) !important;
+}
+
+body.admin-ui-compact .category-featured-pill,
+body.admin-ui-compact .category-status-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: .18rem .45rem;
+    font-size: var(--admin-table-badge-font-size);
+    font-weight: 600 !important;
+    line-height: 1.2;
+    letter-spacing: .03em;
+    white-space: nowrap;
+}
+
+body.admin-ui-compact .category-featured-pill {
+    background: #fff7ed;
+    color: #9a5a12;
+    text-transform: uppercase;
+}
+
+body.admin-ui-compact .category-slug,
+body.admin-ui-compact .category-parent,
+body.admin-ui-compact .category-template,
+body.admin-ui-compact .category-visibility-meta,
+body.admin-ui-compact .category-updated-cell small {
+    color: var(--admin-theme-subtle);
+    font-size: var(--admin-table-secondary-font-size) !important;
+    font-weight: 400 !important;
+}
+
+body.admin-ui-compact .category-updated-cell {
+    color: var(--admin-theme-text);
+    font-size: var(--admin-table-value-font-size) !important;
+    font-weight: var(--admin-table-value-font-weight) !important;
+}
+
+body.admin-ui-compact .category-slug {
+    margin-top: .18rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+body.admin-ui-compact .category-parent,
+body.admin-ui-compact .category-template,
+body.admin-ui-compact .category-visibility-meta,
+body.admin-ui-compact .category-updated-cell small {
+    display: block;
+    margin-top: .2rem;
+}
+
+body.admin-ui-compact .category-type {
+    display: block;
+    color: #334155;
+    font-size: var(--admin-table-value-font-size);
+    font-weight: var(--admin-table-value-font-weight) !important;
+}
+
+body.admin-ui-compact .category-children-count {
+    color: var(--admin-theme-text) !important;
+    text-align: center;
+    font-size: var(--admin-table-value-font-size);
+    font-weight: var(--admin-table-value-font-weight) !important;
+}
+
+body.admin-ui-compact .category-status-pill--active {
+    background: #ecfdf3;
+    color: #087a55;
+}
+
+body.admin-ui-compact .category-status-pill--draft {
+    background: #fff7e6;
+    color: #9a5a12;
+}
+
+body.admin-ui-compact .category-status-pill--inactive,
+body.admin-ui-compact .category-status-pill--archived {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+body.admin-ui-compact .category-products-count-link {
+    display: inline-flex;
+    min-width: 0;
+    flex-direction: row;
+    gap: .22rem;
+    padding: .28rem .4rem;
+    border-radius: .5rem;
+    color: var(--admin-theme-accent);
+}
+
+body.admin-ui-compact .category-products-count-link span {
+    font-size: var(--admin-table-value-font-size) !important;
+    font-weight: var(--admin-table-value-font-weight) !important;
+    line-height: 1.2;
+}
+
+body.admin-ui-compact .category-products-count-link small {
+    margin-top: 0;
+    color: currentColor;
+    font-size: .85rem !important;
+    font-weight: 500 !important;
+    line-height: 1;
+}
+
+body.admin-ui-compact .category-item-actions {
+    gap: .35rem !important;
+}
+
+body.admin-ui-compact .category-row-primary-action {
+    min-height: 2rem !important;
+    height: 2rem !important;
+    padding: 0 .55rem !important;
+    border: 1px solid var(--admin-theme-border);
+    background: #fff;
+    color: var(--admin-theme-primary);
+    font-size: .7rem !important;
+    font-weight: 500 !important;
+}
+
+body.admin-ui-compact .category-row-primary-action:hover {
+    border-color: #c8d2df;
+    background: var(--admin-theme-soft);
+}
+
+body.admin-ui-compact .category-row-primary-action svg {
+    width: .8rem !important;
+    height: .8rem !important;
+}
+
+body.admin-ui-compact .category-row-menu > summary {
+    width: 2rem !important;
+    height: 2rem !important;
+    min-height: 2rem !important;
+    border-radius: .55rem !important;
+    border-color: var(--admin-theme-border);
+    box-shadow: none;
+}
+
+body.admin-ui-compact .category-table-footer {
+    padding: .55rem .7rem !important;
+    border-color: #edf1f5;
+}
+
+body.admin-ui-compact #category-delete-dialog {
+    font-family: var(--admin-font-sans);
+}
+
+body.admin-ui-compact .category-delete-close-button {
+    display: inline-flex;
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 2rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--admin-theme-border);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--admin-theme-muted);
+    font: 500 1.15rem/1 var(--admin-font-sans);
+    cursor: pointer;
+}
+
+body.admin-ui-compact .category-delete-close-button:hover {
+    background: var(--admin-theme-soft);
+    color: var(--admin-theme-text);
+}
+
+body.admin-ui-compact .category-delete-confirm-button {
+    border: 1px solid var(--admin-theme-danger);
+    background: var(--admin-theme-danger);
+    color: #fff;
+}
+
+body.admin-ui-compact .category-delete-confirm-button:hover {
+    border-color: var(--admin-theme-danger-hover);
+    background: var(--admin-theme-danger-hover);
+}
+
+@media (max-width: 1279.98px) {
+    body.admin-ui-compact .category-stats-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    body.admin-ui-compact .category-filter-form {
+        grid-template-columns: minmax(220px, 1fr) minmax(150px, .55fr) minmax(160px, .6fr);
+    }
+
+    body.admin-ui-compact .category-empty-filter,
+    body.admin-ui-compact .category-filter-actions {
+        justify-self: start;
+    }
+
+    body.admin-ui-compact .category-bulk-card {
+        grid-template-columns: max-content minmax(220px, 1fr) auto;
+    }
+
+    body.admin-ui-compact .category-bulk-note {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 767.98px) {
+    body.admin-ui-compact .category-page-toolbar,
+    body.admin-ui-compact .category-top-actions {
+        width: 100%;
+    }
+
+    body.admin-ui-compact .category-top-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+    }
+
+    body.admin-ui-compact .category-header-action {
+        width: 100%;
+    }
+
+    body.admin-ui-compact .category-tools-menu > summary {
+        width: var(--admin-category-control-height) !important;
+    }
+
+    body.admin-ui-compact .category-stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body.admin-ui-compact .category-filter-form,
+    body.admin-ui-compact .category-import-form,
+    body.admin-ui-compact .category-import-field,
+    body.admin-ui-compact .category-bulk-card {
+        grid-template-columns: 1fr;
+    }
+
+    body.admin-ui-compact .category-filter-actions,
+    body.admin-ui-compact .category-filter-button,
+    body.admin-ui-compact .category-filter-clear,
+    body.admin-ui-compact .category-import-button,
+    body.admin-ui-compact .category-bulk-button {
+        width: 100%;
+    }
+
+    body.admin-ui-compact .category-filter-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    body.admin-ui-compact .category-import-label {
+        white-space: normal;
+    }
+
+    body.admin-ui-compact .category-management-table tbody {
+        gap: .6rem;
+        padding: .6rem;
+    }
+
+    body.admin-ui-compact .category-management-table tbody tr {
+        border-radius: .7rem;
+        box-shadow: none;
+    }
+
+    body.admin-ui-compact .category-management-table tbody td {
+        padding: .6rem .7rem !important;
+    }
+
+    body.admin-ui-compact .category-management-table tbody td::before {
+        font-size: .58rem;
+        font-weight: 600;
+        letter-spacing: .08em;
+    }
+
+    body.admin-ui-compact .category-item-actions {
+        justify-content: stretch;
+    }
+
+    body.admin-ui-compact .category-row-primary-action {
+        flex: 1 1 88px;
+    }
+}
+
+@media (max-width: 479.98px) {
+    body.admin-ui-compact .category-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    body.admin-ui-compact .category-top-actions {
+        grid-template-columns: 1fr auto;
+    }
+
+    body.admin-ui-compact .category-header-action-light {
+        grid-column: 1 / -1;
+    }
+}
+
+body.admin-ui-compact .category-filter-leading-icon,
+body.admin-ui-compact .category-filter-select-icon {
+    position: absolute;
+    top: 50%;
+    z-index: 1;
+    display: inline-flex;
+    transform: translateY(-50%);
+    color: var(--admin-theme-muted);
+    pointer-events: none;
+}
+
+body.admin-ui-compact .category-filter-leading-icon {
+    left: .75rem;
+}
+
+body.admin-ui-compact .category-filter-select-icon {
+    right: .7rem;
+}
+
+body.admin-ui-compact .category-filter-leading-icon svg {
+    width: .9rem !important;
+    height: .9rem !important;
+}
+
+body.admin-ui-compact .category-filter-select-icon svg {
+    width: .78rem !important;
+    height: .78rem !important;
+}
+
+body.admin-ui-compact .category-row-danger-action {
+    color: var(--admin-theme-danger) !important;
+}
+
+body.admin-ui-compact .category-row-danger-action:hover {
+    background: #fff5f4 !important;
+    color: var(--admin-theme-danger-hover) !important;
+}
+
+body.admin-ui-compact .category-empty-title {
+    color: var(--admin-theme-text);
+    font-size: .9rem !important;
+    font-weight: 600 !important;
+}
+
+body.admin-ui-compact .category-empty-copy {
+    margin-top: .3rem;
+    color: var(--admin-theme-muted);
+    font-size: .72rem !important;
+    font-weight: 400 !important;
+}
+
+body.admin-ui-compact .category-delete-dialog {
+    width: min(94vw, 680px);
+    margin: auto;
+    overflow: hidden;
+    border: 0;
+    border-radius: .9rem;
+    background: transparent;
+    padding: 0;
+    font-family: var(--admin-font-sans);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, .24);
+}
+
+body.admin-ui-compact .category-delete-dialog::backdrop {
+    background: rgba(15, 23, 42, .58);
+}
+
+body.admin-ui-compact .category-delete-panel {
+    overflow: hidden;
+    border-radius: .9rem;
+    background: var(--admin-theme-surface);
+}
+
+body.admin-ui-compact .category-delete-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .9rem 1rem;
+    border-bottom: 1px solid var(--admin-theme-border);
+}
+
+body.admin-ui-compact .category-delete-eyebrow {
+    margin: 0;
+    color: var(--admin-theme-danger);
+    font-size: .62rem !important;
+    font-weight: 600 !important;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+}
+
+body.admin-ui-compact .category-delete-title {
+    margin: .25rem 0 0;
+    color: var(--admin-theme-text);
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    line-height: 1.3;
+}
+
+body.admin-ui-compact .category-delete-intro {
+    margin: .28rem 0 0;
+    color: var(--admin-theme-muted);
+    font-size: .72rem !important;
+    font-weight: 400 !important;
+    line-height: 1.45;
+}
+
+body.admin-ui-compact .category-delete-body {
+    display: grid;
+    gap: .75rem;
+    padding: .9rem 1rem;
+}
+
+body.admin-ui-compact .category-delete-warning {
+    padding: .65rem .75rem;
+    border: 1px solid #fecaca;
+    border-radius: .65rem;
+    background: #fff6f5;
+    color: #8a271e;
+    font-size: .7rem;
+    font-weight: 400;
+    line-height: 1.45;
+}
+
+body.admin-ui-compact .category-delete-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .55rem;
+}
+
+body.admin-ui-compact .category-delete-metric {
+    padding: .65rem .7rem;
+    border: 1px solid var(--admin-theme-border);
+    border-radius: .65rem;
+    background: var(--admin-theme-soft);
+}
+
+body.admin-ui-compact .category-delete-metric strong {
+    display: block;
+    color: var(--admin-theme-text);
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    line-height: 1;
+}
+
+body.admin-ui-compact .category-delete-metric span {
+    display: block;
+    margin-top: .28rem;
+    color: var(--admin-theme-muted);
+    font-size: .58rem !important;
+    font-weight: 500 !important;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+}
+
+body.admin-ui-compact .category-delete-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .55rem;
+}
+
+body.admin-ui-compact .category-delete-detail-card {
+    padding: .7rem;
+    border: 1px solid var(--admin-theme-border);
+    border-radius: .65rem;
+}
+
+body.admin-ui-compact .category-delete-detail-card h3 {
+    margin: 0;
+    color: var(--admin-theme-text);
+    font-size: .72rem !important;
+    font-weight: 600 !important;
+}
+
+body.admin-ui-compact .category-delete-detail-card ul {
+    max-height: 9rem;
+    margin: .45rem 0 0;
+    padding: 0;
+    overflow: auto;
+    list-style: none;
+    color: var(--admin-theme-muted);
+    font-size: .7rem;
+    font-weight: 400;
+}
+
+body.admin-ui-compact .category-delete-detail-card li + li {
+    margin-top: .3rem;
+}
+
+body.admin-ui-compact .category-delete-more-item {
+    color: var(--admin-theme-text);
+    font-weight: 500 !important;
+}
+
+body.admin-ui-compact .category-delete-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: .5rem;
+    padding: .75rem 1rem;
+    border-top: 1px solid var(--admin-theme-border);
+    background: var(--admin-theme-soft);
+}
+
+@media (max-width: 639.98px) {
+    body.admin-ui-compact .category-delete-metrics,
+    body.admin-ui-compact .category-delete-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    body.admin-ui-compact .category-delete-footer {
+        flex-direction: column-reverse;
+    }
+
+    body.admin-ui-compact .category-delete-cancel-button,
+    body.admin-ui-compact .category-delete-confirm-button {
+        width: 100%;
+    }
+}
+
+/* NEXTPLAY_CATEGORY_CONTROL_ALIGNMENT_2026_09_11
+   Final category-page alignment layer. Keep control geometry here so the
+   Blade view does not need inline spacing, sizing, or theme overrides. */
+body.admin-ui-compact main .category-filter-form > .category-field {
+    position: relative;
+    display: block;
+    height: var(--admin-category-control-height);
+    min-height: var(--admin-category-control-height);
+    margin: 0;
+}
+
+body.admin-ui-compact main .category-filter-form .category-control,
+body.admin-ui-compact main .category-bulk-card .category-control {
+    height: var(--admin-category-control-height) !important;
+    min-height: var(--admin-category-control-height) !important;
+    margin: 0 !important;
+    line-height: 1.2 !important;
+}
+
+body.admin-ui-compact main .category-filter-form input.category-control {
+    padding-left: 2.45rem !important;
+    padding-right: .75rem !important;
+}
+
+body.admin-ui-compact main .category-filter-form select.category-control {
+    padding-left: .75rem !important;
+    padding-right: 2.35rem !important;
+}
+
+body.admin-ui-compact main .category-filter-leading-icon,
+body.admin-ui-compact main .category-filter-select-icon {
+    top: 0;
+    bottom: 0;
+    height: 100%;
+    transform: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+body.admin-ui-compact main .category-filter-leading-icon {
+    left: 0;
+    width: 2.35rem;
+}
+
+body.admin-ui-compact main .category-filter-select-icon {
+    right: 0;
+    width: 2.2rem;
+}
+
+body.admin-ui-compact main .category-filter-leading-icon svg,
+body.admin-ui-compact main .category-filter-select-icon svg {
+    display: block;
+    flex: 0 0 auto;
+}
+
+body.admin-ui-compact main .category-empty-filter,
+body.admin-ui-compact main .category-filter-actions {
+    display: flex;
+    height: var(--admin-category-control-height) !important;
+    min-height: var(--admin-category-control-height) !important;
+    margin: 0 !important;
+    align-items: center;
+}
+
+body.admin-ui-compact main .category-filter-button,
+body.admin-ui-compact main .category-filter-clear,
+body.admin-ui-compact.admin-clean-ui main .category-import-button--compact,
+body.admin-ui-compact.admin-clean-ui main .category-bulk-button--compact {
+    height: var(--admin-category-control-height) !important;
+    min-height: var(--admin-category-control-height) !important;
+    margin: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    border-radius: var(--admin-category-radius) !important;
+    font-size: .78rem !important;
+    line-height: 1 !important;
+    box-shadow: none !important;
+}
+
+body.admin-ui-compact main .category-bulk-card {
+    align-items: center !important;
+}
+
+body.admin-ui-compact main .category-bulk-card > strong,
+body.admin-ui-compact main .category-bulk-note {
+    display: flex;
+    min-height: var(--admin-category-control-height);
+    margin: 0;
+    align-items: center;
+}
+
+body.admin-ui-compact main .category-bulk-card > strong {
+    line-height: 1.2;
+}
+
+body.admin-ui-compact main .category-bulk-note {
+    line-height: 1.35;
+}
+
+@media (max-width: 900px) {
+    body.admin-ui-compact main .category-bulk-card > strong,
+    body.admin-ui-compact main .category-bulk-note {
+        min-height: 0;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Product management list
+   The product list consumes the shared admin design tokens above. Typography,
+   colors, buttons, controls, table density and action menus stay centralized
+   here rather than being repeated as visual utility classes in Blade.
+-------------------------------------------------------------------------- */
+body.admin-ui-compact .product-admin-page {
+    display: grid;
+    min-width: 0;
+    gap: var(--admin-gap);
+    font-family: var(--admin-font-sans);
+}
+
+body.admin-ui-compact .product-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: .6rem;
+}
+
+body.admin-ui-compact .product-stat-card {
+    display: flex;
+    min-width: 0;
+    min-height: 64px;
+    align-items: center;
+    gap: .6rem;
+    padding: .58rem .65rem !important;
+    border: 1px solid var(--admin-theme-border);
+    border-radius: .72rem !important;
+    background: var(--admin-theme-surface);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, .03) !important;
+}
+
+body.admin-ui-compact .product-stat-icon {
+    display: grid;
+    width: 2.05rem;
+    height: 2.05rem;
+    flex: 0 0 2.05rem;
+    place-items: center;
+    border-radius: .62rem;
+}
+
+body.admin-ui-compact .product-stat-icon svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+body.admin-ui-compact .product-stat-icon--blue {
+    background: var(--admin-theme-info-soft);
+    color: var(--admin-theme-accent);
+}
+
+body.admin-ui-compact .product-stat-icon--green {
+    background: var(--admin-theme-success-soft);
+    color: var(--admin-theme-success);
+}
+
+body.admin-ui-compact .product-stat-icon--amber {
+    background: var(--admin-theme-warning-soft);
+    color: var(--admin-theme-warning);
+}
+
+body.admin-ui-compact .product-stat-icon--violet {
+    background: var(--admin-theme-violet-soft);
+    color: var(--admin-theme-violet);
+}
+
+body.admin-ui-compact .product-stat-icon--orange {
+    background: var(--admin-theme-orange-soft);
+    color: var(--admin-theme-orange);
+}
+
+body.admin-ui-compact .product-stat-copy {
+    min-width: 0;
+}
+
+body.admin-ui-compact .product-stat-label {
+    margin: 0;
+    overflow: hidden;
+    color: var(--admin-theme-muted);
+    font-size: .68rem !important;
+    font-weight: 500 !important;
+    line-height: 1.2 !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body.admin-ui-compact .product-stat-copy strong {
+    display: block;
+    margin-top: .16rem;
+    color: var(--admin-theme-text);
+    font-size: 1.15rem !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+}
+
+body.admin-ui-compact .product-stat-copy > span {
+    display: block;
+    margin-top: .2rem;
+    overflow: hidden;
+    color: var(--admin-theme-subtle);
+    font-size: var(--admin-table-secondary-font-size) !important;
+    font-weight: 400 !important;
+    line-height: 1.2 !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body.admin-ui-compact .product-filter-card,
+body.admin-ui-compact .product-bulk-card,
+body.admin-ui-compact .product-table-card {
+    border: 1px solid var(--admin-theme-border);
+    border-radius: .75rem !important;
+    background: var(--admin-theme-surface);
+    box-shadow: none !important;
+}
+
+body.admin-ui-compact .product-filter-card {
+    padding: .65rem !important;
+}
+
+body.admin-ui-compact .product-filter-form {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+}
+
+body.admin-ui-compact .product-filter-field {
+    position: relative;
+    display: block;
+    min-width: 0;
+    height: var(--admin-control-height);
+    margin: 0;
+}
+
+body.admin-ui-compact .product-search-field {
+    flex: 1 1 280px;
+}
+
+body.admin-ui-compact .product-status-field {
+    flex: 0 1 150px;
+}
+
+body.admin-ui-compact .product-category-field {
+    flex: 0 1 205px;
+}
+
+body.admin-ui-compact .product-control {
+    width: 100%;
+    height: var(--admin-control-height) !important;
+    min-height: var(--admin-control-height) !important;
+    margin: 0 !important;
+    border-color: var(--admin-theme-border) !important;
+    border-radius: var(--admin-radius) !important;
+    background: var(--admin-theme-surface);
+    color: var(--admin-theme-text);
+    font-family: var(--admin-font-sans);
+    font-size: .76rem !important;
+    font-weight: 500 !important;
+    line-height: 1.2 !important;
+    box-shadow: none !important;
+}
+
+body.admin-ui-compact .product-control:focus {
+    border-color: var(--admin-theme-accent) !important;
+    box-shadow: 0 0 0 2px rgba(36, 103, 183, .09) !important;
+}
+
+body.admin-ui-compact .product-search-control {
+    padding-left: 2.35rem !important;
+    padding-right: .75rem !important;
+}
+
+body.admin-ui-compact .product-select-control {
+    appearance: none;
+    padding-left: .75rem !important;
+    padding-right: 2.15rem !important;
+}
+
+body.admin-ui-compact .product-filter-leading-icon,
+body.admin-ui-compact .product-filter-select-icon {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 2;
+    display: flex;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    color: var(--admin-theme-muted);
+    pointer-events: none;
+}
+
+body.admin-ui-compact .product-filter-leading-icon {
+    left: 0;
+    width: 2.2rem;
+}
+
+body.admin-ui-compact .product-filter-select-icon {
+    right: 0;
+    width: 2rem;
+}
+
+body.admin-ui-compact .product-filter-leading-icon svg {
+    width: .9rem;
+    height: .9rem;
+}
+
+body.admin-ui-compact .product-filter-select-icon svg {
+    width: .76rem;
+    height: .76rem;
+}
+
+body.admin-ui-compact .product-featured-filter {
+    display: inline-flex;
+    height: var(--admin-control-height);
+    min-height: var(--admin-control-height);
+    align-items: center;
+    gap: .4rem;
+    padding: 0 .65rem;
+    border: 1px solid var(--admin-theme-border);
+    border-radius: var(--admin-radius);
+    background: var(--admin-theme-surface);
+    color: var(--admin-theme-text);
+    font-size: .75rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+body.admin-ui-compact .product-featured-filter input,
+body.admin-ui-compact .product-row-check,
+body.admin-ui-compact #product-check-all {
+    width: .92rem;
+    height: .92rem;
+    margin: 0;
+    border-color: var(--admin-theme-border);
+    border-radius: .22rem;
+    accent-color: var(--admin-theme-accent);
+}
+
+body.admin-ui-compact .product-filter-actions {
+    display: flex;
+    height: var(--admin-control-height);
+    align-items: center;
+    gap: .4rem;
+}
+
+body.admin-ui-compact .product-filter-button,
+body.admin-ui-compact .product-filter-clear,
+body.admin-ui-compact .product-add-button,
+body.admin-ui-compact .product-bulk-button {
+    display: inline-flex;
+    height: var(--admin-control-height) !important;
+    min-height: var(--admin-control-height) !important;
+    align-items: center;
+    justify-content: center;
+    gap: .38rem;
+    margin: 0 !important;
+    border-radius: var(--admin-radius) !important;
+    padding: 0 .8rem !important;
+    font-family: var(--admin-font-sans);
+    font-size: .76rem !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    text-decoration: none;
+    white-space: nowrap;
+    box-shadow: none !important;
+    transform: none !important;
+    transition: border-color .16s ease, background-color .16s ease, color .16s ease;
+}
+
+body.admin-ui-compact .product-filter-button,
+body.admin-ui-compact .product-bulk-button {
+    border: 1px solid var(--admin-theme-primary);
+    background: var(--admin-theme-primary);
+    color: #fff;
+}
+
+body.admin-ui-compact .product-filter-button:hover,
+body.admin-ui-compact .product-bulk-button:hover {
+    border-color: var(--admin-theme-primary-hover);
+    background: var(--admin-theme-primary-hover);
+}
+
+body.admin-ui-compact .product-filter-clear {
+    border: 1px solid var(--admin-theme-border);
+    background: var(--admin-theme-surface);
+    color: var(--admin-theme-primary);
+}
+
+body.admin-ui-compact .product-filter-clear:hover {
+    background: var(--admin-theme-soft);
+}
+
+body.admin-ui-compact .product-add-button {
+    margin-left: auto !important;
+    border: 1px solid var(--admin-theme-cta);
+    background: var(--admin-theme-cta);
+    color: #fff;
+}
+
+body.admin-ui-compact .product-add-button:hover {
+    border-color: var(--admin-theme-cta-hover);
+    background: var(--admin-theme-cta-hover);
+}
+
+body.admin-ui-compact .product-add-button svg {
+    width: .85rem;
+    height: .85rem;
+}
+
+body.admin-ui-compact .product-search-panel {
+    position: absolute;
+    top: calc(100% + .35rem);
+    right: 0;
+    left: 0;
+    z-index: 70;
+    overflow: hidden;
+    border: 1px solid var(--admin-theme-border);
+    border-radius: .7rem;
+    background: var(--admin-theme-surface);
+    box-shadow: 0 12px 30px rgba(15, 23, 42, .14);
+}
+
+body.admin-ui-compact .product-search-panel[hidden] {
+    display: none !important;
+}
+
+body.admin-ui-compact .product-search-results {
+    max-height: 18rem;
+    overflow-y: auto;
+    padding: .3rem;
+}
+
+body.admin-ui-compact .product-search-state {
+    padding: .7rem .75rem;
+    color: var(--admin-theme-muted);
+    font-size: .74rem;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+body.admin-ui-compact .product-search-state--error {
+    color: var(--admin-theme-danger);
+}
+
+body.admin-ui-compact .product-search-suggestion {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: .55rem;
+    padding: .5rem;
+    border: 0;
+    border-radius: .55rem;
+    background: transparent;
+    color: var(--admin-theme-text);
+    text-align: left;
+    transition: background-color .14s ease;
+}
+
+body.admin-ui-compact .product-search-suggestion:hover,
+body.admin-ui-compact .product-search-suggestion:focus,
+body.admin-ui-compact .product-search-suggestion.is-active {
+    background: var(--admin-theme-soft);
+    outline: 0;
+}
+
+body.admin-ui-compact .product-search-suggestion__image {
+    width: 2.15rem;
+    height: 2.15rem;
+    flex: 0 0 2.15rem;
+    border: 1px solid var(--admin-theme-border);
+    border-radius: .5rem;
+    object-fit: cover;
+}
+
+body.admin-ui-compact .product-search-suggestion__copy {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+body.admin-ui-compact .product-search-suggestion__name,
+body.admin-ui-compact .product-search-suggestion__meta {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body.admin-ui-compact .product-search-suggestion__name {
+    font-size: .74rem;
+    font-weight: 600;
+}
+
+body.admin-ui-compact .product-search-suggestion__meta {
+    margin-top: .12rem;
+    color: var(--admin-theme-subtle);
+    font-size: .64rem;
+    font-weight: 400;
+}
+
+body.admin-ui-compact .product-search-suggestion__status {
+    flex: 0 0 auto;
+    padding: .18rem .42rem;
+    border-radius: 999px;
+    background: var(--admin-theme-soft);
+    color: var(--admin-theme-muted);
+    font-size: .58rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+body.admin-ui-compact .product-bulk-card {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+    padding: .62rem .68rem !important;
+}
+
+body.admin-ui-compact .product-bulk-card > strong {
+    display: inline-flex;
+    min-height: var(--admin-control-height);
+    align-items: center;
+    color: var(--admin-theme-text);
+    font-size: .74rem !important;
+    font-weight: 600 !important;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+body.admin-ui-compact .product-bulk-select {
+    width: min(100%, 320px);
+    flex: 0 1 320px;
+}
+
+body.admin-ui-compact .product-bulk-note {
+    min-width: 180px;
+    flex: 1 1 260px;
+    color: var(--admin-theme-subtle);
+    font-size: .68rem;
+    font-weight: 400;
+    line-height: 1.3;
+}
+
+body.admin-ui-compact .product-table-card {
+    min-width: 0;
+    overflow: visible;
+}
+
+body.admin-ui-compact .product-table-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+body.admin-ui-compact .product-table {
+    width: 100%;
+    min-width: 1160px;
+    border-collapse: collapse;
+    table-layout: fixed;
+    color: var(--admin-theme-text);
+    font-family: var(--admin-font-sans);
+    font-size: var(--admin-table-body-font-size) !important;
+}
+
+body.admin-ui-compact .product-table th {
+    padding: var(--admin-table-head-padding-y) var(--admin-table-cell-padding-x) !important;
+    border-bottom: 1px solid var(--admin-theme-border);
+    background: var(--admin-theme-soft);
+    color: var(--admin-theme-muted);
+    font-size: var(--admin-table-head-font-size) !important;
+    font-weight: var(--admin-table-head-font-weight) !important;
+    line-height: var(--admin-table-head-line-height) !important;
+    letter-spacing: .075em !important;
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+body.admin-ui-compact .product-table td {
+    padding: var(--admin-table-cell-padding-y) var(--admin-table-cell-padding-x) !important;
+    border-bottom: 1px solid #edf1f5;
+    vertical-align: middle;
+    font-size: var(--admin-table-body-font-size) !important;
+    font-weight: var(--admin-table-body-font-weight) !important;
+    line-height: var(--admin-table-body-line-height) !important;
+}
+
+body.admin-ui-compact .product-table tbody tr {
+    background: var(--admin-theme-surface);
+    transition: background-color .14s ease;
+}
+
+body.admin-ui-compact .product-table tbody tr:hover {
+    background: #fbfcfe;
+}
+
+body.admin-ui-compact .product-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+body.admin-ui-compact .product-table th:nth-child(1),
+body.admin-ui-compact .product-table td:nth-child(1) { width: 42px; }
+body.admin-ui-compact .product-table th:nth-child(2),
+body.admin-ui-compact .product-table td:nth-child(2) { width: 270px; }
+body.admin-ui-compact .product-table th:nth-child(3),
+body.admin-ui-compact .product-table td:nth-child(3) { width: 155px; }
+body.admin-ui-compact .product-table th:nth-child(4),
+body.admin-ui-compact .product-table td:nth-child(4) { width: 92px; }
+body.admin-ui-compact .product-table th:nth-child(5),
+body.admin-ui-compact .product-table td:nth-child(5) { width: 88px; }
+body.admin-ui-compact .product-table th:nth-child(6),
+body.admin-ui-compact .product-table td:nth-child(6) { width: 128px; }
+body.admin-ui-compact .product-table th:nth-child(7),
+body.admin-ui-compact .product-table td:nth-child(7) { width: 172px; }
+body.admin-ui-compact .product-table th:nth-child(8),
+body.admin-ui-compact .product-table td:nth-child(8) { width: 205px; }
+body.admin-ui-compact .product-table th:nth-child(9),
+body.admin-ui-compact .product-table td:nth-child(9) { width: 52px; }
+
+body.admin-ui-compact .product-select-column {
+    text-align: center !important;
+}
+
+body.admin-ui-compact .product-cell {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: .55rem;
+}
+
+body.admin-ui-compact .product-thumb {
+    width: 2.25rem !important;
+    height: 2.25rem !important;
+    flex: 0 0 2.25rem;
+    border: 1px solid var(--admin-theme-border);
+    border-radius: .55rem;
+    object-fit: cover;
+}
+
+body.admin-ui-compact .product-cell-copy {
+    min-width: 0;
+}
+
+body.admin-ui-compact .product-name {
+    display: block;
+    overflow: hidden;
+    color: var(--admin-theme-accent);
+    font-size: var(--admin-table-primary-font-size);
+    font-weight: var(--admin-table-primary-font-weight);
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body.admin-ui-compact .product-name:hover {
+    color: var(--admin-theme-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+body.admin-ui-compact .product-meta,
+body.admin-ui-compact .product-category-meta,
+body.admin-ui-compact .product-updated-meta {
+    margin: .18rem 0 0;
+    overflow: hidden;
+    color: var(--admin-theme-subtle);
+    font-size: var(--admin-table-secondary-font-size) !important;
+    font-weight: 400 !important;
+    line-height: 1.2 !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body.admin-ui-compact .product-category-name,
+body.admin-ui-compact .product-updated-date {
+    margin: 0;
+    overflow: hidden;
+    color: var(--admin-theme-text);
+    font-size: var(--admin-table-value-font-size) !important;
+    font-weight: var(--admin-table-value-font-weight) !important;
+    line-height: 1.2 !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body.admin-ui-compact .product-price {
+    color: var(--admin-theme-text);
+    font-size: var(--admin-table-value-font-size);
+    font-weight: var(--admin-table-primary-font-weight);
+    white-space: nowrap;
+}
+
+body.admin-ui-compact .product-status,
+body.admin-ui-compact .product-flag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+body.admin-ui-compact .product-status {
+    padding: .2rem .46rem;
+    font-size: var(--admin-table-badge-font-size);
+}
+
+body.admin-ui-compact .product-status--active {
+    background: var(--admin-theme-success-soft);
+    color: var(--admin-theme-success);
+}
+
+body.admin-ui-compact .product-status--inactive {
+    background: var(--admin-theme-soft);
+    color: var(--admin-theme-muted);
+}
+
+body.admin-ui-compact .product-flags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem;
+}
+
+body.admin-ui-compact .product-flag {
+    padding: .17rem .4rem;
+    font-size: var(--admin-table-badge-font-size);
+}
+
+body.admin-ui-compact .product-flag--featured {
+    background: var(--admin-theme-warning-soft);
+    color: var(--admin-theme-warning);
+}
+
+body.admin-ui-compact .product-flag--customizable {
+    background: var(--admin-theme-info-soft);
+    color: var(--admin-theme-accent);
+}
+
+body.admin-ui-compact .product-muted-placeholder {
+    color: var(--admin-theme-subtle);
+}
+
+body.admin-ui-compact .product-updated-cell {
+    overflow: hidden;
+}
+
+body.admin-ui-compact .product-update-summary {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    color: var(--admin-theme-muted);
+    font-size: .68rem !important;
+    font-weight: 400 !important;
+    line-height: 1.35 !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+body.admin-ui-compact .product-actions-column {
+    text-align: right !important;
+}
+
+body.admin-ui-compact .product-row-menu {
+    position: relative;
+    display: inline-flex;
+    justify-content: flex-end;
+}
+
+body.admin-ui-compact .product-row-menu__trigger {
+    display: inline-grid;
+    width: 2rem;
+    height: 2rem;
+    min-height: 2rem !important;
+    place-items: center;
+    padding: 0 !important;
+    border: 1px solid var(--admin-theme-border);
+    border-radius: .55rem !important;
+    background: var(--admin-theme-surface);
+    color: var(--admin-theme-muted);
+    box-shadow: none !important;
+    transform: none !important;
+    transition: border-color .14s ease, background-color .14s ease, color .14s ease;
+}
+
+body.admin-ui-compact .product-row-menu__trigger:hover,
+body.admin-ui-compact .product-row-menu.is-open .product-row-menu__trigger {
+    border-color: #c8d2df;
+    background: var(--admin-theme-soft);
+    color: var(--admin-theme-primary);
+}
+
+body.admin-ui-compact .product-row-menu__trigger svg {
+    width: .9rem;
+    height: .9rem;
+}
+
+body.admin-ui-compact .product-row-menu__panel {
+    position: fixed;
+    z-index: 120;
+    width: 168px;
+    overflow: hidden;
+    padding: .3rem;
+    border: 1px solid var(--admin-theme-border);
+    border-radius: .68rem;
+    background: var(--admin-theme-surface);
+    box-shadow: 0 14px 34px rgba(15, 23, 42, .16);
+}
+
+body.admin-ui-compact .product-row-menu__panel[hidden] {
+    display: none !important;
+}
+
+body.admin-ui-compact .product-row-menu__form {
+    margin: 0;
+}
+
+body.admin-ui-compact .product-row-menu__form--danger {
+    margin-top: .25rem;
+    padding-top: .25rem;
+    border-top: 1px solid #edf1f5;
+}
+
+body.admin-ui-compact .product-row-menu__item {
+    display: flex;
+    width: 100%;
+    min-height: 2rem !important;
+    align-items: center;
+    gap: .5rem;
+    padding: .42rem .5rem !important;
+    border: 0;
+    border-radius: .48rem !important;
+    background: transparent;
+    color: var(--admin-theme-text);
+    font-family: var(--admin-font-sans);
+    font-size: .72rem !important;
+    font-weight: 500 !important;
+    line-height: 1.1;
+    text-align: left;
+    text-decoration: none;
+    box-shadow: none !important;
+    transform: none !important;
+    transition: background-color .14s ease, color .14s ease;
+}
+
+body.admin-ui-compact .product-row-menu__item:hover,
+body.admin-ui-compact .product-row-menu__item:focus {
+    background: var(--admin-theme-soft);
+    color: var(--admin-theme-primary);
+    outline: 0;
+}
+
+body.admin-ui-compact .product-row-menu__item svg {
+    width: .86rem;
+    height: .86rem;
+    flex: 0 0 .86rem;
+}
+
+body.admin-ui-compact .product-row-menu__item--danger {
+    color: var(--admin-theme-danger);
+}
+
+body.admin-ui-compact .product-row-menu__item--danger:hover,
+body.admin-ui-compact .product-row-menu__item--danger:focus {
+    background: #fff5f4;
+    color: var(--admin-theme-danger-hover);
+}
+
+body.admin-ui-compact .product-empty-state {
+    padding: 2.2rem .75rem !important;
+    color: var(--admin-theme-muted);
+    font-size: .75rem;
+    font-weight: 400;
+    text-align: center;
+}
+
+body.admin-ui-compact .product-table-footer {
+    padding: .55rem .65rem;
+    border-top: 1px solid var(--admin-theme-border);
+}
+
+@media (max-width: 1279.98px) {
+    body.admin-ui-compact .product-stats-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    body.admin-ui-compact .product-search-field {
+        flex-basis: calc(100% - 365px);
+    }
+
+    body.admin-ui-compact .product-add-button {
+        margin-left: 0 !important;
+    }
+}
+
+@media (max-width: 899.98px) {
+    body.admin-ui-compact .product-stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body.admin-ui-compact .product-search-field,
+    body.admin-ui-compact .product-status-field,
+    body.admin-ui-compact .product-category-field {
+        flex: 1 1 calc(50% - .25rem);
+    }
+
+    body.admin-ui-compact .product-featured-filter {
+        flex: 1 1 auto;
+    }
+
+    body.admin-ui-compact .product-bulk-note {
+        flex-basis: 100%;
+    }
+}
+
+@media (max-width: 639.98px) {
+    body.admin-ui-compact .product-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    body.admin-ui-compact .product-filter-form {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    body.admin-ui-compact .product-search-field,
+    body.admin-ui-compact .product-category-field {
+        grid-column: 1 / -1;
+    }
+
+    body.admin-ui-compact .product-status-field,
+    body.admin-ui-compact .product-featured-filter,
+    body.admin-ui-compact .product-filter-actions,
+    body.admin-ui-compact .product-add-button {
+        width: 100%;
+    }
+
+    body.admin-ui-compact .product-featured-filter {
+        justify-content: center;
+    }
+
+    body.admin-ui-compact .product-filter-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    body.admin-ui-compact .product-filter-button,
+    body.admin-ui-compact .product-filter-clear,
+    body.admin-ui-compact .product-add-button {
+        width: 100%;
+    }
+
+    body.admin-ui-compact .product-bulk-card > strong,
+    body.admin-ui-compact .product-bulk-select,
+    body.admin-ui-compact .product-bulk-button,
+    body.admin-ui-compact .product-bulk-note {
+        width: 100%;
+        flex-basis: 100%;
+    }
+
+    body.admin-ui-compact .product-bulk-button {
+        width: 100%;
+    }
+}
+
+
+/* --------------------------------------------------------------------------
+   Admin-wide consistency contract
+   Shared typography, controls, cards, tables and semantic colors for every
+   authenticated admin page. Page-specific CSS should only control structure,
+   widths and unique interactions; visual tokens live here.
+-------------------------------------------------------------------------- */
+body.admin-ui-compact {
+    background: var(--admin-theme-canvas) !important;
+    color: var(--admin-theme-text) !important;
+    font-family: var(--admin-font-sans) !important;
+}
+
+body.admin-ui-compact #admin-main-content {
+    color: var(--admin-theme-text);
+    font-family: var(--admin-font-sans);
+    font-size: var(--admin-page-font-size);
+    line-height: var(--admin-page-line-height);
+}
+
+/* Typography hierarchy */
+body.admin-ui-compact #admin-main-content h1,
+body.admin-ui-compact #admin-main-content h2,
+body.admin-ui-compact #admin-main-content h3,
+body.admin-ui-compact #admin-main-content h4,
+body.admin-ui-compact #admin-main-content h5,
+body.admin-ui-compact #admin-main-content h6 {
+    color: var(--admin-theme-text) !important;
+    font-family: var(--admin-font-sans) !important;
+    font-weight: 600 !important;
+}
+
+body.admin-ui-compact #admin-main-content h1 {
+    font-size: var(--admin-page-title-font-size) !important;
+    line-height: 1.2 !important;
+}
+
+body.admin-ui-compact #admin-main-content h2 {
+    font-size: var(--admin-section-title-font-size) !important;
+    line-height: 1.3 !important;
+}
+
+body.admin-ui-compact #admin-main-content h3 {
+    font-size: .92rem !important;
+    line-height: 1.35 !important;
+}
+
+body.admin-ui-compact #admin-main-content h4,
+body.admin-ui-compact #admin-main-content h5,
+body.admin-ui-compact #admin-main-content h6 {
+    font-size: .84rem !important;
+    line-height: 1.4 !important;
+}
+
+body.admin-ui-compact #admin-main-content .text-base {
+    font-size: var(--admin-page-font-size) !important;
+    line-height: var(--admin-page-line-height) !important;
+}
+
+body.admin-ui-compact #admin-main-content .text-sm {
+    font-size: var(--admin-body-font-size) !important;
+    line-height: 1.4 !important;
+}
+
+body.admin-ui-compact #admin-main-content .text-xs {
+    font-size: var(--admin-small-font-size) !important;
+    line-height: 1.35 !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.font-black, .font-extrabold, .font-bold) {
+    font-weight: 600 !important;
+}
+
+body.admin-ui-compact #admin-main-content .font-semibold {
+    font-weight: 600 !important;
+}
+
+body.admin-ui-compact #admin-main-content .font-medium {
+    font-weight: 500 !important;
+}
+
+/* Central theme color mapping for legacy Tailwind markup. */
+body.admin-ui-compact #admin-main-content :is(.text-brand-ink, .text-slate-900, .text-slate-800) {
+    color: var(--admin-theme-text) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.text-slate-700, .text-slate-600, .text-slate-500) {
+    color: var(--admin-theme-muted) !important;
+}
+
+body.admin-ui-compact #admin-main-content .text-slate-400 {
+    color: var(--admin-theme-subtle) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.text-brand-blue, .text-blue-700, .text-blue-600) {
+    color: var(--admin-theme-accent) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.text-red-800, .text-red-700, .text-red-600) {
+    color: var(--admin-theme-danger) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.text-emerald-800, .text-emerald-700, .text-emerald-600, .text-green-700) {
+    color: var(--admin-theme-success) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.text-amber-800, .text-amber-700, .text-yellow-700) {
+    color: var(--admin-theme-warning) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.border-slate-100, .border-slate-200, .border-slate-300) {
+    border-color: var(--admin-theme-border) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.bg-white) {
+    background-color: var(--admin-theme-surface) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.bg-slate-50, .bg-slate-100) {
+    background-color: var(--admin-theme-soft) !important;
+}
+
+body.admin-ui-compact #admin-main-content .bg-brand-navy {
+    background-color: var(--admin-theme-primary) !important;
+}
+
+body.admin-ui-compact #admin-main-content .bg-brand-navy:hover {
+    background-color: var(--admin-theme-primary-hover) !important;
+}
+
+body.admin-ui-compact #admin-main-content .bg-brand-red {
+    background-color: var(--admin-theme-cta) !important;
+}
+
+body.admin-ui-compact #admin-main-content .bg-brand-red:hover {
+    background-color: var(--admin-theme-cta-hover) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.bg-emerald-50, .bg-green-50) {
+    background-color: var(--admin-theme-success-soft) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.border-emerald-200, .border-green-200) {
+    border-color: var(--admin-theme-success-border) !important;
+}
+
+body.admin-ui-compact #admin-main-content .bg-red-50 {
+    background-color: var(--admin-theme-danger-soft) !important;
+}
+
+body.admin-ui-compact #admin-main-content .border-red-200 {
+    border-color: var(--admin-theme-danger-border) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.bg-amber-50, .bg-yellow-50) {
+    background-color: var(--admin-theme-warning-soft) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.border-amber-200, .border-yellow-200) {
+    border-color: var(--admin-theme-warning-border) !important;
+}
+
+body.admin-ui-compact #admin-main-content .bg-blue-50 {
+    background-color: var(--admin-theme-info-soft) !important;
+}
+
+body.admin-ui-compact #admin-main-content .border-blue-200 {
+    border-color: var(--admin-theme-info-border) !important;
+}
+
+/* Shared card treatment */
+body.admin-ui-compact #admin-main-content :is(.admin-section-card, .np-card, .np-side-card) {
+    border-color: var(--admin-theme-border) !important;
+    border-radius: var(--admin-card-radius) !important;
+    background: var(--admin-theme-surface) !important;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, .035) !important;
+}
+
+body.admin-ui-compact #admin-main-content section.border.bg-white,
+body.admin-ui-compact #admin-main-content article.border.bg-white,
+body.admin-ui-compact #admin-main-content form.border.bg-white,
+body.admin-ui-compact #admin-main-content div.border.bg-white,
+body.admin-ui-compact #admin-main-content section.border-slate-200.bg-white,
+body.admin-ui-compact #admin-main-content article.border-slate-200.bg-white,
+body.admin-ui-compact #admin-main-content form.border-slate-200.bg-white,
+body.admin-ui-compact #admin-main-content div.border-slate-200.bg-white {
+    border-color: var(--admin-theme-border) !important;
+    background: var(--admin-theme-surface) !important;
+}
+
+/* Form labels and controls */
+body.admin-ui-compact #admin-main-content label,
+body.admin-ui-compact #admin-main-content legend,
+body.admin-ui-compact #admin-main-content .admin-label {
+    color: var(--admin-theme-muted) !important;
+    font-family: var(--admin-font-sans) !important;
+    font-size: var(--admin-label-font-size) !important;
+    font-weight: 600 !important;
+    line-height: 1.25 !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="search"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="number"],
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"],
+    input[type="month"],
+    input[type="week"],
+    select
+) {
+    min-height: var(--admin-control-height);
+    border-color: var(--admin-theme-border) !important;
+    border-radius: var(--admin-control-radius) !important;
+    background-color: var(--admin-theme-surface);
+    color: var(--admin-theme-text);
+    font-family: var(--admin-font-sans) !important;
+    font-size: var(--admin-control-font-size) !important;
+    font-weight: 400 !important;
+    line-height: 1.2 !important;
+    box-shadow: none !important;
+}
+
+body.admin-ui-compact #admin-main-content textarea {
+    border-color: var(--admin-theme-border) !important;
+    border-radius: var(--admin-control-radius) !important;
+    background-color: var(--admin-theme-surface);
+    color: var(--admin-theme-text);
+    font-family: var(--admin-font-sans) !important;
+    font-size: var(--admin-control-font-size) !important;
+    font-weight: 400 !important;
+    line-height: 1.4 !important;
+    box-shadow: none !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="search"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="number"],
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"],
+    select,
+    textarea
+):focus {
+    border-color: var(--admin-theme-accent) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(36, 103, 183, .1) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(input[type="checkbox"], input[type="radio"]) {
+    width: 1rem;
+    height: 1rem;
+    border-color: var(--admin-theme-border) !important;
+    accent-color: var(--admin-theme-primary);
+}
+
+body.admin-ui-compact #admin-main-content ::placeholder {
+    color: var(--admin-theme-subtle) !important;
+    opacity: 1;
+}
+
+/* Button typography and shared visual states. Layout/width stays page-specific. */
+body.admin-ui-compact #admin-main-content :is(button, a[role="button"], .btn, .admin-row-action) {
+    font-family: var(--admin-font-sans) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.btn, .admin-row-action, .np-primary-button, .np-secondary-button, .np-danger-button, .np-import-button, .np-link-button, .np-danger-link) {
+    min-height: 2.2rem !important;
+    border-radius: .58rem !important;
+    font-size: var(--admin-button-font-size) !important;
+    font-weight: var(--admin-button-font-weight) !important;
+    line-height: 1.15 !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.btn-navy, .np-primary-button) {
+    background: var(--admin-theme-primary) !important;
+    color: #fff !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.btn-navy, .np-primary-button):hover {
+    background: var(--admin-theme-primary-hover) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.btn-red) {
+    background: var(--admin-theme-cta) !important;
+    color: #fff !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.btn-red):hover {
+    background: var(--admin-theme-cta-hover) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.btn-white, .btn-light, .np-secondary-button, .np-import-button) {
+    border-color: var(--admin-theme-border) !important;
+    background: var(--admin-theme-surface) !important;
+    color: var(--admin-theme-text) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.np-danger-button, .np-danger-link) {
+    color: var(--admin-theme-danger) !important;
+}
+
+/* All admin data tables use the same typography and density. */
+body.admin-ui-compact #admin-main-content .admin-table-scroll,
+body.admin-ui-compact #admin-main-content .overflow-x-auto:has(> table) {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+body.admin-ui-compact #admin-main-content table {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--admin-theme-text) !important;
+    font-family: var(--admin-font-sans) !important;
+    font-size: var(--admin-table-body-font-size) !important;
+    font-weight: var(--admin-table-body-font-weight) !important;
+    line-height: var(--admin-table-body-line-height) !important;
+}
+
+body.admin-ui-compact #admin-main-content table thead {
+    background: var(--admin-theme-soft) !important;
+    color: var(--admin-theme-muted) !important;
+}
+
+body.admin-ui-compact #admin-main-content table thead th {
+    padding: var(--admin-table-head-padding-y) var(--admin-table-cell-padding-x) !important;
+    border-bottom-color: var(--admin-theme-border) !important;
+    color: var(--admin-theme-muted) !important;
+    font-size: var(--admin-table-head-font-size) !important;
+    font-weight: var(--admin-table-head-font-weight) !important;
+    line-height: var(--admin-table-head-line-height) !important;
+    letter-spacing: .075em !important;
+    text-transform: uppercase;
+}
+
+body.admin-ui-compact #admin-main-content table tbody td {
+    padding: var(--admin-table-cell-padding-y) var(--admin-table-cell-padding-x) !important;
+    border-bottom-color: var(--admin-theme-border-soft) !important;
+    color: inherit;
+    font-size: var(--admin-table-body-font-size) !important;
+    font-weight: var(--admin-table-body-font-weight) !important;
+    line-height: var(--admin-table-body-line-height) !important;
+    vertical-align: middle;
+}
+
+body.admin-ui-compact #admin-main-content table tbody tr {
+    transition: background-color .14s ease;
+}
+
+body.admin-ui-compact #admin-main-content table tbody tr:hover {
+    background-color: #fbfcfe;
+}
+
+body.admin-ui-compact #admin-main-content table tbody :is(.text-sm, .text-base) {
+    font-size: var(--admin-table-body-font-size) !important;
+    line-height: var(--admin-table-body-line-height) !important;
+}
+
+body.admin-ui-compact #admin-main-content table tbody .text-xs {
+    font-size: var(--admin-table-secondary-font-size) !important;
+    line-height: 1.3 !important;
+}
+
+body.admin-ui-compact #admin-main-content table tbody :is(.font-black, .font-extrabold, .font-bold, .font-semibold) {
+    font-weight: var(--admin-table-primary-font-weight) !important;
+}
+
+body.admin-ui-compact #admin-main-content table tbody :is(span, a, button)[class~="rounded-full"] {
+    font-size: var(--admin-table-badge-font-size) !important;
+    font-weight: 600 !important;
+    line-height: 1.15 !important;
+}
+
+/* Compact empty states and pagination consistently across list pages. */
+body.admin-ui-compact #admin-main-content table td[colspan] {
+    color: var(--admin-theme-muted) !important;
+}
+
+body.admin-ui-compact #admin-main-content .admin-pagination {
+    color: var(--admin-theme-muted);
+    font-size: var(--admin-small-font-size);
+}
+
+/* Shared notification / validation surfaces use the central semantic palette. */
+body.admin-ui-compact #admin-main-content :is(.bg-emerald-50, .bg-red-50, .bg-amber-50, .bg-blue-50) {
+    border-radius: var(--admin-card-radius) !important;
+    box-shadow: none !important;
+}
+
+/* Sidebar and page shell stay on the same central theme variables. */
+body.admin-ui-compact #admin-sidebar {
+    background: var(--admin-theme-primary-hover) !important;
+    font-family: var(--admin-font-sans) !important;
+}
+
+body.admin-ui-compact [data-admin-page-header] {
+    border-color: var(--admin-theme-border) !important;
+    background: rgba(255, 255, 255, .96) !important;
+    font-family: var(--admin-font-sans) !important;
+}
+
+body.admin-ui-compact [data-admin-page-header] h1 {
+    color: var(--admin-theme-text) !important;
+    font-weight: 600 !important;
+}
+
+body.admin-ui-compact [data-admin-page-header] [data-admin-header-copy] > p:first-child {
+    color: var(--admin-theme-cta) !important;
+}
+
+@media (max-width: 639.98px) {
+    body.admin-ui-compact #admin-main-content {
+        font-size: var(--admin-body-font-size);
+    }
+
+    body.admin-ui-compact #admin-main-content table thead th {
+        padding-inline: .6rem !important;
+    }
+
+    body.admin-ui-compact #admin-main-content table tbody td {
+        padding-inline: .6rem !important;
+    }
+}
+
+/* Legacy arbitrary-size utilities are normalized to the shared admin scale. */
+body.admin-ui-compact #admin-main-content :is(.text-\[9px\], .text-\[10px\], .text-\[11px\]) {
+    font-size: var(--admin-small-font-size) !important;
+    line-height: 1.3 !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.text-\[12px\], .text-\[13px\], .text-\[14px\], .text-\[15px\]) {
+    font-size: var(--admin-body-font-size) !important;
+    line-height: 1.4 !important;
+}
+
+/* Keep older generously-spaced admin pages compact without changing layout. */
+body.admin-ui-compact #admin-main-content :is(.p-8, .p-9, .p-10) {
+    padding: .9rem !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.px-8, .px-9, .px-10) {
+    padding-left: .9rem !important;
+    padding-right: .9rem !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.py-8, .py-9) {
+    padding-top: .9rem !important;
+    padding-bottom: .9rem !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.py-10, .py-12, .py-14, .py-16) {
+    padding-top: 1.6rem !important;
+    padding-bottom: 1.6rem !important;
+}
+
+/* Complete semantic palette aliases used by older admin screens. */
+body.admin-ui-compact #admin-main-content :is(.text-blue-800, .text-blue-900) {
+    color: var(--admin-theme-primary) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.text-green-800, .text-green-900, .text-emerald-900, .text-emerald-950) {
+    color: var(--admin-theme-success) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.text-red-900, .text-red-950) {
+    color: var(--admin-theme-danger) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.text-amber-900, .text-amber-950) {
+    color: var(--admin-theme-warning) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.text-indigo-600, .text-indigo-700, .text-indigo-800) {
+    color: var(--admin-theme-violet) !important;
+}
+
+body.admin-ui-compact #admin-main-content .bg-indigo-50 {
+    background-color: var(--admin-theme-violet-soft) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.border-indigo-200, .border-indigo-300) {
+    border-color: #ddd6fe !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.border-red-100, .border-red-300, .border-red-400) {
+    border-color: var(--admin-theme-danger-border) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.border-emerald-300, .border-green-300) {
+    border-color: var(--admin-theme-success-border) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.border-blue-100, .border-blue-300, .border-blue-500, .border-blue-600) {
+    border-color: var(--admin-theme-info-border) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.bg-emerald-100) {
+    background-color: var(--admin-theme-success-soft) !important;
+}
+
+body.admin-ui-compact #admin-main-content :is(.bg-slate-200) {
+    background-color: var(--admin-theme-border-soft) !important;
+}
+
+/* Admin authentication screens use the same centralized font and theme tokens. */
+body.admin-auth-ui {
+    background: var(--admin-theme-primary-hover) !important;
+    color: #fff;
+    font-family: var(--admin-font-sans) !important;
+}
+
+body.admin-auth-ui main > section {
+    border-color: rgba(255, 255, 255, .12) !important;
+    border-radius: 1rem !important;
+    background: var(--admin-theme-surface) !important;
+    color: var(--admin-theme-text) !important;
+    box-shadow: 0 18px 48px rgba(15, 23, 42, .22) !important;
+}
+
+body.admin-auth-ui h1,
+body.admin-auth-ui h2,
+body.admin-auth-ui h3,
+body.admin-auth-ui h4 {
+    color: var(--admin-theme-text) !important;
+    font-family: var(--admin-font-sans) !important;
+    font-weight: 600 !important;
+}
+
+body.admin-auth-ui :is(.font-black, .font-extrabold, .font-bold) {
+    font-weight: 600 !important;
+}
+
+body.admin-auth-ui :is(.text-brand-dark, .text-brand-ink, .text-slate-900, .text-slate-800) {
+    color: var(--admin-theme-text) !important;
+}
+
+body.admin-auth-ui :is(.text-slate-700, .text-slate-600, .text-slate-500) {
+    color: var(--admin-theme-muted) !important;
+}
+
+body.admin-auth-ui .text-slate-400 {
+    color: var(--admin-theme-subtle) !important;
+}
+
+body.admin-auth-ui .text-brand-blue {
+    color: var(--admin-theme-accent) !important;
+}
+
+body.admin-auth-ui :is(input[type="email"], input[type="password"], input[type="text"]) {
+    min-height: var(--admin-control-height) !important;
+    border-color: var(--admin-theme-border) !important;
+    border-radius: var(--admin-control-radius) !important;
+    color: var(--admin-theme-text) !important;
+    font-family: var(--admin-font-sans) !important;
+    font-size: var(--admin-control-font-size) !important;
+    font-weight: 400 !important;
+    box-shadow: none !important;
+}
+
+body.admin-auth-ui :is(input[type="email"], input[type="password"], input[type="text"]):focus {
+    border-color: var(--admin-theme-accent) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(36, 103, 183, .1) !important;
+}
+
+body.admin-auth-ui .btn {
+    min-height: var(--admin-control-height) !important;
+    border-radius: var(--admin-control-radius) !important;
+    font-family: var(--admin-font-sans) !important;
+    font-size: var(--admin-button-font-size) !important;
+    font-weight: var(--admin-button-font-weight) !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+body.admin-auth-ui .btn-red {
+    background: var(--admin-theme-cta) !important;
+    color: #fff !important;
+}
+
+body.admin-auth-ui .btn-red:hover {
+    background: var(--admin-theme-cta-hover) !important;
+}
+
+body.admin-auth-ui .bg-emerald-50 {
+    background: var(--admin-theme-success-soft) !important;
+}
+
+body.admin-auth-ui .text-emerald-800 {
+    color: var(--admin-theme-success) !important;
+}
+
+body.admin-auth-ui .bg-red-50 {
+    background: var(--admin-theme-danger-soft) !important;
+}
+
+body.admin-auth-ui .text-red-800 {
+    color: var(--admin-theme-danger) !important;
+}
+
+/* --------------------------------------------------------------------------
+ | Admin horizontal field layout
+ | Reusable label-left / control-right form pattern for compact admin screens.
+ * -------------------------------------------------------------------------- */
+body.admin-ui-compact #admin-main-content .admin-horizontal-form {
+    width: 100%;
+    max-width: 70rem;
+}
+
+body.admin-ui-compact #admin-main-content .admin-horizontal-form__row {
+    display: grid;
+    grid-template-columns: minmax(9rem, 12.5rem) minmax(0, 1fr);
+    align-items: center;
+    gap: .9rem 1.25rem;
+    padding: .58rem 0;
+    border-top: 1px solid var(--admin-theme-border-soft);
+}
+
+body.admin-ui-compact #admin-main-content .admin-horizontal-form__row:first-child {
+    border-top: 0;
+    padding-top: .15rem;
+}
+
+body.admin-ui-compact #admin-main-content .admin-horizontal-form__row:last-child {
+    padding-bottom: .15rem;
+}
+
+body.admin-ui-compact #admin-main-content .admin-horizontal-form__row--start {
+    align-items: start;
+}
+
+body.admin-ui-compact #admin-main-content .admin-horizontal-form__label {
+    margin: 0;
+    color: var(--admin-theme-muted) !important;
+    font-family: var(--admin-font-sans) !important;
+    font-size: var(--admin-label-font-size) !important;
+    font-weight: 600 !important;
+    line-height: 1.25 !important;
+}
+
+body.admin-ui-compact #admin-main-content .admin-horizontal-form__row--start .admin-horizontal-form__label {
+    padding-top: .7rem;
+}
+
+body.admin-ui-compact #admin-main-content .admin-horizontal-form__field {
+    width: min(100%, 48rem);
+    min-width: 0;
+}
+
+body.admin-ui-compact #admin-main-content .admin-horizontal-form .admin-input,
+body.admin-ui-compact #admin-main-content .admin-horizontal-form .admin-textarea,
+body.admin-ui-compact #admin-main-content .admin-horizontal-form select.admin-input {
+    margin-top: 0 !important;
+}
+
+body.admin-ui-compact #admin-main-content .admin-horizontal-form__textarea {
+    min-height: 6.5rem !important;
+    resize: vertical;
+}
+
+body.admin-ui-compact #admin-main-content .admin-horizontal-form__help {
+    display: block;
+    margin-top: .3rem;
+    color: var(--admin-theme-subtle);
+    font-family: var(--admin-font-sans);
+    font-size: var(--admin-small-font-size);
+    font-weight: 400;
+    line-height: 1.35;
+}
+
+body.admin-ui-compact #admin-main-content .admin-horizontal-form__toggle {
+    display: inline-flex;
+    min-height: var(--admin-control-height);
+    align-items: center;
+    gap: .55rem;
+    margin: 0;
+    padding: .45rem .7rem;
+    border: 1px solid var(--admin-theme-border);
+    border-radius: var(--admin-control-radius);
+    background: var(--admin-theme-soft);
+    color: var(--admin-theme-text) !important;
+    font-size: var(--admin-control-font-size) !important;
+    font-weight: 500 !important;
+    cursor: pointer;
+}
+
+body.admin-ui-compact #admin-main-content .admin-horizontal-form__checkbox {
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    border-color: var(--admin-theme-border);
+    border-radius: .25rem;
+    accent-color: var(--admin-theme-primary);
+}
+
+@media (max-width: 767px) {
+    body.admin-ui-compact #admin-main-content .admin-horizontal-form__row {
+        grid-template-columns: minmax(0, 1fr);
+        gap: .35rem;
+        padding: .65rem 0;
+    }
+
+    body.admin-ui-compact #admin-main-content .admin-horizontal-form__row--start .admin-horizontal-form__label {
+        padding-top: 0;
+    }
+
+    body.admin-ui-compact #admin-main-content .admin-horizontal-form__field {
+        width: 100%;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Shared admin detail presentation
+   Reusable for read-only record pages such as Bulk Quote Requests.
+   -------------------------------------------------------------------------- */
+body.admin-ui-compact #admin-main-content .admin-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .65rem;
+    margin: 0;
+}
+
+body.admin-ui-compact #admin-main-content .admin-detail-field {
+    min-width: 0;
+    padding: .68rem .75rem;
+    border: 1px solid var(--admin-theme-border);
+    border-radius: var(--admin-card-radius);
+    background: var(--admin-theme-soft);
+}
+
+body.admin-ui-compact #admin-main-content .admin-detail-field--wide {
+    grid-column: 1 / -1;
+}
+
+body.admin-ui-compact #admin-main-content .admin-detail-field__label {
+    margin: 0 0 .28rem;
+    color: var(--admin-theme-subtle);
+    font-family: var(--admin-font-sans);
+    font-size: var(--admin-table-head-font-size);
+    font-weight: var(--admin-table-head-font-weight);
+    line-height: var(--admin-table-head-line-height);
+    letter-spacing: .065em;
+    text-transform: uppercase;
+}
+
+body.admin-ui-compact #admin-main-content .admin-detail-field__value {
+    min-width: 0;
+    margin: 0;
+    color: var(--admin-theme-text);
+    font-family: var(--admin-font-sans);
+    font-size: var(--admin-table-value-font-size);
+    font-weight: var(--admin-table-value-font-weight);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+body.admin-ui-compact #admin-main-content .admin-code-block {
+    max-width: 100%;
+    max-height: 24rem;
+    margin: .15rem 0 0;
+    overflow: auto;
+    padding: .7rem;
+    border: 1px solid var(--admin-theme-border);
+    border-radius: var(--admin-control-radius);
+    background: var(--admin-theme-surface);
+    color: var(--admin-theme-text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: var(--admin-table-secondary-font-size);
+    font-weight: 400;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+@media (max-width: 767px) {
+    body.admin-ui-compact #admin-main-content .admin-detail-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body.admin-ui-compact #admin-main-content .admin-detail-field--wide {
+        grid-column: auto;
+    }
+}
+
+/* --------------------------------------------------------------------------
+ | Reusable admin filter bar
+ | Keeps list-page filters on one compact horizontal row while preserving
+ | touch-friendly horizontal scrolling when the viewport becomes too narrow.
+ * -------------------------------------------------------------------------- */
+.admin-filter-bar {
+    width: 100%;
+    min-width: 0;
+}
+
+.admin-filter-bar__scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.admin-filter-bar__row {
+    display: flex;
+    width: 100%;
+    min-width: max-content;
+    align-items: center;
+    gap: .65rem;
+}
+
+.admin-filter-bar__search {
+    flex: 1 1 300px;
+    min-width: 260px;
+}
+
+.admin-filter-bar__field {
+    flex: 0 0 165px;
+    min-width: 145px;
+}
+
+.admin-filter-bar__field--sm {
+    flex-basis: 145px;
+}
+
+.admin-filter-bar__field--md {
+    flex-basis: 175px;
+}
+
+.admin-filter-bar__actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: .5rem;
+    white-space: nowrap;
+}
+
+.admin-filter-bar .admin-input,
+.admin-filter-bar select.admin-input {
+    margin-top: 0 !important;
+}
+
+.admin-filter-bar__actions .btn {
+    width: auto !important;
+    min-width: 88px;
+    white-space: nowrap;
+}
+
+@media (min-width: 1536px) {
+    .admin-filter-bar__row {
+        min-width: 0;
+    }
+
+    .admin-filter-bar__search {
+        min-width: 220px;
+    }
+
+    .admin-filter-bar__field {
+        min-width: 0;
+    }
 }

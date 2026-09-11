@@ -11,7 +11,8 @@ use Illuminate\Support\Str;
 #[Fillable([
     'order_id', 'product_id', 'product_slug', 'product_name', 'sku', 'image_url', 'quantity',
     'fulfilled_quantity', 'cancelled_quantity', 'returned_quantity', 'unit_price',
-    'customization_unit_price', 'line_total', 'customization', 'is_digital',
+    'customization_unit_price', 'line_total', 'customization', 'product_snapshot_schema_version',
+    'product_snapshot', 'resolved_customization', 'product_snapshot_captured_at', 'is_digital',
 ])]
 class OrderItem extends Model
 {
@@ -79,6 +80,8 @@ class OrderItem extends Model
         return collect((array) data_get($this->customization, 'configuration.roster', []))
             ->filter(fn ($row): bool => is_array($row))
             ->map(fn (array $row): array => [
+                'size_key' => (string) ($row['size_key'] ?? ''),
+                'size_group' => (string) ($row['size_group'] ?? ''),
                 'size_group_label' => (string) ($row['size_group_label'] ?? ''),
                 'size_code' => (string) ($row['size_code'] ?? ''),
                 'size_label' => (string) ($row['size_label'] ?? $row['size_code'] ?? ''),
@@ -90,16 +93,21 @@ class OrderItem extends Model
             ->all();
     }
 
-    /** @return array<int, array{key:string,label:string,type:string}> */
+    /** @return array<int, array<string, mixed>> */
     public function rosterFields(): array
     {
-        $snapshotFields = collect((array) data_get($this->customization, 'roster_fields', []))
+        $rawFields = (array) data_get($this->resolved_customization, 'roster.fields', []);
+        if ($rawFields === []) {
+            $rawFields = (array) data_get($this->customization, 'roster_fields', []);
+        }
+
+        $snapshotFields = collect($rawFields)
             ->filter(fn ($field): bool => is_array($field) && filled($field['key'] ?? null))
-            ->map(fn (array $field): array => [
+            ->map(fn (array $field): array => array_merge($field, [
                 'key' => (string) $field['key'],
                 'label' => (string) ($field['label'] ?? Str::headline((string) $field['key'])),
                 'type' => (string) ($field['type'] ?? 'text'),
-            ])
+            ]))
             ->unique('key')
             ->values();
 
@@ -120,12 +128,31 @@ class OrderItem extends Model
             ->all();
     }
 
-    /** @return array<int, array{group_label:string,size_code:string,size_label:string,quantity:int}> */
+    /** @return array<int, array<string, mixed>> */
     public function selectedSizes(): array
     {
+        $resolvedSizes = collect((array) data_get($this->resolved_customization, 'sizes', []))
+            ->filter(fn ($line): bool => is_array($line) && (int) ($line['quantity'] ?? 0) > 0)
+            ->map(fn (array $line): array => [
+                'group_id' => (string) ($line['group_id'] ?? ''),
+                'group_label' => (string) ($line['group_label'] ?? data_get($line, 'group_definition.label', 'Sizes')),
+                'size_code' => (string) ($line['size_code'] ?? ''),
+                'size_label' => (string) ($line['size_label'] ?? data_get($line, 'size_definition.label', $line['size_code'] ?? 'Size')),
+                'quantity' => max(1, (int) $line['quantity']),
+                'group_definition' => (array) ($line['group_definition'] ?? []),
+                'size_definition' => (array) ($line['size_definition'] ?? []),
+                'quantity_key' => $line['quantity_key'] ?? null,
+            ])
+            ->values();
+
+        if ($resolvedSizes->isNotEmpty()) {
+            return $resolvedSizes->all();
+        }
+
         $snapshot = collect((array) data_get($this->customization, 'size_breakdown', []))
             ->filter(fn ($line): bool => is_array($line) && (int) ($line['quantity'] ?? 0) > 0)
             ->map(fn (array $line): array => [
+                'group_id' => (string) ($line['group_id'] ?? ''),
                 'group_label' => (string) ($line['group_label'] ?? 'Sizes'),
                 'size_code' => (string) ($line['size_code'] ?? $line['size_label'] ?? ''),
                 'size_label' => (string) ($line['size_label'] ?? $line['size_code'] ?? 'Size'),
@@ -147,6 +174,7 @@ class OrderItem extends Model
                 [$groupLabel, $sizeCode, $sizeLabel] = array_pad(explode('|', $key, 3), 3, '');
 
                 return [
+                    'group_id' => '',
                     'group_label' => $groupLabel ?: 'Sizes',
                     'size_code' => $sizeCode,
                     'size_label' => $sizeLabel ?: $sizeCode ?: 'Size',
@@ -165,6 +193,7 @@ class OrderItem extends Model
                 $sizeCode = Str::afterLast((string) $key, ':');
 
                 return [
+                    'group_id' => Str::beforeLast((string) $key, ':'),
                     'group_label' => 'Sizes',
                     'size_code' => $sizeCode,
                     'size_label' => $sizeCode !== '' ? $sizeCode : 'Size',
@@ -200,6 +229,10 @@ class OrderItem extends Model
     {
         return [
             'customization' => 'array',
+            'product_snapshot_schema_version' => 'integer',
+            'product_snapshot' => 'array',
+            'resolved_customization' => 'array',
+            'product_snapshot_captured_at' => 'datetime',
             'is_digital' => 'boolean',
             'unit_price' => 'decimal:2',
             'customization_unit_price' => 'decimal:2',

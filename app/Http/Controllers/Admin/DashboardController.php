@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\BulkQuoteRequest;
 use App\Models\Order;
 use App\Models\OrderReturnRequest;
 use App\Models\Product;
@@ -21,6 +22,7 @@ class DashboardController extends Controller
         $canManageProducts = $admin?->canAdmin('products.manage') ?? false;
 
         $ordersAvailable = $canViewOrders && Schema::hasTable('orders');
+        $bulkQuotesAvailable = $canViewOrders && Schema::hasTable('bulk_quote_requests');
         $returnsAvailable = $canViewReturns && Schema::hasTable('order_return_requests');
         $notificationsAvailable = $admin && Schema::hasTable('notifications');
         $productsAvailable = $canViewProducts && Schema::hasTable('products');
@@ -29,6 +31,7 @@ class DashboardController extends Controller
             'orders' => $ordersAvailable ? Order::query()->count() : 0,
             'open_orders' => $ordersAvailable ? Order::query()->whereNotIn('status', ['completed', 'cancelled'])->count() : 0,
             'payment_due' => $ordersAvailable ? Order::query()->whereIn('payment_status', ['pending', 'failed'])->count() : 0,
+            'bulk_quotes' => $bulkQuotesAvailable ? BulkQuoteRequest::query()->count() : 0,
             'open_returns' => $returnsAvailable ? OrderReturnRequest::query()->whereNotIn('status', ['completed', 'rejected', 'cancelled'])->count() : 0,
             'products' => $productsAvailable ? Product::query()->count() : 0,
             'active_products' => $productsAvailable

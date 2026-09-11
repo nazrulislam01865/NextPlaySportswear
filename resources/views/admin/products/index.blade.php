@@ -1,7 +1,4 @@
-<x-layouts.admin
-    title="Products"
-    subtitle="Manage products, pricing, visibility, inventory, and storefront readiness."
->
+<x-layouts.admin title="Products" :compact-header="true">
     @php
         $productStats = $productStats ?? [];
         $statCards = [
@@ -10,241 +7,281 @@
                 'label' => 'Total Products',
                 'value' => $productStats['total'] ?? 0,
                 'note' => 'All products in catalog',
-                'icon' => '▧',
-                'iconClass' => 'bg-blue-50 text-brand-blue',
+                'icon' => 'products',
+                'tone' => 'blue',
             ],
             [
                 'key' => 'active',
                 'label' => 'Active',
                 'value' => $productStats['active'] ?? 0,
                 'note' => 'Visible on storefront',
-                'icon' => '✓',
-                'iconClass' => 'bg-emerald-50 text-emerald-700',
+                'icon' => 'check',
+                'tone' => 'green',
             ],
             [
                 'key' => 'draft_incomplete',
                 'label' => 'Draft / Incomplete',
                 'value' => $productStats['draft_incomplete'] ?? 0,
                 'note' => 'Need completion',
-                'icon' => '✎',
-                'iconClass' => 'bg-amber-50 text-amber-700',
+                'icon' => 'edit',
+                'tone' => 'amber',
             ],
             [
                 'key' => 'customizable',
                 'label' => 'Customizable',
                 'value' => $productStats['customizable'] ?? 0,
                 'note' => 'Personalized products',
-                'icon' => '☆',
-                'iconClass' => 'bg-violet-50 text-violet-700',
+                'icon' => 'star',
+                'tone' => 'violet',
             ],
             [
                 'key' => 'inventory_not_tracked',
                 'label' => 'Inventory Not Tracked',
                 'value' => $productStats['inventory_not_tracked'] ?? 0,
                 'note' => 'Check stock settings',
-                'icon' => '◈',
-                'iconClass' => 'bg-orange-50 text-orange-700',
+                'icon' => 'inventory',
+                'tone' => 'orange',
             ],
         ];
+
         $hasActiveFilters = filled($filters['q'] ?? null)
             || filled($filters['status'] ?? null)
             || filled($filters['category_id'] ?? null)
             || (bool) ($filters['featured'] ?? false);
     @endphp
 
-    <div class="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5" data-product-stats data-product-stats-url="{{ route('admin.products.stats') }}">
-        @foreach($statCards as $card)
-            <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
-                <div class="flex items-center gap-4">
-                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full text-lg font-bold {{ $card['iconClass'] }}">{{ $card['icon'] }}</span>
-                    <div class="min-w-0">
-                        <p class="text-xs font-semibold leading-4 text-slate-600">{{ $card['label'] }}</p>
-                        <p class="mt-1 text-2xl font-bold leading-none text-brand-ink" data-product-stat-value="{{ $card['key'] }}" aria-live="polite">{{ number_format((int) $card['value']) }}</p>
-                        <p class="mt-1 truncate text-[11px] font-medium text-slate-400">{{ $card['note'] }}</p>
+    <div class="product-admin-page">
+        <section class="product-stats-grid" aria-label="Product summary" data-product-stats data-product-stats-url="{{ route('admin.products.stats') }}">
+            @foreach($statCards as $card)
+                <article class="product-stat-card">
+                    <span class="product-stat-icon product-stat-icon--{{ $card['tone'] }}" aria-hidden="true">
+                        @switch($card['icon'])
+                            @case('products')
+                                <svg viewBox="0 0 24 24" fill="none"><path d="M4.5 7.2 12 3l7.5 4.2v9.6L12 21l-7.5-4.2V7.2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m4.8 7.4 7.2 4 7.2-4M12 11.4V21" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                                @break
+                            @case('check')
+                                <svg viewBox="0 0 24 24" fill="none"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" stroke="currentColor" stroke-width="1.8"/><path d="m8.5 12.2 2.2 2.2 4.9-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                @break
+                            @case('edit')
+                                <svg viewBox="0 0 24 24" fill="none"><path d="m14.3 5.2 4.5 4.5M6 18l2.1-5.4L16.8 4a1.7 1.7 0 0 1 2.4 0l.8.8a1.7 1.7 0 0 1 0 2.4l-8.6 8.7L6 18Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M5.5 20h13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                                @break
+                            @case('star')
+                                <svg viewBox="0 0 24 24" fill="none"><path d="m12 3.8 2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6L7.1 19l.9-5.5-4-3.9 5.5-.8 2.5-5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                                @break
+                            @default
+                                <svg viewBox="0 0 24 24" fill="none"><path d="M5 6.5h14v12H5v-12Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 10h8M8 13.5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                        @endswitch
+                    </span>
+                    <div class="product-stat-copy">
+                        <p class="product-stat-label">{{ $card['label'] }}</p>
+                        <strong data-product-stat-value="{{ $card['key'] }}" aria-live="polite">{{ number_format((int) $card['value']) }}</strong>
+                        <span>{{ $card['note'] }}</span>
                     </div>
-                </div>
-            </article>
-        @endforeach
-    </div>
+                </article>
+            @endforeach
+        </section>
 
-    <div class="mb-5 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-        <form method="GET" class="grid min-w-0 flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(240px,1fr)_190px_220px_auto_auto]">
-            <label class="admin-label relative" data-product-search data-product-search-url="{{ route('admin.products.suggestions') }}">
-                Search
-                <input
-                    class="admin-input"
-                    type="search"
-                    name="q"
-                    value="{{ $filters['q'] ?? '' }}"
-                    placeholder="Name, SKU or slug"
-                    autocomplete="off"
-                    data-product-search-input
-                    aria-autocomplete="list"
-                    aria-expanded="false"
-                >
-                <div class="absolute left-0 right-0 top-full z-50 mt-2 hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl" data-product-search-panel>
-                    <div class="max-h-80 overflow-y-auto py-2" data-product-search-results></div>
-                </div>
-            </label>
-            <label class="admin-label">
-                Status
-                <select class="admin-input" name="status">
-                    <option value="">All statuses</option>
-                    @foreach(['draft','active','archived'] as $status)
-                        <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ ucfirst($status) }}</option>
-                    @endforeach
-                </select>
-            </label>
-            <label class="admin-label">
-                Category
-                <select class="admin-input" name="category_id">
-                    <option value="">All categories</option>
-                    @foreach($categoryOptions as $category)
-                        <option value="{{ $category->id }}" @selected((string) ($filters['category_id'] ?? '') === (string) $category->id)>{{ $category->indented_name }}</option>
-                    @endforeach
-                </select>
-            </label>
-            <div class="flex flex-col justify-end">
-                <label class="flex h-11 min-w-0 items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold shadow-sm">
-                    <input class="h-4 w-4 rounded border-slate-300" type="checkbox" name="featured" value="1" @checked($filters['featured'] ?? false)>
-                    <span class="whitespace-nowrap">Featured</span>
+        <section class="product-filter-card" aria-label="Product filters">
+            <form method="GET" class="product-filter-form">
+                <label class="product-filter-field product-search-field" data-product-search data-product-search-url="{{ route('admin.products.suggestions') }}">
+                    <span class="sr-only">Search products</span>
+                    <span class="product-filter-leading-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="m21 21-4.3-4.3M10.8 18.2a7.4 7.4 0 1 1 0-14.8 7.4 7.4 0 0 1 0 14.8Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </span>
+                    <input
+                        class="admin-input product-control product-search-control"
+                        type="search"
+                        name="q"
+                        value="{{ $filters['q'] ?? '' }}"
+                        placeholder="Search name, SKU or slug"
+                        autocomplete="off"
+                        data-product-search-input
+                        aria-autocomplete="list"
+                        aria-expanded="false"
+                    >
+                    <div class="product-search-panel" data-product-search-panel hidden>
+                        <div class="product-search-results" data-product-search-results></div>
+                    </div>
                 </label>
-            </div>
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-end">
-                <button class="btn btn-navy h-11 w-full whitespace-nowrap sm:w-auto">◇ Filter</button>
-                @if($hasActiveFilters)
-                    <a href="{{ route('admin.products.index') }}" class="btn btn-white h-11 w-full whitespace-nowrap sm:w-auto">Clear</a>
-                @endif
-            </div>
+
+                <label class="product-filter-field product-status-field">
+                    <span class="sr-only">Product status</span>
+                    <select class="admin-input product-control product-select-control" name="status">
+                        <option value="">All statuses</option>
+                        @foreach(['draft','active','archived'] as $status)
+                            <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ ucfirst($status) }}</option>
+                        @endforeach
+                    </select>
+                    <span class="product-filter-select-icon" aria-hidden="true">
+                        <svg viewBox="0 0 20 20" fill="none"><path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </span>
+                </label>
+
+                <label class="product-filter-field product-category-field">
+                    <span class="sr-only">Product category</span>
+                    <select class="admin-input product-control product-select-control" name="category_id">
+                        <option value="">All categories</option>
+                        @foreach($categoryOptions as $category)
+                            <option value="{{ $category->id }}" @selected((string) ($filters['category_id'] ?? '') === (string) $category->id)>{{ $category->indented_name }}</option>
+                        @endforeach
+                    </select>
+                    <span class="product-filter-select-icon" aria-hidden="true">
+                        <svg viewBox="0 0 20 20" fill="none"><path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </span>
+                </label>
+
+                <label class="product-featured-filter">
+                    <input type="checkbox" name="featured" value="1" @checked($filters['featured'] ?? false)>
+                    <span>Featured</span>
+                </label>
+
+                <div class="product-filter-actions">
+                    <button class="product-filter-button" type="submit">Filter</button>
+                    @if($hasActiveFilters)
+                        <a href="{{ route('admin.products.index') }}" class="product-filter-clear">Clear</a>
+                    @endif
+                </div>
+
+                <a href="{{ route('admin.products.create') }}" class="product-add-button">
+                    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    Add Product
+                </a>
+            </form>
+        </section>
+
+        <form id="bulk-product-form" method="POST" action="{{ route('admin.products.bulk') }}" class="product-bulk-card" data-product-bulk-form>
+            @csrf
+            <strong>Selected products</strong>
+            <select class="admin-input product-control product-bulk-select" name="action" required data-product-bulk-action>
+                <option value="">Choose bulk action</option>
+                <option value="activate">Activate</option>
+                <option value="deactivate">Deactivate / Draft</option>
+                <option value="archive">Archive</option>
+                <option value="feature">Mark featured</option>
+                <option value="unfeature">Remove featured</option>
+                <option value="delete">Delete / Move to trash</option>
+            </select>
+            <button class="product-bulk-button" type="submit">Apply</button>
+            <span class="product-bulk-note">Bulk changes are validated and recorded server-side.</span>
         </form>
-        <a href="{{ route('admin.products.create') }}" class="btn btn-red h-11 shrink-0 whitespace-nowrap">＋ Add Product</a>
-    </div>
 
-    <form id="bulk-product-form" method="POST" action="{{ route('admin.products.bulk') }}" class="category-bulk-card mb-5" data-product-bulk-form>
-        @csrf
-
-        <strong>Selected products</strong>
-
-        <select class="admin-input category-control" name="action" required data-product-bulk-action>
-            <option value="">Choose bulk action</option>
-            <option value="activate">Activate</option>
-            <option value="deactivate">Deactivate / Draft</option>
-            <option value="archive">Archive</option>
-            <option value="feature">Mark featured</option>
-            <option value="unfeature">Remove featured</option>
-            <option value="delete">Delete / Move to trash</option>
-        </select>
-
-        <button class="category-bulk-button category-bulk-button--compact" type="submit">
-            Apply
-        </button>
-
-        <span class="category-bulk-note">
-            Bulk changes are validated and recorded server-side.
-        </span>
-    </form>
-
-    <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
-        <div class="admin-table-scroll" tabindex="0" aria-label="Products table">
-            <table class="admin-table text-[13px]" style="min-width: 1710px;">
-                <thead class="bg-slate-50 text-left text-[10px] font-bold uppercase tracking-[.12em] text-slate-500">
-                    <tr>
-                        <th class="w-14 px-4 py-3.5"><input id="product-check-all" type="checkbox" class="h-4 w-4 rounded border-slate-300" aria-label="Select all products on this page"></th>
-                        <th class="w-[315px] px-4 py-3.5">Product</th>
-                        <th class="w-[185px] px-4 py-3.5">Category</th>
-                        <th class="w-[105px] px-4 py-3.5">Price</th>
-                        <th class="w-[125px] px-4 py-3.5">Inventory</th>
-                        <th class="w-[95px] px-4 py-3.5">Status</th>
-                        <th class="w-[135px] px-4 py-3.5">Flags</th>
-                        <th class="px-4 py-3.5" style="width: 205px;">Last updated</th>
-                        <th class="px-4 py-3.5" style="width: 265px;">What was updated</th>
-                        <th class="w-[300px] px-4 py-3.5 text-right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    @forelse($products as $product)
-                        <tr class="hover:bg-slate-50/70">
-                            <td class="px-4 py-3.5">
-                                <input class="product-row-check h-4 w-4 rounded border-slate-300" type="checkbox" name="product_ids[]" value="{{ $product->id }}" form="bulk-product-form" aria-label="Select {{ $product->name }}">
-                            </td>
-                            <td class="px-4 py-3.5">
-                                <div class="flex items-center gap-3">
-                                    <img src="{{ $product->primaryImageUrl() }}" alt="" class="h-12 w-12 shrink-0 rounded-xl object-cover">
-                                    <div class="min-w-0">
-                                        <a href="{{ route('admin.products.edit', $product) }}" class="block font-bold leading-5 text-brand-blue">{{ $product->name }}</a>
-                                        <p class="mt-1 text-xs leading-5 text-slate-400">{{ $product->sku }} · /product/{{ $product->slug }}</p>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="px-4 py-3.5">
-                                <p class="font-bold">{{ $product->category?->name ?? 'Uncategorized' }}</p>
-                                <p class="mt-1 text-xs text-slate-400">{{ $product->subcategory?->name ?? 'No subcategory' }}</p>
-                            </td>
-                            <td class="whitespace-nowrap px-4 py-3.5 font-semibold">{{ $product->currency }} {{ number_format((float) $product->base_price, 2) }}</td>
-                            <td class="px-4 py-3.5">
-                                @if($product->track_inventory)
-                                    <span class="whitespace-nowrap font-bold {{ $product->stock_quantity <= $product->low_stock_threshold ? 'text-amber-700' : 'text-slate-700' }}">{{ number_format($product->stock_quantity) }} in stock</span>
-                                @else
-                                    <span class="whitespace-nowrap text-slate-400">Not tracked</span>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3.5">
-                                <span class="admin-status-pill px-2.5 py-1 text-xs font-bold {{ $product->status === 'active' && $product->is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">{{ ucfirst($product->status) }}</span>
-                            </td>
-                            <td class="px-4 py-3.5">
-                                <div class="flex flex-wrap gap-1">
-                                    @if($product->is_featured)
-                                        <span class="admin-status-pill bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700">Featured</span>
-                                    @endif
-                                    @if($product->is_customizable)
-                                        <span class="admin-status-pill bg-blue-50 px-2 py-1 text-[10px] font-bold text-brand-blue">Customizable</span>
-                                    @endif
-                                </div>
-                            </td>
-                            <td class="px-4 py-3.5 align-top">
-                                <p class="whitespace-nowrap font-bold text-slate-800">{{ $product->updated_at?->format('M d, Y') ?? '—' }}</p>
-                                <p class="mt-1 whitespace-nowrap text-xs font-medium text-slate-500">{{ $product->updated_at?->format('h:i A') ?? 'Time unavailable' }}</p>
-                                <p class="mt-1 text-xs leading-5 text-slate-400">
-                                    By {{ $product->updater?->name ?: $product->updater?->email ?: 'System / import' }}
-                                </p>
-                            </td>
-                            <td class="px-4 py-3.5 align-top">
-                                @php($updateSummary = trim((string) $product->last_update_summary))
-                                <p
-                                    class="text-sm font-semibold leading-5 text-slate-700"
-                                    title="{{ $updateSummary !== '' ? $updateSummary : 'No update summary was recorded for this existing product.' }}"
-                                    style="display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;"
-                                >
-                                    {{ $updateSummary !== '' ? $updateSummary : 'No update summary recorded' }}
-                                </p>
-                            </td>
-                            <td class="px-4 py-3.5">
-                                <div class="admin-row-actions">
-                                    <a href="{{ route('products.show', $product->slug) }}" target="_blank" rel="noopener" class="admin-row-action border-slate-200">Preview</a>
-                                    <a href="{{ route('admin.products.edit', $product) }}" class="admin-row-action border-slate-200">Edit</a>
-                                    <form method="POST" action="{{ route('admin.products.duplicate', $product) }}">
-                                        @csrf
-                                        <button class="admin-row-action border-blue-200 text-brand-blue">Duplicate</button>
-                                    </form>
-                                    <form method="POST" action="{{ route('admin.products.destroy', $product) }}" onsubmit="return confirm('Move this product to trash?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button class="admin-row-action border-red-200 text-red-700 hover:bg-red-50">Delete</button>
-                                    </form>
-                                </div>
-                            </td>
+        <section class="product-table-card">
+            <div class="product-table-scroll" tabindex="0" aria-label="Products table">
+                <table class="product-table">
+                    <thead>
+                        <tr>
+                            <th class="product-select-column"><input id="product-check-all" type="checkbox" aria-label="Select all products on this page"></th>
+                            <th>Product</th>
+                            <th>Category</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                            <th>Flags</th>
+                            <th>Last updated</th>
+                            <th>What was updated</th>
+                            <th class="product-actions-column"><span class="sr-only">Actions</span></th>
                         </tr>
-                    @empty
-                        <tr><td colspan="10" class="px-4 py-12 text-center text-slate-500">No products found.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-        <div class="border-t border-slate-100 p-3.5">
-            <div class="admin-pagination">{{ $products->links('pagination.nextplay', ['itemName' => 'product']) }}</div>
-        </div>
-    </section>
+                    </thead>
+                    <tbody>
+                        @forelse($products as $product)
+                            <tr>
+                                <td class="product-select-column">
+                                    <input class="product-row-check" type="checkbox" name="product_ids[]" value="{{ $product->id }}" form="bulk-product-form" aria-label="Select {{ $product->name }}">
+                                </td>
+                                <td>
+                                    <div class="product-cell">
+                                        <img src="{{ $product->primaryImageUrl() }}" alt="" class="product-thumb">
+                                        <div class="product-cell-copy">
+                                            <a href="{{ route('admin.products.edit', $product) }}" class="product-name">{{ $product->name }}</a>
+                                            <p class="product-meta">{{ $product->sku }} · /product/{{ $product->slug }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <p class="product-category-name">{{ $product->category?->name ?? 'Uncategorized' }}</p>
+                                    <p class="product-category-meta">{{ $product->subcategory?->name ?? 'No subcategory' }}</p>
+                                </td>
+                                <td class="product-price">{{ $product->currency }} {{ number_format((float) $product->base_price, 2) }}</td>
+                                <td>
+                                    <span class="product-status product-status--{{ $product->status === 'active' && $product->is_active ? 'active' : 'inactive' }}">{{ ucfirst($product->status) }}</span>
+                                </td>
+                                <td>
+                                    <div class="product-flags">
+                                        @if($product->is_featured)
+                                            <span class="product-flag product-flag--featured">Featured</span>
+                                        @endif
+                                        @if($product->is_customizable)
+                                            <span class="product-flag product-flag--customizable">Customizable</span>
+                                        @endif
+                                        @if(! $product->is_featured && ! $product->is_customizable)
+                                            <span class="product-muted-placeholder">—</span>
+                                        @endif
+                                    </div>
+                                </td>
+                                <td class="product-updated-cell">
+                                    <p class="product-updated-date">{{ $product->updated_at?->format('M d, Y') ?? '—' }}</p>
+                                    <p class="product-updated-meta">{{ $product->updated_at?->format('h:i A') ?? 'Time unavailable' }} · {{ $product->updater?->name ?: $product->updater?->email ?: 'System / import' }}</p>
+                                </td>
+                                <td>
+                                    @php($updateSummary = trim((string) $product->last_update_summary))
+                                    <p class="product-update-summary" title="{{ $updateSummary !== '' ? $updateSummary : 'No update summary was recorded for this existing product.' }}">
+                                        {{ $updateSummary !== '' ? $updateSummary : 'No update summary recorded' }}
+                                    </p>
+                                </td>
+                                <td class="product-actions-column">
+                                    <div class="product-row-menu" data-product-row-menu>
+                                        <button
+                                            type="button"
+                                            class="product-row-menu__trigger"
+                                            data-product-row-menu-trigger
+                                            aria-label="Actions for {{ $product->name }}"
+                                            aria-haspopup="menu"
+                                            aria-expanded="false"
+                                        >
+                                            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h.01M10 10h.01M16 10h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+                                        </button>
 
+                                        <div class="product-row-menu__panel" data-product-row-menu-panel role="menu" hidden>
+                                            <a href="{{ route('products.show', $product->slug) }}" target="_blank" rel="noopener" class="product-row-menu__item" role="menuitem">
+                                                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M2.5 10s2.7-4.8 7.5-4.8 7.5 4.8 7.5 4.8-2.7 4.8-7.5 4.8S2.5 10 2.5 10Z" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="10" r="2.2" stroke="currentColor" stroke-width="1.6"/></svg>
+                                                Preview
+                                            </a>
+                                            <a href="{{ route('admin.products.edit', $product) }}" class="product-row-menu__item" role="menuitem">
+                                                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m11.8 4.4 3.8 3.8M4.5 15.5l1.8-4.6 7.4-7.4a1.4 1.4 0 0 1 2 0l.8.8a1.4 1.4 0 0 1 0 2l-7.4 7.4-4.6 1.8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                                                Edit
+                                            </a>
+                                            <form method="POST" action="{{ route('admin.products.duplicate', $product) }}" class="product-row-menu__form">
+                                                @csrf
+                                                <button class="product-row-menu__item" type="submit" role="menuitem">
+                                                    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="6.5" y="6.5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M13.5 6.5V5A1.5 1.5 0 0 0 12 3.5H5A1.5 1.5 0 0 0 3.5 5v7A1.5 1.5 0 0 0 5 13.5h1.5" stroke="currentColor" stroke-width="1.6"/></svg>
+                                                    Duplicate
+                                                </button>
+                                            </form>
+                                            <form method="POST" action="{{ route('admin.products.destroy', $product) }}" class="product-row-menu__form product-row-menu__form--danger" onsubmit="return confirm('Move this product to trash?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button class="product-row-menu__item product-row-menu__item--danger" type="submit" role="menuitem">
+                                                    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3.5 5.5h13M8 8.5v5M12 8.5v5M5.5 5.5l.7 10h7.6l.7-10M7.5 5.5l.6-2h3.8l.6 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                                    Delete
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="9" class="product-empty-state">No products found.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="product-table-footer">
+                <div class="admin-pagination">{{ $products->links('pagination.nextplay', ['itemName' => 'product']) }}</div>
+            </div>
+        </section>
+    </div>
 
     <script>
         (() => {
@@ -350,7 +387,6 @@
         })();
     </script>
 
-
     <script>
         (() => {
             const wrapper = document.querySelector('[data-product-search]');
@@ -377,12 +413,12 @@
                 .replace(/'/g, '&#039;');
 
             const openPanel = () => {
-                panel.classList.remove('hidden');
+                panel.hidden = false;
                 input.setAttribute('aria-expanded', 'true');
             };
 
             const closePanel = () => {
-                panel.classList.add('hidden');
+                panel.hidden = true;
                 input.setAttribute('aria-expanded', 'false');
                 activeIndex = -1;
                 updateActiveSuggestion();
@@ -390,7 +426,7 @@
 
             const updateActiveSuggestion = () => {
                 resultsBox.querySelectorAll('[data-product-suggestion-item]').forEach((item, index) => {
-                    item.classList.toggle('bg-slate-50', index === activeIndex);
+                    item.classList.toggle('is-active', index === activeIndex);
                 });
             };
 
@@ -415,7 +451,7 @@
 
                 if (suggestions.length === 0) {
                     resultsBox.innerHTML = `
-                        <div class="px-4 py-4 text-sm font-semibold text-slate-500">
+                        <div class="product-search-state">
                             No matching products found${query ? ` for “${escapeHtml(query)}”` : ''}.
                         </div>
                     `;
@@ -426,20 +462,18 @@
                 resultsBox.innerHTML = suggestions.map((item, index) => `
                     <button
                         type="button"
-                        class="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
+                        class="product-search-suggestion"
                         data-product-suggestion-item
                         data-product-suggestion-index="${index}"
                     >
-                        <img src="${escapeHtml(item.image_url)}" alt="" class="h-11 w-11 shrink-0 rounded-xl border border-slate-100 object-cover">
-                        <span class="min-w-0 flex-1">
-                            <span class="block truncate text-sm font-black text-brand-ink">${escapeHtml(item.name)}</span>
-                            <span class="mt-0.5 block truncate text-xs font-semibold text-slate-400">
+                        <img src="${escapeHtml(item.image_url)}" alt="" class="product-search-suggestion__image">
+                        <span class="product-search-suggestion__copy">
+                            <span class="product-search-suggestion__name">${escapeHtml(item.name)}</span>
+                            <span class="product-search-suggestion__meta">
                                 ${escapeHtml(item.sku || 'No SKU')} · ${escapeHtml(item.category || 'Uncategorized')}
                             </span>
                         </span>
-                        <span class="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-slate-500">
-                            ${escapeHtml(item.status || 'Draft')}
-                        </span>
+                        <span class="product-search-suggestion__status">${escapeHtml(item.status || 'Draft')}</span>
                     </button>
                 `).join('');
 
@@ -466,8 +500,7 @@
                 }
 
                 abortController = new AbortController();
-
-                resultsBox.innerHTML = '<div class="px-4 py-4 text-sm font-semibold text-slate-500">Searching products...</div>';
+                resultsBox.innerHTML = '<div class="product-search-state">Searching products...</div>';
                 openPanel();
 
                 try {
@@ -492,7 +525,7 @@
                     if (error.name === 'AbortError') return;
 
                     suggestions = [];
-                    resultsBox.innerHTML = '<div class="px-4 py-4 text-sm font-semibold text-red-600">Could not load suggestions. Please try again.</div>';
+                    resultsBox.innerHTML = '<div class="product-search-state product-search-state--error">Could not load suggestions. Please try again.</div>';
                     openPanel();
                 }
             };
@@ -506,7 +539,7 @@
             input.addEventListener('focus', scheduleFetch);
 
             input.addEventListener('keydown', (event) => {
-                if (panel.classList.contains('hidden')) return;
+                if (panel.hidden) return;
 
                 if (event.key === 'ArrowDown') {
                     event.preventDefault();
@@ -541,4 +574,99 @@
         })();
     </script>
 
+    <script>
+        (() => {
+            const menus = Array.from(document.querySelectorAll('[data-product-row-menu]'));
+            let activeMenu = null;
+
+            const closeMenu = (menu) => {
+                if (!menu) return;
+                const trigger = menu.querySelector('[data-product-row-menu-trigger]');
+                const panel = menu.querySelector('[data-product-row-menu-panel]');
+                if (!trigger || !panel) return;
+
+                panel.hidden = true;
+                panel.style.removeProperty('top');
+                panel.style.removeProperty('left');
+                trigger.setAttribute('aria-expanded', 'false');
+                menu.classList.remove('is-open');
+                if (activeMenu === menu) activeMenu = null;
+            };
+
+            const closeAll = (except = null) => {
+                menus.forEach(menu => {
+                    if (menu !== except) closeMenu(menu);
+                });
+            };
+
+            const positionMenu = (menu) => {
+                const trigger = menu.querySelector('[data-product-row-menu-trigger]');
+                const panel = menu.querySelector('[data-product-row-menu-panel]');
+                if (!trigger || !panel) return;
+
+                const viewportPadding = 8;
+                const gap = 6;
+                const triggerRect = trigger.getBoundingClientRect();
+                const panelRect = panel.getBoundingClientRect();
+
+                let left = triggerRect.right - panelRect.width;
+                left = Math.max(viewportPadding, Math.min(left, window.innerWidth - panelRect.width - viewportPadding));
+
+                let top = triggerRect.bottom + gap;
+                if (top + panelRect.height > window.innerHeight - viewportPadding) {
+                    top = triggerRect.top - panelRect.height - gap;
+                }
+                top = Math.max(viewportPadding, top);
+
+                panel.style.left = `${Math.round(left)}px`;
+                panel.style.top = `${Math.round(top)}px`;
+            };
+
+            menus.forEach(menu => {
+                const trigger = menu.querySelector('[data-product-row-menu-trigger]');
+                const panel = menu.querySelector('[data-product-row-menu-panel]');
+                if (!trigger || !panel) return;
+
+                trigger.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    const shouldOpen = panel.hidden;
+                    closeAll(menu);
+
+                    if (!shouldOpen) {
+                        closeMenu(menu);
+                        return;
+                    }
+
+                    panel.hidden = false;
+                    trigger.setAttribute('aria-expanded', 'true');
+                    menu.classList.add('is-open');
+                    activeMenu = menu;
+                    positionMenu(menu);
+                });
+
+                panel.addEventListener('click', (event) => {
+                    if (event.target.closest('a, button')) {
+                        window.setTimeout(() => closeMenu(menu), 0);
+                    }
+                });
+            });
+
+            document.addEventListener('click', (event) => {
+                if (activeMenu && !activeMenu.contains(event.target)) {
+                    closeMenu(activeMenu);
+                }
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && activeMenu) {
+                    const trigger = activeMenu.querySelector('[data-product-row-menu-trigger]');
+                    closeMenu(activeMenu);
+                    trigger?.focus();
+                }
+            });
+
+            window.addEventListener('resize', () => closeMenu(activeMenu));
+            window.addEventListener('scroll', () => closeMenu(activeMenu), true);
+        })();
+    </script>
 </x-layouts.admin>

@@ -4,13 +4,14 @@ namespace Tests\Feature;
 
 use App\Models\ContactMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class StorefrontContentPagesTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @dataProvider contentPageProvider */
+    #[DataProvider('contentPageProvider')]
     public function test_content_pages_render_successfully(string $routeName, string $expectedText): void
     {
         $this->get(route($routeName))

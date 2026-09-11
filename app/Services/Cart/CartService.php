@@ -314,7 +314,7 @@ class CartService
             'The selected product does not match this cart item.'
         );
 
-        $product = $this->products->findFullBySlug((string) $payload['product_slug']);
+        $product = $this->products->findBySlug((string) $payload['product_slug']);
 
         abort_if($product === null, 404);
 
@@ -389,7 +389,7 @@ class CartService
         $record = $cart->items()->where('item_key', $key)->first();
 
         if ($record instanceof ShoppingCartItem) {
-            $product = $this->products->findFullBySlug((string) $record->product_slug);
+            $product = $this->products->findBySlug((string) $record->product_slug);
             $quantity = $product ? $this->sanitizeQuantity($quantity, $product) : max(1, $quantity);
             $record->quantity = $quantity;
             if ($product) {
@@ -825,7 +825,7 @@ class CartService
     /** @return array<string, mixed> */
     private function prepareCartItem(array $payload): array
     {
-        $product = $this->products->findFullBySlug((string) ($payload['product_slug'] ?? ''));
+        $product = $this->products->findBySlug((string) ($payload['product_slug'] ?? ''));
 
         abort_if($product === null, 404);
 
@@ -853,7 +853,7 @@ class CartService
         $record = $cart->items()->where('item_key', $item['key'])->first();
 
         if ($record instanceof ShoppingCartItem && $merge) {
-            $product = $this->products->findFullBySlug((string) $item['product_slug']);
+            $product = $this->products->findBySlug((string) $item['product_slug']);
             $record->quantity = $product
                 ? $this->sanitizeQuantity(((int) $record->quantity) + ((int) $item['quantity']), $product)
                 : ((int) $record->quantity) + ((int) $item['quantity']);
@@ -983,7 +983,7 @@ class CartService
         $existingIndex = collect($items)->search(fn (array $cartItem): bool => $cartItem['key'] === $item['key']);
 
         if ($existingIndex !== false && $merge) {
-            $product = $this->products->findFullBySlug((string) $item['product_slug']);
+            $product = $this->products->findBySlug((string) $item['product_slug']);
             $items[$existingIndex]['quantity'] = $product
                 ? $this->sanitizeQuantity((int) $items[$existingIndex]['quantity'] + (int) $item['quantity'], $product)
                 : (int) $items[$existingIndex]['quantity'] + (int) $item['quantity'];
@@ -1002,7 +1002,7 @@ class CartService
         $items = collect($this->sessionItems())
             ->map(function (array $item) use ($key, $quantity): array {
                 if (hash_equals($item['key'], $key)) {
-                    $product = $this->products->findFullBySlug((string) $item['product_slug']);
+                    $product = $this->products->findBySlug((string) $item['product_slug']);
                     $quantity = $product ? $this->sanitizeQuantity($quantity, $product) : max(1, $quantity);
                     $item['quantity'] = $quantity;
                     if ($product) {
@@ -1035,7 +1035,7 @@ class CartService
 
     private function repriceItem(array $item): array
     {
-        $product = $this->products->findFullBySlug((string) ($item['product_slug'] ?? ''));
+        $product = $this->products->findBySlug((string) ($item['product_slug'] ?? ''));
 
         if ($product === null) {
             return [];
@@ -2103,7 +2103,7 @@ class CartService
 
         return collect($preview)
             ->map(function (array $item): array {
-                $product = $this->products->findFullBySlug($item['product_slug']);
+                $product = $this->products->findBySlug($item['product_slug']);
                 if ($product === null) {
                     return [];
                 }

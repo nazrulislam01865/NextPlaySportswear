@@ -194,6 +194,15 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         ])->except('show');
         Route::resource('menus', \App\Http\Controllers\Admin\MenuController::class)->except('show');
         Route::resource('coupons', \App\Http\Controllers\Admin\CouponController::class)->except('show');
+        Route::post('/rural-area-surcharges/import/start', [\App\Http\Controllers\Admin\RuralAreaSurchargeController::class, 'importStart'])
+            ->middleware('throttle:10,1')
+            ->name('rural-area-surcharges.import.start');
+        Route::post('/rural-area-surcharges/import/chunk', [\App\Http\Controllers\Admin\RuralAreaSurchargeController::class, 'importChunk'])
+            ->middleware('throttle:120,1')
+            ->name('rural-area-surcharges.import.chunk');
+        Route::post('/rural-area-surcharges/import/finish', [\App\Http\Controllers\Admin\RuralAreaSurchargeController::class, 'importFinish'])
+            ->middleware('throttle:10,1')
+            ->name('rural-area-surcharges.import.finish');
         Route::resource('rural-area-surcharges', \App\Http\Controllers\Admin\RuralAreaSurchargeController::class)
             ->parameters(['rural-area-surcharges' => 'ruralAreaSurcharge'])
             ->except('show');
@@ -209,6 +218,15 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
             ->parameters(['payment-methods' => 'paymentMethod'])
             ->except('show');
 
+
+        Route::get('/customers', [\App\Http\Controllers\Admin\CustomerController::class, 'index'])->name('customers.index');
+        Route::get('/customers/{customer}', [\App\Http\Controllers\Admin\CustomerController::class, 'show'])->name('customers.show');
+        Route::patch('/customers/{customer}/suspend', [\App\Http\Controllers\Admin\CustomerController::class, 'suspend'])
+            ->middleware('throttle:10,1')
+            ->name('customers.suspend');
+        Route::patch('/customers/{customer}/reactivate', [\App\Http\Controllers\Admin\CustomerController::class, 'reactivate'])
+            ->middleware('throttle:10,1')
+            ->name('customers.reactivate');
 
         Route::get('/users', [\App\Http\Controllers\Admin\AdminUserController::class, 'index'])->name('users.index');
         Route::post('/users', [\App\Http\Controllers\Admin\AdminUserController::class, 'store'])
@@ -227,6 +245,16 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
             ->name('role-matrix.update');
 
         Route::group([], function (): void {
+            Route::get('/bulk-quotes', [\App\Http\Controllers\Admin\BulkQuoteRequestController::class, 'index'])->name('bulk-quotes.index');
+            Route::get('/bulk-quotes/{bulkQuote}', [\App\Http\Controllers\Admin\BulkQuoteRequestController::class, 'show'])->name('bulk-quotes.show');
+            Route::get('/bulk-quotes/{bulkQuote}/attachment', [\App\Http\Controllers\Admin\BulkQuoteRequestController::class, 'attachment'])->name('bulk-quotes.attachment');
+            Route::patch('/bulk-quotes/{bulkQuote}', [\App\Http\Controllers\Admin\BulkQuoteRequestController::class, 'update'])
+                ->middleware('throttle:20,1')
+                ->name('bulk-quotes.update');
+            Route::post('/bulk-quotes/{bulkQuote}/retry-sync', [\App\Http\Controllers\Admin\BulkQuoteRequestController::class, 'retrySync'])
+                ->middleware('throttle:6,1')
+                ->name('bulk-quotes.retry-sync');
+
             Route::get('/orders', [\App\Http\Controllers\Admin\OrderController::class, 'index'])->name('orders.index');
             Route::get('/orders/{order}', [\App\Http\Controllers\Admin\OrderController::class, 'show'])->name('orders.show');
             Route::get('/orders/{order}/items/{orderItem}/artwork/{artworkIndex}', [\App\Http\Controllers\Admin\OrderController::class, 'artwork'])
@@ -235,6 +263,9 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
             Route::patch('/orders/{order}/approve', [\App\Http\Controllers\Admin\OrderController::class, 'approve'])
                 ->middleware('throttle:10,1')
                 ->name('orders.approve');
+            Route::post('/orders/{order}/retry-sync', [\App\Http\Controllers\Admin\OrderController::class, 'retryFlowTrackSync'])
+                ->middleware('throttle:6,1')
+                ->name('orders.retry-sync');
             Route::patch('/orders/{order}', [\App\Http\Controllers\Admin\OrderController::class, 'update'])->middleware('throttle:20,1')->name('orders.update');
             Route::post('/orders/{order}/shipments', [\App\Http\Controllers\Admin\OrderShipmentController::class, 'store'])->middleware('throttle:20,1')->name('orders.shipments.store');
             Route::patch('/orders/{order}/shipments/{shipment}', [\App\Http\Controllers\Admin\OrderShipmentController::class, 'update'])->middleware('throttle:20,1')->name('orders.shipments.update');

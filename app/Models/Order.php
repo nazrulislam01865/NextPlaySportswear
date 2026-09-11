@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'information', 'shipping_address', 'billing_address', 'shipping_method', 'payment_method',
     'customer_note', 'admin_note', 'idempotency_key', 'placed_at', 'paid_at', 'cancelled_at',
     'completed_at', 'delivered_at',
+    'flowtrack_sync_status', 'flowtrack_sync_attempts', 'flowtrack_order_id', 'flowtrack_order_number', 'flowtrack_job_id',
+    'flowtrack_last_attempt_at', 'flowtrack_synced_at', 'flowtrack_sync_error', 'flowtrack_response',
 ])]
 class Order extends Model
 {
@@ -211,6 +213,11 @@ class Order extends Model
             'cancelled_at' => 'datetime',
             'completed_at' => 'datetime',
             'delivered_at' => 'datetime',
+            'flowtrack_sync_attempts' => 'integer',
+            'flowtrack_order_id' => 'integer',
+            'flowtrack_last_attempt_at' => 'datetime',
+            'flowtrack_synced_at' => 'datetime',
+            'flowtrack_response' => 'array',
         ];
     }
 }

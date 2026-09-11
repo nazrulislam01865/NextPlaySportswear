@@ -6,22 +6,27 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Orders\UpdateOrderRequest;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Services\Integrations\FlowTrack\FlowTrackOrderSyncManager;
 use App\Services\Order\OrderWorkflowService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OrderController extends Controller
 {
-    public function __construct(private readonly OrderWorkflowService $workflow)
-    {
+    public function __construct(
+        private readonly OrderWorkflowService $workflow,
+        private readonly FlowTrackOrderSyncManager $flowTrackSync,
+    ) {
     }
 
     public function index(Request $request): View
     {
         $orders = Order::query()->with('user');
+        $hasFlowTrackSync = Schema::hasColumn('orders', 'flowtrack_sync_status');
 
         if ($search = trim((string) $request->query('q'))) {
             $orders->where(function ($query) use ($search): void {
@@ -43,10 +48,18 @@ class OrderController extends Controller
             }
         }
 
+        if ($hasFlowTrackSync && ($syncStatus = trim((string) $request->query('flowtrack_sync_status')))) {
+            if (array_key_exists($syncStatus, FlowTrackOrderSyncManager::statuses())) {
+                $orders->where('flowtrack_sync_status', $syncStatus);
+            }
+        }
+
         return view('admin.orders.index', [
             'orders' => $orders->latest('placed_at')->paginate($this->adminPerPage(25))->withQueryString(),
             'orderStatuses' => config('commerce.order_statuses', []),
             'paymentStatuses' => config('commerce.payment_statuses', []),
+            'flowTrackSyncStatuses' => FlowTrackOrderSyncManager::statuses(),
+            'hasFlowTrackSync' => $hasFlowTrackSync,
         ]);
     }
 
@@ -68,6 +81,7 @@ class OrderController extends Controller
             'paymentStatuses' => config('commerce.payment_statuses', []),
             'fulfillmentStatuses' => config('commerce.fulfillment_statuses', []),
             'shipmentStatuses' => config('commerce.shipment_statuses', []),
+            'hasFlowTrackSync' => Schema::hasColumn('orders', 'flowtrack_sync_status'),
         ]);
     }
 
@@ -121,6 +135,36 @@ class OrderController extends Controller
         $this->workflow->approveAfterPayment($order, $admin);
 
         return back()->with('status', 'Order approved and moved to Design Review.');
+    }
+
+    public function retryFlowTrackSync(Request $request, Order $order): RedirectResponse
+    {
+        abort_unless($request->user('admin')?->canManageOrders(), 403, 'Order management access is required.');
+
+        if (! Schema::hasColumn('orders', 'flowtrack_sync_status')) {
+            return back()->withErrors([
+                'flowtrack' => 'FlowTrack sync tracking is not installed yet. Run the pending database migrations first.',
+            ]);
+        }
+
+        if ($order->flowtrack_sync_status === FlowTrackOrderSyncManager::STATUS_SYNCING) {
+            return back()->with('status', 'FlowTrack synchronization is already in progress.');
+        }
+
+        $this->flowTrackSync->dispatch($order);
+        $order->refresh();
+
+        if ($order->flowtrack_sync_status === FlowTrackOrderSyncManager::STATUS_FAILED) {
+            return back()->withErrors([
+                'flowtrack' => $order->flowtrack_sync_error ?: 'FlowTrack synchronization could not be started.',
+            ]);
+        }
+
+        if ($order->flowtrack_sync_status === FlowTrackOrderSyncManager::STATUS_DISABLED) {
+            return back()->with('status', 'FlowTrack integration is disabled. The order remains safely stored in NextPlay.');
+        }
+
+        return back()->with('status', 'FlowTrack synchronization has been queued or completed successfully.');
     }
 
     public function update(UpdateOrderRequest $request, Order $order): RedirectResponse

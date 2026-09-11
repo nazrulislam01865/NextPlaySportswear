@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\EnforceCustomerSessionVersion;
 use App\Models\Order;
 use App\Models\OrderDownload;
 use App\Models\OrderItem;
@@ -24,12 +25,12 @@ class OrderManagementTest extends TestCase
         $otherCustomer = $this->customer();
         $order = $this->orderFor($owner);
 
-        $this->actingAs($owner, 'web')
+        $this->actingAsCurrentCustomer($owner)
             ->get(route('account.orders.show', $order))
             ->assertOk()
             ->assertSee($order->order_number);
 
-        $this->actingAs($otherCustomer, 'web')
+        $this->actingAsCurrentCustomer($otherCustomer)
             ->get(route('account.orders.show', $order))
             ->assertForbidden();
     }
@@ -39,7 +40,7 @@ class OrderManagementTest extends TestCase
         $owner = $this->customer();
         $order = $this->orderFor($owner);
 
-        $this->actingAs($owner, 'web')
+        $this->actingAsCurrentCustomer($owner)
             ->get(route('account.orders.invoice.download', $order))
             ->assertForbidden();
 
@@ -49,7 +50,7 @@ class OrderManagementTest extends TestCase
             ['order' => $order],
         );
 
-        $this->actingAs($owner, 'web')
+        $this->actingAsCurrentCustomer($owner)
             ->get($signedUrl)
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf');
@@ -237,7 +238,7 @@ class OrderManagementTest extends TestCase
         $item = $order->items()->firstOrFail();
         $item->update(['fulfilled_quantity' => $item->quantity]);
 
-        $this->actingAs($customer, 'web')->post(route('account.orders.returns.store', $order), [
+        $this->actingAsCurrentCustomer($customer)->post(route('account.orders.returns.store', $order), [
             'reason_code' => 'size_issue',
             'requested_resolution' => 'refund',
             'reason' => 'One jersey does not fit.',
@@ -290,10 +291,19 @@ class OrderManagementTest extends TestCase
             ['download' => $download],
         );
 
-        $this->actingAs($otherCustomer, 'web')->get($url)->assertForbidden();
-        $this->actingAs($customer, 'web')->get($url)->assertDownload('artwork.pdf');
+        $this->actingAsCurrentCustomer($otherCustomer)->get($url)->assertForbidden();
+        $this->actingAsCurrentCustomer($customer)->get($url)->assertDownload('artwork.pdf');
         $this->assertSame(1, $download->fresh()->download_count);
-        $this->actingAs($customer, 'web')->get($url)->assertGone();
+        $this->actingAsCurrentCustomer($customer)->get($url)->assertGone();
+    }
+
+    private function actingAsCurrentCustomer(User $customer): static
+    {
+        $this->withSession([
+            EnforceCustomerSessionVersion::SESSION_KEY => (int) $customer->auth_session_version,
+        ]);
+
+        return $this->actingAs($customer, 'web');
     }
 
     private function customer(): User

@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Storefront\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Storefront\Auth\LoginRequest;
+use App\Models\User;
 use App\Support\StorefrontRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -38,6 +40,20 @@ class AuthenticatedSessionController extends Controller
             'role' => 'customer',
             'is_active' => true,
         ];
+
+        $suspendedCustomer = User::query()
+            ->where('email', $email)
+            ->where('role', 'customer')
+            ->where('is_active', false)
+            ->first();
+
+        if ($suspendedCustomer && Hash::check((string) $data['password'], (string) $suspendedCustomer->password)) {
+            return back()
+                ->withErrors([
+                    'email' => 'This customer account is currently suspended. Please contact support if you believe this is a mistake.',
+                ])
+                ->withInput($request->only('email', 'remember', 'redirect'));
+        }
 
         if (! Auth::guard('web')->attempt($credentials, $request->boolean('remember'))) {
             return back()

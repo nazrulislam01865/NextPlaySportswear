@@ -16,6 +16,25 @@ final class EnforceCustomerSessionVersion
         $guard = Auth::guard('web');
         $customer = $guard->user();
 
+        if ($customer?->role === 'customer' && ! $customer->is_active) {
+            $guard->logout();
+            $request->session()->forget(self::SESSION_KEY);
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'This customer account is suspended and cannot be used to sign in.',
+                ], 403);
+            }
+
+            return redirect()
+                ->route('login')
+                ->withErrors([
+                    'email' => 'This customer account is currently suspended. Please contact support if you believe this is a mistake.',
+                ]);
+        }
+
         if ($customer?->isCustomer()) {
             $storedVersion = $request->session()->get(self::SESSION_KEY);
             $currentVersion = (int) $customer->auth_session_version;

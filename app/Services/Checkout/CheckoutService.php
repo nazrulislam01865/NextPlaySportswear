@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use App\Services\Email\TransactionalEmailManager;
+use App\Services\Integrations\FlowTrack\FlowTrackOrderSyncManager;
+use App\Services\Order\OrderProductSnapshotFactory;
 
 class CheckoutService
 {
@@ -29,6 +31,8 @@ class CheckoutService
         private readonly ShippingMethodService $shipping,
         private readonly PaymentMethodService $payments,
         private readonly TransactionalEmailManager $emails,
+        private readonly FlowTrackOrderSyncManager $flowTrackSync,
+        private readonly OrderProductSnapshotFactory $productSnapshots,
     ) {
     }
 
@@ -348,6 +352,20 @@ class CheckoutService
                 foreach ($cart['items'] as $cartItem) {
                     $productData = (array) ($cartItem['product'] ?? []);
                     $product = Product::query()->where('slug', $cartItem['product_slug'] ?? $productData['slug'] ?? '')->first();
+                    $customization = (array) ($cartItem['customization'] ?? []);
+                    $orderContext = [
+                        'quantity' => (int) ($cartItem['quantity'] ?? 1),
+                        'unit_price' => (float) ($cartItem['unit_price'] ?? 0),
+                        'customization_unit_price' => (float) ($cartItem['customization_unit_price'] ?? 0),
+                        'line_subtotal' => (float) ($cartItem['line_subtotal'] ?? 0),
+                        'customization_total' => (float) ($cartItem['customization_total'] ?? 0),
+                        'product_shipping_total' => (float) ($cartItem['product_shipping_total'] ?? 0),
+                        'line_total' => (float) ($cartItem['line_total'] ?? 0),
+                    ];
+                    $productSnapshot = $product
+                        ? $this->productSnapshots->make($product, $customization, $orderContext, 'checkout')
+                        : $this->productSnapshots->makeFallback($productData, $customization, $orderContext);
+
                     $order->items()->create([
                         'product_id' => $product?->id,
                         'product_slug' => $cartItem['product_slug'] ?? $productData['slug'] ?? null,
@@ -358,7 +376,11 @@ class CheckoutService
                         'unit_price' => (float) ($cartItem['unit_price'] ?? 0),
                         'customization_unit_price' => (float) ($cartItem['customization_unit_price'] ?? 0),
                         'line_total' => (float) ($cartItem['line_total'] ?? 0),
-                        'customization' => $cartItem['customization'] ?? [],
+                        'customization' => $customization,
+                        'product_snapshot_schema_version' => OrderProductSnapshotFactory::SCHEMA_VERSION,
+                        'product_snapshot' => $productSnapshot,
+                        'resolved_customization' => (array) ($productSnapshot['selected_configuration'] ?? []),
+                        'product_snapshot_captured_at' => now(),
                         'is_digital' => false,
                     ]);
                 }
@@ -400,6 +422,7 @@ class CheckoutService
         ]);
         if ($createdNewOrder) {
             $this->emails->orderPlaced($order);
+            $this->flowTrackSync->dispatch($order);
         }
 
         return $snapshot;
@@ -783,7 +806,7 @@ class CheckoutService
         ];
 
         // Shipping is a separate charge category. Product-level shipping,
-        // automatic delivery, and rural surcharges are combined once here.
+        // automatic delivery, and remote area surcharges are combined once here.
         $total = round(max(0, $cart['subtotal'] + $cart['customization_total'] - $cart['discount'] + $selectedShippingPrice + $cart['tax']), 2);
 
         if (is_array($paymentMethod) && filled($paymentMethod['method'] ?? null)) {
@@ -934,6 +957,7 @@ class CheckoutService
             $address['postal_code'] ?? null,
             $address['country'] ?? 'United States',
             $address['state'] ?? null,
+            $address['city'] ?? null,
         );
     }
 

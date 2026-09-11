@@ -5,6 +5,7 @@
             $dashboardCards[] = ['Orders', $stats['orders'], route('admin.orders.index')];
             $dashboardCards[] = ['Open Orders', $stats['open_orders'], route('admin.orders.index')];
             $dashboardCards[] = ['Payment Attention', $stats['payment_due'], route('admin.orders.index', ['payment_status' => 'failed'])];
+            $dashboardCards[] = ['Bulk Quote Requests', $stats['bulk_quotes'], route('admin.bulk-quotes.index')];
         }
         if ($canViewReturns) {
             $dashboardCards[] = ['Open Returns', $stats['open_returns'], route('admin.returns.index')];

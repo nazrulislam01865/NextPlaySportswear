@@ -19,16 +19,7 @@ class EnsureAdminPermission
         $requiredPermission = $permission ?: AdminRbac::permissionForRoute($routeName, $request);
 
         if ($requiredPermission && ! $user?->canAdmin($requiredPermission)) {
-            if ($request->expectsJson()) {
-                abort(403, 'You do not have permission to access this admin section.');
-            }
-
-            $destination = AdminRbac::firstAllowedRoute($user);
-
-            abort_if($destination === null || $destination === $request->fullUrl(), 403, 'You do not have permission to access this admin section.');
-
-            return redirect($destination)
-                ->with('status', 'You do not have permission to access that admin section.');
+            abort(403, 'You do not have permission to access this admin section.');
         }
 
         if (AdminRbac::requiresDeletePermission($request) && ! $user?->canDeleteAdminRecords()) {
