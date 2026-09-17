@@ -34,10 +34,10 @@ test('homepage typography is centralized through compact semantic design tokens'
     assert.match(tokens, new RegExp(token), `${token} must be centralized in tokens.css`);
   }
 
-  assert.match(tokens, /--np-home-section-title-size:\s*clamp\(1\.35rem,\s*1\.25vw,\s*1\.65rem\)/);
-  assert.match(tokens, /--np-home-section-title-weight:\s*600/);
-  assert.match(tokens, /--np-home-product-title-size:\s*14px/);
-  assert.match(tokens, /--np-home-product-price-size:\s*18px/);
+  assert.match(tokens, /--np-home-section-title-size:\s*var\(--np-type-title-3-size\)/);
+  assert.match(tokens, /--np-home-section-title-weight:\s*var\(--np-type-title-weight\)/);
+  assert.match(tokens, /--np-home-product-title-size:\s*var\(--np-type-body-2-size\)/);
+  assert.match(tokens, /--np-home-product-price-size:\s*var\(--np-type-cta-large-size\)/);
   assert.match(tokens, /--np-home-product-action-size:\s*13px/);
 });
 
@@ -78,8 +78,9 @@ test('homepage display and body font families remain centralized', () => {
   const card = read('resources/js/storefront/components/common/ProductCard.vue');
   const hero = read('resources/js/storefront/features/home/components/HomeHero.vue');
 
-  assert.match(tokens, /--np-font-display:\s*'Oswald'/);
-  assert.match(tokens, /--np-font-body:\s*'Inter'/);
+  assert.match(tokens, /--np-font-primary:\s*'Expose'/);
+  assert.match(tokens, /--np-font-display:\s*var\(--np-font-primary\)/);
+  assert.match(tokens, /--np-font-body:\s*var\(--np-font-primary\)/);
   assert.match(card, /font-family:\s*var\(--np-font-body\)/);
   assert.match(card, /font-family:\s*var\(--np-font-display\)/);
   assert.match(tokens, /--np-home-hero-title-font-family:\s*var\(--np-font-display\)/);

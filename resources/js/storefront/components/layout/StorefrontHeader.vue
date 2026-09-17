@@ -38,8 +38,9 @@ const cartLabel = () => new Intl.NumberFormat('en-US', {
 
 <style scoped>
 .np-header {
-  position: relative;
-  z-index: 40;
+  position: sticky;
+  top: 0;
+  z-index: var(--np-header-sticky-z-index);
   background: var(--np-color-white);
   border-bottom: 1px solid var(--np-color-header-border);
 }

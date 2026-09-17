@@ -305,7 +305,7 @@ const customerLinks = [
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  font-family: Arial, sans-serif;
+  font-family: var(--np-font-primary);
   font-size: 8px;
   font-weight: 800;
   line-height: 1;

@@ -1,20 +1,25 @@
 .np-display {
   font-family: var(--np-font-display);
-  font-weight: var(--np-weight-bold);
+  font-weight: var(--np-type-title-weight);
   text-transform: uppercase;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
+
 .np-section-title {
   font-family: var(--np-font-display);
   font-size: var(--np-home-section-title-size);
   font-weight: var(--np-home-section-title-weight);
-  line-height: 1;
+  line-height: var(--np-type-title-3-line-height);
   text-transform: uppercase;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   color: var(--np-color-navy-950);
 }
+
 .np-body-small {
-  font-size: var(--np-text-xs);
-  line-height: 1.55;
+  font-family: var(--np-font-body);
+  font-size: var(--np-type-body-2-size);
+  font-weight: var(--np-type-body-2-weight);
+  line-height: var(--np-type-body-2-line-height);
+  letter-spacing: 0;
   color: var(--np-color-text-muted);
 }

@@ -89,8 +89,8 @@ function next(){ if(!props.sports.length)return; activeIndex.value=(activeIndex.
 
 .np-sport-section :deep(.np-section-title) {
   font-size:var(--np-home-section-title-size);
-  line-height:0.95;
-  letter-spacing:-0.02em;
+  line-height:var(--np-type-title-3-line-height);
+  letter-spacing:0;
 }
 
 .np-sport-hero{
@@ -128,10 +128,10 @@ function next(){ if(!props.sports.length)return; activeIndex.value=(activeIndex.
   font-family:var(--np-home-sport-title-font-family);
   font-size:var(--np-home-sport-title-size);
   font-weight:var(--np-home-sport-title-weight);
-  line-height:0.95;
+  line-height:var(--np-type-title-2-line-height);
   text-transform:uppercase;
   color:var(--np-home-on-dark);
-  letter-spacing:-0.02em;
+  letter-spacing:0;
 }
 
 .np-sport-hero nav{

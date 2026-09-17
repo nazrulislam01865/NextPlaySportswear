@@ -45,7 +45,7 @@ test('new arrivals card uses prototype body typography rather than condensed dis
   assert.match(title, /font-family:\s*var\(--np-font-body\)/);
   assert.match(title, /font-size:\s*var\(--np-home-product-title-size\)/);
   assert.match(title, /font-weight:\s*var\(--np-home-product-title-weight\)/);
-  assert.match(title, /line-height:\s*1\.45/);
+  assert.match(title, /line-height:\s*var\(--np-home-product-title-line-height\)/);
   assert.match(title, /-webkit-line-clamp:\s*2/);
 
   const pill = cssBlock(card, '.np-pill');
@@ -105,9 +105,9 @@ test('new arrivals product-card typography and spacing use the approved centrali
 
   for (const declaration of [
     '--np-home-product-meta-size: 11px',
-    '--np-home-product-title-size: 14px',
-    '--np-home-product-title-weight: 500',
-    '--np-home-product-price-size: 18px',
+    '--np-home-product-title-size: var(--np-type-body-2-size)',
+    '--np-home-product-title-weight: var(--np-type-body-2-weight)',
+    '--np-home-product-price-size: var(--np-type-cta-large-size)',
     '--np-home-product-compare-price-size: 12px',
     '--np-home-product-body-min-height: 182px',
     '--np-home-product-body-min-height-mobile: 176px',

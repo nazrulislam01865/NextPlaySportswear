@@ -64,7 +64,7 @@ const previewMeta = computed(() => {
   font-family: var(--np-home-process-step-number-font-family);
   font-size: var(--np-home-process-step-number-size);
   font-weight: var(--np-home-process-step-number-weight);
-  line-height: 1;
+  line-height: var(--np-type-tag-line-height);
   color: var(--np-home-text-primary);
 }
 
@@ -77,7 +77,7 @@ const previewMeta = computed(() => {
   font-family: var(--np-home-process-step-title-font-family);
   font-size: var(--np-home-process-step-title-size);
   font-weight: var(--np-home-process-step-title-weight);
-  line-height: 1.2;
+  line-height: var(--np-type-title-4-line-height);
   color: var(--np-home-text-primary);
 }
 

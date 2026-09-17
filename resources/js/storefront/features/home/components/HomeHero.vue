@@ -87,7 +87,8 @@ function imagePosition(position?: string){ return (position || 'center').replace
   font-family: var(--np-home-hero-eyebrow-font-family);
   font-size: var(--np-home-hero-eyebrow-size);
   font-weight: var(--np-home-hero-eyebrow-weight);
-  letter-spacing: .05em;
+  letter-spacing: 0;
+  line-height: var(--np-type-tag-line-height);
   text-transform: uppercase;
 }
 .np-hero__title {
@@ -95,8 +96,8 @@ function imagePosition(position?: string){ return (position || 'center').replace
   font-family: var(--np-home-hero-title-font-family);
   font-size: var(--np-home-hero-title-size);
   font-weight: var(--np-home-hero-title-weight);
-  line-height: .98;
-  letter-spacing: -.028em;
+  line-height: var(--np-type-title-1-line-height);
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 .np-hero__copy {
@@ -105,7 +106,7 @@ function imagePosition(position?: string){ return (position || 'center').replace
   font-family: var(--np-home-hero-copy-font-family);
   font-size: var(--np-home-hero-copy-size);
   font-weight: var(--np-home-hero-copy-weight);
-  line-height: 1.55;
+  line-height: var(--np-type-body-1-line-height);
   color: var(--np-home-on-dark);
 }
 .np-hero__actions { display: flex; gap: 10px; margin-top: 32px; }

@@ -1,0 +1,36 @@
+/*
+ * Expose is loaded from Fontshare in resources/views/storefront-vue/home.blade.php.
+ * Optional self-hosted fallback: if licensed Expose .woff2 files are present under
+ * public/fonts/expose/, the fallback family below is available when the CDN cannot load.
+ */
+@font-face {
+  font-family: 'Expose Local';
+  src: url('/fonts/expose/Expose-Regular.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Expose Local';
+  src: url('/fonts/expose/Expose-Medium.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Expose Local';
+  src: url('/fonts/expose/Expose-Bold.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Expose Local';
+  src: url('/fonts/expose/Expose-Black.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+}

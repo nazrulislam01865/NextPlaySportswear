@@ -1,9 +1,15 @@
+
+#nextplay-storefront {
+  font-family: var(--np-font-primary);
+  font-synthesis: none;
+}
+
 body {
   background: var(--np-color-white);
   color: var(--np-color-text);
   font-family: var(--np-font-body);
   font-size: 14px;
-  line-height: 1.45;
+  line-height: var(--np-type-body-2-line-height);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }

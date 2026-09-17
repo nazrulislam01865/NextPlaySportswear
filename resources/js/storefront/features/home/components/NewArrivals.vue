@@ -51,8 +51,8 @@ const carouselBreakpoints = {
 
 .np-products-section :deep(.np-section-title) {
   font-size:var(--np-home-section-title-size);
-  line-height:0.95;
-  letter-spacing:-0.02em;
+  line-height:var(--np-type-title-3-line-height);
+  letter-spacing:0;
 }
 
 .np-products-section :deep(.swiper) {
