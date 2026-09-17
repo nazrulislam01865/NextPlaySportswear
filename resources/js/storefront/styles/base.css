@@ -1,0 +1,20 @@
+body {
+  background: var(--np-color-white);
+  color: var(--np-color-text);
+  font-family: var(--np-font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.np-page { overflow-x: clip; background: #fff; }
+.np-section { padding-block: var(--np-section-gap); }
+.np-section--compact { padding-block: clamp(30px, 4vw, 54px); }
+.np-full-bleed { width: 100%; }
+.np-visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+:focus-visible { outline: 2px solid var(--np-color-orange); outline-offset: 3px; }

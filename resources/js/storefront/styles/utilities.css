@@ -1,0 +1,3 @@
+.np-clamp-1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.np-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.np-muted { color: var(--np-color-text-muted); }

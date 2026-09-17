@@ -1,0 +1,20 @@
+.np-display {
+  font-family: var(--np-font-display);
+  font-weight: var(--np-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+}
+.np-section-title {
+  font-family: var(--np-font-display);
+  font-size: var(--np-home-section-title-size);
+  font-weight: var(--np-home-section-title-weight);
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  color: var(--np-color-navy-950);
+}
+.np-body-small {
+  font-size: var(--np-text-xs);
+  line-height: 1.55;
+  color: var(--np-color-text-muted);
+}

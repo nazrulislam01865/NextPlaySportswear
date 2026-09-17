@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "jsx": "preserve",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "types": ["vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "@storefront/*": ["resources/js/storefront/*"]
+    }
+  },
+  "include": [
+    "resources/js/storefront/**/*.ts",
+    "resources/js/storefront/**/*.vue",
+    "resources/js/storefront/**/*.d.ts",
+    "vite.config.js"
+  ]
+}

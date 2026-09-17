@@ -16,6 +16,7 @@ use App\Http\Controllers\Storefront\ContentPageController;
 use App\Http\Controllers\Storefront\CategoryController;
 use App\Http\Controllers\Storefront\Checkout\CheckoutController;
 use App\Http\Controllers\Storefront\HomeController;
+use App\Http\Controllers\Storefront\VueHomeController;
 use App\Http\Controllers\Storefront\NewsletterController;
 use App\Http\Controllers\Storefront\OrderController;
 use App\Http\Controllers\Storefront\ProductController;
@@ -30,7 +31,8 @@ Route::get('/payments/{provider}/return', PaymentReturnController::class)
     ->where('provider', '[a-z0-9-]+')
     ->name('payments.return');
 
-Route::get('/', HomeController::class)->name('home');
+// New Vue 3 storefront homepage. The legacy Blade homepage remains in code only for rollback and has no public route.
+Route::get('/', VueHomeController::class)->name('home');
 Route::get('/homepage/latest-products', [HomeController::class, 'latestProducts'])
     ->middleware('throttle:120,1')
     ->name('home.latest-products');

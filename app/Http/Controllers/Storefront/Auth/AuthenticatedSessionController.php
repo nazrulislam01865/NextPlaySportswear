@@ -4,17 +4,16 @@ namespace App\Http\Controllers\Storefront\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Storefront\Auth\LoginRequest;
-use App\Models\User;
 use App\Support\StorefrontRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
+use App\Services\Auth\CustomerSessionService;
 use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
 {
+    public function __construct(private readonly CustomerSessionService $sessions) {}
+
     public function create(Request $request): View
     {
         $redirectUrl = StorefrontRedirect::capture($request);
@@ -33,48 +32,9 @@ class AuthenticatedSessionController extends Controller
     public function store(LoginRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        $email = Str::lower(trim($data['email']));
-        $credentials = [
-            'email' => $email,
-            'password' => $data['password'],
-            'role' => 'customer',
-            'is_active' => true,
-        ];
+        $customer = $this->sessions->login($request, $data);
 
-        $suspendedCustomer = User::query()
-            ->where('email', $email)
-            ->where('role', 'customer')
-            ->where('is_active', false)
-            ->first();
-
-        if ($suspendedCustomer && Hash::check((string) $data['password'], (string) $suspendedCustomer->password)) {
-            return back()
-                ->withErrors([
-                    'email' => 'This customer account is currently suspended. Please contact support if you believe this is a mistake.',
-                ])
-                ->withInput($request->only('email', 'remember', 'redirect'));
-        }
-
-        if (! Auth::guard('web')->attempt($credentials, $request->boolean('remember'))) {
-            return back()
-                ->withErrors(['email' => 'The email or password is incorrect, or this is not an active customer account.'])
-                ->withInput($request->only('email', 'remember', 'redirect'));
-        }
-
-        // A customer login must never inherit an administrator guard or an
-        // old admin intended URL from the same browser session.
-        Auth::guard('admin')->logout();
-        Auth::shouldUse('web');
-        $request->session()->regenerate();
-
-        $customer = Auth::guard('web')->user();
-        $customer?->forceFill(['last_login_at' => now()])->saveQuietly();
-
-        if (! $customer?->hasVerifiedEmail()) {
-            // Keep the original safe destination (for example checkout) in
-            // session until the signed email-verification link succeeds. Do
-            // not consume it here, otherwise the verification-success page
-            // would lose the customer's intended continuation target.
+        if (! $customer->hasVerifiedEmail()) {
             StorefrontRedirect::capture($request);
 
             return redirect()
@@ -94,10 +54,7 @@ class AuthenticatedSessionController extends Controller
 
     public function destroy(Request $request): RedirectResponse
     {
-        Auth::guard('web')->logout();
-
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $this->sessions->logout($request);
 
         return redirect()
             ->route('home')

@@ -9,7 +9,7 @@ use App\Support\StorefrontRedirect;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use App\Services\Auth\CustomerSessionService;
 use Illuminate\View\View;
 use Throwable;
 
@@ -17,6 +17,7 @@ class RegisteredUserController extends Controller
 {
     public function __construct(
         private readonly CustomerRegistrationService $registration,
+        private readonly CustomerSessionService $sessions,
     ) {
     }
 
@@ -46,10 +47,7 @@ class RegisteredUserController extends Controller
             report($exception);
         }
 
-        Auth::guard('admin')->logout();
-        Auth::guard('web')->login($user);
-        Auth::shouldUse('web');
-        $request->session()->regenerate();
+        $this->sessions->start($request, $user);
 
         // Preserve a safe storefront destination (for example checkout) until
         // verification succeeds. The verified middleware will enforce access.

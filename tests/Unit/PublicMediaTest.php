@@ -10,7 +10,7 @@ class PublicMediaTest extends TestCase
     public function test_it_builds_request_relative_urls_for_public_disk_paths(): void
     {
         $this->assertSame(
-            '/storage/catalog/products/front%20view.jpg',
+            '/media/catalog/products/front%20view.jpg',
             PublicMedia::url('catalog/products/front view.jpg')
         );
     }
@@ -18,7 +18,7 @@ class PublicMediaTest extends TestCase
     public function test_it_repairs_legacy_local_storage_urls(): void
     {
         $this->assertSame(
-            '/storage/products/9/front.jpg',
+            '/media/products/9/front.jpg',
             PublicMedia::url(null, 'http://localhost/storage/products/9/front.jpg')
         );
     }

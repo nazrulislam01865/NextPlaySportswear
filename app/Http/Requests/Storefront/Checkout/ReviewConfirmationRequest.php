@@ -2,26 +2,6 @@
 
 namespace App\Http\Requests\Storefront\Checkout;
 
-use Illuminate\Foundation\Http\FormRequest;
-
-class ReviewConfirmationRequest extends FormRequest
+class ReviewConfirmationRequest extends \App\Http\Requests\Checkout\ReviewConfirmationRequest
 {
-    public function authorize(): bool
-    {
-        return $this->user()?->isCustomer() === true;
-    }
-
-    public function rules(): array
-    {
-        return [
-            'confirm_details' => ['accepted'],
-        ];
-    }
-
-    public function messages(): array
-    {
-        return [
-            'confirm_details.accepted' => 'Please confirm that the order details are correct before continuing.',
-        ];
-    }
 }

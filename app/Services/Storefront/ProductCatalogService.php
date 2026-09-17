@@ -2340,6 +2340,7 @@ class ProductCatalogService
                 'placeholder' => $group->placeholder,
                 'section' => $group->section,
                 'type' => $group->type,
+                'master_type' => $group->jersey_customization_type,
                 'display_mode' => $group->display_mode ?: 'customer',
                 'fixed_value_code' => $group->fixed_value_code,
                 'fixed_text_value' => $group->fixed_text_value,
@@ -2414,7 +2415,7 @@ class ProductCatalogService
         $summaryDetailInformation = $this->summaryDetailInformation($detailInformation, $product);
         $specificationSku = trim((string) (($summaryDetailInformation['SKU'] ?? null) ?: ($detailInformation['SKU'] ?? '')));
         $productProfile = $product->product_profile ?: 'standard';
-        $supportsSizeOptions = ProductSizing::supports($productProfile);
+        $supportsSizeOptions = ProductSizing::supportsMasterDataSizeOptions($productProfile);
         $displayUnitPrice = $this->displayUnitPrice($product, $priceTiers);
         $cardPricing = $this->productCardPricing($product, $displayUnitPrice);
         $rating = $this->genuineProductRating($product);
@@ -2980,7 +2981,7 @@ class ProductCatalogService
         $product['option_steps'] = $product['option_steps'] ?? $this->defaultOptionSteps();
         $product['faqs'] = $product['faqs'] ?? $this->defaultFaqs();
         $product['product_profile'] = $product['product_profile'] ?? 'standard';
-        $supportsSizeOptions = ProductSizing::supports($product['product_profile'] ?? 'standard');
+        $supportsSizeOptions = ProductSizing::supportsMasterDataSizeOptions($product['product_profile'] ?? 'standard');
         $product['is_featured'] = $product['is_featured'] ?? false;
         $product['is_customizable'] = $product['is_customizable'] ?? true;
         $product['currency'] = $product['currency'] ?? 'USD';
