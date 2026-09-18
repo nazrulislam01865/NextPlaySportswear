@@ -49,12 +49,12 @@
     ]
   },
   "resources/js/storefront/main.ts": {
-    "file": "assets/main-mIOZxTrK.js",
+    "file": "assets/main-mkhkotQ8.js",
     "name": "main",
     "src": "resources/js/storefront/main.ts",
     "isEntry": true,
     "css": [
-      "assets/main-wyVhcVre.css"
+      "assets/main-Cpxiz0TQ.css"
     ]
   }
 }
