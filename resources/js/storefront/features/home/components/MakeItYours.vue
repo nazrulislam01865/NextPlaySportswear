@@ -3,11 +3,16 @@ import { computed } from 'vue';
 import AppContainer from '../../../components/ui/AppContainer.vue';
 import ProductCarousel from '../../../components/common/ProductCarousel.vue';
 import type { StorefrontProduct } from '../../../types/product';
+import type { HomeSection } from '../types/home.types';
+import { sectionTitle } from '../utils/homeSection';
 
-const props=defineProps<{products:StorefrontProduct[];busyProductId?:number|null}>();
+const props=defineProps<{products:StorefrontProduct[];busyProductId?:number|null;section?:HomeSection}>();
 const emit=defineEmits<{add:[product:StorefrontProduct];wishlist:[product:StorefrontProduct]}>();
 const customizable=computed(()=>props.products.filter(p=>p.is_customizable));
 const items=computed(()=>customizable.value.length ? customizable.value : props.products);
+const title=computed(()=>sectionTitle(props.section,'MAKE IT YOURS'));
+const linkLabel=computed(()=>String(props.section?.primary_label||'').trim()||'Explore All');
+const linkHref=computed(()=>String(props.section?.primary_url||'').trim()||'/products');
 
 const carouselBreakpoints={
   560:{slidesPerView:2,spaceBetween:10},
@@ -20,15 +25,15 @@ const carouselBreakpoints={
   <section class="np-section np-make">
     <AppContainer class="np-make__container">
       <ProductCarousel
-        title="MAKE IT YOURS"
+        :title="title"
         :products="items"
         force-customize
         card-variant="new-arrivals"
         :show-price="false"
         :show-badges="false"
         :controls="false"
-        link-label="Explore All"
-        link-href="/products"
+        :link-label="linkLabel"
+        :link-href="linkHref"
         :busy-product-id="busyProductId"
         :slides-per-view="1.12"
         :space-between="10"

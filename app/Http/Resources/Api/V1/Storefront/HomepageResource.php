@@ -17,15 +17,11 @@ final class HomepageResource extends ApiResource
             'slides' => array_values((array) ($this->resource['slides'] ?? [])),
             'sections' => array_values((array) ($this->resource['homeSections'] ?? [])),
             'categories' => array_values((array) ($this->resource['categories'] ?? [])),
-            'buyer_paths' => array_values((array) ($this->resource['buyerPaths'] ?? [])),
             'featured_products' => array_values((array) ($this->resource['featuredProducts'] ?? [])),
             'latest_products' => array_values((array) ($this->resource['latestProducts'] ?? [])),
             'latest_products_signature' => (string) ($this->resource['latestProductsSignature'] ?? ''),
             'best_selling_products' => array_values((array) ($this->resource['bestSellingProducts'] ?? [])),
-            'best_selling_gear_categories' => array_values((array) ($this->resource['bestSellingGearCategories'] ?? [])),
             'sports' => array_values((array) ($this->resource['sports'] ?? [])),
-            'process_steps' => array_values((array) ($this->resource['processSteps'] ?? [])),
-            'faqs' => array_values((array) ($this->resource['faqs'] ?? [])),
             'navigation' => $this->navigationItems($this->resource['navigation'] ?? [], $request),
             'menus' => $this->menus($this->resource['storefrontMenus'] ?? [], $request),
         ];
@@ -34,31 +30,22 @@ final class HomepageResource extends ApiResource
     /** @return array<string, array<int, array<string, mixed>>> */
     private function menus(mixed $menus, Request $request): array
     {
-        if (! is_array($menus)) {
-            return [];
-        }
-
+        if (! is_array($menus)) return [];
         $serialized = [];
-
         foreach ($menus as $key => $items) {
             $serialized[(string) $key] = $this->navigationItems($items, $request);
         }
-
         return $serialized;
     }
 
     /** @return array<int, array<string, mixed>> */
     private function navigationItems(mixed $items, Request $request): array
     {
-        $collection = $items instanceof Collection
-            ? $items
-            : collect(is_array($items) ? $items : []);
-
+        $collection = $items instanceof Collection ? $items : collect(is_array($items) ? $items : []);
         return $collection
             ->filter(fn (mixed $item): bool => $item instanceof NavigationItem || is_array($item))
             ->map(fn (mixed $item): array => (new NavigationItemResource($item))->resolve($request))
             ->filter(fn (array $item): bool => $item !== [])
-            ->values()
-            ->all();
+            ->values()->all();
     }
 }

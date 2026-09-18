@@ -30,8 +30,10 @@ final class CatalogReadService
         $filters['categories'] = $this->products->normalizeCategoryFilterIds((array) ($filters['categories'] ?? []));
         $filters['sports'] = $this->products->normalizeCategoryFilterIds((array) ($filters['sports'] ?? []));
 
+        $perPage = isset($filters['per_page']) ? (int) $filters['per_page'] : null;
+
         return [
-            'paginator' => $this->products->searchPaginated($filters),
+            'paginator' => $this->products->searchPaginated($filters, $perPage),
             'filters' => $filters,
             'active_filter_count' => $this->activeFilterCount($filters, includeTag: true),
             'filter_options' => $this->products->filterOptions($filters),

@@ -65,7 +65,8 @@ test('make it yours reuses the shared product card while hiding prototype-omitte
   assert.match(section, /card-variant="new-arrivals"/);
   assert.match(section, /:show-price="false"/);
   assert.match(section, /:show-badges="false"/);
-  assert.match(section, /link-label="Explore All"/);
+  assert.match(section, /:link-label="linkLabel"/);
+  assert.match(section, /'Explore All'/);
   assert.match(carousel, /showPrice\?:\s*boolean/);
   assert.match(carousel, /showBadges\?:\s*boolean/);
   assert.match(card, /showPrice\?:\s*boolean/);
@@ -91,7 +92,8 @@ test('season sale uses centralized sizing, typography, compact CTA, and the shar
   const tokens = read('resources/js/storefront/styles/tokens.css');
 
   assert.match(section, /<AppButton[^>]*hover-effect="chevrons"/);
-  assert.match(section, />SHOP SALE<\/AppButton>/);
+  assert.match(section, />\{\{ label \}\}<\/AppButton>/);
+  assert.match(section, /'SHOP SALE'/);
   assert.match(section, /UP TO 20% OFF/);
 
   for (const declaration of [
@@ -210,7 +212,7 @@ test('design process matches the five-column prototype with reusable step cards 
   assert.match(section, /HOW TO DESIGN A T-SHIRT USING NEXTPLAY/);
   assert.match(section, /<ProcessStepCard/);
   assert.match(section, /:index="index"/);
-  assert.match(section, /:visual="index === 0 \? 'product' : 'placeholder'"/);
+  assert.match(section, /:visual="index\s*===?\s*0\s*\?\s*'product'\s*:\s*'placeholder'"/);
   assert.doesNotMatch(section, /CUSTOM COLOR|TEAM LOGO|PLAYER NAME|PLAYER NUMBER/);
   assert.doesNotMatch(section, /np-process__art/);
 
@@ -219,16 +221,17 @@ test('design process matches the five-column prototype with reusable step cards 
     '--np-home-process-padding-top: 72px',
     '--np-home-process-padding-bottom: 64px',
     '--np-home-process-heading-font-family: var(--np-font-display)',
-    '--np-home-process-heading-size: var(--np-type-title-4-size)',
+    '--np-home-process-heading-size: var(--np-home-section-title-size)',
     '--np-home-process-heading-gap: 52px',
     '--np-home-process-column-gap: 24px',
     '--np-home-process-step-number-font-family: var(--np-font-display)',
     '--np-home-process-step-number-size: var(--np-type-tag-size)',
     '--np-home-process-copy-min-height: 70px',
     '--np-home-process-step-title-font-family: var(--np-font-display)',
-    '--np-home-process-step-title-size: var(--np-type-title-4-size)',
+    '--np-home-process-step-title-size: 16px',
+    '--np-home-process-step-title-weight: 700',
     '--np-home-process-step-description-font-family: var(--np-font-body)',
-    '--np-home-process-step-description-size: var(--np-type-body-2-size)',
+    '--np-home-process-step-description-size: 14px',
     '--np-home-process-step-description-line-height: var(--np-type-body-2-line-height)',
     '--np-home-process-image-gap: 14px',
     '--np-home-process-image-height: 195px',
@@ -248,6 +251,6 @@ test('design process matches the five-column prototype with reusable step cards 
   assert.match(step, /font-family:\s*var\(--np-home-process-step-title-font-family\)/);
   assert.match(step, /font-family:\s*var\(--np-home-process-step-description-font-family\)/);
   assert.match(step, /height:\s*var\(--np-home-process-image-height\)/);
-  assert.match(step, /v-if="visual === 'product'"/);
+  assert.match(step, /v-(?:if|else-if)="visual === 'product'"/);
   assert.match(step, />Image</);
 });

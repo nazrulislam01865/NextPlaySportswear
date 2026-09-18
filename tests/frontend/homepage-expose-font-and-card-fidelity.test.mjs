@@ -20,7 +20,7 @@ test('Vue homepage loads Expose from Fontshare and removes the old Google font f
   const base = read('resources/js/storefront/styles/base.css');
   const footer = read('resources/js/storefront/components/layout/StorefrontFooter.vue');
 
-  assert.match(blade, /https:\/\/api\.fontshare\.com\/v2\/css\?f\[\]=expose@400,500,700,900&display=swap/);
+  assert.match(blade, /https:\/\/api\.fontshare\.com\/v2\/css\?f\[\]=expose@400,500,700,800,900&display=swap/);
   assert.doesNotMatch(blade, /fonts\.googleapis\.com|fonts\.gstatic\.com|family=Inter|family=Oswald/);
   assert.match(tokens, /--np-font-primary:\s*'Expose'/);
   assert.match(base, /#nextplay-storefront\s*\{[\s\S]*?font-family:\s*var\(--np-font-primary\)/);
@@ -38,12 +38,12 @@ test('Shop by Sport uses the compact Expose button typography from the supplied 
   assert.match(link, /font-size:\s*var\(--np-home-sport-link-size\)/);
 });
 
-test('new-arrivals product title clamps exactly to two 20px lines without a third-line ellipsis row', () => {
+test('new-arrivals product title clamps exactly to two 22px Expose lines without a third-line ellipsis row', () => {
   const tokens = read('resources/js/storefront/styles/tokens.css');
   const card = read('resources/js/storefront/components/common/ProductCard.vue');
 
-  assert.match(tokens, /--np-home-product-title-line-height:\s*20px/);
-  assert.match(tokens, /--np-home-product-title-height:\s*40px/);
+  assert.match(tokens, /--np-home-product-title-line-height:\s*22px/);
+  assert.match(tokens, /--np-home-product-title-height:\s*44px/);
 
   const title = cssBlock(card, '.np-product-card--new-arrivals .np-product-card__title');
   assert.match(title, /height:\s*var\(--np-home-product-title-height\)/);

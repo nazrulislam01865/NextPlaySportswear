@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Box, Headphones, Youtube, Instagram, Facebook, Music2 } from 'lucide-vue-next';
+import { Box, Headphones } from 'lucide-vue-next';
+import SocialBrandIcon from '../../common/SocialBrandIcon.vue';
 import DeliveryReturnsIcon from '../../common/DeliveryReturnsIcon.vue';
 import UtilityActionLink from './UtilityActionLink.vue';
 </script>
@@ -24,10 +25,10 @@ import UtilityActionLink from './UtilityActionLink.vue';
 
       <div class="np-mega-footer__social" aria-label="Follow NextPlay">
         <span>Follow Us :</span>
-        <a class="np-mega-footer__youtube" href="https://www.youtube.com/@nextplaysportswear" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><Youtube :size="19" :stroke-width="2" /></a>
-        <a class="np-mega-footer__instagram" href="https://www.instagram.com/nextplaysportswear/" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><Instagram :size="18" :stroke-width="2" /></a>
-        <a class="np-mega-footer__facebook" href="https://www.facebook.com/nextplaysportswear" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><Facebook :size="18" :stroke-width="2" /></a>
-        <a class="np-mega-footer__tiktok" href="https://www.tiktok.com/@nextplaysportswear" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><Music2 :size="18" :stroke-width="2.2" /></a>
+        <a class="np-mega-footer__youtube" href="https://www.youtube.com/@nextplaysportswear" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><SocialBrandIcon network="youtube" /></a>
+        <a class="np-mega-footer__instagram" href="https://www.instagram.com/nextplaysportswear/" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><SocialBrandIcon network="instagram" /></a>
+        <a class="np-mega-footer__facebook" href="https://www.facebook.com/nextplaysportswear" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><SocialBrandIcon network="facebook" /></a>
+        <a class="np-mega-footer__tiktok" href="https://www.tiktok.com/@nextplaysportswear" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><SocialBrandIcon network="tiktok" /></a>
       </div>
     </div>
   </footer>

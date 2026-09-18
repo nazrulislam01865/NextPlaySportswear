@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\HomepageSlide;
+use App\Models\User;
 use App\Services\Storefront\HomepageSliderService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -113,4 +114,21 @@ class HomepageSliderTest extends TestCase
             ->assertDontSee('Inactive Promotion')
             ->assertDontSee('Expired Promotion');
     }
+    public function test_hero_banner_editor_links_to_slide_manager_and_slide_manager_links_back(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.homepage.sections.edit', 'hero'))
+            ->assertOk()
+            ->assertSee('Manage Slides')
+            ->assertSee(route('admin.homepage-slides.index'), false);
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.homepage-slides.index'))
+            ->assertOk()
+            ->assertSee('Back to Hero Banner')
+            ->assertSee(route('admin.homepage.sections.edit', 'hero'), false);
+    }
+
 }

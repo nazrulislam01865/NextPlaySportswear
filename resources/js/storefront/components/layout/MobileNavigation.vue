@@ -2,7 +2,7 @@
 import { Menu, X } from 'lucide-vue-next';
 import { ref } from 'vue';
 const open = ref(false);
-const items = [['SHOP','/products'],['SPORTS','/categories'],['MEN','/products?q=men'],['WOMEN','/products?q=women'],['KIDS','/products?q=kids'],['CUSTOM TEAMWEAR','/bulk-quote'],['EXPLORE','/about-us']];
+const items = [['SHOP','/products'],['SPORTS','/categories'],['MEN','/men'],['WOMEN','/products?q=women'],['KIDS','/products?q=kids'],['CUSTOM TEAMWEAR','/bulk-quote'],['EXPLORE','/about-us']];
 </script>
 <template>
   <div class="np-mobile-nav">

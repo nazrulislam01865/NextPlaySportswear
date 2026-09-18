@@ -4,11 +4,23 @@ namespace App\Support;
 
 use App\Models\HomepageSection;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 final class HomepageSectionRegistry
 {
     private const RETIRED_KEYS = [
+        'slider',
+        'categories',
+        'buyer_paths',
+        'process',
+        'featured_products',
+        'latest_products',
+        'best_selling_products',
+        'best_selling_gear',
+        'why_choose',
+        'testimonials',
+        'faq',
         'customization_options',
         'support',
         'final_cta',
@@ -34,225 +46,117 @@ final class HomepageSectionRegistry
     {
         $sections = [
             [
-                'key' => 'slider',
-                'name' => 'Homepage Slider',
-                'component' => 'slider',
-                'sort_order' => 10,
-                'description' => 'Controls whether the top homepage slider is shown and where it appears. Slider images and text are managed from the slider items page.',
-                'fields' => ['publishing'],
-            ],
-            [
                 'key' => 'hero',
                 'name' => 'Hero Banner',
                 'component' => 'hero',
+                'sort_order' => 10,
+                'fields' => ['publishing'],
+            ],
+            [
+                'key' => 'audience',
+                'name' => 'Audience Tiles',
+                'component' => 'audience',
                 'sort_order' => 20,
-                'eyebrow' => 'Custom sportswear USA',
-                'title' => 'Custom Sportswear for Teams, Schools, Events, and Fans',
-                'description' => 'Design your own jerseys, uniforms, hoodies, caps, bags, and sports gear. Order online for regular items or request a custom quote for team and bulk orders.',
-                'primary_label' => 'Start Your Order',
-                'primary_url' => '#jersey',
-                'secondary_label' => 'Request Bulk Quote',
-                'secondary_url' => '#bulk',
-                'image_path' => null,
-                'image_url' => '/storage/storefront/home/hero.webp',
-                'image_alt' => 'Custom jerseys, caps, hoodies, and sports bag arranged for a team order',
-                'mobile_image_path' => null,
-                'mobile_image_url' => null,
-                'mobile_image_alt' => 'Custom sportswear mobile hero banner',
-                'hero_slides' => [
-                    [
-                        'id' => 'real-team-gear',
-                        'image_url' => '/images/storefront/home/hero-slide-real-team-gear.webp',
-                        'image_alt' => 'Custom team jerseys displayed in navy, white, and red colors',
-                    ],
-                    [
-                        'id' => 'uniform-detail',
-                        'image_url' => '/images/storefront/home/hero-slide-uniform-detail.webp',
-                        'image_alt' => 'Custom jersey product images showing personalization options',
-                    ],
-                    [
-                        'id' => 'product-lineup',
-                        'image_url' => '/images/storefront/home/hero-slide-product-lineup.webp',
-                        'image_alt' => 'Custom sportswear product lineup with jerseys and team apparel',
-                    ],
-                ],
                 'items' => [
-                    ['title' => 'Custom names, numbers, logos, and colors'],
-                    ['title' => 'Team uniforms for football, baseball, basketball, soccer, and more'],
-                    ['title' => 'Bulk pricing available for schools, clubs, leagues, and businesses'],
-                    ['title' => 'Design support before production'],
+                    ['id' => 'men', 'title' => 'MEN', 'url' => '/men', 'image_alt' => 'Men sportswear'],
+                    ['id' => 'women', 'title' => 'WOMEN', 'url' => '/products?q=women', 'image_alt' => 'Women sportswear'],
+                    ['id' => 'kids', 'title' => 'KIDS', 'url' => '/products?q=kids', 'image_alt' => 'Kids sportswear'],
                 ],
-                'fields' => ['text', 'buttons', 'hero_slides', 'items'],
-                'item_label' => 'Checklist Lines',
-                'item_fields' => ['title'],
-            ],
-            [
-                'key' => 'categories',
-                'name' => 'Featured Categories',
-                'component' => 'categories',
-                'sort_order' => 30,
-                'eyebrow' => 'Find it fast',
-                'title' => 'What Are You Looking For?',
-                'description' => 'Start with admin-selected categories, subcategories, or sub-subcategories and find the right product faster.',
-                'fields' => ['text', 'items'],
-                'item_label' => 'Homepage Categories',
-                'item_fields' => ['category_id'],
-            ],
-            [
-                'key' => 'buyer_paths',
-                'name' => 'Buyer Paths',
-                'component' => 'buyer_paths',
-                'sort_order' => 40,
-                'eyebrow' => 'Order by need',
-                'title' => 'Shop by Who You’re Ordering For',
-                'description' => 'Choose the path that fits your order.',
-                'items' => [
-                    ['icon' => '♜', 'title' => 'Teams & Leagues', 'description' => 'Uniforms and gear for full teams, clubs, and local leagues.', 'url' => '/bulk-quote', 'label' => 'Start Your Order'],
-                    ['icon' => '★', 'title' => 'Schools & Colleges', 'description' => 'Custom jerseys, PE uniforms, event apparel, and spirit wear.', 'url' => '/bulk-quote', 'label' => 'Start Your Order'],
-                    ['icon' => '▣', 'title' => 'Businesses & Events', 'description' => 'Branded apparel, caps, bags, and giveaway items.', 'url' => '/bulk-quote', 'label' => 'Request Bulk Quote'],
-                    ['icon' => '✓', 'title' => 'Individual Buyers', 'description' => 'Shop selected products online and customize where available.', 'url' => '/products', 'label' => 'Shop Now'],
-                ],
-                'fields' => ['text', 'items'],
-                'item_label' => 'Buyer Cards',
-                'item_fields' => ['icon', 'title', 'description', 'url', 'label'],
-            ],
-            [
-                'key' => 'process',
-                'name' => 'Ordering Process',
-                'component' => 'process',
-                'sort_order' => 80,
-                'eyebrow' => 'How it works',
-                'title' => 'Simple Ordering Process',
-                'description' => 'A clear process from product selection to delivery.',
-                'primary_label' => 'Start Your Order',
-                'primary_url' => '#products',
-                'items' => [
-                    ['title' => 'Choose Product', 'description' => 'Pick the product, sport, category, or apparel type.'],
-                    ['title' => 'Share Custom Details', 'description' => 'Send your logo, colors, names, numbers, size list, and quantity.'],
-                    ['title' => 'Review Mockup', 'description' => 'We prepare or review the artwork before production.'],
-                    ['title' => 'Confirm Order', 'description' => 'Approve the final details, price, and timeline.'],
-                    ['title' => 'Production & Shipping', 'description' => 'Your order goes into production and ships to your address.'],
-                ],
-                'fields' => ['text', 'buttons', 'items'],
-                'item_label' => 'Process Steps',
-                'item_fields' => ['title', 'description'],
-            ],
-            [
-                'key' => 'featured_products',
-                'name' => 'Featured Products',
-                'component' => 'featured_products',
-                'sort_order' => 90,
-                'eyebrow' => 'Shop online',
-                'title' => 'Featured Products',
-                'description' => 'Products marked as featured by the admin appear here automatically.',
-                'fields' => ['text'],
-            ],
-            [
-                'key' => 'latest_products',
-                'name' => 'Latest Products',
-                'component' => 'latest_products',
-                'sort_order' => 95,
-                'eyebrow' => 'New arrivals',
-                'title' => 'Latest',
-                'description' => 'The latest created or updated active products appear here automatically.',
-                'fields' => ['text'],
-            ],
-            [
-                'key' => 'best_selling_products',
-                'name' => 'Best Selling Products',
-                'component' => 'best_selling_products',
-                'sort_order' => 98,
-                'eyebrow' => 'Customer favorites',
-                'title' => 'Best Selling',
-                'description' => 'Products are ranked automatically from paid order quantities. New products are used as a fallback until sales are recorded.',
-                'fields' => ['text'],
-            ],
-            [
-                'key' => 'best_selling_gear',
-                'name' => 'Best-Selling Gear',
-                'component' => 'best_selling_gear',
-                'sort_order' => 100,
-                'eyebrow' => 'POPULAR GEAR',
-                'title' => 'BEST-SELLING TEAM GEAR',
-                'description' => 'Built for teams. Designed to perform.',
-                'fields' => ['text', 'items'],
-                'item_label' => 'Best-Selling Gear Categories',
-                'item_fields' => ['category_id', 'title', 'description', 'image_url', 'image_alt', 'url', 'label'],
+                'fields' => ['items', 'publishing'],
+                'item_label' => 'Audience Tiles',
+                'item_fields' => ['id', 'title', 'url', 'image_url', 'image_alt'],
             ],
             [
                 'key' => 'shop_by_sport',
-                'name' => 'Shop by Sport',
+                'name' => 'Shop By Sport',
                 'component' => 'shop_by_sport',
-                'sort_order' => 15,
-                'eyebrow' => 'Find your sport',
-                'title' => 'Shop by Sport',
-                'description' => 'Browse uniforms, apparel and gear by sport.',
-                'fields' => ['text', 'items'],
-                'item_label' => 'Sport Categories',
-                'item_fields' => ['category_id'],
+                'sort_order' => 30,
+                'title' => 'SHOP BY SPORT',
+                'settings' => [
+                    'default_sport_id' => null,
+                    'quick_links' => [
+                        ['id' => 'jersey', 'label' => 'JERSEY', 'url' => '/products?q=jersey'],
+                        ['id' => 'bottoms', 'label' => 'BOTTOMS', 'url' => '/products?q=bottoms'],
+                        ['id' => 'uniform-kits', 'label' => 'UNIFORM KITS', 'url' => '/products?q=uniform'],
+                        ['id' => 'accessories', 'label' => 'ACCESSORIES', 'url' => '/products?q=accessories'],
+                    ],
+                ],
+                'fields' => ['text', 'items', 'settings', 'publishing'],
+                'item_label' => 'Sports',
+                'item_fields' => ['id', 'category_id', 'title', 'url', 'image_url', 'image_alt'],
             ],
             [
-                'key' => 'why_choose',
-                'name' => 'Why Choose Us',
-                'component' => 'why_choose',
-                'sort_order' => 130,
-                'eyebrow' => 'Why NextPlay',
-                'title' => 'Why Teams Choose NextPlay Sportswear',
-                'description' => 'Practical support, clear ordering, and sportswear made around your needs.',
-                'items' => [
-                    ['icon' => '✓', 'title' => 'Custom Orders Made Clear', 'description' => 'We help you understand what is needed before production starts.'],
-                    ['icon' => '✓', 'title' => 'Support for Teams and Bulk Buyers', 'description' => 'Good for clubs, schools, businesses, leagues, and events.'],
-                    ['icon' => '✓', 'title' => 'Design Review Before Production', 'description' => 'Your artwork or mockup can be checked before the order moves forward.'],
-                    ['icon' => '✓', 'title' => 'Wide Product Range', 'description' => 'Jerseys, uniforms, hoodies, caps, bags, and promotional products in one place.'],
-                    ['icon' => '✓', 'title' => 'Online and Bulk Ordering Options', 'description' => 'Order regular products online or contact us for team and bulk pricing.'],
-                    ['icon' => '✓', 'title' => 'USA-Focused Shopping Experience', 'description' => 'Clear product pages, size details, order notes, and quote support.'],
-                ],
-                'fields' => ['text', 'items'],
-                'item_label' => 'Reason Cards',
-                'item_fields' => ['icon', 'title', 'description'],
+                'key' => 'new_arrivals',
+                'name' => 'New Arrivals',
+                'component' => 'new_arrivals',
+                'sort_order' => 40,
+                'title' => 'NEW ARRIVALS',
+                'fields' => ['text', 'publishing'],
             ],
             [
-                'key' => 'testimonials',
-                'name' => 'Testimonials',
-                'component' => 'testimonials',
-                'sort_order' => 160,
-                'eyebrow' => 'Customer Words',
-                'title' => 'What Teams and Customers Say',
-                'description' => 'See how clubs, schools, businesses, and event teams use NextPlay for custom sportswear, team uniforms, event kits, and bulk orders.',
-                'primary_label' => 'Read all testimonials',
-                'primary_url' => '/testimonials',
-                'secondary_label' => 'Share your experience',
-                'secondary_url' => '/contact-us?topic=testimonial',
-                'items' => [
-                    ['icon' => 'JM', 'title' => 'Jason Miller', 'subtitle' => 'River Valley Baseball Club · Ohio, USA', 'description' => 'The jerseys came out clean and the ordering process was simple. We shared our team logo and size list, and the team helped us prepare the final order.', 'label' => 'Jerseys'],
-                    ['icon' => 'EC', 'title' => 'Emily Carter', 'subtitle' => 'Community Run Event · Texas, USA', 'description' => 'We needed shirts and bags for a weekend event. The quote was clear, and they asked the right questions before moving ahead.', 'label' => 'Event kits'],
-                    ['icon' => 'MR', 'title' => 'Marcus Reed', 'subtitle' => 'Northside High Boosters · Georgia, USA', 'description' => 'Good option for our school spirit wear. The hoodie colors matched what we requested, and the design proof helped a lot.', 'label' => 'Artwork'],
-                    ['icon' => 'OG', 'title' => 'Olivia Grant', 'subtitle' => 'Grant Family Dental · Arizona, USA', 'description' => 'Ordering caps for our business team was easy. We had a few logo questions, and they helped us clean that up before production.', 'label' => 'Caps'],
-                    ['icon' => 'DR', 'title' => 'Daniel Ruiz', 'subtitle' => 'South Bay FC · California, USA', 'description' => 'The soccer kits looked sharp. Not overcomplicated. We sent names, numbers, and sizes, then reviewed the mockup.', 'label' => 'Football kits'],
-                    ['icon' => 'LB', 'title' => 'Lauren Brooks', 'subtitle' => 'Lakeview Youth League · Florida, USA', 'description' => 'We used them for a league order. The bulk quote made more sense than ordering every piece one by one.', 'label' => 'Bulk order'],
-                ],
-                'fields' => ['text', 'buttons', 'items'],
-                'item_label' => 'Testimonials',
-                'item_fields' => ['icon', 'title', 'subtitle', 'description', 'label'],
+                'key' => 'shop_by_category',
+                'name' => 'Shop By Category',
+                'component' => 'shop_by_category',
+                'sort_order' => 50,
+                'title' => 'SHOP BY CATEGORY',
+                'items' => [],
+                'fields' => ['text', 'items', 'publishing'],
+                'item_label' => 'Category Tiles',
+                'item_fields' => ['id', 'category_id', 'title', 'url', 'image_url', 'image_alt'],
             ],
             [
-                'key' => 'faq',
-                'name' => 'FAQ',
-                'component' => 'faq',
-                'sort_order' => 170,
-                'eyebrow' => 'Help center',
-                'title' => 'Common Questions',
-                'items' => [
-                    ['title' => 'Can I order one custom jersey?', 'description' => 'Yes, selected products can be ordered directly online. Some custom products may have a minimum order quantity.'],
-                    ['title' => 'Do you offer bulk pricing?', 'description' => 'Yes. For larger orders, especially 500+ or 1,000+ pieces, please contact us for a custom quotation.'],
-                    ['title' => 'Can I add player names and numbers?', 'description' => 'Yes. For jerseys and team uniforms, you can usually add names, numbers, logos, and team colors.'],
-                    ['title' => 'Do you help with artwork or mockups?', 'description' => 'Yes. You can send your logo or design idea. A proof or mockup may be reviewed before production.'],
-                    ['title' => 'How long does production take?', 'description' => 'Production time depends on the product, customization method, quantity, and order season. The timeline should be confirmed before production.'],
-                    ['title' => 'Do you ship across the USA?', 'description' => 'Yes, shipping options should be shown or confirmed based on the order and delivery location.'],
+                'key' => 'best_choices',
+                'name' => 'Best Choices For You',
+                'component' => 'best_choices',
+                'sort_order' => 60,
+                'title' => 'BEST CHOICES FOR YOU',
+                'settings' => [
+                    'tabs' => [
+                        'featured' => ['label' => 'FEATURED', 'enabled' => true],
+                        'popular' => ['label' => 'POPULAR', 'enabled' => true],
+                        'trending' => ['label' => 'TRENDING', 'enabled' => true],
+                    ],
                 ],
-                'fields' => ['text', 'items'],
-                'item_label' => 'Questions',
-                'item_fields' => ['title', 'description'],
+                'fields' => ['text', 'settings', 'publishing'],
+            ],
+            [
+                'key' => 'season_sale',
+                'name' => 'Season Sale',
+                'component' => 'season_sale',
+                'sort_order' => 70,
+                'title' => 'SEASON SALE',
+                'description' => 'UP TO 20% OFF',
+                'primary_label' => 'SHOP SALE',
+                'primary_url' => '/products',
+                'image_alt' => 'NextPlay season sale',
+                'fields' => ['text', 'buttons', 'media', 'publishing'],
+            ],
+            [
+                'key' => 'make_it_yours',
+                'name' => 'Make It Yours',
+                'component' => 'make_it_yours',
+                'sort_order' => 80,
+                'title' => 'MAKE IT YOURS',
+                'primary_label' => 'Explore All',
+                'primary_url' => '/products',
+                'fields' => ['text', 'buttons', 'publishing'],
+            ],
+            [
+                'key' => 'design_process',
+                'name' => 'Design Process',
+                'component' => 'design_process',
+                'sort_order' => 90,
+                'title' => 'HOW TO DESIGN A T-SHIRT USING NEXTPLAY',
+                'items' => [
+                    ['id' => 'choose-product', 'title' => 'Choose Product', 'description' => 'Pick the product, sport, category, or apparel type.'],
+                    ['id' => 'share-details', 'title' => 'Share Custom Details', 'description' => 'Send your logo, colors, names, numbers, size list, and quantity.'],
+                    ['id' => 'review-mockup', 'title' => 'Review Mockup', 'description' => 'We prepare or review the artwork before production.'],
+                    ['id' => 'confirm-order', 'title' => 'Confirm Order', 'description' => 'Approve the final details, price, and timeline.'],
+                    ['id' => 'production-shipping', 'title' => 'Production & Shipping', 'description' => 'Your order goes into production and ships to your address.'],
+                ],
+                'fields' => ['text', 'items', 'publishing'],
+                'item_label' => 'Process Steps',
+                'item_fields' => ['id', 'title', 'description', 'image_url', 'image_alt'],
             ],
         ];
 
@@ -278,10 +182,6 @@ final class HomepageSectionRegistry
         if (! Schema::hasTable('homepage_sections')) {
             return;
         }
-
-        HomepageSection::query()
-            ->whereIn('key', self::RETIRED_KEYS)
-            ->delete();
 
         foreach (self::orderedDefinitions() as $definition) {
             HomepageSection::query()->firstOrCreate(
@@ -311,6 +211,7 @@ final class HomepageSectionRegistry
             'mobile_image_alt' => self::nullableString($definition['mobile_image_alt'] ?? null),
             'hero_slides' => $definition['hero_slides'] ?? null,
             'items' => $definition['items'] ?? null,
+            'settings' => $definition['settings'] ?? null,
             'is_active' => true,
             'sort_order' => (int) ($definition['sort_order'] ?? 0),
             'created_by' => $userId,
@@ -325,23 +226,10 @@ final class HomepageSectionRegistry
         $values = $section ? $section->toArray() : [];
         $merged = array_merge($definition, array_filter($values, static fn ($value): bool => $value !== null));
 
-        // Not every homepage section needs headings, buttons, or media. Keep a
-        // predictable view payload so overview/edit screens can safely render
-        // publishing-only sections without undefined array-key exceptions.
         foreach ([
-            'eyebrow',
-            'title',
-            'description',
-            'primary_label',
-            'primary_url',
-            'secondary_label',
-            'secondary_url',
-            'image_path',
-            'image_url',
-            'image_alt',
-            'mobile_image_path',
-            'mobile_image_url',
-            'mobile_image_alt',
+            'eyebrow', 'title', 'description', 'primary_label', 'primary_url',
+            'secondary_label', 'secondary_url', 'image_path', 'image_url', 'image_alt',
+            'mobile_image_path', 'mobile_image_url', 'mobile_image_alt',
         ] as $nullableKey) {
             $merged[$nullableKey] = $merged[$nullableKey] ?? null;
         }
@@ -352,11 +240,17 @@ final class HomepageSectionRegistry
         $merged['fields'] = $definition['fields'] ?? ['text'];
         $merged['item_fields'] = $definition['item_fields'] ?? ['title', 'description'];
         $merged['item_label'] = $definition['item_label'] ?? 'Items';
-        $merged['items'] = is_array($merged['items'] ?? null) ? array_values($merged['items']) : [];
+        $merged['settings'] = is_array($section?->settings)
+            ? array_replace_recursive((array) ($definition['settings'] ?? []), $section->settings)
+            : (array) ($definition['settings'] ?? []);
+        $merged['items'] = self::mergeItems(
+            is_array($definition['items'] ?? null) ? $definition['items'] : [],
+            is_array($section?->items) ? $section->items : (is_array($merged['items'] ?? null) ? $merged['items'] : [])
+        );
         $merged['is_active'] = (bool) ($merged['is_active'] ?? true);
         $merged['sort_order'] = (int) ($merged['sort_order'] ?? ($definition['sort_order'] ?? 0));
-        $merged['image'] = PublicMedia::url($merged['image_path'] ?? null, $merged['image_url'] ?? null, null);
-        $merged['mobile_image'] = PublicMedia::url($merged['mobile_image_path'] ?? null, $merged['mobile_image_url'] ?? null, null);
+        $merged['image'] = self::publicImage($merged['image_path'] ?? null, $merged['image_url'] ?? null);
+        $merged['mobile_image'] = self::publicImage($merged['mobile_image_path'] ?? null, $merged['mobile_image_url'] ?? null);
         $merged['mobile_image_alt'] = self::nullableString($merged['mobile_image_alt'] ?? null) ?: ($merged['image_alt'] ?? null);
         $merged['hero_slides'] = collect(is_array($merged['hero_slides'] ?? null) ? $merged['hero_slides'] : [])
             ->map(function ($slide, int $index): ?array {
@@ -366,7 +260,7 @@ final class HomepageSectionRegistry
 
                 $imagePath = self::nullableString($slide['image_path'] ?? null);
                 $imageUrl = self::nullableString($slide['image_url'] ?? $slide['image'] ?? null);
-                $image = PublicMedia::url($imagePath, $imageUrl, null);
+                $image = self::publicImage($imagePath, $imageUrl);
 
                 if ($image === null) {
                     return null;
@@ -385,6 +279,63 @@ final class HomepageSectionRegistry
             ->all();
 
         return $merged;
+    }
+
+    /** @param array<int, array<string, mixed>> $defaults @param array<int, array<string, mixed>> $stored */
+    private static function mergeItems(array $defaults, array $stored): array
+    {
+        $hasDefaultIds = collect($defaults)->contains(fn ($item): bool => is_array($item) && filled($item['id'] ?? null));
+
+        if (! $hasDefaultIds) {
+            return collect($stored)
+                ->filter(fn ($item): bool => is_array($item))
+                ->values()
+                ->map(fn (array $item): array => self::withResolvedItemImage($item))
+                ->all();
+        }
+
+        $storedById = collect($stored)
+            ->filter(fn ($item): bool => is_array($item) && filled($item['id'] ?? null))
+            ->keyBy(fn (array $item): string => (string) $item['id']);
+
+        $merged = collect($defaults)->map(function ($default) use ($storedById): array {
+            $default = is_array($default) ? $default : [];
+            $id = (string) ($default['id'] ?? '');
+            $stored = $id !== '' ? $storedById->get($id, []) : [];
+
+            return self::withResolvedItemImage(array_merge($default, is_array($stored) ? $stored : []));
+        });
+
+        $defaultIds = collect($defaults)->pluck('id')->filter()->map(fn ($id): string => (string) $id);
+        $extras = collect($stored)
+            ->filter(fn ($item): bool => is_array($item))
+            ->reject(fn (array $item): bool => filled($item['id'] ?? null) && $defaultIds->contains((string) $item['id']))
+            ->map(fn (array $item): array => self::withResolvedItemImage($item));
+
+        return $merged->concat($extras)->values()->all();
+    }
+
+    /** @param array<string, mixed> $item @return array<string, mixed> */
+    private static function withResolvedItemImage(array $item): array
+    {
+        $item['image_path'] = self::nullableString($item['image_path'] ?? null);
+        $item['image_url'] = self::nullableString($item['image_url'] ?? $item['image'] ?? null);
+        $item['image_alt'] = self::nullableString($item['image_alt'] ?? null);
+        $item['image'] = self::publicImage($item['image_path'], $item['image_url']);
+
+        return $item;
+    }
+
+    private static function publicImage(mixed $path, mixed $url): ?string
+    {
+        $path = trim((string) $path);
+        if ($path !== '') {
+            return Storage::disk('public')->url($path);
+        }
+
+        $url = trim((string) $url);
+
+        return $url !== '' ? $url : null;
     }
 
     private static function nullableString(mixed $value): ?string

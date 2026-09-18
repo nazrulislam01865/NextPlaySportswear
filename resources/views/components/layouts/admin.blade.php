@@ -8,6 +8,9 @@
     <meta name="robots" content="noindex,nofollow">
     <title>{{ $title }} | NextPlay Admin</title>
     <x-admin.sidebar-prepaint-state />
+    <link rel="preconnect" href="https://api.fontshare.com">
+    <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
+    <link href="https://api.fontshare.com/v2/css?f[]=expose@400,500,600,700,800,900&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
@@ -282,26 +285,26 @@
 
                 @if($canAdmin('homepage_sections.view') || $canAdmin('homepage_slides.view') || $canAdmin('newsletters.view') || $canAdmin('rural_surcharges.view') || $canAdmin('payment_methods.view'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Store</p>
-                    @if($canAdmin('homepage_sections.view'))
-                        @php($homepageDefinitions = \App\Support\HomepageSectionRegistry::orderedDefinitions())
+                    @if($canAdmin('homepage_sections.view') || $canAdmin('homepage_slides.view'))
                         <x-admin.sidebar-group
-                            label="Homepage"
+                            label="Homepage Controls"
                             icon="▧"
                             :active="request()->routeIs('admin.homepage.*') || request()->routeIs('admin.homepage-slides.*')"
                         >
-                            <x-admin.sidebar-sub-link
-                                :href="route('admin.homepage.sections.index')"
-                                :active="request()->routeIs('admin.homepage.sections.index')"
-                            >Overview</x-admin.sidebar-sub-link>
-                            @foreach($homepageDefinitions as $homepageDefinition)
-                                <x-admin.sidebar-sub-link
-                                    :href="route('admin.homepage.sections.edit', $homepageDefinition['key'])"
-                                    :active="request()->routeIs('admin.homepage.sections.edit', 'admin.homepage.sections.update') && request()->route('key') === $homepageDefinition['key']"
-                                >{{ $homepageDefinition['name'] }}</x-admin.sidebar-sub-link>
-                            @endforeach
+                            @if($canAdmin('homepage_sections.view'))
+                                <x-admin.sidebar-sub-link :href="route('admin.homepage.sections.edit', 'hero')" :active="(request()->routeIs('admin.homepage.sections.edit') && request()->route('key') === 'hero') || request()->routeIs('admin.homepage-slides.*')">Hero Banner</x-admin.sidebar-sub-link>
+                                <x-admin.sidebar-sub-link :href="route('admin.homepage.sections.edit', 'audience')" :active="request()->routeIs('admin.homepage.sections.edit') && request()->route('key') === 'audience'">Audience Tiles</x-admin.sidebar-sub-link>
+                                <x-admin.sidebar-sub-link :href="route('admin.homepage.sections.edit', 'shop_by_sport')" :active="request()->routeIs('admin.homepage.sections.edit') && request()->route('key') === 'shop_by_sport'">Shop By Sport</x-admin.sidebar-sub-link>
+                                <x-admin.sidebar-sub-link :href="route('admin.homepage.sections.edit', 'new_arrivals')" :active="request()->routeIs('admin.homepage.sections.edit') && request()->route('key') === 'new_arrivals'">New Arrivals</x-admin.sidebar-sub-link>
+                                <x-admin.sidebar-sub-link :href="route('admin.homepage.sections.edit', 'shop_by_category')" :active="request()->routeIs('admin.homepage.sections.edit') && request()->route('key') === 'shop_by_category'">Shop By Category</x-admin.sidebar-sub-link>
+                                <x-admin.sidebar-sub-link :href="route('admin.homepage.sections.edit', 'best_choices')" :active="request()->routeIs('admin.homepage.sections.edit') && request()->route('key') === 'best_choices'">Best Choices For You</x-admin.sidebar-sub-link>
+                                <x-admin.sidebar-sub-link :href="route('admin.homepage.sections.edit', 'season_sale')" :active="request()->routeIs('admin.homepage.sections.edit') && request()->route('key') === 'season_sale'">Season Sale</x-admin.sidebar-sub-link>
+                                <x-admin.sidebar-sub-link :href="route('admin.homepage.sections.edit', 'make_it_yours')" :active="request()->routeIs('admin.homepage.sections.edit') && request()->route('key') === 'make_it_yours'">Make It Yours</x-admin.sidebar-sub-link>
+                                <x-admin.sidebar-sub-link :href="route('admin.homepage.sections.edit', 'design_process')" :active="request()->routeIs('admin.homepage.sections.edit') && request()->route('key') === 'design_process'">Design Process</x-admin.sidebar-sub-link>
+                            @elseif($canAdmin('homepage_slides.view'))
+                                <x-admin.sidebar-sub-link :href="route('admin.homepage-slides.index')" :active="request()->routeIs('admin.homepage-slides.*')">Hero Banner</x-admin.sidebar-sub-link>
+                            @endif
                         </x-admin.sidebar-group>
-                    @elseif($canAdmin('homepage_slides.view'))
-                        <x-admin.sidebar-link :href="route('admin.homepage-slides.index')" :active="request()->routeIs('admin.homepage-slides.*')" icon="▧">Homepage Slider</x-admin.sidebar-link>
                     @endif
                     @if($canAdmin('newsletters.view'))
                         <x-admin.sidebar-link :href="route('admin.newsletter-subscribers.index')" :active="request()->routeIs('admin.newsletter-subscribers.*')" icon="@">Newsletter Emails</x-admin.sidebar-link>

@@ -38,7 +38,7 @@ export interface DesktopNavItem {
 export const DESKTOP_NAV_ITEMS: DesktopNavItem[] = [
   { key: 'shop', label: 'SHOP', href: '/products', lookupLabels: ['Shop Products', 'All Products'], megaMenuKey: 'shop' },
   { key: 'sports', label: 'SPORTS', href: '/categories', lookupLabels: ['Sports'] },
-  { key: 'men', label: 'MEN', href: '/products?q=men', lookupLabels: ['Men'] },
+  { key: 'men', label: 'MEN', href: '/men', lookupLabels: [] },
   { key: 'women', label: 'WOMEN', href: '/products?q=women', lookupLabels: ['Women'] },
   { key: 'kids', label: 'KIDS', href: '/products?q=kids', lookupLabels: ['Kids'] },
   { key: 'custom-teamwear', label: 'CUSTOM TEAMWEAR', href: '/bulk-quote', lookupLabels: ['Custom Teamwear', 'Bulk Quote'] },

@@ -15,7 +15,7 @@ test('homepage typography uses the centralized Expose type system from the suppl
   const hero = read('resources/js/storefront/features/home/components/HomeHero.vue');
 
   assert.match(index, /@import '\.\/fonts\.css';/);
-  assert.match(blade, /api\.fontshare\.com\/v2\/css\?f\[\]=expose@400,500,700,900&display=swap/);
+  assert.match(blade, /api\.fontshare\.com\/v2\/css\?f\[\]=expose@400,500,700,800,900&display=swap/);
   assert.match(fonts, /font-family:\s*'Expose Local'/);
   assert.match(fonts, /Expose-Regular\.woff2/);
   assert.match(fonts, /Expose-Medium\.woff2/);
@@ -41,10 +41,10 @@ test('homepage typography uses the centralized Expose type system from the suppl
   assert.match(tokens, /--np-type-cta-regular-size:\s*16px/);
   assert.match(tokens, /--np-type-cta-small-size:\s*14px/);
 
-  assert.match(tokens, /--np-home-hero-title-size:\s*var\(--np-type-title-1-size\)/);
+  assert.match(tokens, /--np-home-hero-title-size:\s*40px/);
   assert.match(tokens, /--np-home-hero-title-weight:\s*var\(--np-type-title-weight\)/);
-  assert.match(tokens, /--np-home-hero-copy-size:\s*var\(--np-type-body-1-size\)/);
-  assert.match(tokens, /--np-home-section-title-size:\s*var\(--np-type-title-3-size\)/);
+  assert.match(tokens, /--np-home-hero-copy-size:\s*16px/);
+  assert.match(tokens, /--np-home-section-title-size:\s*21px/);
   assert.match(tokens, /--np-home-section-title-weight:\s*var\(--np-type-title-weight\)/);
 
   assert.match(typography, /letter-spacing:\s*0;/);

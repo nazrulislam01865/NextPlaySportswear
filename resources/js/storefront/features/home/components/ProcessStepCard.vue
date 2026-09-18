@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Heart, MousePointer2 } from 'lucide-vue-next';
-import type { HomeProcessStep } from '../types/home.types';
+import type { HomeDesignProcessItem } from '../types/home.types';
 import type { StorefrontProduct } from '../../../types/product';
 
 const props = withDefaults(defineProps<{
-  step: HomeProcessStep;
+  step: HomeDesignProcessItem;
   index: number;
   visual?: 'product' | 'placeholder';
   previewProduct?: StorefrontProduct | null;
+  image?: string | null;
+  imageAlt?: string | null;
 }>(), {
   visual: 'placeholder',
   previewProduct: null,
@@ -16,6 +18,8 @@ const props = withDefaults(defineProps<{
 
 const stepNumber = computed(() => String(props.index + 1).padStart(2, '0'));
 const previewImage = computed(() => props.previewProduct?.image || '/images/storefront-vue/design-process.png');
+const configuredImage = computed(() => String(props.image || '').trim() || null);
+const configuredAlt = computed(() => String(props.imageAlt || '').trim() || props.step.title || 'Design process');
 const previewTitle = computed(() => props.previewProduct?.short_title || props.previewProduct?.title || 'Custom Teamwear Product');
 const previewMeta = computed(() => {
   const values = [props.previewProduct?.category, props.previewProduct?.subcategory].filter(Boolean);
@@ -33,7 +37,8 @@ const previewMeta = computed(() => {
     </div>
 
     <div class="np-process-step__visual">
-      <template v-if="visual === 'product'">
+      <img v-if="configuredImage" class="np-process-step__cms-image" :src="configuredImage" :alt="configuredAlt" loading="lazy" />
+      <template v-else-if="visual === 'product'">
         <div class="np-process-step__preview-card" aria-hidden="true">
           <div class="np-process-step__preview-media">
             <img :src="previewImage" :alt="previewTitle" loading="lazy" />
@@ -99,6 +104,8 @@ const previewMeta = computed(() => {
   place-items: center;
   background: var(--np-color-white);
 }
+
+.np-process-step__cms-image { width: 100%; height: 100%; object-fit: cover; }
 
 .np-process-step__placeholder {
   font-family: var(--np-font-body);

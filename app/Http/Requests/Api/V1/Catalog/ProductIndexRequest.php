@@ -12,4 +12,20 @@ use App\Http\Requests\Catalog\ProductCatalogFilterRequest;
  */
 final class ProductIndexRequest extends ProductCatalogFilterRequest
 {
+    public function rules(): array
+    {
+        return [
+            ...parent::rules(),
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:60'],
+        ];
+    }
+
+    public function filters(): array
+    {
+        $filters = parent::filters();
+        $perPage = $this->validated('per_page');
+        $filters['per_page'] = $perPage === null ? null : (int) $perPage;
+
+        return $filters;
+    }
 }

@@ -63,9 +63,10 @@ test('design tokens centralize theme and typography', () => {
   }
 });
 
-test('only the root storefront route is cut over to the Vue host', () => {
+test('homepage and migrated Men route are cut over to the Vue host while legacy pages remain available', () => {
   const routes = read('routes/web.php');
   assert.match(routes, /Route::get\('\/', VueHomeController::class\)->name\('home'\)/);
+  assert.match(routes, /Route::get\('\/men', VueMenController::class\)->name\('men'\)/);
   assert.match(routes, /homepage\/latest-products/);
   assert.equal(fs.existsSync(path.join(root, 'resources/views/storefront/home.blade.php')), true);
 });

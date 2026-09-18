@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
 
 class HomepageSectionService
 {
-    private const CACHE_KEY = 'storefront.homepage-sections.v6';
+    private const CACHE_KEY = 'storefront.homepage-sections.v7';
 
     /** @var array<int, array<string, mixed>>|null */
     private ?array $runtimeSections = null;
@@ -50,9 +50,9 @@ class HomepageSectionService
             return $this->definitionSections();
         }
 
+        $approvedKeys = array_column(HomepageSectionRegistry::orderedDefinitions(), 'key');
         $rows = HomepageSection::query()
-            ->active()
-            ->whereNotIn('key', HomepageSectionRegistry::retiredKeys())
+            ->whereIn('key', $approvedKeys)
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get()
@@ -63,22 +63,10 @@ class HomepageSectionService
             $key = (string) $definition['key'];
             $row = $rows->get($key);
 
-            if ($row && ! $row->is_active) {
-                continue;
-            }
-
             $sections[] = HomepageSectionRegistry::mergeForView($key, $row);
         }
 
-        $customRows = $rows->reject(fn (HomepageSection $row, string $key): bool => HomepageSectionRegistry::definition($key) !== null || HomepageSectionRegistry::isRetired((string) $key));
-        foreach ($customRows as $row) {
-            if ($row->is_active) {
-                $sections[] = HomepageSectionRegistry::mergeForView((string) $row->key, $row);
-            }
-        }
-
         return collect($sections)
-            ->where('is_active', true)
             ->sortBy(fn (array $section): int => (int) ($section['sort_order'] ?? 0))
             ->values()
             ->all();

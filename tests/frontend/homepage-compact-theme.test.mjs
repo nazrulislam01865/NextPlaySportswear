@@ -34,11 +34,11 @@ test('homepage typography is centralized through compact semantic design tokens'
     assert.match(tokens, new RegExp(token), `${token} must be centralized in tokens.css`);
   }
 
-  assert.match(tokens, /--np-home-section-title-size:\s*var\(--np-type-title-3-size\)/);
+  assert.match(tokens, /--np-home-section-title-size:\s*21px/);
   assert.match(tokens, /--np-home-section-title-weight:\s*var\(--np-type-title-weight\)/);
-  assert.match(tokens, /--np-home-product-title-size:\s*var\(--np-type-body-2-size\)/);
-  assert.match(tokens, /--np-home-product-price-size:\s*var\(--np-type-cta-large-size\)/);
-  assert.match(tokens, /--np-home-product-action-size:\s*13px/);
+  assert.match(tokens, /--np-home-product-title-size:\s*16px/);
+  assert.match(tokens, /--np-home-product-price-size:\s*20px/);
+  assert.match(tokens, /--np-home-product-action-size:\s*16\.5px/);
 });
 
 test('homepage sections consume compact typography tokens instead of oversized local declarations', () => {

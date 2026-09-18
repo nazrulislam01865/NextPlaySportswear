@@ -38,17 +38,13 @@ class HomepageApiTest extends TestCase
                 'canonical' => 'https://example.test/',
             ],
             'slides' => [['id' => 1, 'title' => 'Hero']],
-            'homeSections' => [['key' => 'featured', 'title' => 'Featured']],
+            'homeSections' => [['key' => 'season_sale', 'component' => 'season_sale', 'title' => 'SEASON SALE', 'description' => 'UP TO 20% OFF', 'settings' => [], 'items' => [], 'image' => '/storage/homepage/sections/season_sale/banner.webp', 'is_active' => true]],
             'categories' => [['id' => 2, 'name' => 'Jerseys']],
-            'buyerPaths' => [['title' => 'Teams']],
             'featuredProducts' => [['id' => 10, 'name' => 'Featured Jersey']],
             'latestProducts' => [['id' => 11, 'name' => 'Latest Jersey']],
             'latestProductsSignature' => 'latest-signature',
             'bestSellingProducts' => [['id' => 12, 'name' => 'Best Seller']],
-            'bestSellingGearCategories' => [['id' => 3, 'name' => 'Team Gear']],
             'sports' => [['name' => 'Basketball']],
-            'processSteps' => [['title' => 'Design']],
-            'faqs' => [['question' => 'How long?', 'answer' => 'It depends.']],
             'navigation' => collect([$navigation]),
             'storefrontMenus' => [
                 'header' => collect([$navigation]),
@@ -66,12 +62,18 @@ class HomepageApiTest extends TestCase
         $response->assertOk()
             ->assertHeader('X-Request-ID')
             ->assertJsonPath('data.seo.title', 'NextPlay')
-            ->assertJsonPath('data.sections.0.key', 'featured')
+            ->assertJsonPath('data.sections.0.key', 'season_sale')
+            ->assertJsonPath('data.sections.0.title', 'SEASON SALE')
+            ->assertJsonPath('data.sections.0.image', '/storage/homepage/sections/season_sale/banner.webp')
             ->assertJsonPath('data.latest_products_signature', 'latest-signature')
             ->assertJsonPath('data.navigation.0.label', 'Shop Products')
             ->assertJsonPath('data.navigation.0.children.0.label', 'Jerseys')
             ->assertJsonPath('data.menus.header.0.url', '/products')
             ->assertJsonStructure(['data', 'meta', 'request_id']);
+
+        foreach (['buyer_paths', 'best_selling_gear_categories', 'process_steps', 'faqs'] as $legacyKey) {
+            $this->assertArrayNotHasKey($legacyKey, $response->json('data'));
+        }
 
         $body = strtolower($response->getContent());
         $this->assertStringNotContainsString('<html', $body);
@@ -86,15 +88,11 @@ class HomepageApiTest extends TestCase
             'slides' => [],
             'homeSections' => [],
             'categories' => [],
-            'buyerPaths' => [],
             'featuredProducts' => [],
             'latestProducts' => [],
             'latestProductsSignature' => 'signature',
             'bestSellingProducts' => [],
-            'bestSellingGearCategories' => [],
             'sports' => [],
-            'processSteps' => [],
-            'faqs' => [],
             'navigation' => collect(),
             'storefrontMenus' => [],
             'internal_debug_payload' => ['must_not' => 'leak'],

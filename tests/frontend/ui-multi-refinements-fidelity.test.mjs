@@ -51,7 +51,7 @@ test('hero carousel arrow icon is reduced to the same compact scale as standard 
   const tokens = read('resources/js/storefront/styles/tokens.css');
   const controls = read('resources/js/storefront/components/common/CarouselControls.vue');
 
-  assert.match(tokens, /--np-home-hero-control-icon-size:\s*14px;/);
+  assert.match(tokens, /--np-home-hero-control-icon-size:\s*18px;/);
   assert.match(controls, /\.np-carousel-controls--hero button svg\s*\{[^}]*width:\s*var\(--np-home-hero-control-icon-size\)/s);
   assert.match(controls, /\.np-carousel-controls--hero button svg\s*\{[^}]*height:\s*var\(--np-home-hero-control-icon-size\)/s);
 });

@@ -1,9 +1,11 @@
-<x-layouts.admin title="Homepage Slider">
+<x-layouts.admin title="Hero Banner Slides">
+    <div class="np-home-admin">
     <div class="mb-6 flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-card sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <p class="text-xs font-black uppercase tracking-[.16em] text-brand-red">Storefront content</p>
-            <h2 class="mt-1 text-2xl font-black text-brand-dark">Homepage Slider</h2>
-            <p class="mt-1 text-sm leading-6 text-slate-500">Upload 2560×960 px (8:3) desktop/tablet banner images, add optional mobile banners, hide or customize text, control buttons, schedule visibility, and set the display order.</p>
+            <a href="{{ route('admin.homepage.sections.edit', 'hero') }}" class="np-home-admin__secondary mb-3 inline-flex">← Back to Hero Banner</a>
+            <p class="np-home-admin__kicker uppercase">Storefront content</p>
+            <h2 class="np-home-admin__panel-title mt-1 text-2xl font-black">Hero Banner Slides</h2>
+            <p class="mt-1 text-sm leading-6 text-slate-500">Upload one responsive 2560×960 px (8:3) banner image per slide, customize text and buttons, schedule visibility, and set the display order.</p>
         </div>
         <a href="{{ route('admin.homepage-slides.create') }}" class="btn btn-red">Add Slide</a>
     </div>
@@ -43,5 +45,6 @@
             </table>
         </div>
         @if($slides->hasPages())<div class="border-t border-slate-100 p-5">{{ $slides->links('pagination.nextplay') }}</div>@endif
+    </div>
     </div>
 </x-layouts.admin>

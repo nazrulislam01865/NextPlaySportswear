@@ -1,51 +1,40 @@
-<x-layouts.admin
-    title="Homepage Sections"
-    eyebrow="Storefront"
-    subtitle="Edit the homepage section by section without touching code."
-    :storefront-url="route('home')"
->
-    <div class="space-y-6">
-        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                    <p class="text-xs font-black uppercase tracking-[.24em] text-brand-red">Homepage</p>
-                    <h2 class="mt-1 text-2xl font-black text-brand-ink">Manage homepage sections</h2>
-                    <p class="mt-2 max-w-3xl text-sm font-medium leading-6 text-slate-600">Each section has only the content it needs: heading, short description, buttons, image, and simple list items where required. Product and category cards still come from their existing catalog settings.</p>
-                </div>
-                <a href="{{ route('home') }}" target="_blank" rel="noopener" class="btn btn-white">View Homepage ↗</a>
-            </div>
-        </div>
-
-        <div class="grid gap-4 xl:grid-cols-2">
-            @foreach($sections as $section)
-                <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                    <div class="flex items-start justify-between gap-4">
-                        <div class="min-w-0">
-                            <div class="flex flex-wrap items-center gap-2">
-                                <span class="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black uppercase tracking-[.16em] text-slate-500">{{ $loop->iteration }}</span>
-                                <span @class([
-                                    'rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[.16em]',
-                                    'bg-emerald-50 text-emerald-700' => $section['is_active'],
-                                    'bg-slate-100 text-slate-500' => ! $section['is_active'],
-                                ])>{{ $section['is_active'] ? 'Active' : 'Hidden' }}</span>
-                            </div>
-                            <h3 class="mt-3 truncate text-xl font-black text-brand-ink">{{ $section['name'] }}</h3>
-                            <p class="mt-2 line-clamp-2 text-sm font-medium leading-6 text-slate-600">{{ ($section['title'] ?? null) ?: ($section['description'] ?? null) ?: 'This section controls display and order only.' }}</p>
-                        </div>
-                        <div class="shrink-0 rounded-2xl bg-brand-dark px-4 py-3 text-center text-white">
-                            <span class="block text-[10px] font-black uppercase tracking-[.18em] text-slate-300">Order</span>
-                            <strong class="text-lg">{{ $section['sort_order'] }}</strong>
-                        </div>
-                    </div>
-
-                    <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div class="text-xs font-bold text-slate-500">
-                            {{ count($section['items'] ?? []) }} item{{ count($section['items'] ?? []) === 1 ? '' : 's' }}
-                        </div>
-                        <a href="{{ route('admin.homepage.sections.edit', $section['key']) }}" class="btn btn-red">Edit Section</a>
-                    </div>
-                </article>
-            @endforeach
+<x-layouts.admin title="Homepage Controls" eyebrow="Storefront" subtitle="Manage the approved Vue homepage section by section." :storefront-url="route('home')">
+<div class="np-home-admin">
+    <div class="np-home-admin__hero mb-6 rounded-2xl p-6">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div><p class="np-home-admin__kicker">NEXTPLAY STOREFRONT</p><h2 class="text-2xl font-bold">Homepage Control Center</h2><p class="np-home-admin__muted mt-2 max-w-3xl text-sm">Edit only the sections used by the new Vue homepage. Product cards remain controlled by the product catalog.</p></div>
+            <a href="{{ route('home') }}" target="_blank" rel="noopener" class="np-home-admin__secondary">View Homepage ↗</a>
         </div>
     </div>
+
+    <div class="grid gap-4 xl:grid-cols-2">
+        @foreach($sections as $section)
+            <article class="np-home-admin__section-card rounded-2xl p-5">
+                <div class="flex gap-4">
+                    @if($section['thumbnail'])
+                        <img src="{{ $section['thumbnail'] }}" alt="" class="h-24 w-28 shrink-0 rounded-xl object-cover">
+                    @endif
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-2 text-xs font-bold">
+                            <span class="np-home-admin__order">{{ str_pad((string) $loop->iteration, 2, '0', STR_PAD_LEFT) }}</span>
+                            <span class="{{ $section['is_active'] ? 'np-home-admin__status--active' : 'np-home-admin__status--hidden' }} np-home-admin__status">{{ $section['is_active'] ? 'Visible' : 'Hidden' }}</span>
+                        </div>
+                        <h3 class="mt-3 text-lg font-bold">{{ $section['name'] }}</h3>
+                        <p class="np-home-admin__muted mt-1 text-sm">{{ $section['title'] ?: 'Section settings and visibility' }}</p>
+                        <div class="mt-3 flex flex-wrap gap-3 text-xs">
+                            @if($section['item_count'] !== null)<span>{{ $section['item_count'] }} configured item{{ $section['item_count'] === 1 ? '' : 's' }}</span>@endif
+                            @if($section['slide_count'] !== null)<span>{{ $section['slide_count'] }} hero slide{{ $section['slide_count'] === 1 ? '' : 's' }}</span>@endif
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-5 flex flex-wrap justify-end gap-2">
+                    @if($section['key'] === 'hero' && $canManageSlides)
+                        <a href="{{ route('admin.homepage-slides.index') }}" class="np-home-admin__secondary">Manage Slides</a>
+                    @endif
+                    <a href="{{ route('admin.homepage.sections.edit', $section['key']) }}" class="np-home-admin__primary rounded-xl px-4 py-2 font-bold">Edit Section</a>
+                </div>
+            </article>
+        @endforeach
+    </div>
+</div>
 </x-layouts.admin>

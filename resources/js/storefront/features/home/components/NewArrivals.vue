@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import AppContainer from '../../../components/ui/AppContainer.vue';
 import ProductCarousel from '../../../components/common/ProductCarousel.vue';
 import type { StorefrontProduct } from '../../../types/product';
+import type { HomeSection } from '../types/home.types';
+import { sectionTitle } from '../utils/homeSection';
 
-defineProps<{ products: StorefrontProduct[]; busyProductId?: number|null }>();
+const props = defineProps<{ products: StorefrontProduct[]; busyProductId?: number|null; section?: HomeSection }>();
+const title = computed(() => sectionTitle(props.section, 'NEW ARRIVALS'));
 const emit = defineEmits<{ add:[product:StorefrontProduct]; wishlist:[product:StorefrontProduct] }>();
 
 const carouselBreakpoints = {
@@ -18,7 +22,7 @@ const carouselBreakpoints = {
   <section class="np-section np-products-section">
     <AppContainer class="np-new-arrivals__container">
       <ProductCarousel
-        title="NEW ARRIVALS"
+        :title="title"
         :products="products"
         :busy-product-id="busyProductId"
         card-variant="new-arrivals"
@@ -41,8 +45,8 @@ const carouselBreakpoints = {
 }
 
 .np-new-arrivals__container {
-  max-width:min(1928px, calc(100vw - 24px));
-  padding-inline:clamp(24px, 3vw, 60px);
+  max-width:min(var(--np-showcase-max), calc(100vw - 24px));
+  padding-inline:var(--np-showcase-gutter);
 }
 
 .np-products-section :deep(.np-section-head) {
@@ -50,7 +54,7 @@ const carouselBreakpoints = {
 }
 
 .np-products-section :deep(.np-section-title) {
-  font-size:var(--np-home-section-title-size);
+  font-size:var(--np-home-new-arrivals-title-size);
   line-height:var(--np-type-title-3-line-height);
   letter-spacing:0;
 }

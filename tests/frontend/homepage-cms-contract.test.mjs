@@ -1,0 +1,28 @@
+import assert from 'node:assert/strict';
+import { readFileSync, existsSync } from 'node:fs';
+const types = readFileSync(new URL('../../resources/js/storefront/features/home/types/home.types.ts', import.meta.url), 'utf8');
+const helperUrl = new URL('../../resources/js/storefront/features/home/utils/homeSection.ts', import.meta.url);
+assert.ok(types.includes('settings?: Record<string, unknown>'));
+for (const oldKey of ['buyer_paths', 'process_steps', 'faqs', 'best_selling_gear_categories']) assert.ok(!types.includes(oldKey), `Obsolete HomePageData key remains: ${oldKey}`);
+assert.ok(existsSync(helperUrl));
+const helper = readFileSync(helperUrl, 'utf8');
+const processStep = readFileSync(new URL('../../resources/js/storefront/features/home/components/ProcessStepCard.vue', import.meta.url), 'utf8');
+for (const name of ['sectionIsActive', 'sectionTitle', 'sectionItems', 'sectionSettings']) assert.ok(helper.includes(`export function ${name}`), `Missing helper ${name}`);
+assert.ok(processStep.includes('HomeDesignProcessItem'), 'ProcessStepCard must use the CMS design-process item type');
+assert.ok(!processStep.includes('HomeProcessStep'), 'Retired HomeProcessStep type must not remain');
+console.log('Homepage CMS contract passed.');
+
+const files = (name) => readFileSync(new URL(`../../resources/js/storefront/features/home/components/${name}.vue`, import.meta.url), 'utf8');
+const page = readFileSync(new URL('../../resources/js/storefront/features/home/pages/HomePage.vue', import.meta.url), 'utf8');
+assert.ok(files('AudienceTiles').includes('sectionItems<HomeAudienceItem>'));
+assert.ok(files('ShopBySport').includes('sectionSettings<HomeShopBySportSettings>'));
+assert.ok(files('NewArrivals').includes("sectionTitle(props.section, 'NEW ARRIVALS')"));
+assert.ok(files('ShopByCategory').includes('sectionItems<HomeCategoryItem>'));
+assert.ok(files('BestChoices').includes('sectionSettings<HomeBestChoicesSettings>'));
+assert.ok(!files('SeasonSaleBanner').includes('slides?.[1]'));
+assert.ok(files('MakeItYours').includes('props.section'));
+assert.ok(files('DesignProcess').includes('sectionItems<HomeDesignProcessItem>'));
+assert.ok(files('ProcessStepCard').includes('image?: string | null'));
+assert.ok(page.includes('sectionIsActive'));
+for(const key of ['hero','audience','shop_by_sport','new_arrivals','shop_by_category','best_choices','season_sale','make_it_yours','design_process']) assert.ok(page.includes(`section('${key}')`), `HomePage missing ${key}`);
+console.log('Homepage CMS component wiring contract passed.');

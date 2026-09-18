@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\HomepageSectionRequest;
 use App\Models\Category;
 use App\Models\HomepageSection;
+use App\Models\HomepageSlide;
 use App\Services\Catalog\HomepageSectionMediaService;
 use App\Services\Storefront\HomepageSectionService;
 use App\Support\HomepageSectionRegistry;
@@ -24,22 +25,31 @@ class HomepageSectionController extends Controller
     public function index(): View
     {
         HomepageSectionRegistry::ensureRows(auth('admin')->id());
+        $canManageSlides = auth('admin')->user()?->canAdmin('homepage_slides.view') ?? false;
 
         $sections = HomepageSection::query()
-            ->whereNotIn('key', HomepageSectionRegistry::retiredKeys())
+            ->whereIn('key', array_column(HomepageSectionRegistry::orderedDefinitions(), 'key'))
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get()
-            ->map(fn (HomepageSection $section): array => HomepageSectionRegistry::mergeForView((string) $section->key, $section));
+            ->map(function (HomepageSection $section): array {
+                $merged = HomepageSectionRegistry::mergeForView((string) $section->key, $section);
+                $items = (array) ($merged['items'] ?? []);
 
-        return view('admin.homepage-sections.index', ['sections' => $sections]);
+                return array_merge($merged, [
+                    'item_count' => count($items),
+                    'thumbnail' => $merged['image'] ?? collect($items)->pluck('image')->filter()->first(),
+                    'slide_count' => $section->key === 'hero' ? HomepageSlide::query()->count() : null,
+                ]);
+            });
+
+        return view('admin.homepage-sections.index', compact('sections', 'canManageSlides'));
     }
 
     public function edit(string $key): View
     {
         $homepageSection = $this->sectionForKey($key);
         $definition = HomepageSectionRegistry::definition((string) $homepageSection->key);
-
         abort_unless($definition !== null, 404);
 
         return view('admin.homepage-sections.edit', [
@@ -47,6 +57,8 @@ class HomepageSectionController extends Controller
             'definition' => $definition,
             'viewSection' => HomepageSectionRegistry::mergeForView((string) $homepageSection->key, $homepageSection),
             'categoryOptions' => $this->categoryOptions(),
+            'slideCount' => $key === 'hero' ? HomepageSlide::query()->count() : null,
+            'canManageSlides' => auth('admin')->user()?->canAdmin('homepage_slides.view') ?? false,
         ]);
     }
 
@@ -58,8 +70,16 @@ class HomepageSectionController extends Controller
             $payload = $request->payload();
             $payload['updated_by'] = $request->user()->id;
 
-            $homepageSection->update($payload);
+            $homepageSection->fill(collect($payload)->except('items')->all());
+            $homepageSection->save();
+
             $this->media->sync($homepageSection, $request);
+
+            $homepageSection->settings = $payload['settings'] ?? [];
+            $homepageSection->is_active = (bool) $payload['is_active'];
+            $homepageSection->sort_order = (int) $payload['sort_order'];
+            $homepageSection->updated_by = $request->user()->id;
+            $homepageSection->save();
         });
 
         $this->sections->flushCache();

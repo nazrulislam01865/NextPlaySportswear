@@ -96,9 +96,9 @@ test('mega menu uses compact centralized typography and reduced height', () => {
 
   assert.match(tokens, /--np-mega-menu-height:\s*205px;/);
   assert.match(tokens, /--np-mega-menu-footer-height:\s*44px;/);
-  assert.match(tokens, /--np-mega-menu-heading-size:\s*14px;/);
-  assert.match(tokens, /--np-mega-menu-link-size:\s*13px;/);
-  assert.match(tokens, /--np-mega-menu-eyebrow-size:\s*13px;/);
+  assert.match(tokens, /--np-mega-menu-heading-size:\s*15px;/);
+  assert.match(tokens, /--np-mega-menu-link-size:\s*14px;/);
+  assert.match(tokens, /--np-mega-menu-eyebrow-size:\s*14px;/);
   assert.match(tokens, /--np-mega-menu-promo-size:\s*12px;/);
   assert.match(tokens, /--np-mega-menu-social-label-size:\s*11px;/);
   assert.match(tokens, /--np-mega-menu-footer-link-size:\s*11px;/);

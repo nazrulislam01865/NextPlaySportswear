@@ -5,9 +5,13 @@ import { computed } from 'vue';
 const props = withDefaults(defineProps<{
   variant?: 'default' | 'hero' | 'compact' | 'showcase';
   activeIndex?: number;
+  previousDisabled?: boolean;
+  nextDisabled?: boolean;
 }>(), {
   variant: 'default',
   activeIndex: 0,
+  previousDisabled: false,
+  nextDisabled: false,
 });
 
 const emit = defineEmits<{ previous: []; next: [] }>();
@@ -21,7 +25,7 @@ const activeMarkerIndex = computed(() => {
 
 <template>
   <div class="np-carousel-controls" :class="`np-carousel-controls--${variant}`" aria-label="Carousel controls">
-    <button type="button" aria-label="Previous" @click="emit('previous')">
+    <button type="button" aria-label="Previous" :disabled="previousDisabled" @click="emit('previous')">
       <ArrowLeft :size="variant === 'compact' ? 12 : 14" :stroke-width="1.6" />
     </button>
 
@@ -42,7 +46,7 @@ const activeMarkerIndex = computed(() => {
       </span>
     </span>
 
-    <button type="button" aria-label="Next" @click="emit('next')">
+    <button type="button" aria-label="Next" :disabled="nextDisabled" @click="emit('next')">
       <ArrowRight :size="variant === 'compact' ? 12 : 14" :stroke-width="1.6" />
     </button>
   </div>
@@ -52,7 +56,8 @@ const activeMarkerIndex = computed(() => {
 .np-carousel-controls { display:grid; grid-template-columns:32px 22px 32px; align-items:center; }
 .np-carousel-controls button { display:grid; width:32px; height:32px; place-items:center; border:1px solid var(--np-color-border); background:#f8fafc; color:var(--np-color-navy-950); cursor:pointer; transition:background var(--np-transition-fast), color var(--np-transition-fast), border-color var(--np-transition-fast); }
 .np-carousel-controls__indicator { display:block; height:1px; background:#cfd7df; }
-.np-carousel-controls button:hover { background:var(--np-color-navy-950); color:#fff; }
+.np-carousel-controls button:hover:not(:disabled) { background:var(--np-color-navy-950); color:#fff; }
+.np-carousel-controls button:disabled { cursor:default; opacity:.45; }
 
 .np-carousel-controls--compact { grid-template-columns:28px 20px 28px; }
 .np-carousel-controls--compact button { width:28px; height:28px; background:#fff; }
@@ -87,7 +92,7 @@ const activeMarkerIndex = computed(() => {
   height:var(--np-home-showcase-indicator-dash-height);
   border-radius:0;
 }
-.np-carousel-controls--showcase button:hover { background:var(--np-color-navy-950); color:#fff; border-color:var(--np-color-navy-950); }
+.np-carousel-controls--showcase button:hover:not(:disabled) { background:var(--np-color-navy-950); color:#fff; border-color:var(--np-color-navy-950); }
 
 .np-carousel-controls--hero { grid-template-columns:var(--np-home-hero-control-size) var(--np-home-hero-control-track-width) var(--np-home-hero-control-size); }
 .np-carousel-controls--hero button { width:var(--np-home-hero-control-size); height:var(--np-home-hero-control-size); border-color:rgba(255,255,255,.78); background:rgba(6,31,68,.30); color:var(--np-color-white); }
@@ -119,7 +124,7 @@ const activeMarkerIndex = computed(() => {
   height:var(--np-home-hero-indicator-dash-height);
   border-radius:0;
 }
-.np-carousel-controls--hero button:hover { background:rgba(6,31,68,.62); color:var(--np-color-white); }
+.np-carousel-controls--hero button:hover:not(:disabled) { background:rgba(6,31,68,.62); color:var(--np-color-white); }
 
 @media (max-width:700px) {
   .np-carousel-controls--showcase { grid-template-columns:var(--np-home-showcase-control-width-mobile) var(--np-home-showcase-control-track-width-mobile) var(--np-home-showcase-control-width-mobile); }

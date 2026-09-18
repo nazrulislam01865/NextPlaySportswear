@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Facebook, Instagram, Music2, Youtube } from 'lucide-vue-next';
+import SocialBrandIcon from '../common/SocialBrandIcon.vue';
 import FooterLinkColumn from './FooterLinkColumn.vue';
 import BrandLogo from '../common/BrandLogo.vue';
 import AppButton from '../ui/AppButton.vue';
@@ -50,10 +50,10 @@ const customerLinks = [
       <div class="np-footer__inner np-footer__social-row">
         <span>Follow Us :</span>
         <nav class="np-footer__social" aria-label="Follow NextPlay">
-          <a class="np-footer__youtube" href="https://www.youtube.com/@nextplaysportswear" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><Youtube :size="17" :stroke-width="2" /></a>
-          <a class="np-footer__instagram" href="https://www.instagram.com/nextplaysportswear/" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><Instagram :size="17" :stroke-width="2" /></a>
-          <a class="np-footer__facebook" href="https://www.facebook.com/nextplaysportswear" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><Facebook :size="17" :stroke-width="2" /></a>
-          <a class="np-footer__tiktok" href="https://www.tiktok.com/@nextplaysportswear" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><Music2 :size="17" :stroke-width="2.2" /></a>
+          <a class="np-footer__youtube" href="https://www.youtube.com/@nextplaysportswear" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><SocialBrandIcon network="youtube" /></a>
+          <a class="np-footer__instagram" href="https://www.instagram.com/nextplaysportswear/" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><SocialBrandIcon network="instagram" /></a>
+          <a class="np-footer__facebook" href="https://www.facebook.com/nextplaysportswear" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><SocialBrandIcon network="facebook" /></a>
+          <a class="np-footer__tiktok" href="https://www.tiktok.com/@nextplaysportswear" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><SocialBrandIcon network="tiktok" /></a>
         </nav>
       </div>
     </div>
@@ -98,10 +98,10 @@ const customerLinks = [
 
 .np-footer__inner {
   width: 100%;
-  max-width: var(--np-container-max);
+  max-width: var(--np-showcase-max);
   margin-inline: auto;
   box-sizing: border-box;
-  padding-inline: var(--np-page-gutter);
+  padding-inline: var(--np-showcase-gutter);
 }
 
 .np-footer__main {

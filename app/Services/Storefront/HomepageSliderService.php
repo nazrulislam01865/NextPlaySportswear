@@ -6,12 +6,11 @@ use App\Models\HomepageSlide;
 use App\Support\PublicMedia;
 use App\Support\PublicUrl;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\QueryException;
 
 class HomepageSliderService
 {
-    private const CACHE_KEY = 'storefront.homepage-slider.v2';
+    private const CACHE_KEY = 'storefront.homepage-slider.v3';
 
     /** @var array<int, array<string, mixed>>|null */
     private ?array $runtimeSlides = null;
@@ -62,10 +61,6 @@ class HomepageSliderService
             'text_theme', 'overlay_color', 'overlay_opacity',
         ];
 
-        if (Schema::hasColumn('homepage_slides', 'mobile_image_path')) {
-            array_push($columns, 'mobile_image_path', 'mobile_image_url', 'mobile_image_alt');
-        }
-
         return HomepageSlide::query()
             ->storefrontVisible()
             ->orderBy('sort_order')
@@ -73,7 +68,6 @@ class HomepageSliderService
             ->get($columns)
             ->map(function (HomepageSlide $slide): ?array {
                 $image = $this->resolveImage($slide->image_path, $slide->image_url);
-                $mobileImage = $this->resolveImage($slide->mobile_image_path ?? null, $slide->mobile_image_url ?? null);
                 if ($image === null) {
                     return null;
                 }
@@ -98,8 +92,7 @@ class HomepageSliderService
                     'title' => $title,
                     'description' => $description,
                     'image' => $image,
-                    'mobile_image' => $mobileImage ?: $image,
-                    'alt' => (string) (($slide->mobile_image_alt ?? null) ?: $slide->image_alt ?: $slide->title ?: config('storefront.name').' promotion'),
+                    'alt' => (string) ($slide->image_alt ?: $slide->title ?: config('storefront.name').' promotion'),
                     'image_focal_position' => $this->enumValue($slide->image_focal_position, ['center', 'top', 'bottom', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right'], 'center'),
                     'show_content' => $showContent,
                     'show_eyebrow' => (bool) $slide->show_eyebrow,
@@ -168,7 +161,6 @@ class HomepageSliderService
         $base = [
             'id' => 0,
             'image_focal_position' => 'center',
-            'mobile_image' => null,
             'show_content' => true,
             'show_eyebrow' => true,
             'show_title' => true,

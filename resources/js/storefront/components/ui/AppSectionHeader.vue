@@ -8,12 +8,16 @@ withDefaults(defineProps<{
   controls?: boolean;
   controlsVariant?: 'default' | 'compact' | 'showcase';
   activeIndex?: number;
+  previousDisabled?: boolean;
+  nextDisabled?: boolean;
 }>(), {
   linkLabel: '',
   linkHref: '',
   controls: false,
   controlsVariant: 'default',
   activeIndex: 0,
+  previousDisabled: false,
+  nextDisabled: false,
 });
 
 const emit = defineEmits<{ previous: []; next: [] }>();
@@ -31,6 +35,8 @@ const emit = defineEmits<{ previous: []; next: [] }>();
         v-if="controls"
         :variant="controlsVariant"
         :active-index="activeIndex"
+        :previous-disabled="previousDisabled"
+        :next-disabled="nextDisabled"
         @previous="emit('previous')"
         @next="emit('next')"
       />

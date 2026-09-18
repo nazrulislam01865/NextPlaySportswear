@@ -32,10 +32,7 @@ function imagePosition(position?: string){ return (position || 'center').replace
     <Swiper :modules="[Autoplay]" :slides-per-view="1" :loop="effectiveSlides.length > 1" :allow-touch-move="false" :simulate-touch="false" :autoplay="{ delay: 7000, disableOnInteraction: false }" @swiper="setSwiper" @slide-change="setActiveIndex">
       <SwiperSlide v-for="(slide,index) in effectiveSlides" :key="slide.id ?? index">
         <article class="np-hero__slide">
-          <picture>
-            <source v-if="slide.mobile_image" media="(max-width:640px)" :srcset="slide.mobile_image"/>
-            <img :src="slide.image || 'https://i.pinimg.com/originals/8c/a5/a0/8ca5a08d215145b191f8a3eda395c50b.jpg'" :alt="slide.alt || slide.title || 'NextPlay sportswear'" :style="{ objectPosition: imagePosition(slide.image_focal_position) }" />
-          </picture>
+          <img :src="slide.image || 'https://i.pinimg.com/originals/8c/a5/a0/8ca5a08d215145b191f8a3eda395c50b.jpg'" :alt="slide.alt || slide.title || 'NextPlay sportswear'" :style="{ objectPosition: imagePosition(slide.image_focal_position) }" />
           <div class="np-hero__shade"></div>
           <div v-if="slide.show_content !== false" class="np-hero__content">
             <p v-if="slide.show_eyebrow && slide.eyebrow" class="np-hero__eyebrow">{{ slide.eyebrow }}</p>
@@ -66,7 +63,6 @@ function imagePosition(position?: string){ return (position || 'center').replace
 .np-hero :deep(.swiper-slide),
 .np-hero__slide { height: 100%; }
 .np-hero__slide { position: relative; }
-.np-hero__slide picture,
 .np-hero__slide img { display: block; width: 100%; height: 100%; }
 .np-hero__slide img { object-fit: cover; }
 .np-hero__shade {
@@ -109,7 +105,7 @@ function imagePosition(position?: string){ return (position || 'center').replace
   line-height: var(--np-type-body-1-line-height);
   color: var(--np-home-on-dark);
 }
-.np-hero__actions { display: flex; gap: 10px; margin-top: 32px; }
+.np-hero__actions { display: flex; gap: 10px; margin-top: 26px; }
 .np-hero__controls {
   position: absolute;
   z-index: 3;

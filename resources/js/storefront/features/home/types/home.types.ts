@@ -8,8 +8,8 @@ export interface HomeSlide {
   title?: string;
   description?: string;
   image?: string;
-  mobile_image?: string;
   alt?: string;
+  image_alt?: string;
   image_focal_position?: string;
   show_content?: boolean;
   show_eyebrow?: boolean;
@@ -26,6 +26,53 @@ export interface HomeSlide {
   overlay_rgba?: string;
 }
 
+export interface HomeSectionItem {
+  id?: string;
+  title?: string;
+  description?: string;
+  url?: string;
+  label?: string;
+  category_id?: number;
+  image?: string | null;
+  image_url?: string | null;
+  image_alt?: string | null;
+}
+
+export interface HomeAudienceItem extends HomeSectionItem {
+  id: 'men' | 'women' | 'kids';
+  title: string;
+  url: string;
+}
+
+export interface HomeSportItem extends HomeSectionItem {
+  id: string;
+  category_id?: number;
+}
+
+export interface HomeCategoryItem extends HomeSectionItem {
+  id: string;
+  category_id?: number;
+}
+
+export interface HomeDesignProcessItem extends HomeSectionItem {
+  id: string;
+  title: string;
+  description: string;
+}
+
+export interface HomeBestChoicesSettings extends Record<string, unknown> {
+  tabs: {
+    featured: { label: string; enabled: boolean };
+    popular: { label: string; enabled: boolean };
+    trending: { label: string; enabled: boolean };
+  };
+}
+
+export interface HomeShopBySportSettings extends Record<string, unknown> {
+  default_sport_id?: number | null;
+  quick_links: Array<{ id: string; label: string; url: string }>;
+}
+
 export interface HomeSection {
   key?: string;
   component?: string;
@@ -37,19 +84,10 @@ export interface HomeSection {
   secondary_label?: string | null;
   secondary_url?: string | null;
   image?: string | null;
-  mobile_image?: string | null;
   image_alt?: string | null;
-  items?: Array<Record<string, unknown>>;
-}
-
-export interface HomeProcessStep {
-  title: string;
-  description: string;
-}
-
-export interface HomeFaq {
-  question: string;
-  answer: string;
+  settings?: Record<string, unknown>;
+  is_active?: boolean;
+  items?: HomeSectionItem[];
 }
 
 export interface HomePageData {
@@ -57,15 +95,11 @@ export interface HomePageData {
   slides: HomeSlide[];
   sections: HomeSection[];
   categories: StorefrontCategory[];
-  buyer_paths: Array<Record<string, unknown>>;
   featured_products: StorefrontProduct[];
   latest_products: StorefrontProduct[];
   latest_products_signature: string;
   best_selling_products: StorefrontProduct[];
-  best_selling_gear_categories: StorefrontCategory[];
   sports: StorefrontCategory[];
-  process_steps: HomeProcessStep[];
-  faqs: HomeFaq[];
   navigation: NavigationItem[];
   menus: Record<string, NavigationItem[]>;
 }

@@ -42,7 +42,7 @@ test('new arrivals card uses prototype body typography rather than condensed dis
   assert.match(meta, /font-weight:\s*var\(--np-weight-regular\)/);
 
   const title = cssBlock(card, '.np-product-card--new-arrivals .np-product-card__title');
-  assert.match(title, /font-family:\s*var\(--np-font-body\)/);
+  assert.match(title, /font-family:\s*var\(--np-home-product-title-font-family\)/);
   assert.match(title, /font-size:\s*var\(--np-home-product-title-size\)/);
   assert.match(title, /font-weight:\s*var\(--np-home-product-title-weight\)/);
   assert.match(title, /line-height:\s*var\(--np-home-product-title-line-height\)/);
@@ -60,19 +60,21 @@ test('new arrivals card keeps the prototype vertical proportions', () => {
   assert.match(media, /aspect-ratio:\s*0\.86/);
 
   const body = cssBlock(card, '.np-product-card--new-arrivals .np-product-card__body');
-  assert.match(body, /min-height:\s*var\(--np-home-product-body-min-height\)/);
-  assert.match(body, /padding:\s*20px 20px 22px/);
+  assert.match(body, /height:\s*var\(--np-product-card-body-height\)/);
+  assert.match(body, /flex:\s*0 0 var\(--np-product-card-body-height\)/);
+  assert.match(body, /padding:\s*20px var\(--np-product-card-body-padding-inline\) 20px/);
 
   const price = cssBlock(card, '.np-product-card--new-arrivals :deep(.np-price)');
   assert.match(price, /margin-top:\s*auto/);
   assert.match(price, /padding-top:\s*18px/);
-  assert.match(price, /border-top:\s*1px solid var\(--np-home-divider\)/);
+  assert.match(price, /border-top:\s*1px solid var\(--np-product-card-border\)/);
 
   const priceStrong = cssBlock(card, '.np-product-card--new-arrivals :deep(.np-price strong)');
   assert.match(priceStrong, /font-size:\s*var\(--np-home-product-price-size\)/);
 
   const action = cssBlock(card, '.np-product-card--new-arrivals .np-product-card__action');
-  assert.match(action, /min-height:\s*var\(--np-home-product-action-height\)/);
+  assert.match(action, /height:\s*var\(--np-product-card-action-height\)/);
+  assert.match(action, /flex:\s*0 0 var\(--np-product-card-action-height\)/);
   assert.match(action, /font-size:\s*var\(--np-home-product-action-size\)/);
 });
 
@@ -104,27 +106,31 @@ test('new arrivals product-card typography and spacing use the approved centrali
   const section = read('resources/js/storefront/features/home/components/NewArrivals.vue');
 
   for (const declaration of [
-    '--np-home-product-meta-size: 11px',
-    '--np-home-product-title-size: var(--np-type-body-2-size)',
-    '--np-home-product-title-weight: var(--np-type-body-2-weight)',
-    '--np-home-product-price-size: var(--np-type-cta-large-size)',
+    '--np-home-product-meta-size: 13px',
+    '--np-home-product-title-size: 16px',
+    '--np-home-product-title-weight: 400',
+    '--np-home-product-price-size: 20px',
     '--np-home-product-compare-price-size: 12px',
-    '--np-home-product-body-min-height: 182px',
+    '--np-product-card-body-height: 162.5px',
     '--np-home-product-body-min-height-mobile: 176px',
-    '--np-home-product-action-height: 48px',
+    '--np-product-card-action-height: 49px',
     '--np-home-new-arrivals-padding-top: 48px',
+    '--np-home-new-arrivals-title-size: var(--np-home-section-title-size)',
   ]) {
     assert.match(tokens, new RegExp(declaration.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
 
   const action = cssBlock(card, '.np-product-card--new-arrivals .np-product-card__action');
-  assert.match(action, /min-height:\s*var\(--np-home-product-action-height\)/);
+  assert.match(action, /height:\s*var\(--np-product-card-action-height\)/);
+  assert.match(action, /flex:\s*0 0 var\(--np-product-card-action-height\)/);
 
   const compare = cssBlock(card, '.np-product-card--new-arrivals :deep(.np-price del)');
   assert.match(compare, /font-size:\s*var\(--np-home-product-compare-price-size\)/);
 
   const sectionBlock = cssBlock(section, '.np-products-section');
   assert.match(sectionBlock, /padding-top:\s*var\(--np-home-new-arrivals-padding-top\)/);
+  const sectionTitle = cssBlock(section, '.np-products-section :deep(.np-section-title)');
+  assert.match(sectionTitle, /font-size:\s*var\(--np-home-new-arrivals-title-size\)/);
   assert.match(card, /@media\(max-width:640px\)[\s\S]*\.np-product-card--new-arrivals \.np-product-card__body \{[^}]*min-height:\s*var\(--np-home-product-body-min-height-mobile\)/);
 });
 
@@ -159,4 +165,13 @@ test('only Make It Yours may force the CUSTOMIZE product-card action', () => {
   assert.doesNotMatch(newArrivals, /force-customize/);
   assert.doesNotMatch(bestChoices, /force-customize/);
   assert.match(card, /props\.forceCustomize\s*\|\|\s*props\.product\.is_customizable/);
+});
+
+test('new arrivals prototype details panel stays white rather than dark', () => {
+  const tokens = read('resources/js/storefront/styles/tokens.css');
+  const card = read('resources/js/storefront/components/common/ProductCard.vue');
+
+  assert.match(tokens, /--np-product-card-body-bg:\s*var\(--np-color-white\);/);
+  const body = cssBlock(card, '.np-product-card--new-arrivals .np-product-card__body');
+  assert.match(body, /background:\s*var\(--np-product-card-body-bg\)/);
 });
