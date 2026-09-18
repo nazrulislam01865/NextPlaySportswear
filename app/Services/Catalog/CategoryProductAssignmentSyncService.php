@@ -18,18 +18,14 @@ class CategoryProductAssignmentSyncService
     }
 
     /**
-     * Rebuild the storefront category assignment table from trusted product data.
+     * Rebuild storefront category assignments from trusted product fields and
+     * explicit safe category rules.
      *
-     * The previous broad text matcher could assign every product to unrelated
-     * categories such as Bags or Fan Gear because words like "sports", "team",
-     * or "jersey" appeared in many products. This repair is intentionally more
-     * strict:
-     * - optionally clears the existing category_product rows first;
-     * - rebuilds from products.category_id and products.subcategory_id;
-     * - stores direct assignments only on last-level (leaf) categories;
-     * - adds only safe rule-based categories from explicit category match_rules;
-     * - never changes the trusted leaf category primary unless a product has no
-     *   legacy category at all.
+     * The rebuild is deliberately batch-oriented: categories are loaded once,
+     * products are scanned in chunks, existing assignments are fetched once per
+     * chunk when requested, pivot rows are bulk-upserted, and legacy product
+     * category fields are synchronized with one CASE update per chunk. This keeps
+     * query growth bounded by product chunks rather than by product/category rows.
      *
      * @return array<string, int>
      */
@@ -55,22 +51,199 @@ class CategoryProductAssignmentSyncService
             'products_without_category' => 0,
         ];
 
-        DB::transaction(function () use (&$stats, $resetExisting): void {
+        $categories = Category::query()
+            ->whereNull('deleted_at')
+            ->get(['id', 'parent_id', 'name', 'menu_label', 'slug', 'category_type', 'match_rules']);
+
+        if ($categories->isEmpty()) {
+            return $stats;
+        }
+
+        $categoriesById = $categories->keyBy(fn (Category $category): int => (int) $category->id);
+        $parentById = $categories->mapWithKeys(fn (Category $category): array => [
+            (int) $category->id => $category->parent_id === null ? null : (int) $category->parent_id,
+        ]);
+        $parentIds = $categories->pluck('parent_id')
+            ->filter(fn ($id): bool => $id !== null)
+            ->map(fn ($id): int => (int) $id)
+            ->flip();
+        $leafCategoryIds = $categories
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->reject(fn (int $id): bool => $parentIds->has($id))
+            ->flip();
+        $ruleCategories = collect($this->trustedRuleCategoryMap($categories))
+            ->filter(fn (array $rules, int $categoryId): bool => $leafCategoryIds->has($categoryId))
+            ->all();
+
+        DB::transaction(function () use (
+            &$stats,
+            $resetExisting,
+            $categoriesById,
+            $parentById,
+            $leafCategoryIds,
+            $ruleCategories,
+        ): void {
             if ($resetExisting) {
                 $stats['assignments_deleted'] = (int) DB::table('category_product')->count();
                 DB::table('category_product')->delete();
             } else {
-                $leafIds = Category::query()->leaf()->pluck('id');
+                $leafIds = $leafCategoryIds->keys()->all();
                 $deleteQuery = DB::table('category_product');
-                if ($leafIds->isNotEmpty()) {
-                    $deleteQuery->whereNotIn('category_id', $leafIds->all());
+                if ($leafIds !== []) {
+                    $deleteQuery->whereNotIn('category_id', $leafIds);
                 }
-                $stats['assignments_deleted'] += (int) $deleteQuery->delete();
+                $stats['assignments_deleted'] = (int) $deleteQuery->delete();
             }
 
-            $this->syncFromLegacyProductCategories($stats);
-            $this->syncFromTrustedMatchRules($stats);
-            $this->ensureSinglePrimaryPerProduct($stats);
+            Product::withTrashed()
+                ->select([
+                    'id', 'category_id', 'subcategory_id', 'name', 'slug', 'sku', 'product_type', 'brand',
+                    'short_description', 'description_html', 'features', 'specifications', 'tags', 'sort_order',
+                ])
+                ->orderBy('id')
+                ->chunkById(300, function (Collection $products) use (
+                    &$stats,
+                    $resetExisting,
+                    $categoriesById,
+                    $parentById,
+                    $leafCategoryIds,
+                    $ruleCategories,
+                ): void {
+                    $productIds = $products->pluck('id')->map(fn ($id): int => (int) $id)->all();
+                    $existingByProduct = $resetExisting
+                        ? collect()
+                        : DB::table('category_product')
+                            ->whereIn('product_id', $productIds)
+                            ->get(['product_id', 'category_id', 'is_primary', 'is_featured', 'sort_order'])
+                            ->groupBy(fn ($row): int => (int) $row->product_id);
+
+                    $assignmentRows = [];
+                    $legacyUpdates = [];
+                    $now = now();
+
+                    foreach ($products as $product) {
+                        $productId = (int) $product->id;
+                        $stats['products_scanned']++;
+                        $stats['trusted_rule_products_scanned']++;
+
+                        $rawLegacyIds = collect([$product->category_id, $product->subcategory_id])
+                            ->filter(fn ($id): bool => $id !== null && (int) $id > 0)
+                            ->map(fn ($id): int => (int) $id)
+                            ->unique()
+                            ->values();
+
+                        if ($rawLegacyIds->isEmpty()) {
+                            $stats['products_without_category']++;
+                        } else {
+                            $stats['products_with_legacy_category']++;
+                        }
+
+                        $legacyLeafIds = $rawLegacyIds
+                            ->filter(fn (int $categoryId): bool => $leafCategoryIds->has($categoryId))
+                            ->values();
+                        $stats['invalid_category_references'] += $rawLegacyIds->count() - $legacyLeafIds->count();
+
+                        $legacyNames = $this->legacyCategoryNamesForProduct($product, $categoriesById, $parentById);
+                        $text = $this->productSearchText($product);
+                        $matchedRuleIds = collect();
+
+                        foreach ($ruleCategories as $categoryId => $rules) {
+                            if ($this->rulesMatchProduct($rules, $text, $legacyNames)) {
+                                $matchedRuleIds->push((int) $categoryId);
+                            }
+                        }
+
+                        $matchedRuleIds = $matchedRuleIds->unique()->values();
+                        if ($matchedRuleIds->isNotEmpty()) {
+                            $stats['trusted_rule_products_matched']++;
+                        }
+
+                        $existingRows = collect($existingByProduct->get($productId, []))
+                            ->filter(fn ($row): bool => $leafCategoryIds->has((int) $row->category_id));
+                        $existingIds = $existingRows
+                            ->pluck('category_id')
+                            ->map(fn ($id): int => (int) $id)
+                            ->unique()
+                            ->values();
+
+                        $assignmentIds = ($resetExisting ? collect() : $existingIds)
+                            ->merge($legacyLeafIds)
+                            ->merge($matchedRuleIds)
+                            ->filter(fn (int $categoryId): bool => $leafCategoryIds->has($categoryId))
+                            ->unique()
+                            ->sort()
+                            ->values();
+
+                        if ($assignmentIds->isEmpty()) {
+                            $legacyUpdates[] = [
+                                'id' => $productId,
+                                'category_id' => null,
+                                'subcategory_id' => null,
+                            ];
+                            continue;
+                        }
+
+                        $preferredId = (int) ($product->subcategory_id ?: $product->category_id ?: 0);
+                        if (! $assignmentIds->contains($preferredId)) {
+                            $existingPrimary = $existingRows->first(fn ($row): bool => (bool) $row->is_primary);
+                            $preferredId = $existingPrimary ? (int) $existingPrimary->category_id : 0;
+                        }
+                        if (! $assignmentIds->contains($preferredId)) {
+                            $preferredId = (int) ($legacyLeafIds->first() ?: $assignmentIds->first());
+                        }
+
+                        $existingPrimaryIds = $existingRows
+                            ->filter(fn ($row): bool => (bool) $row->is_primary)
+                            ->pluck('category_id')
+                            ->map(fn ($id): int => (int) $id)
+                            ->values();
+                        if ($existingPrimaryIds->count() !== 1 || (int) $existingPrimaryIds->first() !== $preferredId) {
+                            $stats['primary_fixed']++;
+                        }
+
+                        $existingMap = $existingRows->keyBy(fn ($row): int => (int) $row->category_id);
+                        foreach ($assignmentIds as $categoryId) {
+                            $existing = $existingMap->get($categoryId);
+                            $isLegacy = $legacyLeafIds->contains($categoryId);
+
+                            if ($existing) {
+                                $stats['assignments_existing']++;
+                            } elseif ($isLegacy) {
+                                $stats['legacy_assignments_created']++;
+                            } else {
+                                $stats['trusted_rule_assignments_created']++;
+                            }
+
+                            $assignmentRows[] = [
+                                'category_id' => (int) $categoryId,
+                                'product_id' => $productId,
+                                'is_primary' => (int) $categoryId === $preferredId,
+                                'is_featured' => $existing ? (bool) $existing->is_featured : false,
+                                'sort_order' => $existing ? (int) $existing->sort_order : (int) ($product->sort_order ?? 0),
+                                'created_at' => $now,
+                                'updated_at' => $now,
+                            ];
+                        }
+
+                        $rootId = $this->rootCategoryId($preferredId, $parentById);
+                        $legacyUpdates[] = [
+                            'id' => $productId,
+                            'category_id' => $rootId,
+                            'subcategory_id' => $rootId === $preferredId ? null : $preferredId,
+                        ];
+                    }
+
+                    foreach (array_chunk($assignmentRows, 1000) as $rows) {
+                        DB::table('category_product')->upsert(
+                            $rows,
+                            ['category_id', 'product_id'],
+                            ['is_primary', 'is_featured', 'sort_order', 'updated_at']
+                        );
+                    }
+
+                    $this->bulkUpdateProductLegacyCategories($legacyUpdates);
+                });
         });
 
         $this->flushCatalogCaches();
@@ -78,145 +251,66 @@ class CategoryProductAssignmentSyncService
         return $stats;
     }
 
-    /** @param array<string, int> $stats */
-    private function syncFromLegacyProductCategories(array &$stats): void
+    /**
+     * Synchronize legacy category_id/subcategory_id values with a single set-based
+     * update for the product chunk. This avoids one UPDATE per product.
+     *
+     * @param array<int, array{id:int,category_id:?int,subcategory_id:?int}> $updates
+     */
+    private function bulkUpdateProductLegacyCategories(array $updates): void
     {
-        $categories = Category::query()->leaf()->get(['id', 'parent_id']);
-        $validCategoryIds = $categories->pluck('id')->map(fn ($id): int => (int) $id)->flip();
-        Product::withTrashed()
-            ->select(['id', 'category_id', 'subcategory_id', 'sort_order'])
-            ->orderBy('id')
-            ->chunkById(300, function ($products) use (&$stats, $validCategoryIds): void {
-                foreach ($products as $product) {
-                    $stats['products_scanned']++;
+        if ($updates === []) {
+            return;
+        }
 
-                    $legacyCategoryIds = collect([$product->category_id, $product->subcategory_id])
-                        ->filter(fn ($id): bool => $id !== null && (int) $id > 0)
-                        ->map(fn ($id): int => (int) $id)
-                        ->unique()
-                        ->values();
+        $categoryCases = [];
+        $subcategoryCases = [];
+        $categoryBindings = [];
+        $subcategoryBindings = [];
+        $ids = [];
 
-                    if ($legacyCategoryIds->isEmpty()) {
-                        $stats['products_without_category']++;
-                        continue;
-                    }
+        foreach ($updates as $update) {
+            $id = (int) $update['id'];
+            $ids[] = $id;
+            $categoryCases[] = 'WHEN ? THEN ?';
+            $categoryBindings[] = $id;
+            $categoryBindings[] = $update['category_id'];
+            $subcategoryCases[] = 'WHEN ? THEN ?';
+            $subcategoryBindings[] = $id;
+            $subcategoryBindings[] = $update['subcategory_id'];
+        }
 
-                    $stats['products_with_legacy_category']++;
+        $idPlaceholders = implode(',', array_fill(0, count($ids), '?'));
+        $sql = 'UPDATE products SET '
+            .'category_id = CASE id '.implode(' ', $categoryCases).' ELSE category_id END, '
+            .'subcategory_id = CASE id '.implode(' ', $subcategoryCases).' ELSE subcategory_id END, '
+            .'updated_at = ? '
+            .'WHERE id IN ('.$idPlaceholders.')';
 
-                    $validLegacyCategoryIds = $legacyCategoryIds
-                        ->filter(fn (int $categoryId): bool => $validCategoryIds->has($categoryId))
-                        ->values();
-
-                    $stats['invalid_category_references'] += $legacyCategoryIds->count() - $validLegacyCategoryIds->count();
-
-                    if ($validLegacyCategoryIds->isEmpty()) {
-                        continue;
-                    }
-
-                    $legacyPrimaryId = (int) ($product->subcategory_id ?: $product->category_id);
-                    if (! $validCategoryIds->has($legacyPrimaryId)) {
-                        $legacyPrimaryId = (int) $validLegacyCategoryIds->first();
-                    }
-
-                    $assignmentIds = $validLegacyCategoryIds
-                        ->filter(fn (int $categoryId): bool => $validCategoryIds->has($categoryId))
-                        ->unique()
-                        ->values();
-
-                    foreach ($assignmentIds as $categoryId) {
-                        $created = $this->upsertAssignment(
-                            productId: (int) $product->id,
-                            categoryId: (int) $categoryId,
-                            isPrimary: (int) $categoryId === $legacyPrimaryId,
-                            sortOrder: (int) ($product->sort_order ?? 0),
-                            allowPrimaryPromotion: true,
-                        );
-
-                        if ($created) {
-                            $stats['legacy_assignments_created']++;
-                        } else {
-                            $stats['assignments_existing']++;
-                        }
-                    }
-                }
-            });
+        DB::update($sql, [
+            ...$categoryBindings,
+            ...$subcategoryBindings,
+            now(),
+            ...$ids,
+        ]);
     }
 
-    /** @param array<string, int> $stats */
-    private function syncFromTrustedMatchRules(array &$stats): void
+    /** @param Collection<int, int|null> $parentById */
+    private function rootCategoryId(int $categoryId, Collection $parentById): int
     {
-        $categories = Category::query()
-            ->whereNull('deleted_at')
-            ->get(['id', 'parent_id', 'name', 'menu_label', 'slug', 'category_type', 'match_rules']);
+        $current = $categoryId;
+        $visited = [];
 
-        if ($categories->isEmpty()) {
-            return;
+        while ($current > 0 && ! isset($visited[$current])) {
+            $visited[$current] = true;
+            $parent = $parentById->get($current);
+            if ($parent === null) {
+                return $current;
+            }
+            $current = (int) $parent;
         }
 
-        $leafCategoryIds = Category::query()->leaf()->pluck('id')->map(fn ($id): int => (int) $id)->flip();
-        $validCategoryIds = $leafCategoryIds;
-        $categoriesById = $categories->keyBy('id');
-        $parentById = $categories->pluck('parent_id', 'id')
-            ->map(fn ($parentId): ?int => $parentId === null ? null : (int) $parentId);
-        $ruleCategories = $this->trustedRuleCategoryMap($categories);
-
-        if ($ruleCategories === []) {
-            return;
-        }
-
-        Product::withTrashed()
-            ->select([
-                'id', 'category_id', 'subcategory_id', 'name', 'slug', 'sku', 'product_type', 'brand',
-                'short_description', 'description_html', 'features', 'specifications', 'tags', 'sort_order',
-            ])
-            ->orderBy('id')
-            ->chunkById(300, function ($products) use (&$stats, $ruleCategories, $validCategoryIds, $categoriesById, $parentById): void {
-                foreach ($products as $product) {
-                    $stats['trusted_rule_products_scanned']++;
-
-                    $text = $this->productSearchText($product);
-                    $legacyNames = $this->legacyCategoryNamesForProduct($product, $categoriesById, $parentById);
-                    $matchedIds = collect();
-
-                    foreach ($ruleCategories as $categoryId => $rules) {
-                        if ($this->rulesMatchProduct($rules, $text, $legacyNames)) {
-                            $matchedIds->push((int) $categoryId);
-                        }
-                    }
-
-                    $matchedIds = $matchedIds
-                        ->filter(fn (int $categoryId): bool => $validCategoryIds->has($categoryId))
-                        ->unique()
-                        ->values();
-
-                    if ($matchedIds->isEmpty()) {
-                        continue;
-                    }
-
-                    $stats['trusted_rule_products_matched']++;
-
-                    $assignmentIds = $matchedIds
-                        ->filter(fn (int $categoryId): bool => $validCategoryIds->has($categoryId))
-                        ->unique()
-                        ->values();
-
-                    foreach ($assignmentIds as $categoryId) {
-                        $created = $this->upsertAssignment(
-                            productId: (int) $product->id,
-                            categoryId: (int) $categoryId,
-                            isPrimary: false,
-                            sortOrder: (int) ($product->sort_order ?? 0),
-                            allowPrimaryPromotion: false,
-                        );
-
-                        if ($created) {
-                            $stats['trusted_rule_assignments_created']++;
-                        } else {
-                            $stats['assignments_existing']++;
-                        }
-                    }
-                }
-            });
+        return $categoryId;
     }
 
     /**
@@ -240,11 +334,6 @@ class CategoryProductAssignmentSyncService
             $sports = $this->normalizeTermList($rules['sports'] ?? []);
             $tagTerms = $this->normalizeTermList($rules['tag_terms'] ?? []);
 
-            // Keep only useful, explicit terms. This prevents broad terms from
-            // assigning products to unrelated categories. Sport terms are only
-            // trusted for sport landing categories; a regular category such as
-            // "Soccer Kits" should not receive every soccer product just because
-            // it has a broad sport hint in its rule JSON.
             $sports = ((string) $category->category_type === 'sport' ? $sports : collect())
                 ->filter(fn (string $term): bool => $this->isSafeRuleTerm($term, allowSingleWordSports: true))
                 ->values();
@@ -360,107 +449,8 @@ class CategoryProductAssignmentSyncService
         ]));
     }
 
-    private function upsertAssignment(int $productId, int $categoryId, bool $isPrimary, int $sortOrder, bool $allowPrimaryPromotion): bool
-    {
-        $existing = DB::table('category_product')
-            ->where('category_id', $categoryId)
-            ->where('product_id', $productId)
-            ->first();
-
-        if ($existing) {
-            if ($isPrimary && $allowPrimaryPromotion && ! (bool) $existing->is_primary) {
-                DB::table('category_product')
-                    ->where('product_id', $productId)
-                    ->update(['is_primary' => false, 'updated_at' => now()]);
-
-                DB::table('category_product')
-                    ->where('category_id', $categoryId)
-                    ->where('product_id', $productId)
-                    ->update(['is_primary' => true, 'updated_at' => now()]);
-            }
-
-            return false;
-        }
-
-        if ($isPrimary && $allowPrimaryPromotion) {
-            DB::table('category_product')
-                ->where('product_id', $productId)
-                ->update(['is_primary' => false, 'updated_at' => now()]);
-        }
-
-        DB::table('category_product')->insert([
-            'category_id' => $categoryId,
-            'product_id' => $productId,
-            'is_primary' => $isPrimary,
-            'is_featured' => false,
-            'sort_order' => $sortOrder,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        return true;
-    }
-
-    /** @param array<string, int> $stats */
-    private function ensureSinglePrimaryPerProduct(array &$stats): void
-    {
-        Product::withTrashed()
-            ->select(['id', 'category_id', 'subcategory_id'])
-            ->orderBy('id')
-            ->chunkById(300, function ($products) use (&$stats): void {
-                foreach ($products as $product) {
-                    $assignments = DB::table('category_product')
-                        ->where('product_id', $product->id)
-                        ->orderByDesc('is_primary')
-                        ->orderBy('sort_order')
-                        ->orderBy('category_id')
-                        ->get();
-
-                    if ($assignments->isEmpty()) {
-                        Product::withTrashed()->whereKey($product->id)->update([
-                            'category_id' => null,
-                            'subcategory_id' => null,
-                        ]);
-                        continue;
-                    }
-
-                    $preferredId = (int) ($product->subcategory_id ?: $product->category_id ?: 0);
-                    $primary = $preferredId > 0
-                        ? $assignments->firstWhere('category_id', $preferredId)
-                        : null;
-                    $primary ??= $assignments->firstWhere('is_primary', 1) ?: $assignments->first();
-
-                    $primaryId = (int) $primary->category_id;
-                    $currentPrimaryCount = $assignments->where('is_primary', 1)->count();
-
-                    if ($currentPrimaryCount !== 1 || ! (bool) $primary->is_primary) {
-                        DB::table('category_product')
-                            ->where('product_id', $product->id)
-                            ->update(['is_primary' => false, 'updated_at' => now()]);
-
-                        DB::table('category_product')
-                            ->where('product_id', $product->id)
-                            ->where('category_id', $primaryId)
-                            ->update(['is_primary' => true, 'updated_at' => now()]);
-
-                        $stats['primary_fixed']++;
-                    }
-
-                    $rootId = (int) (DB::table('category_closure')
-                        ->where('descendant_id', $primaryId)
-                        ->orderByDesc('depth')
-                        ->value('ancestor_id') ?: $primaryId);
-
-                    Product::withTrashed()->whereKey($product->id)->update([
-                        'category_id' => $rootId,
-                        'subcategory_id' => $rootId === $primaryId ? null : $primaryId,
-                    ]);
-                }
-            });
-    }
-
     /**
-     * @param  Collection<int, int|null>  $parentById
+     * @param Collection<int, int|null> $parentById
      * @return array<int>
      */
     private function categoryWithAncestorIds(int $categoryId, Collection $parentById): array

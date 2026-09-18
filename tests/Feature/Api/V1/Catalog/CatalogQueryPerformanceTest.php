@@ -33,6 +33,39 @@ class CatalogQueryPerformanceTest extends TestCase
         );
     }
 
+    public function test_filter_facet_query_count_does_not_grow_with_each_category_option(): void
+    {
+        $firstCategory = $this->category();
+        $this->product($firstCategory, 1);
+
+        $oneCategoryQueries = $this->queryCountFor('/api/v1/products?q=Performance');
+
+        foreach (range(2, 12) as $index) {
+            $category = Category::query()->create([
+                'name' => 'Performance Category '.$index,
+                'slug' => 'performance-category-'.$index,
+                'display_type' => 'collection',
+                'category_type' => 'standard',
+                'status' => 'active',
+                'description' => 'Facet query-count regression category.',
+                'image_url' => '/media/catalog/categories/performance-'.$index.'.jpg',
+                'image_alt' => 'Performance Category '.$index,
+                'is_active' => true,
+                'is_visible_in_catalog' => true,
+                'is_visible_in_menu' => true,
+            ]);
+            $this->product($category, $index);
+        }
+
+        $twelveCategoryQueries = $this->queryCountFor('/api/v1/products?q=Performance');
+
+        $this->assertLessThanOrEqual(
+            $oneCategoryQueries + 4,
+            $twelveCategoryQueries,
+            "Facet query count grew from {$oneCategoryQueries} to {$twelveCategoryQueries}; category/sport facets must use grouped counts, not per-option queries."
+        );
+    }
+
     public function test_product_detail_has_a_bounded_relation_query_count(): void
     {
         $category = $this->category();

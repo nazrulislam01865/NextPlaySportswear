@@ -31,10 +31,22 @@ class ProductCatalogService
     /** @var array<int, array<int, array<string, mixed>>> */
     private array $bestSellingProducts = [];
 
-    /** @var array<int, array<int>> */
+    /** @var array<string, array<int>> */
     private array $runtimeExpandedCategoryFilterIds = [];
 
+    /** @var array<string, array<int>> */
+    private array $runtimeNormalizedCategoryFilterIds = [];
+
     private ?\Illuminate\Support\Collection $runtimeCategoryFilterParentRows = null;
+
+    /** @var Collection<int, Category>|null */
+    private ?Collection $runtimeFacetCategories = null;
+
+    /** @var array<string, array{attribute_value_ids:array<int,int>,option_value_ids:array<int,int>}> */
+    private array $runtimeResolvedOptionFacetIds = [];
+
+    /** @var array<string, array<int,int>> */
+    private array $runtimeResolvedArtworkMethodIds = [];
 
     public function all(): array
     {
@@ -196,72 +208,150 @@ class ProductCatalogService
      * @param array<int, int|string> $selectedCategoryIds
      * @return array<int, array<string, mixed>>
      */
-    public function categoryFilterTree(array $selectedCategoryIds = []): array
+    public function categoryFilterTree(array $selectedCategoryIds = [], ?Builder $baseQuery = null): array
     {
         if (! Schema::hasTable('categories') || ! Schema::hasTable('products')) {
             return [];
         }
 
         $selectedCategoryIds = $this->normalizeCategoryFilterIds($selectedCategoryIds);
-        $cacheVersion = (int) Cache::get('catalog.category-facets.version', 1);
-        $cacheKey = 'catalog.products.category-filter-tree.icon-v4.'.$this->catalogCacheVersionSuffix();
-        $ttl = max(60, (int) config('catalog.facets_cache_seconds', 300));
+        $counts = $this->categoryFacetCountMap($baseQuery ?? Product::query()->published());
+        $categories = $this->facetCategoryRows()
+            ->filter(fn (Category $category): bool => $category->category_type !== 'sport');
+        $childrenByParent = $categories
+            ->filter(fn (Category $category): bool => $category->parent_id !== null)
+            ->groupBy(fn (Category $category): int => (int) $category->parent_id);
 
-        $tree = Cache::remember($cacheKey, $ttl, function (): array {
-            $parents = Category::query()
-                ->storefrontReachable()
-                ->whereNull('parent_id')
-                ->where('category_type', '!=', 'sport')
-                ->with(['children' => fn ($query) => $query->storefrontReachable()->ordered()])
-                ->ordered()
-                ->get();
-
-            return $parents
-                ->map(function (Category $parent): array {
-                    $children = $parent->children
-                        ->map(function (Category $child): array {
-                            return [
-                                'id' => (int) $child->id,
-                                'label' => $child->name,
-                                'slug' => $child->slug,
-                                'count' => $this->countProductsForCategoryFilter((int) $child->id),
-                            ];
-                        })
-                        ->filter(fn (array $child): bool => $child['count'] > 0)
-                        ->values()
-                        ->all();
-
-                    return [
-                        'id' => (int) $parent->id,
-                        'label' => $parent->name,
-                        'slug' => $parent->slug,
-                        'icon_url' => $parent->uploadedIconUrl(),
-                        'count' => $this->countProductsForCategoryFilter((int) $parent->id),
-                        'children' => $children,
-                    ];
-                })
-                ->filter(fn (array $parent): bool => $parent['count'] > 0 || $parent['children'] !== [])
-                ->values()
-                ->all();
-        });
-
-        return collect($tree)
-            ->map(function (array $parent) use ($selectedCategoryIds): array {
-                $parent['selected'] = in_array((int) $parent['id'], $selectedCategoryIds, true);
-                $parent['children'] = collect($parent['children'] ?? [])
-                    ->map(function (array $child) use ($selectedCategoryIds): array {
-                        $child['selected'] = in_array((int) $child['id'], $selectedCategoryIds, true);
-
-                        return $child;
+        return $categories
+            ->filter(fn (Category $category): bool => $category->parent_id === null)
+            ->map(function (Category $parent) use ($childrenByParent, $counts, $selectedCategoryIds): array {
+                $children = ($childrenByParent->get((int) $parent->id) ?? collect())
+                    ->map(function (Category $child) use ($counts, $selectedCategoryIds): array {
+                        return [
+                            'id' => (int) $child->id,
+                            'label' => $child->name,
+                            'slug' => $child->slug,
+                            'count' => (int) ($counts->get((int) $child->id, 0)),
+                            'selected' => in_array((int) $child->id, $selectedCategoryIds, true),
+                        ];
                     })
+                    ->filter(fn (array $child): bool => $child['count'] > 0 || $child['selected'])
                     ->values()
                     ->all();
-                $parent['has_selected_child'] = collect($parent['children'])->contains(fn (array $child): bool => (bool) ($child['selected'] ?? false));
 
-                return $parent;
+                $selected = in_array((int) $parent->id, $selectedCategoryIds, true);
+
+                return [
+                    'id' => (int) $parent->id,
+                    'label' => $parent->name,
+                    'slug' => $parent->slug,
+                    'icon_url' => $parent->uploadedIconUrl(),
+                    'count' => (int) ($counts->get((int) $parent->id, 0)),
+                    'selected' => $selected,
+                    'children' => $children,
+                    'has_selected_child' => collect($children)->contains(fn (array $child): bool => (bool) ($child['selected'] ?? false)),
+                ];
             })
+            ->filter(fn (array $parent): bool => $parent['count'] > 0 || $parent['children'] !== [] || $parent['selected'])
             ->values()
             ->all();
+    }
+
+    private function categoryFacetCountMap(Builder $baseQuery): Collection
+    {
+        if (! Schema::hasTable('category_product') || ! Schema::hasTable('products')) {
+            return collect();
+        }
+
+        $categories = $this->facetCategoryRows();
+        if ($categories->isEmpty()) {
+            return collect();
+        }
+
+        $parentById = $categories->mapWithKeys(fn (Category $category): array => [
+            (int) $category->id => $category->parent_id ? (int) $category->parent_id : null,
+        ]);
+        $validCategoryIds = $parentById->keys()->flip();
+        $sets = [];
+
+        DB::query()
+            ->fromSub($this->canonicalCategoryMembershipSubquery($baseQuery), 'facet_membership')
+            ->select(['facet_membership.product_id', 'facet_membership.category_id'])
+            ->distinct()
+            ->orderBy('facet_membership.product_id')
+            ->orderBy('facet_membership.category_id')
+            ->cursor()
+            ->each(function ($row) use (&$sets, $parentById, $validCategoryIds): void {
+                $productId = (int) $row->product_id;
+                $categoryId = (int) $row->category_id;
+
+                if ($productId <= 0 || $categoryId <= 0 || ! $validCategoryIds->has($categoryId)) {
+                    return;
+                }
+
+                $visited = [];
+                while ($categoryId > 0 && ! isset($visited[$categoryId])) {
+                    $visited[$categoryId] = true;
+                    $sets[$categoryId][$productId] = true;
+                    $categoryId = (int) ($parentById->get($categoryId) ?? 0);
+                }
+            });
+
+        return collect($sets)->map(fn (array $productIds): int => count($productIds));
+    }
+
+    private function canonicalCategoryMembershipSubquery(Builder $baseQuery)
+    {
+        $listing = $this->listingIdSubquery($baseQuery);
+
+        $pivot = DB::table('category_product as cp')
+            ->joinSub(clone $listing, 'facet_listing_pivot', fn ($join) => $join->on('facet_listing_pivot.id', '=', 'cp.product_id'))
+            ->join('categories as pivot_category', 'pivot_category.id', '=', 'cp.category_id')
+            ->whereNull('pivot_category.deleted_at')
+            ->whereNotExists(function ($query): void {
+                $query->selectRaw('1')
+                    ->from('categories as pivot_child')
+                    ->whereColumn('pivot_child.parent_id', 'pivot_category.id')
+                    ->whereNull('pivot_child.deleted_at');
+            })
+            ->selectRaw('cp.product_id AS product_id, cp.category_id AS category_id');
+
+        $legacy = DB::table('products as legacy_product')
+            ->joinSub(clone $listing, 'facet_listing_legacy', fn ($join) => $join->on('facet_listing_legacy.id', '=', 'legacy_product.id'))
+            ->whereNotExists(function ($query): void {
+                $query->selectRaw('1')
+                    ->from('category_product as existing_cp')
+                    ->join('categories as existing_category', 'existing_category.id', '=', 'existing_cp.category_id')
+                    ->whereColumn('existing_cp.product_id', 'legacy_product.id')
+                    ->whereNull('existing_category.deleted_at')
+                    ->whereNotExists(function ($childQuery): void {
+                        $childQuery->selectRaw('1')
+                            ->from('categories as existing_child')
+                            ->whereColumn('existing_child.parent_id', 'existing_category.id')
+                            ->whereNull('existing_child.deleted_at');
+                    });
+            })
+            ->whereRaw('COALESCE(legacy_product.subcategory_id, legacy_product.category_id) IS NOT NULL')
+            ->selectRaw('legacy_product.id AS product_id, COALESCE(legacy_product.subcategory_id, legacy_product.category_id) AS category_id');
+
+        return $pivot->unionAll($legacy);
+    }
+
+    /** @return Collection<int, Category> */
+    private function facetCategoryRows(): Collection
+    {
+        if ($this->runtimeFacetCategories !== null) {
+            return $this->runtimeFacetCategories;
+        }
+
+        if (! Schema::hasTable('categories')) {
+            return $this->runtimeFacetCategories = collect();
+        }
+
+        return $this->runtimeFacetCategories = Category::query()
+            ->storefrontReachable()
+            ->ordered()
+            ->get();
     }
 
     /**
@@ -281,6 +371,7 @@ class ProductCatalogService
             ->map(fn ($id): int => (int) $id)
             ->filter(fn (int $id): bool => $id > 0)
             ->unique()
+            ->sort()
             ->values()
             ->all();
 
@@ -288,11 +379,17 @@ class ProductCatalogService
             return $ids;
         }
 
-        return Category::query()
+        $cacheKey = implode(',', $ids);
+        if (array_key_exists($cacheKey, $this->runtimeNormalizedCategoryFilterIds)) {
+            return $this->runtimeNormalizedCategoryFilterIds[$cacheKey];
+        }
+
+        return $this->runtimeNormalizedCategoryFilterIds[$cacheKey] = Category::query()
             ->storefrontReachable()
             ->whereIn('id', $ids)
             ->pluck('id')
             ->map(fn ($id): int => (int) $id)
+            ->sort()
             ->values()
             ->all();
     }
@@ -315,23 +412,6 @@ class ProductCatalogService
         $this->whereProductsMatchAnyCategory($products, $filterCategoryIds);
     }
 
-    private function countProductsForCategoryFilter(int $categoryId): int
-    {
-        $categoryIds = $this->expandedCategoryFilterIds([$categoryId]);
-
-        if ($categoryIds === []) {
-            return 0;
-        }
-
-        $query = Product::query()->published();
-        $this->whereProductsMatchAnyCategory($query, $categoryIds);
-
-        return (int) $query
-            ->select('products.id')
-            ->distinct()
-            ->count('products.id');
-    }
-
     /**
      * Keeps the category-filter product query and the category-count query identical.
      * A product can belong through the legacy category_id/subcategory_id columns
@@ -352,13 +432,51 @@ class ProductCatalogService
             return $products->whereRaw('1 = 0');
         }
 
-        return $products->where(function (Builder $builder) use ($categoryIds): void {
-            $builder->whereIn('products.category_id', $categoryIds)
-                ->orWhereIn('products.subcategory_id', $categoryIds);
+        if (! Schema::hasTable('category_product')) {
+            return $products->where(function (Builder $builder) use ($categoryIds): void {
+                $builder->whereIn('products.subcategory_id', $categoryIds)
+                    ->orWhere(function (Builder $legacyRoot) use ($categoryIds): void {
+                        $legacyRoot->whereNull('products.subcategory_id')
+                            ->whereIn('products.category_id', $categoryIds);
+                    });
+            });
+        }
 
-            if (Schema::hasTable('category_product')) {
-                $builder->orWhereHas('categories', fn (Builder $categoryQuery) => $categoryQuery->whereIn('categories.id', $categoryIds));
-            }
+        return $products->where(function (Builder $builder) use ($categoryIds): void {
+            $builder->whereExists(function ($query) use ($categoryIds): void {
+                $query->selectRaw('1')
+                    ->from('category_product as filter_cp')
+                    ->join('categories as filter_category', 'filter_category.id', '=', 'filter_cp.category_id')
+                    ->whereColumn('filter_cp.product_id', 'products.id')
+                    ->whereIn('filter_cp.category_id', $categoryIds)
+                    ->whereNull('filter_category.deleted_at')
+                    ->whereNotExists(function ($childQuery): void {
+                        $childQuery->selectRaw('1')
+                            ->from('categories as filter_child')
+                            ->whereColumn('filter_child.parent_id', 'filter_category.id')
+                            ->whereNull('filter_child.deleted_at');
+                    });
+            })->orWhere(function (Builder $legacyFallback) use ($categoryIds): void {
+                $legacyFallback->whereNotExists(function ($query): void {
+                    $query->selectRaw('1')
+                        ->from('category_product as canonical_cp')
+                        ->join('categories as canonical_category', 'canonical_category.id', '=', 'canonical_cp.category_id')
+                        ->whereColumn('canonical_cp.product_id', 'products.id')
+                        ->whereNull('canonical_category.deleted_at')
+                        ->whereNotExists(function ($childQuery): void {
+                            $childQuery->selectRaw('1')
+                                ->from('categories as canonical_child')
+                                ->whereColumn('canonical_child.parent_id', 'canonical_category.id')
+                                ->whereNull('canonical_child.deleted_at');
+                        });
+                })->where(function (Builder $legacyIds) use ($categoryIds): void {
+                    $legacyIds->whereIn('products.subcategory_id', $categoryIds)
+                        ->orWhere(function (Builder $legacyRoot) use ($categoryIds): void {
+                            $legacyRoot->whereNull('products.subcategory_id')
+                                ->whereIn('products.category_id', $categoryIds);
+                        });
+                });
+            });
         });
     }
 
@@ -379,8 +497,10 @@ class ProductCatalogService
             return $ids;
         }
 
-        if (count($ids) === 1 && isset($this->runtimeExpandedCategoryFilterIds[$ids[0]])) {
-            return $this->runtimeExpandedCategoryFilterIds[$ids[0]];
+        sort($ids);
+        $cacheKey = implode(',', $ids);
+        if (array_key_exists($cacheKey, $this->runtimeExpandedCategoryFilterIds)) {
+            return $this->runtimeExpandedCategoryFilterIds[$cacheKey];
         }
 
         $expanded = collect($ids);
@@ -430,9 +550,7 @@ class ProductCatalogService
                 ->all();
         }
 
-        if (count($ids) === 1) {
-            $this->runtimeExpandedCategoryFilterIds[$ids[0]] = $expandedIds;
-        }
+        $this->runtimeExpandedCategoryFilterIds[$cacheKey] = $expandedIds;
 
         return $expandedIds;
     }
@@ -490,44 +608,135 @@ class ProductCatalogService
      */
     public function filterOptions(array $filters): array
     {
-        $categoryIds = $this->normalizeCategoryFilterIds($filters['categories'] ?? []);
-        $sportIds = $this->normalizeCategoryFilterIds($filters['sports'] ?? []);
-        $queryText = trim((string) ($filters['q'] ?? ''));
-        $tag = trim((string) ($filters['tag'] ?? ''));
+        $filters['categories'] = $this->normalizeCategoryFilterIds($filters['categories'] ?? []);
+        $filters['sports'] = $this->normalizeCategoryFilterIds($filters['sports'] ?? []);
+
+        $categoryIds = $filters['categories'];
+        $sportIds = $filters['sports'];
         $version = $this->catalogCacheVersionSuffix();
-        $scopeKey = sha1(json_encode([$categoryIds, $sportIds, Str::lower($queryText), Str::lower($tag)], JSON_THROW_ON_ERROR));
+        $scopeKey = sha1(json_encode($this->canonicalFacetFilters($filters), JSON_THROW_ON_ERROR));
         $ttl = max(60, (int) config('catalog.facets_cache_seconds', 300));
 
-        $shared = Cache::remember(
-            'catalog.products.complete-filter-options.'.$version.'.'.$scopeKey,
+        return Cache::remember(
+            'catalog.products.complete-filter-options.v2.'.$version.'.'.$scopeKey,
             $ttl,
-            function () use ($categoryIds, $sportIds, $queryText, $tag): array {
-                $categoryScoped = Product::query()->published();
-                $this->applyProductSearchFilters($categoryScoped, $queryText, $tag);
-                $this->applyProductCategoryFilters($categoryScoped, $categoryIds);
-
-                $sports = $this->sportFilterOptions($categoryScoped);
-
-                $facetScoped = clone $categoryScoped;
-                $this->applyProductCategoryFilters($facetScoped, $sportIds);
-
-                return array_merge(
-                    ['sports' => $sports],
-                    $this->commonFilterOptions($facetScoped)
+            function () use ($filters, $categoryIds, $sportIds): array {
+                $productTypes = $this->productTypeFacetOptions($this->facetScope($filters, ['product_types']));
+                $colors = $this->visualFacetData($this->facetScope($filters, ['colors']), 'color');
+                $materials = $this->visualFacetData($this->facetScope($filters, ['materials']), 'material');
+                $price = $this->priceFacetBounds($this->facetScope($filters, ['min_price', 'max_price']));
+                $moq = $this->moqFacetOptions($this->facetScope($filters, ['moq']));
+                $customization = $this->customizationFacetOptions($this->facetScope($filters, ['customization']));
+                $availability = $this->availabilityFacetOptions($this->facetScope($filters, ['availability']));
+                $artworkMethods = $this->artworkFacetOptions(
+                    $this->listingIdSubquery($this->facetScope($filters, ['artwork_methods']))
                 );
+                $attributes = $this->genericAttributeFacetOptions(
+                    $this->listingIdSubquery($this->facetScope($filters, ['attributes']))
+                );
+                $ratingOptions = $this->ratingFacetOptions($this->facetScope($filters, ['min_rating']));
+
+                return [
+                    'categories' => $this->categoryFilterTree(
+                        $categoryIds,
+                        $this->facetScope($filters, ['categories'])
+                    ),
+                    'sports' => $this->sportFilterOptions(
+                        $this->facetScope($filters, ['sports']),
+                        $sportIds
+                    ),
+                    'product_types' => $productTypes['options'],
+                    'colors' => $colors['options'],
+                    'materials' => $materials['options'],
+                    'artwork_methods' => $artworkMethods,
+                    'attributes' => $attributes,
+                    'price_floor' => $price['floor'],
+                    'price_ceiling' => $price['ceiling'],
+                    'moq' => $moq['options'],
+                    'customization' => $customization['options'],
+                    'availability' => $availability['options'],
+                    'rating_options' => $ratingOptions,
+                    'facet_totals' => [
+                        'product_types' => $productTypes['total'],
+                        'colors' => $colors['total'],
+                        'materials' => $materials['total'],
+                        'moq' => $moq['total'],
+                        'customization' => $customization['total'],
+                        'availability' => $availability['total'],
+                    ],
+                ];
             }
         );
+    }
 
-        $selectedSports = collect($sportIds);
-        $shared['sports'] = collect($shared['sports'] ?? [])->map(function (array $sport) use ($selectedSports): array {
-            $sport['selected'] = $selectedSports->contains((int) $sport['id']);
+    /** @param array<string, mixed> $filters */
+    private function canonicalFacetFilters(array $filters): array
+    {
+        $canonical = [
+            'q' => Str::lower(trim((string) ($filters['q'] ?? ''))),
+            'tag' => Str::lower(trim((string) ($filters['tag'] ?? ''))),
+            'categories' => array_values((array) ($filters['categories'] ?? [])),
+            'sports' => array_values((array) ($filters['sports'] ?? [])),
+            'product_types' => array_values((array) ($filters['product_types'] ?? [])),
+            'colors' => array_values((array) ($filters['colors'] ?? [])),
+            'materials' => array_values((array) ($filters['materials'] ?? [])),
+            'artwork_methods' => array_values((array) ($filters['artwork_methods'] ?? [])),
+            'min_price' => $filters['min_price'] ?? null,
+            'max_price' => $filters['max_price'] ?? null,
+            'moq' => array_values((array) ($filters['moq'] ?? [])),
+            'customization' => array_values((array) ($filters['customization'] ?? [])),
+            'availability' => array_values((array) ($filters['availability'] ?? [])),
+            'min_rating' => $filters['min_rating'] ?? null,
+            'attributes' => (array) ($filters['attributes'] ?? []),
+        ];
 
-            return $sport;
-        })->values()->all();
+        foreach (['categories', 'sports', 'product_types', 'colors', 'materials', 'artwork_methods', 'moq', 'customization', 'availability'] as $key) {
+            sort($canonical[$key]);
+        }
 
-        return array_merge([
-            'categories' => $this->categoryFilterTree($categoryIds),
-        ], $shared);
+        ksort($canonical['attributes']);
+        foreach ($canonical['attributes'] as &$values) {
+            $values = array_values((array) $values);
+            sort($values);
+        }
+        unset($values);
+
+        return $canonical;
+    }
+
+    /**
+     * Build one facet scope from the authoritative product query while excluding
+     * only the facet currently being counted. Query count is therefore bounded by
+     * the number of facet groups, never by the number of filter options.
+     *
+     * @param array<string, mixed> $filters
+     * @param array<int, string> $except
+     */
+    private function facetScope(array $filters, array $except = []): Builder
+    {
+        $query = Product::query()->published();
+        $this->applyProductSearchFilters($query, $filters['q'] ?? null, $filters['tag'] ?? null);
+
+        if (! in_array('categories', $except, true)) {
+            $this->applyProductCategoryFilters($query, (array) ($filters['categories'] ?? []));
+        }
+        if (! in_array('sports', $except, true)) {
+            $this->applyProductCategoryFilters($query, (array) ($filters['sports'] ?? []));
+        }
+
+        $common = $filters;
+        foreach ($except as $key) {
+            if ($key === 'attributes') {
+                $common['attributes'] = [];
+                continue;
+            }
+
+            $common[$key] = in_array($key, [
+                'product_types', 'colors', 'materials', 'artwork_methods', 'moq', 'customization', 'availability',
+            ], true) ? [] : null;
+        }
+
+        return $this->applyCommonCatalogFilters($query, $common);
     }
 
     /**
@@ -645,6 +854,180 @@ class ProductCatalogService
         return $query;
     }
 
+    /** @return array{options:array<int,array<string,mixed>>,total:int} */
+    private function productTypeFacetOptions(Builder $baseQuery): array
+    {
+        $query = clone $baseQuery;
+        $query->setEagerLoads([]);
+
+        $options = $query
+            ->whereNotNull('products.product_type')
+            ->where('products.product_type', '!=', '')
+            ->select('products.product_type')
+            ->selectRaw('COUNT(DISTINCT products.id) AS aggregate')
+            ->reorder()
+            ->groupBy('products.product_type')
+            ->get()
+            ->map(fn (Product $product): array => [
+                'value' => (string) $product->product_type,
+                'label' => Str::headline((string) $product->product_type),
+                'count' => (int) $product->getAttribute('aggregate'),
+            ])
+            ->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->all();
+
+        return [
+            'options' => $options,
+            'total' => collect($options)->sum('count'),
+        ];
+    }
+
+    /** @return array{options:array<int,array<string,mixed>>,total:int} */
+    private function visualFacetData(Builder $baseQuery, string $kind): array
+    {
+        $rows = $this->visualFacetRows($this->listingIdSubquery($baseQuery));
+        $matchingRows = $rows->filter(fn ($row): bool => $this->facetGroupMatches(
+            $kind,
+            (string) ($row->group_name ?? ''),
+            (string) ($row->group_code ?? ''),
+            (string) ($row->jersey_customization_type ?? '')
+        ));
+
+        return [
+            'options' => $this->buildVisualFacetOptions($matchingRows),
+            'total' => $matchingRows->pluck('product_id')->unique()->count(),
+        ];
+    }
+
+    /** @return array{floor:int,ceiling:int} */
+    private function priceFacetBounds(Builder $baseQuery): array
+    {
+        $query = clone $baseQuery;
+        $query->setEagerLoads([]);
+        $expression = $this->listingPriceExpression();
+        $row = $query
+            ->selectRaw('MIN('.$expression.') AS min_price, MAX('.$expression.') AS max_price')
+            ->reorder()
+            ->toBase()
+            ->first();
+
+        $minimum = isset($row->min_price) && is_numeric($row->min_price) ? (float) $row->min_price : 0.0;
+        $maximum = isset($row->max_price) && is_numeric($row->max_price) ? (float) $row->max_price : 100.0;
+
+        return [
+            'floor' => max(0, (int) floor($minimum)),
+            'ceiling' => max(25, (int) ceil($maximum / 25) * 25),
+        ];
+    }
+
+    /** @return array{options:array<int,array<string,mixed>>,total:int} */
+    private function moqFacetOptions(Builder $baseQuery): array
+    {
+        $query = clone $baseQuery;
+        $query->setEagerLoads([]);
+        $row = $query
+            ->selectRaw('COUNT(DISTINCT products.id) AS total')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN products.minimum_quantity <= 1 THEN products.id END) AS single_count')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN products.minimum_quantity BETWEEN 2 AND 5 THEN products.id END) AS two_five_count')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN products.minimum_quantity BETWEEN 6 AND 11 THEN products.id END) AS six_eleven_count')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN products.minimum_quantity BETWEEN 12 AND 24 THEN products.id END) AS twelve_twenty_four_count')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN products.minimum_quantity BETWEEN 25 AND 49 THEN products.id END) AS twenty_five_forty_nine_count')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN products.minimum_quantity >= 50 THEN products.id END) AS fifty_plus_count')
+            ->reorder()
+            ->toBase()
+            ->first();
+
+        $definitions = [
+            ['value' => 'single', 'label' => '1 piece', 'field' => 'single_count'],
+            ['value' => '2-5', 'label' => '2–5 pieces', 'field' => 'two_five_count'],
+            ['value' => '6-11', 'label' => '6–11 pieces', 'field' => 'six_eleven_count'],
+            ['value' => '12-24', 'label' => '12–24 pieces', 'field' => 'twelve_twenty_four_count'],
+            ['value' => '25-49', 'label' => '25–49 pieces', 'field' => 'twenty_five_forty_nine_count'],
+            ['value' => '50-plus', 'label' => '50+ pieces', 'field' => 'fifty_plus_count'],
+        ];
+
+        $options = collect($definitions)
+            ->map(fn (array $definition): array => [
+                'value' => $definition['value'],
+                'label' => $definition['label'],
+                'count' => (int) ($row->{$definition['field']} ?? 0),
+            ])
+            ->filter(fn (array $option): bool => $option['count'] > 0)
+            ->values()
+            ->all();
+
+        return ['options' => $options, 'total' => (int) ($row->total ?? 0)];
+    }
+
+    /** @return array{options:array<int,array<string,mixed>>,total:int} */
+    private function customizationFacetOptions(Builder $baseQuery): array
+    {
+        $query = clone $baseQuery;
+        $query->setEagerLoads([]);
+        $row = $query
+            ->selectRaw('COUNT(DISTINCT products.id) AS total')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN products.is_customizable = 1 THEN products.id END) AS customizable_count')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN products.is_customizable = 0 THEN products.id END) AS ready_made_count')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN products.artwork_upload_enabled = 1 THEN products.id END) AS artwork_upload_count')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN products.jersey_roster_enabled = 1 THEN products.id END) AS player_details_count')
+            ->reorder()
+            ->toBase()
+            ->first();
+
+        $options = collect([
+            ['value' => 'customizable', 'label' => 'Customizable', 'count' => (int) ($row->customizable_count ?? 0)],
+            ['value' => 'ready-made', 'label' => 'Ready-made / standard', 'count' => (int) ($row->ready_made_count ?? 0)],
+            ['value' => 'artwork-upload', 'label' => 'Artwork upload available', 'count' => (int) ($row->artwork_upload_count ?? 0)],
+            ['value' => 'player-details', 'label' => 'Roster fields available', 'count' => (int) ($row->player_details_count ?? 0)],
+        ])->filter(fn (array $option): bool => $option['count'] > 0)->values()->all();
+
+        return ['options' => $options, 'total' => (int) ($row->total ?? 0)];
+    }
+
+    /** @return array{options:array<int,array<string,mixed>>,total:int} */
+    private function availabilityFacetOptions(Builder $baseQuery): array
+    {
+        $query = clone $baseQuery;
+        $query->setEagerLoads([]);
+        $row = $query
+            ->selectRaw('COUNT(DISTINCT products.id) AS total')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN products.track_inventory = 1 AND products.stock_quantity > 0 THEN products.id END) AS in_stock_count')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN products.allow_backorder = 1 AND products.stock_quantity <= 0 THEN products.id END) AS backorder_count')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN products.track_inventory = 0 THEN products.id END) AS made_to_order_count')
+            ->reorder()
+            ->toBase()
+            ->first();
+
+        $options = collect([
+            ['value' => 'in-stock', 'label' => 'In stock', 'count' => (int) ($row->in_stock_count ?? 0)],
+            ['value' => 'backorder', 'label' => 'Backorder available', 'count' => (int) ($row->backorder_count ?? 0)],
+            ['value' => 'made-to-order', 'label' => 'Made to order', 'count' => (int) ($row->made_to_order_count ?? 0)],
+        ])->filter(fn (array $option): bool => $option['count'] > 0)->values()->all();
+
+        return ['options' => $options, 'total' => (int) ($row->total ?? 0)];
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function ratingFacetOptions(Builder $baseQuery): array
+    {
+        $query = clone $baseQuery;
+        $query->setEagerLoads([]);
+        $row = $query
+            ->selectRaw('COUNT(DISTINCT CASE WHEN products.rating_average >= 4 AND products.reviews_count > 0 THEN products.id END) AS rating_four_count')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN products.rating_average >= 3 AND products.reviews_count > 0 THEN products.id END) AS rating_three_count')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN products.rating_average >= 2 AND products.reviews_count > 0 THEN products.id END) AS rating_two_count')
+            ->reorder()
+            ->toBase()
+            ->first();
+
+        return collect([
+            ['value' => 4, 'label' => '4 stars & up', 'count' => (int) ($row->rating_four_count ?? 0)],
+            ['value' => 3, 'label' => '3 stars & up', 'count' => (int) ($row->rating_three_count ?? 0)],
+            ['value' => 2, 'label' => '2 stars & up', 'count' => (int) ($row->rating_two_count ?? 0)],
+        ])->filter(fn (array $option): bool => $option['count'] > 0)->values()->all();
+    }
+
     /**
      * Return common facet options for a product listing scope.
      *
@@ -759,30 +1142,29 @@ class ProductCatalogService
     }
 
     /** @return array<int, array<string, mixed>> */
-    public function sportFilterOptions(Builder $baseQuery): array
+    public function sportFilterOptions(Builder $baseQuery, array $selectedSportIds = []): array
     {
         if (! Schema::hasTable('categories')) {
             return [];
         }
 
-        return Category::query()
-            ->storefrontReachable()
-            ->whereNull('parent_id')
-            ->where('category_type', 'sport')
-            ->ordered()
-            ->get()
-            ->map(function (Category $category) use ($baseQuery): array {
-                $query = clone $baseQuery;
-                $this->whereProductsMatchAnyCategory($query, $this->expandedCategoryFilterIds([(int) $category->id]));
+        $selectedSportIds = collect($selectedSportIds)
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values();
+        $counts = $this->categoryFacetCountMap($baseQuery);
 
-                return [
-                    'id' => (int) $category->id,
-                    'label' => $category->name,
-                    'slug' => $category->slug,
-                    'count' => (int) $query->distinct('products.id')->count('products.id'),
-                ];
-            })
-            ->filter(fn (array $sport): bool => $sport['count'] > 0)
+        return $this->facetCategoryRows()
+            ->filter(fn (Category $category): bool => $category->parent_id === null && $category->category_type === 'sport')
+            ->map(fn (Category $category): array => [
+                'id' => (int) $category->id,
+                'label' => $category->name,
+                'slug' => $category->slug,
+                'count' => (int) ($counts->get((int) $category->id, 0)),
+                'selected' => $selectedSportIds->contains((int) $category->id),
+            ])
+            ->filter(fn (array $sport): bool => $sport['count'] > 0 || $sport['selected'])
             ->values()
             ->all();
     }
@@ -856,6 +1238,27 @@ class ProductCatalogService
     /** @return array{0:array<int,array<string,mixed>>,1:array<int,array<string,mixed>>} */
     private function visualFacetOptions(Builder $listing): array
     {
+        $rows = $this->visualFacetRows($listing);
+
+        return [
+            $this->buildVisualFacetOptions($rows->filter(fn ($row): bool => $this->facetGroupMatches(
+                'color',
+                (string) ($row->group_name ?? ''),
+                (string) ($row->group_code ?? ''),
+                (string) ($row->jersey_customization_type ?? '')
+            ))),
+            $this->buildVisualFacetOptions($rows->filter(fn ($row): bool => $this->facetGroupMatches(
+                'material',
+                (string) ($row->group_name ?? ''),
+                (string) ($row->group_code ?? ''),
+                (string) ($row->jersey_customization_type ?? '')
+            ))),
+        ];
+    }
+
+    /** @return Collection<int, object> */
+    private function visualFacetRows(Builder $listing): Collection
+    {
         $attributeRows = collect();
         if (Schema::hasTable('attribute_value_product') && Schema::hasTable('attribute_values') && Schema::hasTable('attributes')) {
             $attributeRows = DB::table('attribute_value_product as avp')
@@ -889,34 +1292,29 @@ class ProductCatalogService
                 ->map(fn ($row) => (object) array_merge((array) $row, ['source' => 'option']));
         }
 
-        $rows = $attributeRows->concat($optionRows);
-        $build = function (string $kind) use ($rows): array {
-            return $rows
-                ->filter(fn ($row): bool => $this->facetGroupMatches(
-                    $kind,
-                    (string) ($row->group_name ?? ''),
-                    (string) ($row->group_code ?? ''),
-                    (string) ($row->jersey_customization_type ?? '')
-                ))
-                ->groupBy(fn ($row): string => Str::slug((string) (($row->value_code ?? '') ?: ($row->label ?? ''))))
-                ->map(function (Collection $items, string $token): array {
-                    $first = $items->first();
-                    $hex = $items->pluck('color_hex')->filter()->first();
+        return $attributeRows->concat($optionRows);
+    }
 
-                    return [
-                        'value' => $token,
-                        'label' => (string) $first->label,
-                        'color_hex' => $hex ? (string) $hex : null,
-                        'count' => $items->pluck('product_id')->unique()->count(),
-                    ];
-                })
-                ->filter(fn (array $item): bool => $item['value'] !== '' && $item['count'] > 0)
-                ->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)
-                ->values()
-                ->all();
-        };
+    /** @param Collection<int, object> $rows */
+    private function buildVisualFacetOptions(Collection $rows): array
+    {
+        return $rows
+            ->groupBy(fn ($row): string => Str::slug((string) (($row->value_code ?? '') ?: ($row->label ?? ''))))
+            ->map(function (Collection $items, string $token): array {
+                $first = $items->first();
+                $hex = $items->pluck('color_hex')->filter()->first();
 
-        return [$build('color'), $build('material')];
+                return [
+                    'value' => $token,
+                    'label' => (string) $first->label,
+                    'color_hex' => $hex ? (string) $hex : null,
+                    'count' => $items->pluck('product_id')->unique()->count(),
+                ];
+            })
+            ->filter(fn (array $item): bool => $item['value'] !== '' && $item['count'] > 0)
+            ->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->all();
     }
 
     /** @return array<int, array<string, mixed>> */
@@ -1049,12 +1447,23 @@ class ProductCatalogService
     /** @param array<int, string> $tokens */
     private function resolveArtworkMethodIds(array $tokens): array
     {
-        $tokens = collect($tokens)->map(fn ($value): string => Str::slug((string) $value))->filter()->unique();
+        $tokens = collect($tokens)
+            ->map(fn ($value): string => Str::slug((string) $value))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+
         if ($tokens->isEmpty() || ! Schema::hasTable('product_artwork_methods')) {
             return [];
         }
 
-        return DB::table('product_artwork_methods')
+        $cacheKey = $tokens->implode('|');
+        if (array_key_exists($cacheKey, $this->runtimeResolvedArtworkMethodIds)) {
+            return $this->runtimeResolvedArtworkMethodIds[$cacheKey];
+        }
+
+        return $this->runtimeResolvedArtworkMethodIds[$cacheKey] = DB::table('product_artwork_methods')
             ->where('is_active', true)
             ->get(['id', 'name', 'code'])
             ->filter(fn ($row): bool => $tokens->contains(Str::slug((string) ($row->code ?: $row->name))))
@@ -1071,13 +1480,24 @@ class ProductCatalogService
      */
     private function resolveOptionFacetIds(string $kind, array $tokens): array
     {
-        $tokens = collect($tokens)->map(fn ($value): string => Str::slug((string) $value))->filter()->unique();
-        $attributeIds = collect();
-        $optionIds = collect();
+        $tokens = collect($tokens)
+            ->map(fn ($value): string => Str::slug((string) $value))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
 
         if ($tokens->isEmpty()) {
             return ['attribute_value_ids' => [], 'option_value_ids' => []];
         }
+
+        $cacheKey = $kind.':'.$tokens->implode('|');
+        if (array_key_exists($cacheKey, $this->runtimeResolvedOptionFacetIds)) {
+            return $this->runtimeResolvedOptionFacetIds[$cacheKey];
+        }
+
+        $attributeIds = collect();
+        $optionIds = collect();
 
         if (Schema::hasTable('attribute_values') && Schema::hasTable('attributes')) {
             $attributeIds = DB::table('attribute_values as av')
@@ -1086,9 +1506,21 @@ class ProductCatalogService
                 ->where('a.is_filterable', true)
                 ->where('av.is_active', true)
                 ->whereNull('a.deleted_at')
+                ->where(function ($query) use ($kind): void {
+                    $needles = $kind === 'color'
+                        ? ['%color%', '%colour%']
+                        : ['%fabric%', '%material%', '%metarial%', '%meterial%'];
+
+                    foreach ($needles as $index => $needle) {
+                        $method = $index === 0 ? 'where' : 'orWhere';
+                        $query->{$method}(function ($groupQuery) use ($needle): void {
+                            $groupQuery->whereRaw('LOWER(a.name) LIKE ?', [$needle])
+                                ->orWhereRaw('LOWER(a.slug) LIKE ?', [$needle]);
+                        });
+                    }
+                })
                 ->get(['av.id', 'av.label', 'av.slug', 'a.name as group_name', 'a.slug as group_code'])
-                ->filter(fn ($row): bool => $this->facetGroupMatches($kind, (string) $row->group_name, (string) $row->group_code)
-                    && $tokens->contains(Str::slug((string) ($row->slug ?: $row->label))))
+                ->filter(fn ($row): bool => $tokens->contains(Str::slug((string) ($row->slug ?: $row->label))))
                 ->pluck('id');
         }
 
@@ -1097,19 +1529,26 @@ class ProductCatalogService
                 ->join('product_option_groups as pog', 'pog.id', '=', 'pov.product_option_group_id')
                 ->where('pog.is_active', true)
                 ->where('pov.is_active', true)
-                ->get([
-                    'pov.id', 'pov.label', 'pov.code', 'pog.name as group_name', 'pog.code as group_code', 'pog.jersey_customization_type',
-                ])
-                ->filter(fn ($row): bool => $this->facetGroupMatches(
-                    $kind,
-                    (string) $row->group_name,
-                    (string) $row->group_code,
-                    (string) ($row->jersey_customization_type ?? '')
-                ) && $tokens->contains(Str::slug((string) ($row->code ?: $row->label))))
+                ->where(function ($query) use ($kind): void {
+                    $needles = $kind === 'color'
+                        ? ['%color%', '%colour%']
+                        : ['%fabric%', '%material%', '%metarial%', '%meterial%'];
+
+                    foreach ($needles as $index => $needle) {
+                        $method = $index === 0 ? 'where' : 'orWhere';
+                        $query->{$method}(function ($groupQuery) use ($needle): void {
+                            $groupQuery->whereRaw('LOWER(pog.name) LIKE ?', [$needle])
+                                ->orWhereRaw('LOWER(pog.code) LIKE ?', [$needle])
+                                ->orWhereRaw('LOWER(COALESCE(pog.jersey_customization_type, \'\')) LIKE ?', [$needle]);
+                        });
+                    }
+                })
+                ->get(['pov.id', 'pov.label', 'pov.code'])
+                ->filter(fn ($row): bool => $tokens->contains(Str::slug((string) ($row->code ?: $row->label))))
                 ->pluck('id');
         }
 
-        return [
+        return $this->runtimeResolvedOptionFacetIds[$cacheKey] = [
             'attribute_value_ids' => $attributeIds->map(fn ($id): int => (int) $id)->unique()->values()->all(),
             'option_value_ids' => $optionIds->map(fn ($id): int => (int) $id)->unique()->values()->all(),
         ];

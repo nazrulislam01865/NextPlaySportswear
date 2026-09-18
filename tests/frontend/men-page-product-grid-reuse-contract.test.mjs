@@ -29,7 +29,7 @@ test('shared product grid reuses the exact ProductCard component used by New Arr
   assert.doesNotMatch(grid, /np-product-grid__cell\s+:deep\(\.np-product-card\)[\s\S]*?height:\s*100%/);
 });
 
-test('men product grid keeps the approved New Arrivals card scale with a blank left desktop area', () => {
+test('men product grid keeps the approved New Arrivals card scale beside the filter rail', () => {
   const grid = read('resources/js/storefront/components/common/ProductGrid.vue');
   const tokens = read('resources/js/storefront/styles/tokens.css');
   const men = read('resources/js/storefront/features/men/pages/MenPage.vue');
@@ -38,19 +38,17 @@ test('men product grid keeps the approved New Arrivals card scale with a blank l
   assert.match(tokens, /--np-men-product-grid-gap:\s*10px/);
   assert.match(tokens, /--np-men-product-grid-margin-top/);
   assert.match(tokens, /--np-men-product-grid-desktop-width:\s*75%/);
+  assert.match(tokens, /--np-men-filter-layout-gap:/);
   assert.match(newArrivals, /max-width:\s*min\(var\(--np-showcase-max\),\s*calc\(100vw - 24px\)\)/);
   assert.match(newArrivals, /padding-inline:\s*var\(--np-showcase-gutter\)/);
 
-  assert.match(grid, /desktopLeadingSpacer/);
-  assert.match(grid, /np-product-grid--desktop-leading-spacer/);
-  assert.match(grid, /width:\s*var\(--np-product-grid-desktop-width,\s*75%\)/);
-  assert.match(grid, /margin-left:\s*auto/);
-  assert.match(grid, /margin-right:\s*0/);
+  assert.match(men, /np-men-catalog-layout/);
+  assert.match(men, /grid-template-columns:\s*calc\(25% - var\(--np-men-filter-layout-gap\)\) var\(--np-men-product-grid-desktop-width\)/);
+  assert.match(men, /<ProductGrid[\s\S]*card-variant="new-arrivals"/);
+  assert.doesNotMatch(men, /desktop-leading-spacer/);
   assert.match(grid, /repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
   assert.doesNotMatch(grid, /repeat\(5,\s*minmax\(0,\s*1fr\)\)/);
   assert.doesNotMatch(grid, /nth-child\(4n\+1\)/);
-  assert.match(men, /desktop-leading-spacer/);
-  assert.match(men, /--np-product-grid-desktop-width:\s*var\(--np-men-product-grid-desktop-width\)/);
 
   assert.match(grid, /repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(grid, /repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
@@ -72,8 +70,8 @@ test('men API renders one backend-paginated product page at a time instead of fe
   assert.match(types, /currentPage:\s*number/);
   assert.match(types, /lastPage:\s*number/);
   assert.match(types, /perPage:\s*number/);
-  assert.match(api, /fetchMenPage\(page\s*=\s*1\)/);
-  assert.match(api, /params:\s*\{\s*q:\s*['"]men['"],\s*page,\s*per_page:\s*24\s*\}/);
+  assert.match(api, /fetchMenPage\(page\s*=\s*1,\s*filters/);
+  assert.match(api, /params:\s*\{\s*q:\s*['"]men['"],\s*page,\s*per_page:\s*24,\s*\.\.\.filterParams\(filters\)\s*\}/);
   assert.match(productRequest, /['"]per_page['"]\s*=>\s*\[[^\]]*['"]integer['"][^\]]*['"]max:60['"]/s);
   assert.match(catalogRead, /searchPaginated\(\$filters,\s*\$perPage\)/);
   assert.doesNotMatch(api, /Promise\.all\(Array\.from/);

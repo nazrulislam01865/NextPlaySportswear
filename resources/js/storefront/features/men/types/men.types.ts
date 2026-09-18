@@ -1,6 +1,84 @@
 import type { StorefrontCategory } from '../../../types/category';
 import type { StorefrontProduct } from '../../../types/product';
 
+export type MenFilterArrayKey = 'categories' | 'sports' | 'product_types' | 'colors' | 'materials' | 'moq' | 'customization' | 'availability';
+export type MenPriceFilterKey = 'min_price' | 'max_price';
+export type MenFilterKey = MenFilterArrayKey | MenPriceFilterKey;
+
+export interface MenCatalogFilters {
+  categories: number[];
+  sports: number[];
+  product_types: string[];
+  colors: string[];
+  materials: string[];
+  min_price: number | null;
+  max_price: number | null;
+  moq: string[];
+  customization: string[];
+  availability: string[];
+}
+
+export interface MenFilterOption {
+  value: string;
+  label: string;
+  count: number;
+  color_hex?: string | null;
+}
+
+export interface MenSportFilterOption {
+  id: number;
+  label: string;
+  slug?: string;
+  count: number;
+  selected?: boolean;
+}
+
+export interface MenCategoryFilterOption {
+  id: number;
+  label: string;
+  slug?: string;
+  count: number;
+  selected?: boolean;
+  has_selected_child?: boolean;
+  children: Array<{
+    id: number;
+    label: string;
+    slug?: string;
+    count: number;
+    selected?: boolean;
+  }>;
+}
+
+export interface MenFacetTotals {
+  product_types: number;
+  colors: number;
+  materials: number;
+  moq: number;
+  customization: number;
+  availability: number;
+}
+
+export interface MenFilterOptions {
+  categories: MenCategoryFilterOption[];
+  sports: MenSportFilterOption[];
+  product_types: MenFilterOption[];
+  colors: MenFilterOption[];
+  materials: MenFilterOption[];
+  price_floor: number;
+  price_ceiling: number;
+  moq: MenFilterOption[];
+  customization: MenFilterOption[];
+  availability: MenFilterOption[];
+  facet_totals: MenFacetTotals;
+}
+
+export interface MenFilterChip {
+  id: string;
+  key: MenFilterKey;
+  value: string | number;
+  label: string;
+}
+
 export interface MenPageData {
   categories: StorefrontCategory[];
   products: StorefrontProduct[];
@@ -8,6 +86,7 @@ export interface MenPageData {
   currentPage: number;
   lastPage: number;
   perPage: number;
+  filterOptions: MenFilterOptions;
 }
 
 export interface CatalogCategoryApiItem {

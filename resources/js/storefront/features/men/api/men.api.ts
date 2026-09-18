@@ -7,7 +7,12 @@ import type {
   CatalogCategoryIndexData,
   CatalogCategoryApiItem,
   CatalogProductApiItem,
+  MenCatalogFilters,
+  MenCategoryFilterOption,
+  MenFilterOption,
+  MenFilterOptions,
   MenPageData,
+  MenSportFilterOption,
 } from '../types/men.types';
 
 function toStorefrontCategory(category: CatalogCategoryApiItem): StorefrontCategory {
@@ -59,12 +64,151 @@ function toStorefrontProduct(product: CatalogProductApiItem): StorefrontProduct 
   };
 }
 
-export async function fetchMenPage(page = 1): Promise<MenPageData> {
+const emptyFilterOptions = (): MenFilterOptions => ({
+  categories: [],
+  sports: [],
+  product_types: [],
+  colors: [],
+  materials: [],
+  price_floor: 0,
+  price_ceiling: 100,
+  moq: [],
+  customization: [],
+  availability: [],
+  facet_totals: {
+    product_types: 0,
+    colors: 0,
+    materials: 0,
+    moq: 0,
+    customization: 0,
+    availability: 0,
+  },
+});
+
+function normalizeSimpleOptions(value: unknown): MenFilterOption[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => {
+    const source = (item ?? {}) as Record<string, unknown>;
+    return {
+      value: String(source.value ?? ''),
+      label: String(source.label ?? source.value ?? ''),
+      count: Number(source.count ?? 0),
+      color_hex: source.color_hex ? String(source.color_hex) : null,
+    };
+  }).filter((item) => item.value && item.label);
+}
+
+function normalizeSports(value: unknown): MenSportFilterOption[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => {
+    const source = (item ?? {}) as Record<string, unknown>;
+    return {
+      id: Number(source.id ?? 0),
+      label: String(source.label ?? ''),
+      slug: source.slug ? String(source.slug) : undefined,
+      count: Number(source.count ?? 0),
+      selected: Boolean(source.selected),
+    };
+  }).filter((item) => item.id > 0 && item.label);
+}
+
+function normalizeCategories(value: unknown): MenCategoryFilterOption[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => {
+    const source = (item ?? {}) as Record<string, unknown>;
+    const children = Array.isArray(source.children) ? source.children : [];
+    return {
+      id: Number(source.id ?? 0),
+      label: String(source.label ?? ''),
+      slug: source.slug ? String(source.slug) : undefined,
+      count: Number(source.count ?? 0),
+      selected: Boolean(source.selected),
+      has_selected_child: Boolean(source.has_selected_child),
+      children: children.map((child) => {
+        const childSource = (child ?? {}) as Record<string, unknown>;
+        return {
+          id: Number(childSource.id ?? 0),
+          label: String(childSource.label ?? ''),
+          slug: childSource.slug ? String(childSource.slug) : undefined,
+          count: Number(childSource.count ?? 0),
+          selected: Boolean(childSource.selected),
+        };
+      }).filter((child) => child.id > 0 && child.label),
+    };
+  }).filter((item) => item.id > 0 && item.label);
+}
+
+function normalizeFacetTotals(value: unknown): MenFilterOptions['facet_totals'] {
+  const source = (value ?? {}) as Record<string, unknown>;
+  return {
+    product_types: Number(source.product_types ?? 0),
+    colors: Number(source.colors ?? 0),
+    materials: Number(source.materials ?? 0),
+    moq: Number(source.moq ?? 0),
+    customization: Number(source.customization ?? 0),
+    availability: Number(source.availability ?? 0),
+  };
+}
+
+function normalizeFilterOptions(value: unknown): MenFilterOptions {
+  const defaults = emptyFilterOptions();
+  const source = (value ?? {}) as Record<string, unknown>;
+
+  return {
+    categories: normalizeCategories(source.categories),
+    sports: normalizeSports(source.sports),
+    product_types: normalizeSimpleOptions(source.product_types),
+    colors: normalizeSimpleOptions(source.colors),
+    materials: normalizeSimpleOptions(source.materials),
+    price_floor: Number(source.price_floor ?? defaults.price_floor),
+    price_ceiling: Number(source.price_ceiling ?? defaults.price_ceiling),
+    moq: normalizeSimpleOptions(source.moq),
+    customization: normalizeSimpleOptions(source.customization),
+    availability: normalizeSimpleOptions(source.availability),
+    facet_totals: normalizeFacetTotals(source.facet_totals),
+  };
+}
+
+function filterParams(filters: MenCatalogFilters): Record<string, unknown> {
+  return {
+    categories: filters.categories.length ? filters.categories : undefined,
+    sports: filters.sports.length ? filters.sports : undefined,
+    product_types: filters.product_types.length ? filters.product_types : undefined,
+    colors: filters.colors.length ? filters.colors : undefined,
+    materials: filters.materials.length ? filters.materials : undefined,
+    min_price: filters.min_price ?? undefined,
+    max_price: filters.max_price ?? undefined,
+    moq: filters.moq.length ? filters.moq : undefined,
+    customization: filters.customization.length ? filters.customization : undefined,
+    availability: filters.availability.length ? filters.availability : undefined,
+  };
+}
+
+export async function fetchMenPage(
+  page = 1,
+  filters: MenCatalogFilters,
+  includeCatalog = true,
+): Promise<MenPageData> {
   page = Math.max(1, Math.floor(page));
+
+  if (!includeCatalog) {
+    const categoriesResponse = await apiClient.get<ApiEnvelope<CatalogCategoryIndexData>>(API_ENDPOINTS.categories);
+
+    return {
+      categories: (categoriesResponse.data.data.categories ?? []).map(toStorefrontCategory),
+      products: [],
+      productCount: 0,
+      currentPage: 1,
+      lastPage: 1,
+      perPage: 24,
+      filterOptions: emptyFilterOptions(),
+    };
+  }
+
   const [categoriesResponse, productsResponse] = await Promise.all([
     apiClient.get<ApiEnvelope<CatalogCategoryIndexData>>(API_ENDPOINTS.categories),
     apiClient.get<ApiEnvelope<CatalogProductApiItem[]>>(API_ENDPOINTS.products, {
-      params: { q: 'men', page, per_page: 24 },
+      params: { q: 'men', page, per_page: 24, ...filterParams(filters) },
     }),
   ]);
 
@@ -80,5 +224,6 @@ export async function fetchMenPage(page = 1): Promise<MenPageData> {
     currentPage: Number(meta.current_page ?? page),
     lastPage: Math.max(1, Number(meta.last_page ?? 1)),
     perPage: Math.max(1, Number(meta.per_page ?? (products.length || 24))),
+    filterOptions: normalizeFilterOptions(meta.filter_options),
   };
 }

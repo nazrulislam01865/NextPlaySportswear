@@ -49,7 +49,7 @@ test('men page uses centralized APIs and authoritative product pagination total'
   assert.match(endpoints, /categories:\s*['"]\/categories['"]/);
   assert.match(endpoints, /products:\s*['"]\/products['"]/);
   assert.match(api, /apiClient\.get/);
-  assert.match(api, /params:\s*\{\s*q:\s*['"]men['"],\s*page,\s*per_page:\s*24\s*\}/);
+  assert.match(api, /params:\s*\{\s*q:\s*['"]men['"],\s*page,\s*per_page:\s*24,\s*\.\.\.filterParams\(filters\)\s*\}/);
   assert.match(api, /meta\.total/);
 });
 
