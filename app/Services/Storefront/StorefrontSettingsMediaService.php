@@ -2,6 +2,7 @@
 
 namespace App\Services\Storefront;
 
+use App\Support\PublicMedia;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -186,7 +187,7 @@ class StorefrontSettingsMediaService
         if ($uploaded instanceof UploadedFile) {
             $path = $uploaded->store($directory, 'public');
 
-            return '/storage/'.$path;
+            return PublicMedia::storedPathUrl($path);
         }
 
         return $existing;
@@ -221,14 +222,13 @@ class StorefrontSettingsMediaService
 
     private function managedPathFromUrl(string $url): ?string
     {
-        $url = trim($url);
-        $prefix = '/storage/'.self::MANAGED_ROOT;
+        $path = PublicMedia::storedPathFromUrl(trim($url));
 
-        if (! str_starts_with($url, $prefix)) {
+        if ($path === null || ! str_starts_with($path, self::MANAGED_ROOT)) {
             return null;
         }
 
-        return ltrim(substr($url, strlen('/storage/')), '/');
+        return $path;
     }
 
     private function cleanValue(mixed $value): ?string

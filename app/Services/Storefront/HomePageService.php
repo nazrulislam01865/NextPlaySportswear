@@ -2,14 +2,11 @@
 
 namespace App\Services\Storefront;
 
-use App\Services\Catalog\NavigationService;
-
 class HomePageService
 {
     public function __construct(
         private readonly CategoryCatalogService $categoryCatalog,
         private readonly ProductCatalogService $productCatalog,
-        private readonly NavigationService $navigation,
         private readonly HomepageSliderService $homepageSlider,
         private readonly HomepageSectionService $homepageSections,
     ) {
@@ -28,8 +25,6 @@ class HomePageService
             'latestProductsSignature' => $latestProductsFeed['signature'],
             'bestSellingProducts' => $this->bestSellingProducts(),
             'sports' => $this->sports(),
-            'navigation' => $this->navigation->items('header-primary'),
-            'storefrontMenus' => $this->navigation->storefrontMenus(),
         ];
     }
 
@@ -68,7 +63,9 @@ class HomePageService
 
     private function featuredProducts(): array
     {
-        return $this->productCatalog->featured(null);
+        return $this->productCatalog->featured(
+            max(1, (int) config('storefront.homepage.featured_products_limit', 12))
+        );
     }
 
     /**
@@ -81,7 +78,9 @@ class HomePageService
      */
     public function latestProductsFeed(): array
     {
-        $products = $this->productCatalog->latest(12);
+        $products = $this->productCatalog->latest(
+            max(1, (int) config('storefront.homepage.latest_products_limit', 12))
+        );
         $section = collect($this->homepageSections->sections())
             ->first(fn (array $item): bool => ($item['key'] ?? null) === 'new_arrivals'
                 || ($item['component'] ?? null) === 'new_arrivals');
@@ -95,7 +94,9 @@ class HomePageService
 
     private function bestSellingProducts(): array
     {
-        return $this->productCatalog->bestSelling(5);
+        return $this->productCatalog->bestSelling(
+            max(1, (int) config('storefront.homepage.best_selling_products_limit', 5))
+        );
     }
 
     private function sports(): array

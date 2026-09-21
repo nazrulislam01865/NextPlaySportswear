@@ -36,6 +36,13 @@ return [
 
     'slider_cache_seconds' => (int) env('STOREFRONT_SLIDER_CACHE_SECONDS', 600),
 
+    'homepage' => [
+        // Keep cold-cache homepage queries bounded after admin catalog/image updates.
+        'featured_products_limit' => (int) env('STOREFRONT_HOMEPAGE_FEATURED_PRODUCTS_LIMIT', 12),
+        'latest_products_limit' => (int) env('STOREFRONT_HOMEPAGE_LATEST_PRODUCTS_LIMIT', 12),
+        'best_selling_products_limit' => (int) env('STOREFRONT_HOMEPAGE_BEST_SELLING_PRODUCTS_LIMIT', 5),
+    ],
+
     'product_cards' => [
         // Used only when a product has no product-level rating/review value yet.
         // Set STOREFRONT_PRODUCT_CARD_SHOW_DEFAULT_RATING=false to hide this fallback.

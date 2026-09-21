@@ -1977,8 +1977,7 @@ class ProductCatalogService
                     $products = $featuredQuery->get();
 
                     // Limited callers keep the historical fallback behaviour.
-                    // The homepage requests all featured products and therefore
-                    // only receives products explicitly marked as featured.
+                    // Unbounded callers receive only products explicitly marked as featured.
                     if ($normalizedLimit !== null && $products->count() < $normalizedLimit) {
                         $fallback = Product::query()
                             ->published()

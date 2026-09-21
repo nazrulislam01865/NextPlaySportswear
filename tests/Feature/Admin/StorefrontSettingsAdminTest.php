@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\StorefrontSetting;
 use App\Models\User;
 use App\Services\Storefront\StorefrontSettingsService;
+use App\Support\PublicMedia;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -152,9 +153,9 @@ class StorefrontSettingsAdminTest extends TestCase
         $header = app(StorefrontSettingsService::class)->header();
         $logo = (string) $header['branding']['logo'];
 
-        $this->assertStringStartsWith('/storage/storefront/settings/branding/', $logo);
+        $this->assertStringStartsWith('/media/storefront/settings/branding/', $logo);
         $this->assertSame('NextPlay Sportswear', $header['branding']['logo_alt']);
-        Storage::disk('public')->assertExists(substr($logo, strlen('/storage/')));
+        Storage::disk('public')->assertExists(PublicMedia::storedPathFromUrl($logo));
     }
 
     public function test_super_admin_can_upload_header_utility_link_icon_image(): void
@@ -187,8 +188,8 @@ class StorefrontSettingsAdminTest extends TestCase
         $header = app(StorefrontSettingsService::class)->header();
         $icon = (string) $header['utility_links'][0]['icon'];
 
-        $this->assertStringStartsWith('/storage/storefront/settings/icons/header/utility/', $icon);
-        Storage::disk('public')->assertExists(substr($icon, strlen('/storage/')));
+        $this->assertStringStartsWith('/media/storefront/settings/icons/header/utility/', $icon);
+        Storage::disk('public')->assertExists(PublicMedia::storedPathFromUrl($icon));
     }
 
     public function test_super_admin_can_upload_footer_menu_social_and_legal_icon_images(): void
@@ -243,8 +244,8 @@ class StorefrontSettingsAdminTest extends TestCase
 
         foreach ($icons as $icon) {
             $this->assertIsString($icon);
-            $this->assertStringStartsWith('/storage/storefront/settings/icons/footer/', $icon);
-            Storage::disk('public')->assertExists(substr($icon, strlen('/storage/')));
+            $this->assertStringStartsWith('/media/storefront/settings/icons/footer/', $icon);
+            Storage::disk('public')->assertExists(PublicMedia::storedPathFromUrl($icon));
         }
     }
 
@@ -348,6 +349,29 @@ class StorefrontSettingsAdminTest extends TestCase
         $this->assertSame('Updated header only', $service->header()['announcements'][0]['text']);
         $this->assertSame('CUSTOM NAV', $service->navigation()['items'][0]['label']);
         $this->assertArrayNotHasKey('navigation', $service->header());
+    }
+
+    public function test_legacy_managed_storage_urls_are_normalized_to_public_media_urls_on_read(): void
+    {
+        StorefrontSetting::query()->create([
+            'key' => StorefrontSettingsService::HEADER_KEY,
+            'settings' => [
+                'branding' => [
+                    'logo' => '/storage/storefront/settings/branding/legacy-logo.png',
+                    'logo_alt' => 'NextPlay',
+                ],
+                'announcements' => [],
+                'utility_links' => [],
+                'actions' => [],
+            ],
+        ]);
+
+        app(StorefrontSettingsService::class)->flushCache(StorefrontSettingsService::HEADER_KEY);
+
+        $this->assertSame(
+            '/media/storefront/settings/branding/legacy-logo.png',
+            app(StorefrontSettingsService::class)->header()['branding']['logo']
+        );
     }
 
 }

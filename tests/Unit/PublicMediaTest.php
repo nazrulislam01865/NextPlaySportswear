@@ -30,4 +30,25 @@ class PublicMediaTest extends TestCase
             PublicMedia::url(null, 'https://cdn.example.com/products/front.jpg')
         );
     }
+    public function test_same_application_absolute_storage_base_is_forced_through_media_route(): void
+    {
+        config()->set('app.url', 'https://shop.example.test');
+        config()->set('filesystems.disks.public.url', 'https://shop.example.test/storage');
+
+        $this->assertSame(
+            '/media/products/9/front.jpg',
+            PublicMedia::url('products/9/front.jpg')
+        );
+    }
+
+    public function test_it_normalizes_legacy_relative_storage_url_even_when_public_disk_uses_media(): void
+    {
+        config()->set('filesystems.disks.public.url', '/media');
+
+        $this->assertSame(
+            '/media/homepage/sections/banner.jpg',
+            PublicMedia::url(null, '/storage/homepage/sections/banner.jpg')
+        );
+    }
+
 }

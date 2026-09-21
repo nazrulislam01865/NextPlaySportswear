@@ -330,12 +330,12 @@ final class HomepageSectionRegistry
     {
         $path = trim((string) $path);
         if ($path !== '') {
-            return Storage::disk('public')->url($path);
+            return PublicMedia::storedPathUrl($path);
         }
 
         $url = trim((string) $url);
 
-        return $url !== '' ? $url : null;
+        return $url !== '' ? PublicMedia::url(null, $url) : null;
     }
 
     private static function nullableString(mixed $value): ?string

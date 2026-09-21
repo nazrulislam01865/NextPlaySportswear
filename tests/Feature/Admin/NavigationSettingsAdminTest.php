@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\StorefrontSetting;
 use App\Models\User;
 use App\Services\Storefront\StorefrontSettingsService;
+use App\Support\PublicMedia;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -203,8 +204,8 @@ class NavigationSettingsAdminTest extends TestCase
             ->assertRedirect(route('admin.navigation-settings.edit'));
 
         $first = app(StorefrontSettingsService::class)->navigation()['items'][0]['mega_menu']['promo']['image'];
-        $this->assertStringStartsWith('/storage/storefront/settings/navigation/mega-menu/', $first);
-        Storage::disk('public')->assertExists(substr($first, strlen('/storage/')));
+        $this->assertStringStartsWith('/media/storefront/settings/navigation/mega-menu/', $first);
+        Storage::disk('public')->assertExists(PublicMedia::storedPathFromUrl($first));
 
         $payload['navigation']['items']['shop']['mega_menu']['promo'] = [
             'enabled' => '1',
@@ -220,7 +221,7 @@ class NavigationSettingsAdminTest extends TestCase
             ->assertRedirect(route('admin.navigation-settings.edit'));
 
         $this->assertNull(app(StorefrontSettingsService::class)->navigation()['items'][0]['mega_menu']['promo']['image']);
-        Storage::disk('public')->assertMissing(substr($first, strlen('/storage/')));
+        Storage::disk('public')->assertMissing(PublicMedia::storedPathFromUrl($first));
     }
 
     public function test_legacy_menu_admin_routes_are_not_registered(): void

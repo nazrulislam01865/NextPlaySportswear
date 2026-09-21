@@ -1,5 +1,4 @@
 import type { StorefrontCategory } from '../../../types/category';
-import type { NavigationItem } from '../../../types/navigation';
 import type { StorefrontProduct } from '../../../types/product';
 
 export interface HomeSlide {
@@ -100,6 +99,4 @@ export interface HomePageData {
   latest_products_signature: string;
   best_selling_products: StorefrontProduct[];
   sports: StorefrontCategory[];
-  navigation: NavigationItem[];
-  menus: Record<string, NavigationItem[]>;
 }

@@ -3,6 +3,7 @@
 namespace App\Services\Storefront;
 
 use App\Models\StorefrontSetting;
+use App\Support\PublicMedia;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 
@@ -84,10 +85,12 @@ class StorefrontSettingsService
                 $stored = $this->normalizeLegacyShape($key, $stored);
                 $defaults = $this->defaults($key);
 
-                return $this->mergeDefaults(
+                $settings = $this->mergeDefaults(
                     $defaults,
                     Arr::only($stored, array_keys($defaults))
                 );
+
+                return $this->normalizeManagedMediaUrls($settings);
             }
         );
     }
@@ -141,6 +144,28 @@ class StorefrontSettingsService
         }
 
         return $defaults;
+    }
+
+    /** @param array<string|int, mixed> $settings @return array<string|int, mixed> */
+    private function normalizeManagedMediaUrls(array $settings): array
+    {
+        foreach ($settings as $key => $value) {
+            if (is_array($value)) {
+                $settings[$key] = $this->normalizeManagedMediaUrls($value);
+                continue;
+            }
+
+            if (! in_array((string) $key, ['icon', 'logo', 'image'], true) || ! is_string($value)) {
+                continue;
+            }
+
+            $path = PublicMedia::storedPathFromUrl($value);
+            if ($path !== null && str_starts_with($path, 'storefront/settings/')) {
+                $settings[$key] = PublicMedia::storedPathUrl($path);
+            }
+        }
+
+        return $settings;
     }
 
     /** @return array<string, mixed> */
