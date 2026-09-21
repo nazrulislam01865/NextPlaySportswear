@@ -1,6 +1,6 @@
 {
-  "_module.esm-CHZQYZeV.js": {
-    "file": "assets/module.esm-CHZQYZeV.js",
+  "_module.esm-BZYLEBjp.js": {
+    "file": "assets/module.esm-BZYLEBjp.js",
     "name": "module.esm"
   },
   "node_modules/read-excel-file/browser/index.js": {
@@ -10,7 +10,7 @@
     "isDynamicEntry": true
   },
   "resources/css/admin.css": {
-    "file": "assets/admin-CDMuKdxF.css",
+    "file": "assets/admin-D9PeK2y8.css",
     "name": "admin",
     "names": [
       "admin.css"
@@ -19,7 +19,7 @@
     "isEntry": true
   },
   "resources/css/storefront.css": {
-    "file": "assets/storefront-DOVNC0gd.css",
+    "file": "assets/storefront-1uwCIBCh.css",
     "name": "storefront",
     "names": [
       "storefront.css"
@@ -28,33 +28,33 @@
     "isEntry": true
   },
   "resources/js/admin.js": {
-    "file": "assets/admin-CDdAZqH3.js",
+    "file": "assets/admin-Cp4fkmdF.js",
     "name": "admin",
     "src": "resources/js/admin.js",
     "isEntry": true,
     "imports": [
-      "_module.esm-CHZQYZeV.js"
+      "_module.esm-BZYLEBjp.js"
     ],
     "dynamicImports": [
       "node_modules/read-excel-file/browser/index.js"
     ]
   },
   "resources/js/storefront.js": {
-    "file": "assets/storefront-BgjPhmvv.js",
+    "file": "assets/storefront-GGDXEBVm.js",
     "name": "storefront",
     "src": "resources/js/storefront.js",
     "isEntry": true,
     "imports": [
-      "_module.esm-CHZQYZeV.js"
+      "_module.esm-BZYLEBjp.js"
     ]
   },
   "resources/js/storefront/main.ts": {
-    "file": "assets/main-Cb5qJuB9.js",
+    "file": "assets/main-BbK3BRug.js",
     "name": "main",
     "src": "resources/js/storefront/main.ts",
     "isEntry": true,
     "css": [
-      "assets/main-BB0DbctB.css"
+      "assets/main-DLej3jEP.css"
     ]
   }
 }

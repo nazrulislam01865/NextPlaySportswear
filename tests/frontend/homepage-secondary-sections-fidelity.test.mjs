@@ -134,7 +134,7 @@ test('secondary homepage sections use centralized storefront showcase tokens', (
   }
 });
 
-test('shop by sport quick links use centralized transparent mask styling with a hover arrow reveal', () => {
+test('shop by sport navigation buttons use centralized transparent mask styling with a hover arrow reveal', () => {
   const tokens = read('resources/js/storefront/styles/tokens.css');
   const sport = read('resources/js/storefront/features/home/components/ShopBySport.vue');
 
@@ -167,9 +167,9 @@ test('shop by sport quick links use centralized transparent mask styling with a 
   assert.match(sport, /\.np-sport-link__arrow\{[\s\S]*position:\s*absolute/);
   assert.match(sport, /\.np-sport-link__arrow\{[\s\S]*right:\s*var\(--np-home-sport-link-arrow-offset\)/);
   assert.match(sport, /\.np-sport-link__arrow\{[\s\S]*width:\s*var\(--np-home-sport-link-arrow-size\)/);
-  assert.match(sport, /\.np-sport-hero nav a:hover \.np-sport-link__label[\s\S]*translateX\(calc\(-1 \* var\(--np-home-sport-link-label-hover-shift\)\)\)/);
-  assert.match(sport, /\.np-sport-hero nav a:hover[\s\S]*background:\s*var\(--np-home-sport-link-mask-bg-hover\)/);
-  assert.match(sport, /\.np-sport-hero nav a:hover[\s\S]*\.np-sport-link__arrow[\s\S]*opacity:\s*1/);
+  assert.match(sport, /\.np-sport-hero nav button:hover \.np-sport-link__label[\s\S]*translateX\(calc\(-1 \* var\(--np-home-sport-link-label-hover-shift\)\)\)/);
+  assert.match(sport, /\.np-sport-hero nav button:hover[\s\S]*background:\s*var\(--np-home-sport-link-mask-bg-hover\)/);
+  assert.match(sport, /\.np-sport-hero nav button:hover[\s\S]*\.np-sport-link__arrow[\s\S]*opacity:\s*1/);
   assert.match(sport, /@media\(max-width:900px\)[\s\S]*font-size:\s*var\(--np-home-sport-link-size-mobile\)/);
 });
 

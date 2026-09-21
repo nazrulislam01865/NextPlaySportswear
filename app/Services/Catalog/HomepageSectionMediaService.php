@@ -99,7 +99,7 @@ class HomepageSectionMediaService
                 $url = $submittedUrl;
             }
 
-            $cleanRow = $this->cleanSubmittedItem($row);
+            $cleanRow = $this->cleanSubmittedItem($row, (string) $section->key);
             $saved[] = array_filter(array_merge($old, $cleanRow, [
                 'id' => $id,
                 'image_path' => $path,
@@ -114,7 +114,7 @@ class HomepageSectionMediaService
     }
 
     /** @param array<string, mixed> $row @return array<string, mixed> */
-    private function cleanSubmittedItem(array $row): array
+    private function cleanSubmittedItem(array $row, string $sectionKey): array
     {
         $clean = [];
         foreach (['id', 'title', 'subtitle', 'description', 'url', 'label', 'image_alt', 'image_url'] as $field) {
@@ -127,6 +127,41 @@ class HomepageSectionMediaService
         if ($categoryId > 0) {
             $clean['category_id'] = $categoryId;
         }
+
+        if ($sectionKey === 'shop_by_sport') {
+            // Persist the submitted list even when it is empty so removing all
+            // buttons from a sport does not resurrect buttons from the old row.
+            $clean['buttons'] = $this->cleanSportButtons((array) ($row['buttons'] ?? []));
+        }
+
+        return $clean;
+    }
+
+    /** @return array<int, array{id?: string, label: string, url: string}> */
+    private function cleanSportButtons(array $buttons): array
+    {
+        $clean = [];
+
+        foreach ($buttons as $button) {
+            if (! is_array($button)) {
+                continue;
+            }
+
+            $label = trim(strip_tags((string) ($button['label'] ?? '')));
+            $url = trim(strip_tags((string) ($button['url'] ?? '')));
+            if ($label === '' || $url === '') {
+                continue;
+            }
+
+            $row = ['label' => $label, 'url' => $url];
+            $id = trim(strip_tags((string) ($button['id'] ?? '')));
+            if ($id !== '') {
+                $row['id'] = $id;
+            }
+
+            $clean[] = $row;
+        }
+
         return $clean;
     }
 

@@ -43,9 +43,16 @@ export interface HomeAudienceItem extends HomeSectionItem {
   url: string;
 }
 
+export interface HomeSportButton {
+  id?: string;
+  label: string;
+  url: string;
+}
+
 export interface HomeSportItem extends HomeSectionItem {
   id: string;
   category_id?: number;
+  buttons?: HomeSportButton[];
 }
 
 export interface HomeCategoryItem extends HomeSectionItem {
@@ -69,7 +76,6 @@ export interface HomeBestChoicesSettings extends Record<string, unknown> {
 
 export interface HomeShopBySportSettings extends Record<string, unknown> {
   default_sport_id?: number | null;
-  quick_links: Array<{ id: string; label: string; url: string }>;
 }
 
 export interface HomeSection {

@@ -84,4 +84,111 @@ class HomepageSectionAdminTest extends TestCase
         $this->assertSame('LATEST TEAM GEAR', collect($after)->firstWhere('key', 'new_arrivals')['title'] ?? null);
     }
 
+    public function test_shop_by_sport_buttons_are_user_defined_per_sport_and_can_be_removed(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+
+        $payload = [
+            'title' => 'SHOP BY SPORT',
+            'is_active' => '1',
+            'items' => [
+                [
+                    'id' => 'sport-baseball',
+                    'title' => 'BASEBALL',
+                    'url' => '/sports/baseball',
+                    'buttons' => [
+                        ['id' => 'button-jersey', 'label' => 'JERSEY', 'url' => '/products?q=baseball-jersey'],
+                        ['id' => 'button-accessories', 'label' => 'ACCESSORIES', 'url' => '/products?q=baseball-accessories'],
+                    ],
+                ],
+            ],
+        ];
+
+        $this->actingAs($admin, 'admin')
+            ->patch(route('admin.homepage.sections.update', 'shop_by_sport'), $payload)
+            ->assertRedirect(route('admin.homepage.sections.edit', 'shop_by_sport'));
+
+        $stored = HomepageSection::query()->where('key', 'shop_by_sport')->firstOrFail();
+        $this->assertSame('JERSEY', $stored->items[0]['buttons'][0]['label']);
+        $this->assertSame('/products?q=baseball-accessories', $stored->items[0]['buttons'][1]['url']);
+
+        $section = collect(app(HomepageSectionService::class)->sections())->firstWhere('key', 'shop_by_sport');
+        $this->assertSame('ACCESSORIES', $section['items'][0]['buttons'][1]['label']);
+
+        $payload['items'][0]['buttons'] = [];
+
+        $this->actingAs($admin, 'admin')
+            ->patch(route('admin.homepage.sections.update', 'shop_by_sport'), $payload)
+            ->assertRedirect(route('admin.homepage.sections.edit', 'shop_by_sport'));
+
+        $stored->refresh();
+        $this->assertSame([], $stored->items[0]['buttons']);
+    }
+
+    public function test_shop_by_sport_gets_four_starter_buttons_only_when_buttons_have_never_been_configured(): void
+    {
+        $section = HomepageSection::query()->create([
+            'key' => 'shop_by_sport',
+            'name' => 'Shop By Sport',
+            'title' => 'SHOP BY SPORT',
+            'items' => [
+                [
+                    'id' => 'sport-baseball',
+                    'title' => 'BASEBALL',
+                    'url' => '/sports/baseball',
+                ],
+            ],
+            'settings' => ['default_sport_id' => null],
+            'is_active' => true,
+            'sort_order' => 30,
+        ]);
+
+        $service = app(HomepageSectionService::class);
+        $service->flushCache();
+        $resolved = collect($service->sections())->firstWhere('key', 'shop_by_sport');
+
+        $this->assertSame(
+            ['JERSEY', 'BOTTOMS', 'UNIFORM KITS', 'ACCESSORIES'],
+            collect($resolved['items'][0]['buttons'])->pluck('label')->all(),
+        );
+        $this->assertArrayNotHasKey('item_button_defaults', $resolved);
+
+        $section->items = [[
+            'id' => 'sport-baseball',
+            'title' => 'BASEBALL',
+            'url' => '/sports/baseball',
+            'buttons' => [],
+        ]];
+        $section->save();
+
+        $service->flushCache();
+        $resolvedAfterDelete = collect($service->sections())->firstWhere('key', 'shop_by_sport');
+
+        $this->assertSame([], $resolvedAfterDelete['items'][0]['buttons']);
+    }
+
+    public function test_shop_by_sport_legacy_quick_links_are_retired_from_the_storefront_contract(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+
+        $this->actingAs($admin, 'admin')
+            ->patch(route('admin.homepage.sections.update', 'shop_by_sport'), [
+                'title' => 'SHOP BY SPORT',
+                'is_active' => '1',
+                'settings' => [
+                    'default_sport_id' => null,
+                    'quick_links' => [
+                        ['id' => 'legacy', 'label' => 'LEGACY BUTTON', 'url' => '/products?q=legacy'],
+                    ],
+                ],
+            ])
+            ->assertRedirect(route('admin.homepage.sections.edit', 'shop_by_sport'));
+
+        $stored = HomepageSection::query()->where('key', 'shop_by_sport')->firstOrFail();
+        $this->assertArrayNotHasKey('quick_links', $stored->settings ?? []);
+
+        $section = collect(app(HomepageSectionService::class)->sections())->firstWhere('key', 'shop_by_sport');
+        $this->assertArrayNotHasKey('quick_links', $section['settings']);
+    }
+
 }

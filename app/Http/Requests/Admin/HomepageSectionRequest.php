@@ -61,12 +61,12 @@ class HomepageSectionRequest extends FormRequest
             'items.*.image_upload_token' => ['nullable', 'string', 'regex:/^[a-f0-9]{64}$/'],
             'items.*.remove_image' => ['nullable', 'boolean'],
             'items.*.category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'items.*.buttons' => ['nullable', 'array'],
+            'items.*.buttons.*.id' => ['nullable', 'string', 'max:80', 'regex:/^[a-z0-9][a-z0-9-]*$/'],
+            'items.*.buttons.*.label' => ['nullable', 'string', 'max:160'],
+            'items.*.buttons.*.url' => ['nullable', 'string', 'max:2048', new SafePublicUrl()],
             'settings' => ['nullable', 'array'],
             'settings.default_sport_id' => ['nullable', 'integer', 'exists:categories,id'],
-            'settings.quick_links' => ['nullable', 'array', 'size:4'],
-            'settings.quick_links.*.id' => ['required_with:settings.quick_links', 'string', 'max:80', 'regex:/^[a-z0-9][a-z0-9-]*$/'],
-            'settings.quick_links.*.label' => ['nullable', 'string', 'max:160'],
-            'settings.quick_links.*.url' => ['nullable', 'string', 'max:2048', new SafePublicUrl()],
             'settings.tabs' => ['nullable', 'array'],
             'settings.tabs.*.label' => ['nullable', 'string', 'max:160'],
             'settings.tabs.*.enabled' => ['nullable', 'boolean'],
@@ -86,6 +86,7 @@ class HomepageSectionRequest extends FormRequest
             'items.*.image_file.mimes' => 'Item images must be JPG, PNG, WebP, or AVIF files.',
             'items.*.image_file.max' => 'Each item image must be no larger than 10 MB.',
             'items.*.image_file.uploaded' => 'The browser could not transfer one of the images through PHP multipart upload. Choose it again; the homepage uploader will stage it automatically.',
+            'items.*.buttons.*.id.regex' => 'Sport button IDs may contain lowercase letters, numbers, and hyphens only.',
             'image_file.max' => 'The image must be no larger than 10 MB.',
             'image_file.uploaded' => 'The browser could not transfer this image through PHP multipart upload. Choose it again; the homepage uploader will stage it automatically.',
         ];
@@ -145,7 +146,7 @@ class HomepageSectionRequest extends FormRequest
 
             match ($key) {
                 'audience' => $this->validateAudience($validator),
-                'shop_by_sport' => $this->validateCategoryItems($validator, 'sport'),
+                'shop_by_sport' => $this->validateShopBySport($validator),
                 'shop_by_category' => $this->validateCategoryItems($validator, 'category'),
                 'best_choices' => $this->validateBestChoices($validator),
                 'design_process' => $this->validateDesignProcess($validator),
@@ -169,7 +170,7 @@ class HomepageSectionRequest extends FormRequest
         }
 
         $key = (string) $this->route('key');
-        $data['items'] = $this->cleanItems((array) $this->input('items', []));
+        $data['items'] = $this->cleanItems((array) $this->input('items', []), $key);
         $data['settings'] = $this->cleanSettings($key, (array) $this->input('settings', []));
         $data['is_active'] = $this->boolean('is_active');
         $data['sort_order'] = (int) (HomepageSectionRegistry::definition((string) $this->route('key'))['sort_order'] ?? 0);
@@ -182,6 +183,47 @@ class HomepageSectionRequest extends FormRequest
         $items = collect((array) $this->input('items', []));
         if ($items->count() !== 3 || $items->pluck('id')->sort()->values()->all() !== ['kids', 'men', 'women']) {
             $validator->errors()->add('items', 'Audience Tiles must contain MEN, WOMEN, and KIDS exactly once.');
+        }
+    }
+
+    private function validateShopBySport(Validator $validator): void
+    {
+        $this->validateCategoryItems($validator, 'sport');
+
+        foreach ((array) $this->input('items', []) as $itemIndex => $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $seenButtonIds = [];
+            foreach ((array) ($item['buttons'] ?? []) as $buttonIndex => $button) {
+                if (! is_array($button)) {
+                    continue;
+                }
+
+                $label = trim((string) ($button['label'] ?? ''));
+                $url = trim((string) ($button['url'] ?? ''));
+                $id = trim((string) ($button['id'] ?? ''));
+
+                if ($label === '' && $url === '') {
+                    continue;
+                }
+
+                if ($label === '') {
+                    $validator->errors()->add("items.{$itemIndex}.buttons.{$buttonIndex}.label", 'Enter button text or remove this button.');
+                }
+
+                if ($url === '') {
+                    $validator->errors()->add("items.{$itemIndex}.buttons.{$buttonIndex}.url", 'Enter the button destination or remove this button.');
+                }
+
+                if ($id !== '') {
+                    if (isset($seenButtonIds[$id])) {
+                        $validator->errors()->add("items.{$itemIndex}.buttons.{$buttonIndex}.id", 'Each button in a sport must have a unique ID.');
+                    }
+                    $seenButtonIds[$id] = true;
+                }
+            }
         }
     }
 
@@ -262,7 +304,7 @@ class HomepageSectionRequest extends FormRequest
     }
 
     /** @return array<int, array<string, mixed>> */
-    private function cleanItems(array $items): array
+    private function cleanItems(array $items, string $key): array
     {
         $clean = [];
         foreach ($items as $item) {
@@ -283,6 +325,10 @@ class HomepageSectionRequest extends FormRequest
                 $row['category_id'] = $categoryId;
             }
 
+            if ($key === 'shop_by_sport') {
+                $row['buttons'] = $this->cleanSportButtons((array) ($item['buttons'] ?? []));
+            }
+
             if ($row !== []) {
                 $clean[] = $row;
             }
@@ -290,24 +336,40 @@ class HomepageSectionRequest extends FormRequest
         return $clean;
     }
 
+    /** @return array<int, array{id?: string, label: string, url: string}> */
+    private function cleanSportButtons(array $buttons): array
+    {
+        $clean = [];
+
+        foreach ($buttons as $button) {
+            if (! is_array($button)) {
+                continue;
+            }
+
+            $label = $this->cleanText($button['label'] ?? null);
+            $url = $this->cleanText($button['url'] ?? null);
+            if ($label === null || $url === null) {
+                continue;
+            }
+
+            $row = ['label' => $label, 'url' => $url];
+            $id = $this->cleanText($button['id'] ?? null);
+            if ($id !== null) {
+                $row['id'] = $id;
+            }
+
+            $clean[] = $row;
+        }
+
+        return $clean;
+    }
+
     /** @return array<string, mixed> */
     private function cleanSettings(string $key, array $settings): array
     {
         if ($key === 'shop_by_sport') {
-            $quickLinks = collect((array) ($settings['quick_links'] ?? []))
-                ->take(4)
-                ->map(function ($row): array {
-                    $row = is_array($row) ? $row : [];
-                    return array_filter([
-                        'id' => $this->cleanText($row['id'] ?? null),
-                        'label' => $this->cleanText($row['label'] ?? null),
-                        'url' => $this->cleanText($row['url'] ?? null),
-                    ], fn ($value): bool => $value !== null);
-                })->values()->all();
-
             return [
                 'default_sport_id' => (int) ($settings['default_sport_id'] ?? 0) ?: null,
-                'quick_links' => $quickLinks,
             ];
         }
 

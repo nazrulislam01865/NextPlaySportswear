@@ -14,14 +14,56 @@ $partial = match ($section->key) {
 @endphp
 <x-layouts.admin :title="$viewSection['name']" eyebrow="Homepage Controls" :subtitle="'Edit '.$viewSection['name'].' without changing storefront code.'" :storefront-url="route('home')">
 <script>
-window.npHomepageItems = (initial = []) => ({
-    items: Array.isArray(initial) ? initial : [],
-    add(kind) {
-        const id = `${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-        this.items.push({ id, category_id: '', title: '', url: '', image_url: '', image_alt: '', image_upload_token: '' });
-    },
-    remove(index) { this.items.splice(index, 1); }
-});
+window.npHomepageItems = (initial = [], sportButtonDefaults = []) => {
+    const defaultButtons = Array.isArray(sportButtonDefaults)
+        ? sportButtonDefaults
+            .filter((button) => button && typeof button === 'object')
+            .map((button) => ({
+                id: String(button.id || ''),
+                label: String(button.label || ''),
+                url: String(button.url || ''),
+            }))
+        : [];
+
+    const freshSportButtons = () => defaultButtons.map((button) => ({ ...button }));
+
+    return {
+        items: Array.isArray(initial)
+            ? initial.map((item) => ({
+                ...item,
+                buttons: Object.prototype.hasOwnProperty.call(item || {}, 'buttons') || item?.buttons_configured
+                    ? (Array.isArray(item?.buttons) ? item.buttons : [])
+                    : freshSportButtons(),
+            }))
+            : [],
+        add(kind) {
+            const id = `${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+            this.items.push({
+                id,
+                category_id: '',
+                title: '',
+                url: '',
+                image_url: '',
+                image_alt: '',
+                image_upload_token: '',
+                buttons: kind === 'sport' ? freshSportButtons() : [],
+            });
+        },
+        remove(index) { this.items.splice(index, 1); },
+        addButton(item) {
+            if (!Array.isArray(item.buttons)) item.buttons = [];
+            item.buttons.push({
+                id: `button-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                label: '',
+                url: '',
+            });
+        },
+        removeButton(item, buttonIndex) {
+            if (!Array.isArray(item.buttons)) return;
+            item.buttons.splice(buttonIndex, 1);
+        },
+    };
+};
 </script>
 <div class="np-home-admin">
     @if($errors->any())

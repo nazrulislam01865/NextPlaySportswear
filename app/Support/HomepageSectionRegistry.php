@@ -74,16 +74,16 @@ final class HomepageSectionRegistry
                 'title' => 'SHOP BY SPORT',
                 'settings' => [
                     'default_sport_id' => null,
-                    'quick_links' => [
-                        ['id' => 'jersey', 'label' => 'JERSEY', 'url' => '/products?q=jersey'],
-                        ['id' => 'bottoms', 'label' => 'BOTTOMS', 'url' => '/products?q=bottoms'],
-                        ['id' => 'uniform-kits', 'label' => 'UNIFORM KITS', 'url' => '/products?q=uniform'],
-                        ['id' => 'accessories', 'label' => 'ACCESSORIES', 'url' => '/products?q=accessories'],
-                    ],
+                ],
+                'item_button_defaults' => [
+                    ['id' => 'button-jersey', 'label' => 'JERSEY', 'url' => '/products?q=jersey'],
+                    ['id' => 'button-bottoms', 'label' => 'BOTTOMS', 'url' => '/products?q=bottoms'],
+                    ['id' => 'button-uniform-kits', 'label' => 'UNIFORM KITS', 'url' => '/products?q=uniform'],
+                    ['id' => 'button-accessories', 'label' => 'ACCESSORIES', 'url' => '/products?q=accessories'],
                 ],
                 'fields' => ['text', 'items', 'settings', 'publishing'],
                 'item_label' => 'Sports',
-                'item_fields' => ['id', 'category_id', 'title', 'url', 'image_url', 'image_alt'],
+                'item_fields' => ['id', 'category_id', 'title', 'url', 'image_url', 'image_alt', 'buttons'],
             ],
             [
                 'key' => 'new_arrivals',
@@ -240,13 +240,37 @@ final class HomepageSectionRegistry
         $merged['fields'] = $definition['fields'] ?? ['text'];
         $merged['item_fields'] = $definition['item_fields'] ?? ['title', 'description'];
         $merged['item_label'] = $definition['item_label'] ?? 'Items';
-        $merged['settings'] = is_array($section?->settings)
-            ? array_replace_recursive((array) ($definition['settings'] ?? []), $section->settings)
-            : (array) ($definition['settings'] ?? []);
+        $merged['settings'] = self::mergeSettings(
+            $key,
+            (array) ($definition['settings'] ?? []),
+            is_array($section?->settings) ? $section->settings : null,
+        );
         $merged['items'] = self::mergeItems(
             is_array($definition['items'] ?? null) ? $definition['items'] : [],
             is_array($section?->items) ? $section->items : (is_array($merged['items'] ?? null) ? $merged['items'] : [])
         );
+
+        if ($key === 'shop_by_sport') {
+            $buttonDefaults = is_array($definition['item_button_defaults'] ?? null)
+                ? $definition['item_button_defaults']
+                : [];
+
+            $merged['items'] = collect($merged['items'])
+                ->map(function ($item) use ($buttonDefaults): mixed {
+                    if (! is_array($item) || array_key_exists('buttons', $item)) {
+                        return $item;
+                    }
+
+                    // Legacy sports that have never had per-sport buttons get
+                    // the four starter buttons. An explicitly saved empty array
+                    // is preserved so admins can delete every button if desired.
+                    $item['buttons'] = $buttonDefaults;
+
+                    return $item;
+                })
+                ->all();
+        }
+
         $merged['is_active'] = (bool) ($merged['is_active'] ?? true);
         $merged['sort_order'] = (int) ($merged['sort_order'] ?? ($definition['sort_order'] ?? 0));
         $merged['image'] = self::publicImage($merged['image_path'] ?? null, $merged['image_url'] ?? null);
@@ -277,6 +301,10 @@ final class HomepageSectionRegistry
             ->filter()
             ->values()
             ->all();
+
+        // This is admin/editor initialization metadata, not part of the
+        // storefront section JSON contract.
+        unset($merged['item_button_defaults']);
 
         return $merged;
     }
@@ -324,6 +352,30 @@ final class HomepageSectionRegistry
         $item['image'] = self::publicImage($item['image_path'], $item['image_url']);
 
         return $item;
+    }
+
+    /**
+     * Merge section settings. Shop By Sport buttons are stored inside each
+     * configured sport item. The retired global quick_links setting is stripped
+     * from legacy rows so old default buttons cannot leak back into the UI.
+     *
+     * @param array<string, mixed> $defaults
+     * @param array<string, mixed>|null $stored
+     * @return array<string, mixed>
+     */
+    private static function mergeSettings(string $key, array $defaults, ?array $stored): array
+    {
+        if ($stored === null) {
+            return $defaults;
+        }
+
+        $merged = array_replace_recursive($defaults, $stored);
+
+        if ($key === 'shop_by_sport') {
+            unset($merged['quick_links']);
+        }
+
+        return $merged;
     }
 
     private static function publicImage(mixed $path, mixed $url): ?string
