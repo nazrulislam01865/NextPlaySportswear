@@ -1,0 +1,5 @@
+Remove this obsolete hardcoded Vue configuration file when applying only the changed-files package:
+
+resources/js/storefront/components/layout/navigation/mega-menu.config.ts
+
+The new DesktopNavigation.vue and MegaMenu.vue consume Laravel API navigation data directly.

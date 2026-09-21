@@ -1,4 +1,5 @@
 import './bootstrap';
+import { initHomepageStagedUploads } from './admin/homepage-staged-upload';
 
 import Alpine from 'alpinejs';
 window.Alpine = Alpine;
@@ -3345,6 +3346,8 @@ window.adminRemoteAreaImporter = (config = {}) => ({
         }
     },
 });
+
+initHomepageStagedUploads();
 
 Alpine.start();
 

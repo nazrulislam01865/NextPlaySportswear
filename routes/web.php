@@ -111,9 +111,19 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
             ->middleware('throttle:30,1')
             ->name('media-library.store');
 
+        Route::put('/homepage-media-uploads/{uploadId}/chunks/{index}', [\App\Http\Controllers\Admin\HomepageStagedUploadController::class, 'chunk'])->whereNumber('index')->middleware('throttle:120,1')->name('homepage-media-uploads.chunk');
+        Route::post('/homepage-media-uploads/{uploadId}/finalize', [\App\Http\Controllers\Admin\HomepageStagedUploadController::class, 'finalize'])->middleware('throttle:30,1')->name('homepage-media-uploads.finalize');
+
         Route::get('/homepage', [\App\Http\Controllers\Admin\HomepageSectionController::class, 'index'])->name('homepage.sections.index');
         Route::get('/homepage/sections/{key}', [\App\Http\Controllers\Admin\HomepageSectionController::class, 'edit'])->name('homepage.sections.edit');
         Route::patch('/homepage/sections/{key}', [\App\Http\Controllers\Admin\HomepageSectionController::class, 'update'])->name('homepage.sections.update');
+
+        Route::get('/header-settings', [\App\Http\Controllers\Admin\HeaderSettingsController::class, 'edit'])->name('header-settings.edit');
+        Route::patch('/header-settings', [\App\Http\Controllers\Admin\HeaderSettingsController::class, 'update'])->name('header-settings.update');
+        Route::get('/navigation-settings', [\App\Http\Controllers\Admin\NavigationSettingsController::class, 'edit'])->name('navigation-settings.edit');
+        Route::patch('/navigation-settings', [\App\Http\Controllers\Admin\NavigationSettingsController::class, 'update'])->name('navigation-settings.update');
+        Route::get('/footer-settings', [\App\Http\Controllers\Admin\FooterSettingsController::class, 'edit'])->name('footer-settings.edit');
+        Route::patch('/footer-settings', [\App\Http\Controllers\Admin\FooterSettingsController::class, 'update'])->name('footer-settings.update');
         Route::patch('/homepage-slides/{homepageSlide}/toggle', [\App\Http\Controllers\Admin\HomepageSlideController::class, 'toggle'])->name('homepage-slides.toggle');
         Route::resource('homepage-slides', \App\Http\Controllers\Admin\HomepageSlideController::class)->except('show');
 
@@ -196,7 +206,6 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         )->parameters([
             'size-option-groups' => 'sizeOptionGroup',
         ])->except('show');
-        Route::resource('menus', \App\Http\Controllers\Admin\MenuController::class)->except('show');
         Route::resource('coupons', \App\Http\Controllers\Admin\CouponController::class)->except('show');
         Route::post('/rural-area-surcharges/import/start', [\App\Http\Controllers\Admin\RuralAreaSurchargeController::class, 'importStart'])
             ->middleware('throttle:10,1')

@@ -1,20 +1,30 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import type { NavigationItem } from '../../types/navigation';
 import MegaMenu from './navigation/MegaMenu.vue';
-import {
-  DESKTOP_NAV_ITEMS,
-  SHOP_MEGA_MENU,
-  resolveNavigationUrl,
-} from './navigation/mega-menu.config';
+import type { HeaderNavigationItemSetting } from './navigation/mega-menu.config';
 
-const props = defineProps<{ navigation?: NavigationItem[] }>();
+const props = withDefaults(defineProps<{
+  items?: HeaderNavigationItemSetting[];
+}>(), {
+  items: () => [],
+});
 
 const root = ref<HTMLElement | null>(null);
-const activeMenu = ref<string | null>(null);
+const activeMenu = ref<number | null>(null);
 let closeTimer: ReturnType<typeof setTimeout> | null = null;
 
-const menuConfig = computed(() => activeMenu.value === SHOP_MEGA_MENU.key ? SHOP_MEGA_MENU : null);
+const visibleItems = computed(() => props.items.filter((item) => (
+  item.enabled !== false && Boolean(item.label?.trim() && item.url?.trim())
+)));
+
+const activeItem = computed(() => (
+  activeMenu.value === null ? null : visibleItems.value[activeMenu.value] ?? null
+));
+
+const menuConfig = computed(() => {
+  const megaMenu = activeItem.value?.mega_menu;
+  return megaMenu?.enabled === true ? megaMenu : null;
+});
 
 function cancelClose() {
   if (closeTimer) {
@@ -23,9 +33,9 @@ function cancelClose() {
   }
 }
 
-function openMenu(menuKey?: string) {
+function openMenu(index: number, item: HeaderNavigationItemSetting) {
   cancelClose();
-  activeMenu.value = menuKey ?? null;
+  activeMenu.value = item.mega_menu?.enabled === true ? index : null;
 }
 
 function closeMenu() {
@@ -68,23 +78,25 @@ onBeforeUnmount(() => {
   >
     <div class="np-desktop-nav__list">
       <a
-        v-for="item in DESKTOP_NAV_ITEMS"
-        :key="item.key"
+        v-for="(item, index) in visibleItems"
+        :key="`${item.label}-${index}`"
         class="np-desktop-nav__link"
-        :class="{ 'np-desktop-nav__link--active': activeMenu === item.megaMenuKey }"
-        :href="resolveNavigationUrl(navigation, item.href, item.lookupLabels ?? [item.label])"
-        :aria-expanded="item.megaMenuKey ? activeMenu === item.megaMenuKey : undefined"
-        :aria-controls="item.megaMenuKey ? `mega-menu-${item.megaMenuKey}` : undefined"
-        @mouseenter="openMenu(item.megaMenuKey)"
-        @focus="openMenu(item.megaMenuKey)"
+        :class="{ 'np-desktop-nav__link--active': activeMenu === index && item.mega_menu?.enabled === true }"
+        :href="item.url || '#'"
+        :target="item.target || '_self'"
+        :rel="item.target === '_blank' ? 'noopener noreferrer' : undefined"
+        :aria-expanded="item.mega_menu?.enabled === true ? activeMenu === index : undefined"
+        :aria-controls="item.mega_menu?.enabled === true ? `mega-menu-${index}` : undefined"
+        @mouseenter="openMenu(index, item)"
+        @focus="openMenu(index, item)"
       >{{ item.label }}</a>
     </div>
 
     <MegaMenu
-      v-if="menuConfig"
-      :id="`mega-menu-${menuConfig.key}`"
+      v-if="menuConfig && activeMenu !== null"
+      :id="`mega-menu-${activeMenu}`"
       :config="menuConfig"
-      :navigation="navigation"
+      :menu-label="activeItem?.label || 'Menu'"
       @mouseenter="cancelClose"
       @mouseleave="scheduleClose"
       @focusin="cancelClose"

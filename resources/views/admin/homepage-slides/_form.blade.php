@@ -1,6 +1,7 @@
 @php
     $isEdit = $slide->exists;
     $currentImage = \App\Support\PublicMedia::url($slide->image_path, $slide->image_url, '');
+    $imageAspect = \App\Support\HomepageImageAspectRatios::heroSlide();
     $checked = static fn (string $field, bool $default = false): bool => old($field) !== null
         ? filter_var(old($field), FILTER_VALIDATE_BOOLEAN)
         : (bool) ($slide->{$field} ?? $default);
@@ -11,6 +12,8 @@
     action="{{ $action }}"
     enctype="multipart/form-data"
     class="space-y-6"
+    data-homepage-upload-form
+    data-homepage-upload-base-url="{{ url('/admin/homepage-media-uploads') }}"
     x-data="{
         imageUrl: @js(old('image_url', $slide->image_url)),
         imagePreview: @js($currentImage),
@@ -38,7 +41,7 @@
     @csrf
     @if($method !== 'POST') @method($method) @endif
 
-    <x-admin.section-card title="Banner Image" description="Use one responsive 8:3 banner image for desktop, tablet, and mobile. Recommended: 2560×960 px. Alternative: 1920×720 px. Keep important content near the center so the same image crops cleanly on smaller screens.">
+    <x-admin.section-card title="Banner Image" description="Use one responsive banner image for desktop, tablet, and mobile. The upload is validated by aspect ratio rather than pixel resolution. Keep important content near the center so the same image crops cleanly on smaller screens.">
         <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,.7fr)]">
             <div class="rounded-2xl border border-slate-200 bg-white p-5">
                 <h3 class="text-sm font-black uppercase tracking-[.16em] text-brand-ink">Banner image</h3>
@@ -46,11 +49,13 @@
                     <label class="admin-label sm:col-span-2">
                         Upload banner image
                         <input type="file" name="image_file" accept=".jpg,.jpeg,.png,.webp,.avif,image/jpeg,image/png,image/webp,image/avif" class="admin-input h-auto py-3" x-on:change="previewFile($event)">
+                        <input type="hidden" name="image_upload_token" value="{{ old('image_upload_token') }}">
+                        <span class="mt-1.5 block text-xs leading-5 text-slate-500"><strong>Target aspect ratio: {{ $imageAspect['ratio'] }}</strong> (±{{ (int) round($imageAspect['tolerance'] * 100) }}% accepted). Resolution is flexible.</span>
                     </label>
 
                     <label class="admin-label sm:col-span-2">
                         Or image URL
-                        <input type="url" name="image_url" x-model="imageUrl" x-on:input.debounce.400ms="previewUrl()" value="{{ old('image_url', $slide->image_url) }}" class="admin-input" placeholder="https://example.com/banner-2560x960.webp" maxlength="2048">
+                        <input type="url" name="image_url" x-model="imageUrl" x-on:input.debounce.400ms="previewUrl()" value="{{ old('image_url', $slide->image_url) }}" class="admin-input" placeholder="https://example.com/banner.webp" maxlength="2048">
                     </label>
 
                     <label class="admin-label sm:col-span-2">

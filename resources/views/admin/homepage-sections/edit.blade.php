@@ -18,7 +18,7 @@ window.npHomepageItems = (initial = []) => ({
     items: Array.isArray(initial) ? initial : [],
     add(kind) {
         const id = `${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-        this.items.push({ id, category_id: '', title: '', url: '', image_url: '', image_alt: '' });
+        this.items.push({ id, category_id: '', title: '', url: '', image_url: '', image_alt: '', image_upload_token: '' });
     },
     remove(index) { this.items.splice(index, 1); }
 });
@@ -27,7 +27,7 @@ window.npHomepageItems = (initial = []) => ({
     @if($errors->any())
         <div class="np-home-admin__errors mb-5 rounded-2xl p-4"><strong>Please correct the highlighted information.</strong><ul class="mt-2 list-disc pl-5">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
     @endif
-    <form method="POST" action="{{ route('admin.homepage.sections.update', $section->key) }}" enctype="multipart/form-data" class="space-y-5">
+    <form method="POST" action="{{ route('admin.homepage.sections.update', $section->key) }}" enctype="multipart/form-data" class="space-y-5" data-homepage-upload-form data-homepage-upload-base-url="{{ url('/admin/homepage-media-uploads') }}">
         @csrf
         @method('PATCH')
         @include($partial)

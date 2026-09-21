@@ -60,7 +60,7 @@
                     <x-admin.sidebar-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')" icon="▦">Dashboard</x-admin.sidebar-link>
                 @endif
 
-                @if($canAdmin('products.view') || $canAdmin('categories.view') || $canAdmin('attributes.view') || $canAdmin('menus.view') || $canAdmin('media.view'))
+                @if($canAdmin('products.view') || $canAdmin('categories.view') || $canAdmin('attributes.view') || $canAdmin('media.view'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Catalog</p>
                     @if($canAdmin('products.view'))
                         <x-admin.sidebar-link :href="route('admin.products.index')" :active="request()->routeIs('admin.products.*')" icon="◇">Products</x-admin.sidebar-link>
@@ -88,9 +88,6 @@
                     @endif
                     @if($canAdmin('attributes.view'))
                         <x-admin.sidebar-link :href="route('admin.attributes.index')" :active="request()->routeIs('admin.attributes.*')" icon="◫">Catalog Attributes</x-admin.sidebar-link>
-                    @endif
-                    @if($canAdmin('menus.view'))
-                        <x-admin.sidebar-link :href="route('admin.menus.index')" :active="request()->routeIs('admin.menus.*')" icon="☷">Navigation Menus</x-admin.sidebar-link>
                     @endif
                 @endif
 
@@ -283,7 +280,7 @@
                     @endif
                 @endif
 
-                @if($canAdmin('homepage_sections.view') || $canAdmin('homepage_slides.view') || $canAdmin('newsletters.view') || $canAdmin('rural_surcharges.view') || $canAdmin('payment_methods.view'))
+                @if($canAdmin('homepage_sections.view') || $canAdmin('homepage_slides.view') || $canAdmin('header_settings.view') || $canAdmin('navigation_settings.view') || $canAdmin('footer_settings.view') || $canAdmin('newsletters.view') || $canAdmin('rural_surcharges.view') || $canAdmin('payment_methods.view'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Store</p>
                     @if($canAdmin('homepage_sections.view') || $canAdmin('homepage_slides.view'))
                         <x-admin.sidebar-group
@@ -305,6 +302,15 @@
                                 <x-admin.sidebar-sub-link :href="route('admin.homepage-slides.index')" :active="request()->routeIs('admin.homepage-slides.*')">Hero Banner</x-admin.sidebar-sub-link>
                             @endif
                         </x-admin.sidebar-group>
+                    @endif
+                    @if($canAdmin('header_settings.view'))
+                        <x-admin.sidebar-link :href="route('admin.header-settings.edit')" :active="request()->routeIs('admin.header-settings.*')" icon="▤">Header Settings</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('navigation_settings.view'))
+                        <x-admin.sidebar-link :href="route('admin.navigation-settings.edit')" :active="request()->routeIs('admin.navigation-settings.*')" icon="☷">Navigation Menu</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('footer_settings.view'))
+                        <x-admin.sidebar-link :href="route('admin.footer-settings.edit')" :active="request()->routeIs('admin.footer-settings.*')" icon="▥">Footer Settings</x-admin.sidebar-link>
                     @endif
                     @if($canAdmin('newsletters.view'))
                         <x-admin.sidebar-link :href="route('admin.newsletter-subscribers.index')" :active="request()->routeIs('admin.newsletter-subscribers.*')" icon="@">Newsletter Emails</x-admin.sidebar-link>

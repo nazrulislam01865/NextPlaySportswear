@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\Storage;
 
 class HomepageSectionMediaService
 {
+    public function __construct(private readonly HomepageStagedUploadService $stagedUploads)
+    {
+    }
+
     public function sync(HomepageSection $section, Request $request): void
     {
         $this->syncSectionMedia($section, $request);
@@ -18,6 +22,7 @@ class HomepageSectionMediaService
     private function syncSectionMedia(HomepageSection $section, Request $request): void
     {
         $uploaded = $request->file('image_file');
+        $uploadToken = trim((string) $request->input('image_upload_token', ''));
         $imageUrl = trim((string) $request->input('image_url', ''));
 
         if ($request->boolean('remove_image')) {
@@ -26,7 +31,16 @@ class HomepageSectionMediaService
             $section->image_url = null;
         }
 
-        if ($uploaded) {
+        if ($uploadToken !== '') {
+            $newPath = $this->stagedUploads->consumeToPublic(
+                (int) $request->user()->id,
+                $uploadToken,
+                "homepage/sections/{$section->key}",
+            );
+            $this->deleteSectionPath($section, $section->image_path);
+            $section->image_path = $newPath;
+            $section->image_url = null;
+        } elseif ($uploaded) {
             $this->deleteSectionPath($section, $section->image_path);
             $section->image_path = $uploaded->store("homepage/sections/{$section->key}", 'public');
             $section->image_url = null;
@@ -65,7 +79,17 @@ class HomepageSectionMediaService
                 $url = null;
             }
 
-            if ($upload = $request->file("items.$index.image_file")) {
+            $uploadToken = trim((string) ($row['image_upload_token'] ?? ''));
+            if ($uploadToken !== '') {
+                $newPath = $this->stagedUploads->consumeToPublic(
+                    (int) $request->user()->id,
+                    $uploadToken,
+                    "homepage/sections/{$section->key}/items/{$id}",
+                );
+                $this->deleteOwnedItemPath($section, $id, $path);
+                $path = $newPath;
+                $url = null;
+            } elseif ($upload = $request->file("items.$index.image_file")) {
                 $this->deleteOwnedItemPath($section, $id, $path);
                 $path = $upload->store("homepage/sections/{$section->key}/items/{$id}", 'public');
                 $url = null;

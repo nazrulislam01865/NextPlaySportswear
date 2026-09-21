@@ -8,9 +8,14 @@ use Illuminate\Support\Facades\Storage;
 
 class HomepageSlideMediaService
 {
+    public function __construct(private readonly HomepageStagedUploadService $stagedUploads)
+    {
+    }
+
     public function sync(HomepageSlide $slide, Request $request): void
     {
         $uploaded = $request->file('image_file');
+        $uploadToken = trim((string) $request->input('image_upload_token', ''));
         $imageUrl = trim((string) $request->input('image_url', ''));
 
         if ($request->boolean('remove_image')) {
@@ -19,7 +24,16 @@ class HomepageSlideMediaService
             $slide->image_url = null;
         }
 
-        if ($uploaded) {
+        if ($uploadToken !== '') {
+            $newPath = $this->stagedUploads->consumeToPublic(
+                (int) $request->user()->id,
+                $uploadToken,
+                "homepage/slides/{$slide->id}",
+            );
+            $this->deletePath($slide->image_path);
+            $slide->image_path = $newPath;
+            $slide->image_url = null;
+        } elseif ($uploaded) {
             $this->deletePath($slide->image_path);
             $slide->image_path = $uploaded->store("homepage/slides/{$slide->id}", 'public');
             $slide->image_url = null;

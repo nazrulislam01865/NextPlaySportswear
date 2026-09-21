@@ -29,7 +29,7 @@ test('desktop navigation is split into reusable mega-menu modules', () => {
 
 test('mega menu matches the prototype content structure', () => {
   assert.equal(fs.existsSync(path.join(root, 'public/images/storefront-vue/navigation/shop-mega-promo.jpg')), true, 'prototype promo crop must be bundled locally');
-  const config = read('resources/js/storefront/components/layout/navigation/mega-menu.config.ts');
+  const settings = read('app/Services/Storefront/StorefrontSettingsService.php');
   const mega = read('resources/js/storefront/components/layout/navigation/MegaMenu.vue');
 
   for (const text of [
@@ -44,7 +44,7 @@ test('mega menu matches the prototype content structure', () => {
     'KIDS',
     'Shop All Products',
   ]) {
-    assert.match(config + mega, new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.match(settings + mega, new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
 });
 

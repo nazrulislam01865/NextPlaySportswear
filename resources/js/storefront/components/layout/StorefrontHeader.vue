@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { Search, UserRound, Heart, ShoppingBag } from 'lucide-vue-next';
 import BrandLogo from '../common/BrandLogo.vue';
 import AppButton from '../ui/AppButton.vue';
@@ -7,7 +8,15 @@ import MobileNavigation from './MobileNavigation.vue';
 import { useStorefrontStore } from '../../stores/storefront.store';
 
 const storefront = useStorefrontStore();
-const primaryNav = () => storefront.navigation['header-primary'] || storefront.navigation.header || [];
+const headerNavigation = computed(() => storefront.navigation.items ?? []);
+const actions = computed(() => storefront.header.actions ?? {});
+const search = computed(() => actions.value.search ?? {});
+const quote = computed(() => actions.value.quote ?? {});
+const showSearch = computed(() => search.value.enabled !== false && Boolean(search.value.url));
+const showAccount = computed(() => actions.value.account_enabled !== false);
+const showWishlist = computed(() => actions.value.wishlist_enabled !== false);
+const showCart = computed(() => actions.value.cart_enabled !== false);
+const showQuote = computed(() => quote.value.enabled !== false && Boolean(quote.value.label && quote.value.url));
 const cartLabel = () => new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
@@ -19,18 +28,18 @@ const cartLabel = () => new Intl.NumberFormat('en-US', {
 <template>
   <header class="np-header">
     <div class="np-header__inner">
-      <div class="np-header__mobile"><MobileNavigation /></div>
+      <div class="np-header__mobile"><MobileNavigation :items="headerNavigation" /></div>
       <BrandLogo class="np-header__logo" />
-      <DesktopNavigation class="np-header__nav" :navigation="primaryNav()" />
+      <DesktopNavigation class="np-header__nav" :items="headerNavigation" />
       <div class="np-header__actions">
-        <a href="/products" class="np-header__action np-header__search"><Search :size="19" :stroke-width="1.45"/><span>Search</span></a>
-        <span class="np-header__divider" aria-hidden="true"></span>
-        <a :href="storefront.customer ? '/account' : '/login'" class="np-header__action" aria-label="Account"><UserRound :size="20" :stroke-width="1.35"/></a>
-        <span class="np-header__divider" aria-hidden="true"></span>
-        <a href="/wishlist" class="np-header__action np-header__count" aria-label="Wishlist"><Heart :size="20" :stroke-width="1.35"/><small v-if="storefront.wishlistCount">{{ storefront.wishlistCount }}</small></a>
-        <span class="np-header__divider" aria-hidden="true"></span>
-        <a href="/cart" class="np-header__action np-header__cart" aria-label="Cart"><ShoppingBag :size="20" :stroke-width="1.35"/><span>{{ cartLabel() }}</span></a>
-        <AppButton href="/bulk-quote" variant="navy" size="header" hover-effect="chevrons">GET A QUOTE</AppButton>
+        <a v-if="showSearch" :href="search.url || '/products'" class="np-header__action np-header__search"><Search :size="19" :stroke-width="1.45"/><span>{{ search.label || 'Search' }}</span></a>
+        <span v-if="showSearch && (showAccount || showWishlist || showCart || showQuote)" class="np-header__divider" aria-hidden="true"></span>
+        <a v-if="showAccount" :href="storefront.customer ? '/account' : '/login'" class="np-header__action" aria-label="Account"><UserRound :size="20" :stroke-width="1.35"/></a>
+        <span v-if="showAccount && (showWishlist || showCart || showQuote)" class="np-header__divider" aria-hidden="true"></span>
+        <a v-if="showWishlist" href="/wishlist" class="np-header__action np-header__count" aria-label="Wishlist"><Heart :size="20" :stroke-width="1.35"/><small v-if="storefront.wishlistCount">{{ storefront.wishlistCount }}</small></a>
+        <span v-if="showWishlist && (showCart || showQuote)" class="np-header__divider" aria-hidden="true"></span>
+        <a v-if="showCart" href="/cart" class="np-header__action np-header__cart" aria-label="Cart"><ShoppingBag :size="20" :stroke-width="1.35"/><span>{{ cartLabel() }}</span></a>
+        <AppButton v-if="showQuote" :href="quote.url || '/bulk-quote'" variant="navy" size="header" hover-effect="chevrons">{{ quote.label }}</AppButton>
       </div>
     </div>
   </header>

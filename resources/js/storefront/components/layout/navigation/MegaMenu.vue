@@ -1,32 +1,35 @@
 <script setup lang="ts">
-import type { NavigationItem } from '../../../types/navigation';
-import type { MegaMenuConfig } from './mega-menu.config';
+import type { MegaMenuSetting } from './mega-menu.config';
 import MegaMenuColumn from './MegaMenuColumn.vue';
 import MegaMenuTopChoices from './MegaMenuTopChoices.vue';
 import MegaMenuPromo from './MegaMenuPromo.vue';
 import MegaMenuFooter from './MegaMenuFooter.vue';
 
-defineProps<{
-  config: MegaMenuConfig;
-  navigation?: NavigationItem[];
-}>();
+withDefaults(defineProps<{
+  config: MegaMenuSetting;
+  menuLabel?: string;
+}>(), {
+  menuLabel: 'Menu',
+});
 </script>
 
 <template>
-  <div class="np-mega-menu" role="region" aria-label="Shop mega menu">
+  <div class="np-mega-menu" role="region" :aria-label="`${menuLabel} mega menu`">
     <div class="np-mega-menu__body">
-      <MegaMenuTopChoices :top-choices="config.topChoices" :navigation="navigation" />
+      <MegaMenuTopChoices
+        v-if="config.top_choices?.enabled !== false"
+        :top-choices="config.top_choices"
+      />
 
       <div class="np-mega-menu__columns">
         <MegaMenuColumn
-          v-for="column in config.columns"
-          :key="column.title"
+          v-for="(column, index) in (config.columns || []).filter((entry) => entry.enabled !== false && Boolean(entry.title))"
+          :key="`${column.title}-${index}`"
           :column="column"
-          :navigation="navigation"
         />
       </div>
 
-      <MegaMenuPromo :promo="config.promo" :navigation="navigation" />
+      <MegaMenuPromo v-if="config.promo?.enabled !== false" :promo="config.promo" />
     </div>
     <MegaMenuFooter />
   </div>

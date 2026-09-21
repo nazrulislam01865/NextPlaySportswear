@@ -19,7 +19,8 @@ test('footer uses the reusable prototype wordmark without a Vite-resolved absolu
   assert.match(footer, /import\s+BrandLogo\s+from\s+['"]\.\.\/common\/BrandLogo\.vue['"]/);
   assert.match(footer, /<BrandLogo\b[^>]*class=['"]np-footer__logo['"]/);
   assert.doesNotMatch(footer, /<img[\s\S]*src=['"]\/images\/storefront-vue\/brand\/nextplay-wordmark\.png['"]/);
-  assert.match(brandLogo, /const\s+logoSrc\s*=\s*['"]\/images\/storefront-vue\/brand\/nextplay-wordmark\.png['"]/);
+  assert.match(brandLogo, /fallbackLogoSrc\s*=\s*['"]\/images\/storefront-vue\/brand\/nextplay-wordmark\.png['"]/);
+  assert.match(brandLogo, /storefront\.site\.logo/);
   assert.match(brandLogo, /<img\s+:src=['"]logoSrc['"]/);
   assert.equal(fs.existsSync(path.join(root, columnFile)), true);
   assert.match(footer, /FooterLinkColumn/);
@@ -67,17 +68,19 @@ test('footer links reuse mega-menu left-to-right underline hover behavior', () =
   }
 });
 
-test('footer prototype content and three-band layout are preserved', () => {
+test('footer prototype content and three-band layout are preserved through Laravel-owned settings', () => {
   const footer = read(footerFile);
+  const settings = read('app/Services/Storefront/StorefrontSettingsService.php');
   for (const text of [
     'Quick Links', 'Wishlist', 'My Account', 'Offers', 'Sitemap',
     'Help & Support', 'FAQs', 'Delivery & Returns', 'Size Guide', 'Track Your Order',
     'Customer Service', 'Contact Us', 'Get a Quote',
-    'JOIN NEXTPLAY CLUB &amp; GET 20% OFF', 'SIGN UP', 'Follow Us :',
-    'Privacy Policy', 'Terms &amp; Conditions', 'Cookie Policy', 'Secured by Striped:'
+    'JOIN NEXTPLAY CLUB & GET 20% OFF', 'SIGN UP', 'Follow Us :',
+    'Privacy Policy', 'Terms & Conditions', 'Cookie Policy', 'Secured by Stripe:'
   ]) {
-    assert.match(footer, new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.match(settings, new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
+  assert.match(footer, /storefront\.footer/);
   assert.match(footer, /np-footer__top/);
   assert.match(footer, /np-footer__socialBand/);
   assert.match(footer, /np-footer__bottomWrap/);
@@ -94,7 +97,7 @@ test('footer heading hierarchy and signup reuse centralized banner-style button 
   assert.match(column, /font-size:\s*var\(--np-footer-heading-size\)/);
   assert.match(column, /font-size:\s*var\(--np-footer-link-size\)/);
   assert.match(footer, /import\s+AppButton\s+from\s+['"]\.\.\/ui\/AppButton\.vue['"]/);
-  assert.match(footer, /<AppButton[\s\S]*href=['"]\/register['"][\s\S]*variant=['"]orange['"][\s\S]*size=['"]footer['"][\s\S]*hover-effect=['"]chevrons['"][\s\S]*>\s*SIGN UP\s*<\/AppButton>/);
+  assert.match(footer, /<AppButton[\s\S]*:href=['"]club\.button_url['"][\s\S]*variant=['"]orange['"][\s\S]*size=['"]footer['"][\s\S]*hover-effect=['"]chevrons['"][\s\S]*>\{\{ club\.button_label \}\}<\/AppButton>/);
   assert.match(appButton, /size\?:[\s\S]*'footer'/);
   assert.match(appButton, /\.np-button--footer\s*\{[\s\S]*var\(--np-footer-signup-button-width\)[\s\S]*var\(--np-footer-signup-button-height\)[\s\S]*var\(--np-footer-signup-button-size\)/);
 });

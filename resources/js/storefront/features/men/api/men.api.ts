@@ -184,27 +184,8 @@ function filterParams(filters: MenCatalogFilters): Record<string, unknown> {
   };
 }
 
-export async function fetchMenPage(
-  page = 1,
-  filters: MenCatalogFilters,
-  includeCatalog = true,
-): Promise<MenPageData> {
+export async function fetchMenPage(page = 1, filters: MenCatalogFilters): Promise<MenPageData> {
   page = Math.max(1, Math.floor(page));
-
-  if (!includeCatalog) {
-    const categoriesResponse = await apiClient.get<ApiEnvelope<CatalogCategoryIndexData>>(API_ENDPOINTS.categories);
-
-    return {
-      categories: (categoriesResponse.data.data.categories ?? []).map(toStorefrontCategory),
-      products: [],
-      productCount: 0,
-      currentPage: 1,
-      lastPage: 1,
-      perPage: 24,
-      filterOptions: emptyFilterOptions(),
-    };
-  }
-
   const [categoriesResponse, productsResponse] = await Promise.all([
     apiClient.get<ApiEnvelope<CatalogCategoryIndexData>>(API_ENDPOINTS.categories),
     apiClient.get<ApiEnvelope<CatalogProductApiItem[]>>(API_ENDPOINTS.products, {

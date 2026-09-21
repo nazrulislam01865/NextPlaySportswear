@@ -1,4 +1,12 @@
-@props(['label' => 'Image', 'prefix' => '', 'image' => null, 'imageUrl' => null, 'imageAlt' => null])
+@props([
+    'label' => 'Image',
+    'prefix' => '',
+    'image' => null,
+    'imageUrl' => null,
+    'imageAlt' => null,
+    'aspectRatio' => null,
+    'aspectTolerance' => 5,
+])
 @php
     $base = 'image';
     $prefixDot = $prefix ? str_replace(['][', '[', ']'], ['.', '.', ''], $prefix).'.' : '';
@@ -12,7 +20,14 @@
         <img src="{{ $image }}" alt="" class="np-home-admin__media-preview mb-3 h-36 w-full rounded-xl object-cover">
     @endif
     <div class="grid gap-4 md:grid-cols-2">
-        <label class="np-home-admin__field"><span class="np-home-admin__label">Upload / replace</span><input type="file" name="{{ $field('file') }}" accept=".jpg,.jpeg,.png,.webp,.avif,image/*" class="np-home-admin__input"></label>
+        <label class="np-home-admin__field">
+            <span class="np-home-admin__label">Upload / replace</span>
+            <input type="file" name="{{ $field('file') }}" accept=".jpg,.jpeg,.png,.webp,.avif,image/*" class="np-home-admin__input">
+            <input type="hidden" name="{{ $field('upload_token') }}" value="{{ old($prefixDot.$base.'_upload_token') }}">
+            @if($aspectRatio)
+                <span class="mt-1.5 block text-xs leading-5 text-slate-500"><strong>Target aspect ratio: {{ $aspectRatio }}</strong> (±{{ $aspectTolerance }}% accepted). Resolution is flexible.</span>
+            @endif
+        </label>
         <label class="np-home-admin__field"><span class="np-home-admin__label">External image URL</span><input type="text" name="{{ $field('url') }}" value="{{ old($prefixDot.$base.'_url', $imageUrl) }}" class="np-home-admin__input"></label>
         <label class="np-home-admin__field md:col-span-2"><span class="np-home-admin__label">Image alt text</span><input type="text" name="{{ $field('alt') }}" value="{{ old($prefixDot.$base.'_alt', $imageAlt) }}" class="np-home-admin__input"></label>
     </div>

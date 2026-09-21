@@ -70,7 +70,7 @@ class HomepageSectionMediaTest extends TestCase
             ->patch(route('admin.homepage.sections.update', 'audience'), [
                 'is_active' => '1',
                 'items' => [
-                    ['id' => 'men', 'title' => 'MEN', 'image_file' => UploadedFile::fake()->image('men.webp', 1200, 1200)],
+                    ['id' => 'men', 'title' => 'MEN', 'image_file' => UploadedFile::fake()->image('men.webp', 1344, 854)],
                     ['id' => 'women', 'title' => 'WOMEN'],
                     ['id' => 'kids', 'title' => 'KIDS'],
                 ],
@@ -82,5 +82,30 @@ class HomepageSectionMediaTest extends TestCase
         $this->assertNotEmpty($men['image'] ?? null);
         $this->assertStringContainsString('/homepage/sections/audience/items/men/', (string) ($men['image'] ?? ''));
     }
+
+    public function test_homepage_item_upload_rejects_a_wrong_aspect_ratio_with_a_clear_message(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+
+        $response = $this->actingAs($admin, 'admin')
+            ->from(route('admin.homepage.sections.edit', 'audience'))
+            ->patch(route('admin.homepage.sections.update', 'audience'), [
+                'is_active' => '1',
+                'items' => [
+                    ['id' => 'men', 'title' => 'MEN', 'image_file' => UploadedFile::fake()->image('men.webp', 1200, 1200)],
+                    ['id' => 'women', 'title' => 'WOMEN'],
+                    ['id' => 'kids', 'title' => 'KIDS'],
+                ],
+            ]);
+
+        $response->assertRedirect(route('admin.homepage.sections.edit', 'audience'));
+        $response->assertSessionHasErrors('items.0.image_file');
+        $this->assertStringContainsString(
+            '672:427 aspect ratio',
+            (string) session('errors')->first('items.0.image_file')
+        );
+    }
+
 
 }

@@ -70,8 +70,11 @@ test('men page typography and layout values come from centralized design tokens'
 });
 
 test('desktop and mobile header MEN links use the new /men page', () => {
-  const config = read('resources/js/storefront/components/layout/navigation/mega-menu.config.ts');
+  const settings = read('app/Services/Storefront/StorefrontSettingsService.php');
+  const header = read('resources/js/storefront/components/layout/StorefrontHeader.vue');
   const mobile = read('resources/js/storefront/components/layout/MobileNavigation.vue');
-  assert.match(config, /key:\s*['"]men['"][\s\S]*?href:\s*['"]\/men['"]/);
-  assert.match(mobile, /\['MEN','\/men'\]/);
+  assert.match(settings, /'label'\s*=>\s*'MEN'[\s\S]{0,180}'url'\s*=>\s*'\/men'/);
+  assert.match(header, /DesktopNavigation[^>]*:items="headerNavigation"/s);
+  assert.match(header, /MobileNavigation[^>]*:items="headerNavigation"/s);
+  assert.match(mobile, /item\.url/);
 });

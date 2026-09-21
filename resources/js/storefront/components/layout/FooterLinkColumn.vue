@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import StorefrontLinkIcon from '../common/StorefrontLinkIcon.vue';
+
 interface FooterLinkItem {
   label: string;
   href: string;
+  icon?: string | null;
 }
 
 defineProps<{
@@ -14,7 +17,10 @@ defineProps<{
   <section class="np-footer-column">
     <h3>{{ title }}</h3>
     <nav :aria-label="`${title} links`">
-      <a v-for="item in items" :key="item.href + item.label" :href="item.href">{{ item.label }}</a>
+      <a v-for="(item, index) in items" :key="item.href + item.label + index" :href="item.href">
+        <StorefrontLinkIcon v-if="item.icon" :source="item.icon" :size="14" />
+        <span>{{ item.label }}</span>
+      </a>
     </nav>
   </section>
 </template>
@@ -42,7 +48,10 @@ defineProps<{
 
 .np-footer-column a {
   position: relative;
+  display: inline-flex;
   width: fit-content;
+  align-items: center;
+  gap: 6px;
   color: var(--np-footer-link-color);
   font-family: var(--np-font-body);
   font-size: var(--np-footer-link-size);

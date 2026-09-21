@@ -33,8 +33,14 @@ test('header and mega-menu utility actions reuse one left-to-right underline lin
 
   assert.match(utility, /UtilityActionLink/);
   assert.match(megaFooter, /UtilityActionLink/);
+  const settings = read('app/Services/Storefront/StorefrontSettingsService.php');
+  for (const label of ['Track Your Order', 'Delivery & Returns', 'Contact Support']) {
+    assert.match(settings, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.match(utility, /track_order/);
+  assert.match(utility, /delivery_returns/);
+  assert.match(utility, /contact_support/);
   for (const label of ['Track Your Order', 'Delivery &amp; Returns', 'Contact Support']) {
-    assert.match(utility, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
     assert.match(megaFooter, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
 

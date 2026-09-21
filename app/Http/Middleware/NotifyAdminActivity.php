@@ -80,6 +80,7 @@ class NotifyAdminActivity
             'admin.logout',
             'admin.notifications.',
             'admin.products.',
+            'admin.homepage-media-uploads.',
             // Remote-area imports arrive in many 1,000-row chunks. Logging each network
             // chunk would create dozens of duplicate audit notifications; only the final
             // successful import endpoint is allowed to generate the activity event.
@@ -172,7 +173,7 @@ class NotifyAdminActivity
             'role-matrix.' => 'Role matrix',
             'attributes.' => 'Catalog attribute',
             'categories.' => 'Category',
-            'menus.' => 'Navigation menu',
+            'navigation-settings.' => 'Navigation menu',
             'coupons.' => 'Coupon',
             'customers.' => 'Customer account',
             'users.' => 'Admin user',

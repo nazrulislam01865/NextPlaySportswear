@@ -22,6 +22,9 @@ return [
 
     'logo' => env('STOREFRONT_LOGO', '/images/logo.png'),
 
+    // New Vue storefront wordmark. Kept separate so legacy Blade storefront branding is unchanged.
+    'vue_logo' => env('STOREFRONT_VUE_LOGO', '/images/storefront-vue/brand/nextplay-wordmark.png'),
+
     'og_image' => env('STOREFRONT_OG_IMAGE', 'images/og-default.jpg'),
 
     'area_served' => env('STOREFRONT_AREA_SERVED', 'Worldwide'),

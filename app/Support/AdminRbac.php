@@ -95,8 +95,6 @@ class AdminRbac
             self::permission('attributes.manage', 'Catalog', 'Manage', 'Manage Catalog Attributes', 'Create and update catalog attributes.', 'admin.attributes.store', 41),
             self::permission('customization.view', 'Catalog', 'View', 'View Customization Master Data', 'Open product customization options and size option groups.', 'admin.jersey-customization-options.index', 50),
             self::permission('customization.manage', 'Catalog', 'Manage', 'Manage Customization Master Data', 'Create and update product customization options and size option groups.', 'admin.jersey-customization-options.store', 51),
-            self::permission('menus.view', 'Catalog', 'View', 'View Navigation Menus', 'Open admin navigation menu records.', 'admin.menus.index', 60),
-            self::permission('menus.manage', 'Catalog', 'Manage', 'Manage Navigation Menus', 'Create and update storefront navigation menus.', 'admin.menus.store', 61),
             self::permission('media.view', 'Catalog', 'View', 'View Media Library', 'Open uploaded media used by catalog and storefront content.', 'admin.media-library.index', 70),
             self::permission('media.manage', 'Catalog', 'Manage', 'Manage Media Library', 'Upload and maintain reusable catalog and storefront media.', 'admin.media-library.store', 71),
 
@@ -113,6 +111,12 @@ class AdminRbac
             self::permission('homepage_sections.manage', 'Storefront', 'Manage', 'Manage Homepage Sections', 'Update homepage section text, buttons, images, items, visibility and display order.', 'admin.homepage.sections.update', 161),
             self::permission('homepage_slides.view', 'Storefront', 'View', 'View Homepage Slider', 'Open homepage slide records.', 'admin.homepage-slides.index', 170),
             self::permission('homepage_slides.manage', 'Storefront', 'Manage', 'Manage Homepage Slider', 'Create, update and toggle homepage slides.', 'admin.homepage-slides.store', 171),
+            self::permission('header_settings.view', 'Storefront', 'View', 'View Header Settings', 'Open the new Vue storefront header settings.', 'admin.header-settings.edit', 180),
+            self::permission('header_settings.manage', 'Storefront', 'Manage', 'Manage Header Settings', 'Update utility bar and header action settings for the new Vue storefront.', 'admin.header-settings.update', 181),
+            self::permission('navigation_settings.view', 'Storefront', 'View', 'View Navigation Menu', 'Open the new Vue storefront navigation and mega-menu settings.', 'admin.navigation-settings.edit', 182),
+            self::permission('navigation_settings.manage', 'Storefront', 'Manage', 'Manage Navigation Menu', 'Update the new Vue storefront navigation and mega-menu settings.', 'admin.navigation-settings.update', 183),
+            self::permission('footer_settings.view', 'Storefront', 'View', 'View Footer Settings', 'Open the new Vue storefront footer settings.', 'admin.footer-settings.edit', 184),
+            self::permission('footer_settings.manage', 'Storefront', 'Manage', 'Manage Footer Settings', 'Update contact, CTA, social, legal and footer display settings for the new Vue storefront.', 'admin.footer-settings.update', 185),
             self::permission('shipping.view', 'Catalog', 'View', 'View Shipping Methods', 'Open shipping method master data records.', 'admin.shipping-methods.index', 190),
             self::permission('shipping.manage', 'Catalog', 'Manage', 'Manage Shipping Methods', 'Create and update shipping method master data records.', 'admin.shipping-methods.store', 191),
             self::permission('rural_surcharges.view', 'Storefront', 'View', 'View Remote Surcharges', 'Open remote and extended area surcharge records.', 'admin.rural-area-surcharges.index', 200),
@@ -139,10 +143,12 @@ class AdminRbac
             'categories.view', 'categories.manage',
             'attributes.view', 'attributes.manage',
             'customization.view', 'customization.manage',
-            'menus.view', 'menus.manage',
+            'navigation_settings.view', 'navigation_settings.manage',
             'media.view', 'media.manage',
             'homepage_sections.view', 'homepage_sections.manage',
             'homepage_slides.view', 'homepage_slides.manage',
+            'header_settings.view', 'header_settings.manage',
+            'footer_settings.view', 'footer_settings.manage',
             'newsletters.view', 'newsletters.manage',
         ];
 
@@ -155,10 +161,12 @@ class AdminRbac
 
         $contentAll = [
             'dashboard.view',
-            'menus.view', 'menus.manage',
+            'navigation_settings.view', 'navigation_settings.manage',
             'media.view', 'media.manage',
             'homepage_sections.view', 'homepage_sections.manage',
             'homepage_slides.view', 'homepage_slides.manage',
+            'header_settings.view', 'header_settings.manage',
+            'footer_settings.view', 'footer_settings.manage',
             'shipping.view', 'shipping.manage',
             'rural_surcharges.view', 'rural_surcharges.manage',
             'payment_methods.view', 'payment_methods.manage',
@@ -347,10 +355,12 @@ class AdminRbac
             'categories.view' => 'admin.categories.index',
             'attributes.view' => 'admin.attributes.index',
             'customization.view' => 'admin.jersey-customization-options.index',
-            'menus.view' => 'admin.menus.index',
+            'navigation_settings.view' => 'admin.navigation-settings.edit',
             'media.view' => 'admin.media-library.index',
             'homepage_sections.view' => 'admin.homepage.sections.index',
             'homepage_slides.view' => 'admin.homepage-slides.index',
+            'header_settings.view' => 'admin.header-settings.edit',
+            'footer_settings.view' => 'admin.footer-settings.edit',
             'coupons.view' => 'admin.coupons.index',
             'customers.view' => 'admin.customers.index',
             'returns.view' => 'admin.returns.index',
@@ -414,9 +424,20 @@ class AdminRbac
             return self::resourcePermission($name, 'media');
         }
 
+        if (Str::startsWith($name, 'header-settings.')) {
+            return $name === 'header-settings.update' ? 'header_settings.manage' : 'header_settings.view';
+        }
+
+        if (Str::startsWith($name, 'navigation-settings.')) {
+            return $name === 'navigation-settings.update' ? 'navigation_settings.manage' : 'navigation_settings.view';
+        }
+
+        if (Str::startsWith($name, 'footer-settings.')) {
+            return $name === 'footer-settings.update' ? 'footer_settings.manage' : 'footer_settings.view';
+        }
+
         foreach ([
             'attributes' => 'attributes',
-            'menus' => 'menus',
             'coupons' => 'coupons',
             'homepage.sections' => 'homepage_sections',
             'homepage-slides' => 'homepage_slides',

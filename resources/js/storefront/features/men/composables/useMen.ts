@@ -153,12 +153,12 @@ export function useMen() {
     return chips;
   });
 
-  async function load(page = 1, includeCatalog = true): Promise<void> {
+  async function load(page = 1): Promise<void> {
     loading.value = true;
     error.value = '';
 
     try {
-      data.value = await fetchMenPage(page, filters.value, includeCatalog);
+      data.value = await fetchMenPage(page, filters.value);
     } catch (caught) {
       error.value = caught instanceof Error ? caught.message : 'Unable to load the Men collection.';
     } finally {

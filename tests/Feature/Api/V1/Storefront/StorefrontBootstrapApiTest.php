@@ -30,6 +30,11 @@ class StorefrontBootstrapApiTest extends TestCase
             ->assertJsonPath('data.cart.quantity', 0)
             ->assertJsonPath('data.cart.total', 0)
             ->assertJsonPath('data.wishlist.total_items', 0)
+            ->assertJsonPath('data.navigation.items.0.label', 'SHOP')
+            ->assertJsonPath('data.navigation.items.0.mega_menu.top_choices.eyebrow', 'Top Choices')
+            ->assertJsonPath('data.navigation.items.0.mega_menu.promo.label', 'Shop All Products')
+            ->assertJsonPath('data.header.announcements.0.text', 'Shop $200 and get free delivery')
+            ->assertJsonPath('data.footer.contact.email', 'support@example.com')
             ->assertJsonStructure(['data', 'meta', 'request_id']);
 
         $body = $response->getContent();
@@ -122,7 +127,36 @@ class StorefrontBootstrapApiTest extends TestCase
             'wishlist' => [
                 'total_items' => 0,
             ],
-            'navigation' => [],
+            'navigation' => [
+                'items' => [[
+                    'enabled' => true,
+                    'label' => 'SHOP',
+                    'url' => '/products',
+                    'target' => '_self',
+                    'mega_menu' => [
+                        'enabled' => true,
+                        'top_choices' => [
+                            'enabled' => true,
+                            'eyebrow' => 'Top Choices',
+                            'links' => [],
+                        ],
+                        'columns' => [],
+                        'promo' => [
+                            'enabled' => true,
+                            'image' => '/images/storefront-vue/navigation/shop-mega-promo.jpg',
+                            'alt' => 'Promo',
+                            'label' => 'Shop All Products',
+                            'url' => '/products',
+                        ],
+                    ],
+                ]],
+            ],
+            'header' => [
+                'announcements' => [['enabled' => true, 'text' => 'Shop $200 and get free delivery']],
+            ],
+            'footer' => [
+                'contact' => ['email' => 'support@example.com'],
+            ],
         ];
     }
 }

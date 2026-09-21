@@ -1,18 +1,23 @@
 <script setup lang="ts">
-const logoSrc = '/images/storefront-vue/brand/nextplay-wordmark.png';
+import { computed } from 'vue';
+import { useStorefrontStore } from '../../stores/storefront.store';
 
-withDefaults(defineProps<{
+const fallbackLogoSrc = '/images/storefront-vue/brand/nextplay-wordmark.png';
+const storefront = useStorefrontStore();
+const props = withDefaults(defineProps<{
   href?: string;
   alt?: string;
 }>(), {
   href: '/',
-  alt: 'NextPlay',
 });
+
+const logoSrc = computed(() => storefront.site.logo || fallbackLogoSrc);
+const logoAlt = computed(() => props.alt || storefront.site.logo_alt || storefront.site.name || 'NextPlay');
 </script>
 
 <template>
-  <a class="np-brand-logo" :href="href" :aria-label="`${alt} home`">
-    <img :src="logoSrc" :alt="alt" width="245" height="35" />
+  <a class="np-brand-logo" :href="href" :aria-label="`${logoAlt} home`">
+    <img :src="logoSrc" :alt="logoAlt" width="245" height="35" />
   </a>
 </template>
 
@@ -27,6 +32,7 @@ withDefaults(defineProps<{
   display: block;
   width: clamp(180px, 12vw, 245px);
   height: auto;
+  object-fit: contain;
 }
 
 @media (max-width: 560px) {

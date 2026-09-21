@@ -1,59 +1,86 @@
 <script setup lang="ts">
-import SocialBrandIcon from '../common/SocialBrandIcon.vue';
+import { computed } from 'vue';
+import StorefrontLinkIcon from '../common/StorefrontLinkIcon.vue';
 import FooterLinkColumn from './FooterLinkColumn.vue';
 import BrandLogo from '../common/BrandLogo.vue';
 import AppButton from '../ui/AppButton.vue';
+import { useStorefrontStore } from '../../stores/storefront.store';
 
-const quickLinks = [
-  { label: 'Wishlist', href: '/wishlist' },
-  { label: 'My Account', href: '/account' },
-  { label: 'Offers', href: '/offers' },
-  { label: 'Sitemap', href: '/sitemap.xml' },
-];
+const storefront = useStorefrontStore();
 
-const supportLinks = [
-  { label: 'FAQs', href: '/help-center' },
-  { label: 'Delivery & Returns', href: '/shipping-delivery' },
-  { label: 'Size Guide', href: '/size-guide' },
-  { label: 'Track Your Order', href: '/account/orders' },
-];
+const contact = computed(() => storefront.footer.contact ?? {});
+const footerColumns = computed(() => (storefront.footer.columns ?? [])
+  .filter((column) => column.enabled !== false && Boolean(column.title))
+  .map((column) => ({
+    title: column.title || '',
+    items: (column.items ?? [])
+      .filter((item) => item.enabled !== false && Boolean(item.label && item.url))
+      .map((item) => ({
+        label: item.label || '',
+        href: item.url || '',
+        icon: item.icon || null,
+      })),
+  }))
+  .filter((column) => column.items.length > 0));
+const club = computed(() => storefront.footer.club ?? {});
+const social = computed(() => storefront.footer.social ?? {});
+const socialLinks = computed(() => (social.value.links ?? [])
+  .filter((item) => item.enabled !== false && Boolean(item.label && item.url && item.icon)));
+const legal = computed(() => storefront.footer.legal ?? {});
+const legalLinks = computed(() => (legal.value.links ?? [])
+  .filter((item) => item.enabled !== false && Boolean(item.label && item.url)));
+const payments = computed(() => storefront.footer.payments ?? {});
 
-const customerLinks = [
-  { label: 'Contact Us', href: '/contact-us' },
-  { label: 'Get a Quote', href: '/bulk-quote' },
-];
+const phoneHref = computed(() => contact.value.phone
+  ? `tel:${contact.value.phone.replace(/[^+\d]/g, '')}`
+  : '');
+const copyright = computed(() => (legal.value.copyright || '')
+  .replace('{year}', String(new Date().getFullYear())));
+const hasSocialLinks = computed(() => socialLinks.value.length > 0);
 </script>
 
 <template>
   <footer class="np-footer" aria-label="Storefront footer">
     <div class="np-footer__top">
-      <div class="np-footer__inner np-footer__main">
+      <div
+        class="np-footer__inner np-footer__main"
+        :class="{ 'np-footer__main--dynamic': footerColumns.length !== 3 }"
+      >
         <section class="np-footer__brand" aria-label="NextPlay contact information">
-          <BrandLogo class="np-footer__logo" alt="NextPlay" />
-          <p>27 Shawptak square, London, UK</p>
-          <a class="np-footer__contact" href="mailto:support@example.com">support@example.com</a>
-          <a class="np-footer__contact" href="tel:+10000000000">+1000 000 0000</a>
+          <BrandLogo class="np-footer__logo" />
+          <p v-if="contact.address">{{ contact.address }}</p>
+          <a v-if="contact.email" class="np-footer__contact" :href="`mailto:${contact.email}`">{{ contact.email }}</a>
+          <a v-if="contact.phone" class="np-footer__contact" :href="phoneHref">{{ contact.phone }}</a>
         </section>
 
-        <FooterLinkColumn title="Quick Links" :items="quickLinks" />
-        <FooterLinkColumn title="Help & Support" :items="supportLinks" />
-        <FooterLinkColumn title="Customer Service" :items="customerLinks" />
+        <FooterLinkColumn
+          v-for="(column, index) in footerColumns"
+          :key="`${column.title}-${index}`"
+          :title="column.title"
+          :items="column.items"
+        />
 
-        <section class="np-footer__signup">
-          <h3>JOIN NEXTPLAY CLUB &amp; GET 20% OFF</h3>
-          <AppButton class="np-footer__signup-button" href="/register" variant="orange" size="footer" hover-effect="chevrons">SIGN UP</AppButton>
+        <section v-if="club.enabled !== false && club.title && club.button_label && club.button_url" class="np-footer__signup">
+          <h3>{{ club.title }}</h3>
+          <AppButton class="np-footer__signup-button" :href="club.button_url" variant="orange" size="footer" hover-effect="chevrons">{{ club.button_label }}</AppButton>
         </section>
       </div>
     </div>
 
-    <div class="np-footer__socialBand">
+    <div v-if="social.enabled !== false && hasSocialLinks" class="np-footer__socialBand">
       <div class="np-footer__inner np-footer__social-row">
-        <span>Follow Us :</span>
+        <span v-if="social.label">{{ social.label }}</span>
         <nav class="np-footer__social" aria-label="Follow NextPlay">
-          <a class="np-footer__youtube" href="https://www.youtube.com/@nextplaysportswear" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><SocialBrandIcon network="youtube" /></a>
-          <a class="np-footer__instagram" href="https://www.instagram.com/nextplaysportswear/" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><SocialBrandIcon network="instagram" /></a>
-          <a class="np-footer__facebook" href="https://www.facebook.com/nextplaysportswear" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><SocialBrandIcon network="facebook" /></a>
-          <a class="np-footer__tiktok" href="https://www.tiktok.com/@nextplaysportswear" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><SocialBrandIcon network="tiktok" /></a>
+          <a
+            v-for="(item, index) in socialLinks"
+            :key="`${item.url}-${item.icon}-${index}`"
+            :href="item.url || '#'"
+            target="_blank"
+            rel="noopener noreferrer"
+            :aria-label="item.label || 'Social link'"
+          >
+            <StorefrontLinkIcon :source="item.icon" variant="social" />
+          </a>
         </nav>
       </div>
     </div>
@@ -61,17 +88,18 @@ const customerLinks = [
     <div class="np-footer__bottomWrap">
       <div class="np-footer__inner np-footer__bottom">
         <div class="np-footer__legal-group">
-          <span class="np-footer__copyright">© {{ new Date().getFullYear() }} Nextplay Sportswear</span>
-          <span class="np-footer__separator" aria-hidden="true"></span>
-          <nav class="np-footer__legal" aria-label="Legal links">
-            <a href="/privacy-policy">Privacy Policy</a>
-            <a href="/terms-conditions">Terms &amp; Conditions</a>
-            <a href="/cookie-policy">Cookie Policy</a>
+          <span v-if="copyright" class="np-footer__copyright">{{ copyright }}</span>
+          <span v-if="copyright && legalLinks.length" class="np-footer__separator" aria-hidden="true"></span>
+          <nav v-if="legalLinks.length" class="np-footer__legal" aria-label="Legal links">
+            <a v-for="(item, index) in legalLinks" :key="`${item.url}-${item.label}-${index}`" :href="item.url || '#'">
+              <StorefrontLinkIcon v-if="item.icon" :source="item.icon" :size="13" />
+              <span>{{ item.label }}</span>
+            </a>
           </nav>
         </div>
 
-        <div class="np-footer__payments" aria-label="Accepted payment methods">
-          <span class="np-footer__payments-label">Secured by Striped:</span>
+        <div v-if="payments.enabled !== false" class="np-footer__payments" aria-label="Accepted payment methods">
+          <span v-if="payments.label" class="np-footer__payments-label">{{ payments.label }}</span>
           <div class="np-footer__payment-logos" aria-hidden="true">
             <span class="np-pay np-pay--visa">VISA</span>
             <span class="np-pay np-pay--mc"><i></i><i></i></span>
@@ -86,7 +114,6 @@ const customerLinks = [
     </div>
   </footer>
 </template>
-
 <style scoped>
 .np-footer {
   overflow: hidden;
@@ -110,6 +137,10 @@ const customerLinks = [
   gap: var(--np-footer-main-gap);
   padding-top: var(--np-footer-top-padding);
   padding-bottom: var(--np-footer-top-padding-bottom);
+}
+
+.np-footer__main--dynamic {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
 .np-footer__brand {
@@ -286,7 +317,10 @@ const customerLinks = [
 
 .np-footer__legal a {
   position: relative;
+  display: inline-flex;
   width: fit-content;
+  align-items: center;
+  gap: 6px;
 }
 
 .np-footer__payments {

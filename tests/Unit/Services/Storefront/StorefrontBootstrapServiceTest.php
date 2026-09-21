@@ -4,8 +4,8 @@ namespace Tests\Unit\Services\Storefront;
 
 use App\Models\User;
 use App\Services\Cart\CartService;
-use App\Services\Catalog\NavigationService;
 use App\Services\Storefront\StorefrontBootstrapService;
+use App\Services\Storefront\StorefrontSettingsService;
 use App\Services\Wishlist\WishlistHeaderService;
 use Mockery;
 use Tests\TestCase;
@@ -41,20 +41,41 @@ class StorefrontBootstrapServiceTest extends TestCase
             'total_items' => 2,
         ]);
 
-        $navigation = Mockery::mock(NavigationService::class);
-        $navigation->shouldReceive('storefrontMenus')->once()->andReturn([]);
+        $settings = Mockery::mock(StorefrontSettingsService::class);
+        $settings->shouldReceive('header')->once()->andReturn([
+            'branding' => [
+                'logo' => '/storage/storefront/settings/branding/nextplay.png',
+                'logo_alt' => 'NextPlay Global Logo',
+            ],
+            'announcements' => [['enabled' => true]],
+        ]);
+        $settings->shouldReceive('navigation')->once()->andReturn([
+            'items' => [[
+                'enabled' => true,
+                'label' => 'SHOP',
+                'url' => '/products',
+                'target' => '_self',
+                'mega_menu' => ['enabled' => false],
+            ]],
+        ]);
+        $settings->shouldReceive('footer')->once()->andReturn(['contact' => ['email' => 'support@example.com']]);
 
-        $service = new StorefrontBootstrapService($cart, $wishlist, $navigation);
+        $service = new StorefrontBootstrapService($cart, $wishlist, $settings);
         $result = $service->get($customer);
 
         $this->assertSame('NextPlay Sportswear', $result['site']['name']);
+        $this->assertSame('/storage/storefront/settings/branding/nextplay.png', $result['site']['logo']);
+        $this->assertSame('NextPlay Global Logo', $result['site']['logo_alt']);
         $this->assertSame(44, $result['customer']['id']);
         $this->assertSame('customer@example.com', $result['customer']['email']);
         $this->assertTrue($result['customer']['email_verified']);
         $this->assertSame(['quantity' => 7, 'total_items' => 3, 'total' => 256.0], $result['cart']);
         $this->assertSame(['total_items' => 2], $result['wishlist']);
+        $this->assertSame('SHOP', $result['navigation']['items'][0]['label']);
         $this->assertArrayNotHasKey('role', $result['customer']);
         $this->assertArrayNotHasKey('password', $result['customer']);
+        $this->assertTrue($result['header']['announcements'][0]['enabled']);
+        $this->assertSame('support@example.com', $result['footer']['contact']['email']);
     }
 
     public function test_it_treats_non_customer_accounts_as_guest_storefront_users(): void
@@ -79,13 +100,16 @@ class StorefrontBootstrapServiceTest extends TestCase
             'total_items' => 0,
         ]);
 
-        $navigation = Mockery::mock(NavigationService::class);
-        $navigation->shouldReceive('storefrontMenus')->once()->andReturn([]);
+        $settings = Mockery::mock(StorefrontSettingsService::class);
+        $settings->shouldReceive('header')->once()->andReturn(['announcements' => [['enabled' => true]]]);
+        $settings->shouldReceive('navigation')->once()->andReturn(['items' => []]);
+        $settings->shouldReceive('footer')->once()->andReturn(['contact' => ['email' => 'support@example.com']]);
 
-        $service = new StorefrontBootstrapService($cart, $wishlist, $navigation);
+        $service = new StorefrontBootstrapService($cart, $wishlist, $settings);
         $result = $service->get($admin);
 
         $this->assertNull($result['customer']);
         $this->assertSame(['total_items' => 0], $result['wishlist']);
+        $this->assertSame(['items' => []], $result['navigation']);
     }
 }

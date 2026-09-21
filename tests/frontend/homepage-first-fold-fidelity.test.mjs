@@ -13,12 +13,18 @@ test('first fold uses a reusable exact NextPlay wordmark component', () => {
   assert.match(header, /BrandLogo/);
 });
 
-test('utility bar matches the approved three-link layout', () => {
+test('utility bar renders the Laravel-owned dynamic utility links', () => {
   const utility = read('resources/js/storefront/components/layout/UtilityBar.vue');
-  assert.match(utility, /Track Your Order/);
-  assert.match(utility, /Delivery &amp; Returns/);
-  assert.match(utility, /Contact Support/);
-  assert.doesNotMatch(utility, /CircleHelp|\/help-center|>\s*Help\s*</);
+  const settings = read('app/Services/Storefront/StorefrontSettingsService.php');
+  assert.match(utility, /storefront\.header\.utility_links/);
+  assert.match(utility, /v-for="\(item, index\) in utilityLinks"/);
+  assert.match(utility, /StorefrontLinkIcon/);
+  assert.match(settings, /'Track Your Order'/);
+  assert.match(settings, /'Delivery & Returns'/);
+  assert.match(settings, /'Contact Support'/);
+  assert.doesNotMatch(utility, />\s*Track Your Order\s*</);
+  assert.doesNotMatch(utility, />\s*Delivery & Returns\s*</);
+  assert.doesNotMatch(utility, />\s*Contact Support\s*</);
 });
 
 test('first-fold buttons are rendered through the centralized AppButton component', () => {
@@ -91,9 +97,10 @@ test('homepage cart mutations keep the API-owned header total in sync', () => {
   assert.match(actions, /setCartSummary/);
 });
 
-test('brand logo public asset is referenced as a runtime URL so Vite does not turn it into a module import', () => {
+test('brand logo is sourced from Laravel bootstrap with the approved public asset as fallback', () => {
   const logo = read('resources/js/storefront/components/common/BrandLogo.vue');
-  assert.match(logo, /const\s+logoSrc\s*=\s*['"]\/images\/storefront-vue\/brand\/nextplay-wordmark\.png['"]/);
+  assert.match(logo, /fallbackLogoSrc\s*=\s*['"]\/images\/storefront-vue\/brand\/nextplay-wordmark\.png['"]/);
+  assert.match(logo, /storefront\.site\.logo/);
   assert.match(logo, /:src="logoSrc"/);
   assert.doesNotMatch(logo, /<img\s+src="\/images\/storefront-vue\/brand\/nextplay-wordmark\.png"/);
 });
@@ -147,12 +154,12 @@ test('audience tiles match the full-width prototype proportions', () => {
     '--np-audience-gutter: 8px',
     '--np-audience-gap: 8px',
     '--np-audience-tile-ratio: 672 / 427',
-    '--np-audience-title-size: var(--np-home-tile-title-size)',
+    '--np-audience-title-size: 28px',
     '--np-audience-title-weight: var(--np-type-title-weight)',
     '--np-audience-title-bottom: 36px',
     '--np-audience-title-hover-lift: 26px',
     '--np-audience-action-bottom: 22px',
-    '--np-audience-action-size: 12px',
+    '--np-audience-action-size: 15px',
     '--np-audience-action-weight: var(--np-weight-medium)',
     '--np-audience-hover-scale: 1.025',
     '--np-audience-hover-duration: 280ms',

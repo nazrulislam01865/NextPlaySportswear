@@ -127,7 +127,7 @@ class HomepageSlideController extends Controller
     private function payload(HomepageSlideRequest $request): array
     {
         $payload = Arr::except($request->validated(), [
-            'image_file', 'remove_image',
+            'image_file', 'image_upload_token', 'remove_image',
         ]);
 
         foreach ([

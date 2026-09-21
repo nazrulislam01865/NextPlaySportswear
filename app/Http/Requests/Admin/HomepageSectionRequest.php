@@ -3,7 +3,10 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\Category;
+use App\Rules\ApproximateImageAspectRatio;
 use App\Rules\SafePublicUrl;
+use App\Services\Catalog\HomepageStagedUploadService;
+use App\Support\HomepageImageAspectRatios;
 use App\Support\HomepageSectionRegistry;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Collection;
@@ -19,6 +22,18 @@ class HomepageSectionRequest extends FormRequest
     /** @return array<string, array<int, mixed>> */
     public function rules(): array
     {
+        $sectionKey = (string) $this->route('key');
+        $sectionImageRules = ['nullable', 'bail', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:10240'];
+        $itemImageRules = ['nullable', 'bail', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:10240'];
+
+        if ($definition = HomepageImageAspectRatios::forSectionImage($sectionKey)) {
+            $sectionImageRules[] = new ApproximateImageAspectRatio($definition);
+        }
+
+        if ($definition = HomepageImageAspectRatios::forSectionItem($sectionKey)) {
+            $itemImageRules[] = new ApproximateImageAspectRatio($definition);
+        }
+
         return [
             'eyebrow' => ['nullable', 'string', 'max:160'],
             'title' => ['nullable', 'string', 'max:255'],
@@ -27,7 +42,8 @@ class HomepageSectionRequest extends FormRequest
             'primary_url' => ['nullable', 'string', 'max:2048', new SafePublicUrl()],
             'secondary_label' => ['nullable', 'string', 'max:160'],
             'secondary_url' => ['nullable', 'string', 'max:2048', new SafePublicUrl()],
-            'image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:10240'],
+            'image_file' => $sectionImageRules,
+            'image_upload_token' => ['nullable', 'string', 'regex:/^[a-f0-9]{64}$/'],
             'image_url' => ['nullable', 'string', 'max:2048', new SafePublicUrl()],
             'image_alt' => ['nullable', 'string', 'max:255'],
             'remove_image' => ['nullable', 'boolean'],
@@ -41,7 +57,8 @@ class HomepageSectionRequest extends FormRequest
             'items.*.image_path' => ['nullable', 'string', 'max:2048'],
             'items.*.image_url' => ['nullable', 'string', 'max:2048', new SafePublicUrl()],
             'items.*.image_alt' => ['nullable', 'string', 'max:255'],
-            'items.*.image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:10240'],
+            'items.*.image_file' => $itemImageRules,
+            'items.*.image_upload_token' => ['nullable', 'string', 'regex:/^[a-f0-9]{64}$/'],
             'items.*.remove_image' => ['nullable', 'boolean'],
             'items.*.category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'settings' => ['nullable', 'array'],
@@ -68,7 +85,9 @@ class HomepageSectionRequest extends FormRequest
             'items.*.image_file.image' => 'Each item upload must be a valid image.',
             'items.*.image_file.mimes' => 'Item images must be JPG, PNG, WebP, or AVIF files.',
             'items.*.image_file.max' => 'Each item image must be no larger than 10 MB.',
+            'items.*.image_file.uploaded' => 'The browser could not transfer one of the images through PHP multipart upload. Choose it again; the homepage uploader will stage it automatically.',
             'image_file.max' => 'The image must be no larger than 10 MB.',
+            'image_file.uploaded' => 'The browser could not transfer this image through PHP multipart upload. Choose it again; the homepage uploader will stage it automatically.',
         ];
     }
 
@@ -89,6 +108,31 @@ class HomepageSectionRequest extends FormRequest
             $key = (string) $this->route('key');
             $definition = HomepageSectionRegistry::definition($key);
             $fields = (array) ($definition['fields'] ?? []);
+
+            $uploads = app(HomepageStagedUploadService::class);
+            $userId = (int) ($this->user()?->id ?? 0);
+            $sectionToken = trim((string) $this->input('image_upload_token', ''));
+            if ($sectionToken !== '') {
+                $error = $uploads->validationError($userId, $sectionToken, HomepageImageAspectRatios::forSectionImage($key));
+                if ($error !== null) {
+                    $validator->errors()->add('image_upload_token', $error);
+                }
+            }
+
+            $itemDefinition = HomepageImageAspectRatios::forSectionItem($key);
+            foreach ((array) $this->input('items', []) as $index => $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+                $token = trim((string) ($item['image_upload_token'] ?? ''));
+                if ($token === '') {
+                    continue;
+                }
+                $error = $uploads->validationError($userId, $token, $itemDefinition);
+                if ($error !== null) {
+                    $validator->errors()->add("items.{$index}.image_upload_token", $error);
+                }
+            }
 
             if (in_array('buttons', $fields, true)) {
                 if (filled($this->input('primary_label')) && blank($this->input('primary_url'))) {
@@ -114,7 +158,7 @@ class HomepageSectionRequest extends FormRequest
     public function payload(): array
     {
         $data = $this->safe()->except([
-            'image_file', 'image_url', 'remove_image',
+            'image_file', 'image_upload_token', 'image_url', 'remove_image',
             'items', 'settings', 'sort_order',
         ]);
 

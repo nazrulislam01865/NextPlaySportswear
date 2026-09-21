@@ -4,7 +4,6 @@ namespace App\Services\Storefront;
 
 use App\Models\User;
 use App\Services\Cart\CartService;
-use App\Services\Catalog\NavigationService;
 use App\Services\Wishlist\WishlistHeaderService;
 
 class StorefrontBootstrapService
@@ -12,7 +11,7 @@ class StorefrontBootstrapService
     public function __construct(
         private readonly CartService $cart,
         private readonly WishlistHeaderService $wishlist,
-        private readonly NavigationService $navigation,
+        private readonly StorefrontSettingsService $settings,
     ) {
     }
 
@@ -22,12 +21,17 @@ class StorefrontBootstrapService
         $customer = $customer?->isCustomer() ? $customer : null;
         $cart = $this->cart->headerSummary(4);
         $wishlist = $this->wishlist->summary($customer, 4);
+        $header = $this->settings->header();
+        $branding = (array) ($header['branding'] ?? []);
+        $logo = trim((string) ($branding['logo'] ?? ''));
+        $logoAlt = trim((string) ($branding['logo_alt'] ?? ''));
 
         return [
             'site' => [
                 'name' => (string) config('storefront.name'),
                 'tagline' => (string) config('storefront.tagline'),
-                'logo' => (string) config('storefront.logo'),
+                'logo' => $logo !== '' ? $logo : (string) config('storefront.vue_logo'),
+                'logo_alt' => $logoAlt !== '' ? $logoAlt : (string) config('storefront.name'),
             ],
             'customer' => $customer ? [
                 'id' => (int) $customer->getKey(),
@@ -43,7 +47,9 @@ class StorefrontBootstrapService
             'wishlist' => [
                 'total_items' => (int) ($wishlist['total_items'] ?? 0),
             ],
-            'navigation' => $this->navigation->storefrontMenus(),
+            'navigation' => $this->settings->navigation(),
+            'header' => $header,
+            'footer' => $this->settings->footer(),
         ];
     }
 }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
+import UtilityBar from '../../../components/layout/UtilityBar.vue';
 import StorefrontHeader from '../../../components/layout/StorefrontHeader.vue';
 import StorefrontFooter from '../../../components/layout/StorefrontFooter.vue';
 import Breadcrumbs from '../../../components/common/Breadcrumbs.vue';
@@ -16,9 +17,6 @@ import { useMen } from '../composables/useMen';
 const storefront = useStorefrontStore();
 const men = useMen();
 const actions = useProductActions();
-
-// Temporary switch: keep the catalog implementation intact while hiding it from the Men page.
-const SHOW_MEN_CATALOG = false;
 const breadcrumbs = [
   { label: 'Home', href: '/' },
   { label: 'Shop', href: '/products' },
@@ -26,12 +24,13 @@ const breadcrumbs = [
 ];
 
 onMounted(async () => {
-  await Promise.allSettled([storefront.bootstrap(), men.load(1, SHOW_MEN_CATALOG)]);
+  await Promise.allSettled([storefront.bootstrap(), men.load()]);
 });
 </script>
 
 <template>
   <div class="np-page np-men-page">
+    <UtilityBar />
     <StorefrontHeader />
 
     <main id="main-content" class="np-men-main">
@@ -42,7 +41,7 @@ onMounted(async () => {
           <CategoryCarousel
             class="np-men-category-carousel"
             title="MEN"
-            :title-meta="SHOW_MEN_CATALOG ? `${men.productCount.value} Products` : undefined"
+            :title-meta="`${men.productCount.value} Products`"
             :categories="men.categories.value"
             variant="showcase"
             controls-variant="showcase"
@@ -50,7 +49,7 @@ onMounted(async () => {
             contained
           />
 
-          <div v-if="SHOW_MEN_CATALOG" class="np-men-catalog-layout">
+          <div class="np-men-catalog-layout">
             <CatalogFilterSidebar
               :filter-options="men.filterOptions.value"
               :model-value="men.filters.value"
@@ -99,12 +98,12 @@ onMounted(async () => {
         <section v-else class="np-men-error" role="alert">
           <h1>MEN</h1>
           <p>{{ men.error.value || 'We could not load the Men collection.' }}</p>
-          <button type="button" @click="men.load(1, SHOW_MEN_CATALOG)">TRY AGAIN</button>
+          <button type="button" @click="men.load">TRY AGAIN</button>
         </section>
       </div>
     </main>
 
-    <p v-if="SHOW_MEN_CATALOG && actions.message.value" class="np-men-toast" role="status">{{ actions.message.value }}</p>
+    <p v-if="actions.message.value" class="np-men-toast" role="status">{{ actions.message.value }}</p>
     <StorefrontFooter />
   </div>
 </template>
