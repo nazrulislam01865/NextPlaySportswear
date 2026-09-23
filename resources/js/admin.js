@@ -1,5 +1,4 @@
 import './bootstrap';
-import { initHomepageStagedUploads } from './admin/homepage-staged-upload';
 
 import Alpine from 'alpinejs';
 window.Alpine = Alpine;
@@ -3347,8 +3346,6 @@ window.adminRemoteAreaImporter = (config = {}) => ({
     },
 });
 
-initHomepageStagedUploads();
-
 Alpine.start();
 
 /**
@@ -4640,4 +4637,8 @@ const initializePersistentAdminNavigation = () => {
     history.replaceState({ nextplayAdminPartial: true, url: window.location.href }, '', window.location.href);
 };
 
-initializePersistentAdminNavigation();
+// Use native browser navigation/submission for admin pages. Laravel sessions,
+// redirects, CSRF rotation and validation responses stay authoritative across
+// every menu click and mutation; the optional soft-navigation implementation
+// remains above for future use but is intentionally not initialized.
+// initializePersistentAdminNavigation();

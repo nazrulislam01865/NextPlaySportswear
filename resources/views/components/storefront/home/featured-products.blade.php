@@ -9,4 +9,5 @@
     fallback-description="Products marked as featured by the admin appear here automatically."
     empty-message="No active featured products are available yet."
     :alternate="true"
+    :slider="true"
 />

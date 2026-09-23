@@ -5,180 +5,129 @@ namespace App\Services\Catalog;
 use App\Models\HomepageSection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class HomepageSectionMediaService
 {
-    public function __construct(private readonly HomepageStagedUploadService $stagedUploads)
-    {
-    }
-
     public function sync(HomepageSection $section, Request $request): void
     {
-        $this->syncSectionMedia($section, $request);
-        $this->syncItemMedia($section, $request);
-        $section->save();
-    }
-
-    private function syncSectionMedia(HomepageSection $section, Request $request): void
-    {
         $uploaded = $request->file('image_file');
-        $uploadToken = trim((string) $request->input('image_upload_token', ''));
         $imageUrl = trim((string) $request->input('image_url', ''));
+        $mobileUploaded = $request->file('mobile_image_file');
+        $mobileImageUrl = trim((string) $request->input('mobile_image_url', ''));
 
         if ($request->boolean('remove_image')) {
-            $this->deleteSectionPath($section, $section->image_path);
+            $this->deletePath($section->image_path);
             $section->image_path = null;
             $section->image_url = null;
         }
 
-        if ($uploadToken !== '') {
-            $newPath = $this->stagedUploads->consumeToPublic(
-                (int) $request->user()->id,
-                $uploadToken,
-                "homepage/sections/{$section->key}",
-            );
-            $this->deleteSectionPath($section, $section->image_path);
-            $section->image_path = $newPath;
-            $section->image_url = null;
-        } elseif ($uploaded) {
-            $this->deleteSectionPath($section, $section->image_path);
+        if ($uploaded) {
+            $this->deletePath($section->image_path);
             $section->image_path = $uploaded->store("homepage/sections/{$section->key}", 'public');
             $section->image_url = null;
         } elseif ($imageUrl !== '') {
-            $this->deleteSectionPath($section, $section->image_path);
+            $this->deletePath($section->image_path);
             $section->image_path = null;
             $section->image_url = $imageUrl;
         }
 
+        if ($request->boolean('remove_mobile_image')) {
+            $this->deletePath($section->mobile_image_path);
+            $section->mobile_image_path = null;
+            $section->mobile_image_url = null;
+        }
+
+        if ($mobileUploaded) {
+            $this->deletePath($section->mobile_image_path);
+            $section->mobile_image_path = $mobileUploaded->store("homepage/sections/{$section->key}/mobile", 'public');
+            $section->mobile_image_url = null;
+        } elseif ($mobileImageUrl !== '') {
+            $this->deletePath($section->mobile_image_path);
+            $section->mobile_image_path = null;
+            $section->mobile_image_url = $mobileImageUrl;
+        }
+
+        if ((string) $section->key === 'hero') {
+            $this->syncHeroSlides($section, $request);
+        }
+
+        $section->save();
     }
 
-    private function syncItemMedia(HomepageSection $section, Request $request): void
+    private function syncHeroSlides(HomepageSection $section, Request $request): void
     {
-        $existing = collect(is_array($section->items) ? $section->items : [])
-            ->filter(fn ($item): bool => is_array($item) && filled($item['id'] ?? null))
-            ->keyBy(fn (array $item): string => (string) $item['id']);
+        $existingSlides = collect(is_array($section->hero_slides) ? $section->hero_slides : [])
+            ->filter(fn ($slide): bool => is_array($slide))
+            ->mapWithKeys(function (array $slide, int $index): array {
+                $id = trim((string) ($slide['id'] ?? '')) ?: 'stored-'.($index + 1);
 
-        $submitted = collect((array) $request->input('items', []))
-            ->filter(fn ($item): bool => is_array($item) && filled($item['id'] ?? null));
+                return [$id => $slide];
+            });
 
-        $saved = [];
-        $seen = [];
+        $submittedRows = $request->input('hero_slides', []);
+        $submittedRows = is_array($submittedRows) ? array_values($submittedRows) : [];
+        $savedSlides = [];
+        $seenIds = [];
 
-        foreach ($submitted as $index => $row) {
-            $id = trim((string) $row['id']);
-            $seen[$id] = true;
-            $old = (array) ($existing->get($id) ?? []);
-            $path = trim((string) ($old['image_path'] ?? '')) ?: null;
-            $oldUrl = trim((string) ($old['image_url'] ?? '')) ?: null;
+        foreach ($submittedRows as $index => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $id = trim((string) ($row['id'] ?? ''));
+            if ($id === '' || isset($seenIds[$id])) {
+                $id = (string) Str::uuid();
+            }
+            $seenIds[$id] = true;
+
+            $existing = $existingSlides->get($id, []);
+            $existingPath = trim((string) ($existing['image_path'] ?? '')) ?: null;
+            $existingUrl = trim((string) ($existing['image_url'] ?? $existing['image'] ?? '')) ?: null;
+            $uploaded = $request->file("hero_slides.{$index}.image_file");
             $submittedUrl = trim((string) ($row['image_url'] ?? '')) ?: null;
-            $url = $submittedUrl ?? $oldUrl;
+            $imagePath = $existingPath;
+            $imageUrl = $existingUrl;
 
-            if ($request->boolean("items.$index.remove_image")) {
-                $this->deleteOwnedItemPath($section, $id, $path);
-                $path = null;
-                $url = null;
+            if ($uploaded) {
+                $this->deletePath($existingPath);
+                $imagePath = $uploaded->store('homepage/sections/hero/slides', 'public');
+                $imageUrl = null;
+            } elseif ($submittedUrl !== null) {
+                if ($submittedUrl !== $existingUrl) {
+                    $this->deletePath($existingPath);
+                    $imagePath = null;
+                }
+                $imageUrl = $submittedUrl;
+            } elseif ($existingPath === null) {
+                $submittedPath = trim((string) ($row['image_path'] ?? ''));
+                if ($submittedPath !== '') {
+                    $imagePath = $submittedPath;
+                }
             }
 
-            $uploadToken = trim((string) ($row['image_upload_token'] ?? ''));
-            if ($uploadToken !== '') {
-                $newPath = $this->stagedUploads->consumeToPublic(
-                    (int) $request->user()->id,
-                    $uploadToken,
-                    "homepage/sections/{$section->key}/items/{$id}",
-                );
-                $this->deleteOwnedItemPath($section, $id, $path);
-                $path = $newPath;
-                $url = null;
-            } elseif ($upload = $request->file("items.$index.image_file")) {
-                $this->deleteOwnedItemPath($section, $id, $path);
-                $path = $upload->store("homepage/sections/{$section->key}/items/{$id}", 'public');
-                $url = null;
-            } elseif ($submittedUrl !== null && $submittedUrl !== $oldUrl) {
-                $this->deleteOwnedItemPath($section, $id, $path);
-                $path = null;
-                $url = $submittedUrl;
+            if ($imagePath === null && $imageUrl === null) {
+                continue;
             }
 
-            $cleanRow = $this->cleanSubmittedItem($row, (string) $section->key);
-            $saved[] = array_filter(array_merge($old, $cleanRow, [
+            $savedSlides[] = [
                 'id' => $id,
-                'image_path' => $path,
-                'image_url' => $url,
-            ]), fn ($value): bool => $value !== null && $value !== '');
+                'image_path' => $imagePath,
+                'image_url' => $imageUrl,
+                'image_alt' => trim(strip_tags((string) ($row['image_alt'] ?? $existing['image_alt'] ?? ''))) ?: 'Custom team sportswear',
+            ];
         }
 
-        $existing->reject(fn (array $item, string $id): bool => isset($seen[$id]))
-            ->each(fn (array $item, string $id) => $this->deleteOwnedItemPath($section, $id, $item['image_path'] ?? null));
+        $existingSlides
+            ->reject(fn (array $slide, string $id): bool => isset($seenIds[$id]))
+            ->each(fn (array $slide) => $this->deletePath(trim((string) ($slide['image_path'] ?? '')) ?: null));
 
-        $section->items = array_values($saved);
+        $section->hero_slides = array_values($savedSlides);
     }
 
-    /** @param array<string, mixed> $row @return array<string, mixed> */
-    private function cleanSubmittedItem(array $row, string $sectionKey): array
+    private function deletePath(?string $path): void
     {
-        $clean = [];
-        foreach (['id', 'title', 'subtitle', 'description', 'url', 'label', 'image_alt', 'image_url'] as $field) {
-            $value = trim(strip_tags((string) ($row[$field] ?? '')));
-            if ($value !== '') {
-                $clean[$field] = $value;
-            }
-        }
-        $categoryId = (int) ($row['category_id'] ?? 0);
-        if ($categoryId > 0) {
-            $clean['category_id'] = $categoryId;
-        }
-
-        if ($sectionKey === 'shop_by_sport') {
-            // Persist the submitted list even when it is empty so removing all
-            // buttons from a sport does not resurrect buttons from the old row.
-            $clean['buttons'] = $this->cleanSportButtons((array) ($row['buttons'] ?? []));
-        }
-
-        return $clean;
-    }
-
-    /** @return array<int, array{id?: string, label: string, url: string}> */
-    private function cleanSportButtons(array $buttons): array
-    {
-        $clean = [];
-
-        foreach ($buttons as $button) {
-            if (! is_array($button)) {
-                continue;
-            }
-
-            $label = trim(strip_tags((string) ($button['label'] ?? '')));
-            $url = trim(strip_tags((string) ($button['url'] ?? '')));
-            if ($label === '' || $url === '') {
-                continue;
-            }
-
-            $row = ['label' => $label, 'url' => $url];
-            $id = trim(strip_tags((string) ($button['id'] ?? '')));
-            if ($id !== '') {
-                $row['id'] = $id;
-            }
-
-            $clean[] = $row;
-        }
-
-        return $clean;
-    }
-
-    private function deleteOwnedItemPath(HomepageSection $section, string $itemId, mixed $path): void
-    {
-        $path = trim((string) $path);
-        $prefix = "homepage/sections/{$section->key}/items/{$itemId}/";
-        if ($path !== '' && str_starts_with($path, $prefix) && Storage::disk('public')->exists($path)) {
-            Storage::disk('public')->delete($path);
-        }
-    }
-
-    private function deleteSectionPath(HomepageSection $section, mixed $path): void
-    {
-        $path = trim((string) $path);
-        $prefix = "homepage/sections/{$section->key}/";
-        if ($path !== '' && str_starts_with($path, $prefix) && Storage::disk('public')->exists($path)) {
+        if (filled($path) && Storage::disk('public')->exists($path)) {
             Storage::disk('public')->delete($path);
         }
     }

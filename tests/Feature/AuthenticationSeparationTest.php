@@ -68,6 +68,87 @@ class AuthenticationSeparationTest extends TestCase
     }
 
 
+    public function test_admin_session_survives_navigation_across_admin_pages(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'super_admin',
+            'is_active' => true,
+            'password' => Hash::make('Password123'),
+        ]);
+
+        $this->post(route('admin.login.store'), [
+            'email' => $admin->email,
+            'password' => 'Password123',
+        ])->assertRedirect(route('admin.dashboard'));
+
+        foreach ([
+            route('admin.dashboard'),
+            route('admin.products.index'),
+            route('admin.categories.index'),
+        ] as $url) {
+            $this->get($url)->assertOk();
+            $this->assertAuthenticatedAs($admin, 'admin');
+        }
+    }
+
+
+    public function test_admin_session_survives_ajax_style_navigation_and_admin_action(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'super_admin',
+            'is_active' => true,
+            'password' => Hash::make('Password123'),
+        ]);
+
+        $this->post(route('admin.login.store'), [
+            'email' => $admin->email,
+            'password' => 'Password123',
+        ])->assertRedirect(route('admin.dashboard'));
+
+        $this->withHeaders([
+            'Accept' => 'text/html,application/xhtml+xml',
+            'X-Requested-With' => 'XMLHttpRequest',
+            'X-NextPlay-Admin-Navigation' => '1',
+        ])->get(route('admin.products.index'))->assertOk();
+
+        $this->assertAuthenticatedAs($admin, 'admin');
+
+        $this->from(route('admin.dashboard'))
+            ->withHeaders([
+                'Accept' => 'text/html,application/xhtml+xml',
+                'X-NextPlay-Admin-Navigation' => '1',
+            ])
+            ->post(route('admin.notifications.read-all'))
+            ->assertRedirect(route('admin.dashboard'));
+
+        $this->assertAuthenticatedAs($admin, 'admin');
+    }
+
+    public function test_stale_customer_session_cannot_erase_an_active_admin_session(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'super_admin',
+            'is_active' => true,
+        ]);
+        $customer = User::factory()->create([
+            'role' => 'customer',
+            'is_active' => true,
+            'auth_session_version' => 5,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->actingAs($customer, 'web')
+            ->withSession([
+                EnforceCustomerSessionVersion::SESSION_KEY => 4,
+            ])
+            ->get(route('home'))
+            ->assertRedirect(route('login'));
+
+        $this->assertAuthenticatedAs($admin, 'admin');
+        $this->assertGuest('web');
+    }
+
+
     public function test_customer_login_ignores_a_stale_admin_intended_url(): void
     {
         $customer = User::factory()->create([

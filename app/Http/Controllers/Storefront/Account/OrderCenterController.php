@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\View\View;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class OrderCenterController extends Controller
@@ -214,7 +214,7 @@ class OrderCenterController extends Controller
         return $this->view('storefront.account.orders.downloads', $request, compact('downloads'), 'Order Downloads');
     }
 
-    public function download(Request $request, OrderDownload $download): StreamedResponse
+    public function download(Request $request, OrderDownload $download): BinaryFileResponse
     {
         $this->authorize('download', $download);
 

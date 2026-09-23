@@ -161,36 +161,6 @@ class CategoryCatalogService
         return $ordered->map(fn (Category $category) => $this->categoryData($category))->values()->all();
     }
 
-    /** @return array<int, array<string, mixed>> */
-    public function suggestions(string $query, int $limit = 6): array
-    {
-        $query = trim($query);
-        $limit = max(1, min(12, $limit));
-
-        if ($query === '') {
-            return [];
-        }
-
-        $categories = Category::query()
-            ->storefrontReachable()
-            ->with('parent:id,name,slug,parent_id')
-            ->where(function (Builder $builder) use ($query): void {
-                $builder->where('name', 'like', '%'.$query.'%')
-                    ->orWhere('short_title', 'like', '%'.$query.'%')
-                    ->orWhere('slug', 'like', '%'.Str::slug($query).'%');
-            })
-            ->ordered()
-            ->limit($limit)
-            ->get();
-
-        $this->attachProductCounts($categories);
-
-        return $categories
-            ->map(fn (Category $category): array => $this->categoryData($category))
-            ->values()
-            ->all();
-    }
-
     public function filterTags(): array
     {
         return [

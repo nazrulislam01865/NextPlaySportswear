@@ -44,9 +44,7 @@
                     <div class="category-tools-panel">
                         <a href="{{ route('admin.categories.export') }}">Export CSV</a>
                         <a href="{{ route('admin.attributes.index') }}">Catalog Attributes</a>
-                        @if(\App\Support\AdminRbac::userCan(auth('admin')->user(), 'navigation_settings.view'))
-                            <a href="{{ route('admin.navigation-settings.edit') }}">Navigation Menu</a>
-                        @endif
+                        <a href="{{ route('admin.menus.index') }}">Navigation Menus</a>
                     </div>
                 </details>
             </div>

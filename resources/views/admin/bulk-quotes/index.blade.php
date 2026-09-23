@@ -1,5 +1,5 @@
 <x-layouts.admin
-    title="Requested Bulk Quotes"
+    title="Bulk Quote Requests"
     eyebrow="Commerce"
     subtitle="Review, assign, qualify, quote, and monitor customer bulk requests from one workflow."
     :compact-header="true"

@@ -65,14 +65,6 @@ class AppServiceProvider extends ServiceProvider
             $view->with('storefrontMenus', app(NavigationService::class)->storefrontMenus());
         });
 
-        RateLimiter::for('storefront-api-public', function (Request $request): Limit {
-            return Limit::perMinute(120)->by('storefront-api-public:'.($request->ip() ?: 'unknown'));
-        });
-
-        RateLimiter::for('catalog-search-suggestions', function (Request $request): Limit {
-            return Limit::perMinute(60)->by('catalog-search-suggestions:'.($request->ip() ?: 'unknown'));
-        });
-
         RateLimiter::for('admin-login', function (Request $request): array {
             $ip = (string) ($request->ip() ?: 'unknown');
             $email = strtolower(trim((string) $request->input('email')));

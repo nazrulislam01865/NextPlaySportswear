@@ -8,15 +8,12 @@ use Illuminate\Support\Facades\Storage;
 
 class HomepageSlideMediaService
 {
-    public function __construct(private readonly HomepageStagedUploadService $stagedUploads)
-    {
-    }
-
     public function sync(HomepageSlide $slide, Request $request): void
     {
         $uploaded = $request->file('image_file');
-        $uploadToken = trim((string) $request->input('image_upload_token', ''));
         $imageUrl = trim((string) $request->input('image_url', ''));
+        $mobileUploaded = $request->file('mobile_image_file');
+        $mobileImageUrl = trim((string) $request->input('mobile_image_url', ''));
 
         if ($request->boolean('remove_image')) {
             $this->deletePath($slide->image_path);
@@ -24,16 +21,7 @@ class HomepageSlideMediaService
             $slide->image_url = null;
         }
 
-        if ($uploadToken !== '') {
-            $newPath = $this->stagedUploads->consumeToPublic(
-                (int) $request->user()->id,
-                $uploadToken,
-                "homepage/slides/{$slide->id}",
-            );
-            $this->deletePath($slide->image_path);
-            $slide->image_path = $newPath;
-            $slide->image_url = null;
-        } elseif ($uploaded) {
+        if ($uploaded) {
             $this->deletePath($slide->image_path);
             $slide->image_path = $uploaded->store("homepage/slides/{$slide->id}", 'public');
             $slide->image_url = null;
@@ -43,6 +31,21 @@ class HomepageSlideMediaService
             $slide->image_url = $imageUrl;
         }
 
+        if ($request->boolean('remove_mobile_image')) {
+            $this->deletePath($slide->mobile_image_path);
+            $slide->mobile_image_path = null;
+            $slide->mobile_image_url = null;
+        }
+
+        if ($mobileUploaded) {
+            $this->deletePath($slide->mobile_image_path);
+            $slide->mobile_image_path = $mobileUploaded->store("homepage/slides/{$slide->id}/mobile", 'public');
+            $slide->mobile_image_url = null;
+        } elseif ($mobileImageUrl !== '') {
+            $this->deletePath($slide->mobile_image_path);
+            $slide->mobile_image_path = null;
+            $slide->mobile_image_url = $mobileImageUrl;
+        }
 
         $slide->save();
     }

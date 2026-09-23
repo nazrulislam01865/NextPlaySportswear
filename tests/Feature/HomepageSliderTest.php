@@ -3,11 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\HomepageSlide;
-use App\Models\User;
 use App\Services\Storefront\HomepageSliderService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class HomepageSliderTest extends TestCase
@@ -116,86 +113,4 @@ class HomepageSliderTest extends TestCase
             ->assertDontSee('Inactive Promotion')
             ->assertDontSee('Expired Promotion');
     }
-    public function test_hero_banner_editor_links_to_slide_manager_and_slide_manager_links_back(): void
-    {
-        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
-
-        $this->actingAs($admin, 'admin')
-            ->get(route('admin.homepage.sections.edit', 'hero'))
-            ->assertOk()
-            ->assertSee('Manage Slides')
-            ->assertSee(route('admin.homepage-slides.index'), false);
-
-        $this->actingAs($admin, 'admin')
-            ->get(route('admin.homepage-slides.index'))
-            ->assertOk()
-            ->assertSee('Back to Hero Banner')
-            ->assertSee(route('admin.homepage.sections.edit', 'hero'), false);
-    }
-
-    public function test_hero_slide_upload_accepts_the_target_aspect_ratio_at_any_resolution(): void
-    {
-        Storage::fake('public');
-        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
-
-        $response = $this->actingAs($admin, 'admin')->post(route('admin.homepage-slides.store'), [
-            'image_file' => UploadedFile::fake()->image('hero.webp', 1600, 600),
-            'image_alt' => 'Responsive team banner',
-            'image_focal_position' => 'center',
-            'show_content' => '0',
-            'show_eyebrow' => '0',
-            'show_title' => '0',
-            'show_description' => '0',
-            'show_primary_button' => '0',
-            'primary_target' => '_self',
-            'show_secondary_button' => '0',
-            'secondary_target' => '_self',
-            'content_position' => 'left',
-            'text_alignment' => 'left',
-            'text_theme' => 'light',
-            'overlay_color' => '#0D2545',
-            'overlay_opacity' => 72,
-            'is_active' => '1',
-            'sort_order' => 10,
-        ]);
-
-        $slide = HomepageSlide::query()->latest('id')->firstOrFail();
-        $response->assertRedirect(route('admin.homepage-slides.edit', $slide));
-        $this->assertNotEmpty($slide->image_path);
-    }
-
-    public function test_hero_slide_upload_rejects_a_wrong_aspect_ratio_with_a_clear_message(): void
-    {
-        Storage::fake('public');
-        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
-
-        $response = $this->actingAs($admin, 'admin')
-            ->from(route('admin.homepage-slides.create'))
-            ->post(route('admin.homepage-slides.store'), [
-                'image_file' => UploadedFile::fake()->image('hero.webp', 1600, 900),
-                'image_alt' => 'Wrong ratio banner',
-                'image_focal_position' => 'center',
-                'show_content' => '0',
-                'show_eyebrow' => '0',
-                'show_title' => '0',
-                'show_description' => '0',
-                'show_primary_button' => '0',
-                'primary_target' => '_self',
-                'show_secondary_button' => '0',
-                'secondary_target' => '_self',
-                'content_position' => 'left',
-                'text_alignment' => 'left',
-                'text_theme' => 'light',
-                'overlay_color' => '#0D2545',
-                'overlay_opacity' => 72,
-                'is_active' => '1',
-                'sort_order' => 10,
-            ]);
-
-        $response->assertRedirect(route('admin.homepage-slides.create'));
-        $response->assertSessionHasErrors('image_file');
-        $this->assertStringContainsString('8:3 aspect ratio', (string) session('errors')->first('image_file'));
-    }
-
-
 }

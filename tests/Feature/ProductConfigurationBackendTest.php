@@ -56,9 +56,7 @@ class ProductConfigurationBackendTest extends TestCase
             'quantity' => 2,
         ], $item['customization']['size_breakdown'][0]);
         $this->assertSame('Name', $item['customization']['roster_fields'][0]['label']);
-        $this->assertEqualsWithDelta(0.50, $item['customization_unit_price'], 0.001);
-        $this->assertEqualsWithDelta(5.00, $item['shipping_unit_price'], 0.001);
-        $this->assertEqualsWithDelta(10.00, $item['product_shipping_total'], 0.001);
+        $this->assertEqualsWithDelta(5.50, $item['customization_unit_price'], 0.001);
         $this->assertEqualsWithDelta(23.00, $item['line_total'], 0.001);
     }
 

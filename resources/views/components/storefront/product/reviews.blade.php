@@ -6,7 +6,7 @@
 
     // Keep this section aligned with the rating displayed on product cards.
     if ((! is_numeric($rating) || ! is_numeric($reviewsCount) || (int) $reviewsCount <= 0)
-        && (bool) config('storefront.product_cards.show_default_rating', true)) {
+        && \App\Support\StorefrontDisplaySettings::showDefaultProductRatings()) {
         $rating = config('storefront.product_cards.default_rating', 4.8);
         $reviewsCount = config('storefront.product_cards.default_reviews_count', 23);
     }

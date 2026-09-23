@@ -39,6 +39,7 @@
     $secondaryLabel = 'Share your experience';
     $secondaryHref = route('contact') . '?topic=testimonial';
     $reviewBaseHref = route('contact') . '?topic=testimonial';
+    $showStatistics = filter_var(data_get($section, 'settings.show_statistics', true), FILTER_VALIDATE_BOOLEAN);
     $googleReviewHref = $reviewBaseHref . '&platform=google-reviews';
     $trustpilotReviewHref = $reviewBaseHref . '&platform=trustpilot';
     $facebookReviewHref = $reviewBaseHref . '&platform=facebook';
@@ -1450,12 +1451,14 @@
             @endforeach
         </div>
 
-        <div class="np-testimonials-stats" aria-label="Customer testimonial statistics">
-            <div class="np-testimonial-stat"><strong>4.9/5</strong><span>Average customer rating</span></div>
-            <div class="np-testimonial-stat"><strong>96%</strong><span>Would order again</span></div>
-            <div class="np-testimonial-stat"><strong>500+</strong><span>Teams served</span></div>
-            <div class="np-testimonial-stat"><strong>24h</strong><span>Typical quote response</span></div>
-        </div>
+        @if($showStatistics)
+            <div class="np-testimonials-stats" aria-label="Customer testimonial statistics">
+                <div class="np-testimonial-stat"><strong>4.9/5</strong><span>Average customer rating</span></div>
+                <div class="np-testimonial-stat"><strong>96%</strong><span>Would order again</span></div>
+                <div class="np-testimonial-stat"><strong>500+</strong><span>Teams served</span></div>
+                <div class="np-testimonial-stat"><strong>24h</strong><span>Typical quote response</span></div>
+            </div>
+        @endif
 
     </div>
 

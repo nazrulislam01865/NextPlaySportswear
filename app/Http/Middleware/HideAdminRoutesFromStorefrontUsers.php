@@ -16,10 +16,15 @@ class HideAdminRoutesFromStorefrontUsers
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $storefrontUser = Auth::guard('web')->user();
-        $adminIsAuthenticated = Auth::guard('admin')->user()?->isAdmin() ?? false;
+        // Once an administrator is authenticated, do not resolve the storefront
+        // guard on admin requests. Resolving a remembered customer here can
+        // unnecessarily couple the two guards even though the admin session is
+        // already valid.
+        if (Auth::guard('admin')->user()?->isAdmin()) {
+            return $next($request);
+        }
 
-        if ($storefrontUser && ! $adminIsAuthenticated) {
+        if (Auth::guard('web')->user()) {
             abort(404);
         }
 

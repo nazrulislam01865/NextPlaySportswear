@@ -25,6 +25,19 @@
         @endforeach
     </div>
 
+    @if($canViewHomepageSections)
+        <section class="mt-7 rounded-3xl border border-slate-200 bg-white p-5 shadow-card sm:p-6">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-xs font-black uppercase tracking-[.16em] text-brand-red">Storefront</p>
+                    <h2 class="mt-1 text-xl font-black text-brand-dark">Home Page Control</h2>
+                    <p class="mt-1 text-sm text-slate-500">Manage homepage sections, visibility, ordering, content, and storefront display controls.</p>
+                </div>
+                <a href="{{ route('admin.homepage.sections.index') }}" class="btn btn-red">Open Home Page Control</a>
+            </div>
+        </section>
+    @endif
+
     <div class="mt-7 space-y-6">
         <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
             <div class="flex flex-col justify-between gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center">

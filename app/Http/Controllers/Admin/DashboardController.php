@@ -20,6 +20,7 @@ class DashboardController extends Controller
         $canViewReturns = $admin?->canAdmin('returns.view') ?? false;
         $canViewProducts = $admin?->canAdmin('products.view') ?? false;
         $canManageProducts = $admin?->canAdmin('products.manage') ?? false;
+        $canViewHomepageSections = $admin?->canAdmin('homepage_sections.view') ?? false;
 
         $ordersAvailable = $canViewOrders && Schema::hasTable('orders');
         $bulkQuotesAvailable = $canViewOrders && Schema::hasTable('bulk_quote_requests');
@@ -47,6 +48,7 @@ class DashboardController extends Controller
             'canViewReturns' => $canViewReturns,
             'canViewProducts' => $canViewProducts,
             'canManageProducts' => $canManageProducts,
+            'canViewHomepageSections' => $canViewHomepageSections,
             'recentNotifications' => $notificationsAvailable
                 ? $admin->notifications()->latest()->paginate(5, ['*'], 'notifications_page')->withQueryString()
                 : collect(),

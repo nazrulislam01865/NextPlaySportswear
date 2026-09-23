@@ -39,7 +39,7 @@ class SafeHtmlService
 
             $attributes = preg_replace('/\s+href\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $attributes) ?? '';
             $attributes = preg_replace('/\s+(?!title\b|target\b|rel\b|class\b)[a-z0-9:-]+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $attributes) ?? '';
-            $attributes = preg_replace('/\s+target\s*=\s*(?:"(?!_blank")[^"]*"|\'(?!_blank\')[^\']*\'|(?!_blank\b)[^\s>"\']+)/i', '', $attributes) ?? '';
+            $attributes = preg_replace('/\s+target\s*=\s*(?:"(?!_blank")[^"]*"|\'(?!_blank\')[^\']*\'|(?!_blank\b)[^\s>]+)/i', '', $attributes) ?? '';
 
             if ($safeHref !== null) {
                 $attributes .= ' href="'.e($safeHref).'"';

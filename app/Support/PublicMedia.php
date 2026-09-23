@@ -24,8 +24,8 @@ final class PublicMedia
 
         // Cloud deployments sometimes have public/storage as a copied directory
         // instead of a real symlink. Use the application-owned /media route for
-        // same-application /storage URLs so newly uploaded images always resolve.
-        if ($baseUrl === '' || self::isApplicationStorageBaseUrl($baseUrl)) {
+        // stored uploads so newly uploaded WebP/JPG/PNG images always resolve.
+        if ($baseUrl === '' || $baseUrl === '/storage') {
             $baseUrl = '/media';
         }
 
@@ -70,76 +70,28 @@ final class PublicMedia
             }
         }
 
-        $configuredBaseUrl = rtrim((string) config('filesystems.disks.public.url', '/media'), '/');
-        if ($configuredBaseUrl !== '' && ! preg_match('#^https?://#i', $configuredBaseUrl)) {
-            $configuredPrefix = '/'.trim($configuredBaseUrl, '/').'/';
-            if ($configuredPrefix !== '//' && str_starts_with($url, $configuredPrefix)) {
-                return self::normalizePath(Str::after($url, $configuredPrefix));
-            }
-        }
-
         if (! preg_match('#^https?://#i', $url)) {
             return null;
         }
 
         $path = (string) parse_url($url, PHP_URL_PATH);
+        $prefix = collect(['/storage/', '/media/'])->first(
+            static fn (string $candidate): bool => str_starts_with($path, $candidate)
+        );
+        if (! $prefix) {
+            return null;
+        }
+
         $host = strtolower((string) parse_url($url, PHP_URL_HOST));
         $appHost = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
         $requestHost = app()->runningInConsole() ? '' : strtolower((string) request()->getHost());
         $localHosts = ['localhost', '127.0.0.1', '::1'];
-        $isApplicationHost = in_array($host, $localHosts, true) || $host === $appHost || $host === $requestHost;
 
-        if (! $isApplicationHost) {
-            return null;
-        }
-
-        $prefix = collect(['/storage/', '/media/'])->first(
-            static fn (string $candidate): bool => str_starts_with($path, $candidate)
-        );
-
-        if ($prefix) {
+        if (in_array($host, $localHosts, true) || $host === $appHost || $host === $requestHost) {
             return self::normalizePath(Str::after($path, $prefix));
         }
 
-        if (preg_match('#^https?://#i', $configuredBaseUrl)) {
-            $configuredHost = strtolower((string) parse_url($configuredBaseUrl, PHP_URL_HOST));
-            $configuredPath = '/'.trim((string) parse_url($configuredBaseUrl, PHP_URL_PATH), '/');
-
-            if (
-                $configuredHost === $host
-                && $configuredPath !== '/'
-                && ($path === $configuredPath || str_starts_with($path, $configuredPath.'/'))
-            ) {
-                return self::normalizePath(ltrim(substr($path, strlen($configuredPath)), '/'));
-            }
-        }
-
         return null;
-    }
-
-    private static function isApplicationStorageBaseUrl(string $baseUrl): bool
-    {
-        if ($baseUrl === '/storage') {
-            return true;
-        }
-
-        if (! preg_match('#^https?://#i', $baseUrl)) {
-            return false;
-        }
-
-        $path = '/'.trim((string) parse_url($baseUrl, PHP_URL_PATH), '/');
-        if ($path !== '/storage') {
-            return false;
-        }
-
-        $host = strtolower((string) parse_url($baseUrl, PHP_URL_HOST));
-        $appHost = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
-        $requestHost = app()->runningInConsole() ? '' : strtolower((string) request()->getHost());
-
-        return $host === ''
-            || in_array($host, ['localhost', '127.0.0.1', '::1'], true)
-            || ($appHost !== '' && $host === $appHost)
-            || ($requestHost !== '' && $host === $requestHost);
     }
 
     private static function normalizeExternalUrl(?string $value): ?string

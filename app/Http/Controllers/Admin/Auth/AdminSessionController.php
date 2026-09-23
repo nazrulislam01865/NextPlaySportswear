@@ -43,8 +43,9 @@ class AdminSessionController extends Controller
 
         AdminRbac::syncDefaults(false);
 
-        // An administrator session must never double as a customer session.
-        Auth::guard('web')->logout();
+        // Keep the admin guard independent from the storefront guard.
+        // Do not log out or mutate the customer guard while establishing an
+        // administrator session in the same browser.
         Auth::shouldUse('admin');
         $request->session()->regenerate();
         $admin->forceFill(['last_login_at' => now()])->saveQuietly();
@@ -59,7 +60,11 @@ class AdminSessionController extends Controller
     public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('admin')->logout();
-        $request->session()->invalidate();
+
+        // Multiple guards share Laravel's session payload. Invalidating the
+        // whole session here would also erase a valid storefront login. Rotate
+        // the session identifier/token while preserving unrelated guard data.
+        $request->session()->regenerate(true);
         $request->session()->regenerateToken();
 
         return redirect()->route('admin.login')->with('status', 'You have been signed out of the admin panel.');

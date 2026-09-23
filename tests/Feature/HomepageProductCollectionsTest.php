@@ -30,7 +30,10 @@ class HomepageProductCollectionsTest extends TestCase
             ->assertSee('Featured Products')
             ->assertSee('Latest')
             ->assertSee('Best Selling')
-            ->assertSee('home-product-grid', false)
+            ->assertSee('id="products"', false)
+            ->assertSee('id="latest-products"', false)
+            ->assertSee('home-product-section--slider', false)
+            ->assertSee('data-product-slider', false)
             ->assertSee('data-product-card', false)
             ->assertDontSee('home-product-mobile-list', false);
     }

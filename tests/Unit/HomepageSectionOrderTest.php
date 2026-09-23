@@ -7,30 +7,26 @@ use PHPUnit\Framework\TestCase;
 
 class HomepageSectionOrderTest extends TestCase
 {
-    public function test_registry_contains_exactly_the_approved_vue_homepage_sections_in_order(): void
+    public function test_shop_by_sport_is_immediately_after_the_homepage_slider(): void
     {
-        $this->assertSame([
-            'hero',
-            'audience',
-            'shop_by_sport',
-            'new_arrivals',
-            'shop_by_category',
-            'best_choices',
-            'season_sale',
-            'make_it_yours',
-            'design_process',
-        ], array_column(HomepageSectionRegistry::orderedDefinitions(), 'key'));
+        $keys = array_column(HomepageSectionRegistry::orderedDefinitions(), 'key');
+
+        $sliderPosition = array_search('slider', $keys, true);
+        $shopBySportPosition = array_search('shop_by_sport', $keys, true);
+
+        $this->assertIsInt($sliderPosition);
+        $this->assertIsInt($shopBySportPosition);
+        $this->assertSame($sliderPosition + 1, $shopBySportPosition);
     }
 
-    public function test_legacy_homepage_sections_are_retired(): void
+    public function test_removed_homepage_sections_are_retired_and_not_manageable(): void
     {
-        foreach ([
-            'slider', 'categories', 'buyer_paths', 'process', 'featured_products',
-            'latest_products', 'best_selling_products', 'best_selling_gear',
-            'why_choose', 'testimonials', 'faq', 'customization_options', 'support',
-            'final_cta', 'popular_categories', 'use_cases', 'design_jersey', 'bulk_order',
-        ] as $key) {
-            $this->assertTrue(HomepageSectionRegistry::isRetired($key), $key.' must be retired');
-        }
+        $keys = array_column(HomepageSectionRegistry::orderedDefinitions(), 'key');
+
+        $this->assertNotContains('popular_categories', $keys);
+        $this->assertNotContains('use_cases', $keys);
+        $this->assertTrue(HomepageSectionRegistry::isRetired('popular_categories'));
+        $this->assertTrue(HomepageSectionRegistry::isRetired('use_cases'));
     }
+
 }

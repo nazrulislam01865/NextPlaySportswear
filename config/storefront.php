@@ -22,9 +22,6 @@ return [
 
     'logo' => env('STOREFRONT_LOGO', '/images/logo.png'),
 
-    // New Vue storefront wordmark. Kept separate so legacy Blade storefront branding is unchanged.
-    'vue_logo' => env('STOREFRONT_VUE_LOGO', '/images/storefront-vue/brand/nextplay-wordmark.png'),
-
     'og_image' => env('STOREFRONT_OG_IMAGE', 'images/og-default.jpg'),
 
     'area_served' => env('STOREFRONT_AREA_SERVED', 'Worldwide'),
@@ -35,13 +32,6 @@ return [
     ))),
 
     'slider_cache_seconds' => (int) env('STOREFRONT_SLIDER_CACHE_SECONDS', 600),
-
-    'homepage' => [
-        // Keep cold-cache homepage queries bounded after admin catalog/image updates.
-        'featured_products_limit' => (int) env('STOREFRONT_HOMEPAGE_FEATURED_PRODUCTS_LIMIT', 12),
-        'latest_products_limit' => (int) env('STOREFRONT_HOMEPAGE_LATEST_PRODUCTS_LIMIT', 12),
-        'best_selling_products_limit' => (int) env('STOREFRONT_HOMEPAGE_BEST_SELLING_PRODUCTS_LIMIT', 5),
-    ],
 
     'product_cards' => [
         // Used only when a product has no product-level rating/review value yet.

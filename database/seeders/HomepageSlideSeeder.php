@@ -21,31 +21,28 @@ class HomepageSlideSeeder extends Seeder
 
         $slides = [
             [
-                'title' => 'YOUR TEAM YOUR KITS',
-                'eyebrow' => null,
-                'description' => 'Performance sportswear for players, teams and clubs — from training essentials to match-day kits.',
-                'image_url' => 'https://i.pinimg.com/originals/8c/a5/a0/8ca5a08d215145b191f8a3eda395c50b.jpg',
-                'image_alt' => 'Two basketball players competing on an outdoor court',
-                'primary_label' => 'SHOP PRODUCTS',
-                'primary_url' => '/products',
-                'secondary_label' => 'CUSTOMIZE YOUR GEAR',
-                'secondary_url' => '/products',
-                'show_eyebrow' => false,
+                'title' => 'Build Your Team Jersey with Name, Number, and Logo',
+                'eyebrow' => 'Custom jerseys USA',
+                'description' => 'Choose colors, add player details, upload your artwork, and prepare your order for teams, schools, clubs, and fans.',
+                'image_url' => 'https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=2048&q=80',
+                'image_alt' => 'Custom jerseys and sportswear for team order',
+                'primary_label' => 'Shop Custom Jerseys',
+                'primary_url' => '#products',
+                'secondary_label' => 'Request Team Quote',
+                'secondary_url' => '#bulk',
                 'show_secondary_button' => true,
-                'overlay_opacity' => 28,
                 'sort_order' => 10,
             ],
             [
-                'title' => 'YOUR TEAM YOUR KITS',
-                'eyebrow' => null,
-                'description' => 'Performance sportswear for players, teams and clubs — from training essentials to match-day kits.',
+                'title' => 'Uniform Sets for Schools, Leagues, and Clubs',
+                'eyebrow' => 'Team uniforms',
+                'description' => 'Order full team sets with size lists, player names, numbers, colors, and design support before production.',
                 'image_url' => 'https://images.unsplash.com/photo-1551958219-acbc608c6377?auto=format&fit=crop&w=2048&q=80',
                 'image_alt' => 'Custom team uniforms hanging in locker room',
-                'primary_label' => 'SHOP PRODUCTS',
-                'primary_url' => '/products',
-                'secondary_label' => 'CUSTOMIZE YOUR GEAR',
-                'secondary_url' => '/products',
-                'show_eyebrow' => false,
+                'primary_label' => 'Shop Uniforms',
+                'primary_url' => '#categories',
+                'secondary_label' => 'How It Works',
+                'secondary_url' => '#process',
                 'show_secondary_button' => true,
                 'sort_order' => 20,
             ],
@@ -84,6 +81,5 @@ class HomepageSlideSeeder extends Seeder
         }
 
         Cache::forget('storefront.homepage-slider.v1');
-        Cache::forget('storefront.homepage-slider.v2');
     }
 }

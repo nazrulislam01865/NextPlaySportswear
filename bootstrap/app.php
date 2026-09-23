@@ -1,18 +1,9 @@
 <?php
 
-use App\Exceptions\CheckoutApiConflictException;
-use App\Support\Api\RequestId;
-use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Auth\AuthenticationException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
-use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,7 +40,6 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
-        $middleware->append(\App\Http\Middleware\ApiRequestId::class);
         $middleware->validateCsrfTokens(except: ['webhooks/stripe']);
 
         // Bind every authenticated customer browser session to the user's
@@ -60,14 +50,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\EnforceCustomerSessionVersion::class,
         ]);
-        $middleware->redirectGuestsTo(fn (Request $request): string => $request->is('admin/*')
+        $middleware->redirectGuestsTo(fn (Request $request): string => ($request->is('admin') || $request->is('admin/*'))
             ? route('admin.login')
             : route('login'));
-        $middleware->prependToPriorityList(
-            before: \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
-            prepend: \App\Http\Middleware\HideAdminRoutesFromStorefrontUsers::class,
-        );
-
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureAdmin::class,
             'admin.hidden' => \App\Http\Middleware\HideAdminRoutesFromStorefrontUsers::class,
@@ -82,75 +67,4 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
-
-        $apiError = static function (Request $request, string $message, int $status, array $extra = []) {
-            if (! $request->is('api/v1/*')) {
-                return null;
-            }
-
-            $requestId = RequestId::ensure($request);
-
-            return response()
-                ->json(array_merge([
-                    'message' => $message,
-                ], $extra, [
-                    'request_id' => $requestId,
-                ]), $status)
-                ->header(RequestId::HEADER, $requestId);
-        };
-
-        $messageForStatus = static fn (int $status): string => match ($status) {
-            400 => 'Bad request.',
-            401 => 'Unauthenticated.',
-            403 => 'Forbidden.',
-            404 => 'Resource not found.',
-            405 => 'Method not allowed.',
-            409 => 'Conflict.',
-            422 => 'Validation failed.',
-            429 => 'Too many requests.',
-            default => $status >= 500 ? 'Server error.' : 'Request failed.',
-        };
-
-        $exceptions->render(function (CheckoutApiConflictException $exception, Request $request) use ($apiError) {
-            return $apiError($request, $exception->getMessage(), 409, [
-                'code' => $exception->errorCode,
-                'data' => $exception->context === [] ? (object) [] : $exception->context,
-            ]);
-        });
-
-        $exceptions->render(function (ValidationException $exception, Request $request) use ($apiError) {
-            return $apiError($request, 'Validation failed.', 422, [
-                'errors' => $exception->errors(),
-            ]);
-        });
-
-        $exceptions->render(function (AuthenticationException $exception, Request $request) use ($apiError) {
-            return $apiError($request, 'Unauthenticated.', 401);
-        });
-
-        $exceptions->render(function (AuthorizationException $exception, Request $request) use ($apiError) {
-            return $apiError($request, 'Forbidden.', 403);
-        });
-
-        $exceptions->render(function (ModelNotFoundException $exception, Request $request) use ($apiError) {
-            return $apiError($request, 'Resource not found.', 404);
-        });
-
-        $exceptions->render(function (NotFoundHttpException $exception, Request $request) use ($apiError) {
-            return $apiError($request, 'Resource not found.', 404);
-        });
-
-        $exceptions->render(function (MethodNotAllowedHttpException $exception, Request $request) use ($apiError) {
-            return $apiError($request, 'Method not allowed.', 405);
-        });
-
-        $exceptions->render(function (HttpExceptionInterface $exception, Request $request) use ($apiError, $messageForStatus) {
-            $status = $exception->getStatusCode();
-
-            return $apiError($request, $messageForStatus($status), $status);
-        });
-
-        $exceptions->render(function (\Throwable $exception, Request $request) use ($apiError) {
-            return $apiError($request, 'Server error.', 500);
-        });
     })->create();

@@ -9,10 +9,8 @@ use App\Models\ShoppingCartItem;
 use App\Models\User;
 use App\Services\Discounts\CouponService;
 use App\Services\Storefront\ProductCatalogService;
-use App\Support\CartSessionIdentity;
 use App\Support\PriceTableShipping;
 use App\Support\ProductRoster;
-use App\Support\ProductSizing;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -231,19 +229,6 @@ class CartService
         }
 
         return (int) $cart->items()->sum('quantity') + $legacyQuantity;
-    }
-
-    /**
-     * Calculate an authoritative product configuration preview without writing
-     * to the cart. The same sanitizer and repricing path is used by store().
-     * Only required artwork presence is deferred until the actual mutation.
-     *
-     * @param  array<string, mixed>  $payload
-     * @return array<string, mixed>
-     */
-    public function previewItem(array $payload): array
-    {
-        return $this->prepareCartItem($payload, false);
     }
 
     public function store(array $payload): array
@@ -838,7 +823,7 @@ class CartService
     }
 
     /** @return array<string, mixed> */
-    private function prepareCartItem(array $payload, bool $requireArtwork = true): array
+    private function prepareCartItem(array $payload): array
     {
         $product = $this->products->findBySlug((string) ($payload['product_slug'] ?? ''));
 
@@ -850,7 +835,7 @@ class CartService
             $configuredQuantity > 0 ? $configuredQuantity : (int) ($payload['quantity'] ?? 1),
             $product
         );
-        $this->validateRequiredConfiguration($product, $customization, $requireArtwork);
+        $this->validateRequiredConfiguration($product, $customization);
         $key = $this->makeItemKey($product['slug'], $customization);
 
         return $this->repriceItem([
@@ -980,7 +965,7 @@ class CartService
 
     private function sessionId(): string
     {
-        return CartSessionIdentity::current();
+        return (string) (session()->getId() ?: '');
     }
 
     private function sessionItems(): array
@@ -1059,8 +1044,7 @@ class CartService
         $customization = $this->sanitizeCustomization(
             (array) ($item['customization'] ?? []),
             $product,
-            (int) ($item['quantity'] ?? 1),
-            false
+            (int) ($item['quantity'] ?? 1)
         );
         $configuredQuantity = (int) collect($customization['configuration']['quantities'] ?? [])->sum();
         $quantity = $this->sanitizeQuantity($configuredQuantity > 0 ? $configuredQuantity : (int) ($item['quantity'] ?? 1), $product);
@@ -1091,7 +1075,7 @@ class CartService
         ]);
     }
 
-    private function sanitizeCustomization(array $payload, array $product, int $fallbackQuantity = 1, bool $strictConfiguration = true): array
+    private function sanitizeCustomization(array $payload, array $product, int $fallbackQuantity = 1): array
     {
         $designOption = Str::limit(trim((string) ($payload['design_option'] ?? 'Configured product')), 80, '');
         $deliveryPreference = Str::limit(trim((string) ($payload['delivery_preference'] ?? 'Standard production')), 80, '');
@@ -1105,9 +1089,6 @@ class CartService
             $product,
             $fallbackQuantity
         );
-        if ($strictConfiguration) {
-            $this->validateSubmittedConfiguration($rawConfiguration, $product, $fallbackQuantity);
-        }
         $configuration = $this->normalizeConfiguration(
             $rawConfiguration,
             $product,
@@ -1521,135 +1502,6 @@ class CartService
         )));
     }
 
-    /**
-     * Reject crafted configuration values instead of silently normalizing them
-     * into a different selection. Admin-fixed groups may still override a
-     * crafted submitted value in normalizeConfiguration().
-     */
-    private function validateSubmittedConfiguration(array|string $raw, array $product, int $fallbackQuantity = 1): void
-    {
-        if (is_string($raw)) {
-            $decoded = json_decode($raw, true);
-            $raw = is_array($decoded) ? $decoded : [];
-        }
-
-        $groups = collect((array) ($product['option_groups'] ?? []))
-            ->keyBy(fn (array $group): string => (string) ($group['id'] ?? ''));
-
-        foreach ((array) ($raw['selections'] ?? []) as $groupId => $valueId) {
-            $group = $groups->get((string) $groupId);
-            abort_unless(is_array($group), 422, 'An unknown product option was submitted: '.(string) $groupId);
-
-            if ((string) ($group['display_mode'] ?? 'customer') !== 'customer') {
-                continue;
-            }
-
-            abort_unless(in_array((string) ($group['type'] ?? 'select'), ['image', 'swatch', 'buttons', 'select'], true), 422, 'The submitted product option has an incompatible value type.');
-            $values = collect((array) ($group['values'] ?? []));
-            $selectedValue = $values->firstWhere('id', (string) $valueId);
-            abort_unless(is_array($selectedValue), 422, 'An unavailable product option value was submitted for '.$group['label'].'.');
-            abort_if(
-                array_key_exists('stock_quantity', $selectedValue)
-                && $selectedValue['stock_quantity'] !== null
-                && (int) $selectedValue['stock_quantity'] <= 0,
-                422,
-                'The selected product option is out of stock for '.$group['label'].'.'
-            );
-        }
-
-        foreach ((array) ($raw['multi_selections'] ?? []) as $groupId => $submittedValues) {
-            $group = $groups->get((string) $groupId);
-            abort_unless(is_array($group), 422, 'An unknown product option was submitted: '.(string) $groupId);
-
-            if ((string) ($group['display_mode'] ?? 'customer') !== 'customer') {
-                continue;
-            }
-
-            abort_unless((string) ($group['type'] ?? '') === 'checkbox', 422, 'The submitted product option has an incompatible multi-select value.');
-            $normalizedValues = array_map(static fn ($value): string => (string) $value, array_values((array) $submittedValues));
-            abort_if(count($normalizedValues) !== count(array_unique($normalizedValues)), 422, 'Duplicate product option values are not allowed.');
-
-            $values = collect((array) ($group['values'] ?? []));
-            $allowed = $values->pluck('id')->map(fn ($id): string => (string) $id)->all();
-            foreach ($normalizedValues as $valueId) {
-                $selectedValue = $values->firstWhere('id', $valueId);
-                abort_unless(is_array($selectedValue), 422, 'An unavailable product option value was submitted for '.$group['label'].'.');
-                abort_if(
-                    array_key_exists('stock_quantity', $selectedValue)
-                    && $selectedValue['stock_quantity'] !== null
-                    && (int) $selectedValue['stock_quantity'] <= 0,
-                    422,
-                    'The selected product option is out of stock for '.$group['label'].'.'
-                );
-            }
-
-            $maximum = max(1, (int) ($group['maximum_selections'] ?? (count($allowed) ?: 1)));
-            abort_if(count($normalizedValues) > $maximum, 422, 'Too many values were selected for '.$group['label'].'.');
-        }
-
-        foreach (array_keys((array) ($raw['inputs'] ?? [])) as $groupId) {
-            $group = $groups->get((string) $groupId);
-            abort_unless(is_array($group), 422, 'An unknown product input was submitted: '.(string) $groupId);
-
-            if ((string) ($group['display_mode'] ?? 'customer') !== 'customer') {
-                continue;
-            }
-
-            abort_if(in_array((string) ($group['type'] ?? ''), ['image', 'swatch', 'buttons', 'select', 'checkbox', 'file'], true), 422, 'The submitted product input has an incompatible value type.');
-        }
-
-        $submittedQuantities = collect((array) ($raw['quantities'] ?? []))
-            ->map(fn ($value): int => max(0, (int) $value))
-            ->filter(fn (int $value): bool => $value > 0);
-
-        if ($submittedQuantities->isNotEmpty()) {
-            abort_unless(
-                ProductSizing::supportsMasterDataSizeOptions($product['product_profile'] ?? 'standard'),
-                422,
-                'This product uses its dedicated size option and does not accept generic size quantities.'
-            );
-
-            $allowedSizeKeys = collect((array) ($product['size_groups'] ?? []))
-                ->flatMap(function (array $group): array {
-                    $groupId = (string) ($group['id'] ?? '');
-
-                    return collect((array) ($group['sizes'] ?? []))
-                        ->map(fn (array $size): string => $groupId.':'.(string) ($size['code'] ?? ''))
-                        ->filter()
-                        ->values()
-                        ->all();
-                })
-                ->all();
-
-            foreach ($submittedQuantities->keys() as $sizeKey) {
-                abort_unless(in_array((string) $sizeKey, $allowedSizeKeys, true), 422, 'An unavailable product size was submitted.');
-            }
-        }
-
-        $quantity = max((int) $submittedQuantities->sum(), max(1, $fallbackQuantity), (int) ($product['minimum_quantity'] ?? 1));
-        $requestedProductionSpeed = trim((string) ($raw['production_speed'] ?? ''));
-        if ($requestedProductionSpeed !== '') {
-            $available = collect((array) ($product['production_speeds'] ?? []))
-                ->filter(function (array $speed) use ($quantity): bool {
-                    $minimum = max(1, (int) ($speed['minimum_quantity'] ?? 1));
-                    $maximum = filled($speed['maximum_quantity'] ?? null) ? (int) $speed['maximum_quantity'] : null;
-
-                    return $quantity >= $minimum && ($maximum === null || $quantity <= $maximum);
-                })
-                ->pluck('id')
-                ->map(fn ($id): string => (string) $id)
-                ->all();
-
-            abort_unless(in_array($requestedProductionSpeed, $available, true), 422, 'The selected production option is unavailable for this quantity.');
-        }
-
-        $requestedShippingMethod = trim((string) ($raw['shipping_method'] ?? ''));
-        if ($requestedShippingMethod !== '') {
-            $available = collect((array) ($product['shipping_methods'] ?? []))->pluck('id')->map(fn ($id): string => (string) $id)->all();
-            abort_unless(in_array($requestedShippingMethod, $available, true), 422, 'The selected shipping method is unavailable for this product.');
-        }
-    }
-
     private function normalizeConfiguration(array|string $raw, array $product, int $fallbackQuantity = 1): array
     {
         if (is_string($raw)) {
@@ -1828,7 +1680,7 @@ class CartService
         ];
     }
 
-    private function validateRequiredConfiguration(array $product, array $customization, bool $requireArtwork = true): void
+    private function validateRequiredConfiguration(array $product, array $customization): void
     {
         $configuration = $customization['configuration'] ?? [];
 
@@ -1855,7 +1707,7 @@ class CartService
 
         $artworkSettings = $product['artwork_upload'] ?? ['enabled' => false];
         $artworkFiles = collect($customization['artwork_files'] ?? []);
-        if ($requireArtwork && ($artworkSettings['enabled'] ?? false) && ($artworkSettings['required'] ?? false)) {
+        if (($artworkSettings['enabled'] ?? false) && ($artworkSettings['required'] ?? false)) {
             abort_unless($artworkFiles->isNotEmpty(), 422, 'Upload at least one custom artwork file.');
         }
         if ($artworkFiles->count() > max(1, min(12, (int) ($artworkSettings['max_files'] ?? 5)))) {

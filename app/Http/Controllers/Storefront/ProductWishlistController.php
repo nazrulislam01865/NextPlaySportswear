@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductWishlist;
 use App\Services\Wishlist\WishlistHeaderService;
-use App\Services\Wishlist\WishlistService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ProductWishlistController extends Controller
@@ -107,22 +107,59 @@ class ProductWishlistController extends Controller
         ]);
     }
 
-    public function update(Request $request, Product $product, WishlistService $wishlist): JsonResponse
+    public function update(Request $request, Product $product): JsonResponse
     {
         $validated = $request->validate([
             'wishlisted' => ['required', 'boolean'],
         ]);
 
         $user = $request->user('web');
+
         abort_unless($user && $user->isCustomer(), 403);
+        abort_unless($product->is_active && $product->status === 'active', 404);
 
         $wishlisted = (bool) $validated['wishlisted'];
-        $summary = $wishlist->setWishlisted($user, $product, $wishlisted);
+
+        DB::transaction(function () use ($user, $product, $wishlisted): void {
+            if ($wishlisted) {
+                $wishlist = ProductWishlist::query()->firstOrCreate([
+                    'user_id' => $user->getKey(),
+                    'product_id' => $product->getKey(),
+                ]);
+
+                if ($wishlist->wasRecentlyCreated) {
+                    Product::query()->whereKey($product->getKey())->update([
+                        'favorites_count' => DB::raw('COALESCE(favorites_count, 0) + 1'),
+                    ]);
+                }
+
+                return;
+            }
+
+            $removed = ProductWishlist::query()
+                ->where('user_id', $user->getKey())
+                ->where('product_id', $product->getKey())
+                ->delete();
+
+            if ($removed > 0) {
+                Product::query()
+                    ->whereKey($product->getKey())
+                    ->update([
+                        'favorites_count' => DB::raw(
+                            'CASE WHEN COALESCE(favorites_count, 0) > 0 THEN COALESCE(favorites_count, 0) - 1 ELSE 0 END'
+                        ),
+                    ]);
+            }
+        });
+
         $product->refresh();
 
         return response()->json([
             'wishlisted' => $wishlisted,
-            'wishlist_count' => (int) ($summary['count'] ?? 0),
+            'wishlist_count' => ProductWishlist::query()
+                ->where('user_id', $user->getKey())
+                ->whereHas('product', fn ($query) => $query->published())
+                ->count(),
             'favorites_count' => max(0, (int) ($product->favorites_count ?? 0)),
             'message' => $wishlisted
                 ? 'Added to your wishlist'

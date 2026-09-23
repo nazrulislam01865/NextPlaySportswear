@@ -33,7 +33,7 @@ final class ProductCustomizationOptionRegistry
                     'hidden_from_menu' => true,
                 ],
                 'training_vest_size_option' => [
-                    'label' => 'Size Options',
+                    'label' => 'Size',
                     'placeholder' => 'Example: Adult Medium',
                     'help_text' => 'Mirrors Training Vest size values into the shared product customization system.',
                     'visual' => 'size',

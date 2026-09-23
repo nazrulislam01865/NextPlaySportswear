@@ -15,7 +15,7 @@
 
     <section class="section-padding" id="file-types">
         <div class="site-container">
-            <x-storefront.section-heading eyebrow="Preferred Files" title="Send Original, Editable Artwork When Possible" description="A screenshot or social-media image may be useful as a reference, but it is not always suitable for production." />
+            <x-storefront.section-heading eyebrow="Preferred files" title="Send Original, Editable Artwork When Possible" description="A screenshot or social-media image may be useful as a reference, but it is not always suitable for production." />
             <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
                 <x-storefront.content.icon-card icon="AI" title="AI or EPS" description="Preferred for scalable vector logos, clean shapes, editable text, and spot-color information." />
                 <x-storefront.content.icon-card icon="SVG" title="SVG" description="Useful for scalable web and vector artwork when the file is complete and fonts are converted properly." />

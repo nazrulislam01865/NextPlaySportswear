@@ -2,10 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
-use App\Rules\ApproximateImageAspectRatio;
 use App\Rules\SafePublicUrl;
-use App\Services\Catalog\HomepageStagedUploadService;
-use App\Support\HomepageImageAspectRatios;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -25,11 +22,14 @@ class HomepageSlideRequest extends FormRequest
             'title' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
 
-            'image_file' => ['nullable', 'bail', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:10240', new ApproximateImageAspectRatio(HomepageImageAspectRatios::heroSlide())],
-            'image_upload_token' => ['nullable', 'string', 'regex:/^[a-f0-9]{64}$/'],
+            'image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:10240', 'dimensions:ratio=8/3'],
             'image_url' => ['nullable', 'url:http,https', 'max:2048'],
             'image_alt' => ['nullable', 'string', 'max:255'],
             'remove_image' => ['nullable', 'boolean'],
+            'mobile_image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:10240'],
+            'mobile_image_url' => ['nullable', 'url:http,https', 'max:2048'],
+            'mobile_image_alt' => ['nullable', 'string', 'max:255'],
+            'remove_mobile_image' => ['nullable', 'boolean'],
             'image_focal_position' => ['required', Rule::in(['center', 'top', 'bottom', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right'])],
 
             'show_content' => ['nullable', 'boolean'],
@@ -60,19 +60,11 @@ class HomepageSlideRequest extends FormRequest
         ];
     }
 
-    /** @return array<string, string> */
-    public function messages(): array
-    {
-        return [
-            'image_file.uploaded' => 'The browser could not transfer this image through PHP multipart upload. Choose the image again; the homepage uploader will stage it in small chunks automatically.',
-        ];
-    }
-
     protected function prepareForValidation(): void
     {
         $booleanFields = [
             'show_content', 'show_eyebrow', 'show_title', 'show_description',
-            'show_primary_button', 'show_secondary_button', 'is_active', 'remove_image',
+            'show_primary_button', 'show_secondary_button', 'is_active', 'remove_image', 'remove_mobile_image',
         ];
 
         $payload = [];
@@ -82,6 +74,7 @@ class HomepageSlideRequest extends FormRequest
 
         $payload['overlay_color'] = strtoupper(trim((string) $this->input('overlay_color', '#0D2545')));
         $payload['image_url'] = trim((string) $this->input('image_url', '')) ?: null;
+        $payload['mobile_image_url'] = trim((string) $this->input('mobile_image_url', '')) ?: null;
         $payload['primary_url'] = trim((string) $this->input('primary_url', '')) ?: null;
         $payload['secondary_url'] = trim((string) $this->input('secondary_url', '')) ?: null;
 
@@ -94,16 +87,7 @@ class HomepageSlideRequest extends FormRequest
             $slide = $this->route('homepage_slide') ?? $this->route('homepageSlide');
             $hasExistingImage = $slide && filled($slide->image_path ?: $slide->image_url);
             $willRemove = $this->boolean('remove_image');
-            $uploadToken = trim((string) $this->input('image_upload_token', ''));
-            $hasNewImage = $this->hasFile('image_file') || filled($this->input('image_url')) || $uploadToken !== '';
-
-            if ($uploadToken !== '') {
-                $userId = (int) ($this->user()?->id ?? 0);
-                $error = app(HomepageStagedUploadService::class)->validationError($userId, $uploadToken, HomepageImageAspectRatios::heroSlide());
-                if ($error !== null) {
-                    $validator->errors()->add('image_upload_token', $error);
-                }
-            }
+            $hasNewImage = $this->hasFile('image_file') || filled($this->input('image_url'));
 
             if ((! $hasExistingImage || $willRemove) && ! $hasNewImage) {
                 $validator->errors()->add('image_file', 'Upload a slider image or provide a secure HTTPS image URL.');

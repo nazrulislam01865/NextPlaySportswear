@@ -38,72 +38,30 @@ class CheckoutService
 
     public function pageData(?User $user = null): array
     {
-        $data = $this->stateData($user);
-
-        return [
-            'cart' => $data['cart'],
-            'state' => $data['state'],
-            'steps' => $this->steps(),
-            'savedContact' => $data['saved_contact'],
-            'savedAddresses' => $this->savedAddresses($user),
-            'savedShippingAddresses' => $data['saved_shipping_addresses'],
-            'savedBillingAddresses' => $data['saved_billing_addresses'],
-            'savedPaymentMethods' => $data['saved_payment_methods'],
-            'savedCardGateway' => $data['saved_card_gateway'],
-            'shippingMethods' => [],
-            'paymentOptions' => $data['payment_options'],
-            'summary' => $data['summary'],
-            'orderIdempotencyKey' => $data['order_idempotency_key'],
-        ];
-    }
-
-    public function stateData(?User $user = null): array
-    {
         $cart = $this->cart->summary();
         $state = $this->state();
         $summary = $this->checkoutSummary($cart, $state);
         $paymentOptions = $this->paymentOptions($summary, $user);
         $savedCardGateway = $this->payments->savedCardGateway($paymentOptions);
-        $firstIncompleteStep = $this->firstIncompleteStep();
-        $steps = collect($this->steps())->map(fn (array $step): array => [
-            'key' => (string) $step['key'],
-            'label' => (string) $step['label'],
-            'complete' => $this->isStepComplete((string) $step['key']),
-        ])->values()->all();
 
         return [
             'cart' => $cart,
             'state' => $state,
-            'steps' => $steps,
-            'first_incomplete_step' => $firstIncompleteStep,
-            'current_step' => $firstIncompleteStep['key'] ?? 'review',
-            'can_review' => $this->firstIncompleteStepBefore('review') === null,
-            'can_place_order' => collect($steps)->every(fn (array $step): bool => (bool) $step['complete']),
-            'saved_contact' => $this->savedContact($user),
-            'saved_shipping_addresses' => $this->savedAddresses($user, 'shipping'),
-            'saved_billing_addresses' => $this->savedAddresses($user, 'billing'),
-            'saved_payment_methods' => $savedCardGateway ? $this->savedPaymentMethods($user) : [],
-            'saved_card_gateway' => $savedCardGateway,
-            'payment_options' => $paymentOptions,
+            'steps' => $this->steps(),
+            'savedContact' => $this->savedContact($user),
+            'savedAddresses' => $this->savedAddresses($user),
+            'savedShippingAddresses' => $this->savedAddresses($user, 'shipping'),
+            'savedBillingAddresses' => $this->savedAddresses($user, 'billing'),
+            'savedPaymentMethods' => $savedCardGateway ? $this->savedPaymentMethods($user) : [],
+            'savedCardGateway' => $savedCardGateway,
+            // Shipping is selected per product in the configurator and carried
+            // through the cart/order automatically. Keep this key for legacy
+            // view compatibility, but do not ask the customer to choose again.
+            'shippingMethods' => [],
+            'paymentOptions' => $paymentOptions,
             'summary' => $summary,
-            'order_idempotency_key' => $this->orderIdempotencyKey(),
+            'orderIdempotencyKey' => $this->orderIdempotencyKey(),
         ];
-    }
-
-    public function firstIncompleteStep(): ?array
-    {
-        foreach ($this->steps() as $step) {
-            $key = (string) $step['key'];
-            if (! $this->isStepComplete($key)) {
-                return [
-                    'key' => $key,
-                    'label' => (string) $step['label'],
-                    'message' => $this->stepMessage($key),
-                ];
-            }
-        }
-
-        return null;
     }
 
     public function hasCheckoutItems(): bool
@@ -759,7 +717,6 @@ class CheckoutService
                     $address->country,
                     $address->phone ? 'Phone: '.$address->phone : null,
                 ]),
-                'address' => $this->addressArrayFromModel($address),
             ])
             ->all();
     }

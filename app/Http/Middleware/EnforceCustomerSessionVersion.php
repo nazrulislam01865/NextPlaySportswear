@@ -2,11 +2,9 @@
 
 namespace App\Http\Middleware;
 
-use App\Support\Api\RequestId;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 final class EnforceCustomerSessionVersion
@@ -15,21 +13,29 @@ final class EnforceCustomerSessionVersion
 
     public function handle(Request $request, Closure $next): Response
     {
+        // Customer-session enforcement must never mutate an administrator
+        // session. Both guards share Laravel's browser session store, so an
+        // invalid/stale storefront session could otherwise invalidate the
+        // active admin session while navigating between /admin pages.
+        if ($request->is('admin') || $request->is('admin/*')) {
+            return $next($request);
+        }
+
         $guard = Auth::guard('web');
         $customer = $guard->user();
 
         if ($customer?->role === 'customer' && ! $customer->is_active) {
             $guard->logout();
             $request->session()->forget(self::SESSION_KEY);
-            $request->session()->invalidate();
+            // Preserve unrelated guards (especially an administrator session)
+            // while rotating the shared session identifier and CSRF token.
+            $request->session()->regenerate(true);
             $request->session()->regenerateToken();
 
             if ($request->expectsJson()) {
-                return $this->jsonError(
-                    $request,
-                    'This customer account is suspended and cannot be used to sign in.',
-                    403,
-                );
+                return response()->json([
+                    'message' => 'This customer account is suspended and cannot be used to sign in.',
+                ], 403);
             }
 
             return redirect()
@@ -69,15 +75,13 @@ final class EnforceCustomerSessionVersion
                 }
 
                 $request->session()->forget(self::SESSION_KEY);
-                $request->session()->regenerate();
+                $request->session()->regenerate(true);
                 $request->session()->regenerateToken();
 
                 if ($request->expectsJson()) {
-                    return $this->jsonError(
-                        $request,
-                        'Your customer session is no longer valid. Please sign in again.',
-                        401,
-                    );
+                    return response()->json([
+                        'message' => 'Your customer session is no longer valid. Please sign in again.',
+                    ], 401);
                 }
 
                 return redirect()
@@ -105,24 +109,5 @@ final class EnforceCustomerSessionVersion
         }
 
         return $response;
-    }
-
-    private function jsonError(Request $request, string $message, int $status): JsonResponse
-    {
-        $payload = ['message' => $message];
-        $response = response()->json($payload, $status);
-
-        if (! $request->is('api/v1/*')) {
-            return $response;
-        }
-
-        $requestId = RequestId::ensure($request);
-
-        return $response
-            ->setData([
-                'message' => $message,
-                'request_id' => $requestId,
-            ])
-            ->header(RequestId::HEADER, $requestId);
     }
 }

@@ -31,8 +31,6 @@ class AdminRbacSecurityRegressionTest extends TestCase
             'bulk quote update is order manage' => ['admin.bulk-quotes.update', 'PATCH', 'orders.manage'],
             'bulk quote retry is order manage' => ['admin.bulk-quotes.retry-sync', 'POST', 'orders.manage'],
             'order sync retry is order manage' => ['admin.orders.retry-sync', 'POST', 'orders.manage'],
-            'navigation settings read requires view' => ['admin.navigation-settings.edit', 'GET', 'navigation_settings.view'],
-            'navigation settings update requires manage' => ['admin.navigation-settings.update', 'PATCH', 'navigation_settings.manage'],
         ];
     }
 }
