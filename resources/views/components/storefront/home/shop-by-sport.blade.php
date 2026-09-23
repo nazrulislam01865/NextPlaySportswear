@@ -26,47 +26,18 @@
     x-cloak
 >
     <div class="np-shop-sport__inner">
-        <header class="np-shop-sport__header">
-            <p class="np-shop-sport__eyebrow">{{ $text('eyebrow', 'Find your sport') }}</p>
-            <h2 id="np-shop-sport-title" class="np-shop-sport__title">{{ $text('title', 'Shop by Sport') }}</h2>
-            <p class="np-shop-sport__description">{{ $text('description', 'Browse uniforms, apparel and gear by sport.') }}</p>
-        </header>
+        <x-storefront.home.section-heading
+            class="np-shop-sport__header"
+            title-id="np-shop-sport-title"
+            :eyebrow="$text('eyebrow', 'Find your sport')"
+            :title="$text('title', 'Shop by Sport')"
+            :description="$text('description', 'Browse uniforms, apparel and gear by sport.')"
+        />
 
         @if($sportItems->isNotEmpty())
             <div id="np-shop-sport-grid" class="np-shop-sport__grid">
                 @foreach($sportItems as $sport)
-                    @php
-                        $title = trim((string) ($sport['title'] ?? $sport['short_title'] ?? 'Sport'));
-                        $count = max(0, (int) ($sport['product_count'] ?? 0));
-                        $countLabel = number_format($count).' '.($count === 1 ? 'item' : 'items');
-                    @endphp
-
-                    <a
-                        class="np-shop-sport-card"
-                        href="{{ $sport['url'] ?? route('categories.index') }}"
-                        aria-label="Browse {{ $title }}, {{ $countLabel }}"
-                    >
-                        <span class="np-shop-sport-card__media">
-                            <img
-                                loading="lazy"
-                                decoding="async"
-                                src="{{ $sport['image'] ?? asset('images/category-placeholder.svg') }}"
-                                alt="{{ $sport['alt'] ?? $title }}"
-                                width="420"
-                                height="420"
-                            >
-                        </span>
-
-                        <span class="np-shop-sport-card__body">
-                            <strong class="np-shop-sport-card__title">{{ $title }}</strong>
-                            <span class="np-shop-sport-card__meta">
-                                <span>{{ $countLabel }}</span>
-                                <svg class="np-shop-sport-card__arrow" viewBox="0 0 30 30" aria-hidden="true">
-                                    <path d="M5 15h18M17 8l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-                                </svg>
-                            </span>
-                        </span>
-                    </a>
+                    <x-storefront.home.sport-card :sport="$sport" />
                 @endforeach
             </div>
 
@@ -74,7 +45,7 @@
                 <div class="{{ $viewAllClasses }}">
                     <button
                         type="button"
-                        class="np-shop-sport__view-all"
+                        class="np-shop-sport__view-all np-home-action"
                         @click="expanded = !expanded"
                         :aria-expanded="expanded.toString()"
                         aria-controls="np-shop-sport-grid"

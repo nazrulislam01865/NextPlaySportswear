@@ -9,7 +9,10 @@ use Illuminate\Support\Str;
 
 class HomepageSectionMediaService
 {
-    public function sync(HomepageSection $section, Request $request): void
+    /**
+     * @param array<int, array<string, mixed>> $originalItems
+     */
+    public function sync(HomepageSection $section, Request $request, array $originalItems = []): void
     {
         $uploaded = $request->file('image_file');
         $imageUrl = trim((string) $request->input('image_url', ''));
@@ -52,7 +55,91 @@ class HomepageSectionMediaService
             $this->syncHeroSlides($section, $request);
         }
 
+        if ((string) $section->key === 'process') {
+            $this->syncItemImages($section, $request, $originalItems);
+        }
+
         $section->save();
+    }
+
+    /**
+     * Keep stored item media attached to the same stable item id while text is edited
+     * or the process steps are reordered in the admin UI.
+     *
+     * @param array<int, array<string, mixed>> $existingItems
+     * @param array<int, array<string, mixed>> $submittedItems
+     * @return array<int, array<string, mixed>>
+     */
+    public function preserveItemMedia(string $sectionKey, array $existingItems, array $submittedItems): array
+    {
+        $existingById = collect($existingItems)
+            ->filter(fn ($item): bool => is_array($item))
+            ->mapWithKeys(function (array $item, int $index) use ($sectionKey): array {
+                $id = trim((string) ($item['id'] ?? '')) ?: $sectionKey.'-item-'.($index + 1);
+                return [$id => $item];
+            });
+
+        return collect($submittedItems)
+            ->filter(fn ($item): bool => is_array($item))
+            ->values()
+            ->map(function (array $item, int $index) use ($sectionKey, $existingById): array {
+                $id = trim((string) ($item['id'] ?? '')) ?: $sectionKey.'-item-'.($index + 1);
+                $existing = $existingById->get($id, []);
+                $item['id'] = $id;
+
+                foreach (['image_path', 'image_url'] as $field) {
+                    $value = trim((string) ($existing[$field] ?? ''));
+                    if ($value !== '' && blank($item[$field] ?? null)) {
+                        $item[$field] = $value;
+                    }
+                }
+
+                if (blank($item['image_alt'] ?? null) && filled($existing['image_alt'] ?? null)) {
+                    $item['image_alt'] = trim((string) $existing['image_alt']);
+                }
+
+                return $item;
+            })
+            ->all();
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $originalItems
+     */
+    private function syncItemImages(HomepageSection $section, Request $request, array $originalItems): void
+    {
+        $items = collect(is_array($section->items) ? $section->items : [])
+            ->filter(fn ($item): bool => is_array($item))
+            ->values()
+            ->all();
+
+        foreach ($items as $index => &$item) {
+            $uploaded = $request->file("items.{$index}.image_file");
+            if (! $uploaded) {
+                continue;
+            }
+
+            $existingPath = trim((string) ($item['image_path'] ?? '')) ?: null;
+            $this->deletePath($existingPath);
+
+            $item['image_path'] = $uploaded->store("homepage/sections/{$section->key}/items", 'public');
+            unset($item['image_url']);
+        }
+        unset($item);
+
+        $referencedPaths = collect($items)
+            ->pluck('image_path')
+            ->filter(fn ($path): bool => filled($path))
+            ->map(fn ($path): string => (string) $path)
+            ->all();
+
+        collect($originalItems)
+            ->filter(fn ($item): bool => is_array($item))
+            ->pluck('image_path')
+            ->filter(fn ($path): bool => filled($path) && ! in_array((string) $path, $referencedPaths, true))
+            ->each(fn ($path) => $this->deletePath((string) $path));
+
+        $section->items = array_values($items);
     }
 
     private function syncHeroSlides(HomepageSection $section, Request $request): void

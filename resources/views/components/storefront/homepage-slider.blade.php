@@ -106,7 +106,7 @@
                                             href="{{ $primaryUrl }}"
                                             target="{{ $primaryTarget }}"
                                             @if($primaryTarget === '_blank') rel="noopener noreferrer" @endif
-                                            class="btn btn-red"
+                                            class="btn btn-red np-home-action"
                                         >{{ $primaryLabel }}</a>
                                     @endif
 
@@ -115,7 +115,7 @@
                                             href="{{ $secondaryUrl }}"
                                             target="{{ $secondaryTarget }}"
                                             @if($secondaryTarget === '_blank') rel="noopener noreferrer" @endif
-                                            class="btn btn-white"
+                                            class="btn btn-white np-home-action"
                                         >{{ $secondaryLabel }}</a>
                                     @endif
                                 </div>

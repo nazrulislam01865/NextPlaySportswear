@@ -1,7 +1,4 @@
-@props([
-    'product',
-    'showCategory' => false,
-])
+@props(['product'])
 
 @php
     $tagClass = match ($product['tag_color'] ?? 'blue') {
@@ -14,7 +11,6 @@
     $configureUrl = $productUrl === '#' ? '#' : $productUrl.'#configure-product';
     $categoryLabel = trim((string) (($product['category'] ?? '') ?: ($product['sport'] ?? '')));
     $sku = trim((string) ($product['sku'] ?? ''));
-    $isCustomizable = (bool) ($product['is_customizable'] ?? false);
     $displayUnitPrice = (float) ($product['display_unit_price'] ?? $product['base_price'] ?? 0);
     $originalPrice = (float) ($product['original_price'] ?? $product['display_compare_at_price'] ?? 0);
     $hasDiscount = $displayUnitPrice > 0 && $originalPrice > $displayUnitPrice;
@@ -46,29 +42,31 @@
         : '';
     $wishlistPrice = $displayUnitPrice;
     $wishlistCurrency = (string) ($product['currency'] ?? 'USD');
+    $productTag = trim((string) ($product['tag'] ?? ''));
+    // Shared product-card switch. Keep this false to hide the CUSTOMIZABLE badge everywhere
+    // this reusable component is used. Change it to true here when the badge is needed again.
+    $showCustomizableBadge = false;
+    $isCustomizableTag = strcasecmp($productTag, 'customizable') === 0;
+    $showProductTag = $productTag !== ''
+        && (! $isCustomizableTag || $showCustomizableBadge);
 @endphp
 
-<article class="np-product-card np-product-card--nextplay np-product-card--canonical group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card card-hover" data-product-card data-product-id="{{ $product['id'] ?? '' }}">
-    <div class="np-product-card-media-wrap relative">
-        <a href="{{ $productUrl }}" class="np-product-square-media np-product-card-media relative block overflow-hidden" aria-label="View {{ $product['title'] }}">
+<article class="np-product-card np-product-card--nextplay np-product-card--canonical" data-product-card data-product-id="{{ $product['id'] ?? '' }}">
+    <div class="np-product-card-media-wrap">
+        <a href="{{ $productUrl }}" class="np-product-square-media np-product-card-media" aria-label="View {{ $product['title'] }}">
             <img
                 src="{{ $product['image'] }}"
                 alt="{{ $product['alt'] }}"
-                class="np-product-square-image transition duration-500 group-hover:scale-[1.035]"
+                class="np-product-square-image"
                 loading="lazy"
                 width="900"
                 height="900"
             >
         </a>
 
-        @if ($isCustomizable)
-            <span class="np-product-card-customizable">
-                <span class="np-product-card-customizable-dot" aria-hidden="true"></span>
-                Customizable
-            </span>
-        @elseif (filled($product['tag'] ?? null))
+        @if ($showProductTag)
             <span class="np-product-card-badge {{ $tagClass }}">
-                {{ $product['tag'] }}
+                {{ $productTag }}
             </span>
         @endif
 
@@ -94,13 +92,13 @@
         </button>
     </div>
 
-    <div class="np-product-card-body flex flex-1 flex-col">
+    <div class="np-product-card-body">
         @if ($categoryLabel !== '')
             <p class="np-product-card-category">{{ $categoryLabel }}</p>
         @endif
 
         <h3 class="np-product-card-title">
-            <a href="{{ $productUrl }}" class="transition hover:text-brand-red">
+            <a href="{{ $productUrl }}">
                 {{ $product['title'] }}
             </a>
         </h3>
@@ -134,10 +132,6 @@
 
         <a href="{{ $configureUrl }}" class="np-product-card-button">
             Customize &amp; Order
-        </a>
-
-        <a href="{{ $productUrl }}" class="np-product-card-details-link">
-            View product details <span aria-hidden="true">→</span>
         </a>
     </div>
 </article>

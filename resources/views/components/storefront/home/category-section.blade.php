@@ -7,14 +7,13 @@
 
 <section id="categories">
     <div class="container">
-        <div class="section-head">
-            <span class="small-red">{{ $text('eyebrow', 'Find it fast') }}</span>
-            <h2>{{ $text('title', 'What Are You Looking For?') }}</h2>
-            @if(filled($text('description')))
-                <p>{{ $text('description', 'Start with an admin-managed category and find the right product faster.') }}</p>
-            @endif
-        </div>
-        <div class="home-featured-category-grid home-category-card-grid home-category-card-grid--featured">
+        <x-storefront.home.section-heading
+            class="section-head"
+            :eyebrow="$text('eyebrow', 'Find it fast')"
+            :title="$text('title', 'What Are You Looking For?')"
+            :description="filled($text('description')) ? $text('description', 'Start with an admin-managed category and find the right product faster.') : null"
+        />
+        <div class="np-shared-category-card-grid home-featured-category-grid home-category-card-grid home-category-card-grid--featured">
             @forelse($categories as $category)
                 <x-storefront.category-card :category="$category" />
             @empty

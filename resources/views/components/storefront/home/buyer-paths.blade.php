@@ -13,11 +13,12 @@
 
 <section class="section-alt">
     <div class="container">
-        <div class="section-head">
-            <span class="small-red">{{ $text('eyebrow', 'Order by need') }}</span>
-            <h2>{{ $text('title', 'Shop by Who You’re Ordering For') }}</h2>
-            @if(filled($text('description')))<p>{{ $text('description', 'Choose the path that fits your order.') }}</p>@endif
-        </div>
+        <x-storefront.home.section-heading
+            class="section-head"
+            :eyebrow="$text('eyebrow', 'Order by need')"
+            :title="$text('title', 'Shop by Who You’re Ordering For')"
+            :description="filled($text('description')) ? $text('description', 'Choose the path that fits your order.') : null"
+        />
         <div class="grid-4">
             @foreach($paths as $path)
                 <article class="path-card">

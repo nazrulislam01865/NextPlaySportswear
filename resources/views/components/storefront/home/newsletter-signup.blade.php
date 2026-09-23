@@ -155,8 +155,14 @@
     <div class="site-container">
         <div class="np-home-newsletter-card">
             <div class="np-home-newsletter-copy">
-                <h2 id="home-newsletter-title" class="np-home-newsletter-title">Get team offers and kit ideas.</h2>
-                <p class="np-home-newsletter-text">Useful updates only. No daily noise.</p>
+                <x-storefront.home.section-heading
+                    class="np-home-newsletter-heading"
+                    title-id="home-newsletter-title"
+                    align="left"
+                    tone="inverse"
+                    title="Get team offers and kit ideas."
+                    description="Useful updates only. No daily noise."
+                />
             </div>
 
             <form method="POST" action="{{ route('newsletter.store') }}" class="np-home-newsletter-form" novalidate data-newsletter-form>
@@ -181,7 +187,7 @@
                         required
                         aria-invalid="{{ $errors->newsletter->has('email') ? 'true' : 'false' }}"
                     >
-                    <button class="np-home-newsletter-button" type="submit" data-newsletter-submit>Join the List</button>
+                    <button class="np-home-newsletter-button np-home-action" type="submit" data-newsletter-submit>Join the List</button>
                 </div>
 
                 <p

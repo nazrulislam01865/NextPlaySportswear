@@ -19,13 +19,12 @@ class CategoryController extends Controller
 
     public function index(): View
     {
-        $collections = $this->catalog->allProductCategories();
+        $categoryBrowser = $this->catalog->categoryBrowser();
         $sports = $this->catalog->sports();
 
         return view('storefront.categories.index', [
             'sports' => $sports,
-            'collections' => $collections,
-            'filterTags' => $this->catalog->filterTags(),
+            'categoryBrowser' => $categoryBrowser,
             'faqs' => [],
             'seo' => [
                 'title' => 'Custom Sportswear Categories | Jerseys, Uniforms, Apparel & Gear',

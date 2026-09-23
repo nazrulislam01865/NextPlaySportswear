@@ -119,7 +119,7 @@
                                 accept="image/jpeg,image/png,image/webp,image/avif"
                                 x-on:change="previewImage($event)"
                             >
-                            <small class="font-normal text-slate-500">JPG, PNG, WebP, or AVIF. Maximum 5 MB.</small>
+                            <small class="font-normal text-slate-500">JPG, PNG, WebP, or AVIF. Maximum 5 MB. 1:1 square is recommended; 4:3 images are also accepted and displayed without stretching.</small>
                         </label>
 
                         <label class="admin-label">

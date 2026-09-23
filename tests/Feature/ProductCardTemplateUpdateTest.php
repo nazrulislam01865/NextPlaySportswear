@@ -19,7 +19,7 @@ class ProductCardTemplateUpdateTest extends TestCase
         Cache::flush();
     }
 
-    public function test_product_card_uses_customizable_label_sku_and_discount_layout(): void
+    public function test_product_card_uses_the_centralized_structure_without_page_specific_actions_or_customizable_badge(): void
     {
         $html = Blade::render('<x-storefront.product-card :product="$product" />', [
             'product' => [
@@ -38,6 +38,8 @@ class ProductCardTemplateUpdateTest extends TestCase
                 'discount_percentage' => 12,
                 'currency' => 'USD',
                 'is_customizable' => true,
+                'tag' => 'NEW',
+                'tag_color' => 'blue',
                 'image' => '/images/product-placeholder.svg',
                 'alt' => 'Custom Basketball Jersey',
                 'url' => '#',
@@ -45,14 +47,38 @@ class ProductCardTemplateUpdateTest extends TestCase
             ],
         ]);
 
-        $this->assertStringContainsString('np-product-card-customizable', $html);
-        $this->assertStringContainsString('Customizable', $html);
+        $this->assertStringContainsString('np-product-card--canonical', $html);
+        $this->assertStringContainsString('np-product-card-badge', $html);
+        $this->assertStringContainsString('NEW', $html);
+        $this->assertStringNotContainsString('np-product-card-customizable', $html);
+        $this->assertStringNotContainsString('Customizable', $html);
+        $this->assertStringNotContainsString('np-product-card-details-link', $html);
+        $this->assertStringNotContainsString('View product details', $html);
+        $this->assertStringContainsString('Customize &amp; Order', $html);
         $this->assertStringContainsString('SKU: NPS-BBJ-0023', $html);
         $this->assertStringContainsString('From $4.20', $html);
         $this->assertStringContainsString('$4.75', $html);
         $this->assertStringContainsString('12% OFF', $html);
         $this->assertStringNotContainsString('Custom design', $html);
         $this->assertStringNotContainsString('Artwork upload', $html);
+    }
+
+    public function test_product_card_css_has_one_global_source_of_truth(): void
+    {
+        $css = file_get_contents(resource_path('css/storefront.css'));
+        $marker = 'NEXTPLAY_CENTRALIZED_PRODUCT_CARD';
+
+        $this->assertSame(1, substr_count($css, $marker));
+
+        $beforeCentralizedBlock = strstr($css, '/* '.$marker, true);
+        $this->assertIsString($beforeCentralizedBlock);
+        $this->assertStringNotContainsString('np-product-card', $beforeCentralizedBlock);
+
+        $centralizedBlock = strstr($css, '/* '.$marker);
+        $this->assertStringContainsString('border-radius: 0;', $centralizedBlock);
+        $this->assertStringContainsString('padding: 0;', $centralizedBlock);
+        $this->assertStringContainsString('border-radius: .4rem;', $centralizedBlock);
+        $this->assertStringNotContainsString('.home-page .home-product-section article.np-product-card', $centralizedBlock);
     }
 
     public function test_listing_payload_treats_lower_admin_value_as_discount_price(): void

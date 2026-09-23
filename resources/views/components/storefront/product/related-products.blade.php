@@ -23,7 +23,7 @@
             --}}
             <div class="np-related-products__grid np-product-listing-grid">
                 @foreach ($products as $relatedProduct)
-                    <x-storefront.product-card :product="$relatedProduct" :show-category="true" />
+                    <x-storefront.product-card :product="$relatedProduct" />
                 @endforeach
             </div>
         </div>
@@ -84,11 +84,6 @@
                 grid-template-columns: minmax(0, 1fr);
                 align-items: stretch;
                 gap: clamp(1rem, 1.4vw, 1.35rem);
-            }
-
-            .np-related-products__grid > .np-product-card {
-                min-width: 0;
-                height: 100%;
             }
 
             @media (min-width: 640px) {

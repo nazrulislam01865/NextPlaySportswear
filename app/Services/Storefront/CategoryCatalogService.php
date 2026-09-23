@@ -121,6 +121,78 @@ class CategoryCatalogService
             ->all();
     }
 
+    /**
+     * Build the category landing-page browser from the real catalog hierarchy.
+     *
+     * Every storefront-visible root category becomes a parent navigation tab.
+     * Its payload contains every reachable descendant in hierarchy order so the
+     * page can show both subcategories and deeper product categories without
+     * flattening the parent categories into the card grid.
+     *
+     * @return array<int, array{parent:array<string,mixed>,children:array<int,array<string,mixed>>}>
+     */
+    public function categoryBrowser(): array
+    {
+        $categories = Category::query()
+            ->storefrontReachable()
+            ->with('parent:id,name,slug,parent_id')
+            ->get();
+
+        if ($categories->isEmpty()) {
+            return [];
+        }
+
+        $this->attachProductCounts($categories);
+
+        // The category browser should never render an empty/zero-product card.
+        // productCount() already aggregates reachable descendant products, so a
+        // parent with products anywhere below it remains visible while a branch
+        // with no assigned products at any level is removed completely.
+        $categories = $categories
+            ->filter(fn (Category $category): bool => (int) ($category->products_count ?? 0) > 0)
+            ->values();
+
+        if ($categories->isEmpty()) {
+            return [];
+        }
+
+        $childrenByParent = $categories
+            ->groupBy(fn (Category $category): int => (int) ($category->parent_id ?? 0));
+
+        $sortCategories = static fn (Collection $items): Collection => $items
+            ->sort(function (Category $left, Category $right): int {
+                $sortComparison = ((int) $left->sort_order) <=> ((int) $right->sort_order);
+
+                return $sortComparison !== 0
+                    ? $sortComparison
+                    : strcasecmp((string) $left->name, (string) $right->name);
+            })
+            ->values();
+
+        $roots = $sortCategories($childrenByParent->get(0, collect()));
+
+        return $roots->map(function (Category $root) use ($childrenByParent, $sortCategories): array {
+            $descendants = collect();
+
+            $walk = function (int $parentId) use (&$walk, $childrenByParent, $sortCategories, $descendants): void {
+                foreach ($sortCategories($childrenByParent->get($parentId, collect())) as $child) {
+                    $descendants->push($child);
+                    $walk((int) $child->id);
+                }
+            };
+
+            $walk((int) $root->id);
+
+            return [
+                'parent' => $this->categoryData($root),
+                'children' => $descendants
+                    ->map(fn (Category $category): array => $this->categoryData($category))
+                    ->values()
+                    ->all(),
+            ];
+        })->values()->all();
+    }
+
     public function sports(): array
     {
         $categories = $this->topLevelQuery()
@@ -129,7 +201,11 @@ class CategoryCatalogService
 
         $this->attachProductCounts($categories);
 
-        return $categories->map(fn (Category $category) => $this->categoryData($category))->all();
+        return $categories
+            ->filter(fn (Category $category): bool => (int) ($category->products_count ?? 0) > 0)
+            ->map(fn (Category $category) => $this->categoryData($category))
+            ->values()
+            ->all();
     }
 
     /** @param array<int, int|string> $ids */

@@ -33,7 +33,7 @@ class ProductSeeder extends Seeder
                         'status' => 'active',
                         'product_type' => $data['product_type'],
                         'brand' => 'NextPlay Sportswear',
-                        'badge_label' => $index === 0 ? 'Fully Customizable' : 'Customizable',
+                        'badge_label' => null,
                         'badge_color' => 'red',
                         'short_description' => $data['summary'],
                         'description_html' => '<h2>Built for custom team orders</h2><p>'.$data['description'].'</p><h3>Flexible administration</h3><p>Product content, categories, pricing, images, sizes, customization fields, artwork methods, production speeds, and SEO are managed from the NextPlay admin panel.</p>',

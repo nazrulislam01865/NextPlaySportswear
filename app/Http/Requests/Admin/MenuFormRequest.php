@@ -89,7 +89,7 @@ class MenuFormRequest extends FormRequest
         })->all();
 
         $this->merge([
-            'slug' => Str::slug((string) $this->input('slug', $this->input('name'))),
+            'slug' => Str::slug((string) ($this->input('slug') ?: $this->input('name'))),
             'location' => filled($this->input('location')) ? Str::slug((string) $this->input('location')) : null,
             'is_active' => $this->boolean('is_active'),
             'items' => $items,

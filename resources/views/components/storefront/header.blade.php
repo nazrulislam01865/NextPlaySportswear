@@ -20,19 +20,8 @@
     $wishlistAuthenticated = (bool) ($wishlistAuthenticated ?? false);
 
     $headerMenu = collect($storefrontMenus['header'] ?? []);
-    $shopMenuItem = $headerMenu->first(function ($item) {
-        $label = str($item->label ?? '')->lower()->squish()->toString();
-        return $label === 'shop products' || (($item->route_name ?? null) === 'categories.index');
-    });
-    $shopChildren = $shopMenuItem?->childrenRecursive ?? collect();
-    $shopUrl = $shopMenuItem?->resolvedUrl() ?? route('categories.index');
-
-    $homeActive = request()->routeIs('home');
-    $shopActive = request()->routeIs('categories.*');
-    $productsActive = request()->routeIs('products.*');
-    $howActive = request()->routeIs('how-to-order');
+    $headerMenuCount = max(1, $headerMenu->count());
     $shippingActive = request()->routeIs('shipping');
-    $dealsActive = request()->routeIs('products.index') && request()->boolean('deals');
     $cartActive = request()->routeIs('cart.*');
     $wishlistActive = request()->routeIs('wishlist.*');
     $contactActive = request()->routeIs('contact') || request()->routeIs('contact.store');
@@ -371,87 +360,14 @@
 
     <div class="storefront-nav-row np-category-nav-row">
         <div class="np-header-shell np-category-nav-shell">
-            <nav class="storefront-main-nav np-category-nav" aria-label="Main navigation">
-                <a href="{{ route('home') }}" class="np-category-link {{ $homeActive ? 'is-active' : '' }}" @if($homeActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="home">Home</a>
-
-                <div class="np-menu-item np-category-menu-item {{ $shopActive ? 'is-active' : '' }}">
-                    <a
-                        href="{{ $shopUrl }}"
-                        class="np-category-link np-menu-link {{ $shopActive ? 'is-active' : '' }}"
-                        @if($shopActive) aria-current="page" @endif
-                        @if($shopChildren->isNotEmpty()) aria-haspopup="true" aria-expanded="false" @endif
-                        data-header-analytics="header_navigation_click"
-                        data-header-analytics-label="shop_products"
-                    >
-                        <span>Shop Products</span>
-                        <svg class="np-category-caret" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-                    </a>
-
-                    @if($shopChildren->isNotEmpty())
-                        <div class="np-menu-panel np-shop-panel" role="group" aria-label="Shop Products submenu">
-                            <a class="np-menu-view-all" href="{{ $shopUrl }}" data-header-analytics="header_navigation_click" data-header-analytics-label="shop_products_view_all">
-                                <span>View all Shop Products</span>
-                                <span aria-hidden="true">→</span>
-                            </a>
-
-                            <div class="np-mega-grid">
-                                @foreach($shopChildren as $child)
-                                    <div class="np-mega-card">
-                                        <a
-                                            href="{{ $child->resolvedUrl() }}"
-                                            target="{{ $child->target }}"
-                                            @if($child->target === '_blank') rel="noopener noreferrer" @endif
-                                            class="np-mega-title np-mega-title-with-icon"
-                                            data-header-analytics="header_navigation_click"
-                                            data-header-analytics-label="category_{{ str($child->label)->slug('_') }}"
-                                        >
-                                            <span class="np-mega-category-icon" aria-hidden="true">
-                                                <x-storefront.category-icon :label="$child->label" :icon-url="$child->icon_url" />
-                                            </span>
-                                            <span>{{ $child->label }}</span>
-                                        </a>
-
-                                        @if($child->childrenRecursive->isNotEmpty())
-                                            <div class="np-mega-sublist">
-                                                @foreach($child->childrenRecursive as $grandchild)
-                                                    <div class="np-mega-subitem">
-                                                        <a
-                                                            href="{{ $grandchild->resolvedUrl() }}"
-                                                            target="{{ $grandchild->target }}"
-                                                            @if($grandchild->target === '_blank') rel="noopener noreferrer" @endif
-                                                            class="np-mega-subtitle"
-                                                            data-header-analytics="header_navigation_click"
-                                                            data-header-analytics-label="category_{{ str($grandchild->label)->slug('_') }}"
-                                                        >{{ $grandchild->label }}</a>
-
-                                                        @if($grandchild->childrenRecursive->isNotEmpty())
-                                                            <div class="np-mega-leaf-list">
-                                                                @foreach($grandchild->childrenRecursive as $leaf)
-                                                                    <a
-                                                                        href="{{ $leaf->resolvedUrl() }}"
-                                                                        target="{{ $leaf->target }}"
-                                                                        @if($leaf->target === '_blank') rel="noopener noreferrer" @endif
-                                                                        class="np-mega-leaf"
-                                                                        data-header-analytics="header_navigation_click"
-                                                                        data-header-analytics-label="category_{{ str($leaf->label)->slug('_') }}"
-                                                                    >{{ $leaf->label }}</a>
-                                                                @endforeach
-                                                            </div>
-                                                        @endif
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                        @endif
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
-                </div>
-
-                <a href="{{ route('products.index') }}" class="np-category-link {{ $productsActive && ! $dealsActive ? 'is-active' : '' }}" @if($productsActive && ! $dealsActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="all_products">All Products</a>
-                <a href="{{ route('products.index', ['sort' => 'featured', 'deals' => 1]) }}" class="np-category-link {{ $dealsActive ? 'is-active' : '' }}" @if($dealsActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="deals">Deals</a>
-                <a href="{{ route('how-to-order') }}" class="np-category-link {{ $howActive ? 'is-active' : '' }}" @if($howActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="how_it_works">How It Works</a>
+            <nav
+                class="storefront-main-nav np-category-nav"
+                aria-label="Main navigation"
+                style="--np-header-menu-count: {{ $headerMenuCount }}"
+            >
+                @foreach($headerMenu as $item)
+                    <x-storefront.menu.desktop-item :item="$item" />
+                @endforeach
             </nav>
 
             <a href="{{ route('shipping') }}" class="np-usa-shipping {{ $shippingActive ? 'is-active' : '' }}" @if($shippingActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="usa_shipping">
@@ -500,24 +416,10 @@
                 </form>
 
                 <div class="np-mobile-nav-list" @click="if ($event.target.closest('a')) open = false">
-                    <a href="{{ route('home') }}" class="np-mobile-nav-link {{ $homeActive ? 'is-active' : '' }}" @if($homeActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_home">Home</a>
+                    @foreach($headerMenu as $item)
+                        <x-storefront.menu.mobile-item :item="$item" />
+                    @endforeach
 
-                    <details class="np-mobile-nav-details" {{ $shopActive ? 'open' : '' }}>
-                        <summary class="np-mobile-nav-summary {{ $shopActive ? 'is-active' : '' }}">
-                            <span>Shop Products</span>
-                            <span aria-hidden="true">+</span>
-                        </summary>
-                        <div class="np-mobile-submenu">
-                            <a href="{{ $shopUrl }}" class="np-mobile-nav-link np-mobile-view-all" data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_shop_products_view_all">View all Shop Products</a>
-                            @foreach($shopChildren as $child)
-                                <x-storefront.menu.mobile-item :item="$child" :depth="1" />
-                            @endforeach
-                        </div>
-                    </details>
-
-                    <a href="{{ route('products.index') }}" class="np-mobile-nav-link {{ $productsActive && ! $dealsActive ? 'is-active' : '' }}" @if($productsActive && ! $dealsActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_all_products">All Products</a>
-                    <a href="{{ route('products.index', ['sort' => 'featured', 'deals' => 1]) }}" class="np-mobile-nav-link {{ $dealsActive ? 'is-active' : '' }}" @if($dealsActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_deals">Deals</a>
-                    <a href="{{ route('how-to-order') }}" class="np-mobile-nav-link {{ $howActive ? 'is-active' : '' }}" @if($howActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_how_it_works">How It Works</a>
                     <a href="{{ route('shipping') }}" class="np-mobile-nav-link np-mobile-shipping-link {{ $shippingActive ? 'is-active' : '' }}" @if($shippingActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_usa_shipping">USA Shipping</a>
                 </div>
 

@@ -1,28 +1,26 @@
 <x-layouts.storefront :seo="$seo" :structured-data="$structuredData">
-    <div x-data="{ filter: 'all' }">
+    <div x-data="{ activeParent: 'all' }">
     <section class="bg-[#f3f5f7] pb-[66px] pt-11" aria-labelledby="browse-title">
         <div class="site-container">
             <div class="mb-8 text-center max-sm:text-left">
-                <span class="text-xs font-black uppercase tracking-[.08em] text-brand-red">Quick navigation</span>
-                <h1 id="browse-title" class="mt-2 font-display text-[clamp(28px,4vw,42px)] font-bold uppercase leading-[1.05] text-brand-ink">Browse Categories</h1>
-                <p class="mx-auto mt-2 max-w-[700px] text-slate-500 max-sm:mx-0">Use the category tabs below to quickly find what you need.</p>
+                <h1 id="browse-title" class="font-display text-[clamp(28px,4vw,42px)] font-bold uppercase leading-[1.05] text-brand-ink">Browse Categories</h1>
             </div>
 
-            <div class="flex flex-nowrap justify-start gap-2.5 overflow-x-auto pb-1 lg:flex-wrap lg:justify-center" role="list" aria-label="Category filters">
+            <div class="flex flex-nowrap justify-start gap-2.5 overflow-x-auto pb-1 lg:flex-wrap lg:justify-center" role="list" aria-label="Main category filters">
                 <button
                     type="button"
                     class="whitespace-nowrap rounded-full border px-3.5 py-2 text-[13px] font-black transition"
-                    :class="filter === 'all' ? 'border-brand-navy bg-brand-navy text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-brand-navy hover:bg-brand-navy hover:text-white'"
-                    @click="filter = 'all'"
+                    :class="activeParent === 'all' ? 'border-brand-navy bg-brand-navy text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-brand-navy hover:bg-brand-navy hover:text-white'"
+                    @click="activeParent = 'all'"
                 >All Categories</button>
 
-                @foreach ($filterTags as $tag)
+                @foreach ($categoryBrowser as $group)
                     <button
                         type="button"
                         class="whitespace-nowrap rounded-full border px-3.5 py-2 text-[13px] font-black transition"
-                        :class="filter === @js($tag['slug']) ? 'border-brand-navy bg-brand-navy text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-brand-navy hover:bg-brand-navy hover:text-white'"
-                        @click="filter = @js($tag['slug'])"
-                    >{{ $tag['name'] }}</button>
+                        :class="activeParent === @js($group['parent']['slug']) ? 'border-brand-navy bg-brand-navy text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-brand-navy hover:bg-brand-navy hover:text-white'"
+                        @click="activeParent = @js($group['parent']['slug'])"
+                    >{{ $group['parent']['title'] }}</button>
                 @endforeach
             </div>
         </div>
@@ -31,23 +29,53 @@
     <section id="categories" class="bg-white py-[66px]" aria-labelledby="categories-title">
         <div class="site-container">
             <div class="mb-8 text-center max-sm:text-left">
-                <span class="text-xs font-black uppercase tracking-[.08em] text-brand-red">All product groups</span>
-                <h2 id="categories-title" class="mt-2 font-display text-[clamp(28px,4vw,42px)] font-bold uppercase leading-[1.05] text-brand-ink">All Product Categories</h2>
-                <p class="mx-auto mt-2 max-w-[700px] text-slate-500 max-sm:mx-0">Start with the product type that matches your team, event, business, or personal order.</p>
+                <h2 id="categories-title" class="font-display text-[clamp(28px,4vw,42px)] font-bold uppercase leading-[1.05] text-brand-ink">All Product Categories</h2>
             </div>
 
-            <div class="np-all-categories-grid" id="categoryGrid">
-                @foreach ($collections as $category)
-                    <x-storefront.category-index-card :category="$category" />
-                @endforeach
-            </div>
+            <div class="space-y-10" id="categoryGroups">
+                @forelse ($categoryBrowser as $group)
+                    <section
+                        data-parent-category="{{ $group['parent']['slug'] }}"
+                        x-show="activeParent === 'all' || activeParent === @js($group['parent']['slug'])"
+                        x-transition.opacity.duration.150ms
+                        aria-labelledby="category-group-{{ $group['parent']['id'] }}"
+                    >
+                        <div class="mb-5 flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-4">
+                            <div>
+                                <span class="text-[11px] font-black uppercase tracking-[.08em] text-brand-red">Main category</span>
+                                <h3 id="category-group-{{ $group['parent']['id'] }}" class="mt-1 font-display text-[clamp(24px,3vw,32px)] font-bold uppercase leading-none text-brand-ink">
+                                    {{ $group['parent']['title'] }}
+                                </h3>
+                            </div>
+                            <a href="{{ $group['parent']['url'] }}" class="inline-flex items-center gap-1 text-xs font-black uppercase tracking-wide text-brand-red transition hover:text-brand-navy">
+                                View {{ $group['parent']['short_title'] }}
+                                <span aria-hidden="true">→</span>
+                            </a>
+                        </div>
 
-            <div
-                x-cloak
-                x-show="filter !== 'all' && !Array.from(document.querySelectorAll('#categoryGrid [data-tags]')).some(card => card.dataset.tags.split(' ').includes(filter))"
-                class="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-slate-600"
-            >
-                No active categories are assigned to this filter.
+                        @if ($group['children'] !== [])
+                            <div class="np-shared-category-card-grid np-all-categories-grid">
+                                @foreach ($group['children'] as $category)
+                                    <div
+                                        class="min-w-0 h-full"
+                                        data-category-depth="{{ $category['depth'] }}"
+                                        data-category-parent="{{ $category['parent_slug'] }}"
+                                    >
+                                        <x-storefront.category-card :category="$category" />
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-sm text-slate-600">
+                                No subcategories or product categories are currently available under this main category.
+                            </div>
+                        @endif
+                    </section>
+                @empty
+                    <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center text-slate-600">
+                        No active categories are currently available.
+                    </div>
+                @endforelse
             </div>
         </div>
     </section>
@@ -69,83 +97,6 @@
         </div>
     </section>
 
-    <section class="bg-white py-[66px]" aria-labelledby="customize-title">
-        <div class="site-container">
-            <div class="grid items-center gap-[26px] rounded-[18px] border border-slate-300 bg-white p-[26px] shadow-soft lg:grid-cols-[.85fr_1.15fr]">
-                <div>
-                    <span class="text-xs font-black uppercase tracking-[.08em] text-brand-red">Customization support</span>
-                    <h2 id="customize-title" class="mt-2 font-display text-[clamp(32px,4vw,38px)] font-bold uppercase leading-[1.02] text-brand-ink">Customize Your Gear Your Way</h2>
-                    <p class="mt-2 text-slate-500">Many products can be customized with team logos, player names, numbers, colors, sponsor marks, event names, and brand artwork. For team and bulk orders, we can review your design details before production.</p>
-                    <a class="btn btn-red mt-[18px] max-sm:w-full" href="{{ route('products.index') }}">Start Custom Order</a>
-                </div>
-
-                <div class="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-                    <div class="np-custom-support-card">
-                        <span class="np-custom-support-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H18a2 2 0 0 1 2 2v10" />
-                                <path d="M8 8h12" />
-                                <path d="M8 12h8" />
-                                <path d="M5 20h9" />
-                                <path d="M5 16h6" />
-                                <path d="M4 8h4v12H4z" />
-                            </svg>
-                        </span>
-                        <span class="min-w-0">
-                            <strong>Logo Printing</strong>
-                            <span>Add your team, school, business, or event logo.</span>
-                        </span>
-                    </div>
-
-                    <div class="np-custom-support-card">
-                        <span class="np-custom-support-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M8 4 5.5 6.5 7.5 9 10 7" />
-                                <path d="M16 4 18.5 6.5 16.5 9 14 7" />
-                                <path d="M8 4h8l-1 7v8a1 1 0 0 1-1 1H10a1 1 0 0 1-1-1v-8z" />
-                                <path d="M10.5 11.5h3" />
-                                <path d="M12 11.5v5" />
-                            </svg>
-                        </span>
-                        <span class="min-w-0">
-                            <strong>Player Names &amp; Numbers</strong>
-                            <span>Personalize jerseys and uniforms for each player.</span>
-                        </span>
-                    </div>
-
-                    <div class="np-custom-support-card">
-                        <span class="np-custom-support-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="7" cy="7" r="3" />
-                                <circle cx="17" cy="7" r="3" />
-                                <circle cx="7" cy="17" r="3" />
-                                <circle cx="17" cy="17" r="3" />
-                            </svg>
-                        </span>
-                        <span class="min-w-0">
-                            <strong>Team Colors</strong>
-                            <span>Match your team, club, school, or brand colors.</span>
-                        </span>
-                    </div>
-
-                    <div class="np-custom-support-card">
-                        <span class="np-custom-support-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M7 3h7l4 4v14H7z" />
-                                <path d="M14 3v5h5" />
-                                <path d="m9 16 2 2 4-5" />
-                            </svg>
-                        </span>
-                        <span class="min-w-0">
-                            <strong>Artwork Review</strong>
-                            <span>Send your design file or idea. A proof or mockup may be reviewed before production.</span>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <section id="bulk" class="bg-[#f3f5f7] py-[66px]">
         <div class="site-container">
             <div class="storefront-category-bulk-cta grid items-center gap-9 rounded-[20px] bg-cover bg-center p-7 text-white shadow-hero lg:grid-cols-[1fr_.82fr] lg:p-[42px]">
@@ -162,60 +113,6 @@
                         <li class="flex items-start gap-2.5"><span class="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand-red text-xs">✓</span><span>{{ $benefit }}</span></li>
                     @endforeach
                 </ul>
-            </div>
-        </div>
-    </section>
-
-    <section id="choose" class="bg-white py-[66px]" aria-labelledby="choose-title">
-        <div class="site-container grid items-start gap-7 lg:grid-cols-[.9fr_1.1fr]">
-            <div>
-                <span class="text-xs font-black uppercase tracking-[.08em] text-brand-red">Simple guide</span>
-                <h2 id="choose-title" class="mt-2 font-display text-[clamp(32px,4vw,38px)] font-bold uppercase leading-[1.02] text-brand-ink">Not Sure Where to Start?</h2>
-                <p class="mt-2 text-slate-500">Here is a simple way to choose the right category.</p>
-                <a class="btn btn-light mt-[18px] max-sm:w-full" href="{{ route('home') }}#contact">Need Help Choosing? Contact Us</a>
-            </div>
-
-            <div class="grid gap-3">
-                @php
-                    $choices = [
-                        ['Need a full team set?', 'Start with Custom Team Uniforms.'],
-                        ['Need only jerseys?', 'Start with Custom Jerseys or choose your sport.'],
-                        ['Need branded clothing for an event?', 'Start with Promotional Products or Performance T-Shirts.'],
-                        ['Need matching team travel gear?', 'Start with Hoodies, Outerwear, or Sports Bags.'],
-                        ['Need fan merchandise?', 'Start with Fan Gear, Caps, or Custom Jerseys.'],
-                    ];
-                @endphp
-                @foreach ($choices as $index => $choice)
-                    <div class="grid grid-cols-[auto_1fr] items-start gap-3 rounded-[13px] border border-slate-200 bg-white px-4 py-[15px]">
-                        <span class="grid h-[30px] w-[30px] place-items-center rounded-full bg-brand-navy text-[13px] font-black text-white">{{ $index + 1 }}</span>
-                        <div><strong>{{ $choice[0] }}</strong><br><span class="text-slate-700">{{ $choice[1] }}</span></div>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-    </section>
-
-    <section class="bg-[#f3f5f7] py-[66px]" aria-labelledby="why-title">
-        <div class="site-container">
-            <div class="mb-8 text-center max-sm:text-left">
-                <span class="text-xs font-black uppercase tracking-[.08em] text-brand-red">Less guessing</span>
-                <h2 id="why-title" class="mt-2 font-display text-[clamp(28px,4vw,42px)] font-bold uppercase leading-[1.05] text-brand-ink">Find the Right Product Without Guesswork</h2>
-                <p class="mx-auto mt-2 max-w-[700px] text-slate-500 max-sm:mx-0">A custom order can have many details. Category browsing helps you start with the right product first, then choose customization, quantity, size, and order type.</p>
-            </div>
-
-            <div class="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-4">
-                @foreach ([
-                    ['Clear Product Groups', 'Browse by product type, sport, or order purpose.'],
-                    ['Online and Bulk Options', 'Order selected products online or request a quote for larger quantities.'],
-                    ['Team-Friendly Ordering', 'Good for size lists, player names, numbers, and team color matching.'],
-                    ['Custom Design Support', 'Send your logo or design idea before production.'],
-                ] as $index => $reason)
-                    <article class="rounded-[14px] border border-slate-200 bg-white p-5 shadow-card">
-                        <div class="grid h-10 w-10 place-items-center rounded-xl bg-red-50 font-black text-brand-red">{{ $index + 1 }}</div>
-                        <h3 class="mt-3 text-base font-extrabold text-brand-ink">{{ $reason[0] }}</h3>
-                        <p class="mt-2 text-sm text-slate-500">{{ $reason[1] }}</p>
-                    </article>
-                @endforeach
             </div>
         </div>
     </section>

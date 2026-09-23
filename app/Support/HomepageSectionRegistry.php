@@ -133,7 +133,7 @@ final class HomepageSectionRegistry
                     ['title' => 'Confirm Order', 'description' => 'Approve the final details, price, and timeline.'],
                     ['title' => 'Production & Shipping', 'description' => 'Your order goes into production and ships to your address.'],
                 ],
-                'fields' => ['text', 'buttons', 'items'],
+                'fields' => ['text', 'buttons', 'items', 'item_images'],
                 'item_label' => 'Process Steps',
                 'item_fields' => ['title', 'description'],
             ],
@@ -358,6 +358,22 @@ final class HomepageSectionRegistry
         $merged['item_fields'] = $definition['item_fields'] ?? ['title', 'description'];
         $merged['item_label'] = $definition['item_label'] ?? 'Items';
         $merged['items'] = is_array($merged['items'] ?? null) ? array_values($merged['items']) : [];
+        if (in_array('item_images', $merged['fields'], true)) {
+            $merged['items'] = collect($merged['items'])
+                ->map(function ($item, int $index) use ($key): array {
+                    $item = is_array($item) ? $item : [];
+                    $item['id'] = self::nullableString($item['id'] ?? null) ?: $key.'-item-'.($index + 1);
+
+                    $imagePath = self::nullableString($item['image_path'] ?? null);
+                    $imageUrl = self::nullableString($item['image_url'] ?? null);
+                    $item['image'] = PublicMedia::url($imagePath, $imageUrl, null);
+                    $item['image_alt'] = self::nullableString($item['image_alt'] ?? null);
+
+                    return $item;
+                })
+                ->values()
+                ->all();
+        }
         $defaultSettings = is_array($definition['settings'] ?? null) ? $definition['settings'] : [];
         $storedSettings = is_array($values['settings'] ?? null) ? $values['settings'] : [];
         $merged['settings'] = array_replace($defaultSettings, $storedSettings);

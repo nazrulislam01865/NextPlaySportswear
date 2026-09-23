@@ -42,6 +42,7 @@ class HomepageSectionRequest extends FormRequest
             'hero_slides.*.image_alt' => ['nullable', 'string', 'max:255'],
             'hero_slides.*.image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:10240'],
             'items' => ['nullable', 'array'],
+            'items.*.id' => ['nullable', 'string', 'max:100', 'regex:/^[A-Za-z0-9_-]+$/'],
             'items.*.icon' => ['nullable', 'string', 'max:20'],
             'items.*.title' => ['nullable', 'string', 'max:255'],
             'items.*.subtitle' => ['nullable', 'string', 'max:255'],
@@ -50,6 +51,7 @@ class HomepageSectionRequest extends FormRequest
             'items.*.label' => ['nullable', 'string', 'max:160'],
             'items.*.image_url' => ['nullable', 'string', 'max:2048', new SafePublicUrl()],
             'items.*.image_alt' => ['nullable', 'string', 'max:255'],
+            'items.*.image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:10240'],
             // Duplicate category selections are checked below so the user sees
             // the real category names instead of technical array field names.
             'items.*.category_id' => ['nullable', 'integer', 'exists:categories,id'],
@@ -79,6 +81,9 @@ class HomepageSectionRequest extends FormRequest
             'items.*.description.max' => 'An item description cannot be longer than 2,000 characters.',
             'items.*.label.max' => 'An item button label cannot be longer than 160 characters.',
             'items.*.image_alt.max' => 'An item image description cannot be longer than 255 characters.',
+            'items.*.image_file.image' => 'Each process step upload must be a valid image.',
+            'items.*.image_file.mimes' => 'Process step images must be JPG, PNG, WebP, or AVIF files.',
+            'items.*.image_file.max' => 'Each process step image must be no larger than 10 MB.',
         ];
     }
 
@@ -89,6 +94,7 @@ class HomepageSectionRequest extends FormRequest
             'hero_slides.*.image_url' => 'hero slider image URL',
             'hero_slides.*.image_alt' => 'hero slider image description',
             'hero_slides.*.image_file' => 'hero slider image',
+            'items.*.id' => 'item identifier',
             'items.*.icon' => 'item icon or initials',
             'items.*.title' => 'item title',
             'items.*.subtitle' => 'item subtitle',
@@ -97,6 +103,7 @@ class HomepageSectionRequest extends FormRequest
             'items.*.label' => 'item button label',
             'items.*.image_url' => 'item image URL',
             'items.*.image_alt' => 'item image description',
+            'items.*.image_file' => 'item image',
             'items.*.category_id' => 'selected category',
             'settings.show_statistics' => 'testimonial statistics visibility',
             'settings.show_default_product_ratings' => 'default product ratings visibility',
@@ -270,6 +277,11 @@ class HomepageSectionRequest extends FormRequest
             }
 
             $row = [];
+            $id = trim((string) ($item['id'] ?? ''));
+            if ($id !== '') {
+                $row['id'] = $id;
+            }
+
             foreach (['icon', 'title', 'subtitle', 'description', 'url', 'label', 'image_url', 'image_alt'] as $field) {
                 $value = trim(strip_tags((string) ($item[$field] ?? '')));
                 if ($value !== '') {

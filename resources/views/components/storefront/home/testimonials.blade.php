@@ -1291,15 +1291,17 @@
     <div class="np-testimonials-shell">
         <div class="np-testimonials-hero">
             <div>
-                <span class="np-testimonials-eyebrow">{{ $heroEyebrow }}</span>
-                <h2 class="np-testimonials-title">{{ $heroTitle }}</h2>
-                <p class="np-testimonials-lead">
-                    {{ $text('description', 'See how clubs, schools, businesses, and event teams use NextPlay for custom sportswear, team uniforms, event kits, and bulk orders.') }}
-                </p>
+                <x-storefront.home.section-heading
+                    class="np-testimonials-section-heading"
+                    align="left"
+                    :eyebrow="$heroEyebrow"
+                    :title="$heroTitle"
+                    :description="$text('description', 'See how clubs, schools, businesses, and event teams use NextPlay for custom sportswear, team uniforms, event kits, and bulk orders.')"
+                />
 
                 <div class="np-testimonials-actions">
-                    <a class="np-testimonials-btn is-red" href="{{ $primaryHref }}">{{ $primaryLabel }}</a>
-                    <a class="np-testimonials-btn" href="{{ $secondaryHref }}">{{ $secondaryLabel }}</a>
+                    <a class="np-testimonials-btn is-red np-home-action" href="{{ $primaryHref }}">{{ $primaryLabel }}</a>
+                    <a class="np-testimonials-btn np-home-action" href="{{ $secondaryHref }}">{{ $secondaryLabel }}</a>
                 </div>
 
                 <div class="np-review-platforms" aria-label="Review sharing platforms">

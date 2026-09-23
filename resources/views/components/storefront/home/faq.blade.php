@@ -12,11 +12,12 @@
 
 <section class="section-alt">
     <div class="container">
-        <div class="section-head">
-            <span class="small-red">{{ $text('eyebrow', 'Help center') }}</span>
-            <h2>{{ $text('title', 'Common Questions') }}</h2>
-            @if(filled($text('description')))<p>{{ $text('description') }}</p>@endif
-        </div>
+        <x-storefront.home.section-heading
+            class="section-head"
+            :eyebrow="$text('eyebrow', 'Help center')"
+            :title="$text('title', 'Common Questions')"
+            :description="$text('description')"
+        />
         <div class="faq" id="faq" data-home-faq>
             @foreach($faqs as $faq)
                 @php($answerId = 'home-faq-answer-'.$loop->iteration)

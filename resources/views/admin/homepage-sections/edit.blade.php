@@ -5,11 +5,37 @@
     $hasImage = in_array('image', $fields, true);
     $hasHeroSlides = in_array('hero_slides', $fields, true);
     $hasItems = in_array('items', $fields, true);
+    $hasItemImages = in_array('item_images', $fields, true);
     $itemFields = $definition['item_fields'] ?? ['title', 'description'];
     $currentImage = \App\Support\PublicMedia::url($section->image_path, $section->image_url, '');
     $currentMobileImage = \App\Support\PublicMedia::url($section->mobile_image_path, $section->mobile_image_url, '');
-    $items = old('items', $section->items ?: ($definition['items'] ?? []));
+    $storedItems = is_array($section->items) ? array_values($section->items) : [];
+    $items = old('items', $storedItems ?: ($definition['items'] ?? []));
     $items = is_array($items) ? array_values($items) : [];
+    if ($hasItemImages) {
+        $storedById = collect($storedItems)->mapWithKeys(function ($item, $index) use ($section): array {
+            $item = is_array($item) ? $item : [];
+            $id = trim((string) ($item['id'] ?? '')) ?: $section->key.'-item-'.($index + 1);
+            return [$id => $item];
+        });
+        $items = collect($items)->map(function ($item, $index) use ($section, $storedById): array {
+            $item = is_array($item) ? $item : [];
+            $id = trim((string) ($item['id'] ?? '')) ?: $section->key.'-item-'.($index + 1);
+            $stored = $storedById->get($id, []);
+            $item['id'] = $id;
+            foreach (['image_path', 'image_url', 'image_alt'] as $mediaField) {
+                if (blank($item[$mediaField] ?? null) && filled($stored[$mediaField] ?? null)) {
+                    $item[$mediaField] = $stored[$mediaField];
+                }
+            }
+            $item['image'] = \App\Support\PublicMedia::url(
+                filled($item['image_path'] ?? null) ? (string) $item['image_path'] : null,
+                filled($item['image_url'] ?? null) ? (string) $item['image_url'] : null,
+                null,
+            );
+            return $item;
+        })->values()->all();
+    }
     $heroSlides = old('hero_slides', data_get($viewSection, 'hero_slides', []));
     $heroSlides = collect(is_array($heroSlides) ? $heroSlides : [])->map(function ($slide, $index): array {
         $slide = is_array($slide) ? $slide : [];
@@ -68,6 +94,7 @@
             removeImage: false,
             removeMobileImage: false,
             itemFields: @js(array_values($itemFields)),
+            itemImagesEnabled: @js($hasItemImages),
             itemFieldLabels: @js($fieldLabels),
             heroSlides: @js($heroSlides),
             heroSlideLimit: 12,
@@ -104,6 +131,15 @@
                     }
                     normalized[field] = String(item?.[field] ?? '').trim();
                 });
+
+                if (this.itemImagesEnabled) {
+                    normalized.id = String(item?.id ?? '').trim();
+                    normalized.image_path = String(item?.image_path ?? '').trim();
+                    normalized.image_url = String(item?.image_url ?? '').trim();
+                    normalized.image_alt = String(item?.image_alt ?? '').trim();
+                    normalized.image = String(item?.image ?? '').trim();
+                }
+
                 return normalized;
             },
             normalizeItems(items) {
@@ -249,6 +285,42 @@
                 if (count > 1) return `+ Add ${count} Selected Items`;
                 return '+ Add Selected Item';
             },
+            ensureItemId(item) {
+                if (!this.itemImagesEnabled) return item;
+                if (String(item?.id ?? '').trim() !== '') return item;
+                const fallback = `item-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+                item.id = (window.crypto?.randomUUID?.() ?? fallback).replace(/[^A-Za-z0-9_-]/g, '-');
+                return item;
+            },
+            previewItemImage(index, event) {
+                const file = event?.target?.files?.[0];
+                const item = this.items[index];
+                if (!file || !item) return;
+
+                item.upload_error = '';
+                item.upload_name = '';
+                item.image_pending = false;
+
+                const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
+                if (!allowedTypes.includes(file.type)) {
+                    item.upload_error = 'Choose a JPG, PNG, WebP, or AVIF image.';
+                    event.target.value = '';
+                    return;
+                }
+
+                if (file.size > 10 * 1024 * 1024) {
+                    item.upload_error = 'This image is larger than 10 MB. Choose a smaller file.';
+                    event.target.value = '';
+                    return;
+                }
+
+                const previous = String(item.image ?? '');
+                if (previous.startsWith('blob:')) URL.revokeObjectURL(previous);
+
+                item.image = URL.createObjectURL(file);
+                item.upload_name = file.name;
+                item.image_pending = true;
+            },
             saveItem() {
                 this.clearItemFeedback();
                 const item = this.normalizeItem(this.draftItem);
@@ -297,6 +369,8 @@
                     this.itemError = 'Complete at least one item field before adding it to the list.';
                     return false;
                 }
+
+                this.ensureItemId(item);
 
                 if (this.editingIndex === null) {
                     this.items.push(item);
@@ -842,11 +916,112 @@
                         </div>
                     </div>
 
-                    <template x-for="(item, index) in items" :key="`hidden-${index}`">
+                    @if($hasItemImages)
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div class="min-w-0">
+                                    <h3 class="text-sm font-black text-brand-ink">Process step images</h3>
+                                    <p class="mt-1 text-xs font-medium leading-5 text-slate-500">Add an image to replace the default tick on each storefront card. Images are always displayed in a square 1:1 frame.</p>
+                                </div>
+                                <div class="flex shrink-0 flex-wrap items-center gap-2 text-[11px] font-bold text-slate-500">
+                                    <span class="rounded-full border border-slate-200 bg-white px-3 py-1.5">1:1 display</span>
+                                    <span class="rounded-full border border-slate-200 bg-white px-3 py-1.5">10 MB max</span>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+                                <template x-for="(item, index) in items" :key="`media-${item.id || index}`">
+                                    <article class="flex min-w-0 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-slate-300 hover:shadow-md">
+                                        <div class="flex min-w-0 items-start gap-3">
+                                            <label
+                                                class="group relative h-20 w-20 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-slate-200 bg-slate-50 focus-within:ring-2 focus-within:ring-brand-red/20"
+                                                :for="`process-image-${index}`"
+                                                :title="item.image ? 'Replace image' : 'Choose image'"
+                                            >
+                                                <template x-if="item.image">
+                                                    <img :src="item.image" :alt="item.image_alt || ''" class="h-full w-full object-cover">
+                                                </template>
+                                                <template x-if="!item.image">
+                                                    <div class="grid h-full w-full place-items-center text-slate-400">
+                                                        <div class="text-center">
+                                                            <svg viewBox="0 0 48 48" fill="none" class="mx-auto h-9 w-9" aria-hidden="true">
+                                                                <circle cx="24" cy="24" r="18" stroke="currentColor" stroke-width="2.5" opacity=".45"/>
+                                                                <path d="M16 24.5l5 5L32.5 18" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                                                            </svg>
+                                                            <span class="mt-0.5 block text-[9px] font-black uppercase tracking-wide">Default</span>
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                                <span class="absolute inset-x-0 bottom-0 translate-y-full bg-brand-navy/90 px-1.5 py-1 text-center text-[9px] font-black uppercase tracking-wide text-white transition group-hover:translate-y-0" x-text="item.image ? 'Change' : 'Upload'"></span>
+                                            </label>
+
+                                            <div class="min-w-0 flex-1 pt-0.5">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-[10px] font-black uppercase tracking-[.14em] text-slate-400" x-text="`Step ${index + 1}`"></span>
+                                                    <span
+                                                        class="rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide"
+                                                        :class="item.image ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'"
+                                                        x-text="item.image ? 'Image set' : 'Default icon'"
+                                                    ></span>
+                                                </div>
+                                                <h4 class="mt-1 line-clamp-2 text-sm font-black leading-5 text-brand-ink" x-text="item.title || `Process step ${index + 1}`"></h4>
+                                                <p class="mt-1 text-[10px] font-semibold leading-4 text-slate-400">Shown in the square media area on the homepage.</p>
+                                            </div>
+                                        </div>
+
+                                        <input
+                                            type="file"
+                                            :id="`process-image-${index}`"
+                                            :name="`items[${index}][image_file]`"
+                                            accept="image/jpeg,image/png,image/webp,image/avif"
+                                            class="sr-only"
+                                            @change="previewItemImage(index, $event)"
+                                        >
+
+                                        <label
+                                            class="mt-3 inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:border-brand-navy hover:bg-slate-50 hover:text-brand-navy"
+                                            :for="`process-image-${index}`"
+                                        >
+                                            <svg viewBox="0 0 24 24" fill="none" class="h-4 w-4" aria-hidden="true">
+                                                <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 002 2h10a2 2 0 002-2v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                            <span x-text="item.image ? 'Replace image' : 'Choose image'"></span>
+                                        </label>
+
+                                        <div class="mt-2 min-h-[32px]">
+                                            <p x-show="item.upload_error" x-cloak class="text-[10px] font-bold leading-4 text-red-600" x-text="item.upload_error"></p>
+                                            <p x-show="item.image_pending && !item.upload_error" x-cloak class="text-[10px] font-bold leading-4 text-emerald-700">
+                                                <span class="block truncate" x-text="item.upload_name || 'New image selected'"></span>
+                                                <span class="font-semibold text-slate-500">Save changes to publish.</span>
+                                            </p>
+                                            <p x-show="!item.image_pending && !item.upload_error" class="text-[10px] font-semibold leading-4 text-slate-400">JPG, PNG, WebP or AVIF · up to 10 MB</p>
+                                        </div>
+
+                                        <label class="mt-2 block text-[11px] font-black text-slate-600">
+                                            <span>Alt text <span class="font-semibold text-slate-400">(optional)</span></span>
+                                            <input
+                                                type="text"
+                                                :name="`items[${index}][image_alt]`"
+                                                x-model="item.image_alt"
+                                                class="admin-input mt-1"
+                                                maxlength="255"
+                                                :placeholder="item.title ? `Describe ${item.title}` : 'Describe this image'"
+                                            >
+                                        </label>
+                                    </article>
+                                </template>
+                            </div>
+                        </div>
+                    @endif
+
+                    <template x-for="(item, index) in items" :key="`hidden-${item.id || index}`">
                         <div>
                             <template x-for="field in itemFields" :key="`${index}-${field}`">
                                 <input type="hidden" :name="`items[${index}][${field}]`" :value="item[field] ?? ''">
                             </template>
+                            @if($hasItemImages)
+                                <input type="hidden" :name="`items[${index}][id]`" :value="item.id ?? ''">
+                            @endif
                         </div>
                     </template>
                 </div>

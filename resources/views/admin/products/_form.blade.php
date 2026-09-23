@@ -1246,7 +1246,7 @@ Lead Time:"></div>
                     </div>
 
                     <label class="admin-label np-emphasis-label">Gallery badge label <span class="text-xs font-bold text-slate-400">(optional)</span>
-                        <input class="admin-input" name="badge_label" value="{{ old('badge_label',$product->badge_label) }}" maxlength="80" placeholder="Customizable, New, Best Seller">
+                        <input class="admin-input" name="badge_label" value="{{ old('badge_label',$product->badge_label) }}" maxlength="80" placeholder="New, Offer, Popular">
                     </label>
 
                     <input type="hidden" name="new_image_primary_index" :value="newImagePrimaryIndex()">

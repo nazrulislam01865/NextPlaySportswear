@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Cache;
 
 class NavigationService
 {
-    private const CACHE_VERSION = 'v7';
+    private const CACHE_VERSION = 'v8';
 
     /** @var array<string, Collection<int, NavigationItem>> */
     private array $runtimeItems = [];
@@ -91,14 +91,19 @@ class NavigationService
      */
     private function buildPayload(string $location): array
     {
-        $menuId = Menu::query()
+        $menu = Menu::query()
             ->where('location', $location)
-            ->where('is_active', true)
-            ->value('id');
+            ->first(['id', 'is_active']);
 
-        if (! $menuId) {
+        if (! $menu) {
             return $location === 'header-primary' ? $this->buildDefaultHeaderPayload() : [];
         }
+
+        if (! $menu->is_active) {
+            return [];
+        }
+
+        $menuId = (int) $menu->id;
 
         $reachableCategories = $this->reachableCategorySlugs();
 
@@ -168,9 +173,10 @@ class NavigationService
     }
 
     /**
-     * The header menu must stay database-driven, but the Shop Products mega
-     * menu should always reflect the current category tree. This avoids stale
-     * seeded menu rows after imports and prevents duplicate Home/Shop entries.
+     * Keep the configured header menu as the source of truth for top-level links.
+     * Shop Products is the one deliberate exception: its mega-menu children are
+     * rebuilt from the live storefront category tree so imports/category changes
+     * cannot leave the customer navigation stale.
      *
      * @param  array<int, array<string, mixed>>  $payload
      * @return array<int, array<string, mixed>>
@@ -181,69 +187,21 @@ class NavigationService
             ->filter(fn (mixed $item): bool => is_array($item) && trim((string) ($item['label'] ?? '')) !== '')
             ->values();
 
+        if (! $items->contains(fn (array $item): bool => $this->isShopNavigationItem($item))) {
+            return $items->all();
+        }
+
         $categoryTree = $this->buildDynamicCategoryNavigation();
-        $shopItem = [
-            'label' => 'Shop Products',
-            'link_type' => 'route',
-            'category_slug' => null,
-            'icon_url' => null,
-            'route_name' => 'categories.index',
-            'url' => null,
-            'target' => '_self',
-            'css_class' => '',
-            'children' => $categoryTree,
-        ];
 
-        $hasHome = false;
-        $shopInserted = false;
-        $normalized = collect();
-
-        foreach ($items as $item) {
-            if ($this->isHomeNavigationItem($item)) {
-                if ($hasHome) {
-                    continue;
+        return $items
+            ->map(function (array $item) use ($categoryTree): array {
+                if ($this->isShopNavigationItem($item)) {
+                    $item['children'] = $categoryTree;
                 }
 
-                $hasHome = true;
-                $normalized->push($item);
-                continue;
-            }
-
-            if ($this->isShopNavigationItem($item)) {
-                if ($shopInserted) {
-                    continue;
-                }
-
-                $shopInserted = true;
-                $normalized->push(array_replace($item, $shopItem));
-                continue;
-            }
-
-            $normalized->push($item);
-        }
-
-        if (! $hasHome) {
-            $hasHome = true;
-            $normalized->prepend([
-                'label' => 'Home',
-                'link_type' => 'route',
-                'category_slug' => null,
-                'icon_url' => null,
-                'route_name' => 'home',
-                'url' => null,
-                'target' => '_self',
-                'css_class' => '',
-                'children' => [],
-            ]);
-        }
-
-        if (! $shopInserted) {
-            $insertAt = $hasHome ? 1 : 0;
-            $normalized = $normalized->values();
-            $normalized->splice($insertAt, 0, [$shopItem]);
-        }
-
-        return $normalized->values()->all();
+                return $item;
+            })
+            ->all();
     }
 
     /** @return Collection<int, string> */
@@ -364,15 +322,6 @@ class NavigationService
         };
 
         return $build(0);
-    }
-
-    /** @param array<string, mixed> $item */
-    private function isHomeNavigationItem(array $item): bool
-    {
-        $label = str($item['label'] ?? '')->lower()->squish()->toString();
-
-        return (($item['link_type'] ?? null) === 'route' && ($item['route_name'] ?? null) === 'home')
-            || $label === 'home';
     }
 
     /** @param array<string, mixed> $item */

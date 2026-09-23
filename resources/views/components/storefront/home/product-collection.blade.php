@@ -31,15 +31,12 @@
     @endif
 >
     <div class="container">
-        <div class="section-head home-product-section-head">
-            @if(filled($text('eyebrow', $fallbackEyebrow)))
-                <span class="small-red">{{ $text('eyebrow', $fallbackEyebrow) }}</span>
-            @endif
-            <h2>{{ $text('title', $fallbackTitle) }}</h2>
-            @if(filled($text('description', $fallbackDescription)))
-                <p>{{ $text('description', $fallbackDescription) }}</p>
-            @endif
-        </div>
+        <x-storefront.home.section-heading
+            class="section-head home-product-section-head"
+            :eyebrow="$text('eyebrow', $fallbackEyebrow)"
+            :title="$text('title', $fallbackTitle)"
+            :description="$text('description', $fallbackDescription)"
+        />
 
         @if($slider)
             <div

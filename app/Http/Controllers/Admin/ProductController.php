@@ -674,6 +674,11 @@ class ProductController extends Controller
             'sort_order', 'published_at',
         ]);
 
+        if (array_key_exists('badge_label', $payload)) {
+            $badgeLabel = trim((string) ($payload['badge_label'] ?? ''));
+            $payload['badge_label'] = $badgeLabel !== '' ? $badgeLabel : null;
+        }
+
         foreach (['rating_average', 'reviews_count', 'recent_viewers_count', 'favorites_count', 'recent_orders_count'] as $metricField) {
             if (! Schema::hasColumn('products', $metricField)) {
                 unset($payload[$metricField]);

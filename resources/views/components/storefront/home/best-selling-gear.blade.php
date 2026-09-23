@@ -55,13 +55,14 @@
 
 <section id="gear" class="np-best-gear-section" aria-labelledby="best-selling-gear-heading">
     <div class="container">
-        <div class="np-best-gear-head">
-            <span class="np-best-gear-eyebrow">{{ $text('eyebrow', 'POPULAR GEAR') }}</span>
-            <h2 id="best-selling-gear-heading">{{ $text('title', 'BEST-SELLING TEAM GEAR') }}</h2>
-            @if(filled($subtitle))
-                <p>{{ $subtitle }}</p>
-            @endif
-        </div>
+        <x-storefront.home.section-heading
+            class="np-best-gear-head"
+            title-id="best-selling-gear-heading"
+            tone="inverse"
+            :eyebrow="$text('eyebrow', 'POPULAR GEAR')"
+            :title="$text('title', 'BEST-SELLING TEAM GEAR')"
+            :description="$subtitle"
+        />
 
         @if($cards->isNotEmpty())
             <div

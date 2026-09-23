@@ -14,6 +14,31 @@ use Illuminate\View\View;
 
 class MenuController extends Controller
 {
+    private const LOCATION_OPTIONS = [
+        'header-primary' => 'Primary header navigation',
+        'footer-shop' => 'Footer · Shop',
+        'footer-sports' => 'Footer · Sports',
+        'footer-support' => 'Footer · Support',
+        'footer-company' => 'Footer · Company',
+        'homepage-categories' => 'Homepage · Categories',
+        'homepage-sports' => 'Homepage · Sports',
+    ];
+
+    private const STOREFRONT_ROUTE_OPTIONS = [
+        'home' => 'Home',
+        'categories.index' => 'Shop Products / Categories',
+        'products.index' => 'All Products',
+        'how-to-order' => 'How It Works',
+        'quote.request' => 'Request a Quote',
+        'shipping' => 'Shipping & Delivery',
+        'orders.track' => 'Track Order',
+        'contact' => 'Contact Us',
+        'faq' => 'Help / FAQ',
+        'about' => 'About Us',
+        'returns' => 'Returns & Refunds',
+        'size-guide' => 'Size Guide',
+    ];
+
     public function __construct(
         private readonly CategoryTreeService $treeService,
         private readonly NavigationService $navigationService,
@@ -23,7 +48,12 @@ class MenuController extends Controller
     public function index(): View
     {
         return view('admin.menus.index', [
-            'menus' => Menu::query()->withCount('allItems')->orderBy('name')->get(),
+            'menus' => Menu::query()
+                ->withCount('allItems')
+                ->orderByRaw("CASE WHEN location = 'header-primary' THEN 0 ELSE 1 END")
+                ->orderBy('name')
+                ->get(),
+            'locationOptions' => self::LOCATION_OPTIONS,
         ]);
     }
 
@@ -71,9 +101,20 @@ class MenuController extends Controller
 
     private function formView(string $view, Menu $menu): View
     {
+        $routeOptions = collect(self::STOREFRONT_ROUTE_OPTIONS)
+            ->filter(fn (string $label, string $routeName): bool => app('router')->has($routeName));
+
+        foreach ($menu->allItems ?? collect() as $item) {
+            if ($item->link_type === 'route' && filled($item->route_name) && ! $routeOptions->has($item->route_name)) {
+                $routeOptions->put($item->route_name, $item->route_name);
+            }
+        }
+
         return view($view, [
             'menu' => $menu,
             'categories' => $this->treeService->flatOptions(),
+            'locationOptions' => self::LOCATION_OPTIONS,
+            'routeOptions' => $routeOptions,
         ]);
     }
 

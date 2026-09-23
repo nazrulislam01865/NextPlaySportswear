@@ -137,7 +137,7 @@
                         @if($products->count())
                             <div class="np-product-listing-grid np-product-listing-grid--three grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                 @foreach($products as $product)
-                                    <x-storefront.product-card :product="$product" :show-category="true" />
+                                    <x-storefront.product-card :product="$product" />
                                 @endforeach
                             </div>
                             <div class="mt-7 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-card">

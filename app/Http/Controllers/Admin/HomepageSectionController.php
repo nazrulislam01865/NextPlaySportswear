@@ -56,11 +56,20 @@ class HomepageSectionController extends Controller
         $homepageSection = $this->sectionForKey($key);
 
         DB::transaction(function () use ($request, $homepageSection): void {
+            $existingItems = is_array($homepageSection->items) ? $homepageSection->items : [];
             $payload = $request->payload();
             $payload['updated_by'] = $request->user()->id;
 
+            if ((string) $homepageSection->key === 'process') {
+                $payload['items'] = $this->media->preserveItemMedia(
+                    (string) $homepageSection->key,
+                    $existingItems,
+                    is_array($payload['items'] ?? null) ? $payload['items'] : [],
+                );
+            }
+
             $homepageSection->update($payload);
-            $this->media->sync($homepageSection, $request);
+            $this->media->sync($homepageSection, $request, $existingItems);
         });
 
         $this->sections->flushCache();
