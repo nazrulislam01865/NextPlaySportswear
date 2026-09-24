@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Cache;
 
 class NavigationService
 {
-    private const CACHE_VERSION = 'v8';
+    private const CACHE_VERSION = 'v9';
 
     /** @var array<string, Collection<int, NavigationItem>> */
     private array $runtimeItems = [];
@@ -185,6 +185,23 @@ class NavigationService
     {
         $items = collect($payload)
             ->filter(fn (mixed $item): bool => is_array($item) && trim((string) ($item['label'] ?? '')) !== '')
+            ->unique(function (array $item): string {
+                $type = (string) ($item['link_type'] ?? 'custom');
+                $destination = match ($type) {
+                    'category' => (string) ($item['category_slug'] ?? ''),
+                    'route' => trim((string) ($item['route_name'] ?? '')),
+                    'custom' => trim((string) ($item['url'] ?? '')),
+                    default => '',
+                };
+
+                return implode('|', [
+                    str($item['label'] ?? '')->lower()->squish()->toString(),
+                    $type,
+                    $destination,
+                    (string) ($item['target'] ?? '_self'),
+                    trim((string) ($item['css_class'] ?? '')),
+                ]);
+            })
             ->values();
 
         if (! $items->contains(fn (array $item): bool => $this->isShopNavigationItem($item))) {

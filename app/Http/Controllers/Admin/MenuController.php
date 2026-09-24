@@ -82,10 +82,21 @@ class MenuController extends Controller
 
     public function update(MenuFormRequest $request, Menu $menu): RedirectResponse
     {
-        DB::transaction(function () use ($request, $menu): void {
-            $menu->update(Arr::only($request->validated(), ['name', 'slug', 'location', 'is_active']));
-            $menu->allItems()->delete();
-            $this->syncItems($menu, $request->validated('items', []));
+        $validated = $request->validated();
+
+        DB::transaction(function () use ($validated, $menu): void {
+            // Serialize writes for this menu. If the browser sends the same save
+            // twice before the first request finishes, the second request waits
+            // instead of interleaving delete/insert operations and duplicating
+            // the header rows.
+            $lockedMenu = Menu::query()
+                ->whereKey($menu->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $lockedMenu->update(Arr::only($validated, ['name', 'slug', 'location', 'is_active']));
+            $lockedMenu->allItems()->delete();
+            $this->syncItems($lockedMenu, $validated['items'] ?? []);
         });
         $this->navigationService->flushCache();
 

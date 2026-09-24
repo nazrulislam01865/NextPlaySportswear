@@ -1,1 +1,1 @@
-<x-layouts.admin title="Create Navigation Menu"><form method="POST" action="{{ route('admin.menus.store') }}">@csrf @include('admin.menus._form')</form></x-layouts.admin>
+<x-layouts.admin title="Create Navigation Menu"><form method="POST" x-data="{ menuSubmitting: false }" x-on:submit="if (menuSubmitting) { $event.preventDefault(); return; } menuSubmitting = true" action="{{ route('admin.menus.store') }}">@csrf @include('admin.menus._form')</form></x-layouts.admin>

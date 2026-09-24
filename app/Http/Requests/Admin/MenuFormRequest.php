@@ -82,17 +82,150 @@ class MenuFormRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $location = filled($this->input('location'))
+            ? Str::slug((string) $this->input('location'))
+            : null;
+
         $items = collect($this->input('items', []))->map(function (array $item): array {
             $item['is_active'] = filter_var($item['is_active'] ?? false, FILTER_VALIDATE_BOOL);
-            $item['parent_key'] = filled($item['parent_key'] ?? null) ? $item['parent_key'] : null;
+            $item['parent_key'] = filled($item['parent_key'] ?? null) ? (string) $item['parent_key'] : null;
             return $item;
-        })->all();
+        })->values()->all();
+
+        if ($location === 'header-primary') {
+            $items = $this->normalizeHeaderItems($items);
+        }
 
         $this->merge([
             'slug' => Str::slug((string) ($this->input('slug') ?: $this->input('name'))),
-            'location' => filled($this->input('location')) ? Str::slug((string) $this->input('location')) : null,
+            'location' => $location,
             'is_active' => $this->boolean('is_active'),
             'items' => $items,
+        ]);
+    }
+
+    /**
+     * The primary header owns only the configured top-level links. Shop Products
+     * descendants are generated from the live category tree, so stale legacy rows
+     * must never participate in validation or be written back. Exact duplicate
+     * top-level rows are also collapsed so a repeated submit cannot preserve
+     * duplicate header links.
+     *
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeHeaderItems(array $items): array
+    {
+        $rows = collect($items)->values();
+        $byKey = $rows
+            ->filter(fn (array $item): bool => filled($item['key'] ?? null))
+            ->keyBy(fn (array $item): string => (string) $item['key']);
+
+        $shopKeys = $rows
+            ->filter(fn (array $item): bool => $this->isShopNavigationRow($item))
+            ->pluck('key')
+            ->filter(fn (mixed $key): bool => filled($key))
+            ->map(fn (mixed $key): string => (string) $key)
+            ->values()
+            ->all();
+
+        if ($shopKeys !== []) {
+            $rows = $rows->reject(function (array $item) use ($byKey, $shopKeys): bool {
+                $parentKey = filled($item['parent_key'] ?? null) ? (string) $item['parent_key'] : null;
+                $seen = [];
+
+                while ($parentKey) {
+                    if (in_array($parentKey, $shopKeys, true)) {
+                        return true;
+                    }
+
+                    if (isset($seen[$parentKey])) {
+                        break;
+                    }
+
+                    $seen[$parentKey] = true;
+                    $parent = $byKey->get($parentKey);
+                    $parentKey = is_array($parent) && filled($parent['parent_key'] ?? null)
+                        ? (string) $parent['parent_key']
+                        : null;
+                }
+
+                return false;
+            })->values();
+        }
+
+        $seenRootSignatures = [];
+        $duplicateKeys = [];
+        $normalized = [];
+
+        foreach ($rows as $item) {
+            if (filled($item['parent_key'] ?? null)) {
+                $normalized[] = $item;
+                continue;
+            }
+
+            $signature = $this->headerRootSignature($item);
+            if (isset($seenRootSignatures[$signature])) {
+                if (filled($item['key'] ?? null)) {
+                    $duplicateKeys[(string) $item['key']] = $seenRootSignatures[$signature];
+                }
+                continue;
+            }
+
+            $key = filled($item['key'] ?? null) ? (string) $item['key'] : '';
+            $seenRootSignatures[$signature] = $key;
+            $normalized[] = $item;
+        }
+
+        if ($duplicateKeys !== []) {
+            foreach ($normalized as &$item) {
+                $parentKey = filled($item['parent_key'] ?? null) ? (string) $item['parent_key'] : null;
+                $seen = [];
+
+                while ($parentKey && isset($duplicateKeys[$parentKey]) && ! isset($seen[$parentKey])) {
+                    $seen[$parentKey] = true;
+                    $parentKey = $duplicateKeys[$parentKey] ?: null;
+                }
+
+                $item['parent_key'] = $parentKey;
+            }
+            unset($item);
+        }
+
+        return array_values($normalized);
+    }
+
+    /** @param array<string, mixed> $item */
+    private function isShopNavigationRow(array $item): bool
+    {
+        $label = Str::of((string) ($item['label'] ?? ''))
+            ->lower()
+            ->replace(['-', '_'], ' ')
+            ->squish()
+            ->toString();
+
+        return (($item['link_type'] ?? null) === 'route' && ($item['route_name'] ?? null) === 'categories.index')
+            || in_array($label, ['shop products', 'shop categories', 'categories'], true);
+    }
+
+    /** @param array<string, mixed> $item */
+    private function headerRootSignature(array $item): string
+    {
+        $type = (string) ($item['link_type'] ?? 'category');
+        $destination = match ($type) {
+            'category' => (string) ($item['category_id'] ?? ''),
+            'route' => trim((string) ($item['route_name'] ?? '')),
+            'custom' => trim((string) ($item['url'] ?? '')),
+            default => '',
+        };
+
+        return implode('|', [
+            Str::of((string) ($item['label'] ?? ''))->lower()->squish()->toString(),
+            $type,
+            $destination,
+            (string) ($item['target'] ?? '_self'),
+            trim((string) ($item['css_class'] ?? '')),
+            filter_var($item['is_active'] ?? false, FILTER_VALIDATE_BOOL) ? '1' : '0',
         ]);
     }
 }

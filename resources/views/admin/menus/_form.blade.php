@@ -9,15 +9,15 @@
     // configuration remains concise and saving removes stale seeded child rows.
     $editableExisting = $existing;
     if ($isHeaderMenu && ! old('items')) {
-        $shopRoot = $existing->first(function ($item) {
+        $shopRootIds = $existing->filter(function ($item) {
             $label = str($item->label ?? '')->lower()->replace(['-', '_'], ' ')->squish()->toString();
             return ($item->link_type === 'route' && $item->route_name === 'categories.index')
                 || in_array($label, ['shop products', 'shop categories', 'categories'], true);
-        });
+        })->pluck('id')->values();
 
-        if ($shopRoot) {
+        if ($shopRootIds->isNotEmpty()) {
             $descendantIds = collect();
-            $frontier = collect([$shopRoot->id]);
+            $frontier = $shopRootIds;
             while ($frontier->isNotEmpty()) {
                 $children = $existing->whereIn('parent_id', $frontier)->pluck('id');
                 if ($children->isEmpty()) {
