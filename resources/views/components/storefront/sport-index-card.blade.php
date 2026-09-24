@@ -4,7 +4,7 @@
     $description = trim((string) ($sport['description'] ?? ''));
 @endphp
 
-<article class="np-sport-index-card group relative overflow-hidden rounded-[18px] bg-brand-dark text-white shadow-card">
+<article class="np-sport-index-card group relative aspect-square overflow-hidden bg-brand-dark text-white shadow-card" style="aspect-ratio: 1 / 1;">
     <img
         loading="lazy"
         src="{{ $sport['image'] }}"
@@ -15,7 +15,7 @@
     >
     <div class="absolute inset-0 bg-gradient-to-b from-brand-dark/10 via-brand-dark/35 to-brand-dark/95"></div>
 
-    <div class="relative z-10 flex h-full min-h-[260px] flex-col justify-end p-5 sm:p-6">
+    <div class="relative z-10 flex h-full flex-col justify-end p-5 sm:p-6">
         <h3 class="np-sport-card-title font-display text-[clamp(24px,2.8vw,32px)] font-bold uppercase leading-[.95] text-white">
             {{ $sport['title'] }}
         </h3>

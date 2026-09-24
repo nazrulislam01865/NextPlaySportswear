@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\CategoryFormRequest;
 use App\Models\CatalogAttribute;
 use App\Models\CatalogPageSetting;
 use App\Models\Category;
+use App\Models\Product;
 use App\Models\UrlRedirect;
 use App\Services\Catalog\CategoryDeletionService;
 use App\Services\Catalog\CategoryMediaService;
@@ -343,6 +344,7 @@ class CategoryController extends Controller
             'category' => $category,
             'parents' => $this->treeService->flatOptions($category->exists ? $category->id : null),
             'attributes' => CatalogAttribute::query()->with('values')->ordered()->get(),
+            'productTypeOptions' => $this->productTypeOptions(),
         ]);
     }
 
@@ -368,6 +370,20 @@ class CategoryController extends Controller
             'show_product_count', 'include_descendant_products', 'meta_title', 'meta_description',
             'meta_keywords', 'canonical_url', 'og_title', 'og_description', 'robots_index', 'robots_follow',
         ]);
+
+        if (array_key_exists('filter_product_types', $data)) {
+            $selectedProductTypes = collect($data['filter_product_types'] ?? [])
+                ->map(fn ($value): string => trim((string) $value))
+                ->filter()
+                ->unique()
+                ->values();
+            $availableProductTypes = collect($this->productTypeOptions());
+
+            $payload['filter_product_types'] = $selectedProductTypes->sort()->values()->all()
+                === $availableProductTypes->sort()->values()->all()
+                    ? null
+                    : $selectedProductTypes->all();
+        }
 
         $payload['slug'] = $this->uniqueSlug(
             trim((string) ($data['slug'] ?? '')) ?: (string) $data['name'],
@@ -395,6 +411,22 @@ class CategoryController extends Controller
         $payload['updated_by'] = auth()->id();
 
         return $payload;
+    }
+
+    /** @return array<int, string> */
+    private function productTypeOptions(): array
+    {
+        return Product::query()
+            ->whereNotNull('product_type')
+            ->where('product_type', '!=', '')
+            ->distinct()
+            ->orderBy('product_type')
+            ->pluck('product_type')
+            ->map(fn ($value): string => trim((string) $value))
+            ->filter()
+            ->unique(fn (string $value): string => Str::lower($value))
+            ->values()
+            ->all();
     }
 
     private function uniqueSlug(string $value, ?int $ignoreId = null): string

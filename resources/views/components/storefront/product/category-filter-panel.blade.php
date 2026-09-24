@@ -14,6 +14,7 @@
         ->filter()
         ->values()
         ->all();
+    $filterScrollThreshold = 12;
 @endphp
 
 <form method="GET" action="{{ route('products.index') }}" class="np-catalog-filter-form" data-product-filter-form aria-label="Filter all products">
@@ -47,7 +48,7 @@
 
             @if($categoryTree !== [])
                 <div class="np-catalog-filter-section-label">Shop by category</div>
-                <div class="np-catalog-category-tree">
+                <div class="np-catalog-category-tree @if(count($categoryTree) > $filterScrollThreshold) np-catalog-option-list--scroll @endif">
                     @foreach($categoryTree as $parent)
                         @php
                             $children = $parent['children'] ?? [];
@@ -75,7 +76,7 @@
                                     </span>
                                 </summary>
 
-                                <div class="np-catalog-category-children">
+                                <div class="np-catalog-category-children @if(count($categoryTree) <= $filterScrollThreshold && count($children) > $filterScrollThreshold) np-catalog-option-list--scroll np-catalog-option-list--children @endif">
                                     @foreach($children as $child)
                                         @php($childFieldId = $idPrefix.'-category-'.$child['id'])
                                         <label class="np-catalog-filter-option" for="{{ $childFieldId }}">

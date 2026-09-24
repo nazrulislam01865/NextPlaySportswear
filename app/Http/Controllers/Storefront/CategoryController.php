@@ -25,7 +25,6 @@ class CategoryController extends Controller
         return view('storefront.categories.index', [
             'sports' => $sports,
             'categoryBrowser' => $categoryBrowser,
-            'faqs' => [],
             'seo' => [
                 'title' => 'Custom Sportswear Categories | Jerseys, Uniforms, Apparel & Gear',
                 'description' => 'Browse custom products through a structured category hierarchy for sports, apparel, accessories, events, and promotional needs.',
@@ -48,10 +47,31 @@ class CategoryController extends Controller
         }
 
         $filters = $request->filters();
+        if ($category->filter_product_types !== null) {
+            $enabledProductTypes = collect($category->filter_product_types)
+                ->map(fn ($value): string => trim((string) $value))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+            $filters['product_types'] = array_values(array_intersect(
+                $filters['product_types'] ?? [],
+                $enabledProductTypes,
+            ));
+        }
         if (! $request->filled('sort')) {
             $filters['sort'] = $category->default_product_sort ?: 'featured';
         }
         $products = $this->catalog->productsFor($category, $filters);
+        $categoryData = $this->catalog->categoryData($category);
+
+        if ($request->header('X-Storefront-Partial') === 'product-results') {
+            return view('storefront.categories._product-results', [
+                'products' => $products,
+                'category' => $categoryData,
+            ]);
+        }
+
         $breadcrumbs = $this->catalog->breadcrumbs($category);
         $defaultSort = $category->default_product_sort ?: 'featured';
         $activeFilterCount = $this->activeFilterCount($filters);
@@ -70,8 +90,6 @@ class CategoryController extends Controller
             || $filters['availability'] !== []
             || $filters['min_rating'] !== null
             || $filters['sort'] !== $defaultSort;
-        $categoryData = $this->catalog->categoryData($category);
-
         $schemas = [[
             '@context' => 'https://schema.org', '@type' => 'BreadcrumbList',
             'itemListElement' => $breadcrumbs->values()->map(fn ($item, $index) => [
@@ -100,7 +118,7 @@ class CategoryController extends Controller
             'filters' => $filters,
             'filterOptions' => $this->catalog->filterOptions($category),
             'activeFilterCount' => $activeFilterCount,
-            'relatedCategories' => $this->catalog->relatedCategories($category),
+            'sports' => $this->catalog->sports(),
             'contentBlocks' => $this->content->resolve($category),
             'hasFilters' => $hasFilters,
             'seo' => [

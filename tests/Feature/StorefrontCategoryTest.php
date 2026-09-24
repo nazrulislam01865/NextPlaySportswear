@@ -37,6 +37,8 @@ class StorefrontCategoryTest extends TestCase
             ->assertDontSee('Choose a main category to browse its subcategories and product categories.')
             ->assertDontSee('All product groups')
             ->assertDontSee('Select a main category above to see its subcategories and product categories, or view every group below.')
+            ->assertDontSee('Category Shopping Questions')
+            ->assertSee('Ready to Find Your Gear?')
             ->assertSee(route('categories.show', 'team-uniforms'), false);
     }
 

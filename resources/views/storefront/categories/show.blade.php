@@ -58,8 +58,7 @@
             </nav>
 
             <div class="mt-8 max-w-3xl">
-                <p class="text-xs font-black uppercase tracking-[.22em] text-red-200">{{ $category['eyebrow'] }}</p>
-                <h1 class="mt-3 font-display text-4xl font-bold uppercase leading-tight sm:text-6xl lg:text-7xl">{{ $category['title'] }}</h1>
+                <h1 class="font-display text-4xl font-bold uppercase leading-tight sm:text-6xl lg:text-7xl">{{ $category['title'] }}</h1>
                 <p class="mt-5 text-lg leading-8 text-blue-50">{{ $category['description'] }}</p>
                 <div class="mt-7 flex flex-wrap gap-3">
                     @if($showsProducts)
@@ -106,8 +105,7 @@
             <div class="site-container np-products-catalog-container" x-data="{ filtersOpen: false }">
                 <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div>
-                        <p class="text-sm font-bold text-slate-500">{{ number_format($products->total()) }} matching product{{ $products->total() === 1 ? '' : 's' }}</p>
-                        <h2 class="mt-1 font-display text-4xl font-bold uppercase text-brand-ink sm:text-5xl">Shop {{ $category['short_title'] }}</h2>
+                        <h2 class="font-display text-4xl font-bold uppercase text-brand-ink sm:text-5xl">Shop {{ $category['short_title'] }}</h2>
                     </div>
 
                     <button type="button" class="btn btn-white w-full sm:w-auto lg:hidden" x-on:click="filtersOpen=true">
@@ -118,14 +116,12 @@
                     </button>
                 </div>
 
-                <div class="np-catalog-active-bar mb-5">
+                <div class="np-catalog-active-bar np-catalog-active-bar--plain mb-5">
                     <div class="np-catalog-active-summary">
                         <strong>{{ number_format($products->total()) }} results</strong>
                         @if($activeFilterCount > 0)
                             <span class="np-catalog-active-pill">{{ $activeFilterCount }} filter{{ $activeFilterCount === 1 ? '' : 's' }} active</span>
                             <a href="{{ $category['url'] }}" class="font-extrabold text-brand-red hover:underline">Clear all</a>
-                        @else
-                            <span>Refine this category by size, color, product type, material, price, and more.</span>
                         @endif
                     </div>
 
@@ -134,7 +130,8 @@
                         <select
                             id="category-sort"
                             name="sort"
-                            onchange="const url=new URL(window.location.href);url.searchParams.set('sort',this.value);url.searchParams.delete('page');window.location.assign(url.toString())"
+                            data-product-sort
+                            data-default-sort="{{ $categoryModel->default_product_sort ?: 'featured' }}"
                         >
                             <option value="featured" @selected($filters['sort'] === 'featured')>Featured</option>
                             <option value="best-selling" @selected($filters['sort'] === 'best-selling')>Best selling</option>
@@ -150,7 +147,7 @@
                 </div>
 
                 <div class="np-product-layout has-filters grid gap-4">
-                    <aside class="np-category-facet-shell hidden self-start lg:block">
+                    <aside class="np-filter-shell np-filter-shell--clean hidden self-start lg:flex">
                         <x-storefront.category.filter-panel
                             :category="$category"
                             :filters="$filters"
@@ -159,23 +156,11 @@
                         />
                     </aside>
 
-                    <div>
-                        @if($products->count())
-                            <div class="np-product-listing-grid np-product-listing-grid--three grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                @foreach($products as $product)
-                                    <x-storefront.product-card :product="$product" />
-                                @endforeach
-                            </div>
-                            <div class="mt-7 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-card">
-                                {{ $products->links('pagination.nextplay', ['itemName' => 'product']) }}
-                            </div>
-                        @else
-                            <div class="rounded-3xl border border-dashed border-slate-300 bg-white p-14 text-center">
-                                <h3 class="font-display text-3xl font-bold uppercase">No matching products</h3>
-                                <p class="mt-2 text-slate-500">Change the selected filters or clear all filters.</p>
-                                <a class="btn btn-red mt-5" href="{{ $category['url'] }}">Clear Filters</a>
-                            </div>
-                        @endif
+                    <div data-product-results aria-live="polite">
+                        @include('storefront.categories._product-results', [
+                            'products' => $products,
+                            'category' => $category,
+                        ])
                     </div>
                 </div>
 
@@ -199,14 +184,6 @@
         <x-storefront.category.content-block :block="$block" />
     @endforeach
 
-    @if($categoryModel->description_html)
-        <section class="site-container py-10">
-            <div class="prose prose-slate max-w-none rounded-3xl border border-slate-200 bg-white p-7 shadow-card">
-                {!! $categoryModel->description_html !!}
-            </div>
-        </section>
-    @endif
-
     @if($categoryModel->faqs->where('is_active', true)->isNotEmpty())
         <section class="site-container py-12">
             <h2 class="font-display text-4xl font-bold uppercase text-brand-ink">Frequently Asked Questions</h2>
@@ -221,19 +198,18 @@
         </section>
     @endif
 
-    @if($relatedCategories !== [])
-        <section class="bg-slate-50 py-12">
-            <div class="site-container">
-                <h2 class="font-display text-4xl font-bold uppercase text-brand-ink">Related categories</h2>
-                <div class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                    @foreach($relatedCategories as $related)
-                        <a href="{{ $related['url'] }}" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
-                            <strong>{{ $related['title'] }}</strong>
-                            <p class="mt-2 text-sm text-slate-500">{{ $related['description'] }}</p>
-                        </a>
-                    @endforeach
-                </div>
+    <section class="bg-[#f3f5f7] py-[66px]" id="sports" aria-labelledby="sports-title">
+        <div class="site-container">
+            <div class="mb-8 text-center max-sm:text-left">
+                <h2 id="sports-title" class="mt-2 font-display text-[clamp(28px,4vw,42px)] font-bold uppercase leading-[1.05] text-brand-ink">Shop by Sport</h2>
+                <p class="mx-auto mt-2 max-w-[700px] text-slate-500 max-sm:mx-0">Looking for sport-specific uniforms or gear? Start with your sport and find matching products faster.</p>
             </div>
-        </section>
-    @endif
+
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                @foreach ($sports as $sport)
+                    <x-storefront.sport-index-card :sport="$sport" />
+                @endforeach
+            </div>
+        </div>
+    </section>
 </x-layouts.storefront>

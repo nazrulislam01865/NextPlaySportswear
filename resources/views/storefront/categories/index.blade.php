@@ -32,51 +32,33 @@
                 <h2 id="categories-title" class="font-display text-[clamp(28px,4vw,42px)] font-bold uppercase leading-[1.05] text-brand-ink">All Product Categories</h2>
             </div>
 
-            <div class="space-y-10" id="categoryGroups">
-                @forelse ($categoryBrowser as $group)
-                    <section
-                        data-parent-category="{{ $group['parent']['slug'] }}"
-                        x-show="activeParent === 'all' || activeParent === @js($group['parent']['slug'])"
-                        x-transition.opacity.duration.150ms
-                        aria-labelledby="category-group-{{ $group['parent']['id'] }}"
-                    >
-                        <div class="mb-5 flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-4">
-                            <div>
-                                <span class="text-[11px] font-black uppercase tracking-[.08em] text-brand-red">Main category</span>
-                                <h3 id="category-group-{{ $group['parent']['id'] }}" class="mt-1 font-display text-[clamp(24px,3vw,32px)] font-bold uppercase leading-none text-brand-ink">
-                                    {{ $group['parent']['title'] }}
-                                </h3>
-                            </div>
-                            <a href="{{ $group['parent']['url'] }}" class="inline-flex items-center gap-1 text-xs font-black uppercase tracking-wide text-brand-red transition hover:text-brand-navy">
-                                View {{ $group['parent']['short_title'] }}
-                                <span aria-hidden="true">→</span>
-                            </a>
-                        </div>
+            @php
+                $hasProductCategories = collect($categoryBrowser)->contains(
+                    fn ($group) => ! empty($group['children'])
+                );
+            @endphp
 
-                        @if ($group['children'] !== [])
-                            <div class="np-shared-category-card-grid np-all-categories-grid">
-                                @foreach ($group['children'] as $category)
-                                    <div
-                                        class="min-w-0 h-full"
-                                        data-category-depth="{{ $category['depth'] }}"
-                                        data-category-parent="{{ $category['parent_slug'] }}"
-                                    >
-                                        <x-storefront.category-card :category="$category" />
-                                    </div>
-                                @endforeach
+            @if ($hasProductCategories)
+                <div class="np-shared-category-card-grid np-all-categories-grid" id="categoryGroups">
+                    @foreach ($categoryBrowser as $group)
+                        @foreach ($group['children'] as $category)
+                            <div
+                                class="min-w-0"
+                                data-parent-category="{{ $group['parent']['slug'] }}"
+                                data-category-depth="{{ $category['depth'] }}"
+                                x-show="activeParent === 'all' || activeParent === @js($group['parent']['slug'])"
+                                x-transition.opacity.duration.150ms
+                            >
+                                <x-storefront.category-card :category="$category" />
                             </div>
-                        @else
-                            <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-sm text-slate-600">
-                                No subcategories or product categories are currently available under this main category.
-                            </div>
-                        @endif
-                    </section>
-                @empty
-                    <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center text-slate-600">
-                        No active categories are currently available.
-                    </div>
-                @endforelse
-            </div>
+                        @endforeach
+                    @endforeach
+                </div>
+            @else
+                <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center text-slate-600">
+                    No product categories with active products are currently available.
+                </div>
+            @endif
         </div>
     </section>
     </div>
@@ -84,7 +66,6 @@
     <section class="bg-[#f3f5f7] py-[66px]" id="sports" aria-labelledby="sports-title">
         <div class="site-container">
             <div class="mb-8 text-center max-sm:text-left">
-                <span class="text-xs font-black uppercase tracking-[.08em] text-brand-red">Sport-specific</span>
                 <h2 id="sports-title" class="mt-2 font-display text-[clamp(28px,4vw,42px)] font-bold uppercase leading-[1.05] text-brand-ink">Shop by Sport</h2>
                 <p class="mx-auto mt-2 max-w-[700px] text-slate-500 max-sm:mx-0">Looking for sport-specific uniforms or gear? Start with your sport and find matching products faster.</p>
             </div>
@@ -117,25 +98,15 @@
         </div>
     </section>
 
-    <section class="bg-white py-[66px]" aria-labelledby="faq-title">
-        <div class="site-container">
-            <div class="mb-8 text-center max-sm:text-left">
-                <span class="text-xs font-black uppercase tracking-[.08em] text-brand-red">FAQ</span>
-                <h2 id="faq-title" class="mt-2 font-display text-[clamp(28px,4vw,42px)] font-bold uppercase leading-[1.05] text-brand-ink">Category Shopping Questions</h2>
-            </div>
-            <x-storefront.faq-list :faqs="$faqs" :initial-open="null" />
-        </div>
-    </section>
-
-    <section class="bg-brand-navy py-[66px] text-white" id="contact">
+    <section class="bg-white py-[66px] text-brand-ink" id="contact">
         <div class="site-container text-center">
-            <h2 class="font-display text-[clamp(32px,4vw,42px)] font-bold uppercase leading-[1.02]">Ready to Find Your Gear?</h2>
-            <p class="mx-auto mt-2 max-w-[660px] text-white/85">Choose a category to start shopping, or send us your order details if you need help with team, school, event, or bulk production.</p>
+            <h2 class="font-display text-[clamp(28px,4vw,42px)] font-bold uppercase leading-[1.05] text-brand-ink">Ready to Find Your Gear?</h2>
+            <p class="mx-auto mt-2 max-w-[660px] text-slate-500">Choose a category to start shopping, or send us your order details if you need help with team, school, event, or bulk production.</p>
             <div class="mt-5 flex flex-wrap justify-center gap-3">
                 <a class="btn btn-red max-sm:w-full" href="#categories">Browse All Categories</a>
                 <a class="btn btn-white max-sm:w-full" href="{{ route('quote.request') }}">Request Bulk Quote</a>
             </div>
-            <div class="mt-3.5 text-[13px] text-white/90">Email: <strong>{{ config('storefront.email') }}</strong> &nbsp; | &nbsp; WhatsApp: <strong>{{ config('storefront.whatsapp') }}</strong></div>
+            <div class="mt-3.5 text-[13px] text-slate-500">Email: <strong class="text-brand-ink">{{ config('storefront.email') }}</strong> &nbsp; | &nbsp; WhatsApp: <strong class="text-brand-ink">{{ config('storefront.whatsapp') }}</strong></div>
         </div>
     </section>
 </x-layouts.storefront>

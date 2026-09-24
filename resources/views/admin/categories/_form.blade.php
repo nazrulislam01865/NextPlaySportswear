@@ -7,6 +7,10 @@
     $initialIconPreview = $category->iconUrl();
     $initialBannerPreview = $category->uploadedBannerUrl();
     $initialBannerColor = (string) old('banner_color', $category->banner_color ?? '');
+    $productTypeOptions = $productTypeOptions ?? [];
+    $selectedProductTypes = old('filter_product_types_present') !== null
+        ? (array) old('filter_product_types', [])
+        : (array) ($category->filter_product_types ?? $productTypeOptions);
 @endphp
 
 <form
@@ -174,7 +178,7 @@
             <x-admin.section-card
                 id="media"
                 title="Category Image"
-                description="This one image controls the homepage card/category card image. No extra media fields are shown here."
+                description="This one image controls the homepage card, category card, and Shop by Sport card image. No extra media fields are shown here."
             >
                 <div class="grid gap-5 md:grid-cols-[210px_minmax(0,1fr)] md:items-start">
                     <div class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
@@ -565,6 +569,35 @@
                     <details class="rounded-2xl border border-slate-200 bg-white p-4">
                         <summary class="cursor-pointer font-black text-slate-900">Product filters</summary>
                         <div class="mt-5 space-y-3">
+                            <input type="hidden" name="filter_product_types_present" value="1">
+
+                            <div class="rounded-2xl border border-slate-200 p-4">
+                                <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                                    <div>
+                                        <h4 class="font-black text-slate-900">Product types from product master data</h4>
+                                        <p class="mt-1 text-sm leading-6 text-slate-500">Choose which Product type options customers can use on this category page. When every type is selected, future product types remain available automatically.</p>
+                                    </div>
+                                </div>
+
+                                @if($productTypeOptions !== [])
+                                    <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                        @foreach($productTypeOptions as $productType)
+                                            <label class="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700">
+                                                <input
+                                                    type="checkbox"
+                                                    name="filter_product_types[]"
+                                                    value="{{ $productType }}"
+                                                    @checked(in_array($productType, $selectedProductTypes, true))
+                                                >
+                                                <span>{{ \Illuminate\Support\Str::headline($productType) }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <p class="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">No product types are currently defined in product master data.</p>
+                                @endif
+                            </div>
+
                             @forelse($attributes as $attribute)
                                 @php $pivot = $currentFilters->get($attribute->id)?->pivot; @endphp
                                 <div class="grid items-end gap-3 rounded-2xl border border-slate-200 p-4 md:grid-cols-[1fr_1fr_110px_110px]">

@@ -15,7 +15,8 @@
                     @break
 
                 @case('buyer_paths')
-                    <x-storefront.home.buyer-paths :buyer-paths="$section['items'] ?? $buyerPaths ?? []" :section="$section" />
+                    {{-- Temporarily hidden; keep this component available for re-enabling later. --}}
+                    {{-- <x-storefront.home.buyer-paths :buyer-paths="$section['items'] ?? $buyerPaths ?? []" :section="$section" /> --}}
                     @break
 
 
@@ -46,7 +47,8 @@
 
 
                 @case('why_choose')
-                    <x-storefront.home.why-choose :section="$section" />
+                    {{-- Temporarily hidden; keep this component available for re-enabling later. --}}
+                    {{-- <x-storefront.home.why-choose :section="$section" /> --}}
                     @break
 
                 @case('testimonials')

@@ -40,6 +40,8 @@ class CategoryFormRequest extends FormRequest
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:1000000'],
             'published_at' => ['nullable', 'date'],
             'default_product_sort' => ['required', Rule::in(['featured', 'newest', 'price-low', 'price-high', 'name-asc'])],
+            'filter_product_types' => ['nullable', 'array', 'max:100'],
+            'filter_product_types.*' => ['string', 'max:100', 'distinct', Rule::exists('products', 'product_type')->where(fn ($query) => $query->whereNull('deleted_at'))],
 
             'image_url' => ['nullable', 'url:http,https', 'max:2048'],
             'image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:5120'],
@@ -164,6 +166,10 @@ class CategoryFormRequest extends FormRequest
                     ? $this->boolean('show_product_count')
                     : true,
             ]);
+        }
+
+        if ($this->has('filter_product_types_present') && ! $this->has('filter_product_types')) {
+            $payload['filter_product_types'] = [];
         }
 
         if ($this->has('filter_settings')) {

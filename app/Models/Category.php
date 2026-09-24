@@ -21,7 +21,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'icon', 'cta_label', 'meta_title', 'meta_description', 'meta_keywords', 'canonical_url', 'og_title',
     'og_description', 'og_image_path', 'og_image_url', 'robots_index', 'robots_follow', 'schema_json',
     'match_rules', 'highlights', 'is_active', 'is_visible_in_catalog', 'is_visible_in_menu', 'is_featured',
-    'show_product_count', 'include_descendant_products', 'default_product_sort', 'sort_order', 'published_at',
+    'show_product_count', 'include_descendant_products', 'default_product_sort', 'filter_product_types', 'sort_order', 'published_at',
     'created_by', 'updated_by',
 ])]
 class Category extends Model
@@ -54,6 +54,7 @@ class Category extends Model
             'sort_order' => 'integer',
             'depth' => 'integer',
             'published_at' => 'datetime',
+            'filter_product_types' => 'array',
         ];
     }
 

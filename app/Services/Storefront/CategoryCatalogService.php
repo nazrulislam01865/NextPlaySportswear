@@ -122,12 +122,12 @@ class CategoryCatalogService
     }
 
     /**
-     * Build the category landing-page browser from the real catalog hierarchy.
+     * Build the Shop by Category browser from leaf/product categories only.
      *
-     * Every storefront-visible root category becomes a parent navigation tab.
-     * Its payload contains every reachable descendant in hierarchy order so the
-     * page can show both subcategories and deeper product categories without
-     * flattening the parent categories into the card grid.
+     * Parent and intermediate categories are navigation/grouping nodes. The
+     * storefront card grid only needs the final category in each hierarchy,
+     * because products are assigned to leaf categories. Counts are loaded in
+     * one aggregate query for the full leaf set, avoiding per-card queries.
      *
      * @return array<int, array{parent:array<string,mixed>,children:array<int,array<string,mixed>>}>
      */
@@ -135,25 +135,41 @@ class CategoryCatalogService
     {
         $categories = Category::query()
             ->storefrontReachable()
-            ->with('parent:id,name,slug,parent_id')
+            ->withCount('children')
             ->get();
 
         if ($categories->isEmpty()) {
             return [];
         }
 
-        $this->attachProductCounts($categories);
+        $categoriesById = $categories->keyBy(fn (Category $category): int => (int) $category->id);
 
-        // The category browser should never render an empty/zero-product card.
-        // productCount() already aggregates reachable descendant products, so a
-        // parent with products anywhere below it remains visible while a branch
-        // with no assigned products at any level is removed completely.
-        $categories = $categories
-            ->filter(fn (Category $category): bool => (int) ($category->products_count ?? 0) > 0)
+        // Resolve parents from the already-loaded collection so categoryData()
+        // never lazily queries one parent per card.
+        foreach ($categories as $category) {
+            $category->setRelation(
+                'parent',
+                $category->parent_id ? $categoriesById->get((int) $category->parent_id) : null
+            );
+        }
+
+        $leafCategories = $categories
+            ->filter(fn (Category $category): bool => (int) ($category->children_count ?? 0) === 0)
             ->values();
 
-        if ($categories->isEmpty()) {
+        if ($leafCategories->isEmpty()) {
             return [];
+        }
+
+        $productCounts = $this->directProductCountsForCategoryIds(
+            $leafCategories->pluck('id')->map(fn ($id): int => (int) $id)->all()
+        );
+
+        foreach ($leafCategories as $category) {
+            $category->setAttribute(
+                'products_count',
+                (int) ($productCounts->get((int) $category->id, 0))
+            );
         }
 
         $childrenByParent = $categories
@@ -170,27 +186,61 @@ class CategoryCatalogService
             ->values();
 
         $roots = $sortCategories($childrenByParent->get(0, collect()));
+        $groups = collect();
 
-        return $roots->map(function (Category $root) use ($childrenByParent, $sortCategories): array {
-            $descendants = collect();
+        foreach ($roots as $root) {
+            $cards = collect();
 
-            $walk = function (int $parentId) use (&$walk, $childrenByParent, $sortCategories, $descendants): void {
-                foreach ($sortCategories($childrenByParent->get($parentId, collect())) as $child) {
-                    $descendants->push($child);
-                    $walk((int) $child->id);
+            $walk = function (Category $category, array $path) use (&$walk, $childrenByParent, $sortCategories, $cards): void {
+                $path[] = $category;
+                $children = $sortCategories($childrenByParent->get((int) $category->id, collect()));
+
+                // children_count checks the real category tree, not only visible
+                // children. A hidden child must not turn its parent into a fake
+                // storefront leaf/product category.
+                if ((int) ($category->children_count ?? 0) === 0) {
+                    if ((int) ($category->products_count ?? 0) <= 0) {
+                        return;
+                    }
+
+                    $data = $this->categoryData($category);
+                    $hierarchy = collect($path)
+                        ->map(fn (Category $node): string => (string) $node->name)
+                        ->filter()
+                        ->values();
+
+                    $data['hierarchy'] = $hierarchy->all();
+                    $data['hierarchy_label'] = $hierarchy->implode(' > ');
+                    $data['link_label'] = 'View Products';
+                    $cards->push($data);
+
+                    return;
+                }
+
+                foreach ($children as $child) {
+                    $walk($child, $path);
                 }
             };
 
-            $walk((int) $root->id);
+            $walk($root, []);
 
-            return [
-                'parent' => $this->categoryData($root),
-                'children' => $descendants
-                    ->map(fn (Category $category): array => $this->categoryData($category))
-                    ->values()
-                    ->all(),
-            ];
-        })->values()->all();
+            if ($cards->isEmpty()) {
+                continue;
+            }
+
+            $groups->push([
+                'parent' => [
+                    'id' => (int) $root->id,
+                    'slug' => (string) $root->slug,
+                    'title' => (string) $root->name,
+                    'short_title' => (string) ($root->short_title ?: $root->name),
+                    'url' => route('categories.show', $root->slug),
+                ],
+                'children' => $cards->values()->all(),
+            ]);
+        }
+
+        return $groups->values()->all();
     }
 
     public function sports(): array
@@ -457,6 +507,21 @@ class CategoryCatalogService
 
             $baseQuery = $this->applyCategoryProductFilter(Product::query()->published(), $categoryIds);
             $shared = $this->productCatalogService->commonFilterOptions(clone $baseQuery);
+
+            if ($category->filter_product_types !== null) {
+                $enabledProductTypes = collect($category->filter_product_types)
+                    ->map(fn ($value): string => trim((string) $value))
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                $shared['product_types'] = collect($shared['product_types'] ?? [])
+                    ->filter(fn (array $option): bool => in_array((string) ($option['value'] ?? ''), $enabledProductTypes, true))
+                    ->values()
+                    ->all();
+            }
+
             $sharedAttributes = collect($shared['attributes'] ?? [])
                 ->concat($attributes)
                 ->unique('slug')
@@ -614,6 +679,66 @@ class CategoryCatalogService
             ->all());
 
         return $this->runtimeCategoryParentRows = collect($rows);
+    }
+
+
+    /**
+     * Count published products directly assigned to each supplied category in
+     * one query. The pivot is the current source of truth; legacy category_id
+     * and subcategory_id fields remain as a safe compatibility fallback.
+     *
+     * @param  array<int>  $categoryIds
+     * @return Collection<int, int>
+     */
+    private function directProductCountsForCategoryIds(array $categoryIds): Collection
+    {
+        $categoryIds = $this->normalizeCategoryIds($categoryIds);
+
+        if ($categoryIds === []) {
+            return collect();
+        }
+
+        $pivotAssignments = DB::table('category_product as cp')
+            ->join('products as p', 'p.id', '=', 'cp.product_id')
+            ->whereIn('cp.category_id', $categoryIds)
+            ->whereNull('p.deleted_at')
+            ->where('p.status', 'active')
+            ->where('p.is_active', true)
+            ->where(function ($query): void {
+                $query->whereNull('p.published_at')->orWhere('p.published_at', '<=', now());
+            })
+            ->selectRaw('cp.category_id AS category_id, cp.product_id AS product_id');
+
+        $legacyCategoryAssignments = DB::table('products as p')
+            ->whereIn('p.category_id', $categoryIds)
+            ->whereNull('p.deleted_at')
+            ->where('p.status', 'active')
+            ->where('p.is_active', true)
+            ->where(function ($query): void {
+                $query->whereNull('p.published_at')->orWhere('p.published_at', '<=', now());
+            })
+            ->selectRaw('p.category_id AS category_id, p.id AS product_id');
+
+        $legacySubcategoryAssignments = DB::table('products as p')
+            ->whereIn('p.subcategory_id', $categoryIds)
+            ->whereNull('p.deleted_at')
+            ->where('p.status', 'active')
+            ->where('p.is_active', true)
+            ->where(function ($query): void {
+                $query->whereNull('p.published_at')->orWhere('p.published_at', '<=', now());
+            })
+            ->selectRaw('p.subcategory_id AS category_id, p.id AS product_id');
+
+        $assignments = $pivotAssignments
+            ->unionAll($legacyCategoryAssignments)
+            ->unionAll($legacySubcategoryAssignments);
+
+        return DB::query()
+            ->fromSub($assignments, 'leaf_product_assignments')
+            ->selectRaw('category_id, COUNT(DISTINCT product_id) AS aggregate')
+            ->groupBy('category_id')
+            ->pluck('aggregate', 'category_id')
+            ->mapWithKeys(fn ($count, $categoryId): array => [(int) $categoryId => (int) $count]);
     }
 
     private function productCount(Category $category): int

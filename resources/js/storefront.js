@@ -2633,8 +2633,9 @@ const setupProductCatalogPartialUpdates = () => {
 
     if (!sortSelect || !results || sortSelect.dataset.partialSortReady === 'true') return;
     sortSelect.dataset.partialSortReady = 'true';
+    const defaultSort = sortSelect.dataset.defaultSort || 'featured';
 
-    const syncCatalogSortInputs = (sort = sortSelect.value || 'featured') => {
+    const syncCatalogSortInputs = (sort = sortSelect.value || defaultSort) => {
         filterForms.forEach((form) => {
             const sortInput = form.querySelector('input[name="sort"]');
             if (sortInput) sortInput.value = sort;
@@ -2654,7 +2655,7 @@ const setupProductCatalogPartialUpdates = () => {
                 }
 
                 if (field.type === 'hidden' && field.name === 'sort') {
-                    field.value = url.searchParams.get('sort') || 'featured';
+                    field.value = url.searchParams.get('sort') || defaultSort;
                     return;
                 }
 
@@ -2683,7 +2684,7 @@ const setupProductCatalogPartialUpdates = () => {
             url.searchParams.append(key, value);
         });
 
-        url.searchParams.set('sort', sortSelect.value || 'featured');
+        url.searchParams.set('sort', sortSelect.value || defaultSort);
         url.searchParams.delete('page');
 
         return url;
@@ -2727,7 +2728,7 @@ const setupProductCatalogPartialUpdates = () => {
             if (pushState) history.pushState({}, '', requestUrl);
 
             const activeUrl = new URL(requestUrl, window.location.origin);
-            const activeSort = activeUrl.searchParams.get('sort') || 'featured';
+            const activeSort = activeUrl.searchParams.get('sort') || defaultSort;
             if (sortSelect.value !== activeSort) sortSelect.value = activeSort;
             syncCatalogSortInputs(activeSort);
             syncCatalogFilterFormsFromUrl(activeUrl);
@@ -2866,7 +2867,7 @@ const setupProductCatalogPartialUpdates = () => {
 
     window.addEventListener('popstate', () => {
         const url = new URL(window.location.href);
-        const sort = url.searchParams.get('sort') || 'featured';
+        const sort = url.searchParams.get('sort') || defaultSort;
         if (sortSelect.value !== sort) sortSelect.value = sort;
         syncCatalogSortInputs(sort);
         syncCatalogFilterFormsFromUrl(url);

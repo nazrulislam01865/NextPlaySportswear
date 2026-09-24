@@ -4451,8 +4451,7 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
 
 /* Category page Shop by Sport cards: keep image-card text constrained and readable. */
 .np-sport-index-card {
-    aspect-ratio: 4 / 5;
-    min-height: 260px;
+    aspect-ratio: 1 / 1;
 }
 
 .np-sport-card-title {
@@ -4481,7 +4480,6 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
 @media (max-width: 640px) {
     .np-sport-index-card {
         aspect-ratio: 1 / 1;
-        min-height: 245px;
     }
 }
 
@@ -10874,6 +10872,49 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     padding: 0 0 .7rem;
 }
 
+/* Keep large desktop filter collections compact. Blade adds this class only
+   when a group contains more than 12 options. Mobile keeps one natural drawer
+   scroll area so touch users do not get nested scrolling. */
+@media (min-width: 1024px) {
+    .storefront-clean-ui .np-catalog-option-list--scroll {
+        max-height: 26.5rem;
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+        padding-right: .35rem;
+        scrollbar-width: thin;
+        scrollbar-color: #b9c7d8 transparent;
+    }
+
+    .storefront-clean-ui .np-catalog-option-list--scroll::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .storefront-clean-ui .np-catalog-option-list--scroll::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .storefront-clean-ui .np-catalog-option-list--scroll::-webkit-scrollbar-thumb {
+        border-radius: 999px;
+        background: #b9c7d8;
+    }
+
+    .storefront-clean-ui .np-catalog-category-tree.np-catalog-option-list--scroll {
+        max-height: 30rem;
+    }
+
+    .storefront-clean-ui .np-catalog-category-children.np-catalog-option-list--children {
+        max-height: 26.5rem;
+        margin-right: .2rem;
+    }
+
+    .storefront-clean-ui .np-catalog-color-grid.np-catalog-option-list--color {
+        max-height: 18rem;
+        align-content: start;
+    }
+}
+
 .storefront-clean-ui .np-catalog-filter-option {
     display: flex;
     min-width: 0;
@@ -14583,5 +14624,53 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
 
     .np-system-card--has-code:not(.np-system-card--has-icon) .np-system-card__message {
         margin-bottom: 25px;
+    }
+}
+
+/* Shop by Category: keep the existing card design, but place the product count
+   directly after the natural title height instead of reserving a two-line title
+   slot. This is scoped to the category index grid so reusable homepage cards
+   keep their existing layout. */
+.storefront-clean-ui .np-all-categories-grid .np-home-category-card__title {
+    min-height: 0;
+}
+
+.storefront-clean-ui .np-all-categories-grid .np-home-category-card__count {
+    margin-top: 3px;
+    font-weight: 600;
+}
+
+/* NEXTPLAY_SHOP_BY_CATEGORY_EQUAL_CARD_HEIGHT
+   Keep the existing reusable category-card design unchanged while making every
+   Shop by Category card the same total height. The media remains 1:1; only the
+   content area's height is normalized. Product count still sits immediately
+   after the natural one/two-line title. */
+.storefront-clean-ui .np-all-categories-grid .np-home-category-card__body {
+    flex: 0 0 16rem;
+    height: 16rem;
+    min-height: 16rem;
+    max-height: 16rem;
+}
+
+.storefront-clean-ui .np-all-categories-grid .np-home-category-card__title {
+    min-height: 0;
+    max-height: 2.5em;
+}
+
+.storefront-clean-ui .np-all-categories-grid .np-home-category-card__description {
+    min-height: 4.5rem;
+    max-height: 4.5rem;
+}
+
+.storefront-clean-ui .np-all-categories-grid .np-home-category-card__link {
+    margin-top: auto;
+}
+
+@media (max-width: 560px) {
+    .storefront-clean-ui .np-all-categories-grid .np-home-category-card__body {
+        flex-basis: 15.5rem;
+        height: 15.5rem;
+        min-height: 15.5rem;
+        max-height: 15.5rem;
     }
 }
