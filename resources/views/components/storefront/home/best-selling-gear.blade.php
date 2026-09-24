@@ -4,6 +4,16 @@
     $section = is_array($section) ? $section : [];
     $text = static fn (string $key, string $fallback = ''): string => filled(data_get($section, $key)) ? (string) data_get($section, $key) : $fallback;
     $subtitle = $text('description', 'Built for teams. Designed to perform.');
+    $backgroundImage = \App\Support\PublicMedia::url(
+        filled(data_get($section, 'image_path')) ? (string) data_get($section, 'image_path') : null,
+        filled(data_get($section, 'image_url')) ? (string) data_get($section, 'image_url') : null,
+        null,
+    );
+    $backgroundColor = strtoupper(trim((string) data_get($section, 'settings.background_color', '')));
+    if (! preg_match('/^#[0-9A-F]{6}$/', $backgroundColor)) {
+        $backgroundColor = '';
+    }
+    $hasCustomBackground = filled($backgroundImage) || $backgroundColor !== '';
 
     $visualPresets = [
         [
@@ -53,13 +63,19 @@
     }
 @endphp
 
-<section id="gear" class="np-best-gear-section" aria-labelledby="best-selling-gear-heading">
+<section
+    id="gear"
+    class="np-best-gear-section {{ $hasCustomBackground ? 'np-best-gear-section--custom-background' : '' }} {{ filled($backgroundImage) ? 'np-best-gear-section--has-image' : '' }}"
+    aria-labelledby="best-selling-gear-heading"
+    @if($hasCustomBackground)
+        style="{{ $backgroundColor !== '' ? '--np-best-gear-bg-color: '.$backgroundColor.';' : '' }}{{ filled($backgroundImage) ? '--np-best-gear-bg-image: url('.\Illuminate\Support\Js::from($backgroundImage).');' : '' }}"
+    @endif
+>
     <div class="container">
         <x-storefront.home.section-heading
             class="np-best-gear-head"
             title-id="best-selling-gear-heading"
             tone="inverse"
-            :eyebrow="$text('eyebrow', 'POPULAR GEAR')"
             :title="$text('title', 'BEST-SELLING TEAM GEAR')"
             :description="$subtitle"
         />
@@ -75,6 +91,7 @@
                         $preset = $visualPresets[$index] ?? [];
                         $number = str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT);
                         $isFeatured = $index === 0;
+                        $usesSquareMedia = $index >= 1 && $index <= 4;
                         $title = trim((string) ($category['short_title'] ?? $category['title'] ?? '')) ?: (string) ($preset['title'] ?? 'Category');
                         $description = trim(strip_tags((string) ($category['description'] ?? ''))) ?: (string) ($preset['description'] ?? 'Shop custom team gear for clubs, schools, events, and branded programs.');
                         $image = trim((string) ($category['image'] ?? '')) ?: (string) ($preset['image'] ?? asset('images/category-placeholder.svg'));
@@ -85,7 +102,7 @@
 
                     <a
                         href="{{ $url }}"
-                        class="np-best-gear-card {{ $isFeatured ? 'np-best-gear-card--featured' : 'np-best-gear-card--supporting' }}"
+                        class="np-best-gear-card {{ $isFeatured ? 'np-best-gear-card--featured' : 'np-best-gear-card--supporting' }} {{ $usesSquareMedia ? 'np-best-gear-card--square-media' : '' }}"
                         aria-label="{{ $label }}: {{ $title }}"
                     >
                         <span class="np-best-gear-card__number" aria-hidden="true">{{ $number }}</span>
@@ -96,7 +113,7 @@
                                 src="{{ $image }}"
                                 alt="{{ $alt }}"
                                 width="{{ $isFeatured ? 640 : 280 }}"
-                                height="{{ $isFeatured ? 300 : 184 }}"
+                                height="{{ $isFeatured ? 300 : ($usesSquareMedia ? 280 : 184) }}"
                             >
                         </span>
                         <span class="np-best-gear-card__divider" aria-hidden="true"></span>

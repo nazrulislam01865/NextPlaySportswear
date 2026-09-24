@@ -56,6 +56,7 @@ class CategoryFormRequest extends FormRequest
             'banner_url' => ['nullable', 'url:http,https', 'max:2048'],
             'banner_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:8192'],
             'banner_alt' => ['nullable', 'string', 'max:255'],
+            'banner_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'remove_banner' => ['nullable', 'boolean'],
             'mobile_banner_url' => ['nullable', 'url:http,https', 'max:2048'],
             'mobile_banner_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:8192'],

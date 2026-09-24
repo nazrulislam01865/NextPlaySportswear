@@ -18,7 +18,6 @@ class HomepageSlideRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'eyebrow' => ['nullable', 'string', 'max:160'],
             'title' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
 
@@ -33,7 +32,6 @@ class HomepageSlideRequest extends FormRequest
             'image_focal_position' => ['required', Rule::in(['center', 'top', 'bottom', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right'])],
 
             'show_content' => ['nullable', 'boolean'],
-            'show_eyebrow' => ['nullable', 'boolean'],
             'show_title' => ['nullable', 'boolean'],
             'show_description' => ['nullable', 'boolean'],
 
@@ -63,7 +61,7 @@ class HomepageSlideRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $booleanFields = [
-            'show_content', 'show_eyebrow', 'show_title', 'show_description',
+            'show_content', 'show_title', 'show_description',
             'show_primary_button', 'show_secondary_button', 'is_active', 'remove_image', 'remove_mobile_image',
         ];
 
@@ -101,10 +99,6 @@ class HomepageSlideRequest extends FormRequest
             if ($this->boolean('show_content')) {
                 if ($this->boolean('show_title') && blank($this->input('title'))) {
                     $validator->errors()->add('title', 'Enter a title or turn off the title display.');
-                }
-
-                if ($this->boolean('show_eyebrow') && blank($this->input('eyebrow'))) {
-                    $validator->errors()->add('eyebrow', 'Enter eyebrow text or turn off the eyebrow display.');
                 }
 
                 if ($this->boolean('show_description') && blank($this->input('description'))) {

@@ -159,14 +159,6 @@
         </div>
 
         <div class="grid gap-5" :class="!showContent && 'opacity-50'">
-            <div class="grid gap-4 sm:grid-cols-[170px_1fr]">
-                <label class="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold">
-                    <input type="hidden" name="show_eyebrow" value="0">
-                    <input type="checkbox" name="show_eyebrow" value="1" @checked($checked('show_eyebrow', true)) class="h-4 w-4 rounded border-slate-300 text-brand-red">
-                    Show eyebrow
-                </label>
-                <label class="admin-label">Eyebrow text<input type="text" name="eyebrow" value="{{ old('eyebrow', $slide->eyebrow) }}" class="admin-input" maxlength="160" placeholder="Custom Jerseys USA"></label>
-            </div>
 
             <div class="grid gap-4 sm:grid-cols-[170px_1fr]">
                 <label class="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold">

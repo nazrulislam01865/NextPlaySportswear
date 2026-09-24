@@ -10,25 +10,32 @@
     $faqs = $items->isNotEmpty() ? $items : collect($faqs);
 @endphp
 
-<section class="section-alt">
+<section class="section-alt np-home-faq-section">
     <div class="container">
-        <x-storefront.home.section-heading
-            class="section-head"
-            :eyebrow="$text('eyebrow', 'Help center')"
-            :title="$text('title', 'Common Questions')"
-            :description="$text('description')"
-        />
-        <div class="faq" id="faq" data-home-faq>
-            @foreach($faqs as $faq)
-                @php($answerId = 'home-faq-answer-'.$loop->iteration)
-                <div class="faq-item">
-                    <button class="faq-q" type="button" aria-expanded="false" aria-controls="{{ $answerId }}">
-                        <span>{{ $faq['question'] }}</span>
-                        <span aria-hidden="true">+</span>
-                    </button>
-                    <div class="faq-a" id="{{ $answerId }}">{{ $faq['answer'] }}</div>
+        <div class="np-home-faq-layout">
+            <div class="np-home-faq-column">
+                <x-storefront.home.section-heading
+                    class="section-head"
+                    align="left"
+                    :title="$text('title', 'Common Questions')"
+                    :description="$text('description')"
+                />
+
+                <div class="faq" id="faq" data-home-faq>
+                    @foreach($faqs as $faq)
+                        @php($answerId = 'home-faq-answer-'.$loop->iteration)
+                        <div class="faq-item">
+                            <button class="faq-q" type="button" aria-expanded="false" aria-controls="{{ $answerId }}">
+                                <span>{{ $faq['question'] }}</span>
+                                <span aria-hidden="true">+</span>
+                            </button>
+                            <div class="faq-a" id="{{ $answerId }}">{{ $faq['answer'] }}</div>
+                        </div>
+                    @endforeach
                 </div>
-            @endforeach
+            </div>
+
+            <div class="np-home-faq-aside" aria-hidden="true"></div>
         </div>
     </div>
 </section>

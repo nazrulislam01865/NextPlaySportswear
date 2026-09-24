@@ -7,6 +7,7 @@ use App\Http\Requests\Storefront\ProductFilterRequest;
 use App\Models\ProductWishlist;
 use App\Services\Cart\CartService;
 use App\Services\Storefront\ProductCatalogService;
+use App\Support\CatalogPageAppearance;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,13 @@ class ProductController extends Controller
         $filters['sports'] = $this->productCatalogService->normalizeCategoryFilterIds($filters['sports']);
 
         $products = $this->productCatalogService->searchPaginated($filters);
+
+        if ($request->header('X-Storefront-Partial') === 'product-results') {
+            return view('storefront.products._results', [
+                'products' => $products,
+            ]);
+        }
+
         $filterOptions = $this->productCatalogService->filterOptions($filters);
         $hasFilters = $this->hasCatalogFilters($filters);
 
@@ -39,6 +47,7 @@ class ProductController extends Controller
             'categoryFilters' => $filterOptions['categories'] ?? [],
             'hasFilters' => $hasFilters,
             'activeFilterCount' => $this->activeFilterCount($filters),
+            'catalogBanner' => CatalogPageAppearance::productsBanner(),
             'seo' => [
                 'title' => filled($filters['tag'])
                     ? 'Products tagged '.$filters['tag'].' | '.config('storefront.name')

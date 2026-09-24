@@ -13,7 +13,6 @@
             <img loading="lazy" decoding="async" src="{{ $image }}" alt="{{ $text('image_alt', 'Custom jersey mockup with team colors') }}" width="850" height="620">
         </div>
         <div class="text-block">
-            <span class="small-red">{{ $text('eyebrow', 'Design your own') }}</span>
             <h2>{{ $text('title', 'Design Your Own Jersey') }}</h2>
             <p class="lead">{{ $text('description', 'Add your team logo, player names, numbers, colors, and style preferences.') }}</p>
             @if($items->isNotEmpty())

@@ -10,8 +10,6 @@
         'image_focal_position' => 'center',
         'overlay_rgba' => 'rgba(13,37,69,.72)',
         'show_content' => true,
-        'show_eyebrow' => true,
-        'eyebrow' => 'Custom sportswear USA',
         'show_title' => true,
         'title' => 'Custom jerseys, uniforms, and team gear',
         'show_description' => true,
@@ -43,12 +41,10 @@
                     $imagePosition = str_replace('-', ' ', $slide['image_focal_position'] ?? 'center');
                     $isEnabled = static fn (string $key): bool => filter_var($slide[$key] ?? false, FILTER_VALIDATE_BOOLEAN);
                     $showContent = $isEnabled('show_content');
-                    $showEyebrow = $isEnabled('show_eyebrow');
                     $showTitle = $isEnabled('show_title');
                     $showDescription = $isEnabled('show_description');
                     $showPrimaryButton = $isEnabled('show_primary_button');
                     $showSecondaryButton = $isEnabled('show_secondary_button');
-                    $eyebrow = trim((string) ($slide['eyebrow'] ?? ''));
                     $title = trim((string) ($slide['title'] ?? ''));
                     $description = trim((string) ($slide['description'] ?? ''));
                     $primaryLabel = trim((string) ($slide['primary_label'] ?? ''));
@@ -61,8 +57,7 @@
                     $textAlignment = $slide['text_alignment'] ?? 'left';
                     $textTheme = $slide['text_theme'] ?? 'light';
                     $hasVisibleContent = $showContent && (
-                        ($showEyebrow && filled($eyebrow))
-                        || ($showTitle && filled($title))
+                        ($showTitle && filled($title))
                         || ($showDescription && filled($description))
                         || ($showPrimaryButton && filled($primaryLabel))
                         || ($showSecondaryButton && filled($secondaryLabel))
@@ -87,9 +82,6 @@
 
                     <div class="promo-content">
                         <div class="promo-copy position-{{ $contentPosition }} align-{{ $textAlignment }} theme-{{ $textTheme }}">
-                            @if($showEyebrow && filled($eyebrow))
-                                <span class="promo-eyebrow">{{ $eyebrow }}</span>
-                            @endif
 
                             @if($showTitle && filled($title))
                                 <h1>{{ $title }}</h1>

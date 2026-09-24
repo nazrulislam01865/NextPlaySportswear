@@ -2,7 +2,6 @@
     'products' => [],
     'section' => [],
     'sectionId' => 'products',
-    'fallbackEyebrow' => '',
     'fallbackTitle' => 'Products',
     'fallbackDescription' => '',
     'emptyMessage' => 'No active products are available yet.',
@@ -33,7 +32,6 @@
     <div class="container">
         <x-storefront.home.section-heading
             class="section-head home-product-section-head"
-            :eyebrow="$text('eyebrow', $fallbackEyebrow)"
             :title="$text('title', $fallbackTitle)"
             :description="$text('description', $fallbackDescription)"
         />

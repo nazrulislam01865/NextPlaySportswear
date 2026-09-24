@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'parent_id', 'name', 'menu_label', 'slug', 'display_type', 'category_type', 'page_template', 'status',
     'depth', 'tree_path', 'eyebrow', 'short_title', 'description', 'short_description', 'description_html',
     'best_for', 'image_url', 'image_path', 'image_alt', 'thumbnail_path', 'thumbnail_url', 'thumbnail_alt',
-    'icon_path', 'icon_url', 'icon_alt', 'banner_path', 'banner_url', 'banner_alt', 'mobile_banner_path', 'mobile_banner_url', 'mobile_banner_alt',
+    'icon_path', 'icon_url', 'icon_alt', 'banner_path', 'banner_url', 'banner_alt', 'banner_color', 'mobile_banner_path', 'mobile_banner_url', 'mobile_banner_alt',
     'icon', 'cta_label', 'meta_title', 'meta_description', 'meta_keywords', 'canonical_url', 'og_title',
     'og_description', 'og_image_path', 'og_image_url', 'robots_index', 'robots_follow', 'schema_json',
     'match_rules', 'highlights', 'is_active', 'is_visible_in_catalog', 'is_visible_in_menu', 'is_featured',
@@ -248,7 +248,7 @@ class Category extends Model
             ?: asset('images/category-placeholder.svg');
     }
 
-    public function bannerUrl(bool $mobile = false): string
+    public function uploadedBannerUrl(bool $mobile = false): ?string
     {
         if ($mobile) {
             $mobileUrl = $this->mediaUrl($this->mobile_banner_path, $this->mobile_banner_url);
@@ -257,8 +257,12 @@ class Category extends Model
             }
         }
 
-        return $this->mediaUrl($this->banner_path, $this->banner_url)
-            ?: $this->thumbnailUrl();
+        return $this->mediaUrl($this->banner_path, $this->banner_url);
+    }
+
+    public function bannerUrl(bool $mobile = false): string
+    {
+        return $this->uploadedBannerUrl($mobile) ?: $this->thumbnailUrl();
     }
 
     public function ogImageUrl(): string

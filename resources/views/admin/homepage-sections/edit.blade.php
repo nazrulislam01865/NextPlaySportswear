@@ -91,6 +91,7 @@
         x-data="{
             imagePreview: @js($currentImage),
             mobileImagePreview: @js($currentMobileImage),
+            backgroundColor: @js(old('settings.background_color', data_get($viewSection, 'settings.background_color', ''))),
             removeImage: false,
             removeMobileImage: false,
             itemFields: @js(array_values($itemFields)),
@@ -535,15 +536,11 @@
         @if($hasText)
             <x-admin.section-card title="Section Text" description="Only the basic text needed for this section.">
                 <div class="grid gap-5">
-                    <label class="admin-label">Eyebrow / small label
-                        <input type="text" name="eyebrow" value="{{ old('eyebrow', $section->eyebrow) }}" class="admin-input @error('eyebrow') border-red-400 @enderror" maxlength="160" placeholder="Small label above the title">
-                        @error('eyebrow')<span class="mt-2 block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
-                    </label>
                     <label class="admin-label">Title
                         <input type="text" name="title" value="{{ old('title', $section->title) }}" class="admin-input @error('title') border-red-400 @enderror" maxlength="255" placeholder="Section title">
                         @error('title')<span class="mt-2 block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
                     </label>
-                    <label class="admin-label">Description
+                    <label class="admin-label">Short Description
                         <textarea name="description" class="admin-textarea @error('description') border-red-400 @enderror" maxlength="3000" rows="4" placeholder="Short section description">{{ old('description', $section->description) }}</textarea>
                         @error('description')<span class="mt-2 block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
                     </label>
@@ -569,6 +566,43 @@
                             <label class="admin-label">Destination<input type="text" name="secondary_url" value="{{ old('secondary_url', $section->secondary_url) }}" class="admin-input @error('secondary_url') border-red-400 @enderror" maxlength="2048" placeholder="/bulk-quote or #bulk"></label>
                             @error('secondary_url')<span class="block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
                         </div>
+                    </div>
+                </div>
+            </x-admin.section-card>
+        @endif
+
+        @if($section->key === 'hero')
+            <x-admin.section-card title="Trust & Highlights" description="Manage the supporting text and trust indicators shown below the hero buttons and over the hero image. Leave any optional field blank to hide that item on the storefront.">
+                <div class="grid gap-5">
+                    <label class="admin-label">Trust line below buttons
+                        <input type="text" name="settings[trustline]" value="{{ old('settings.trustline', data_get($viewSection, 'settings.trustline')) }}" class="admin-input @error('settings.trustline') border-red-400 @enderror" maxlength="500" placeholder="Serving teams, clubs, businesses...">
+                        @error('settings.trustline')<span class="mt-2 block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
+                    </label>
+
+                    <div class="grid gap-4 lg:grid-cols-3">
+                        <label class="admin-label">Trust badge 1
+                            <input type="text" name="settings[badge_design_support]" value="{{ old('settings.badge_design_support', data_get($viewSection, 'settings.badge_design_support')) }}" class="admin-input @error('settings.badge_design_support') border-red-400 @enderror" maxlength="160" placeholder="Custom Design Support">
+                            @error('settings.badge_design_support')<span class="mt-2 block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
+                        </label>
+                        <label class="admin-label">Trust badge 2
+                            <input type="text" name="settings[badge_bulk_pricing]" value="{{ old('settings.badge_bulk_pricing', data_get($viewSection, 'settings.badge_bulk_pricing')) }}" class="admin-input @error('settings.badge_bulk_pricing') border-red-400 @enderror" maxlength="160" placeholder="Bulk Pricing Available">
+                            @error('settings.badge_bulk_pricing')<span class="mt-2 block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
+                        </label>
+                        <label class="admin-label">Trust badge 3
+                            <input type="text" name="settings[badge_shipping]" value="{{ old('settings.badge_shipping', data_get($viewSection, 'settings.badge_shipping')) }}" class="admin-input @error('settings.badge_shipping') border-red-400 @enderror" maxlength="160" placeholder="USA Shipping">
+                            @error('settings.badge_shipping')<span class="mt-2 block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
+                        </label>
+                    </div>
+
+                    <div class="grid gap-4 lg:grid-cols-2">
+                        <label class="admin-label">Hero statistic value
+                            <input type="text" name="settings[stat_value]" value="{{ old('settings.stat_value', data_get($viewSection, 'settings.stat_value')) }}" class="admin-input @error('settings.stat_value') border-red-400 @enderror" maxlength="80" placeholder="500+ Teams">
+                            @error('settings.stat_value')<span class="mt-2 block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
+                        </label>
+                        <label class="admin-label">Hero statistic subtitle
+                            <input type="text" name="settings[stat_subtitle]" value="{{ old('settings.stat_subtitle', data_get($viewSection, 'settings.stat_subtitle')) }}" class="admin-input @error('settings.stat_subtitle') border-red-400 @enderror" maxlength="160" placeholder="Trusted across the USA">
+                            @error('settings.stat_subtitle')<span class="mt-2 block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
+                        </label>
                     </div>
                 </div>
             </x-admin.section-card>
@@ -636,6 +670,87 @@
                         </template>
                         <div x-show="heroSlides.length === 0" class="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm font-bold text-slate-500">No custom slider images selected. The storefront will use the built-in default images until you add one.</div>
                         <div x-ref="heroSlidesEnd"></div>
+                    </div>
+                </div>
+            </x-admin.section-card>
+        @endif
+
+        @if($section->key === 'best_selling_gear')
+            <x-admin.section-card title="Section Background" description="Use either a background image or a solid color. A selected image takes priority, while the color remains the fallback behind it. Leave both empty to keep the built-in sporty background.">
+                <div class="grid gap-5 lg:grid-cols-[320px_1fr]">
+                    <div class="space-y-3">
+                        <div
+                            class="relative overflow-hidden rounded-2xl border border-slate-200 shadow-sm"
+                            :style="{ backgroundColor: backgroundColor || '#06152C' }"
+                            style="aspect-ratio: 16 / 9;"
+                        >
+                            <template x-if="imagePreview && !removeImage">
+                                <img :src="imagePreview" alt="Current Best-Selling Gear background" class="h-full w-full object-cover">
+                            </template>
+                            <div x-show="!imagePreview || removeImage" class="grid h-full place-items-center p-5 text-center text-sm font-black text-white/90">
+                                Solid background preview
+                            </div>
+                        </div>
+                        <p class="text-xs font-semibold leading-5 text-slate-500">Recommended image: wide landscape, JPG/PNG/WebP/AVIF, up to 10 MB. The storefront displays it centered with <code>cover</code>.</p>
+                    </div>
+
+                    <div class="space-y-5">
+                        <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                            <h3 class="text-sm font-black text-brand-ink">Background image</h3>
+                            <p class="mt-1 text-xs font-semibold leading-5 text-slate-500">Upload an image or use a public image URL. If both an image and a color are configured, the image is shown over the color.</p>
+
+                            <label class="admin-label mt-4">Upload background image
+                                <input type="file" name="image_file" accept="image/jpeg,image/png,image/webp,image/avif" class="admin-input @error('image_file') border-red-400 @enderror" @change="previewFile($event, 'desktop')">
+                            </label>
+                            @error('image_file')<span class="mt-2 block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
+
+                            <label class="admin-label mt-4">Background image URL
+                                <input
+                                    type="text"
+                                    name="image_url"
+                                    value="{{ old('image_url', $section->image_url) }}"
+                                    class="admin-input @error('image_url') border-red-400 @enderror"
+                                    maxlength="2048"
+                                    placeholder="https://... or /storage/..."
+                                    :disabled="removeImage"
+                                    @input="if ($event.target.value.trim()) { imagePreview = $event.target.value.trim(); removeImage = false }"
+                                >
+                            </label>
+                            @error('image_url')<span class="mt-2 block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
+
+                            <label class="mt-4 inline-flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-black text-red-700">
+                                <input type="hidden" name="remove_image" value="0">
+                                <input type="checkbox" name="remove_image" value="1" x-model="removeImage" class="h-4 w-4 rounded border-red-300 text-red-600">
+                                Remove current background image
+                            </label>
+                        </div>
+
+                        <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                            <h3 class="text-sm font-black text-brand-ink">Solid background color</h3>
+                            <p class="mt-1 text-xs font-semibold leading-5 text-slate-500">Choose a color or enter a 6-digit hex value. Clear the value to use the built-in sporty background when no image is selected.</p>
+                            <div class="mt-4 grid gap-3 sm:grid-cols-[88px_1fr] sm:items-end">
+                                <label class="admin-label">Picker
+                                    <input
+                                        type="color"
+                                        :value="/^#[0-9A-Fa-f]{6}$/.test(backgroundColor || '') ? backgroundColor : '#06152C'"
+                                        class="h-12 w-full cursor-pointer rounded-xl border border-slate-300 bg-white p-1"
+                                        @input="backgroundColor = $event.target.value.toUpperCase()"
+                                    >
+                                </label>
+                                <label class="admin-label">Hex color
+                                    <input
+                                        type="text"
+                                        name="settings[background_color]"
+                                        x-model="backgroundColor"
+                                        class="admin-input @error('settings.background_color') border-red-400 @enderror"
+                                        maxlength="7"
+                                        placeholder="#06152C"
+                                        @input="backgroundColor = $event.target.value.toUpperCase()"
+                                    >
+                                </label>
+                            </div>
+                            @error('settings.background_color')<span class="mt-2 block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
+                        </div>
                     </div>
                 </div>
             </x-admin.section-card>

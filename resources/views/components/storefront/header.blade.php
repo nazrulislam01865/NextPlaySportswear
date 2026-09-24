@@ -69,34 +69,24 @@
                 action="{{ route('products.index') }}"
                 role="search"
                 aria-label="Product search"
-                class="np-header-search"
+                class="np-header-search np-catalog-search-shell"
                 data-storefront-search-suggest
                 data-suggest-url="{{ route('products.suggestions') }}"
                 data-header-search
                 data-header-analytics="header_search_submit"
                 data-header-analytics-label="product_search"
             >
-                <span class="np-header-search-icon" aria-hidden="true">
-                    <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="11" cy="11" r="7"></circle>
-                        <path d="m21 21-4.3-4.3"></path>
-                    </svg>
-                </span>
                 <label for="site-product-search" class="sr-only">Search products and categories</label>
                 <input
                     id="site-product-search"
                     type="search"
                     name="q"
                     value="{{ request('q') }}"
-                    placeholder="Search jerseys, uniforms, caps, bags..."
+                    placeholder="Search jersey, cap, bag, sport..."
                     autocomplete="off"
-                    class="np-header-search-input"
+                    class="np-header-search-input np-catalog-search-input"
                 >
-                <button type="submit" class="np-header-search-submit" aria-label="Search products">
-                    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <circle cx="11" cy="11" r="7"></circle>
-                        <path d="m21 21-4.3-4.3"></path>
-                    </svg>
+                <button type="submit" class="np-header-search-submit np-catalog-search-submit" aria-label="Search products">
                     <span>Search</span>
                 </button>
                 <div

@@ -11,7 +11,6 @@
         <x-storefront.home.section-heading
             class="process-intro"
             title-id="process-heading"
-            :eyebrow="$text('eyebrow', 'How it works')"
             :title="$text('title', 'Simple Ordering Process')"
             :description="filled($text('description')) ? $text('description', 'A clear process from product selection to delivery.') : null"
         />

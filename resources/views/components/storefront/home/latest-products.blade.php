@@ -4,7 +4,6 @@
     :products="$products"
     :section="$section"
     section-id="latest-products"
-    fallback-eyebrow="New arrivals"
     fallback-title="Latest"
     fallback-description="The latest created or updated active products appear here automatically."
     empty-message="No latest products are available yet."

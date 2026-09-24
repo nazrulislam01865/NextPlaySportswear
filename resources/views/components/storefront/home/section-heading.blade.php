@@ -1,5 +1,4 @@
 @props([
-    'eyebrow' => null,
     'title',
     'description' => null,
     'titleId' => null,
@@ -12,9 +11,6 @@
     'np-home-section-heading--left' => $align === 'left',
     'np-home-section-heading--inverse' => $tone === 'inverse',
 ]) }}>
-    @if(filled($eyebrow))
-        <span class="np-home-section-eyebrow">{{ $eyebrow }}</span>
-    @endif
 
     <h2 @if($titleId) id="{{ $titleId }}" @endif class="np-home-section-title">{{ $title }}</h2>
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CategoryFormRequest;
 use App\Models\CatalogAttribute;
+use App\Models\CatalogPageSetting;
 use App\Models\Category;
 use App\Models\UrlRedirect;
 use App\Services\Catalog\CategoryDeletionService;
@@ -14,6 +15,7 @@ use App\Services\Catalog\CategoryTreeService;
 use App\Services\Catalog\LeafCategoryAssignmentService;
 use App\Services\Catalog\NavigationService;
 use App\Services\Security\SafeHtmlService;
+use App\Support\CatalogPageAppearance;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -110,6 +112,7 @@ class CategoryController extends Controller
             'categories' => $categories,
             'categoryDeleteImpacts' => $categoryDeleteImpacts,
             'filters' => $filters,
+            'catalogBanner' => CatalogPageAppearance::productsBanner(),
             'analytics' => [
                 'total' => Category::query()->count(),
                 'active' => Category::query()->where('status', 'active')->where('is_active', true)->count(),
@@ -118,6 +121,43 @@ class CategoryController extends Controller
                 'max_depth' => (int) Category::query()->max('depth'),
             ],
         ]);
+    }
+
+    public function updateCatalogBanner(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'products_banner_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:8192'],
+            'products_banner_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'remove_products_banner' => ['nullable', 'boolean'],
+        ]);
+
+        $settings = CatalogPageSetting::query()->first() ?? new CatalogPageSetting();
+        $uploaded = $request->file('products_banner_file');
+
+        if ($uploaded) {
+            if (filled($settings->products_banner_path)) {
+                Storage::disk('public')->delete((string) $settings->products_banner_path);
+            }
+
+            $settings->products_banner_path = $uploaded->store('catalog/banners', 'public');
+        } elseif ($request->boolean('remove_products_banner')) {
+            if (filled($settings->products_banner_path)) {
+                Storage::disk('public')->delete((string) $settings->products_banner_path);
+            }
+
+            $settings->products_banner_path = null;
+        }
+
+        $settings->products_banner_color = filled($validated['products_banner_color'] ?? null)
+            ? strtolower((string) $validated['products_banner_color'])
+            : null;
+        $settings->save();
+
+        CatalogPageAppearance::flush();
+
+        return redirect()
+            ->route('admin.categories.index')
+            ->with('status', 'All Products banner updated successfully.');
     }
 
     public function create(Request $request): View
@@ -323,7 +363,7 @@ class CategoryController extends Controller
         $payload = Arr::only($data, [
             'parent_id', 'name', 'menu_label', 'slug', 'category_type', 'page_template', 'status',
             'eyebrow', 'short_title', 'short_description', 'best_for', 'cta_label', 'icon', 'sort_order',
-            'published_at', 'default_product_sort', 'image_alt', 'thumbnail_alt', 'icon_alt', 'banner_alt',
+            'published_at', 'default_product_sort', 'image_alt', 'thumbnail_alt', 'icon_alt', 'banner_alt', 'banner_color',
             'mobile_banner_alt', 'is_visible_in_catalog', 'is_visible_in_menu', 'is_featured',
             'show_product_count', 'include_descendant_products', 'meta_title', 'meta_description',
             'meta_keywords', 'canonical_url', 'og_title', 'og_description', 'robots_index', 'robots_follow',

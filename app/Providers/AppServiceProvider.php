@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Listeners\Auth\SendWelcomeEmailAfterVerification;
 use App\Services\Cart\CartService;
 use App\Services\Catalog\NavigationService;
+use App\Services\Storefront\FooterPaymentMethodService;
 use App\Services\Storefront\HomepageSliderService;
 use App\Services\Storefront\HomepageSectionService;
 use App\Services\Wishlist\WishlistHeaderService;
@@ -24,6 +25,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(NavigationService::class);
+        $this->app->singleton(FooterPaymentMethodService::class);
         $this->app->singleton(HomepageSliderService::class);
         $this->app->singleton(HomepageSectionService::class);
     }
@@ -63,6 +65,7 @@ class AppServiceProvider extends ServiceProvider
 
         View::composer('components.storefront.footer', function ($view): void {
             $view->with('storefrontMenus', app(NavigationService::class)->storefrontMenus());
+            $view->with('footerPaymentMethods', app(FooterPaymentMethodService::class)->methods());
         });
 
         RateLimiter::for('admin-login', function (Request $request): array {

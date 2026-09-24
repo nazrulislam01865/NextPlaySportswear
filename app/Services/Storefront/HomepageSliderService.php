@@ -54,8 +54,8 @@ class HomepageSliderService
     private function buildPayload(): array
     {
         $columns = [
-            'id', 'eyebrow', 'title', 'description', 'image_path', 'image_url',
-            'image_alt', 'image_focal_position', 'show_content', 'show_eyebrow',
+            'id', 'title', 'description', 'image_path', 'image_url',
+            'image_alt', 'image_focal_position', 'show_content',
             'show_title', 'show_description', 'show_primary_button', 'primary_label',
             'primary_url', 'primary_target', 'show_secondary_button', 'secondary_label',
             'secondary_url', 'secondary_target', 'content_position', 'text_alignment',
@@ -79,14 +79,12 @@ class HomepageSliderService
                 }
 
                 $showContent = (bool) $slide->show_content;
-                $eyebrow = (string) ($slide->eyebrow ?? '');
                 $title = (string) ($slide->title ?? '');
                 $description = (string) ($slide->description ?? '');
                 $primaryLabel = (string) ($slide->primary_label ?? '');
                 $secondaryLabel = (string) ($slide->secondary_label ?? '');
                 $hasVisibleContent = $showContent && (
-                    ((bool) $slide->show_eyebrow && filled($eyebrow))
-                    || ((bool) $slide->show_title && filled($title))
+                    ((bool) $slide->show_title && filled($title))
                     || ((bool) $slide->show_description && filled($description))
                     || ((bool) $slide->show_primary_button && filled($primaryLabel))
                     || ((bool) $slide->show_secondary_button && filled($secondaryLabel))
@@ -94,7 +92,6 @@ class HomepageSliderService
 
                 return [
                     'id' => (int) $slide->id,
-                    'eyebrow' => $eyebrow,
                     'title' => $title,
                     'description' => $description,
                     'image' => $image,
@@ -102,7 +99,6 @@ class HomepageSliderService
                     'alt' => (string) (($slide->mobile_image_alt ?? null) ?: $slide->image_alt ?: $slide->title ?: config('storefront.name').' promotion'),
                     'image_focal_position' => $this->enumValue($slide->image_focal_position, ['center', 'top', 'bottom', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right'], 'center'),
                     'show_content' => $showContent,
-                    'show_eyebrow' => (bool) $slide->show_eyebrow,
                     'show_title' => (bool) $slide->show_title,
                     'show_description' => (bool) $slide->show_description,
                     'show_primary_button' => (bool) $slide->show_primary_button,
@@ -170,7 +166,6 @@ class HomepageSliderService
             'image_focal_position' => 'center',
             'mobile_image' => null,
             'show_content' => true,
-            'show_eyebrow' => true,
             'show_title' => true,
             'show_description' => true,
             'show_primary_button' => true,
@@ -186,7 +181,6 @@ class HomepageSliderService
 
         return [
             array_merge($base, [
-                'eyebrow' => 'Custom jerseys USA',
                 'title' => 'Build Your Team Jersey with Name, Number, and Logo',
                 'description' => 'Choose colors, add player details, upload your artwork, and prepare your order for teams, schools, clubs, and fans.',
                 'image' => asset('storage/storefront/home/hero.webp'),
@@ -197,7 +191,6 @@ class HomepageSliderService
                 'secondary_url' => '#bulk',
             ]),
             array_merge($base, [
-                'eyebrow' => 'Team uniforms',
                 'title' => 'Uniform Sets for Schools, Leagues, and Clubs',
                 'description' => 'Order full team sets with size lists, player names, numbers, colors, and design support before production.',
                 'image' => asset('storage/storefront/home/baseball.webp'),
@@ -208,7 +201,6 @@ class HomepageSliderService
                 'secondary_url' => '#process',
             ]),
             array_merge($base, [
-                'eyebrow' => 'Bulk orders',
                 'title' => 'Bulk Sportswear for Events, Businesses, and Teams',
                 'description' => 'Get pricing support for larger quantities, promotional products, caps, bags, hoodies, jerseys, and event apparel.',
                 'image' => asset('storage/storefront/home/football.webp'),

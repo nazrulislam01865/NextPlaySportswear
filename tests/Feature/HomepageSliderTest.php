@@ -44,7 +44,8 @@ class HomepageSliderTest extends TestCase
         $this->get(route('home'))
             ->assertOk()
             ->assertSee('Custom Summer Team Gear')
-            ->assertSee('Shop Gear');
+            ->assertSee('Shop Gear')
+            ->assertDontSee('Summer teams');
     }
 
     public function test_image_only_slide_mutes_all_overlay_text(): void

@@ -1,8 +1,9 @@
-@include('errors.error', [
+@include('errors.storefront-status', [
     'code' => '404',
-    'status' => 'Page not found',
-    'title' => 'We Couldn’t Find That Page',
-    'message' => 'The page may have moved, the address may be incomplete, or the product or category is no longer available. Use the links below to continue shopping or return to the homepage.',
-    'showSupport' => true,
-    'showShop' => true,
+    'title' => 'Page Not Found',
+    'messageText' => 'We couldn’t find the page you’re looking for.',
+    'primaryLabel' => 'Go to Homepage',
+    'primaryUrl' => route('home'),
+    'secondaryLabel' => 'Browse All Products',
+    'secondaryUrl' => route('products.index'),
 ])

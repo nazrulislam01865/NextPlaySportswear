@@ -15,7 +15,6 @@
     <div class="container">
         <x-storefront.home.section-heading
             class="section-head"
-            :eyebrow="$text('eyebrow', 'Order by need')"
             :title="$text('title', 'Shop by Who You’re Ordering For')"
             :description="filled($text('description')) ? $text('description', 'Choose the path that fits your order.') : null"
         />

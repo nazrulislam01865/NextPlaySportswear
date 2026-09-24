@@ -46,7 +46,6 @@ final class HomepageSectionRegistry
                 'name' => 'Hero Banner',
                 'component' => 'hero',
                 'sort_order' => 20,
-                'eyebrow' => 'Custom sportswear USA',
                 'title' => 'Custom Sportswear for Teams, Schools, Events, and Fans',
                 'description' => 'Design your own jerseys, uniforms, hoodies, caps, bags, and sports gear. Order online for regular items or request a custom quote for team and bulk orders.',
                 'primary_label' => 'Start Your Order',
@@ -82,7 +81,15 @@ final class HomepageSectionRegistry
                     ['title' => 'Bulk pricing available for schools, clubs, leagues, and businesses'],
                     ['title' => 'Design support before production'],
                 ],
-                'fields' => ['text', 'buttons', 'hero_slides', 'items'],
+                'settings' => [
+                    'trustline' => 'Serving teams, clubs, businesses, and event organizers across the USA.',
+                    'badge_design_support' => 'Custom Design Support',
+                    'badge_bulk_pricing' => 'Bulk Pricing Available',
+                    'badge_shipping' => 'USA Shipping',
+                    'stat_value' => '500+ Teams',
+                    'stat_subtitle' => 'Trusted across the USA',
+                ],
+                'fields' => ['text', 'buttons', 'hero_slides', 'items', 'settings'],
                 'item_label' => 'Checklist Lines',
                 'item_fields' => ['title'],
             ],
@@ -91,7 +98,6 @@ final class HomepageSectionRegistry
                 'name' => 'Featured Categories',
                 'component' => 'categories',
                 'sort_order' => 30,
-                'eyebrow' => 'Find it fast',
                 'title' => 'What Are You Looking For?',
                 'description' => 'Start with admin-selected categories, subcategories, or sub-subcategories and find the right product faster.',
                 'fields' => ['text', 'items'],
@@ -103,7 +109,6 @@ final class HomepageSectionRegistry
                 'name' => 'Buyer Paths',
                 'component' => 'buyer_paths',
                 'sort_order' => 40,
-                'eyebrow' => 'Order by need',
                 'title' => 'Shop by Who You’re Ordering For',
                 'description' => 'Choose the path that fits your order.',
                 'items' => [
@@ -121,7 +126,6 @@ final class HomepageSectionRegistry
                 'name' => 'Ordering Process',
                 'component' => 'process',
                 'sort_order' => 80,
-                'eyebrow' => 'How it works',
                 'title' => 'Simple Ordering Process',
                 'description' => 'A clear process from product selection to delivery.',
                 'primary_label' => 'Start Your Order',
@@ -142,7 +146,6 @@ final class HomepageSectionRegistry
                 'name' => 'Featured Products',
                 'component' => 'featured_products',
                 'sort_order' => 90,
-                'eyebrow' => 'Shop online',
                 'title' => 'Featured Products',
                 'description' => 'Products marked as featured by the admin appear here automatically.',
                 'fields' => ['text'],
@@ -152,7 +155,6 @@ final class HomepageSectionRegistry
                 'name' => 'Latest Products',
                 'component' => 'latest_products',
                 'sort_order' => 95,
-                'eyebrow' => 'New arrivals',
                 'title' => 'Latest',
                 'description' => 'The latest created or updated active products appear here automatically.',
                 'fields' => ['text'],
@@ -162,7 +164,6 @@ final class HomepageSectionRegistry
                 'name' => 'Best Selling Products',
                 'component' => 'best_selling_products',
                 'sort_order' => 98,
-                'eyebrow' => 'Customer favorites',
                 'title' => 'Best Selling',
                 'description' => 'Products are ranked automatically from paid order quantities. New products are used as a fallback until sales are recorded.',
                 'fields' => ['text'],
@@ -172,10 +173,12 @@ final class HomepageSectionRegistry
                 'name' => 'Best-Selling Gear',
                 'component' => 'best_selling_gear',
                 'sort_order' => 100,
-                'eyebrow' => 'POPULAR GEAR',
                 'title' => 'BEST-SELLING TEAM GEAR',
                 'description' => 'Built for teams. Designed to perform.',
-                'fields' => ['text', 'items'],
+                'settings' => [
+                    'background_color' => '',
+                ],
+                'fields' => ['text', 'items', 'settings'],
                 'item_label' => 'Best-Selling Gear Categories',
                 'item_fields' => ['category_id', 'title', 'description', 'image_url', 'image_alt', 'url', 'label'],
             ],
@@ -184,7 +187,6 @@ final class HomepageSectionRegistry
                 'name' => 'Shop by Sport',
                 'component' => 'shop_by_sport',
                 'sort_order' => 15,
-                'eyebrow' => 'Find your sport',
                 'title' => 'Shop by Sport',
                 'description' => 'Browse uniforms, apparel and gear by sport.',
                 'fields' => ['text', 'items'],
@@ -196,7 +198,6 @@ final class HomepageSectionRegistry
                 'name' => 'Why Choose Us',
                 'component' => 'why_choose',
                 'sort_order' => 130,
-                'eyebrow' => 'Why NextPlay',
                 'title' => 'Why Teams Choose NextPlay Sportswear',
                 'description' => 'Practical support, clear ordering, and sportswear made around your needs.',
                 'items' => [
@@ -216,7 +217,6 @@ final class HomepageSectionRegistry
                 'name' => 'Testimonials',
                 'component' => 'testimonials',
                 'sort_order' => 160,
-                'eyebrow' => 'Customer Words',
                 'title' => 'What Teams and Customers Say',
                 'description' => 'See how clubs, schools, businesses, and event teams use NextPlay for custom sportswear, team uniforms, event kits, and bulk orders.',
                 'primary_label' => 'Read all testimonials',
@@ -244,7 +244,6 @@ final class HomepageSectionRegistry
                 'name' => 'FAQ',
                 'component' => 'faq',
                 'sort_order' => 170,
-                'eyebrow' => 'Help center',
                 'title' => 'Common Questions',
                 'items' => [
                     ['title' => 'Can I order one custom jersey?', 'description' => 'Yes, selected products can be ordered directly online. Some custom products may have a minimum order quantity.'],
@@ -300,7 +299,6 @@ final class HomepageSectionRegistry
     {
         return [
             'name' => (string) $definition['name'],
-            'eyebrow' => self::nullableString($definition['eyebrow'] ?? null),
             'title' => self::nullableString($definition['title'] ?? null),
             'description' => self::nullableString($definition['description'] ?? null),
             'primary_label' => self::nullableString($definition['primary_label'] ?? null),
@@ -329,12 +327,12 @@ final class HomepageSectionRegistry
         $definition = self::definition($key) ?? [];
         $values = $section ? $section->toArray() : [];
         $merged = array_merge($definition, array_filter($values, static fn ($value): bool => $value !== null));
+        unset($merged['eyebrow']);
 
         // Not every homepage section needs headings, buttons, or media. Keep a
         // predictable view payload so overview/edit screens can safely render
         // publishing-only sections without undefined array-key exceptions.
         foreach ([
-            'eyebrow',
             'title',
             'description',
             'primary_label',

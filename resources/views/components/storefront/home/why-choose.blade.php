@@ -10,7 +10,6 @@
     <div class="container">
         <x-storefront.home.section-heading
             class="section-head"
-            :eyebrow="$text('eyebrow', 'Why NextPlay')"
             :title="$text('title', 'Why Teams Choose NextPlay Sportswear')"
             :description="filled($text('description')) ? $text('description', 'Practical support, clear ordering, and sportswear made around your needs.') : null"
         />

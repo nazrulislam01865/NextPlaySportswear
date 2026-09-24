@@ -1,6 +1,79 @@
 @php
-$columns=[
- ['title'=>'Shop','key'=>'footer_shop'],['title'=>'Sports','key'=>'footer_sports'],['title'=>'Support','key'=>'footer_support'],['title'=>'Company','key'=>'footer_company'],
-];
+    $columns = [
+        ['title' => 'Shop', 'key' => 'footer_shop'],
+        ['title' => 'Sports', 'key' => 'footer_sports'],
+        ['title' => 'Support', 'key' => 'footer_support'],
+        ['title' => 'Company', 'key' => 'footer_company'],
+    ];
+    $footerPaymentMethods = $footerPaymentMethods ?? [];
 @endphp
-<footer class="bg-[#0d2545] py-12 text-slate-300"><div class="site-container"><div class="grid gap-8 md:grid-cols-2 lg:grid-cols-[1.6fr_repeat(4,1fr)]"><div><a href="{{ route('home') }}" class="mb-4 flex min-w-0 items-center gap-3 font-display text-xl font-bold uppercase text-white sm:text-2xl"><span class="relative grid h-8 w-8 place-items-center rounded-lg border-[3px] border-brand-red text-brand-red">✓</span><span class="min-w-0 break-words">NextPlay <span class="text-brand-red">Sportswear</span></span></a><p class="text-sm leading-6">Custom sportswear, apparel, accessories, and promotional products for teams, schools, businesses, and events.</p></div>@foreach($columns as $column)<div><h4 class="mb-3 font-extrabold text-white">{{ $column['title'] }}</h4><ul class="grid gap-2 text-sm">@forelse(($storefrontMenus[$column['key']] ?? collect()) as $item)<li><a href="{{ $item->resolvedUrl() }}" target="{{ $item->target }}" @if($item->target==='_blank') rel="noopener noreferrer" @endif class="hover:text-white">{{ $item->label }}</a></li>@empty @if($column['key']==='footer_support')<li><a href="{{ route('faq') }}">Help Center</a></li><li><a href="{{ route('contact') }}">Contact Us</a></li>@elseif($column['key']==='footer_company')<li><a href="{{ route('about') }}">About Us</a></li><li><a href="{{ route('privacy') }}">Privacy Policy</a></li>@else<li><a href="{{ route('categories.index') }}">Browse Categories</a></li>@endif @endforelse</ul></div>@endforeach</div><div class="mt-8 flex flex-col justify-between gap-3 border-t border-white/10 pt-5 text-xs text-slate-400 sm:flex-row"><span>© {{ date('Y') }} {{ config('storefront.name') }}. All rights reserved.</span><span class="flex flex-wrap gap-3"><a href="{{ route('privacy') }}">Privacy</a><a href="{{ route('terms') }}">Terms</a><a href="{{ route('cookies') }}">Cookies</a><a href="{{ route('accessibility') }}">Accessibility</a></span></div></div></footer>
+
+<footer class="bg-[#0d2545] py-12 text-slate-300">
+    <div class="site-container">
+        <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-[1.6fr_repeat(4,1fr)]">
+            <div>
+                <a href="{{ route('home') }}" class="mb-4 flex min-w-0 items-center gap-3 font-display text-xl font-bold uppercase text-white sm:text-2xl">
+                    <span class="relative grid h-8 w-8 place-items-center rounded-lg border-[3px] border-brand-red text-brand-red">✓</span>
+                    <span class="min-w-0 break-words">NextPlay <span class="text-brand-red">Sportswear</span></span>
+                </a>
+                <p class="text-sm leading-6">Custom sportswear, apparel, accessories, and promotional products for teams, schools, businesses, and events.</p>
+            </div>
+
+            @foreach($columns as $column)
+                <div>
+                    <h4 class="mb-3 font-extrabold text-white">{{ $column['title'] }}</h4>
+                    <ul class="grid gap-2 text-sm">
+                        @forelse(($storefrontMenus[$column['key']] ?? collect()) as $item)
+                            <li>
+                                <a
+                                    href="{{ $item->resolvedUrl() }}"
+                                    target="{{ $item->target }}"
+                                    @if($item->target === '_blank') rel="noopener noreferrer" @endif
+                                    class="hover:text-white"
+                                >{{ $item->label }}</a>
+                            </li>
+                        @empty
+                            @if($column['key'] === 'footer_support')
+                                <li><a href="{{ route('faq') }}">Help Center</a></li>
+                                <li><a href="{{ route('contact') }}">Contact Us</a></li>
+                            @elseif($column['key'] === 'footer_company')
+                                <li><a href="{{ route('about') }}">About Us</a></li>
+                                <li><a href="{{ route('privacy') }}">Privacy Policy</a></li>
+                            @else
+                                <li><a href="{{ route('categories.index') }}">Browse Categories</a></li>
+                            @endif
+                        @endforelse
+                    </ul>
+                </div>
+            @endforeach
+        </div>
+
+        <div class="mt-8 flex flex-col gap-4 border-t border-white/10 pt-5 text-xs text-slate-400 lg:flex-row lg:items-center">
+            <span class="text-center lg:text-left">© {{ date('Y') }} {{ config('storefront.name') }}. All rights reserved.</span>
+
+            <div class="flex flex-col items-center gap-4 lg:ml-auto lg:flex-row lg:justify-end lg:gap-6">
+                @if(count($footerPaymentMethods) > 0)
+                    <div class="flex flex-wrap items-center justify-center gap-3 lg:justify-end" aria-label="Accepted payment methods">
+                        @foreach($footerPaymentMethods as $paymentMethod)
+                            <x-storefront.payment-mark
+                                :name="$paymentMethod['name']"
+                                :provider="$paymentMethod['provider']"
+                                :code="$paymentMethod['code']"
+                                :icon-url="$paymentMethod['icon_url']"
+                                :icon-alt="$paymentMethod['icon_alt']"
+                                :bare="true"
+                            />
+                        @endforeach
+                    </div>
+                @endif
+
+                <span class="flex flex-wrap justify-center gap-3 lg:justify-end">
+                    <a href="{{ route('privacy') }}">Privacy</a>
+                    <a href="{{ route('terms') }}">Terms</a>
+                    <a href="{{ route('cookies') }}">Cookies</a>
+                    <a href="{{ route('accessibility') }}">Accessibility</a>
+                </span>
+            </div>
+        </div>
+    </div>
+</footer>

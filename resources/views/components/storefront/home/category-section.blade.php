@@ -9,7 +9,6 @@
     <div class="container">
         <x-storefront.home.section-heading
             class="section-head"
-            :eyebrow="$text('eyebrow', 'Find it fast')"
             :title="$text('title', 'What Are You Looking For?')"
             :description="filled($text('description')) ? $text('description', 'Start with an admin-managed category and find the right product faster.') : null"
         />

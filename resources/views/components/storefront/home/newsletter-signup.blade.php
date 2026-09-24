@@ -187,7 +187,7 @@
                         required
                         aria-invalid="{{ $errors->newsletter->has('email') ? 'true' : 'false' }}"
                     >
-                    <button class="np-home-newsletter-button np-home-action" type="submit" data-newsletter-submit>Join the List</button>
+                    <button class="np-home-newsletter-button np-home-action" type="submit" data-newsletter-submit>Join Team</button>
                 </div>
 
                 <p
@@ -245,7 +245,7 @@
 
                     if (submitButton) {
                         submitButton.disabled = true;
-                        submitButton.dataset.originalText = submitButton.dataset.originalText || submitButton.textContent || 'Join the List';
+                        submitButton.dataset.originalText = submitButton.dataset.originalText || submitButton.textContent || 'Join Team';
                         submitButton.textContent = 'Joining...';
                     }
 
@@ -280,7 +280,7 @@
                     } finally {
                         if (submitButton) {
                             submitButton.disabled = false;
-                            submitButton.textContent = submitButton.dataset.originalText || 'Join the List';
+                            submitButton.textContent = submitButton.dataset.originalText || 'Join Team';
                         }
                     }
                 });

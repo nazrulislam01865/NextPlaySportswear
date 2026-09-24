@@ -42,6 +42,9 @@
                         </svg>
                     </summary>
                     <div class="category-tools-panel">
+                        @if(auth('admin')->user()?->canAdmin('categories.manage'))
+                            <a href="#catalog-page-banner">All Products Banner</a>
+                        @endif
                         <a href="{{ route('admin.categories.export') }}">Export CSV</a>
                         <a href="{{ route('admin.attributes.index') }}">Catalog Attributes</a>
                         <a href="{{ route('admin.menus.index') }}">Navigation Menus</a>
@@ -49,6 +52,106 @@
                 </details>
             </div>
         </section>
+
+        @if(auth('admin')->user()?->canAdmin('categories.manage'))
+            <section id="catalog-page-banner" class="scroll-mt-24 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-labelledby="catalog-page-banner-title">
+                <form
+                    method="POST"
+                    action="{{ route('admin.categories.catalog-banner.update') }}"
+                    enctype="multipart/form-data"
+                    class="grid gap-6 xl:grid-cols-[minmax(0,.95fr)_minmax(0,1.05fr)]"
+                    x-data="{
+                        catalogBannerColor: @js((string) old('products_banner_color', $catalogBanner['color'] ?? '')),
+                        catalogBannerPreview: @js($catalogBanner['image'] ?? null),
+                        previewCatalogBanner(event) {
+                            const file = event.target.files && event.target.files[0];
+                            if (!file) return;
+                            if (this.catalogBannerPreview && this.catalogBannerPreview.startsWith('blob:')) {
+                                URL.revokeObjectURL(this.catalogBannerPreview);
+                            }
+                            this.catalogBannerPreview = URL.createObjectURL(file);
+                        }
+                    }"
+                >
+                    @csrf
+                    @method('PUT')
+
+                    <div>
+                        <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">Storefront catalog</p>
+                        <h2 id="catalog-page-banner-title" class="mt-2 text-2xl font-black text-brand-ink">All Products Page Banner</h2>
+                        <p class="mt-2 max-w-xl text-sm leading-6 text-slate-500">Upload a banner image, choose a background color, or use both. When an image is present it is displayed over the selected color.</p>
+
+                        <div
+                            class="relative mt-5 grid min-h-48 place-items-center overflow-hidden rounded-2xl border border-slate-200 text-white"
+                            x-bind:style="catalogBannerColor ? 'background-color: ' + catalogBannerColor : 'background: linear-gradient(135deg, #15345d 0%, #0d2545 58%, #071a31 100%)'"
+                        >
+                            <template x-if="catalogBannerPreview">
+                                <img :src="catalogBannerPreview" alt="All Products banner preview" class="absolute inset-0 h-full w-full object-cover">
+                            </template>
+                            <template x-if="!catalogBannerPreview">
+                                <span class="relative z-10 px-6 text-center text-sm font-black">Banner color preview</span>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="space-y-5">
+                        <label class="admin-label">
+                            Upload banner image <span class="font-normal text-slate-400">(optional)</span>
+                            <input
+                                class="admin-input py-3"
+                                type="file"
+                                name="products_banner_file"
+                                accept="image/jpeg,image/png,image/webp,image/avif"
+                                x-on:change="previewCatalogBanner($event)"
+                            >
+                            <small class="font-normal text-slate-500">JPG, PNG, WebP, or AVIF. Maximum 8 MB. A wide image is recommended.</small>
+                        </label>
+
+                        <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_74px] sm:items-end">
+                            <label class="admin-label">
+                                Banner background color <span class="font-normal text-slate-400">(optional)</span>
+                                <input
+                                    class="admin-input font-mono"
+                                    name="products_banner_color"
+                                    x-model="catalogBannerColor"
+                                    value="{{ old('products_banner_color', $catalogBanner['color'] ?? '') }}"
+                                    maxlength="7"
+                                    pattern="^#[0-9A-Fa-f]{6}$"
+                                    placeholder="#15345d"
+                                    autocomplete="off"
+                                >
+                                <small class="font-normal text-slate-500">Leave blank to keep the existing NextPlay gradient when no image is uploaded.</small>
+                            </label>
+                            <label class="admin-label">
+                                Pick
+                                <input
+                                    class="h-[46px] w-full cursor-pointer rounded-xl border border-slate-200 bg-white p-1"
+                                    type="color"
+                                    x-bind:value="catalogBannerColor || '#15345d'"
+                                    x-on:input="catalogBannerColor = $event.target.value"
+                                    aria-label="Choose All Products banner color"
+                                >
+                            </label>
+                        </div>
+
+                        @if(filled($catalogBanner['image'] ?? null))
+                            <label class="flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 p-4 text-sm">
+                                <input type="hidden" name="remove_products_banner" value="0">
+                                <input class="mt-1" type="checkbox" name="remove_products_banner" value="1">
+                                <span>
+                                    <strong class="block text-red-800">Remove current banner image</strong>
+                                    <small class="mt-1 block leading-5 text-red-700">The selected color will remain available after the image is removed.</small>
+                                </span>
+                            </label>
+                        @endif
+
+                        <div class="flex justify-end">
+                            <button type="submit" class="btn btn-red">Save All Products Banner</button>
+                        </div>
+                    </div>
+                </form>
+            </section>
+        @endif
 
         <section class="category-stats-grid" aria-label="Category summary">
             @foreach($stats as $stat)

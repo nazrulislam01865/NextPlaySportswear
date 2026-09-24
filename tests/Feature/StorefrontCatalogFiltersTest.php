@@ -168,6 +168,56 @@ class StorefrontCatalogFiltersTest extends TestCase
             ->assertDontSee('Shipping Time');
     }
 
+    public function test_all_products_price_sort_uses_the_same_discounted_price_shown_on_cards(): void
+    {
+        $apparel = $this->createCategory('Price Sort Apparel', 'price-sort-apparel');
+
+        $regular = $this->createProduct([
+            'category_id' => $apparel->id,
+            'name' => 'Regular Price Product',
+            'slug' => 'regular-price-product',
+            'sku' => 'PRICE-SORT-001',
+            'base_price' => 4.05,
+        ]);
+        $regular->categories()->attach($apparel->id, ['is_primary' => true, 'sort_order' => 0]);
+        $regular->priceTiers()->create([
+            'label' => '100+',
+            'minimum_quantity' => 100,
+            'maximum_quantity' => null,
+            'unit_price' => 4.05,
+            'compare_at_price' => null,
+            'sort_order' => 0,
+        ]);
+
+        $discounted = $this->createProduct([
+            'category_id' => $apparel->id,
+            'name' => 'Discounted Price Product',
+            'slug' => 'discounted-price-product',
+            'sku' => 'PRICE-SORT-002',
+            'base_price' => 5.25,
+            'compare_at_price' => 3.56,
+        ]);
+        $discounted->categories()->attach($apparel->id, ['is_primary' => true, 'sort_order' => 0]);
+        $discounted->priceTiers()->create([
+            'label' => '100+',
+            'minimum_quantity' => 100,
+            'maximum_quantity' => null,
+            'unit_price' => 5.25,
+            'compare_at_price' => null,
+            'sort_order' => 0,
+        ]);
+
+        $this->get(route('products.index', ['sort' => 'price-low']))
+            ->assertOk()
+            ->assertSeeInOrder(['Discounted Price Product', 'Regular Price Product'])
+            ->assertSee('From $3.56')
+            ->assertSee('From $4.05');
+
+        $this->get(route('products.index', ['sort' => 'price-high']))
+            ->assertOk()
+            ->assertSeeInOrder(['Regular Price Product', 'Discounted Price Product']);
+    }
+
     public function test_category_pages_use_the_same_shared_filters(): void
     {
         $apparel = $this->createCategory('Performance Apparel', 'performance-apparel');

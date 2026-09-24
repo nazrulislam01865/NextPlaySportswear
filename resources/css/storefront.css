@@ -397,7 +397,15 @@
 
     @media (min-width: 1024px) {
         .np-shop-panel .np-mega-grid {
-            grid-template-columns: repeat(4, minmax(240px, 1fr));
+            display: block;
+            column-count: 4;
+            column-gap: 18px;
+        }
+
+        .np-shop-panel .np-mega-card {
+            width: 100%;
+            break-inside: avoid;
+            margin-bottom: 14px;
         }
     }
 
@@ -896,10 +904,6 @@
     --np-home-inverse-heading: #ffffff;
     --np-home-inverse-text: #d5e1ef;
 
-    --np-home-section-eyebrow-size: 12px;
-    --np-home-section-eyebrow-weight: 700;
-    --np-home-section-eyebrow-line-height: 1.2;
-    --np-home-section-eyebrow-letter-spacing: .08em;
     --np-home-section-title-size: clamp(28px, 4vw, 42px);
     --np-home-section-title-weight: 650;
     --np-home-section-title-line-height: 1.05;
@@ -1297,7 +1301,15 @@
 }
 
 .home-page .path-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     padding: 20px;
+}
+
+.home-page .path-card .link-red {
+    margin-top: auto;
+    align-self: flex-start;
 }
 
 .home-page .path-icon {
@@ -1861,9 +1873,43 @@
     color: #64748b;
 }
 
+/* Homepage FAQ is intentionally a two-column desktop shell.
+   The FAQ occupies the left column and the right column stays reserved for
+   future content, while mobile/tablet keep the existing full-width flow. */
+.home-page .np-home-faq-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.home-page .np-home-faq-column {
+    min-width: 0;
+}
+
+.home-page .np-home-faq-column .section-head {
+    text-align: left;
+}
+
 .home-page .faq {
-    max-width: 760px;
-    margin: 0 auto;
+    max-width: none;
+    margin: 0;
+}
+
+.home-page .np-home-faq-aside {
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    .home-page .np-home-faq-layout {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: clamp(40px, 4vw, 88px);
+        align-items: start;
+    }
+
+    .home-page .np-home-faq-aside {
+        display: block;
+        min-width: 0;
+        min-height: 1px;
+    }
 }
 
 .home-page .faq-item {
@@ -2733,7 +2779,6 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
 
 .storefront-clean-ui .home-page .process-intro {
     margin-bottom: 48px !important;
-    text-align: center !important;
 }
 
 .storefront-clean-ui .home-page .process-intro .small-red {
@@ -2747,8 +2792,6 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
 }
 
 .storefront-clean-ui .home-page .process-intro h2 {
-    max-width: 980px !important;
-    margin: 0 auto !important;
     color: #07152f !important;
     font-family: var(--display) !important;
     font-size: clamp(42px, 4.6vw, 66px) !important;
@@ -2909,7 +2952,7 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     justify-content: center !important;
     min-height: 54px !important;
     max-width: 220px !important;
-    margin: 0 auto !important;
+    margin: auto auto 0 !important;
     color: #07152f !important;
     font-size: clamp(19px, 1.2vw, 23px) !important;
     font-weight: 750 !important;
@@ -7206,6 +7249,23 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     color: #fff;
 }
 
+.home-page .np-best-gear-section--custom-background {
+    background: none;
+    background-color: var(--np-best-gear-bg-color, #06152c);
+}
+
+.home-page .np-best-gear-section--custom-background.np-best-gear-section--has-image {
+    background-image: var(--np-best-gear-bg-image);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+.home-page .np-best-gear-section--custom-background::before,
+.home-page .np-best-gear-section--custom-background::after {
+    display: none;
+}
+
 .home-page .np-best-gear-section .container {
     width: min(1380px, calc(100% - 34px));
 }
@@ -9941,6 +10001,7 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
 :root {
     --np-commerce-layout-max: 1800px;
     --np-commerce-inline-space: clamp(32px, 5vw, 112px);
+    --np-catalog-filter-width: 336px;
 }
 
 @media (min-width: 1024px) {
@@ -9976,7 +10037,7 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     }
 
     .storefront-clean-ui .np-product-layout.has-filters {
-        grid-template-columns: 250px minmax(0, 1fr) !important;
+        grid-template-columns: var(--np-catalog-filter-width) minmax(0, 1fr) !important;
         gap: clamp(1.25rem, 1.7vw, 2rem) !important;
     }
 
@@ -10153,24 +10214,26 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     }
 
     .storefront-clean-ui .np-product-layout.has-filters {
-        grid-template-columns: 324px minmax(0, 1fr) !important;
+        grid-template-columns: var(--np-catalog-filter-width) minmax(0, 1fr) !important;
         gap: clamp(.85rem, 1vw, 1.1rem) !important;
     }
 
     .storefront-clean-ui .np-category-facet-shell {
-        width: 324px;
-        min-width: 324px;
+        width: var(--np-catalog-filter-width);
+        min-width: var(--np-catalog-filter-width);
+        max-width: var(--np-catalog-filter-width);
     }
 }
 
 @media (min-width: 1280px) {
     .storefront-clean-ui .np-product-layout.has-filters {
-        grid-template-columns: 336px minmax(0, 1fr) !important;
+        grid-template-columns: var(--np-catalog-filter-width) minmax(0, 1fr) !important;
     }
 
     .storefront-clean-ui .np-category-facet-shell {
-        width: 336px;
-        min-width: 336px;
+        width: var(--np-catalog-filter-width);
+        min-width: var(--np-catalog-filter-width);
+        max-width: var(--np-catalog-filter-width);
     }
 }
 
@@ -10678,8 +10741,8 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
 }
 
 .storefront-clean-ui .np-catalog-category-group > summary:focus-visible {
-    outline: 2px solid #2f6fbd;
-    outline-offset: -2px;
+    outline: 0;
+    box-shadow: inset 0 0 0 2px #2f6fbd;
 }
 
 .storefront-clean-ui .np-catalog-category-parent {
@@ -11014,7 +11077,7 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
 .storefront-clean-ui .np-catalog-filter-actions {
     display: grid;
     flex: 0 0 auto;
-    grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: .55rem;
     border-top: 1px solid #e5edf6;
     background: #fff;
@@ -11104,7 +11167,7 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
 
 @media (min-width: 1024px) {
     .storefront-clean-ui .np-product-layout.has-filters {
-        grid-template-columns: 300px minmax(0, 1fr) !important;
+        grid-template-columns: var(--np-catalog-filter-width) minmax(0, 1fr) !important;
         gap: 1rem !important;
     }
 
@@ -11112,20 +11175,117 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     .storefront-clean-ui .np-category-facet-shell {
         position: sticky;
         top: 8rem;
-        width: 300px;
-        min-width: 300px;
+        width: var(--np-catalog-filter-width);
+        min-width: var(--np-catalog-filter-width);
+        max-width: var(--np-catalog-filter-width);
+    }
+
+    /* NEXTPLAY_ALL_PRODUCTS_CLEAN_FILTER_SIDEBAR
+       The desktop All Products filters flow with the document instead of
+       living inside a fixed-height card/scroll container. The mobile drawer
+       keeps its viewport-safe scrolling behavior. */
+    .storefront-clean-ui .np-filter-shell--clean {
+        box-sizing: border-box;
+        width: var(--np-catalog-filter-width);
+        min-width: var(--np-catalog-filter-width);
+        max-width: var(--np-catalog-filter-width);
+        inline-size: var(--np-catalog-filter-width);
+        min-inline-size: var(--np-catalog-filter-width);
+        max-inline-size: var(--np-catalog-filter-width);
+        contain: inline-size;
+        justify-self: start;
+        height: auto;
+        overflow: visible;
+        position: static;
+        top: auto;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent;
+        padding: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .storefront-clean-ui .np-filter-shell--clean .np-catalog-filter-form {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        height: auto;
+        overflow: visible;
+        border-radius: 0;
+        background: transparent;
+    }
+
+    .storefront-clean-ui .np-filter-shell--clean :where(
+        .np-catalog-filter-form,
+        .np-catalog-filter-scroll,
+        .np-catalog-filter-category-section,
+        .np-catalog-category-tree,
+        .np-catalog-category-group,
+        .np-catalog-category-group > summary,
+        .np-catalog-category-parent,
+        .np-catalog-category-children,
+        .np-catalog-filter-section,
+        .np-catalog-filter-options,
+        .np-catalog-filter-option,
+        .np-catalog-filter-option__main
+    ) {
+        box-sizing: border-box;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .storefront-clean-ui .np-filter-shell--clean .np-catalog-category-children {
+        width: auto;
+    }
+
+    .storefront-clean-ui .np-filter-shell--clean :where(
+        .np-catalog-category-name,
+        .np-catalog-filter-option__main > span:last-child
+    ) {
+        min-width: 0;
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .storefront-clean-ui .np-filter-shell--clean .np-catalog-filter-header {
+        padding: .15rem 0 .85rem;
+        border-bottom: 1px solid #e5edf6;
+        background: transparent;
+    }
+
+    .storefront-clean-ui .np-filter-shell--clean .np-catalog-filter-header h3 {
+        margin: 0;
+    }
+
+    .storefront-clean-ui .np-filter-shell--clean .np-catalog-filter-scroll {
+        flex: 0 0 auto;
+        min-height: auto;
+        overflow: visible;
+        overscroll-behavior: auto;
+        scrollbar-width: auto;
+        padding: .8rem 0 1rem;
+    }
+
+    .storefront-clean-ui .np-filter-shell--clean .np-catalog-filter-actions {
+        border-top: 1px solid #e5edf6;
+        background: transparent;
+        padding: .75rem 0 0;
+        box-shadow: none;
     }
 }
 
 @media (min-width: 1440px) {
     .storefront-clean-ui .np-product-layout.has-filters {
-        grid-template-columns: 318px minmax(0, 1fr) !important;
+        grid-template-columns: var(--np-catalog-filter-width) minmax(0, 1fr) !important;
     }
 
     .storefront-clean-ui .np-filter-shell,
     .storefront-clean-ui .np-category-facet-shell {
-        width: 318px;
-        min-width: 318px;
+        width: var(--np-catalog-filter-width);
+        min-width: var(--np-catalog-filter-width);
+        max-width: var(--np-catalog-filter-width);
     }
 }
 
@@ -11744,7 +11904,9 @@ img[src*="product-placeholder.svg"] {
 }
 
 .home-page .np-shop-sport__inner {
-    width: min(1470px, calc(100% - 48px));
+    /* Use the same shared storefront container/gutters as every other homepage section.
+       This prevents the sport grid from becoming narrower on wide screens or wider
+       than adjacent sections at smaller desktop/tablet widths. */
     margin-inline: auto;
 }
 
@@ -11976,9 +12138,6 @@ img[src*="product-placeholder.svg"] {
         overflow: visible;
     }
 
-    .home-page .np-shop-sport__inner {
-        width: min(100% - 54px, 820px);
-    }
 
     .home-page .np-shop-sport__header {
         margin-bottom: 31px;
@@ -12051,9 +12210,6 @@ img[src*="product-placeholder.svg"] {
         padding-top: 38px !important;
     }
 
-    .home-page .np-shop-sport__inner {
-        width: calc(100% - 28px);
-    }
 
     .home-page .np-shop-sport__header {
         margin-bottom: 25px;
@@ -13490,7 +13646,7 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
 }
 
 /* NEXTPLAY_HOMEPAGE_CENTRALIZED_TYPOGRAPHY_THEME_CONTROLS
-   Homepage section headings now share one reusable visual contract. The values
+   Homepage section headings use a centralized title + optional description contract. The values
    below intentionally mirror the approved Shop by Sport heading and are the
    only values future homepage sections should use for section heading type.
    Theme and CTA typography are also sourced from the .home-page tokens above. */
@@ -13502,24 +13658,13 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
     text-align: left;
 }
 
-.storefront-clean-ui .home-page .np-home-section-heading .np-home-section-eyebrow {
-    display: block !important;
-    margin: 0 0 7px !important;
-    color: var(--np-home-section-accent) !important;
-    font-family: var(--np-home-font-body) !important;
-    font-size: var(--np-home-section-eyebrow-size) !important;
-    font-style: normal !important;
-    font-weight: var(--np-home-section-eyebrow-weight) !important;
-    line-height: var(--np-home-section-eyebrow-line-height) !important;
-    letter-spacing: var(--np-home-section-eyebrow-letter-spacing) !important;
-    text-transform: uppercase !important;
-    transform: none !important;
-}
 
 .storefront-clean-ui .home-page .np-home-section-heading .np-home-section-title {
     display: block !important;
     position: static !important;
-    margin: 0 !important;
+    /* Alignment belongs to the reusable heading contract. Centered headings
+       stay centered even when a section applies a max-width to its title. */
+    margin: 0 auto !important;
     padding: 0 !important;
     color: var(--np-home-heading) !important;
     font-family: var(--np-home-font-display) !important;
@@ -13530,6 +13675,11 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
     letter-spacing: var(--np-home-section-title-letter-spacing) !important;
     text-transform: uppercase !important;
     text-shadow: none !important;
+}
+
+.storefront-clean-ui .home-page .np-home-section-heading--left .np-home-section-title {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
 }
 
 .storefront-clean-ui .home-page .np-home-section-heading .np-home-section-title::after {
@@ -13612,5 +13762,826 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
         --np-home-section-description-size: 15px;
         --np-home-section-description-line-height: 1.55;
         --np-home-section-heading-gap: 8px;
+    }
+}
+
+/* All Products catalog: keep result/sort controls visually open while preserving layout. */
+.storefront-clean-ui .np-catalog-active-bar--plain {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+/* NEXTPLAY_SHARED_CATALOG_SEARCH
+   The header and Products hero use one search visual contract. The header
+   keeps its existing desktop footprint while sharing the same field/button
+   proportions and focus behavior as the catalog search. */
+.np-catalog-search-shell {
+    position: relative;
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 12px;
+    border-radius: 16px;
+    background: #fff;
+    padding: 8px;
+    box-shadow: 0 18px 44px rgba(8, 22, 50, .11);
+}
+
+.np-catalog-search-input {
+    min-width: 0;
+    min-height: 48px;
+    height: 48px;
+    flex: 1 1 auto;
+    border: 1px solid #d8e0eb;
+    border-radius: 12px;
+    background: #fff;
+    padding: 0 16px;
+    color: #17233a;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.2;
+    outline: none;
+    box-shadow: none;
+    transition: border-color .16s ease, box-shadow .16s ease;
+}
+
+.np-catalog-search-input::placeholder {
+    color: #98a2b3;
+}
+
+.np-catalog-search-input:focus {
+    border-color: #ed102b;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(237, 16, 43, .10);
+}
+
+.np-catalog-search-submit {
+    position: static;
+    min-width: 108px;
+    min-height: 48px;
+    height: 48px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #ed102b;
+    border-radius: 12px;
+    background: #ed102b;
+    padding: 0 24px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: none;
+    transform: none;
+    transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.np-catalog-search-submit:hover,
+.np-catalog-search-submit:active {
+    border-color: #ed102b;
+    background: #ed102b;
+    color: #fff;
+    transform: none;
+}
+
+.np-catalog-search-submit:focus-visible {
+    border-color: #ed102b;
+    background: #ed102b;
+    color: #fff;
+    outline: 2px solid rgba(237, 16, 43, .28);
+    outline-offset: 2px;
+    transform: none;
+}
+
+.np-header-search.np-catalog-search-shell {
+    width: 100%;
+    max-width: 500px;
+    justify-self: center;
+}
+
+.np-header-search .np-catalog-search-input {
+    width: auto;
+    height: 48px;
+    min-height: 48px;
+    border-radius: 12px;
+    padding: 0 16px;
+    font-size: 14px;
+}
+
+.np-header-search .np-catalog-search-submit {
+    position: static;
+    top: auto;
+    right: auto;
+    z-index: auto;
+    height: 48px;
+    min-height: 48px;
+    min-width: 108px;
+    border-radius: 12px;
+    padding: 0 22px;
+    transform: none;
+}
+
+.np-header-search .np-catalog-search-submit:hover,
+.np-header-search .np-catalog-search-submit:active,
+.np-header-search .np-catalog-search-submit:focus-visible {
+    transform: none;
+}
+
+@media (max-width: 639px) {
+    .np-catalog-search-shell:not(.np-header-search) {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .np-catalog-search-shell:not(.np-header-search) .np-catalog-search-input,
+    .np-catalog-search-shell:not(.np-header-search) .np-catalog-search-submit {
+        width: 100%;
+    }
+
+    .np-header-search.np-catalog-search-shell {
+        gap: 8px;
+    }
+
+    .np-header-search .np-catalog-search-submit {
+        min-width: 92px;
+        padding-inline: 15px;
+    }
+}
+
+/* NEXTPLAY_HEADER_SEARCH_AND_GEAR_SQUARE_MEDIA_UPDATE
+   Header: larger desktop search footprint, right aligned, without the extra
+   outer search-shell surface. Supporting gear cards 02-05 use square media. */
+@media (min-width: 1024px) {
+    .np-main-header-inner {
+        grid-template-columns: minmax(220px, auto) minmax(420px, 1fr) auto !important;
+    }
+
+    .np-header-search.np-catalog-search-shell {
+        width: min(100%, 760px) !important;
+        max-width: 760px !important;
+        justify-self: end !important;
+        gap: 9px !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .np-header-search .np-catalog-search-input {
+        height: 42px !important;
+        min-height: 42px !important;
+        border-radius: 10px !important;
+        padding: 0 14px !important;
+        font-size: 13px !important;
+    }
+
+    .np-header-search .np-catalog-search-submit {
+        height: 42px !important;
+        min-height: 42px !important;
+        min-width: 102px !important;
+        border-radius: 10px !important;
+        padding: 0 19px !important;
+    }
+}
+
+.home-page .np-best-gear-card--square-media.np-best-gear-card--supporting {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    grid-template-rows: auto minmax(176px, 1fr) !important;
+}
+
+.home-page .np-best-gear-card--square-media.np-best-gear-card--supporting .np-best-gear-card__media {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    aspect-ratio: 1 / 1 !important;
+}
+
+.home-page .np-best-gear-card--square-media.np-best-gear-card--supporting .np-best-gear-card__media img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    object-position: center !important;
+}
+
+.home-page .np-best-gear-card--square-media.np-best-gear-card--supporting .np-best-gear-card__content {
+    min-height: 218px !important;
+}
+
+.home-page .np-best-gear-card--square-media.np-best-gear-card--supporting .np-best-gear-card__number {
+    top: auto !important;
+    bottom: 218px !important;
+}
+
+@media (min-width: 1121px) {
+    .home-page .np-best-gear-card--square-media.np-best-gear-card--supporting .np-best-gear-card__content {
+        height: 176px !important;
+        min-height: 176px !important;
+    }
+
+    .home-page .np-best-gear-card--square-media.np-best-gear-card--supporting .np-best-gear-card__number {
+        bottom: 176px !important;
+    }
+}
+
+@media (max-width: 680px) {
+    .home-page .np-best-gear-card--square-media.np-best-gear-card--supporting {
+        grid-template-rows: auto auto !important;
+    }
+
+    .home-page .np-best-gear-card--square-media.np-best-gear-card--supporting .np-best-gear-card__content {
+        min-height: 220px !important;
+    }
+
+    .home-page .np-best-gear-card--square-media.np-best-gear-card--supporting .np-best-gear-card__number {
+        top: auto !important;
+        bottom: 220px !important;
+    }
+}
+
+
+/* NEXTPLAY_HEADER_SEARCH_RESPONSIVE_BUTTON_FIX
+   Keep the desktop/tablet Search action readable at narrower widths. The
+   previous responsive rule collapsed the button to 40px and hid its only
+   text label, leaving a blank red button because this control has no icon. */
+.np-header-search .np-header-search-submit span {
+    display: inline !important;
+}
+
+@media (max-width: 1279px) {
+    .np-header-search .np-catalog-search-submit {
+        width: auto !important;
+        min-width: 92px !important;
+        padding-inline: 15px !important;
+    }
+}
+
+/* NEXTPLAY_CUSTOMER_LOGIN_PROTOTYPE
+   Customer-only sign-in screen matching the approved prototype. The admin
+   authentication UI remains independent. Colors and type inherit the existing
+   NextPlay storefront system; this block only owns login-page structure. */
+:root {
+    --np-customer-login-navy: var(--np-header-ink, #081632);
+    --np-customer-login-red: var(--np-header-red, #ed102b);
+    --np-customer-login-link: #0068d9;
+    --np-customer-login-border: var(--np-header-border, #dce5f0);
+    --np-customer-login-muted: #6b7c96;
+    --np-customer-login-placeholder: #91a6c6;
+    --np-customer-login-bg: #f8fbff;
+}
+
+.np-customer-login {
+    min-height: calc(100vh - 124px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 50px 20px 96px;
+    background:
+        radial-gradient(circle at 31% 19%, rgba(36, 103, 183, .055), transparent 31%),
+        radial-gradient(circle at 70% 48%, rgba(237, 16, 43, .035), transparent 29%),
+        linear-gradient(180deg, #fbfdff 0%, var(--np-customer-login-bg) 58%, #f9fbfe 100%);
+}
+
+.np-customer-login__card {
+    width: min(668px, 100%);
+    border: 1px solid var(--np-customer-login-border);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, .94);
+    padding: 45px 47px 28px;
+    box-shadow: 0 18px 48px rgba(7, 31, 67, .075);
+}
+
+.np-customer-login__title {
+    margin: 0 0 31px;
+    color: var(--np-customer-login-navy);
+    font-family: "Oswald", Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 52px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -.035em;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.np-customer-login-form {
+    display: grid;
+    gap: 20px;
+}
+
+.np-customer-login-field {
+    min-width: 0;
+}
+
+.np-customer-login-field__label {
+    display: block;
+    margin-bottom: 9px;
+    color: var(--np-customer-login-navy);
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.np-customer-login-field__required {
+    margin-left: 2px;
+    color: var(--np-customer-login-red);
+}
+
+.np-customer-login-field__input {
+    width: 100%;
+    height: 47px;
+    border: 1px solid #c9d6e8;
+    border-radius: 11px;
+    background: #fff;
+    padding: 0 15px;
+    color: var(--np-customer-login-navy);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1;
+    box-shadow: inset 0 0 0 1px rgba(213, 222, 236, .18);
+    outline: none;
+    transition: border-color .16s ease, box-shadow .16s ease;
+}
+
+.np-customer-login-field__input::placeholder {
+    color: var(--np-customer-login-placeholder);
+    opacity: 1;
+}
+
+.np-customer-login-field__input:focus {
+    border-color: #7fa6d5;
+    box-shadow: 0 0 0 3px rgba(36, 103, 183, .09);
+}
+
+.np-customer-login-password {
+    position: relative;
+}
+
+.np-customer-login-password__input {
+    padding-right: 48px;
+}
+
+.np-customer-login-password__toggle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 48px;
+    height: 47px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 0 11px 11px 0;
+    background: transparent;
+    color: #5879a8;
+    cursor: pointer;
+}
+
+.np-customer-login-password__toggle:hover,
+.np-customer-login-password__toggle:focus-visible {
+    color: var(--np-customer-login-navy);
+}
+
+.np-customer-login-password__forgot-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+}
+
+.np-customer-login-password__forgot,
+.np-customer-login__register-link {
+    color: var(--np-customer-login-link);
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.np-customer-login-password__forgot {
+    font-size: 14px;
+    line-height: 1.25;
+}
+
+.np-customer-login-password__forgot:hover,
+.np-customer-login__register-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.np-customer-login__submit {
+    width: 100%;
+    height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--np-customer-login-red);
+    border-radius: 11px;
+    background: var(--np-customer-login-red);
+    padding: 0 18px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 7px 16px rgba(237, 16, 43, .18);
+    transition: background-color .16s ease, border-color .16s ease;
+}
+
+.np-customer-login__submit:hover,
+.np-customer-login__submit:focus-visible {
+    border-color: #d70d26;
+    background: #d70d26;
+}
+
+.np-customer-login__register {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 23px;
+    border-top: 1px solid var(--np-customer-login-border);
+    padding-top: 20px;
+    color: #4f6380;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.35;
+    text-align: center;
+}
+
+.np-customer-login__register-link {
+    font-size: inherit;
+}
+
+.np-customer-login-field__error {
+    margin: 7px 0 0;
+    color: var(--np-customer-login-red);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.np-customer-login-alert {
+    margin: -8px 0 20px;
+    border: 1px solid;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.np-customer-login-alert--success {
+    border-color: #a7e4c0;
+    background: #effcf4;
+    color: #166534;
+}
+
+.np-customer-login-alert--notice {
+    border-color: #f3d69a;
+    background: #fff8e8;
+    color: #8a5a00;
+}
+
+@media (max-width: 767px) {
+    .np-customer-login {
+        min-height: calc(100vh - 108px);
+        padding: 28px 14px 64px;
+    }
+
+    .np-customer-login__card {
+        border-radius: 17px;
+        padding: 32px 22px 24px;
+    }
+
+    .np-customer-login__title {
+        margin-bottom: 28px;
+        font-size: 43px;
+    }
+
+    .np-customer-login-form {
+        gap: 18px;
+    }
+}
+
+@media (max-width: 399px) {
+    .np-customer-login__card {
+        padding-inline: 18px;
+    }
+
+    .np-customer-login__title {
+        font-size: 39px;
+    }
+}
+
+/* NEXTPLAY_CUSTOMER_REGISTER_PROTOTYPE
+   Customer-only registration screen. It deliberately reuses the centralized
+   customer-auth field, password, button, color and typography primitives from
+   the approved sign-in screen so both customer auth pages stay consistent.
+   Admin authentication remains completely separate. */
+.np-customer-register__card {
+    padding-bottom: 36px;
+}
+
+.np-customer-register__title {
+    margin-bottom: 31px;
+}
+
+.np-customer-register-form {
+    gap: 20px;
+}
+
+.np-customer-register-terms {
+    min-width: 0;
+}
+
+.np-customer-register-terms__label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 20px;
+    color: var(--np-customer-login-navy);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.35;
+    cursor: pointer;
+}
+
+.np-customer-register-terms__checkbox {
+    width: 19px;
+    height: 19px;
+    flex: 0 0 19px;
+    margin: 0;
+    border: 1px solid #94a3b8;
+    border-radius: 3px;
+    accent-color: var(--np-customer-login-red);
+    cursor: pointer;
+}
+
+.np-customer-register-terms__text {
+    min-width: 0;
+}
+
+.np-customer-register-terms__links,
+.np-customer-register-terms__links a {
+    color: var(--np-customer-login-link);
+}
+
+.np-customer-register-terms__links a {
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.np-customer-register-terms__links a:hover,
+.np-customer-register-terms__links a:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.np-customer-register__signin {
+    margin-top: 23px;
+}
+
+@media (max-width: 767px) {
+    .np-customer-register__card {
+        padding-bottom: 28px;
+    }
+
+    .np-customer-register__title {
+        margin-bottom: 28px;
+    }
+
+    .np-customer-register-form {
+        gap: 18px;
+    }
+}
+
+/* NEXTPLAY_SYSTEM_STATUS_CARDS
+   Shared customer-facing status pattern for password recovery and storefront
+   HTTP error screens. It reuses the approved customer-auth theme tokens so
+   typography, color, spacing, borders and actions stay centralized. */
+.np-system-screen {
+    min-height: calc(100vh - 124px);
+}
+
+.np-system-card {
+    padding-top: 45px;
+    padding-bottom: 29px;
+    text-align: center;
+}
+
+.np-system-card__code {
+    margin: 0 0 22px;
+    color: var(--np-customer-login-red);
+    font-family: "Oswald", Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.np-system-card__title {
+    margin-bottom: 20px;
+}
+
+.np-system-card__icon {
+    width: 86px;
+    height: 86px;
+    display: grid;
+    place-items: center;
+    margin: 0 auto 22px;
+    color: var(--np-customer-login-red);
+}
+
+.np-system-card__icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.np-system-card__message {
+    margin: 0 auto 31px;
+    color: #294775;
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1.45;
+    text-align: center;
+}
+
+.np-system-card__body {
+    width: 100%;
+}
+
+.np-system-card__form {
+    display: grid;
+    gap: 23px;
+    text-align: left;
+}
+
+.np-system-card__primary {
+    width: 100%;
+    height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--np-customer-login-red);
+    border-radius: 11px;
+    background: var(--np-customer-login-red);
+    padding: 0 18px;
+    color: #fff;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    box-shadow: 0 7px 16px rgba(237, 16, 43, .18);
+    transition: background-color .16s ease, border-color .16s ease;
+}
+
+.np-system-card__primary:hover,
+.np-system-card__primary:focus-visible {
+    border-color: #d70d26;
+    background: #d70d26;
+    color: #fff;
+    text-decoration: none;
+}
+
+.np-system-card__footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 23px;
+    border-top: 1px solid var(--np-customer-login-border);
+    padding-top: 20px;
+    text-align: center;
+}
+
+.np-system-card__secondary-link {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: var(--np-customer-login-link);
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.35;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.np-system-card__secondary-link:hover,
+.np-system-card__secondary-link:focus-visible {
+    color: var(--np-customer-login-link);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.np-system-card__secondary-button {
+    appearance: none;
+}
+
+/* Error cards in the supplied prototypes have a little more breathing room
+   between the code/title group and the action while preserving the same
+   centralized card width used by customer authentication. */
+.np-system-card__code + .np-system-card__title {
+    margin-top: 0;
+}
+
+.np-system-card--has-code .np-system-card__message {
+    margin-bottom: 31px;
+}
+
+.np-system-card--has-icon .np-system-card__title {
+    margin-bottom: 21px;
+}
+
+@media (max-width: 767px) {
+    .np-system-screen {
+        min-height: calc(100vh - 108px);
+    }
+
+    .np-system-card {
+        padding-top: 32px;
+        padding-bottom: 24px;
+    }
+
+    .np-system-card__code {
+        margin-bottom: 18px;
+        font-size: 29px;
+    }
+
+    .np-system-card__title {
+        margin-bottom: 18px;
+    }
+
+    .np-system-card__icon {
+        width: 72px;
+        height: 72px;
+        margin-bottom: 18px;
+    }
+
+    .np-system-card__message {
+        margin-bottom: 25px;
+        font-size: 16px;
+    }
+
+    .np-system-card__form {
+        gap: 20px;
+    }
+
+    .np-system-card__footer {
+        margin-top: 21px;
+        padding-top: 18px;
+    }
+}
+
+/* Prototype-specific rhythm for HTTP error cards. These modifiers only
+   distribute vertical whitespace; all colors, typography and controls still
+   come from the shared system-card primitives above. */
+.np-system-card--has-code:not(.np-system-card--has-icon) {
+    min-height: 430px;
+    padding-top: 49px;
+    padding-bottom: 34px;
+}
+
+.np-system-card--has-code:not(.np-system-card--has-icon) .np-system-card__code {
+    margin-bottom: 26px;
+}
+
+.np-system-card--has-code:not(.np-system-card--has-icon) .np-system-card__title {
+    margin-bottom: 32px;
+}
+
+.np-system-card--has-code:not(.np-system-card--has-icon) .np-system-card__message {
+    margin-bottom: 34px;
+}
+
+.np-system-card--has-code.np-system-card--has-icon {
+    min-height: 468px;
+}
+
+@media (max-width: 767px) {
+    .np-system-card--has-code:not(.np-system-card--has-icon),
+    .np-system-card--has-code.np-system-card--has-icon {
+        min-height: 0;
+        padding-top: 32px;
+        padding-bottom: 24px;
+    }
+
+    .np-system-card--has-code:not(.np-system-card--has-icon) .np-system-card__code {
+        margin-bottom: 18px;
+    }
+
+    .np-system-card--has-code:not(.np-system-card--has-icon) .np-system-card__title {
+        margin-bottom: 18px;
+    }
+
+    .np-system-card--has-code:not(.np-system-card--has-icon) .np-system-card__message {
+        margin-bottom: 25px;
     }
 }

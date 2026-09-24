@@ -9,7 +9,6 @@
 <section id="bulk" class="bulk-quote-home" aria-labelledby="bulkQuoteTitle">
     <div class="bulk-wrap">
         <div class="bulk-left">
-            <p class="bulk-kicker">{{ $text('eyebrow', 'Team, School, League & Event') }}</p>
             <h2 id="bulkQuoteTitle" class="bulk-title">{{ $text('title', 'Ordering for a team, school, league, or event?') }}</h2>
             <p class="bulk-copy">{{ $text('description', 'Larger orders need a little more care. Share your quantity, sizes, artwork, delivery date, and shipping needs. Our team will review everything and send a clear bulk quote.') }}</p>
 

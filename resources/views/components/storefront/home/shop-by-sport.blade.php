@@ -25,11 +25,10 @@
     :class="{ 'is-expanded': expanded }"
     x-cloak
 >
-    <div class="np-shop-sport__inner">
+    <div class="container np-shop-sport__inner">
         <x-storefront.home.section-heading
             class="np-shop-sport__header"
             title-id="np-shop-sport-title"
-            :eyebrow="$text('eyebrow', 'Find your sport')"
             :title="$text('title', 'Shop by Sport')"
             :description="$text('description', 'Browse uniforms, apparel and gear by sport.')"
         />

@@ -2,19 +2,45 @@
     @php
         $showsProducts = $products->total() > 0
             || ! in_array($categoryModel->page_template, ['quote_only', 'content_landing', 'navigation_only'], true);
+
+        $categoryBannerColor = $categoryModel->banner_color;
+        $uploadedCategoryBanner = $categoryModel->uploadedBannerUrl();
+        $uploadedMobileBanner = $categoryModel->uploadedBannerUrl(true);
+
+        if (filled($uploadedCategoryBanner)) {
+            $categoryBannerImage = $uploadedCategoryBanner;
+            $categoryMobileBanner = $uploadedMobileBanner ?: $uploadedCategoryBanner;
+        } elseif (filled($categoryBannerColor)) {
+            // A selected banner color is a deliberate color-only choice when no
+            // desktop banner image has been uploaded.
+            $categoryBannerImage = null;
+            $categoryMobileBanner = null;
+        } else {
+            // Preserve the existing category-thumbnail fallback for categories
+            // that have not configured the new banner controls yet.
+            $categoryBannerImage = $category['banner'];
+            $categoryMobileBanner = $category['mobile_banner'];
+        }
     @endphp
 
-    <section class="relative isolate overflow-hidden bg-brand-dark text-white">
-        <picture>
-            <source media="(max-width:640px)" srcset="{{ $category['mobile_banner'] }}">
-            <img
-                src="{{ $category['banner'] }}"
-                alt="{{ $category['banner_alt'] }}"
-                class="absolute inset-0 -z-20 h-full w-full object-cover opacity-35"
-                fetchpriority="high"
-            >
-        </picture>
-        <div class="absolute inset-0 -z-10 bg-gradient-to-r from-brand-dark via-brand-navy/95 to-brand-navy/35"></div>
+    <section
+        class="relative isolate overflow-hidden bg-brand-dark text-white"
+        @if(filled($categoryBannerColor)) style="background-color: {{ $categoryBannerColor }};" @endif
+    >
+        @if(filled($categoryBannerImage))
+            <picture>
+                @if(filled($categoryMobileBanner))
+                    <source media="(max-width:640px)" srcset="{{ $categoryMobileBanner }}">
+                @endif
+                <img
+                    src="{{ $categoryBannerImage }}"
+                    alt="{{ $category['banner_alt'] }}"
+                    class="absolute inset-0 -z-20 h-full w-full object-cover opacity-45"
+                    fetchpriority="high"
+                >
+            </picture>
+            <div class="absolute inset-0 -z-10 bg-gradient-to-r from-brand-dark/95 via-brand-navy/80 to-brand-navy/35"></div>
+        @endif
 
         <div class="site-container py-12 sm:py-16">
             <nav aria-label="Breadcrumb" class="flex flex-wrap gap-2 text-xs font-bold text-blue-100">

@@ -118,6 +118,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::post('/products/{product}/duplicate', [\App\Http\Controllers\Admin\ProductController::class, 'duplicate'])->name('products.duplicate');
         Route::post('/products/bulk', [\App\Http\Controllers\Admin\ProductController::class, 'bulk'])->name('products.bulk');
         Route::resource('products', \App\Http\Controllers\Admin\ProductController::class);
+        Route::put('/categories/catalog-banner', [\App\Http\Controllers\Admin\CategoryController::class, 'updateCatalogBanner'])->name('categories.catalog-banner.update');
         Route::post('/categories/bulk', [\App\Http\Controllers\Admin\CategoryOperationsController::class, 'bulk'])->name('categories.bulk');
         Route::post('/categories/{category}/duplicate', [\App\Http\Controllers\Admin\CategoryController::class, 'duplicate'])->name('categories.duplicate');
         Route::get('/categories/export', [\App\Http\Controllers\Admin\CategoryOperationsController::class, 'export'])->name('categories.export');

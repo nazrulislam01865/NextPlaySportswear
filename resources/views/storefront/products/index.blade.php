@@ -1,36 +1,29 @@
 <x-layouts.storefront :seo="$seo">
-    <section class="bg-gradient-to-br from-brand-navy via-brand-dark to-brand-blue py-14 text-white sm:py-16">
+    @php
+        $catalogBannerImage = $catalogBanner['image'] ?? null;
+        $catalogBannerColor = $catalogBanner['color'] ?? null;
+        $catalogBannerHasCustomBackground = filled($catalogBannerImage) || filled($catalogBannerColor);
+    @endphp
+
+    <section
+        class="relative isolate overflow-hidden py-14 text-white sm:py-16 {{ $catalogBannerHasCustomBackground ? 'bg-brand-dark' : 'bg-gradient-to-br from-brand-navy via-brand-dark to-brand-blue' }}"
+        @if(filled($catalogBannerColor)) style="background-color: {{ $catalogBannerColor }};" @endif
+    >
+        @if(filled($catalogBannerImage))
+            <img
+                src="{{ $catalogBannerImage }}"
+                alt=""
+                class="absolute inset-0 -z-20 h-full w-full object-cover"
+                fetchpriority="high"
+                aria-hidden="true"
+            >
+            <div class="absolute inset-0 -z-10 bg-gradient-to-r from-brand-dark/90 via-brand-navy/75 to-brand-dark/35"></div>
+        @endif
+
         <div class="site-container">
             <p class="text-xs font-black uppercase tracking-[.2em] text-red-100">NextPlay catalog</p>
             <h1 class="mt-3 font-display text-4xl font-bold uppercase leading-tight tracking-tight sm:text-5xl lg:text-6xl">Products</h1>
             <p class="mt-4 max-w-2xl text-base leading-7 text-blue-50">Find sportswear and team gear by category, sport, color, material, customization, quantity, price, availability, and rating.</p>
-
-            <form
-                method="GET"
-                action="{{ route('products.index') }}"
-                class="relative mt-8 flex max-w-2xl flex-col gap-3 rounded-2xl bg-white p-2 shadow-hero sm:flex-row"
-                data-storefront-search-suggest
-                data-suggest-url="{{ route('products.suggestions') }}"
-            >
-                <input type="search" name="q" value="{{ $filters['q'] }}" placeholder="Search jersey, cap, bag, sport..." autocomplete="off" class="min-h-12 flex-1 rounded-xl border border-slate-200 px-4 text-sm text-slate-700 outline-none focus:border-brand-red">
-                @if(filled($filters['tag']))<input type="hidden" name="tag" value="{{ $filters['tag'] }}">@endif
-                @foreach(['categories','sports','product_types','colors','materials','artwork_methods','moq','customization','availability'] as $key)
-                    @foreach((array) ($filters[$key] ?? []) as $value)
-                        <input type="hidden" name="{{ $key }}[]" value="{{ $value }}">
-                    @endforeach
-                @endforeach
-                @foreach((array) ($filters['attributes'] ?? []) as $attributeSlug => $values)
-                    @foreach((array) $values as $value)
-                        <input type="hidden" name="attributes[{{ $attributeSlug }}][]" value="{{ $value }}">
-                    @endforeach
-                @endforeach
-                @if(($filters['min_price'] ?? null) !== null)<input type="hidden" name="min_price" value="{{ $filters['min_price'] }}">@endif
-                @if(($filters['max_price'] ?? null) !== null)<input type="hidden" name="max_price" value="{{ $filters['max_price'] }}">@endif
-                @if(($filters['min_rating'] ?? null) !== null)<input type="hidden" name="min_rating" value="{{ $filters['min_rating'] }}">@endif
-                <input type="hidden" name="sort" value="{{ $filters['sort'] }}">
-                <button class="btn btn-red" type="submit">Search</button>
-                <div class="storefront-search-suggestions absolute left-2 right-2 top-[calc(100%+0.5rem)] z-[60] hidden overflow-hidden rounded-2xl border border-slate-200 bg-white text-left text-brand-ink shadow-2xl" data-storefront-search-suggestions role="listbox" aria-label="Product suggestions"></div>
-            </form>
         </div>
     </section>
 
@@ -38,7 +31,6 @@
         <div class="site-container np-products-catalog-container" x-data="{filtersOpen:false}">
             <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                    <p class="text-sm font-bold text-slate-500">{{ number_format($products->total()) }} product{{ $products->total() === 1 ? '' : 's' }} found</p>
                     <h2 class="font-display text-4xl font-bold uppercase tracking-tight text-brand-ink">
                         {{ filled($filters['tag']) ? 'Tag: '.$filters['tag'] : (filled($filters['q']) ? 'Search: '.$filters['q'] : ($hasFilters ? 'Filtered Products' : 'All Products')) }}
                     </h2>
@@ -51,19 +43,17 @@
                 </div>
             </div>
 
-            <div class="np-catalog-active-bar mb-5">
+            <div class="np-catalog-active-bar np-catalog-active-bar--plain mb-5">
                 <div class="np-catalog-active-summary">
                     <strong>{{ number_format($products->total()) }} results</strong>
                     @if($activeFilterCount > 0)
                         <span class="np-catalog-active-pill">{{ $activeFilterCount }} filter{{ $activeFilterCount === 1 ? '' : 's' }} active</span>
                         <a href="{{ route('products.index') }}" class="font-extrabold text-brand-red hover:underline">Clear all</a>
-                    @else
-                        <span>Use the product finder to narrow the catalog.</span>
                     @endif
                 </div>
                 <div class="np-catalog-sort">
                     <label for="products-sort">Sort by</label>
-                    <select id="products-sort" onchange="const url=new URL(window.location.href);url.searchParams.set('sort',this.value);url.searchParams.delete('page');window.location.assign(url.toString())">
+                    <select id="products-sort" data-product-sort>
                         <option value="featured" @selected($filters['sort']==='featured')>Featured</option>
                         <option value="best-selling" @selected($filters['sort']==='best-selling')>Best selling</option>
                         <option value="newest" @selected($filters['sort']==='newest')>Newest</option>
@@ -76,33 +66,19 @@
             </div>
 
             <div class="np-product-layout has-filters grid gap-4">
-                <aside class="np-filter-shell hidden self-start lg:flex">
+                <aside class="np-filter-shell np-filter-shell--clean hidden self-start lg:flex">
                     <x-storefront.product.category-filter-panel
                         :options="$filterOptions"
                         :filters="$filters"
                         :query="$filters['q']"
                         :tag="$filters['tag']"
                         heading="Filters"
-                        subheading="Choose a category, then refine by the product details that matter to your order."
                         id-prefix="desktop-product-filter"
                     />
                 </aside>
 
-                <div>
-                    @if ($products->count())
-                        <div class="np-product-listing-grid np-product-listing-grid--three grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            @foreach ($products as $product)
-                                <x-storefront.product-card :product="$product" />
-                            @endforeach
-                        </div>
-                        <div class="mt-7 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-card">{{ $products->links('pagination.nextplay', ['itemName' => 'product']) }}</div>
-                    @else
-                        <div class="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-card">
-                            <h3 class="font-display text-3xl font-bold uppercase text-brand-ink">No products found</h3>
-                            <p class="mt-2 text-slate-600">Try another search term or remove one of the selected filters.</p>
-                            <a href="{{ route('products.index') }}" class="btn btn-red mt-5">Clear Filters</a>
-                        </div>
-                    @endif
+                <div data-product-results aria-live="polite">
+                    @include('storefront.products._results', ['products' => $products])
                 </div>
             </div>
 
@@ -116,7 +92,6 @@
                         :query="$filters['q']"
                         :tag="$filters['tag']"
                         heading="Filters"
-                        subheading="Choose options, then apply to update the products."
                         id-prefix="mobile-product-filter"
                     />
                 </aside>

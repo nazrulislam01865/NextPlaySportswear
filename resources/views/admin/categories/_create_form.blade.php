@@ -2,6 +2,7 @@
     $initialName = old('name', '');
     $initialPreview = null;
     $initialIconPreview = $category->iconUrl();
+    $initialBannerColor = (string) old('banner_color', '');
     $initialParentId = (string) old('parent_id', $category->parent_id ?? '');
     $initialIsFeatured = filter_var(old('is_featured', false), FILTER_VALIDATE_BOOLEAN);
 @endphp
@@ -11,7 +12,7 @@
     enctype="multipart/form-data"
     action="{{ route('admin.categories.store') }}"
     class="space-y-6"
-    x-data="categoryCreateForm(@js(['name' => $initialName, 'preview' => $initialPreview, 'iconPreview' => $initialIconPreview, 'parentId' => $initialParentId, 'isFeatured' => $initialIsFeatured]))"
+    x-data="categoryCreateForm(@js(['name' => $initialName, 'preview' => $initialPreview, 'iconPreview' => $initialIconPreview, 'bannerColor' => $initialBannerColor, 'parentId' => $initialParentId, 'isFeatured' => $initialIsFeatured]))"
 >
     @csrf
 
@@ -137,6 +138,77 @@
                 </div>
             </x-admin.section-card>
 
+            <x-admin.section-card
+                title="Category Page Banner"
+                description="Choose a banner image, a background color, or both. The color can also be used by itself when no banner image is uploaded."
+            >
+                <div class="space-y-5">
+                    <div
+                        class="relative grid min-h-44 place-items-center overflow-hidden rounded-2xl border border-slate-200 text-white"
+                        x-bind:style="bannerColor ? 'background-color: ' + bannerColor : 'background: linear-gradient(135deg, #15345d 0%, #0d2545 58%, #071a31 100%)'"
+                    >
+                        <template x-if="bannerPreview">
+                            <img :src="bannerPreview" alt="Selected category banner preview" class="absolute inset-0 h-full w-full object-cover">
+                        </template>
+                        <template x-if="!bannerPreview">
+                            <span class="relative z-10 px-6 text-center text-sm font-black">Banner color preview</span>
+                        </template>
+                    </div>
+
+                    <div class="grid gap-5 lg:grid-cols-2">
+                        <label class="admin-label">
+                            Upload banner image <span class="font-normal text-slate-400">(optional)</span>
+                            <input
+                                class="admin-input py-3"
+                                type="file"
+                                name="banner_file"
+                                accept="image/jpeg,image/png,image/webp,image/avif"
+                                x-on:change="previewBanner($event)"
+                            >
+                            <small class="font-normal text-slate-500">JPG, PNG, WebP, or AVIF. Maximum 8 MB. Wide images work best.</small>
+                        </label>
+
+                        <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_74px] sm:items-end">
+                            <label class="admin-label">
+                                Banner background color <span class="font-normal text-slate-400">(optional)</span>
+                                <input
+                                    class="admin-input font-mono"
+                                    name="banner_color"
+                                    x-model="bannerColor"
+                                    value="{{ old('banner_color') }}"
+                                    maxlength="7"
+                                    pattern="^#[0-9A-Fa-f]{6}$"
+                                    placeholder="#15345d"
+                                    autocomplete="off"
+                                >
+                                <small class="font-normal text-slate-500">Leave blank to use the default banner styling.</small>
+                            </label>
+                            <label class="admin-label">
+                                Pick
+                                <input
+                                    class="h-[46px] w-full cursor-pointer rounded-xl border border-slate-200 bg-white p-1"
+                                    type="color"
+                                    x-bind:value="bannerColor || '#15345d'"
+                                    x-on:input="bannerColor = $event.target.value"
+                                    aria-label="Choose category banner color"
+                                >
+                            </label>
+                        </div>
+
+                        <label class="admin-label lg:col-span-2">
+                            Banner image alt text <span class="font-normal text-slate-400">(optional)</span>
+                            <input
+                                class="admin-input"
+                                name="banner_alt"
+                                value="{{ old('banner_alt') }}"
+                                maxlength="255"
+                                placeholder="Describe the category banner image"
+                            >
+                        </label>
+                    </div>
+                </div>
+            </x-admin.section-card>
+
             <div x-show="parentId === ''" x-transition>
             <x-admin.section-card
                 title="Parent Category Icon"
@@ -243,7 +315,7 @@
                 </label>
 
                 <div class="mt-4 rounded-2xl bg-blue-50 p-4 text-xs leading-5 text-slate-600">
-                    Slug is automatic. Extra media, custom schema, and canonical URL fields are not needed in the simplified category editor.
+                    Slug is automatic. The category thumbnail and category-page banner can be managed directly from this form.
                 </div>
             </x-admin.section-card>
         </aside>
@@ -263,6 +335,8 @@ function categoryCreateForm(initial) {
         slug: '',
         preview: initial.preview || null,
         iconPreview: initial.iconPreview || null,
+        bannerPreview: null,
+        bannerColor: initial.bannerColor || '',
         parentId: initial.parentId || '',
         isFeatured: Boolean(initial.isFeatured),
         init() {
@@ -287,6 +361,17 @@ function categoryCreateForm(initial) {
                 URL.revokeObjectURL(this.preview);
             }
             this.preview = URL.createObjectURL(file);
+        },
+        previewBanner(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) {
+                this.bannerPreview = null;
+                return;
+            }
+            if (this.bannerPreview && this.bannerPreview.startsWith('blob:')) {
+                URL.revokeObjectURL(this.bannerPreview);
+            }
+            this.bannerPreview = URL.createObjectURL(file);
         },
         previewIcon(event) {
             const file = event.target.files && event.target.files[0];

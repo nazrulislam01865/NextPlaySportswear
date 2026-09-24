@@ -174,16 +174,13 @@ class ProductCatalogService
         }
 
         if (filled($query)) {
-            $needle = Str::lower((string) $query);
+            $needle = Str::lower(trim((string) $query));
 
             $products = $products->filter(function (array $product) use ($needle): bool {
                 return Str::contains(Str::lower($product['title'] ?? ''), $needle)
-                    || Str::contains(Str::lower($product['short_title'] ?? ''), $needle)
-                    || Str::contains(Str::lower($product['category'] ?? ''), $needle)
-                    || Str::contains(Str::lower($product['subcategory'] ?? ''), $needle)
-                    || Str::contains(Str::lower(implode(' ', $product['tags'] ?? [])), $needle)
-                    || Str::contains(Str::lower($product['sport'] ?? ''), $needle)
-                    || Str::contains(Str::lower($product['sku'] ?? ''), $needle);
+                    || Str::contains(Str::lower($product['sku'] ?? ''), $needle)
+                    || Str::contains(Str::lower($product['brand'] ?? ''), $needle)
+                    || Str::contains(Str::lower($product['product_type'] ?? ''), $needle);
             });
         }
 
@@ -203,8 +200,7 @@ class ProductCatalogService
         }
 
         $selectedCategoryIds = $this->normalizeCategoryFilterIds($selectedCategoryIds);
-        $cacheVersion = (int) Cache::get('catalog.category-facets.version', 1);
-        $cacheKey = 'catalog.products.category-filter-tree.icon-v4.'.$this->catalogCacheVersionSuffix();
+        $cacheKey = 'catalog.products.category-filter-tree.icon-v5-batched-counts.'.$this->catalogCacheVersionSuffix();
         $ttl = max(60, (int) config('catalog.facets_cache_seconds', 300));
 
         $tree = Cache::remember($cacheKey, $ttl, function (): array {
@@ -216,15 +212,24 @@ class ProductCatalogService
                 ->ordered()
                 ->get();
 
+            $countCategoryIds = $parents
+                ->flatMap(fn (Category $parent) => collect([(int) $parent->id])
+                    ->merge($parent->children->pluck('id')->map(fn ($id): int => (int) $id)))
+                ->unique()
+                ->values()
+                ->all();
+
+            $productCounts = $this->categoryProductCounts($countCategoryIds);
+
             return $parents
-                ->map(function (Category $parent): array {
+                ->map(function (Category $parent) use ($productCounts): array {
                     $children = $parent->children
-                        ->map(function (Category $child): array {
+                        ->map(function (Category $child) use ($productCounts): array {
                             return [
                                 'id' => (int) $child->id,
                                 'label' => $child->name,
                                 'slug' => $child->slug,
-                                'count' => $this->countProductsForCategoryFilter((int) $child->id),
+                                'count' => (int) ($productCounts[(int) $child->id] ?? 0),
                             ];
                         })
                         ->filter(fn (array $child): bool => $child['count'] > 0)
@@ -236,11 +241,17 @@ class ProductCatalogService
                         'label' => $parent->name,
                         'slug' => $parent->slug,
                         'icon_url' => $parent->uploadedIconUrl(),
-                        'count' => $this->countProductsForCategoryFilter((int) $parent->id),
+                        'count' => count($children),
                         'children' => $children,
+                        '_product_count' => (int) ($productCounts[(int) $parent->id] ?? 0),
                     ];
                 })
-                ->filter(fn (array $parent): bool => $parent['count'] > 0 || $parent['children'] !== [])
+                ->filter(fn (array $parent): bool => $parent['_product_count'] > 0 || $parent['children'] !== [])
+                ->map(function (array $parent): array {
+                    unset($parent['_product_count']);
+
+                    return $parent;
+                })
                 ->values()
                 ->all();
         });
@@ -262,6 +273,155 @@ class ProductCatalogService
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * Count published products for many category filters in a constant number of
+     * queries. Each requested category includes its reachable descendants, while
+     * products assigned through multiple category paths are counted only once.
+     *
+     * @param array<int, int> $categoryIds
+     * @return array<int, int>
+     */
+    private function categoryProductCounts(array $categoryIds): array
+    {
+        $categoryIds = collect($categoryIds)
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($categoryIds === []) {
+            return [];
+        }
+
+        $expandedMap = $this->expandedCategoryFilterMap($categoryIds);
+        $relevantCategoryIds = collect($expandedMap)
+            ->flatten()
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($relevantCategoryIds === []) {
+            return array_fill_keys($categoryIds, 0);
+        }
+
+        /** @var array<int, array<int, int>> $productsByCategory */
+        $productsByCategory = [];
+
+        $legacyRows = Product::query()
+            ->published()
+            ->where(function (Builder $query) use ($relevantCategoryIds): void {
+                $query->whereIn('products.category_id', $relevantCategoryIds)
+                    ->orWhereIn('products.subcategory_id', $relevantCategoryIds);
+            })
+            ->get(['products.id', 'products.category_id', 'products.subcategory_id']);
+
+        foreach ($legacyRows as $product) {
+            foreach ([(int) ($product->category_id ?? 0), (int) ($product->subcategory_id ?? 0)] as $assignedCategoryId) {
+                if ($assignedCategoryId <= 0 || ! in_array($assignedCategoryId, $relevantCategoryIds, true)) {
+                    continue;
+                }
+
+                $productsByCategory[$assignedCategoryId][(int) $product->id] = (int) $product->id;
+            }
+        }
+
+        if (Schema::hasTable('category_product')) {
+            $publishedProducts = Product::query()
+                ->published()
+                ->select('products.id');
+
+            $pivotRows = DB::table('category_product as category_count_cp')
+                ->joinSub($publishedProducts, 'category_count_products', function ($join): void {
+                    $join->on('category_count_products.id', '=', 'category_count_cp.product_id');
+                })
+                ->whereIn('category_count_cp.category_id', $relevantCategoryIds)
+                ->select(['category_count_cp.product_id', 'category_count_cp.category_id'])
+                ->distinct()
+                ->get();
+
+            foreach ($pivotRows as $row) {
+                $assignedCategoryId = (int) $row->category_id;
+                $productId = (int) $row->product_id;
+                $productsByCategory[$assignedCategoryId][$productId] = $productId;
+            }
+        }
+
+        $counts = [];
+        foreach ($expandedMap as $categoryId => $expandedCategoryIds) {
+            $productIds = [];
+            foreach ($expandedCategoryIds as $expandedCategoryId) {
+                foreach (($productsByCategory[(int) $expandedCategoryId] ?? []) as $productId) {
+                    $productIds[] = (int) $productId;
+                }
+            }
+
+            $counts[(int) $categoryId] = count(array_unique($productIds));
+        }
+
+        return $counts;
+    }
+
+    /**
+     * Expand many category ids using the already batched reachable category rows.
+     * This avoids executing a descendant query once per category when facet counts
+     * are rebuilt.
+     *
+     * @param array<int, int> $categoryIds
+     * @return array<int, array<int, int>>
+     */
+    private function expandedCategoryFilterMap(array $categoryIds): array
+    {
+        $targetIds = collect($categoryIds)
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($targetIds->isEmpty()) {
+            return [];
+        }
+
+        $rows = $this->categoryFilterParentRows();
+        $reachableIds = $rows->pluck('id')->map(fn ($id): int => (int) $id)->flip();
+        $childrenByParent = $rows
+            ->filter(fn (array $row): bool => $row['parent_id'] !== null)
+            ->groupBy(fn (array $row): int => (int) $row['parent_id']);
+
+        $expandedMap = [];
+        foreach ($targetIds as $targetId) {
+            if (! $reachableIds->has($targetId)) {
+                $expandedMap[$targetId] = [];
+                continue;
+            }
+
+            $expanded = [$targetId => $targetId];
+            $frontier = [$targetId];
+
+            while ($frontier !== []) {
+                $next = [];
+                foreach ($frontier as $parentId) {
+                    foreach ($childrenByParent->get($parentId, collect()) as $childRow) {
+                        $childId = (int) $childRow['id'];
+                        if (isset($expanded[$childId])) {
+                            continue;
+                        }
+
+                        $expanded[$childId] = $childId;
+                        $next[] = $childId;
+                    }
+                }
+                $frontier = $next;
+            }
+
+            $expandedMap[$targetId] = array_values($expanded);
+        }
+
+        return $expandedMap;
     }
 
     /**
@@ -1214,16 +1374,16 @@ class ProductCatalogService
             $needle = trim((string) $query);
             $like = '%'.$needle.'%';
 
+            // Free-text product search must stay focused on product identity fields.
+            // Category/sport navigation is handled by the dedicated catalog filters.
+            // Keeping category relations out of this OR block prevents a product from
+            // appearing for an unrelated term just because it has a broad/legacy
+            // category assignment (for example, a jersey appearing for "bag").
             $products->where(function (Builder $builder) use ($like): void {
                 $builder->where('products.name', 'like', $like)
                     ->orWhere('products.sku', 'like', $like)
                     ->orWhere('products.brand', 'like', $like)
-                    ->orWhere('products.product_type', 'like', $like)
-                    ->orWhere('products.short_description', 'like', $like)
-                    ->orWhere('products.tags', 'like', $like)
-                    ->orWhereHas('category', fn (Builder $categoryQuery) => $categoryQuery->where('name', 'like', $like))
-                    ->orWhereHas('subcategory', fn (Builder $categoryQuery) => $categoryQuery->where('name', 'like', $like))
-                    ->orWhereHas('categories', fn (Builder $categoryQuery) => $categoryQuery->where('categories.name', 'like', $like));
+                    ->orWhere('products.product_type', 'like', $like);
             });
         }
     }
@@ -1245,8 +1405,8 @@ class ProductCatalogService
                 ->orderByDesc('products.published_at')
                 ->orderBy('products.name'),
             default => $products
-                ->orderBy('products.sort_order')
                 ->orderByDesc('products.is_featured')
+                ->orderBy('products.sort_order')
                 ->orderByDesc('products.published_at')
                 ->orderBy('products.name')
                 ->orderByDesc('products.id'),
@@ -1264,20 +1424,41 @@ class ProductCatalogService
 
     private function listingPriceExpression(): string
     {
-        if (! Schema::hasTable('product_price_tiers')) {
-            return 'products.base_price';
+        $hasPriceTiers = Schema::hasTable('product_price_tiers');
+        $originalPrice = $hasPriceTiers
+            ? 'COALESCE((SELECT ppt.unit_price'
+                .' FROM product_price_tiers AS ppt'
+                .' WHERE ppt.product_id = products.id'
+                .' ORDER BY ppt.minimum_quantity DESC, ppt.id DESC LIMIT 1), products.base_price)'
+            : 'products.base_price';
+        $tierDiscount = $hasPriceTiers
+            ? '(SELECT ppt.compare_at_price'
+                .' FROM product_price_tiers AS ppt'
+                .' WHERE ppt.product_id = products.id'
+                .' ORDER BY ppt.minimum_quantity DESC, ppt.id DESC LIMIT 1)'
+            : 'NULL';
+        $productDiscount = 'products.compare_at_price';
+
+        // Product cards show a valid tier discount first, then a valid product-level
+        // discount, otherwise the normal tier/base price. Catalog price filtering and
+        // sorting must use that same visible price or the Sort By order becomes misleading.
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            $originalPrice = 'CAST('.$originalPrice.' AS REAL)';
+            $tierDiscount = $tierDiscount === 'NULL' ? 'NULL' : 'CAST('.$tierDiscount.' AS REAL)';
+            $productDiscount = 'CAST(products.compare_at_price AS REAL)';
         }
 
-        $expression = 'COALESCE((SELECT ppt.unit_price'
-            .' FROM product_price_tiers AS ppt'
-            .' WHERE ppt.product_id = products.id'
-            .' ORDER BY ppt.minimum_quantity DESC, ppt.id DESC LIMIT 1), products.base_price)';
-
-        // SQLite binds raw query values without the numeric affinity MySQL applies to DECIMAL columns.
-        // Keep production SQL unchanged and normalize only the in-memory/test driver expression.
-        return DB::connection()->getDriverName() === 'sqlite'
-            ? 'CAST('.$expression.' AS REAL)'
-            : $expression;
+        return 'CASE'
+            .' WHEN '.$tierDiscount.' IS NOT NULL'
+            .' AND '.$tierDiscount.' > 0'
+            .' AND '.$tierDiscount.' < '.$originalPrice
+            .' THEN '.$tierDiscount
+            .' WHEN '.$productDiscount.' IS NOT NULL'
+            .' AND '.$productDiscount.' > 0'
+            .' AND '.$productDiscount.' < '.$originalPrice
+            .' THEN '.$productDiscount
+            .' ELSE '.$originalPrice
+            .' END';
     }
 
     private function listingPageSize(?int $perPage = null): int

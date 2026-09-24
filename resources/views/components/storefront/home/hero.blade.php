@@ -4,6 +4,15 @@
     $section = is_array($section) ? $section : [];
     $text = static fn (string $key, string $fallback = ''): string => filled(data_get($section, $key)) ? (string) data_get($section, $key) : $fallback;
     $items = collect(data_get($section, 'items', []))->filter(fn ($item) => filled(data_get($item, 'title')))->values();
+    $heroSettings = (array) data_get($section, 'settings', []);
+    $setting = static fn (string $key): string => trim((string) data_get($heroSettings, $key, ''));
+    $trustBadges = collect([
+        ['key' => 'badge_design_support', 'icon' => 'support'],
+        ['key' => 'badge_bulk_pricing', 'icon' => 'bulk'],
+        ['key' => 'badge_shipping', 'icon' => 'shipping'],
+    ])->map(fn (array $badge): array => [...$badge, 'label' => $setting($badge['key'])])
+        ->filter(fn (array $badge): bool => filled($badge['label']))
+        ->values();
 
     $defaultHeroSlides = [
         [
@@ -43,7 +52,6 @@
 <section class="hero" aria-labelledby="hero-title">
     <div class="container">
         <div>
-            <div class="eyebrow">{{ $text('eyebrow', 'Custom sportswear USA') }}</div>
             <h1 id="hero-title">{{ $text('title', 'Custom Sportswear for Teams, Schools, Events, and Fans') }}</h1>
             <p>{{ $text('description', 'Design your own jerseys, uniforms, hoodies, caps, bags, and sports gear. Order online for regular items or request a custom quote for team and bulk orders.') }}</p>
             @if($items->isNotEmpty())
@@ -61,12 +69,29 @@
                     <a class="btn btn-light np-home-action" href="{{ $text('secondary_url', '#bulk') }}">{{ $text('secondary_label', 'Request Bulk Quote') }}</a>
                 @endif
             </div>
-            <div class="trustline">Serving teams, clubs, businesses, and event organizers across the USA.</div>
-            <div class="badges" aria-label="Trust badges">
-                <div class="badge"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21a9 9 0 1 0-9-9c0 1.7.5 3.3 1.3 4.6L3 21l4.4-1.3A9 9 0 0 0 12 21Z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></svg> Custom Design Support</div>
-                <div class="badge"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Bulk Pricing Available</div>
-                <div class="badge"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 17h4V5H2v12h3"/><path d="M14 17h1V9h4l3 4v4h-2"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg> USA Shipping</div>
-            </div>
+            @if(filled($setting('trustline')))
+                <div class="trustline">{{ $setting('trustline') }}</div>
+            @endif
+            @if($trustBadges->isNotEmpty())
+                <div class="badges" aria-label="Trust badges">
+                    @foreach($trustBadges as $badge)
+                        <div class="badge">
+                            @switch($badge['icon'])
+                                @case('support')
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21a9 9 0 1 0-9-9c0 1.7.5 3.3 1.3 4.6L3 21l4.4-1.3A9 9 0 0 0 12 21Z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></svg>
+                                    @break
+                                @case('bulk')
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                    @break
+                                @case('shipping')
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 17h4V5H2v12h3"/><path d="M14 17h1V9h4l3 4v4h-2"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
+                                    @break
+                            @endswitch
+                            {{ $badge['label'] }}
+                        </div>
+                    @endforeach
+                </div>
+            @endif
         </div>
         <div class="hero-card">
             <div class="hero-frame">
@@ -119,7 +144,12 @@
                     <span class="sr-only" data-hero-card-status aria-live="polite">Showing slide 1 of {{ $heroSlides->count() }}</span>
                 </div>
             </div>
-            <div class="hero-stat"><strong>500+ Teams</strong><span>Trusted across the USA</span></div>
+            @if(filled($setting('stat_value')) || filled($setting('stat_subtitle')))
+                <div class="hero-stat">
+                    @if(filled($setting('stat_value')))<strong>{{ $setting('stat_value') }}</strong>@endif
+                    @if(filled($setting('stat_subtitle')))<span>{{ $setting('stat_subtitle') }}</span>@endif
+                </div>
+            @endif
         </div>
     </div>
 </section>

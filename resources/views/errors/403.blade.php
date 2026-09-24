@@ -23,12 +23,14 @@
         </div>
     </x-layouts.admin>
 @else
-    @include('errors.error', [
+    @include('errors.storefront-status', [
         'code' => '403',
-        'status' => 'Access denied',
-        'title' => 'You Don’t Have Access',
-        'message' => 'You do not have permission to open this page or perform this action.',
-        'showSupport' => false,
-        'showShop' => false,
+        'title' => 'Access Denied',
+        'icon' => 'lock',
+        'messageText' => 'You don’t have permission to view this page.',
+        'primaryLabel' => 'Go to Homepage',
+        'primaryUrl' => route('home'),
+        'secondaryLabel' => 'Sign In with Another Account',
+        'secondaryAction' => 'logout',
     ])
 @endif

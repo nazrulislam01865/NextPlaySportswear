@@ -20,7 +20,6 @@ class HomepageSectionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'eyebrow' => ['nullable', 'string', 'max:160'],
             'title' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:3000'],
             'primary_label' => ['nullable', 'string', 'max:160'],
@@ -58,6 +57,13 @@ class HomepageSectionRequest extends FormRequest
             'settings' => ['nullable', 'array'],
             'settings.show_statistics' => ['nullable', 'boolean'],
             'settings.show_default_product_ratings' => ['nullable', 'boolean'],
+            'settings.trustline' => ['nullable', 'string', 'max:500'],
+            'settings.badge_design_support' => ['nullable', 'string', 'max:160'],
+            'settings.badge_bulk_pricing' => ['nullable', 'string', 'max:160'],
+            'settings.badge_shipping' => ['nullable', 'string', 'max:160'],
+            'settings.stat_value' => ['nullable', 'string', 'max:80'],
+            'settings.stat_subtitle' => ['nullable', 'string', 'max:160'],
+            'settings.background_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'is_active' => ['nullable', 'boolean'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:1000000'],
         ];
@@ -84,6 +90,7 @@ class HomepageSectionRequest extends FormRequest
             'items.*.image_file.image' => 'Each process step upload must be a valid image.',
             'items.*.image_file.mimes' => 'Process step images must be JPG, PNG, WebP, or AVIF files.',
             'items.*.image_file.max' => 'Each process step image must be no larger than 10 MB.',
+            'settings.background_color.regex' => 'Choose a valid 6-digit hex background color such as #06152C.',
         ];
     }
 
@@ -107,6 +114,13 @@ class HomepageSectionRequest extends FormRequest
             'items.*.category_id' => 'selected category',
             'settings.show_statistics' => 'testimonial statistics visibility',
             'settings.show_default_product_ratings' => 'default product ratings visibility',
+            'settings.trustline' => 'hero trust line',
+            'settings.badge_design_support' => 'custom design support badge',
+            'settings.badge_bulk_pricing' => 'bulk pricing badge',
+            'settings.badge_shipping' => 'shipping badge',
+            'settings.stat_value' => 'hero statistic value',
+            'settings.stat_subtitle' => 'hero statistic subtitle',
+            'settings.background_color' => 'Best-Selling Gear background color',
         ];
     }
 
@@ -122,11 +136,17 @@ class HomepageSectionRequest extends FormRequest
             'mobile_image_url' => trim((string) $this->input('mobile_image_url', '')) ?: null,
         ];
 
-        if ((string) $this->route('key') === 'testimonials' && $this->has('settings')) {
+        $sectionKey = (string) $this->route('key');
+
+        if ($sectionKey === 'testimonials' && $this->has('settings')) {
             $payload['settings'] = [
                 'show_statistics' => $this->boolean('settings.show_statistics'),
                 'show_default_product_ratings' => $this->boolean('settings.show_default_product_ratings'),
             ];
+        } elseif ($sectionKey === 'hero' && $this->has('settings')) {
+            $payload['settings'] = $this->normalizedHeroSettings();
+        } elseif ($sectionKey === 'best_selling_gear' && $this->has('settings')) {
+            $payload['settings'] = $this->normalizedBestSellingGearSettings();
         }
 
         $this->merge($payload);
@@ -161,7 +181,7 @@ class HomepageSectionRequest extends FormRequest
     {
         $data = $this->safe()->except(['image_file', 'image_url', 'remove_image', 'mobile_image_file', 'mobile_image_url', 'remove_mobile_image', 'hero_slides']);
 
-        foreach (['eyebrow', 'title', 'description', 'primary_label', 'primary_url', 'secondary_label', 'secondary_url', 'image_alt', 'mobile_image_alt'] as $field) {
+        foreach (['title', 'description', 'primary_label', 'primary_url', 'secondary_label', 'secondary_url', 'image_alt', 'mobile_image_alt'] as $field) {
             if (array_key_exists($field, $data) && is_string($data[$field])) {
                 $data[$field] = trim(strip_tags($data[$field])) ?: null;
             }
@@ -169,12 +189,18 @@ class HomepageSectionRequest extends FormRequest
 
         $data['items'] = $this->cleanItems((array) $this->input('items', []));
 
-        $definition = HomepageSectionRegistry::definition((string) $this->route('key'));
+        $sectionKey = (string) $this->route('key');
+        $definition = HomepageSectionRegistry::definition($sectionKey);
         if (in_array('settings', $definition['fields'] ?? [], true) && $this->has('settings')) {
-            $data['settings'] = [
-                'show_statistics' => $this->boolean('settings.show_statistics'),
-                'show_default_product_ratings' => $this->boolean('settings.show_default_product_ratings'),
-            ];
+            $data['settings'] = match ($sectionKey) {
+                'hero' => $this->normalizedHeroSettings(),
+                'testimonials' => [
+                    'show_statistics' => $this->boolean('settings.show_statistics'),
+                    'show_default_product_ratings' => $this->boolean('settings.show_default_product_ratings'),
+                ],
+                'best_selling_gear' => $this->normalizedBestSellingGearSettings(),
+                default => [],
+            };
         } else {
             unset($data['settings']);
         }
@@ -183,6 +209,31 @@ class HomepageSectionRequest extends FormRequest
         $data['sort_order'] = (int) $this->input('sort_order', 0);
 
         return $data;
+    }
+
+    /** @return array<string, string> */
+    private function normalizedHeroSettings(): array
+    {
+        return collect([
+            'trustline',
+            'badge_design_support',
+            'badge_bulk_pricing',
+            'badge_shipping',
+            'stat_value',
+            'stat_subtitle',
+        ])->mapWithKeys(function (string $key): array {
+            $value = trim(strip_tags((string) $this->input('settings.'.$key, '')));
+
+            return [$key => $value];
+        })->all();
+    }
+
+    /** @return array<string, string> */
+    private function normalizedBestSellingGearSettings(): array
+    {
+        return [
+            'background_color' => strtoupper(trim((string) $this->input('settings.background_color', ''))),
+        ];
     }
 
     private function addDuplicateCategoryErrors(Validator $validator): void

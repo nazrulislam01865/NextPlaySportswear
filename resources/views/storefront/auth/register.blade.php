@@ -1,116 +1,75 @@
 <x-layouts.storefront :seo="$seo">
-    <x-storefront.auth.shell
-        mode="register"
-        eyebrow="Create customer account"
-        title="Start faster orders"
-        subtitle="Create an account for saved checkout details, team order tracking, proof approvals, and repeat custom sportswear purchases."
-    >
-        <div class="mx-auto max-w-[560px]">
-            <div class="mb-6 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-3">
-                <div class="rounded-xl bg-white p-3 text-center shadow-sm">
-                    <p class="text-xl font-black text-brand-red">1</p>
-                    <p class="mt-1 text-xs font-black uppercase tracking-wide text-slate-600">Create account</p>
-                </div>
-                <div class="rounded-xl bg-white p-3 text-center shadow-sm">
-                    <p class="text-xl font-black text-brand-red">2</p>
-                    <p class="mt-1 text-xs font-black uppercase tracking-wide text-slate-600">Verify email</p>
-                </div>
-                <div class="rounded-xl bg-white p-3 text-center shadow-sm">
-                    <p class="text-xl font-black text-brand-red">3</p>
-                    <p class="mt-1 text-xs font-black uppercase tracking-wide text-slate-600">Manage orders</p>
-                </div>
+    <x-storefront.auth.register-shell title="Create Account">
+        @if (session('status'))
+            <div class="np-customer-login-alert np-customer-login-alert--success" role="status">
+                {{ session('status') }}
             </div>
+        @endif
 
-            @if (session('status'))
-                <div class="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">
-                    {{ session('status') }}
-                </div>
+        <form
+            method="POST"
+            action="{{ route('register.store') }}"
+            class="np-customer-login-form np-customer-register-form"
+            novalidate
+            data-single-submit
+        >
+            @csrf
+
+            @if (! empty($redirectUrl))
+                <input type="hidden" name="redirect" value="{{ $redirectUrl }}">
             @endif
 
-            <form method="POST" action="{{ route('register.store') }}" class="grid gap-5" novalidate data-single-submit>
-                @csrf
-                @if (! empty($redirectUrl))
-                    <input type="hidden" name="redirect" value="{{ $redirectUrl }}">
-                @endif
+            <input type="text" name="website" value="" autocomplete="off" tabindex="-1" class="hidden" aria-hidden="true">
 
-                <input type="text" name="website" value="" autocomplete="off" tabindex="-1" class="hidden" aria-hidden="true">
+            <x-storefront.auth.login-input
+                name="name"
+                label="Full name"
+                placeholder="Enter your full name"
+                autocomplete="name"
+                required
+                autofocus
+            />
 
-                <x-storefront.auth.input
-                    name="name"
-                    label="Full name"
-                    placeholder="Your name"
-                    autocomplete="name"
-                    required
-                />
+            <x-storefront.auth.login-input
+                name="email"
+                label="Email address"
+                type="email"
+                placeholder="you@example.com"
+                autocomplete="email"
+                required
+            />
 
-                <x-storefront.auth.input
-                    name="email"
-                    label="Email address"
-                    type="email"
-                    placeholder="you@example.com"
-                    autocomplete="email"
-                    required
-                />
+            <x-storefront.auth.login-password
+                name="password"
+                label="Password"
+                placeholder="Enter your password"
+                autocomplete="new-password"
+                required
+            />
 
-                <div class="grid gap-5 sm:grid-cols-2">
-                    <x-storefront.auth.input
-                        name="password"
-                        label="Password"
-                        type="password"
-                        placeholder="At least 8 characters"
-                        autocomplete="new-password"
-                        required
-                    />
+            <x-storefront.auth.login-password
+                name="password_confirmation"
+                label="Confirm password"
+                placeholder="Confirm your password"
+                autocomplete="new-password"
+                required
+            />
 
-                    <x-storefront.auth.input
-                        name="password_confirmation"
-                        label="Confirm password"
-                        type="password"
-                        placeholder="Re-enter password"
-                        autocomplete="new-password"
-                        required
-                    />
-                </div>
+            <x-storefront.auth.register-terms />
 
-                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <label class="flex gap-3 text-sm leading-6 text-slate-600">
-                        <input
-                            type="checkbox"
-                            name="terms"
-                            value="1"
-                            class="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
-                            @checked(old('terms'))
-                            required
-                        >
-                        <span>
-                            I agree that custom sportswear orders may require artwork proof review, production time, and custom-order return terms before final fulfillment.
-                        </span>
-                    </label>
+            <button type="submit" class="np-customer-login__submit">
+                Create Account
+            </button>
+        </form>
 
-                    @error('terms')
-                        <p class="mt-2 text-sm font-bold text-brand-red">{{ $message }}</p>
-                    @enderror
-
-                    @error('website')
-                        <p class="mt-2 text-sm font-bold text-brand-red">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <div class="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold leading-6 text-slate-600">
-                    After registration, we will email you a secure verification link. Your account and checkout remain protected until the email address is verified.
-                </div>
-
-                <button type="submit" class="btn btn-red h-12 w-full rounded-2xl text-base">
-                    Create Account
-                </button>
-            </form>
-
-            <div class="mt-7 rounded-2xl border border-dashed border-slate-300 bg-white p-5 text-center">
-                <p class="text-sm font-bold text-slate-600">Already have a customer account?</p>
-                <a href="{{ route('login', array_filter(['redirect' => $redirectUrl ?? null])) }}" class="mt-3 btn btn-white w-full rounded-2xl sm:w-auto">
-                    Sign In Instead
-                </a>
-            </div>
+        <div class="np-customer-login__register np-customer-register__signin">
+            <span>Already have an account?</span>
+            <a
+                href="{{ route('login', array_filter(['redirect' => $redirectUrl ?? null])) }}"
+                class="np-customer-login__register-link"
+            >
+                Sign in
+            </a>
         </div>
-    </x-storefront.auth.shell>
+    </x-storefront.auth.register-shell>
 </x-layouts.storefront>

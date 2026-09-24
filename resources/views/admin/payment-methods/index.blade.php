@@ -1,15 +1,19 @@
-<x-layouts.admin title="Payment Methods" subtitle="Manage checkout payment choices, amount rules, provider behavior, and manual review settings.">
+<x-layouts.admin title="Payment Methods" subtitle="Manage checkout payment choices, footer payment icons, amount rules, provider behavior, and manual review settings.">
     <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p class="max-w-3xl text-sm font-semibold leading-6 text-slate-500">These payment methods are loaded dynamically in checkout. The payment step always receives the final server-side grand total from the selected shipping method, remote area surcharge, discount, and tax.</p>
+        <div class="max-w-3xl">
+            <p class="text-sm font-semibold leading-6 text-slate-500">These payment methods are loaded dynamically in checkout. Active methods can also be shown in the storefront footer with an uploaded logo or an automatic fallback mark.</p>
+            <p class="mt-1 text-xs font-semibold leading-5 text-slate-400">Footer icons never store or expose gateway credentials; they are presentation-only and remain tied to the same payment method record.</p>
+        </div>
         <a href="{{ route('admin.payment-methods.create') }}" class="btn btn-red">+ Add Payment Method</a>
     </div>
 
     <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
         <div class="admin-table-scroll" tabindex="0" aria-label="Payment methods table">
-            <table class="admin-table min-w-[1060px] text-sm">
+            <table class="admin-table min-w-[1180px] text-sm">
                 <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                     <tr>
                         <th class="px-5 py-4">Method</th>
+                        <th class="px-5 py-4">Footer Icon</th>
                         <th class="px-5 py-4">Provider</th>
                         <th class="px-5 py-4">Amount Rules</th>
                         <th class="px-5 py-4">Behavior</th>
@@ -24,6 +28,23 @@
                                 <strong class="block text-brand-ink">{{ $method->name }}</strong>
                                 <span class="text-xs font-semibold text-slate-500">{{ $method->code }}</span>
                                 @if($method->description)<p class="mt-1 max-w-sm text-xs leading-5 text-slate-500">{{ $method->description }}</p>@endif
+                            </td>
+                            <td class="px-5 py-4">
+                                <div class="flex items-center gap-3">
+                                    <x-storefront.payment-mark
+                                        :name="$method->name"
+                                        :provider="$method->provider"
+                                        :code="$method->code"
+                                        :icon-url="$method->footerIconUrl()"
+                                        :icon-alt="$method->footer_icon_alt"
+                                    />
+                                    <div class="min-w-0">
+                                        <span class="admin-status-pill px-2.5 py-1 text-xs font-bold {{ $method->show_in_footer && $method->is_active ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-600' }}">
+                                            {{ $method->show_in_footer && $method->is_active ? 'Shown in footer' : 'Hidden from footer' }}
+                                        </span>
+                                        <span class="mt-1 block text-[11px] font-semibold text-slate-400">{{ filled($method->footer_icon_path) ? 'Uploaded icon' : 'Fallback icon' }}</span>
+                                    </div>
+                                </div>
                             </td>
                             <td class="px-5 py-4 text-slate-700">
                                 <strong>{{ str($method->provider)->headline() }}</strong>
@@ -62,7 +83,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="px-5 py-14 text-center text-slate-500">No payment methods have been added yet.</td></tr>
+                        <tr><td colspan="7" class="px-5 py-14 text-center text-slate-500">No payment methods have been added yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>

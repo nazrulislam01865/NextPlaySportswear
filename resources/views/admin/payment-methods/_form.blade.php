@@ -6,9 +6,11 @@
     $requiresRedirect = (bool) old('requires_provider_redirect', $method->requires_provider_redirect ?? false);
     $requiresManualReview = (bool) old('requires_manual_review', $method->requires_manual_review ?? false);
     $allowsSaved = (bool) old('allows_saved_methods', $method->allows_saved_methods ?? false);
+    $showInFooter = (bool) old('show_in_footer', $method->show_in_footer ?? false);
+    $footerIconUrl = $method->footerIconUrl();
 @endphp
 
-<form method="POST" action="{{ $action }}" class="grid gap-6" novalidate>
+<form method="POST" action="{{ $action }}" class="grid gap-6" enctype="multipart/form-data" novalidate>
     @csrf
     @if($isEdit)
         @method($formMethod)
@@ -36,7 +38,7 @@
                         <option value="{{ $provider }}" @selected(old('provider', $method->provider ?? 'manual') === $provider)>{{ str($provider)->headline() }}</option>
                     @endforeach
                 </select>
-                <span class="mt-2 block text-xs font-medium text-slate-500">Only centrally registered gateways can be selected. API secrets are never stored here.</span>
+                <span class="mt-2 block text-xs font-medium text-slate-500">Only centrally registered gateways can be selected for new methods. Existing legacy providers remain editable without exposing API secrets.</span>
             </label>
             <label class="admin-label">
                 Payment type
@@ -55,6 +57,72 @@
                 <textarea name="instructions" class="admin-textarea min-h-[120px]" maxlength="4000" placeholder="Payment instructions or provider notes. Do not put secret keys here.">{{ old('instructions', $method->instructions) }}</textarea>
             </label>
         </div>
+    </x-admin.section-card>
+
+    <x-admin.section-card title="Footer Payment Icon" description="Control whether this active payment method appears in the storefront footer. Upload your own logo or rely on the built-in brand-aware fallback icon.">
+        <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,.7fr)]" x-data="{ preview: null }">
+            <div class="space-y-5">
+                <label class="admin-label">
+                    Payment icon upload <span class="font-normal text-slate-400">(optional)</span>
+                    <input
+                        type="file"
+                        name="footer_icon"
+                        accept="image/jpeg,image/png,image/webp,image/avif"
+                        class="admin-input h-auto py-3 @error('footer_icon') border-red-400 @enderror"
+                        @change="const file = $event.target.files[0]; if (!file) { preview = null; return; } const reader = new FileReader(); reader.onload = event => preview = event.target.result; reader.readAsDataURL(file);"
+                    >
+                    <span class="mt-2 block text-xs font-medium leading-5 text-slate-500">PNG, JPG, WebP, or AVIF up to 1 MB. A transparent PNG/WebP works best for payment logos. If no image is uploaded, a safe fallback mark is used automatically.</span>
+                    @error('footer_icon')<span class="mt-2 block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
+                </label>
+
+                <label class="admin-label">
+                    Icon alt text <span class="font-normal text-slate-400">(optional)</span>
+                    <input type="text" name="footer_icon_alt" value="{{ old('footer_icon_alt', $method->footer_icon_alt) }}" class="admin-input" maxlength="180" placeholder="{{ $method->name ?: 'Stripe secure payment' }}">
+                    <span class="mt-2 block text-xs font-medium text-slate-500">Leave blank to use the payment method name for accessibility.</span>
+                </label>
+
+                @if(filled($method->footer_icon_path))
+                    <label class="flex items-start gap-3 rounded-2xl border border-slate-200 p-4 text-sm font-bold text-slate-700">
+                        <input type="hidden" name="remove_footer_icon" value="0">
+                        <input class="mt-0.5" type="checkbox" name="remove_footer_icon" value="1" @checked(old('remove_footer_icon'))>
+                        <span>
+                            Remove uploaded icon
+                            <small class="mt-1 block font-medium leading-5 text-slate-500">The footer will immediately fall back to the built-in payment mark after saving.</small>
+                        </span>
+                    </label>
+                @else
+                    <input type="hidden" name="remove_footer_icon" value="0">
+                @endif
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <p class="text-xs font-black uppercase tracking-[.16em] text-slate-500">Footer preview</p>
+                <div class="mt-4 flex min-h-24 items-center justify-center rounded-xl bg-[#0d2545] p-5">
+                    <div x-show="preview" style="display:none" class="inline-flex h-9 min-w-[56px] items-center justify-center rounded-lg border border-slate-200 bg-white px-2.5 shadow-sm">
+                        <img :src="preview" alt="Selected payment icon preview" class="max-h-5 max-w-[82px] object-contain">
+                    </div>
+                    <div x-show="!preview">
+                        <x-storefront.payment-mark
+                            :name="old('name', $method->name ?: 'Payment method')"
+                            :provider="old('provider', $method->provider ?: '')"
+                            :code="old('code', $method->code ?: '')"
+                            :icon-url="$footerIconUrl"
+                            :icon-alt="old('footer_icon_alt', $method->footer_icon_alt)"
+                        />
+                    </div>
+                </div>
+                <p class="mt-3 text-xs font-semibold leading-5 text-slate-500">The logo is contained inside a consistent white payment badge so different uploaded logo proportions stay aligned in the footer.</p>
+            </div>
+        </div>
+
+        <label class="mt-6 flex items-start gap-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-sm font-black text-indigo-800">
+            <input type="hidden" name="show_in_footer" value="0">
+            <input class="mt-0.5 h-5 w-5 rounded border-indigo-300 text-indigo-600" type="checkbox" name="show_in_footer" value="1" @checked($showInFooter)>
+            <span>
+                Show this payment method in the storefront footer
+                <small class="mt-1 block font-medium leading-5 text-indigo-700/80">For accuracy, the footer only renders methods that are both Active and enabled here. Inactive checkout methods are never advertised to customers.</small>
+            </span>
+        </label>
     </x-admin.section-card>
 
     <x-admin.section-card title="Amount Rules" description="Restrict payment methods by final checkout grand total after shipping, remote area surcharge, tax, and discounts.">

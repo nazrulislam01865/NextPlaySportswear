@@ -36,7 +36,6 @@ class HomepageSlideController extends Controller
         return view('admin.homepage-slides.create', [
             'slide' => new HomepageSlide([
                 'show_content' => true,
-                'show_eyebrow' => true,
                 'show_title' => true,
                 'show_description' => true,
                 'show_primary_button' => true,
@@ -131,7 +130,7 @@ class HomepageSlideController extends Controller
         ]);
 
         foreach ([
-            'eyebrow', 'title', 'description', 'image_alt', 'primary_label',
+            'title', 'description', 'image_alt', 'primary_label',
             'primary_url', 'secondary_label', 'secondary_url', 'starts_at', 'ends_at',
         ] as $field) {
             if (array_key_exists($field, $payload) && is_string($payload[$field])) {

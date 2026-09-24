@@ -44,10 +44,6 @@
     $trustpilotReviewHref = $reviewBaseHref . '&platform=trustpilot';
     $facebookReviewHref = $reviewBaseHref . '&platform=facebook';
 
-    $heroEyebrow = $text('eyebrow', 'Customer Words');
-    if (in_array(mb_strtolower(trim($heroEyebrow)), ['real teams. real feedback.', 'real teams real feedback'], true)) {
-        $heroEyebrow = 'Customer Words';
-    }
 
     $heroTitle = $text('title', 'What Teams and Customers Say');
     if (in_array(mb_strtolower(trim($heroTitle)), ['made for teams who want to look the part.', 'made for teams who want to look the part'], true)) {
@@ -1294,7 +1290,6 @@
                 <x-storefront.home.section-heading
                     class="np-testimonials-section-heading"
                     align="left"
-                    :eyebrow="$heroEyebrow"
                     :title="$heroTitle"
                     :description="$text('description', 'See how clubs, schools, businesses, and event teams use NextPlay for custom sportswear, team uniforms, event kits, and bulk orders.')"
                 />
