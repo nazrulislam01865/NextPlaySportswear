@@ -5,18 +5,30 @@ namespace App\Http\Controllers\Storefront;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductWishlist;
+use App\Services\Storefront\ProductCatalogService;
 use App\Services\Wishlist\WishlistHeaderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ProductWishlistController extends Controller
 {
-    public function index(Request $request): View
+    /** @var array<int, string> */
+    private const SORTS = [
+        'recent',
+        'oldest',
+        'price_asc',
+        'price_desc',
+        'name_asc',
+    ];
+
+    public function index(Request $request, ProductCatalogService $catalog): View
     {
         $user = $request->user('web');
         $isAuthenticatedCustomer = $user?->isCustomer() ?? false;
+        $sort = $this->normalizeSort($request->query('sort'));
         $items = collect();
 
         if ($isAuthenticatedCustomer) {
@@ -24,17 +36,17 @@ class ProductWishlistController extends Controller
                 ->where('user_id', $user->getKey())
                 ->whereHas('product', fn ($query) => $query->published())
                 ->with([
-                    'product.images',
-                    'product.category',
-                    'product.subcategory',
+                    'product' => fn ($query) => $query->with($catalog->listingRelations()),
                 ])
-                ->latest()
                 ->get()
                 ->map(fn (ProductWishlist $wishlist): array => $this->productCard(
+                    $catalog,
                     $wishlist->product,
                     $wishlist->created_at?->toIso8601String(),
                     route('wishlist.products.update', ['product' => $wishlist->product_id]),
                 ));
+
+            $items = $this->sortItems($items, $sort);
         }
 
         return view('storefront.wishlist.index', [
@@ -43,6 +55,7 @@ class ProductWishlistController extends Controller
             'guestStorageKey' => 'nextplay:guest-wishlist:v1',
             'guestProductsEndpoint' => route('wishlist.guest-products'),
             'loginUrl' => route('login', ['redirect' => route('wishlist.index')]),
+            'sort' => $sort,
             'seo' => [
                 'title' => 'My Wishlist | '.config('storefront.name'),
                 'description' => 'Review the NextPlay Sportswear products you saved for later.',
@@ -52,7 +65,7 @@ class ProductWishlistController extends Controller
         ]);
     }
 
-    public function guestProducts(Request $request): JsonResponse
+    public function guestProducts(Request $request, ProductCatalogService $catalog): JsonResponse
     {
         $validated = $request->validate([
             'product_ids' => ['required', 'array', 'max:100'],
@@ -61,10 +74,10 @@ class ProductWishlistController extends Controller
 
         $products = Product::query()
             ->published()
-            ->with(['images', 'category', 'subcategory'])
+            ->with($catalog->listingRelations())
             ->whereIn('id', $validated['product_ids'])
             ->get()
-            ->map(fn (Product $product): array => $this->productCard($product))
+            ->map(fn (Product $product): array => $this->productCard($catalog, $product))
             ->keyBy(fn (array $product): string => (string) $product['id']);
 
         return response()->json([
@@ -167,23 +180,86 @@ class ProductWishlistController extends Controller
         ]);
     }
 
-    private function productCard(Product $product, ?string $savedAt = null, ?string $removeEndpoint = null): array
+    private function normalizeSort(mixed $sort): string
     {
-        $image = $product->images->firstWhere('is_primary', true) ?? $product->images->first();
-        $category = $product->subcategory?->name ?: $product->category?->name;
+        $sort = trim((string) $sort);
+
+        return in_array($sort, self::SORTS, true) ? $sort : 'recent';
+    }
+
+    /**
+     * Keep authenticated sorting on the server so the selector and page URL stay
+     * deterministic. Guest sorting uses the same keys in storefront.js after the
+     * saved products have been resolved from browser storage.
+     *
+     * @param  Collection<int, array<string, mixed>>  $items
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function sortItems(Collection $items, string $sort): Collection
+    {
+        return $items->sort(function (array $left, array $right) use ($sort): int {
+            if ($sort === 'name_asc') {
+                $nameComparison = strcasecmp((string) ($left['title'] ?? ''), (string) ($right['title'] ?? ''));
+
+                return $nameComparison !== 0
+                    ? $nameComparison
+                    : $this->compareSavedAt($left, $right, true);
+            }
+
+            if (in_array($sort, ['price_asc', 'price_desc'], true)) {
+                $leftAvailable = (bool) ($left['price_available'] ?? false);
+                $rightAvailable = (bool) ($right['price_available'] ?? false);
+
+                if ($leftAvailable !== $rightAvailable) {
+                    return $leftAvailable ? -1 : 1;
+                }
+
+                if ($leftAvailable && $rightAvailable) {
+                    $priceComparison = (float) ($left['price'] ?? 0) <=> (float) ($right['price'] ?? 0);
+                    if ($priceComparison !== 0) {
+                        return $sort === 'price_desc' ? -$priceComparison : $priceComparison;
+                    }
+                }
+
+                return $this->compareSavedAt($left, $right, true);
+            }
+
+            return $this->compareSavedAt($left, $right, $sort !== 'oldest');
+        })->values();
+    }
+
+    /** @param array<string, mixed> $left @param array<string, mixed> $right */
+    private function compareSavedAt(array $left, array $right, bool $recentFirst): int
+    {
+        $comparison = strcmp((string) ($left['saved_at'] ?? ''), (string) ($right['saved_at'] ?? ''));
+
+        return $recentFirst ? -$comparison : $comparison;
+    }
+
+    /** @return array<string, mixed> */
+    private function productCard(
+        ProductCatalogService $catalog,
+        Product $product,
+        ?string $savedAt = null,
+        ?string $removeEndpoint = null,
+    ): array {
+        $card = $catalog->fromListingModel($product);
+        $displayPrice = max(0, (float) ($card['display_unit_price'] ?? 0));
+        $category = trim((string) ($product->subcategory?->name ?: ($card['category'] ?? '')));
+        $currency = trim((string) ($card['currency'] ?? $product->currency ?? 'USD'));
+        $currency = $currency !== '' ? $currency : 'USD';
 
         return [
             'id' => (int) $product->getKey(),
             'slug' => (string) $product->slug,
-            'title' => (string) $product->name,
-            'url' => route('products.show', ['slug' => $product->slug]),
-            'image' => $image?->publicUrl() ?: asset('images/product-placeholder.svg'),
-            'alt' => $image?->alt_text ?: $product->name,
+            'title' => (string) ($card['title'] ?? $product->name),
+            'url' => (string) ($card['url'] ?? route('products.show', ['slug' => $product->slug])),
+            'image' => (string) ($card['image'] ?? asset('images/product-placeholder.svg')),
+            'alt' => (string) ($card['alt'] ?? $product->name),
             'category' => $category,
-            'summary' => (string) ($product->short_description ?? ''),
-            'price' => (float) $product->base_price,
-            'currency' => (string) ($product->currency ?: 'USD'),
-            'minimum_quantity' => max(1, (int) ($product->minimum_quantity ?: 1)),
+            'price' => $displayPrice,
+            'price_available' => $displayPrice > 0,
+            'currency' => $currency,
             'saved_at' => $savedAt,
             'remove_endpoint' => $removeEndpoint,
         ];

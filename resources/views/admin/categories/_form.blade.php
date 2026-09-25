@@ -34,17 +34,6 @@
         @method('PUT')
     @endif
 
-    @if($errors->any())
-        <div class="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-800" role="alert">
-            <strong class="block font-black">Please correct the highlighted information:</strong>
-            <ul class="mt-2 list-disc space-y-1 pl-5 text-sm">
-                @foreach($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
     <nav class="sticky top-20 z-20 -mx-4 overflow-x-auto border-y border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <div class="flex min-w-max gap-2 text-sm font-bold">
             @foreach([

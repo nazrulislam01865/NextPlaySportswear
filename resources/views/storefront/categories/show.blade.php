@@ -24,8 +24,8 @@
     @endphp
 
     <section
-        class="relative isolate overflow-hidden bg-brand-dark text-white"
-        @if(filled($categoryBannerColor)) style="background-color: {{ $categoryBannerColor }};" @endif
+        class="relative isolate overflow-hidden text-white {{ filled($categoryBannerImage) ? '' : 'bg-brand-dark' }}"
+        @if(blank($categoryBannerImage) && filled($categoryBannerColor)) style="background-color: {{ $categoryBannerColor }};" @endif
     >
         @if(filled($categoryBannerImage))
             <picture>
@@ -35,11 +35,10 @@
                 <img
                     src="{{ $categoryBannerImage }}"
                     alt="{{ $category['banner_alt'] }}"
-                    class="absolute inset-0 -z-20 h-full w-full object-cover opacity-45"
+                    class="absolute inset-0 -z-20 h-full w-full object-cover"
                     fetchpriority="high"
                 >
             </picture>
-            <div class="absolute inset-0 -z-10 bg-gradient-to-r from-brand-dark/95 via-brand-navy/80 to-brand-navy/35"></div>
         @endif
 
         <div class="site-container py-12 sm:py-16">

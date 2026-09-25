@@ -9,6 +9,7 @@ $files = [
     'categoryModel' => $root.'/app/Models/Category.php',
     'categoryRequest' => $root.'/app/Http/Requests/Admin/CategoryFormRequest.php',
     'adminController' => $root.'/app/Http/Controllers/Admin/CategoryController.php',
+    'productTypeOptions' => $root.'/app/Support/ProductTypeOptions.php',
     'adminForm' => $root.'/resources/views/admin/categories/_form.blade.php',
     'storefrontController' => $root.'/app/Http/Controllers/Storefront/CategoryController.php',
     'catalogService' => $root.'/app/Services/Storefront/CategoryCatalogService.php',
@@ -66,12 +67,12 @@ $expect(
 );
 
 $expect(
-    str_contains($contents['adminController'], 'use App\\Models\\Product;')
-        && str_contains($contents['adminController'], "whereNotNull('product_type')")
-        && str_contains($contents['adminController'], "pluck('product_type')")
-        && str_contains($contents['adminController'], "'productTypeOptions'")
+    str_contains($contents['productTypeOptions'], 'final class ProductTypeOptions')
+        && str_contains($contents['productTypeOptions'], "whereNotNull('product_type')")
+        && str_contains($contents['productTypeOptions'], "pluck('product_type')")
+        && str_contains($contents['adminController'], 'ProductTypeOptions::all()')
         && str_contains($contents['adminController'], "'filter_product_types'"),
-    'The admin category form reads product type options from existing product master data and persists the category selection.'
+    'The admin category form reads product type options from the centralized product master-data provider and persists the category selection.'
 );
 
 $expect(

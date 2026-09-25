@@ -1,69 +1,57 @@
 <x-layouts.storefront :seo="$seo">
-    <section class="border-b border-slate-100 bg-white py-4">
-        <div class="site-container text-sm font-semibold text-slate-500">
-            <a href="{{ route('home') }}" class="hover:text-brand-red">Home</a>
-            <span class="mx-2">/</span>
-            <span class="text-brand-ink">Shopping Cart</span>
-        </div>
-    </section>
-
-    <section class="bg-gradient-to-b from-slate-50 to-white py-8 sm:py-10">
+    {{-- NEXTPLAY_CART_PROTOTYPE --}}
+    <section class="np-cart-page">
         <div class="site-container">
-            <div class="mb-7 grid gap-5 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end">
-                <div>
-                    <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">Review custom order</p>
-                    <h1 class="mt-2 font-display text-4xl font-bold uppercase leading-none tracking-tight text-brand-ink sm:text-5xl">Shopping Cart</h1>
-                    <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">Review product details, sizes, artwork notes, discounts, and shipping estimate before checkout.</p>
-                </div>
+            <nav class="np-cart-breadcrumb" aria-label="Breadcrumb">
+                <a href="{{ route('home') }}">Home</a>
+                <span aria-hidden="true">/</span>
+                <span>Shopping Cart</span>
+            </nav>
 
-                <div class="grid overflow-hidden rounded-2xl border border-slate-200 bg-white text-center text-[11px] font-black uppercase tracking-wide text-slate-500 shadow-sm sm:grid-cols-3">
-                    <div class="bg-brand-red px-4 py-3 text-white">1. Cart</div>
-                    <div class="px-4 py-3">2. Checkout</div>
-                    <div class="px-4 py-3">3. Proof</div>
-                </div>
+            <div class="np-cart-heading-row">
+                <h1 class="font-display">Shopping Cart</h1>
+                <span class="np-cart-count {{ $cart['is_empty'] ? 'np-cart-count--empty' : '' }}" data-cart-page-quantity>
+                    {{ $cart['quantity'] }} item{{ $cart['quantity'] === 1 ? '' : 's' }}
+                </span>
             </div>
 
             <div
-                class="mb-5 {{ session('status') ? '' : 'hidden' }} rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-bold text-green-800"
+                class="np-cart-page-feedback {{ session('status') ? '' : 'hidden' }}"
                 data-cart-page-feedback
             >
                 {{ session('status') }}
             </div>
 
             @if ($errors->any())
-                <div class="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">
+                <div class="np-cart-page-feedback np-cart-page-feedback--error">
                     {{ $errors->first() }}
                 </div>
             @endif
 
-            @if ($cart['is_preview'])
-                <div class="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
-                    Preview mode is showing a sample custom order from the demo cart link. Add a product to create your own session cart.
-                </div>
-            @endif
-
             @if ($cart['is_empty'])
-                <div class="grid gap-6 lg:grid-cols-[1fr_360px]">
-                    <div class="rounded-[26px] border border-slate-200 bg-white p-6 text-center shadow-card sm:p-10">
-                        <div class="mx-auto grid h-16 w-16 place-items-center rounded-full bg-slate-50 text-3xl shadow-sm">🛒</div>
-                        <h2 class="mt-5 font-display text-3xl font-bold uppercase leading-tight text-brand-ink sm:text-4xl">Your cart is empty</h2>
-                        <p class="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-600">Browse custom jerseys, uniforms, caps, bags, and team apparel.</p>
-                        <div class="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-                            <a href="{{ route('products.index') }}" class="btn btn-red">Shop Products</a>
-                            <a href="{{ route('cart.index', ['preview' => 1]) }}" class="btn btn-white">Preview Cart Design</a>
-                        </div>
+                <div class="np-cart-empty" data-cart-empty-state>
+                    <div class="np-cart-empty-icon" aria-hidden="true">
+                        <svg viewBox="0 0 96 96" fill="none" role="img">
+                            <path d="M27 35.5h42l4 43H23l4-43Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/>
+                            <path d="M37.5 40V29.5C37.5 20.94 42.2 16 48 16s10.5 4.94 10.5 13.5V40" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/>
+                            <path d="M48 7v-5M27.5 14.5 24 10.7M68.5 14.5 72 10.7" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                        </svg>
                     </div>
-
-                    <x-storefront.cart.summary-card :cart="$cart" />
+                    <h2>Your cart is empty</h2>
+                    <p>Find something you love and add it to your cart.</p>
+                    <a href="{{ route('products.index') }}" class="btn btn-red np-cart-empty-cta">
+                        <span>Shop Products</span>
+                        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                            <path d="M4 10h11M11 6l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </a>
                 </div>
             @else
-                <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_380px]">
-                    <div class="grid gap-4" data-cart-items-list>
+                <div class="np-cart-layout">
+                    <div class="np-cart-items" data-cart-items-list>
                         @foreach ($cart['items'] as $item)
                             <x-storefront.cart.item-card :item="$item" />
                         @endforeach
-
-                        <x-storefront.cart.trust-panel :points="$cart['trust_points']" />
                     </div>
 
                     <x-storefront.cart.summary-card :cart="$cart" />
@@ -71,25 +59,6 @@
             @endif
         </div>
     </section>
-
-    <section class="bg-slate-50 py-10 sm:py-14">
-        <div class="site-container">
-            <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                    <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">Need more team gear?</p>
-                    <h2 class="font-display text-3xl font-bold uppercase tracking-tight text-brand-ink sm:text-4xl">Recommended Products</h2>
-                </div>
-                <a href="{{ route('products.index') }}" class="btn btn-white">View All Products</a>
-            </div>
-
-            <div class="grid-3 np-product-listing-grid np-product-listing-grid--recommended">
-                @foreach ($recommendedProducts as $product)
-                    <x-storefront.product-card :product="$product" />
-                @endforeach
-            </div>
-        </div>
-    </section>
-
 
     @if (! $cart['is_preview'])
         <script>
@@ -102,12 +71,7 @@
                     if (!feedback) return;
                     feedback.textContent = message || '';
                     feedback.classList.toggle('hidden', !message);
-                    feedback.classList.toggle('border-green-200', type === 'success');
-                    feedback.classList.toggle('bg-green-50', type === 'success');
-                    feedback.classList.toggle('text-green-800', type === 'success');
-                    feedback.classList.toggle('border-red-200', type !== 'success');
-                    feedback.classList.toggle('bg-red-50', type !== 'success');
-                    feedback.classList.toggle('text-red-800', type !== 'success');
+                    feedback.classList.toggle('np-cart-page-feedback--error', type !== 'success');
                 };
 
                 const refreshSummary = (cart) => {
@@ -124,7 +88,7 @@
                         const quantityNode = root.querySelector('[data-cart-quantity]');
                         if (quantityNode) {
                             const quantity = Number(cart.quantity || 0);
-                            quantityNode.textContent = `${quantity} item${quantity === 1 ? '' : 's'}`;
+                            quantityNode.textContent = `${quantity}`;
                         }
 
                         const pill = root.querySelector('[data-coupon-pill]');
@@ -138,6 +102,12 @@
                             checkoutLink.classList.toggle('opacity-50', !cart.checkout_ready);
                         }
                     });
+
+                    const pageQuantity = document.querySelector('[data-cart-page-quantity]');
+                    if (pageQuantity) {
+                        const quantity = Number(cart.quantity || 0);
+                        pageQuantity.textContent = `${quantity} item${quantity === 1 ? '' : 's'}`;
+                    }
 
                     document.querySelectorAll('.storefront-cart-count-badge').forEach((node) => {
                         const quantity = Number(cart.quantity || 0);
@@ -214,5 +184,4 @@
             });
         </script>
     @endif
-
 </x-layouts.storefront>

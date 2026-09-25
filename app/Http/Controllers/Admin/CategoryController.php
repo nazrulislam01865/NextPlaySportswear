@@ -7,7 +7,6 @@ use App\Http\Requests\Admin\CategoryFormRequest;
 use App\Models\CatalogAttribute;
 use App\Models\CatalogPageSetting;
 use App\Models\Category;
-use App\Models\Product;
 use App\Models\UrlRedirect;
 use App\Services\Catalog\CategoryDeletionService;
 use App\Services\Catalog\CategoryMediaService;
@@ -17,6 +16,7 @@ use App\Services\Catalog\LeafCategoryAssignmentService;
 use App\Services\Catalog\NavigationService;
 use App\Services\Security\SafeHtmlService;
 use App\Support\CatalogPageAppearance;
+use App\Support\ProductTypeOptions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -344,7 +344,7 @@ class CategoryController extends Controller
             'category' => $category,
             'parents' => $this->treeService->flatOptions($category->exists ? $category->id : null),
             'attributes' => CatalogAttribute::query()->with('values')->ordered()->get(),
-            'productTypeOptions' => $this->productTypeOptions(),
+            'productTypeOptions' => ProductTypeOptions::all(),
         ]);
     }
 
@@ -377,7 +377,7 @@ class CategoryController extends Controller
                 ->filter()
                 ->unique()
                 ->values();
-            $availableProductTypes = collect($this->productTypeOptions());
+            $availableProductTypes = collect(ProductTypeOptions::all());
 
             $payload['filter_product_types'] = $selectedProductTypes->sort()->values()->all()
                 === $availableProductTypes->sort()->values()->all()
@@ -411,22 +411,6 @@ class CategoryController extends Controller
         $payload['updated_by'] = auth()->id();
 
         return $payload;
-    }
-
-    /** @return array<int, string> */
-    private function productTypeOptions(): array
-    {
-        return Product::query()
-            ->whereNotNull('product_type')
-            ->where('product_type', '!=', '')
-            ->distinct()
-            ->orderBy('product_type')
-            ->pluck('product_type')
-            ->map(fn ($value): string => trim((string) $value))
-            ->filter()
-            ->unique(fn (string $value): string => Str::lower($value))
-            ->values()
-            ->all();
     }
 
     private function uniqueSlug(string $value, ?int $ignoreId = null): string

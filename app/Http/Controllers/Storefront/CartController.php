@@ -31,11 +31,8 @@ class CartController extends Controller
     {
         $isPreview = $request->boolean('preview') || ($request->has('id') && $this->cart->summary()['is_empty']);
         $cart = $this->cart->summary($isPreview);
-        $recommendedProducts = collect($this->products->featured())->take(4)->values()->all();
-
         return view('storefront.cart.index', [
             'cart' => $cart,
-            'recommendedProducts' => $recommendedProducts,
             'seo' => [
                 'title' => 'Shopping Cart | NextPlay Sportswear',
                 'description' => 'Review your selected custom sportswear products, quantities, artwork notes, proof support, discounts, shipping estimate, and order total.',

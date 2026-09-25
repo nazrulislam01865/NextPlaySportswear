@@ -3421,16 +3421,23 @@ const setupWishlistPage = () => {
     const itemsContainer = page.querySelector('[data-wishlist-items]');
     const emptyState = page.querySelector('[data-wishlist-empty]');
     const loadingState = page.querySelector('[data-wishlist-loading]');
+    const continueLink = page.querySelector('[data-wishlist-continue]');
     const countNode = page.querySelector('[data-wishlist-page-count]');
     const countLabel = page.querySelector('[data-wishlist-page-count-label]');
+    const sortSelect = page.querySelector('[data-wishlist-sort]');
     const template = page.querySelector('template[data-wishlist-guest-template]');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const allowedSorts = new Set(['recent', 'oldest', 'price_asc', 'price_desc', 'name_asc']);
+    let guestResolvedItems = [];
+
+    const normalizedSort = (value) => allowedSorts.has(String(value || '')) ? String(value) : 'recent';
 
     const renderCount = (count) => {
         const safeCount = Math.max(0, Number(count || 0));
         if (countNode) countNode.textContent = String(safeCount);
         if (countLabel) countLabel.textContent = safeCount === 1 ? 'item' : 'items';
         emptyState?.classList.toggle('hidden', safeCount > 0);
+        continueLink?.classList.toggle('hidden', safeCount === 0);
         dispatchWishlistChanged({ authenticated, count: safeCount, storageKey });
     };
 
@@ -3452,6 +3459,60 @@ const setupWishlistPage = () => {
             message,
             key: 'wishlist-page-action',
         });
+    };
+
+    const sortGuestItems = (items, sort) => {
+        const selectedSort = normalizedSort(sort);
+        const copy = [...items];
+
+        return copy.sort((left, right) => {
+            const leftSavedAt = String(left?.saved_at || '');
+            const rightSavedAt = String(right?.saved_at || '');
+
+            if (selectedSort === 'name_asc') {
+                const byName = String(left?.title || '').localeCompare(String(right?.title || ''), undefined, {
+                    sensitivity: 'base',
+                });
+                return byName || rightSavedAt.localeCompare(leftSavedAt);
+            }
+
+            if (selectedSort === 'price_asc' || selectedSort === 'price_desc') {
+                const leftPrice = Number(left?.price || 0);
+                const rightPrice = Number(right?.price || 0);
+                const leftAvailable = left?.price_available === true
+                    || (left?.price_available == null && Number.isFinite(leftPrice) && leftPrice > 0);
+                const rightAvailable = right?.price_available === true
+                    || (right?.price_available == null && Number.isFinite(rightPrice) && rightPrice > 0);
+
+                if (leftAvailable !== rightAvailable) return leftAvailable ? -1 : 1;
+
+                if (leftAvailable && rightAvailable && leftPrice !== rightPrice) {
+                    return selectedSort === 'price_desc'
+                        ? rightPrice - leftPrice
+                        : leftPrice - rightPrice;
+                }
+
+                return rightSavedAt.localeCompare(leftSavedAt);
+            }
+
+            return selectedSort === 'oldest'
+                ? leftSavedAt.localeCompare(rightSavedAt)
+                : rightSavedAt.localeCompare(leftSavedAt);
+        });
+    };
+
+    const syncGuestSortUrl = (sort) => {
+        const selectedSort = normalizedSort(sort);
+        const url = new URL(window.location.href);
+
+        if (selectedSort === 'recent') {
+            url.searchParams.delete('sort');
+        } else {
+            url.searchParams.set('sort', selectedSort);
+        }
+
+        window.history.replaceState(window.history.state, '', url.toString());
+        page.dataset.sort = selectedSort;
     };
 
     const bindAuthenticatedRemove = (button) => {
@@ -3480,7 +3541,10 @@ const setupWishlistPage = () => {
                 if (!response.ok) throw new Error('This product could not be removed.');
                 const payload = await response.json();
                 item.remove();
-                renderCount(Number(payload.wishlist_count || itemsContainer?.querySelectorAll('[data-wishlist-item]').length || 0));
+
+                const responseCount = Number(payload.wishlist_count);
+                const fallbackCount = itemsContainer?.querySelectorAll('[data-wishlist-item]').length || 0;
+                renderCount(Number.isFinite(responseCount) ? responseCount : fallbackCount);
                 showToast(payload.message || 'Removed from your wishlist');
             } catch (error) {
                 showToast(error instanceof Error ? error.message : 'This product could not be removed.', 'error');
@@ -3490,17 +3554,118 @@ const setupWishlistPage = () => {
         });
     };
 
+    if (sortSelect) {
+        sortSelect.value = normalizedSort(page.dataset.sort || sortSelect.value);
+        sortSelect.addEventListener('change', () => {
+            const selectedSort = normalizedSort(sortSelect.value);
+
+            if (authenticated) {
+                const url = new URL(window.location.href);
+                if (selectedSort === 'recent') {
+                    url.searchParams.delete('sort');
+                } else {
+                    url.searchParams.set('sort', selectedSort);
+                }
+                window.location.assign(url.toString());
+                return;
+            }
+
+            syncGuestSortUrl(selectedSort);
+            renderGuestCards();
+        });
+    }
+
     if (authenticated) {
         page.querySelectorAll('[data-wishlist-remove]').forEach(bindAuthenticatedRemove);
+        loadingState?.classList.add('hidden');
         renderCount(itemsContainer?.querySelectorAll('[data-wishlist-item]').length || 0);
         return;
+    }
+
+    const populateGuestCard = (card, item) => {
+        const key = String(item?.key || item?.product_id || '');
+        const url = String(item?.url || '#');
+        const title = String(item?.title || 'Saved product');
+        const image = String(item?.image || window.NextPlayImagePlaceholder || '');
+        const category = String(item?.category || '').trim();
+        const price = Number(item?.price || 0);
+        const hasPrice = item?.price_available === true
+            || (item?.price_available == null && Number.isFinite(price) && price > 0);
+
+        card.dataset.productKey = key;
+        card.dataset.wishlistSavedAt = String(item?.saved_at || '');
+        card.dataset.wishlistSortPrice = Number.isFinite(price) ? String(price) : '0';
+        card.dataset.wishlistSortTitle = title;
+
+        card.querySelectorAll('[data-wishlist-product-link], [data-wishlist-product-title], [data-wishlist-view-product]').forEach((link) => {
+            link.href = url;
+        });
+
+        const productLink = card.querySelector('[data-wishlist-product-link]');
+        if (productLink) productLink.setAttribute('aria-label', `View ${title}`);
+
+        const imageNode = card.querySelector('[data-wishlist-product-image]');
+        if (imageNode) {
+            imageNode.src = image;
+            imageNode.alt = String(item?.alt || title);
+        }
+
+        const titleNode = card.querySelector('[data-wishlist-product-title]');
+        if (titleNode) titleNode.textContent = title;
+
+        const categoryNode = card.querySelector('[data-wishlist-product-category]');
+        if (categoryNode) {
+            categoryNode.textContent = category || 'Product';
+            categoryNode.classList.toggle('invisible', category === '');
+        }
+
+        const knownPrice = card.querySelector('[data-wishlist-price-known]');
+        const unknownPrice = card.querySelector('[data-wishlist-price-unknown]');
+        const priceNode = card.querySelector('[data-wishlist-product-price]');
+
+        knownPrice?.classList.toggle('hidden', !hasPrice);
+        unknownPrice?.classList.toggle('hidden', hasPrice);
+        if (priceNode) priceNode.textContent = hasPrice ? money(price, item?.currency) : '';
+
+        const removeButton = card.querySelector('[data-wishlist-remove]');
+        if (removeButton) {
+            removeButton.dataset.productKey = key;
+            removeButton.setAttribute('aria-label', `Remove ${title} from wishlist`);
+            removeButton.addEventListener('click', () => {
+                const storedItems = readStoredWishlist(storageKey);
+                delete storedItems[key];
+
+                if (!writeStoredWishlist(storedItems, storageKey)) {
+                    showToast('Browser storage is unavailable.', 'error');
+                    return;
+                }
+
+                guestResolvedItems = guestResolvedItems.filter((saved) => String(saved?.key || '') !== key);
+                card.remove();
+                renderCount(Object.keys(storedItems).length);
+                showToast('Removed from your wishlist');
+            });
+        }
+    };
+
+    function renderGuestCards() {
+        if (!itemsContainer) return;
+
+        itemsContainer.replaceChildren();
+        const selectedSort = normalizedSort(sortSelect?.value || page.dataset.sort || 'recent');
+
+        sortGuestItems(guestResolvedItems, selectedSort).forEach((item) => {
+            if (!template?.content?.firstElementChild) return;
+            const card = template.content.firstElementChild.cloneNode(true);
+            populateGuestCard(card, item);
+            itemsContainer.appendChild(card);
+        });
     }
 
     const renderGuestItems = async () => {
         loadingState?.classList.remove('hidden');
         const storedItems = readStoredWishlist(storageKey);
-        const entries = Object.entries(storedItems)
-            .sort(([, a], [, b]) => String(b?.saved_at || '').localeCompare(String(a?.saved_at || '')));
+        const entries = Object.entries(storedItems);
         let resolvedProducts = {};
 
         const productIds = entries
@@ -3520,6 +3685,7 @@ const setupWishlistPage = () => {
                     },
                     body: JSON.stringify({ product_ids: [...new Set(productIds)] }),
                 });
+
                 if (response.ok) {
                     const payload = await response.json();
                     resolvedProducts = payload.products || {};
@@ -3529,56 +3695,23 @@ const setupWishlistPage = () => {
             }
         }
 
-        if (itemsContainer) itemsContainer.replaceChildren();
-
-        entries.forEach(([key, stored]) => {
-            if (!template?.content?.firstElementChild || !itemsContainer) return;
+        guestResolvedItems = entries.map(([key, stored]) => {
             const resolved = resolvedProducts[String(stored?.product_id || '')] || {};
-            const item = { ...stored, ...resolved };
-            const card = template.content.firstElementChild.cloneNode(true);
-            const url = String(item.url || '#');
-            const title = String(item.title || 'Saved product');
-            const image = String(item.image || window.NextPlayImagePlaceholder || '');
-            const category = String(item.category || 'Saved product');
-            const summary = String(item.summary || 'Open this product to review customization and ordering options.');
+            const storedPrice = Number(stored?.price || 0);
+            const resolvedHasAvailability = Object.prototype.hasOwnProperty.call(resolved, 'price_available');
 
-            card.dataset.productKey = key;
-            card.querySelectorAll('[data-wishlist-product-link], [data-wishlist-product-title], [data-wishlist-view-product]').forEach((link) => {
-                link.href = url;
-            });
-            const imageNode = card.querySelector('[data-wishlist-product-image]');
-            if (imageNode) {
-                imageNode.src = image;
-                imageNode.alt = String(item.alt || title);
-            }
-            const titleNode = card.querySelector('[data-wishlist-product-title]');
-            if (titleNode) titleNode.textContent = title;
-            const categoryNode = card.querySelector('[data-wishlist-product-category]');
-            if (categoryNode) categoryNode.textContent = category;
-            const summaryNode = card.querySelector('[data-wishlist-product-summary]');
-            if (summaryNode) summaryNode.textContent = summary;
-            const priceNode = card.querySelector('[data-wishlist-product-price]');
-            if (priceNode) priceNode.textContent = money(item.price, item.currency);
-
-            const removeButton = card.querySelector('[data-wishlist-remove]');
-            if (removeButton) {
-                removeButton.setAttribute('aria-label', `Remove ${title} from wishlist`);
-                removeButton.addEventListener('click', () => {
-                    const items = readStoredWishlist(storageKey);
-                    delete items[key];
-                    if (!writeStoredWishlist(items, storageKey)) {
-                        showToast('Browser storage is unavailable.', 'error');
-                        return;
-                    }
-                    card.remove();
-                    renderCount(Object.keys(items).length);
-                    showToast('Removed from your wishlist');
-                });
-            }
-
-            itemsContainer.appendChild(card);
+            return {
+                key,
+                ...stored,
+                ...resolved,
+                saved_at: stored?.saved_at || resolved?.saved_at || '',
+                price_available: resolvedHasAvailability
+                    ? Boolean(resolved.price_available)
+                    : (Number.isFinite(storedPrice) && storedPrice > 0),
+            };
         });
 
+        renderGuestCards();
         loadingState?.classList.add('hidden');
         renderCount(entries.length);
     };

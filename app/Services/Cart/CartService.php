@@ -68,6 +68,7 @@ class CartService
             'subtotal' => round($subtotal, 2),
             'customization_total' => round($customizationTotal, 2),
             'merchandise_total' => round($merchandiseTotal, 2),
+            'estimated_subtotal' => round(max(0, $merchandiseTotal - $discount), 2),
             'discount' => round($discount, 2),
             'shipping' => round($shipping, 2),
             'additional_shipping' => round($additionalShipping, 2),

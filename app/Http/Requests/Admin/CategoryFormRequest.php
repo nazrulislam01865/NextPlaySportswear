@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
 use App\Rules\SafePublicUrl;
+use App\Support\ProductTypeOptions;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
 
@@ -17,6 +18,7 @@ class CategoryFormRequest extends FormRequest
     public function rules(): array
     {
         $categoryId = $this->route('category')?->id;
+        $productTypeOptions = ProductTypeOptions::all();
 
         return [
             'parent_id' => ['nullable', 'integer', 'exists:categories,id', Rule::notIn(array_filter([$categoryId]))],
@@ -40,8 +42,8 @@ class CategoryFormRequest extends FormRequest
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:1000000'],
             'published_at' => ['nullable', 'date'],
             'default_product_sort' => ['required', Rule::in(['featured', 'newest', 'price-low', 'price-high', 'name-asc'])],
-            'filter_product_types' => ['nullable', 'array', 'max:100'],
-            'filter_product_types.*' => ['string', 'max:100', 'distinct', Rule::exists('products', 'product_type')->where(fn ($query) => $query->whereNull('deleted_at'))],
+            'filter_product_types' => ['nullable', 'array', 'max:'.count($productTypeOptions)],
+            'filter_product_types.*' => ['string', 'max:100', 'distinct', Rule::in($productTypeOptions)],
 
             'image_url' => ['nullable', 'url:http,https', 'max:2048'],
             'image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:5120'],
