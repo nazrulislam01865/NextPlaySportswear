@@ -1,5 +1,5 @@
 <x-storefront.account.orders.page :seo="$seo" :account="$account" :navigation="$navigation" title="Customer Orders" subtitle="A complete order center for payments, production updates, shipments, returns, refunds, invoices, and repeat orders.">
-    <x-slot:actions><a class="btn btn-red" href="{{ route('account.orders.index') }}">View Order History</a></x-slot:actions>
+    <x-slot:actions><a class="btn btn-primary" href="{{ route('account.orders.index') }}">View Order History</a></x-slot:actions>
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         @foreach([
@@ -20,7 +20,7 @@
         <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><h3 class="text-xl font-black">Recent Orders</h3><p class="text-sm text-slate-500">Latest purchases and next available actions.</p></div><a href="{{ route('account.orders.index') }}" class="text-sm font-black text-brand-red">View all →</a></div>
         <div class="mt-5 grid gap-5">
             @forelse($orders as $order)<x-storefront.account.orders.order-card :order="$order" />@empty
-                <div class="rounded-2xl bg-slate-50 p-8 text-center"><h4 class="font-black">No orders yet</h4><p class="mt-2 text-sm text-slate-500">Your completed checkouts will appear here.</p><a href="{{ route('products.index') }}" class="btn btn-red mt-4">Browse Products</a></div>
+                <div class="rounded-2xl bg-slate-50 p-8 text-center"><h4 class="font-black">No orders yet</h4><p class="mt-2 text-sm text-slate-500">Your completed checkouts will appear here.</p><a href="{{ route('products.index') }}" class="btn btn-primary mt-4">Browse Products</a></div>
             @endforelse
         </div>
     </section>

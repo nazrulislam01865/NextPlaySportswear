@@ -41,7 +41,7 @@ final class TransactionalEmailManager
             ]
         );
 
-        $this->emails->queue(new EmailMessage(
+        $message = new EmailMessage(
             key: 'customer.email-verification',
             recipients: $this->customerRecipient($user->email, $user->name),
             subject: 'Verify your NextPlay Sportswear email address',
@@ -61,7 +61,15 @@ final class TransactionalEmailManager
                 'For your security, do not forward this verification link to anyone.',
             ],
             metadata: ['user_id' => $user->id],
-        ));
+        );
+
+        if ((bool) config('transactional_email.critical.email_verification_sync', true)) {
+            $this->emails->sendNow($message);
+
+            return;
+        }
+
+        $this->emails->queue($message);
     }
 
     public function passwordReset(User $user, string $token): void

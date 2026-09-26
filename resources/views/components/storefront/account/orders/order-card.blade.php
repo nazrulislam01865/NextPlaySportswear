@@ -23,8 +23,8 @@
         </div>
     </div>
     <div class="grid gap-2 border-t border-slate-100 bg-slate-50 p-4 sm:flex sm:flex-wrap [&_.btn]:w-full sm:[&_.btn]:w-auto">
-        @if($order->canPay())<a class="btn btn-red" href="{{ route('account.orders.pay', $order) }}">Pay now</a>@endif
-        <a class="btn btn-white" href="{{ route('account.orders.show', $order) }}">View details</a>
+        @if($order->canPay())<a class="btn btn-primary" href="{{ route('account.orders.pay', $order) }}">Pay now</a>@endif
+        <a class="btn btn-outline" href="{{ route('account.orders.show', $order) }}">View details</a>
         @if($order->shipments_count ?? $order->shipments?->count())<a class="btn btn-light" href="{{ route('account.orders.shipments', $order) }}">Shipments</a>@endif
         @if(in_array($order->status, ['delivered','completed'], true))<a class="btn btn-light" href="{{ route('account.orders.reorder', $order) }}">Order again</a>@endif
     </div>

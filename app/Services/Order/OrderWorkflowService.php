@@ -12,8 +12,10 @@ use App\Models\OrderRefund;
 use App\Models\OrderReturnRequest;
 use App\Models\OrderShipment;
 use App\Models\User;
+use App\Payments\Exceptions\PaymentGatewayException;
 use App\Services\Cart\CartService;
 use App\Services\Email\TransactionalEmailManager;
+use App\Services\Payments\PaymentOrchestrator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +28,7 @@ class OrderWorkflowService
     public function __construct(
         private readonly CartService $cart,
         private readonly TransactionalEmailManager $emails,
+        private readonly PaymentOrchestrator $payments,
     ) {
     }
 
@@ -610,8 +613,46 @@ class OrderWorkflowService
     {
         $oldStatus = (string) $request->status;
         $oldRefundStatus = $request->refunds()->first()?->status;
+        $approvedAmount = (float) ($payload['approved_amount'] ?? $request->approved_amount ?? 0);
+        $providerRefund = null;
 
-        $updated = DB::transaction(function () use ($request, $admin, $payload): OrderReturnRequest {
+        $allowedStatuses = config('commerce.return_status_transitions.'.$oldStatus, [$oldStatus]);
+        if (! in_array($payload['status'], $allowedStatuses, true)) {
+            throw ValidationException::withMessages([
+                'status' => 'This request cannot move from '.str($oldStatus)->headline().' to '.str($payload['status'])->headline().'.',
+            ]);
+        }
+
+        if (
+            $request->type === 'return'
+            && $approvedAmount > 0
+            && ($payload['refund_status'] ?? null) === 'issued'
+            && $request->requested_resolution !== 'store_credit'
+            && $request->order->payments()
+                ->where('status', 'paid')
+                ->whereNotIn('provider', ['manual', 'invoice'])
+                ->whereNotNull('provider_payment_id')
+                ->exists()
+        ) {
+            // Provider calls intentionally happen outside the long-running
+            // return-request DB transaction. The refund number is used as the
+            // provider idempotency key, so a retry cannot double-refund.
+            try {
+                $providerRefund = $this->payments->issueReturnRefund($request, $approvedAmount);
+            } catch (PaymentGatewayException $exception) {
+                throw ValidationException::withMessages([
+                    'refund_status' => $exception->getMessage(),
+                ]);
+            }
+
+            if ($providerRefund->status !== 'issued' && $payload['status'] === 'completed') {
+                throw ValidationException::withMessages([
+                    'refund_status' => 'The provider refund is still processing. Complete the return after the provider confirms the refund.',
+                ]);
+            }
+        }
+
+        $updated = DB::transaction(function () use ($request, $admin, $payload, $providerRefund): OrderReturnRequest {
             $locked = OrderReturnRequest::query()->lockForUpdate()->with(['order','items.orderItem','refunds'])->findOrFail($request->id);
             $oldStatus = $locked->status;
             $allowedStatuses = config('commerce.return_status_transitions.'.$oldStatus, [$oldStatus]);
@@ -653,7 +694,7 @@ class OrderWorkflowService
                 }
             }
 
-            $refundStatus = $payload['refund_status'] ?? null;
+            $refundStatus = $providerRefund?->status ?? ($payload['refund_status'] ?? null);
             if ($locked->type === 'return' && $approvedAmount > 0 && $refundStatus) {
                 $refund = $locked->refunds()->first();
 
@@ -684,7 +725,7 @@ class OrderWorkflowService
                         'currency' => $locked->order->currency,
                         'method' => $locked->requested_resolution === 'store_credit' ? 'store_credit' : 'original_payment',
                         'status' => $refundStatus,
-                        'provider_reference' => $payload['provider_reference'] ?? null,
+                        'provider_reference' => $providerRefund?->provider_reference ?? ($payload['provider_reference'] ?? null),
                         'reason' => $locked->reason,
                         'processed_at' => $refundStatus === 'issued' ? now() : null,
                     ]);
@@ -692,7 +733,7 @@ class OrderWorkflowService
                     $refund->update([
                         'amount' => $approvedAmount,
                         'status' => $refundStatus,
-                        'provider_reference' => $payload['provider_reference'] ?? $refund->provider_reference,
+                        'provider_reference' => $providerRefund?->provider_reference ?? ($payload['provider_reference'] ?? $refund->provider_reference),
                         'processed_at' => $refundStatus === 'issued' ? now() : $refund->processed_at,
                     ]);
                 }
@@ -709,7 +750,14 @@ class OrderWorkflowService
                 }
 
                 $issuedTotal = (float) $locked->order->refunds()->where('status', 'issued')->sum('amount');
-                $locked->order->update(['payment_status' => $issuedTotal >= (float) $locked->order->grand_total ? 'refunded' : 'partially_refunded']);
+                if ($issuedTotal > 0) {
+                    $paidTotal = (float) $locked->order->payments()->where('status', 'paid')->sum('amount');
+                    $locked->order->update([
+                        'payment_status' => $paidTotal > 0 && round($issuedTotal, 2) >= round($paidTotal, 2)
+                            ? 'refunded'
+                            : 'partially_refunded',
+                    ]);
+                }
             }
 
             $this->recordHistory($locked->order, 'return_'.$locked->status, $locked->statusLabel(), 'Return or exchange '.$locked->return_number.' was updated.', $admin);

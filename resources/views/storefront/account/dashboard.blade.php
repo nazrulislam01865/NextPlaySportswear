@@ -28,8 +28,8 @@
                         </p>
 
                         <div class="mt-6 flex flex-col gap-3 sm:flex-row">
-                            <a href="{{ route('products.index') }}" class="btn btn-red rounded-2xl">Start New Order</a>
-                            <a href="{{ route('quote.request') }}" class="btn border border-white/20 bg-white/10 text-white hover:bg-white hover:text-brand-navy rounded-2xl">Request Bulk Quote</a>
+                            <a href="{{ route('products.index') }}" class="btn btn-primary">Start New Order</a>
+                            <a href="{{ route('quote.request') }}" class="btn btn-outline-inverse">Request Bulk Quote</a>
                         </div>
                     </div>
 
@@ -71,7 +71,7 @@
 
                     <form method="POST" action="{{ route('logout') }}" class="shrink-0">
                         @csrf
-                        <button type="submit" class="btn btn-white border-brand-red text-brand-red hover:bg-brand-red hover:text-white rounded-2xl">
+                        <button type="submit" class="btn btn-danger-outline">
                             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
                             Logout
                         </button>
@@ -117,8 +117,8 @@
                     </div>
 
                     <div class="mt-5 grid gap-3">
-                        <a href="{{ route('quote.request') }}" class="btn btn-red w-full rounded-2xl">Request Bulk Quote</a>
-                        <a href="{{ route('products.index') }}" class="btn btn-white w-full rounded-2xl">Browse Products</a>
+                        <a href="{{ route('quote.request') }}" class="btn btn-primary w-full">Request Bulk Quote</a>
+                        <a href="{{ route('products.index') }}" class="btn btn-outline w-full">Browse Products</a>
                     </div>
                 </section>
             </div>

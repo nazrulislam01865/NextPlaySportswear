@@ -9,7 +9,7 @@
                 <p class="mb-2 text-xs font-black uppercase tracking-[.18em] text-brand-red">Coming next</p>
                 <h1 class="font-display text-4xl font-bold uppercase text-brand-ink">{{ $title }}</h1>
                 <p class="mx-auto mt-4 max-w-2xl text-slate-500">{{ $message }}</p>
-                <a href="{{ route('home') }}" class="btn btn-red mt-6">Back to Home</a>
+                <a href="{{ route('home') }}" class="btn btn-primary mt-6">Back to Home</a>
             </div>
         </div>
     </section>

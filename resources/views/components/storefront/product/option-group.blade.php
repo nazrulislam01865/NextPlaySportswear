@@ -36,7 +36,7 @@
         <div class="mt-4 flex flex-wrap gap-4">
             @foreach($group['values'] as $value)
                 <button type="button" @click="choose(@js($group), @js($value['id']))" class="group grid justify-items-center gap-2" title="{{ $value['label'] }}">
-                    <span :class="selections[@js($id)] === @js($value['id']) ? 'ring-4 ring-brand-red' : 'ring-1 ring-slate-300'" class="grid h-12 w-12 place-items-center rounded-full border-4 border-white shadow-sm" style="background-color: {{ $value['color'] ?: '#E2E8F0' }}"><span x-show="selections[@js($id)] === @js($value['id'])" class="font-black drop-shadow" style="color: {{ $value['contrast'] ?? '#0F172A' }}">✓</span></span>
+                    <span :class="selections[@js($id)] === @js($value['id']) ? 'ring-4 ring-brand-red' : 'ring-1 ring-slate-300'" class="grid h-12 w-12 place-items-center rounded-full border-4 border-white shadow-sm" style="background-color: {{ $value['color'] ?: 'var(--np-color-border)' }}"><span x-show="selections[@js($id)] === @js($value['id'])" class="font-black drop-shadow" style="color: {{ $value['contrast'] ?? '#0F172A' }}">✓</span></span>
                     <span class="max-w-[100px] text-center text-[10px] font-black text-slate-600">{{ $value['label'] }}</span>
                     <span class="text-[9px] font-bold text-brand-red" x-text="chargeLabel(@js($value))"></span>
                 </button>

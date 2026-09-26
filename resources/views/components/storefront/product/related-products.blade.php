@@ -48,7 +48,7 @@
             .np-related-products__header h2 {
                 margin: 0;
                 color: #061744;
-                font-family: var(--font-display, var(--display, inherit));
+                font-family: var(--np-font-heading);
                 font-size: clamp(1.8rem, 3vw, 2.75rem);
                 font-weight: 800;
                 line-height: 1;

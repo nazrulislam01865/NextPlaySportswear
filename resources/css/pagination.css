@@ -1,3 +1,4 @@
+/* Storefront pagination consumes the centralized NextPlay design system. */
 .nextplay-pagination {
     display: flex;
     width: 100%;
@@ -5,15 +6,17 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
+    font-family: var(--np-font-body);
 }
 
 .nextplay-pagination__summary {
     flex: 0 0 auto;
     margin: 0;
-    color: #64748b;
-    font-size: 0.875rem;
-    font-weight: 500;
-    line-height: 1.35;
+    color: var(--np-color-muted);
+    font-size: var(--np-body-2-size);
+    font-weight: var(--np-body-2-weight);
+    line-height: var(--np-body-2-line-height);
+    letter-spacing: var(--np-letter-spacing);
     white-space: nowrap;
 }
 
@@ -36,11 +39,11 @@
     min-width: max-content;
     align-items: center;
     gap: 0.125rem;
-    border: 1px solid #dbe4ef;
+    border: 1px solid var(--np-color-border);
     border-radius: 0.75rem;
-    background: #ffffff;
+    background: var(--np-color-page);
     padding: 0.125rem;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+    box-shadow: 0 2px 8px rgba(6, 31, 68, 0.06);
 }
 
 .nextplay-pagination__item {
@@ -51,16 +54,17 @@
     flex: 0 0 auto;
     align-items: center;
     justify-content: center;
-    border: 1px solid #dbe4ef;
+    border: 1px solid var(--np-color-border);
     border-radius: 0.625rem;
-    background: #ffffff;
+    background: var(--np-color-page);
     padding: 0 0.5rem;
-    color: #15345d;
-    font-size: 0.8125rem;
-    font-weight: 700;
-    line-height: 1;
+    color: var(--np-color-primary);
+    font-size: var(--np-cta-normal-small-size);
+    font-weight: var(--np-cta-normal-small-weight);
+    line-height: var(--np-cta-normal-small-line-height);
+    letter-spacing: var(--np-letter-spacing);
     text-decoration: none;
-    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03);
+    box-shadow: 0 1px 4px rgba(6, 31, 68, 0.04);
     transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, transform 160ms ease;
 }
 
@@ -70,27 +74,27 @@
 }
 
 .nextplay-pagination__item:hover {
-    border-color: #b9c8db;
-    background: #f8fafc;
-    color: #0d2545;
+    border-color: var(--np-color-secondary);
+    background: var(--np-color-soft);
+    color: var(--np-color-primary);
     transform: translateY(-1px);
 }
 
 .nextplay-pagination__item--active,
 .nextplay-pagination__item--active:hover {
-    border-color: #15345d;
-    background: #15345d;
-    color: #ffffff;
+    border-color: var(--np-color-primary);
+    background: var(--np-color-primary);
+    color: var(--np-color-page);
     transform: none;
-    box-shadow: 0 3px 8px rgba(21, 52, 93, 0.16);
+    box-shadow: 0 3px 8px rgba(6, 31, 68, 0.18);
 }
 
 .nextplay-pagination__item--disabled,
 .nextplay-pagination__item--disabled:hover {
     cursor: not-allowed;
-    border-color: #e2e8f0;
-    background: #ffffff;
-    color: #94a3b8;
+    border-color: var(--np-color-border);
+    background: var(--np-color-page);
+    color: var(--np-color-placeholder);
     opacity: 0.65;
     transform: none;
     box-shadow: none;
@@ -103,13 +107,59 @@
     border-color: transparent;
     background: transparent;
     padding-inline: 0.25rem;
-    color: #15345d;
+    color: var(--np-color-primary);
     transform: none;
     box-shadow: none;
 }
 
 .nextplay-pagination__item--wide {
     min-width: 3.75rem;
+}
+
+.nextplay-pagination__actions {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.nextplay-pagination__per-page {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.625rem;
+    color: var(--np-color-heading);
+    font-size: var(--np-body-2-size);
+    font-weight: var(--np-font-weight-medium);
+    line-height: var(--np-body-2-line-height);
+    white-space: nowrap;
+}
+
+.nextplay-pagination__per-page select {
+    min-width: 4.75rem;
+    height: 2.5rem;
+    cursor: pointer;
+    border: 1px solid var(--np-color-border);
+    border-radius: 0.625rem;
+    background-color: var(--np-color-page);
+    padding: 0 2rem 0 0.75rem;
+    color: var(--np-color-heading);
+    font-family: var(--np-font-body);
+    font-size: var(--np-body-2-size);
+    font-weight: var(--np-font-weight-medium);
+    line-height: 1;
+    box-shadow: 0 1px 4px rgba(6, 31, 68, 0.04);
+}
+
+.nextplay-pagination__per-page select:hover,
+.nextplay-pagination__per-page select:focus {
+    border-color: var(--np-color-secondary);
+}
+
+.nextplay-pagination__per-page select:focus-visible {
+    outline: var(--np-button-focus-ring-width) solid var(--np-button-focus-ring-color);
+    outline-offset: 2px;
 }
 
 @media (max-width: 767.98px) {
@@ -120,7 +170,6 @@
     }
 
     .nextplay-pagination__summary {
-        font-size: 0.8125rem;
         white-space: normal;
     }
 
@@ -137,59 +186,12 @@
         height: 2.125rem;
         border-radius: 0.5625rem;
         padding-inline: 0.4375rem;
-        font-size: 0.78125rem;
     }
 
     .nextplay-pagination__item--ellipsis {
         min-width: 1.5rem;
     }
-}
 
-.nextplay-pagination__actions {
-    display: flex;
-    min-width: 0;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 1rem;
-}
-
-.nextplay-pagination__per-page {
-    display: inline-flex;
-    flex: 0 0 auto;
-    align-items: center;
-    gap: 0.625rem;
-    color: #0f172a;
-    font-size: 0.8125rem;
-    font-weight: 700;
-    white-space: nowrap;
-}
-
-.nextplay-pagination__per-page select {
-    min-width: 4.75rem;
-    height: 2.5rem;
-    cursor: pointer;
-    border: 1px solid #dbe4ef;
-    border-radius: 0.625rem;
-    background-color: #ffffff;
-    padding: 0 2rem 0 0.75rem;
-    color: #0f172a;
-    font-size: 0.8125rem;
-    font-weight: 700;
-    line-height: 1;
-    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
-}
-
-.nextplay-pagination__per-page select:hover,
-.nextplay-pagination__per-page select:focus {
-    border-color: #b9c8db;
-}
-
-.nextplay-pagination__per-page select:focus-visible {
-    outline: 3px solid rgba(37, 99, 235, 0.18);
-    outline-offset: 2px;
-}
-
-@media (max-width: 767.98px) {
     .nextplay-pagination__actions {
         width: 100%;
         align-items: stretch;

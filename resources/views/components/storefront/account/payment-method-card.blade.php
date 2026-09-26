@@ -44,14 +44,14 @@
             <form method="POST" action="{{ route('account.payment-methods.default', $paymentMethod) }}" class="sm:flex-1">
                 @csrf
                 @method('PATCH')
-                <button type="submit" class="btn btn-white w-full rounded-2xl text-brand-navy">Make Default</button>
+                <button type="submit" class="btn btn-outline w-full">Make Default</button>
             </form>
         @endunless
 
         <form method="POST" action="{{ route('account.payment-methods.destroy', $paymentMethod) }}" class="sm:flex-1" onsubmit="return confirm('Remove this saved payment method?')">
             @csrf
             @method('DELETE')
-            <button type="submit" class="btn btn-white w-full rounded-2xl border-brand-red/40 text-brand-red hover:bg-brand-red hover:text-white">Remove</button>
+            <button type="submit" class="btn btn-danger-outline w-full">Remove</button>
         </form>
     </div>
 </article>

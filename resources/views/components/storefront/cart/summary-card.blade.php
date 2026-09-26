@@ -27,10 +27,10 @@
     <div class="np-cart-summary-actions">
         <a
             href="{{ route('checkout.index') }}"
-            class="btn btn-red w-full {{ $cart['checkout_ready'] ? '' : 'pointer-events-none opacity-50' }}"
+            class="btn btn-primary w-full {{ $cart['checkout_ready'] ? '' : 'pointer-events-none opacity-50' }}"
             data-checkout-link
         >Proceed to Checkout</a>
-        <a href="{{ route('products.index') }}" class="btn btn-white w-full">Continue Shopping</a>
+        <a href="{{ route('products.index') }}" class="btn btn-outline w-full">Continue Shopping</a>
     </div>
 
     <details class="np-cart-promo" data-promo-details @if($message || $couponApplied) open @endif>
@@ -75,7 +75,7 @@
                             autocomplete="off"
                             maxlength="60"
                         >
-                        <button class="btn btn-light" type="submit" data-coupon-apply-button>Apply</button>
+                        <button class="btn btn-light btn-sm" type="submit" data-coupon-apply-button>Apply</button>
                     </div>
                 </form>
             @endif

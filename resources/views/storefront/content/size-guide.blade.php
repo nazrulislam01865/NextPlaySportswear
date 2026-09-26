@@ -9,8 +9,8 @@
         :image="asset('storage/storefront/content/size-guide.webp')"
         image-alt="Athletic apparel prepared for sizing"
     >
-        <a href="#size-tables" class="btn btn-red">View Size Charts</a>
-        <a href="{{ route('contact') }}" class="btn btn-white">Ask a Size Question</a>
+        <a href="#size-tables" class="btn btn-primary">View Size Charts</a>
+        <a href="{{ route('contact') }}" class="btn btn-outline">Ask a Size Question</a>
     </x-storefront.content.hero>
 
     <section class="section-padding">

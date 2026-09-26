@@ -72,7 +72,7 @@ class ProductController extends Controller
         $count = filled($filters['q'] ?? null) ? 1 : 0;
         $count += filled($filters['tag'] ?? null) ? 1 : 0;
 
-        foreach (['categories', 'sports', 'product_types', 'colors', 'materials', 'artwork_methods', 'moq', 'customization', 'availability'] as $key) {
+        foreach (['categories', 'sports', 'product_types', 'genders', 'colors', 'materials', 'artwork_methods', 'moq', 'customization', 'availability'] as $key) {
             $count += count((array) ($filters[$key] ?? []));
         }
 

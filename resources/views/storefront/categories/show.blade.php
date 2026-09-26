@@ -61,11 +61,11 @@
                 <p class="mt-5 text-lg leading-8 text-blue-50">{{ $category['description'] }}</p>
                 <div class="mt-7 flex flex-wrap gap-3">
                     @if($showsProducts)
-                        <a href="#category-products" class="btn btn-red">Shop products</a>
+                        <a href="#category-products" class="btn btn-primary">Shop products</a>
                     @else
-                        <a href="{{ route('quote.request') }}" class="btn btn-red">Request a category quote</a>
+                        <a href="{{ route('quote.request') }}" class="btn btn-primary">Request a category quote</a>
                     @endif
-                    <a href="{{ route('quote.request') }}" class="btn border border-white/30 bg-white/10 text-white">Request Bulk Quote</a>
+                    <a href="{{ route('quote.request') }}" class="btn btn-outline-inverse">Request Bulk Quote</a>
                 </div>
             </div>
         </div>
@@ -107,7 +107,7 @@
                         <h2 class="font-display text-4xl font-bold uppercase text-brand-ink sm:text-5xl">Shop {{ $category['short_title'] }}</h2>
                     </div>
 
-                    <button type="button" class="btn btn-white w-full sm:w-auto lg:hidden" x-on:click="filtersOpen=true">
+                    <button type="button" class="btn btn-outline w-full sm:w-auto lg:hidden" x-on:click="filtersOpen=true">
                         <span>Filters</span>
                         @if($activeFilterCount > 0)
                             <span class="np-mobile-filter-count">{{ $activeFilterCount }}</span>

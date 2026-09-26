@@ -2,6 +2,7 @@
     'filters' => [],
     'options' => [],
     'idPrefix' => 'catalog-filter',
+    'showGender' => false,
 ])
 
 @php
@@ -47,6 +48,24 @@
 @endif
 
 
+@if($showGender && ($options['genders'] ?? []) !== [])
+    <details class="np-catalog-filter-section" @if($hasSelection('genders')) open @endif>
+        <summary class="np-catalog-filter-title"><span>Gender</span><span aria-hidden="true">+</span></summary>
+        <div class="np-catalog-filter-options @if(count($options['genders']) > $filterScrollThreshold) np-catalog-option-list--scroll @endif">
+            @foreach($options['genders'] as $option)
+                @php($fieldId = $idPrefix.'-gender-'.$option['id'])
+                <label class="np-catalog-filter-option" for="{{ $fieldId }}">
+                    <span class="np-catalog-filter-option__main">
+                        <input id="{{ $fieldId }}" type="checkbox" name="genders[]" value="{{ $option['id'] }}" @checked(in_array((int) $option['id'], array_map('intval', $selected('genders')), true))>
+                        <span>{{ $option['label'] }}</span>
+                    </span>
+                    <span class="np-catalog-filter-count">{{ $option['count'] }}</span>
+                </label>
+            @endforeach
+        </div>
+    </details>
+@endif
+
 @if(($options['colors'] ?? []) !== [])
     <details class="np-catalog-filter-section" @if($hasSelection('colors')) open @endif>
         <summary class="np-catalog-filter-title"><span>Color</span><span aria-hidden="true">+</span></summary>
@@ -55,7 +74,7 @@
                 @php($fieldId = $idPrefix.'-color-'.$option['value'])
                 <label class="np-catalog-color-option" for="{{ $fieldId }}" title="{{ $option['label'] }}">
                     <input id="{{ $fieldId }}" type="checkbox" name="colors[]" value="{{ $option['value'] }}" @checked(in_array($option['value'], $selected('colors'), true))>
-                    <span class="np-catalog-color-swatch" style="background: {{ $option['color_hex'] ?: '#e2e8f0' }}"></span>
+                    <span class="np-catalog-color-swatch" style="background: {{ $option['color_hex'] ?: 'var(--np-color-border)' }}"></span>
                     <span>{{ $option['label'] }}</span>
                     <small>{{ $option['count'] }}</small>
                 </label>

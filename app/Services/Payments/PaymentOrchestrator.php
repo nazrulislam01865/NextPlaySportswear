@@ -4,16 +4,19 @@ namespace App\Services\Payments;
 
 use App\Models\Order;
 use App\Models\OrderPayment;
+use App\Models\OrderRefund;
+use App\Models\OrderReturnRequest;
 use App\Models\PaymentMethod;
 use App\Models\PaymentWebhookEvent;
 use App\Payments\DTO\GatewayPaymentStatus;
 use App\Payments\DTO\GatewayRedirect;
+use App\Payments\DTO\GatewayRefundResult;
 use App\Payments\Exceptions\PaymentGatewayException;
 use App\Payments\Money;
 use App\Payments\PaymentGatewayManager;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -38,6 +41,22 @@ final class PaymentOrchestrator
 
     public function processWebhook(PaymentWebhookEvent $webhook): void
     {
+        $supportedEvents = [
+            'checkout.session.completed',
+            'checkout.session.async_payment_succeeded',
+            'checkout.session.async_payment_failed',
+            'checkout.session.expired',
+            'refund.created',
+            'refund.updated',
+            'refund.failed',
+        ];
+
+        // Stripe can be configured to send extra event types. A valid signed
+        // but irrelevant event should be acknowledged, not retried as an error.
+        if (! in_array($webhook->event_type, $supportedEvents, true)) {
+            return;
+        }
+
         $payload = (array) $webhook->payload;
         $object = (array) data_get($payload, 'data.object', []);
         $payment = $this->findWebhookPayment($webhook->provider, $object);
@@ -52,8 +71,132 @@ final class PaymentOrchestrator
             'checkout.session.completed', 'checkout.session.async_payment_succeeded' => $this->handleProviderSuccess($payment, $object),
             'checkout.session.async_payment_failed' => $this->markFailed($payment, 'provider_failed', 'Stripe reported that the payment failed.'),
             'checkout.session.expired' => $this->markExpired($payment),
+            'refund.created', 'refund.updated', 'refund.failed' => $this->handleProviderRefund($payment, $object),
             default => null,
         };
+    }
+
+    public function issueReturnRefund(OrderReturnRequest $returnRequest, float $amount): OrderRefund
+    {
+        if ($amount <= 0) {
+            throw ValidationException::withMessages(['approved_amount' => 'Refund amount must be greater than zero.']);
+        }
+
+        $refund = DB::transaction(function () use ($returnRequest, $amount): OrderRefund {
+            $lockedReturn = OrderReturnRequest::query()
+                ->lockForUpdate()
+                ->with(['order.payments', 'refunds'])
+                ->findOrFail($returnRequest->id);
+
+            if ($lockedReturn->type !== 'return') {
+                throw ValidationException::withMessages(['refund_status' => 'Only return requests can create a payment-provider refund.']);
+            }
+
+            if ($lockedReturn->requested_resolution === 'store_credit') {
+                throw ValidationException::withMessages(['refund_status' => 'Store credit is issued internally and must not call the card payment provider.']);
+            }
+
+            $existing = $lockedReturn->refunds()->lockForUpdate()->first();
+            if ($existing?->status === 'issued') {
+                if (round((float) $existing->amount, 2) !== round($amount, 2)) {
+                    throw ValidationException::withMessages(['approved_amount' => 'An issued refund amount cannot be changed.']);
+                }
+
+                return $existing->fresh(['payment']);
+            }
+
+            $paidTotal = (float) $lockedReturn->order->payments()->where('status', 'paid')->sum('amount');
+            $otherIssued = (float) $lockedReturn->order->refunds()
+                ->where('status', 'issued')
+                ->when($existing, fn ($query) => $query->where('id', '!=', $existing->id))
+                ->sum('amount');
+
+            if (round($otherIssued + $amount, 2) > round($paidTotal, 2)) {
+                throw ValidationException::withMessages([
+                    'refund_status' => 'The refund total cannot exceed confirmed provider payments for this order.',
+                ]);
+            }
+
+            $payments = $lockedReturn->order->payments()
+                ->where('status', 'paid')
+                ->whereNotIn('provider', ['manual', 'invoice'])
+                ->lockForUpdate()
+                ->orderByDesc('paid_at')
+                ->orderByDesc('id')
+                ->get();
+
+            $payment = $payments->first(function (OrderPayment $candidate) use ($amount): bool {
+                $remaining = round((float) $candidate->amount - (float) $candidate->refunded_amount, 2);
+
+                return $remaining >= round($amount, 2) && filled($candidate->provider_payment_id);
+            });
+
+            if (! $payment instanceof OrderPayment) {
+                throw ValidationException::withMessages([
+                    'refund_status' => 'No single confirmed provider payment has enough refundable balance. Review duplicate/partial payments before refunding.',
+                ]);
+            }
+
+            $attributes = [
+                'order_id' => $lockedReturn->order_id,
+                'order_payment_id' => $payment->id,
+                'amount' => $amount,
+                'currency' => $lockedReturn->order->currency,
+                'method' => 'original_payment',
+                'status' => 'processing',
+                'reason' => $lockedReturn->reason,
+                'processed_at' => null,
+            ];
+
+            if (! $existing) {
+                $existing = $lockedReturn->refunds()->create(array_merge($attributes, [
+                    'refund_number' => $this->newRefundNumber(),
+                ]));
+            } else {
+                $existing->update($attributes);
+            }
+
+            return $existing->fresh(['payment']);
+        });
+
+        if ($refund->status === 'issued') {
+            return $refund;
+        }
+
+        $payment = $refund->payment;
+        if (! $payment instanceof OrderPayment) {
+            throw new PaymentGatewayException('The refund is not linked to a confirmed payment attempt.');
+        }
+
+        $gateway = $this->gateways->gateway((string) ($payment->gateway ?: $payment->provider));
+        if (! $gateway->configured()) {
+            throw new PaymentGatewayException(ucfirst((string) $payment->provider).' is not fully configured for secure refunds.');
+        }
+
+        try {
+            $result = $gateway->refund(
+                $payment,
+                (float) $refund->amount,
+                (string) $refund->reason,
+                'refund:'.$refund->refund_number,
+                [
+                    'order_refund_id' => $refund->id,
+                    'refund_number' => $refund->refund_number,
+                ],
+            );
+        } catch (Throwable $exception) {
+            $refund->forceFill(['status' => 'failed'])->save();
+            throw $exception;
+        }
+
+        $this->applyRefundResult($refund, $payment, $result);
+        $refund = $refund->fresh(['payment', 'creditNote']);
+
+        if ($refund->status === 'failed') {
+            throw new PaymentGatewayException('The payment provider did not complete the refund. Review the provider dashboard and retry after resolving the failure.');
+        }
+
+        return $refund;
     }
 
     public function reconcile(OrderPayment $payment): void
@@ -194,7 +337,8 @@ final class PaymentOrchestrator
                     }
                 }
 
-                $manual = $method->provider === 'manual' || $method->requires_manual_review;
+                $capabilities = $this->gateways->capabilities((string) $method->provider);
+                $manual = (bool) $capabilities['requires_manual_review'];
                 $payment = $locked->payments()->create([
                     'payment_method_id' => $method->id,
                     'gateway' => $method->provider,
@@ -218,8 +362,8 @@ final class PaymentOrchestrator
                         'label' => $method->name,
                         'provider' => $method->provider,
                         'payment_type' => $method->payment_type,
-                        'requires_provider_redirect' => (bool) $method->requires_provider_redirect,
-                        'requires_manual_review' => (bool) $method->requires_manual_review,
+                        'requires_provider_redirect' => (bool) $capabilities['requires_provider_redirect'],
+                        'requires_manual_review' => (bool) $capabilities['requires_manual_review'],
                     ];
                 }
 
@@ -249,9 +393,21 @@ final class PaymentOrchestrator
 
     private function findWebhookPayment(string $provider, array $object): ?OrderPayment
     {
-        $paymentId = (int) data_get($object, 'metadata.payment_id', 0);
+        $paymentId = (int) (data_get($object, 'metadata.payment_id') ?: data_get($object, 'metadata.order_payment_id', 0));
         if ($paymentId > 0) {
             return OrderPayment::query()->whereKey($paymentId)->where('provider', $provider)->first();
+        }
+
+        $paymentIntent = $object['payment_intent'] ?? null;
+        if (is_string($paymentIntent) && $paymentIntent !== '') {
+            $payment = OrderPayment::query()
+                ->where('provider', $provider)
+                ->where('provider_payment_id', $paymentIntent)
+                ->first();
+
+            if ($payment instanceof OrderPayment) {
+                return $payment;
+            }
         }
 
         $sessionId = (string) ($object['id'] ?? '');
@@ -259,6 +415,151 @@ final class PaymentOrchestrator
         return $sessionId === ''
             ? null
             : OrderPayment::query()->where('provider', $provider)->where('provider_session_id', $sessionId)->first();
+    }
+
+    private function handleProviderRefund(OrderPayment $payment, array $object): void
+    {
+        $refundId = (int) data_get($object, 'metadata.order_refund_id', 0);
+        $providerReference = (string) ($object['id'] ?? '');
+
+        $refund = $refundId > 0
+            ? OrderRefund::query()->whereKey($refundId)->where('order_payment_id', $payment->id)->first()
+            : null;
+
+        if (! $refund instanceof OrderRefund && $providerReference !== '') {
+            $refund = OrderRefund::query()
+                ->where('order_payment_id', $payment->id)
+                ->where('provider_reference', $providerReference)
+                ->first();
+        }
+
+        if (! $refund instanceof OrderRefund) {
+            throw new PaymentGatewayException('Refund webhook could not be matched to an internal refund.');
+        }
+
+        $status = (string) ($object['status'] ?? 'pending');
+        $result = new GatewayRefundResult(
+            status: $status,
+            providerReference: $providerReference ?: $refund->provider_reference,
+            metadata: [
+                'failure_reason' => $object['failure_reason'] ?? null,
+                'pending_reason' => $object['pending_reason'] ?? null,
+            ],
+        );
+
+        $this->applyRefundResult($refund, $payment, $result);
+    }
+
+    private function applyRefundResult(OrderRefund $refund, OrderPayment $payment, GatewayRefundResult $result): void
+    {
+        $status = strtolower($result->status);
+
+        if ($status === 'succeeded') {
+            $this->finalizeIssuedRefund($refund, $payment, $result->providerReference);
+            return;
+        }
+
+        if (in_array($status, ['pending', 'requires_action'], true)) {
+            $refund->forceFill([
+                'status' => 'processing',
+                'provider_reference' => $result->providerReference ?: $refund->provider_reference,
+                'processed_at' => null,
+            ])->save();
+            return;
+        }
+
+        if (in_array($status, ['failed', 'canceled'], true)) {
+            $refund->forceFill([
+                'status' => 'failed',
+                'provider_reference' => $result->providerReference ?: $refund->provider_reference,
+                'processed_at' => null,
+                'notes' => trim(implode(' ', array_filter([
+                    $refund->notes,
+                    isset($result->metadata['failure_reason']) ? 'Provider failure: '.(string) $result->metadata['failure_reason'].'.' : null,
+                ]))),
+            ])->save();
+            return;
+        }
+
+        throw new PaymentGatewayException('Payment provider returned an unsupported refund status.');
+    }
+
+    private function finalizeIssuedRefund(OrderRefund $refund, OrderPayment $payment, ?string $providerReference): void
+    {
+        DB::transaction(function () use ($refund, $payment, $providerReference): void {
+            $lockedRefund = OrderRefund::query()->lockForUpdate()->findOrFail($refund->id);
+            $lockedPayment = OrderPayment::query()->lockForUpdate()->findOrFail($payment->id);
+            $order = Order::query()->lockForUpdate()->findOrFail($lockedRefund->order_id);
+            $wasIssued = $lockedRefund->status === 'issued';
+
+            $lockedRefund->update([
+                'order_payment_id' => $lockedPayment->id,
+                'status' => 'issued',
+                'provider_reference' => $providerReference ?: $lockedRefund->provider_reference,
+                'processed_at' => $lockedRefund->processed_at ?: now(),
+            ]);
+
+            $paymentRefundedTotal = (float) OrderRefund::query()
+                ->where('order_payment_id', $lockedPayment->id)
+                ->where('status', 'issued')
+                ->sum('amount');
+
+            $lockedPayment->update([
+                'refunded_amount' => min((float) $lockedPayment->amount, round($paymentRefundedTotal, 2)),
+            ]);
+
+            $issuedTotal = (float) $order->refunds()->where('status', 'issued')->sum('amount');
+            $paidTotal = (float) $order->payments()->where('status', 'paid')->sum('amount');
+            $order->update([
+                'payment_status' => $paidTotal > 0 && round($issuedTotal, 2) >= round($paidTotal, 2)
+                    ? 'refunded'
+                    : 'partially_refunded',
+            ]);
+
+            if (! $lockedRefund->creditNote()->exists()) {
+                $lockedRefund->creditNote()->create([
+                    'order_id' => $order->id,
+                    'credit_note_number' => $this->newCreditNoteNumber(),
+                    'amount' => $lockedRefund->amount,
+                    'currency' => $lockedRefund->currency,
+                    'reason' => $lockedRefund->reason,
+                    'issued_at' => now(),
+                ]);
+            }
+
+            if (! $wasIssued) {
+                $order->histories()->create([
+                    'status' => $order->status,
+                    'title' => 'Refund confirmed',
+                    'description' => 'The payment provider confirmed refund '.$lockedRefund->refund_number.'.',
+                    'metadata' => [
+                        'order_refund_id' => $lockedRefund->id,
+                        'order_payment_id' => $lockedPayment->id,
+                        'provider' => $lockedPayment->provider,
+                        'provider_reference' => $lockedRefund->provider_reference,
+                    ],
+                    'occurred_at' => now(),
+                ]);
+            }
+        });
+    }
+
+    private function newRefundNumber(): string
+    {
+        do {
+            $number = 'RFN-'.now()->format('ymd').'-'.Str::upper(Str::random(8));
+        } while (OrderRefund::query()->where('refund_number', $number)->exists());
+
+        return $number;
+    }
+
+    private function newCreditNoteNumber(): string
+    {
+        do {
+            $number = 'CN-'.now()->format('ymd').'-'.Str::upper(Str::random(8));
+        } while (\App\Models\OrderCreditNote::query()->where('credit_note_number', $number)->exists());
+
+        return $number;
     }
 
     private function handleProviderSuccess(OrderPayment $payment, array $object): void

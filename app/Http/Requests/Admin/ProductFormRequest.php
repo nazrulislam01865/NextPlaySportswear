@@ -44,6 +44,7 @@ class ProductFormRequest extends FormRequest
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'subcategory_id' => ['nullable', 'integer', 'exists:categories,id', 'different:category_id'],
             'product_type' => ['nullable', 'string', 'max:100'],
+            'gender_id' => ['nullable', 'integer', 'exists:genders,id'],
             'product_profile' => ['required', Rule::in(array_values(array_unique(array_merge(['standard', 'other'], array_keys(JerseyCustomizationType::menuGroups())))))],
             'brand' => ['nullable', 'string', 'max:120'],
             'badge_label' => ['nullable', 'string', 'max:80'],

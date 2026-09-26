@@ -1823,6 +1823,19 @@ Lead Time:"></div>
                     <span class="np-chip is-primary" x-show="categoryId" x-cloak>Primary</span>
                 </div>
                 <div class="np-side-divider"></div>
+                <label class="admin-label">
+                    Gender
+                    <select name="gender_id" class="admin-input mt-2">
+                        <option value="">Not specified</option>
+                        @foreach($genderOptions as $genderOption)
+                            <option value="{{ $genderOption->id }}" @selected((string) old('gender_id', $product->gender_id) === (string) $genderOption->id)>
+                                {{ $genderOption->name }}{{ ! $genderOption->is_active ? ' (Inactive)' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <span class="mt-2 block text-xs font-medium leading-5 text-slate-500">Optional. <a href="{{ route('admin.genders.index') }}" target="_blank" class="font-black text-brand-blue hover:text-brand-red">Manage Gender ↗</a></span>
+                </label>
+                <div class="np-side-divider"></div>
                 <p class="np-side-label">Product visibility</p>
                 <div class="np-visibility-options">
                     <label class="np-visibility-option">

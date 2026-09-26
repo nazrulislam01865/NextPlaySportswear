@@ -36,7 +36,7 @@
                 </p>
             </div>
 
-            <a href="{{ route('products.index') }}" class="btn btn-white w-full sm:w-auto">
+            <a href="{{ route('products.index') }}" class="btn btn-outline w-full sm:w-auto">
                 Continue Shopping
             </a>
         </div>

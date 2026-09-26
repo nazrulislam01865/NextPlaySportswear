@@ -17,7 +17,7 @@
             padding: clamp(1.6rem, 4vw, 2.75rem);
             background:
                 radial-gradient(circle at 88% 12%, rgba(233, 29, 51, .28), transparent 28%),
-                linear-gradient(135deg, #15345d 0%, #0d2545 58%, #071a31 100%);
+                linear-gradient(135deg, var(--np-color-navy) 0%, var(--np-color-navy-dark) 58%, #071a31 100%);
             box-shadow: 0 22px 60px rgba(13, 37, 69, .17);
             color: #ffffff;
         }
@@ -75,14 +75,14 @@
             border-radius: 999px;
             background: #ffffff;
             padding: 0 1.25rem;
-            color: #111827;
+            color: var(--np-color-heading);
             font-weight: 700;
             outline: none;
             box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .6), 0 12px 28px rgba(2, 6, 23, .18);
         }
 
         .np-home-newsletter-input::placeholder {
-            color: #64748b;
+            color: var(--np-color-muted);
             font-weight: 600;
         }
 
@@ -91,23 +91,8 @@
         }
 
         .np-home-newsletter-button {
-            min-height: 3.55rem;
             flex: 0 0 auto;
-            border: 0;
-            border-radius: 999px;
-            background: #e91d33;
-            padding: 0 1.65rem;
-            color: #ffffff;
-            font-weight: 900;
             white-space: nowrap;
-            box-shadow: 0 14px 30px rgba(233, 29, 51, .32);
-            transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
-        }
-
-        .np-home-newsletter-button:hover {
-            transform: translateY(-1px);
-            background: #c9182b;
-            box-shadow: 0 16px 36px rgba(233, 29, 51, .38);
         }
 
         .np-home-newsletter-message {
@@ -187,7 +172,7 @@
                         required
                         aria-invalid="{{ $errors->newsletter->has('email') ? 'true' : 'false' }}"
                     >
-                    <button class="np-home-newsletter-button np-home-action" type="submit" data-newsletter-submit>Join Team</button>
+                    <button class="btn btn-primary btn-xl np-home-newsletter-button np-home-action" type="submit" data-newsletter-submit>Join Team</button>
                 </div>
 
                 <p

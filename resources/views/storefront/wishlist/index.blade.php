@@ -69,7 +69,7 @@
                 </div>
                 <h2>Your wishlist is empty</h2>
                 <p>Save products with the heart button and they will appear here.</p>
-                <a href="{{ route('products.index') }}" class="btn btn-navy">Browse Products</a>
+                <a href="{{ route('products.index') }}" class="btn btn-secondary">Browse Products</a>
             </div>
 
             <a

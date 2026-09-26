@@ -63,7 +63,7 @@
             @endif
             <div class="hero-ctas">
                 @if(filled($text('primary_label')))
-                    <a class="btn btn-red np-home-action" href="{{ $text('primary_url', '#jersey') }}">{{ $text('primary_label', 'Start Your Order') }}</a>
+                    <a class="btn btn-primary np-home-action" href="{{ $text('primary_url', '#jersey') }}">{{ $text('primary_label', 'Start Your Order') }}</a>
                 @endif
                 @if(filled($text('secondary_label')))
                     <a class="btn btn-light np-home-action" href="{{ $text('secondary_url', '#bulk') }}">{{ $text('secondary_label', 'Request Bulk Quote') }}</a>

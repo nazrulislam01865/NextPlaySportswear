@@ -14,11 +14,11 @@
         </x-slot:message>
 
         @if (($primaryAction ?? null) === 'retry')
-            <button type="button" class="np-system-card__primary" onclick="window.location.reload()">
+            <button type="button" class="btn btn-primary btn-lg np-system-card__primary" onclick="window.location.reload()">
                 {{ $primaryLabel }}
             </button>
         @else
-            <a href="{{ $primaryUrl }}" class="np-system-card__primary">
+            <a href="{{ $primaryUrl }}" class="btn btn-primary btn-lg np-system-card__primary">
                 {{ $primaryLabel }}
             </a>
         @endif
@@ -29,17 +29,17 @@
                     @if (auth('web')->check())
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
-                            <button type="submit" class="np-system-card__secondary-link np-system-card__secondary-button">
+                            <button type="submit" class="btn btn-link np-system-card__secondary-link np-system-card__secondary-button">
                                 {{ $secondaryLabel }}
                             </button>
                         </form>
                     @else
-                        <a href="{{ route('login') }}" class="np-system-card__secondary-link">
+                        <a href="{{ route('login') }}" class="btn btn-link np-system-card__secondary-link">
                             {{ $secondaryLabel }}
                         </a>
                     @endif
                 @else
-                    <a href="{{ $secondaryUrl }}" class="np-system-card__secondary-link">
+                    <a href="{{ $secondaryUrl }}" class="btn btn-link np-system-card__secondary-link">
                         {{ $secondaryLabel }}
                     </a>
                 @endif

@@ -21,5 +21,11 @@ interface PaymentGateway
 
     public function retrievePayment(OrderPayment $payment): GatewayPaymentStatus;
 
-    public function refund(OrderPayment $payment, float $amount, string $reason = ''): GatewayRefundResult;
+    public function refund(
+        OrderPayment $payment,
+        float $amount,
+        string $reason = '',
+        ?string $idempotencyKey = null,
+        array $metadata = [],
+    ): GatewayRefundResult;
 }

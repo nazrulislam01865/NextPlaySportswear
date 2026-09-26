@@ -21,7 +21,7 @@
                             These addresses can be reused for team shipments, quote requests, repeat orders, and checkout.
                         </p>
                     </div>
-                    <a href="#add-address" class="btn btn-red rounded-2xl">Add New Address</a>
+                    <a href="#add-address" class="btn btn-primary">Add New Address</a>
                 </div>
 
                 @if ($addressBook['addresses']->isNotEmpty())
@@ -119,8 +119,8 @@
                     </label>
 
                     <div class="flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-end">
-                        <a href="{{ route('account.dashboard') }}" class="btn btn-white rounded-2xl">Cancel</a>
-                        <button type="submit" class="btn btn-red rounded-2xl">Save Address</button>
+                        <a href="{{ route('account.dashboard') }}" class="btn btn-outline">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save Address</button>
                     </div>
                 </form>
             </section>

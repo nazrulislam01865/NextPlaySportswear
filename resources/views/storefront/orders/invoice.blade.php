@@ -8,17 +8,16 @@
                     <p class="mt-1 text-sm font-semibold text-slate-600">Print or save as PDF from your browser. Production PDF generation can later run through Laravel queues.</p>
                 </div>
                 <div class="flex flex-col gap-2 sm:flex-row">
-                    <button type="button" onclick="window.print()" class="btn btn-red">Print / Save PDF</button>
-                    <a href="{{ route('orders.details.legacy') }}" class="btn btn-white">Back to Order</a>
+                    <button type="button" onclick="window.print()" class="btn btn-primary">Print / Save PDF</button>
+                    <a href="{{ route('orders.details.legacy') }}" class="btn btn-outline">Back to Order</a>
                 </div>
             </div>
 
             <article class="mx-auto max-w-5xl rounded-[28px] border border-slate-200 bg-white p-6 shadow-card print:border-0 print:shadow-none lg:p-9">
                 <div class="flex flex-col justify-between gap-6 border-b border-slate-200 pb-6 sm:flex-row">
                     <div>
-                        <a href="{{ route('home') }}" class="flex items-center gap-3 font-display text-2xl font-bold uppercase text-brand-ink">
-                            <span class="grid h-9 w-9 place-items-center rounded-lg border-[3px] border-brand-red text-brand-red">□</span>
-                            <span>NextPlay <span class="text-brand-red">Sportswear</span></span>
+                        <a href="{{ route('home') }}" class="flex items-center gap-3 font-display text-2xl font-bold uppercase text-brand-ink" aria-label="{{ config('storefront.name') }} home">
+                            <x-storefront.brand-logo variant="document" />
                         </a>
                         <p class="mt-3 max-w-md text-sm font-semibold leading-6 text-slate-600">Custom sportswear, uniforms, jerseys, hoodies, caps, bags, and team gear.</p>
                     </div>

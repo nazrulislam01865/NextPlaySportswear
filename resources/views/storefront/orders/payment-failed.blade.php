@@ -10,8 +10,8 @@
     status-subtitle="Order is not confirmed as paid yet."
 >
     <x-slot:actions>
-        <a href="{{ route('checkout.payment-method') }}" class="btn btn-red">Try Payment Again</a>
-        <a href="#support-help" class="btn btn-white">Contact Support</a>
+        <a href="{{ route('checkout.payment-method') }}" class="btn btn-primary">Try Payment Again</a>
+        <a href="#support-help" class="btn btn-outline">Contact Support</a>
     </x-slot:actions>
 
     <section id="support-help" class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-card lg:p-7">
@@ -35,8 +35,8 @@
         </div>
 
         <div class="mt-6 flex flex-col gap-3 sm:flex-row">
-            <a href="{{ route('checkout.payment-method') }}" class="btn btn-red">Change Payment Method</a>
-            <a href="{{ route('cart.index') }}" class="btn btn-white">Back to Cart</a>
+            <a href="{{ route('checkout.payment-method') }}" class="btn btn-primary">Change Payment Method</a>
+            <a href="{{ route('cart.index') }}" class="btn btn-outline">Back to Cart</a>
         </div>
     </section>
 </x-storefront.order.shell>

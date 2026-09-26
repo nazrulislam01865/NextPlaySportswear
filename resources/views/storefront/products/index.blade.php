@@ -36,7 +36,7 @@
                     </h2>
                 </div>
                 <div class="lg:hidden">
-                    <button type="button" class="btn btn-white np-filter-mobile-open w-full sm:w-auto" x-on:click="filtersOpen=true">
+                    <button type="button" class="btn btn-outline np-filter-mobile-open w-full sm:w-auto" x-on:click="filtersOpen=true">
                         <span>Filters</span>
                         @if($activeFilterCount > 0)<span class="np-mobile-filter-count">{{ $activeFilterCount }}</span>@endif
                     </button>

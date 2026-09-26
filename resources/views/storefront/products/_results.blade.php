@@ -9,6 +9,6 @@
     <div class="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-card">
         <h3 class="font-display text-3xl font-bold uppercase text-brand-ink">No products found</h3>
         <p class="mt-2 text-slate-600">Try another search term or remove one of the selected filters.</p>
-        <a href="{{ route('products.index') }}" class="btn btn-red mt-5">Clear Filters</a>
+        <a href="{{ route('products.index') }}" class="btn btn-primary mt-5">Clear Filters</a>
     </div>
 @endif

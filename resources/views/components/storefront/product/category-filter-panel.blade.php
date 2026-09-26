@@ -107,10 +107,10 @@
             @endif
         </section>
 
-        <x-storefront.catalog.shared-filter-sections :filters="$filters" :options="$options" :id-prefix="$idPrefix" />
+        <x-storefront.catalog.shared-filter-sections :filters="$filters" :options="$options" :id-prefix="$idPrefix" :show-gender="true" />
     </div>
 
     <div class="np-catalog-filter-actions">
-        <a href="{{ route('products.index') }}" class="btn btn-white">Clear</a>
+        <a href="{{ route('products.index') }}" class="btn btn-outline btn-sm">Clear</a>
     </div>
 </form>

@@ -37,8 +37,19 @@ final class StripeGateway implements PaymentGateway
 
         try {
             $stripe = $this->client();
-            $currency = strtolower((string) $payment->currency);
-            $amountMinor = Money::toMinor((float) $payment->amount, (string) $payment->currency);
+            $configuredCurrency = strtoupper((string) config('payments.gateways.stripe.currency', 'USD'));
+            $paymentCurrency = strtoupper((string) $payment->currency);
+
+            if ($configuredCurrency !== $paymentCurrency) {
+                throw new PaymentGatewayException('Stripe currency configuration does not match the server-side order currency.');
+            }
+
+            $currency = strtolower($paymentCurrency);
+            $amountMinor = Money::toMinor((float) $payment->amount, $paymentCurrency);
+
+            if ($amountMinor <= 0) {
+                throw new PaymentGatewayException('Stripe checkout requires a positive server-side payment amount.');
+            }
             $metadata = [
                 'order_id' => (string) $order->id,
                 'order_number' => (string) $order->order_number,
@@ -142,7 +153,13 @@ final class StripeGateway implements PaymentGateway
         }
     }
 
-    public function refund(OrderPayment $payment, float $amount, string $reason = ''): GatewayRefundResult
+    public function refund(
+        OrderPayment $payment,
+        float $amount,
+        string $reason = '',
+        ?string $idempotencyKey = null,
+        array $metadata = [],
+    ): GatewayRefundResult
     {
         $this->assertConfigured();
 
@@ -154,19 +171,26 @@ final class StripeGateway implements PaymentGateway
             $refund = $this->client()->refunds->create([
                 'payment_intent' => (string) $payment->provider_payment_id,
                 'amount' => Money::toMinor($amount, (string) $payment->currency),
-                'metadata' => [
-                    'order_id' => (string) $payment->order_id,
-                    'order_payment_id' => (string) $payment->id,
-                    'internal_reason' => mb_substr($reason, 0, 400),
-                ],
+                'metadata' => array_merge(
+                    collect($metadata)->map(fn ($value) => (string) $value)->all(),
+                    [
+                        'order_id' => (string) $payment->order_id,
+                        'order_payment_id' => (string) $payment->id,
+                        'internal_reason' => mb_substr($reason, 0, 400),
+                    ],
+                ),
             ], [
-                'idempotency_key' => 'refund:'.$payment->id.':'.hash('sha256', number_format($amount, 2, '.', '').'|'.$reason),
+                'idempotency_key' => $idempotencyKey ?: 'refund:'.$payment->id.':'.hash('sha256', number_format($amount, 2, '.', '').'|'.$reason),
             ]);
 
             return new GatewayRefundResult(
                 status: (string) $refund->status,
                 providerReference: (string) $refund->id,
-                metadata: ['payment_intent' => (string) $payment->provider_payment_id],
+                metadata: [
+                    'payment_intent' => (string) $payment->provider_payment_id,
+                    'failure_reason' => $refund->failure_reason ?? null,
+                    'pending_reason' => $refund->pending_reason ?? null,
+                ],
             );
         } catch (Throwable $exception) {
             report($exception);

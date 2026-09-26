@@ -45,6 +45,6 @@
     </div>
 
     <div class="np-catalog-filter-actions">
-        <a href="{{ $category['url'] }}" class="btn btn-white">Clear</a>
+        <a href="{{ $category['url'] }}" class="btn btn-outline btn-sm">Clear</a>
     </div>
 </form>

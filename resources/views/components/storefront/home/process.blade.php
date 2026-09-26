@@ -37,8 +37,8 @@
                         @else
                             <div class="process-illustration process-illustration--fallback" aria-hidden="true">
                                 <svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="48" cy="48" r="34" fill="#ffffff" stroke="#0d2545" stroke-width="4"/>
-                                    <path d="M32 50 43 61 66 36" stroke="#e91d33" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <circle cx="48" cy="48" r="34" fill="#ffffff" stroke="var(--np-color-navy-dark)" stroke-width="4"/>
+                                    <path d="M32 50 43 61 66 36" stroke="var(--np-color-primary)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
                                 </svg>
                             </div>
                         @endif
@@ -53,7 +53,7 @@
 
         @if(filled($text('primary_label')))
             <p class="home-center-action">
-                <a class="btn btn-red process-cta np-home-action" href="{{ $text('primary_url', '#products') }}">{{ $text('primary_label', 'Start Your Order') }} <span aria-hidden="true">→</span></a>
+                <a class="btn btn-primary process-cta np-home-action" href="{{ $text('primary_url', '#products') }}">{{ $text('primary_label', 'Start Your Order') }} <span aria-hidden="true">→</span></a>
             </p>
         @endif
     </div>

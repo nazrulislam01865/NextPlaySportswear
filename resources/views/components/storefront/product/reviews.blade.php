@@ -183,7 +183,7 @@
             padding: clamp(2.4rem, 4.8vw, 4.4rem) 0;
             border-top: 1px solid #edf2f7;
             background: linear-gradient(180deg, #fff 0%, #f8fbff 100%);
-            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-family: var(--np-font-body);
         }
 
         .np-product-reviews__header {
@@ -279,7 +279,7 @@
         }
 
         .np-product-review-breakdown__row b {
-            color: #111827;
+            color: var(--np-color-heading);
             font-size: .65rem;
         }
 
@@ -319,7 +319,7 @@
             display: -webkit-box;
             overflow: hidden;
             margin: .8rem 0 1.15rem;
-            color: #111827;
+            color: var(--np-color-heading);
             font-size: .78rem;
             font-weight: 520;
             line-height: 1.7;
@@ -361,7 +361,7 @@
 
         .np-product-review-card footer small {
             overflow: hidden;
-            color: #64748b;
+            color: var(--np-color-muted);
             font-size: .62rem;
             line-height: 1.35;
             text-overflow: ellipsis;
@@ -396,7 +396,7 @@
             align-items: center;
             justify-content: center;
             padding: 1.5rem;
-            color: #64748b;
+            color: var(--np-color-muted);
             text-align: center;
         }
 

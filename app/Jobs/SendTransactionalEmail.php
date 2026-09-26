@@ -60,6 +60,7 @@ class SendTransactionalEmail implements ShouldQueue
                     $this->message->recipients
                 ),
                 'exception' => $exception::class,
+                'error' => mb_substr(trim($exception->getMessage()), 0, 500),
             ]
         );
     }

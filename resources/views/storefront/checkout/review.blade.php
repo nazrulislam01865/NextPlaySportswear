@@ -87,7 +87,7 @@
 
             <div class="flex flex-col-reverse gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
                 <a class="btn btn-light" href="{{ route('checkout.payment-method') }}">Back</a>
-                <button class="btn btn-red" type="submit" x-bind:disabled="processing" x-bind:class="processing ? 'pointer-events-none opacity-70' : ''">
+                <button class="btn btn-primary" type="submit" x-bind:disabled="processing" x-bind:class="processing ? 'pointer-events-none opacity-70' : ''">
                     <span x-show="!processing">Place Secure Order</span>
                     <span x-cloak x-show="processing">Processing Securely...</span>
                 </button>

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\CatalogAttribute;
 use App\Models\Category;
+use App\Models\Gender;
 use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -166,6 +167,82 @@ class StorefrontCatalogFiltersTest extends TestCase
             ->assertDontSee('Need Bulk Quote?')
             ->assertDontSee('Production Time')
             ->assertDontSee('Shipping Time');
+    }
+
+    public function test_all_products_gender_filter_uses_active_gender_master_data_and_combines_with_existing_filters(): void
+    {
+        $apparel = $this->createCategory('Gender Filter Apparel', 'gender-filter-apparel');
+        $men = Gender::query()->where('slug', 'men')->firstOrFail();
+        $women = Gender::query()->where('slug', 'women')->firstOrFail();
+        $inactive = Gender::query()->create([
+            'name' => 'Legacy Audience',
+            'slug' => 'legacy-audience',
+            'is_active' => false,
+            'sort_order' => 999,
+        ]);
+
+        $mensJersey = $this->createProduct([
+            'category_id' => $apparel->id,
+            'name' => 'Mens Match Jersey',
+            'slug' => 'mens-match-jersey',
+            'sku' => 'GENDER-MEN-001',
+            'product_type' => 'Jersey',
+            'gender_id' => $men->id,
+        ]);
+        $mensJersey->categories()->attach($apparel->id, ['is_primary' => true, 'sort_order' => 0]);
+
+        $womensJersey = $this->createProduct([
+            'category_id' => $apparel->id,
+            'name' => 'Womens Match Jersey',
+            'slug' => 'womens-match-jersey',
+            'sku' => 'GENDER-WOMEN-001',
+            'product_type' => 'Jersey',
+            'gender_id' => $women->id,
+        ]);
+        $womensJersey->categories()->attach($apparel->id, ['is_primary' => true, 'sort_order' => 0]);
+
+        $mensCap = $this->createProduct([
+            'category_id' => $apparel->id,
+            'name' => 'Mens Training Cap',
+            'slug' => 'mens-training-cap',
+            'sku' => 'GENDER-MEN-002',
+            'product_type' => 'Cap',
+            'gender_id' => $men->id,
+        ]);
+        $mensCap->categories()->attach($apparel->id, ['is_primary' => true, 'sort_order' => 0]);
+
+        $inactiveProduct = $this->createProduct([
+            'category_id' => $apparel->id,
+            'name' => 'Neutral Training Top',
+            'slug' => 'neutral-training-top',
+            'sku' => 'GENDER-LEGACY-001',
+            'product_type' => 'Jersey',
+            'gender_id' => $inactive->id,
+        ]);
+        $inactiveProduct->categories()->attach($apparel->id, ['is_primary' => true, 'sort_order' => 0]);
+
+        $this->get(route('products.index', [
+            'genders' => [$men->id],
+            'product_types' => ['Jersey'],
+        ]))
+            ->assertOk()
+            ->assertSee('Gender')
+            ->assertSee('Men')
+            ->assertSee('Women')
+            ->assertSee('Kids')
+            ->assertSee('Unisex')
+            ->assertDontSee('Legacy Audience')
+            ->assertSee('Mens Match Jersey')
+            ->assertDontSee('Womens Match Jersey')
+            ->assertDontSee('Mens Training Cap')
+            ->assertDontSee('Neutral Training Top');
+
+        $this->get(route('products.index', ['genders' => [$men->id, $women->id]]))
+            ->assertOk()
+            ->assertSee('Mens Match Jersey')
+            ->assertSee('Womens Match Jersey')
+            ->assertSee('Mens Training Cap')
+            ->assertDontSee('Neutral Training Top');
     }
 
     public function test_all_products_price_sort_uses_the_same_discounted_price_shown_on_cards(): void

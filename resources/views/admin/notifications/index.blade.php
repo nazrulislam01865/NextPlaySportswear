@@ -37,6 +37,7 @@
             <div class="admin-notification-page-list">
                 @forelse($notifications as $notification)
                     @php($data = is_array($notification->data) ? $notification->data : [])
+                    @php($changeDetails = is_array($data['change_details'] ?? null) ? array_values(array_filter($data['change_details'])) : [])
                     <article class="admin-notification-page-item {{ $notification->read_at ? '' : 'unread' }}">
                         <div class="admin-notification-page-icon">{{ $data['icon'] ?? '🔔' }}</div>
                         <div class="admin-notification-page-copy">
@@ -45,6 +46,13 @@
                                 @unless($notification->read_at)<span class="admin-notification-page-badge">New</span>@endunless
                             </div>
                             <p>{{ $data['message'] ?? '' }}</p>
+                            @if($changeDetails !== [])
+                                <div class="admin-notification-change-list" aria-label="Changes made">
+                                    @foreach($changeDetails as $detail)
+                                        <span>{{ $detail }}</span>
+                                    @endforeach
+                                </div>
+                            @endif
                             <small>{{ optional($notification->created_at)->format('d M Y, h:i A') }}</small>
                         </div>
                         <div class="admin-notification-page-actions">

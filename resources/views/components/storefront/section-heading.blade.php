@@ -6,17 +6,17 @@
 
 <div class="mx-auto mb-9 max-w-3xl text-center">
     @if($eyebrow)
-        <p class="mb-2 text-xs font-black uppercase tracking-[.18em] text-brand-red">
+        <p class="np-section-heading__eyebrow mb-2 uppercase tracking-[.18em] text-brand-red">
             {{ $eyebrow }}
         </p>
     @endif
 
-    <h2 class="font-display text-3xl font-bold uppercase leading-tight tracking-tight text-brand-ink sm:text-4xl">
+    <h2 class="np-section-heading__title font-display uppercase tracking-tight text-brand-ink">
         {{ $title }}
     </h2>
 
     @if($description)
-        <p class="mx-auto mt-3 max-w-2xl text-sm text-slate-500 sm:text-base">
+        <p class="np-section-heading__description mx-auto mt-3 max-w-2xl text-slate-500">
             {{ $description }}
         </p>
     @endif

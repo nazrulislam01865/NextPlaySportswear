@@ -128,8 +128,8 @@
         </div>
 
         <div class="grid gap-3 sm:grid-cols-2">
-            <button type="submit" class="btn btn-red min-h-[56px] text-base">Save Design Options</button>
-            <a href="#choose-sizes" class="btn btn-light min-h-[56px] text-base">Choose Sizes</a>
+            <button type="submit" class="btn btn-primary btn-xl">Save Design Options</button>
+            <a href="#choose-sizes" class="btn btn-light btn-xl">Choose Sizes</a>
         </div>
     </form>
 </section>

@@ -8,13 +8,12 @@
     $footerPaymentMethods = $footerPaymentMethods ?? [];
 @endphp
 
-<footer class="bg-[#0d2545] py-12 text-slate-300">
+<footer class="bg-brand-dark py-12 text-slate-300">
     <div class="site-container">
         <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-[1.6fr_repeat(4,1fr)]">
             <div>
-                <a href="{{ route('home') }}" class="mb-4 flex min-w-0 items-center gap-3 font-display text-xl font-bold uppercase text-white sm:text-2xl">
-                    <span class="relative grid h-8 w-8 place-items-center rounded-lg border-[3px] border-brand-red text-brand-red">✓</span>
-                    <span class="min-w-0 break-words">NextPlay <span class="text-brand-red">Sportswear</span></span>
+                <a href="{{ route('home') }}" class="mb-4 flex min-w-0 items-center gap-3 font-display text-xl font-bold uppercase text-white sm:text-2xl" aria-label="{{ config('storefront.name') }} home">
+                    <x-storefront.brand-logo variant="footer" />
                 </a>
                 <p class="text-sm leading-6">Custom sportswear, apparel, accessories, and promotional products for teams, schools, businesses, and events.</p>
             </div>

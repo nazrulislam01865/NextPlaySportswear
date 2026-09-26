@@ -3,6 +3,7 @@
 namespace App\Services\Storefront;
 
 use App\Models\Category;
+use App\Models\Gender;
 use App\Models\Product;
 use App\Models\ProductFabricPriceTable;
 use App\Support\PriceTableShipping;
@@ -673,7 +674,7 @@ class ProductCatalogService
 
                 return array_merge(
                     ['sports' => $sports],
-                    $this->commonFilterOptions($facetScoped)
+                    $this->commonFilterOptions($facetScoped, includeGender: true)
                 );
             }
         );
@@ -714,6 +715,16 @@ class ProductCatalogService
         $productTypes = collect($filters['product_types'] ?? [])->filter()->unique()->values()->all();
         if ($productTypes !== []) {
             $query->whereIn('products.product_type', $productTypes);
+        }
+
+        $genderIds = collect($filters['genders'] ?? [])
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+        if ($genderIds !== []) {
+            $query->whereIn('products.gender_id', $genderIds);
         }
 
 
@@ -810,11 +821,11 @@ class ProductCatalogService
      *
      * @return array<string, mixed>
      */
-    public function commonFilterOptions(Builder $baseQuery): array
+    public function commonFilterOptions(Builder $baseQuery, bool $includeGender = false): array
     {
         $products = (clone $baseQuery)
             ->select([
-                'products.id', 'products.product_type', 'products.base_price', 'products.minimum_quantity',
+                'products.id', 'products.product_type', 'products.gender_id', 'products.base_price', 'products.minimum_quantity',
                 'products.is_customizable', 'products.artwork_upload_enabled', 'products.jersey_roster_enabled',
                 'products.track_inventory', 'products.stock_quantity', 'products.allow_backorder',
                 'products.rating_average', 'products.reviews_count',
@@ -836,6 +847,25 @@ class ProductCatalogService
             ->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)
             ->values()
             ->all();
+
+        $genderCounts = $includeGender
+            ? $products
+                ->filter(fn (Product $product): bool => (int) ($product->gender_id ?? 0) > 0)
+                ->groupBy(fn (Product $product): int => (int) $product->gender_id)
+                ->map(fn (Collection $items): int => $items->pluck('id')->unique()->count())
+            : collect();
+
+        $genders = $includeGender ? Gender::query()
+            ->active()
+            ->ordered()
+            ->get(['id', 'name'])
+            ->map(fn (Gender $gender): array => [
+                'id' => (int) $gender->id,
+                'label' => $gender->name,
+                'count' => (int) ($genderCounts[(int) $gender->id] ?? 0),
+            ])
+            ->values()
+            ->all() : [];
 
         [$colors, $materials] = $this->visualFacetOptions($listing);
         $artworkMethods = $this->artworkFacetOptions($listing);
@@ -905,6 +935,7 @@ class ProductCatalogService
 
         return [
             'product_types' => $productTypes,
+            'genders' => $genders,
             'colors' => $colors,
             'materials' => $materials,
             'artwork_methods' => $artworkMethods,
@@ -1583,6 +1614,7 @@ class ProductCatalogService
         return [
             'category',
             'subcategory',
+            'gender',
             'categories',
             'attributeValues.attribute',
             'images',
@@ -2592,6 +2624,10 @@ class ProductCatalogService
             ->values();
 
         $detailInformation = $this->normalizeDetailInformation($product->specifications ?? []);
+        if (filled($product->gender?->name)) {
+            $detailInformation['Gender'] = $product->gender->name;
+            $detailInformation = $this->orderedDetailInformationRows($detailInformation);
+        }
         $summaryDetailInformation = $this->summaryDetailInformation($detailInformation, $product);
         $specificationSku = trim((string) (($summaryDetailInformation['SKU'] ?? null) ?: ($detailInformation['SKU'] ?? '')));
         $productProfile = $product->product_profile ?: 'standard';
@@ -2658,6 +2694,7 @@ class ProductCatalogService
             'details' => $detailInformation,
             'brand' => $product->brand ?: config('storefront.name'),
             'product_type' => $product->product_type,
+            'gender' => $product->gender?->name,
             'product_profile' => $productProfile,
             'roster' => $rosterSettings,
             // Deprecated alias for existing carts/tests/cached clients.
@@ -2879,7 +2916,7 @@ class ProductCatalogService
     private function summaryDetailInformation(array $detailInformation, Product $product): array
     {
         $fabricDisplayLabel = $this->preferredFabricDetailLabel($detailInformation);
-        $labels = ['SKU', 'Product Type', $fabricDisplayLabel, 'Fabric GSM', 'GSM', 'Width', 'Fit', 'Customization', 'Imprint Method', 'Attachment', 'Size Range', 'MOQ', 'Lead Time', 'Shipping Time', 'Usage', 'Standard Length'];
+        $labels = ['SKU', 'Product Type', 'Gender', $fabricDisplayLabel, 'Fabric GSM', 'GSM', 'Width', 'Fit', 'Customization', 'Imprint Method', 'Attachment', 'Size Range', 'MOQ', 'Lead Time', 'Shipping Time', 'Usage', 'Standard Length'];
         $fallbacks = [
             'SKU' => $product->sku,
             'Product Type' => $product->product_type,
@@ -2931,7 +2968,7 @@ class ProductCatalogService
     private function orderedDetailInformationRows(array $rows): array
     {
         $fabricDisplayLabel = $this->preferredFabricDetailLabel($rows);
-        $orderedLabels = ['SKU', 'Product Type', $fabricDisplayLabel, 'Fabric GSM', 'GSM', 'Width', 'Fit', 'Customization', 'Imprint Method', 'Attachment', 'Size Range', 'MOQ', 'Lead Time', 'Shipping Time', 'Usage', 'Standard Length'];
+        $orderedLabels = ['SKU', 'Product Type', 'Gender', $fabricDisplayLabel, 'Fabric GSM', 'GSM', 'Width', 'Fit', 'Customization', 'Imprint Method', 'Attachment', 'Size Range', 'MOQ', 'Lead Time', 'Shipping Time', 'Usage', 'Standard Length'];
         $result = [];
 
         foreach ($orderedLabels as $label) {
@@ -3004,7 +3041,7 @@ class ProductCatalogService
 
     private function parseDetailInformationText(string $text): array
     {
-        $knownLabels = ['SKU', 'Product Type', 'Fabric', 'Material', 'Materials', 'Metarial', 'Metarials', 'Meterial', 'Meterials', 'Fabric GSM', 'GSM', 'Width', 'Fit', 'Customization', 'Imprint Method', 'Attachment', 'Size Range', 'MOQ', 'Lead Time', 'Shipping Time', 'Usage', 'Standard Length'];
+        $knownLabels = ['SKU', 'Product Type', 'Gender', 'Fabric', 'Material', 'Materials', 'Metarial', 'Metarials', 'Meterial', 'Meterials', 'Fabric GSM', 'GSM', 'Width', 'Fit', 'Customization', 'Imprint Method', 'Attachment', 'Size Range', 'MOQ', 'Lead Time', 'Shipping Time', 'Usage', 'Standard Length'];
         $rows = [];
         $lines = collect(preg_split('/\r\n|\r|\n/', $text) ?: [])
             ->map(fn ($line) => $this->cleanDetailInformationText($line))
@@ -3079,6 +3116,7 @@ class ProductCatalogService
             'style number' => 'SKU',
             'product type' => 'Product Type',
             'product' => 'Product Type',
+            'gender' => 'Gender',
             'fabric' => 'Fabric',
             'fabric gsm' => 'Fabric GSM',
             'fabric weight' => 'Fabric GSM',
@@ -3154,7 +3192,7 @@ class ProductCatalogService
         $product['detail_information'] = $product['detail_information'] ?? $this->defaultDetailInformation($product);
         $fallbackFabricLabel = $this->preferredFabricDetailLabel($product['detail_information'] ?? []);
         $product['summary_detail_information'] = $product['summary_detail_information'] ?? collect($product['detail_information'] ?? [])
-            ->only(['SKU', 'Product Type', $fallbackFabricLabel, 'Fabric GSM', 'GSM', 'Width', 'Fit', 'Customization', 'Imprint Method', 'Attachment', 'Size Range', 'MOQ', 'Lead Time', 'Shipping Time', 'Usage', 'Standard Length'])
+            ->only(['SKU', 'Product Type', 'Gender', $fallbackFabricLabel, 'Fabric GSM', 'GSM', 'Width', 'Fit', 'Customization', 'Imprint Method', 'Attachment', 'Size Range', 'MOQ', 'Lead Time', 'Shipping Time', 'Usage', 'Standard Length'])
             ->filter(fn ($value) => filled($value))
             ->all();
         $product['details'] = $product['details'] ?? $this->legacyDetails($product);

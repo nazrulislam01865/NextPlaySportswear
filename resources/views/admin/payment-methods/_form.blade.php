@@ -138,28 +138,9 @@
         </div>
     </x-admin.section-card>
 
-    <x-admin.section-card title="Payment Behavior" description="Use provider redirect for hosted payment pages. Use manual review for invoices, bank transfers, quote orders, or payment methods that need admin confirmation.">
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <label class="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-black text-blue-800">
-                <input type="hidden" name="is_online" value="0">
-                <input type="checkbox" name="is_online" value="1" @checked($isOnline) class="h-5 w-5 rounded border-blue-300 text-blue-600">
-                Online payment
-            </label>
-            <label class="flex items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-black text-indigo-800">
-                <input type="hidden" name="requires_provider_redirect" value="0">
-                <input type="checkbox" name="requires_provider_redirect" value="1" @checked($requiresRedirect) class="h-5 w-5 rounded border-indigo-300 text-indigo-600">
-                Provider redirect
-            </label>
-            <label class="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-black text-amber-800">
-                <input type="hidden" name="requires_manual_review" value="0">
-                <input type="checkbox" name="requires_manual_review" value="1" @checked($requiresManualReview) class="h-5 w-5 rounded border-amber-300 text-amber-600">
-                Manual review
-            </label>
-            <label class="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-800">
-                <input type="hidden" name="allows_saved_methods" value="0">
-                <input type="checkbox" name="allows_saved_methods" value="1" @checked($allowsSaved) class="h-5 w-5 rounded border-emerald-300 text-emerald-600">
-                Allow saved cards
-            </label>
+    <x-admin.section-card title="Payment Behavior" description="Security-sensitive behavior is controlled centrally by the registered gateway adapter and cannot be overridden from the database.">
+        <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm font-semibold leading-6 text-blue-900">
+            Stripe is always treated as an online hosted redirect, never as manual review, and saved cards remain disabled until tokenized Stripe vaulting is implemented. Manual providers are always treated as manual-review methods. Changing the provider and saving automatically applies the correct centralized behavior.
         </div>
     </x-admin.section-card>
 

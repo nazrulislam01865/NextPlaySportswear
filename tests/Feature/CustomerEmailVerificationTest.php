@@ -21,7 +21,9 @@ class CustomerEmailVerificationTest extends TestCase
         parent::setUp();
 
         config()->set('transactional_email.enabled', true);
+        config()->set('transactional_email.delivery.mode', 'queue');
         config()->set('transactional_email.queue.enabled', true);
+        config()->set('transactional_email.critical.email_verification_sync', false);
         config()->set('security.email_verification.expire_minutes', 60);
     }
 

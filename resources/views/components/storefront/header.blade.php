@@ -54,14 +54,7 @@
     <div class="np-main-header">
         <div class="np-header-shell np-main-header-inner">
             <a href="{{ route('home') }}" class="np-brand-logo" aria-label="{{ config('storefront.name') }} home" data-header-analytics="header_navigation_click" data-header-analytics-label="logo_home">
-                <span class="np-brand-mark" aria-hidden="true">
-                    <svg viewBox="0 0 64 64" width="64" height="64" fill="none">
-                        <path d="M18 20h28c3.2 0 5.8 2.6 5.8 5.8v24.4c0 3.2-2.6 5.8-5.8 5.8H18c-3.2 0-5.8-2.6-5.8-5.8V25.8C12.2 22.6 14.8 20 18 20Z" stroke="currentColor" stroke-width="4.8" />
-                        <path d="M22.5 20v-4.2C22.5 9.9 26.5 6 32 6s9.5 3.9 9.5 9.8V20" stroke="currentColor" stroke-width="4.8" stroke-linecap="round" />
-                        <path d="m22.5 36 7.1 7.5 13.9-17" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                </span>
-                <span class="np-brand-text"><span>NEXTPLAY</span> <strong>SPORTSWEAR</strong></span>
+                <x-storefront.brand-logo variant="header" />
             </a>
 
             <form
@@ -224,8 +217,8 @@
                             </p>
 
                             <div class="mt-2 grid grid-cols-2 gap-2 border-t border-slate-100 p-4">
-                                <a href="{{ route('wishlist.index') }}" class="btn btn-white w-full text-xs">View Wishlist</a>
-                                <a href="{{ route('products.index') }}" class="btn btn-red w-full text-xs">Keep Shopping</a>
+                                <a href="{{ route('wishlist.index') }}" class="btn btn-outline btn-sm w-full">View Wishlist</a>
+                                <a href="{{ route('products.index') }}" class="btn btn-primary btn-sm w-full">Keep Shopping</a>
                             </div>
                         </div>
 
@@ -237,7 +230,7 @@
                             </div>
                             <p class="mt-3 text-base font-black text-brand-ink">Your wishlist is empty</p>
                             <p class="mt-1 text-sm font-semibold leading-6 text-slate-500">Save products and they will appear here.</p>
-                            <a href="{{ route('products.index') }}" class="btn btn-red mt-4 w-full text-xs">Explore Products</a>
+                            <a href="{{ route('products.index') }}" class="btn btn-primary btn-sm mt-4 w-full">Explore Products</a>
                         </div>
 
                         <template data-wishlist-preview-item-template>
@@ -316,8 +309,8 @@
                                     <span class="text-lg font-black text-brand-ink">${{ number_format((float) ($headerCart['total'] ?? 0), 2) }}</span>
                                 </div>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <a href="{{ route('cart.index') }}" class="btn btn-white w-full text-xs">View Cart</a>
-                                    <a href="{{ route('checkout.index') }}" class="btn btn-red w-full text-xs {{ ($headerCart['checkout_ready'] ?? false) ? '' : 'pointer-events-none opacity-50' }}">Checkout</a>
+                                    <a href="{{ route('cart.index') }}" class="btn btn-outline btn-sm w-full">View Cart</a>
+                                    <a href="{{ route('checkout.index') }}" class="btn btn-primary btn-sm w-full {{ ($headerCart['checkout_ready'] ?? false) ? '' : 'pointer-events-none opacity-50' }}">Checkout</a>
                                 </div>
                             </div>
                         @else
@@ -327,7 +320,7 @@
                                 </div>
                                 <p class="mt-3 text-base font-black text-brand-ink">Your cart is empty</p>
                                 <p class="mt-1 text-sm font-semibold leading-6 text-slate-500">Add products to see them here instantly.</p>
-                                <a href="{{ route('products.index') }}" class="btn btn-red mt-4 w-full text-xs">Start Shopping</a>
+                                <a href="{{ route('products.index') }}" class="btn btn-primary btn-sm mt-4 w-full">Start Shopping</a>
                             </div>
                         @endif
                     </div>

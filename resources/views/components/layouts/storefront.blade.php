@@ -15,10 +15,7 @@
     $defaultOgImage = preg_match('/^https?:\/\//i', $configuredOgImage)
         ? $configuredOgImage
         : asset(ltrim($configuredOgImage, '/'));
-    $configuredLogo = (string) config('storefront.logo', '/images/logo.png');
-    $organizationLogo = preg_match('/^https?:\/\//i', $configuredLogo)
-        ? $configuredLogo
-        : asset(ltrim($configuredLogo, '/'));
+    $organizationLogo = \App\Support\StorefrontBranding::logoUrl();
     $ogImage = $seo['og_image'] ?? $defaultOgImage;
     $ogType = $seo['og_type'] ?? 'website';
     $locale = str_replace('-', '_', app()->getLocale());
@@ -95,11 +92,9 @@
     <meta name="twitter:image" content="{{ $ogImage }}">
     <meta name="twitter:image:alt" content="{{ $seo['og_image_alt'] ?? $ogTitle }}">
 
-    <meta name="theme-color" content="#15345d">
+    <meta name="theme-color" content="#061F44">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+    <x-storefront.font-assets />
 
     <script type="application/ld+json">
         @json($organizationSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)

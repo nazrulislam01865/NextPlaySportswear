@@ -44,7 +44,7 @@
                 <div class="{{ $viewAllClasses }}">
                     <button
                         type="button"
-                        class="np-shop-sport__view-all np-home-action"
+                        class="btn btn-outline btn-sm np-shop-sport__view-all np-home-action"
                         @click="expanded = !expanded"
                         :aria-expanded="expanded.toString()"
                         aria-controls="np-shop-sport-grid"

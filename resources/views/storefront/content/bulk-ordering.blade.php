@@ -9,8 +9,8 @@
         :image="asset('storage/storefront/content/bulk-ordering.webp')"
         image-alt="Large sports team preparing for a game"
     >
-        <a href="{{ route('quote.request') }}" class="btn btn-red">Request Bulk Quote</a>
-        <a href="#bulk-checklist" class="btn btn-white">View Checklist</a>
+        <a href="{{ route('quote.request') }}" class="btn btn-primary">Request Bulk Quote</a>
+        <a href="#bulk-checklist" class="btn btn-outline">View Checklist</a>
     </x-storefront.content.hero>
 
     <section class="section-padding">

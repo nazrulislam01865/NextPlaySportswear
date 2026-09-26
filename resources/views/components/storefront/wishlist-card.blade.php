@@ -72,13 +72,13 @@
         </p>
 
         <div class="np-wishlist-card-actions">
-            <a href="{{ $url }}" class="btn btn-navy" data-wishlist-view-product>
+            <a href="{{ $url }}" class="btn btn-secondary" data-wishlist-view-product>
                 View Product
             </a>
 
             <button
                 type="button"
-                class="btn btn-white np-wishlist-remove-button"
+                class="btn btn-outline np-wishlist-remove-button"
                 data-wishlist-remove
                 data-product-key="{{ $productKey }}"
                 data-endpoint="{{ $isGuestTemplate ? '' : ($item['remove_endpoint'] ?? '') }}"

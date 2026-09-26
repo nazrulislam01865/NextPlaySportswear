@@ -1,4 +1,7 @@
-import defaultTheme from 'tailwindcss/defaultTheme';
+// Keep Tailwind brand utilities on the same canonical CSS variables used by
+// handcrafted storefront CSS. Relative rgb() preserves Tailwind opacity
+// modifiers such as bg-brand-red/10 without duplicating the palette here.
+const themeColor = (token) => `rgb(from var(${token}) r g b / <alpha-value>)`;
 
 export default {
     content: [
@@ -11,20 +14,26 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Inter', ...defaultTheme.fontFamily.sans],
-                display: ['Oswald', ...defaultTheme.fontFamily.sans],
+                sans: ['var(--np-font-body)'],
+                display: ['var(--np-font-heading)'],
             },
 
             colors: {
                 brand: {
-                    navy: '#15345d',
-                    dark: '#0d2545',
-                    blue: '#2467b7',
-                    red: '#e91d33',
-                    redDark: '#c9182b',
-                    ink: '#111827',
-                    muted: '#64748b',
-                    soft: '#f4f6f8',
+                    navy: themeColor('--np-color-primary'),
+                    dark: themeColor('--np-color-primary'),
+                    blue: themeColor('--np-color-primary'),
+                    red: themeColor('--np-color-secondary'),
+                    redDark: themeColor('--np-color-secondary-hover'),
+                    ink: themeColor('--np-color-heading'),
+                    body: themeColor('--np-color-body'),
+                    muted: themeColor('--np-color-muted'),
+                    page: themeColor('--np-color-page'),
+                    soft: themeColor('--np-color-soft'),
+                    border: themeColor('--np-color-border'),
+                    success: themeColor('--np-color-success'),
+                    warning: themeColor('--np-color-warning'),
+                    error: themeColor('--np-color-error'),
                 },
             },
 

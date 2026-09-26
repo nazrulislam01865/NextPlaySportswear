@@ -58,7 +58,7 @@
     @elseif($brand === 'googlepay')
         <span aria-hidden="true" class="text-[12px] font-black leading-none tracking-tight {{ $bare ? 'text-white' : 'text-slate-900' }}">G Pay</span>
     @else
-        <svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-6 fill-none {{ $bare ? 'stroke-slate-300' : 'stroke-[#0d2545]' }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-6 fill-none {{ $bare ? 'stroke-slate-300' : 'stroke-brand-dark' }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2.5" y="5" width="19" height="14" rx="2.5"></rect>
             <path d="M2.5 9.5h19"></path>
             <path d="M6.5 15h4"></path>

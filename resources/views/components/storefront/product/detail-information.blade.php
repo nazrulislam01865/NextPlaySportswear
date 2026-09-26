@@ -6,7 +6,7 @@
     $fullRows = collect($product['detail_information'] ?? []);
     $fabricSummaryLabel = collect($fabricLikeSummaryLabels)
         ->first(fn ($label) => filled($summaryRows->get($label)) || filled($fullRows->get($label))) ?: 'Fabric';
-    $summaryLabels = ['SKU', 'Product Type', $fabricSummaryLabel, 'Fit', 'Size Range', 'MOQ', 'Lead Time'];
+    $summaryLabels = ['SKU', 'Product Type', 'Gender', $fabricSummaryLabel, 'Fit', 'Size Range', 'MOQ', 'Lead Time'];
     $detailInformation = $summaryRows
         ->only($summaryLabels)
         ->filter(fn ($value, $label) => filled($label) && filled($value));
@@ -21,6 +21,7 @@
         $detailInformation = collect([
             'SKU' => $product['sku'] ?? null,
             'Product Type' => $product['product_type'] ?? null,
+            'Gender' => $product['gender'] ?? null,
             'MOQ' => isset($product['minimum_quantity'])
                 ? number_format((int) $product['minimum_quantity']).' '.((int) $product['minimum_quantity'] === 1 ? 'Piece' : 'Pieces')
                 : null,

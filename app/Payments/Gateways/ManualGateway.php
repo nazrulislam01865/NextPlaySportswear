@@ -38,7 +38,13 @@ final class ManualGateway implements PaymentGateway
         return new GatewayPaymentStatus($payment->status, $payment->provider_reference);
     }
 
-    public function refund(OrderPayment $payment, float $amount, string $reason = ''): GatewayRefundResult
+    public function refund(
+        OrderPayment $payment,
+        float $amount,
+        string $reason = '',
+        ?string $idempotencyKey = null,
+        array $metadata = [],
+    ): GatewayRefundResult
     {
         throw new PaymentGatewayException('Manual refunds must be confirmed by an administrator after the external refund is completed.');
     }

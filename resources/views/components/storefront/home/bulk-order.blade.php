@@ -13,8 +13,8 @@
             <p class="bulk-copy">{{ $text('description', 'Larger orders need a little more care. Share your quantity, sizes, artwork, delivery date, and shipping needs. Our team will review everything and send a clear bulk quote.') }}</p>
 
             <div class="bulk-actions">
-                @if(filled($text('primary_label')))<a class="btn-primary np-home-action" href="{{ $text('primary_url', route('quote.request')) }}">{{ $text('primary_label', 'Request Bulk Quote →') }}</a>@endif
-                @if(filled($text('secondary_label')))<a class="btn-secondary np-home-action" href="{{ $text('secondary_url', route('products.index')) }}">{{ $text('secondary_label', 'Explore Team Products') }}</a>@endif
+                @if(filled($text('primary_label')))<a class="btn btn-primary btn-xl np-home-action" href="{{ $text('primary_url', route('quote.request')) }}">{{ $text('primary_label', 'Request Bulk Quote →') }}</a>@endif
+                @if(filled($text('secondary_label')))<a class="btn btn-outline-inverse btn-xl np-home-action" href="{{ $text('secondary_url', route('products.index')) }}">{{ $text('secondary_label', 'Explore Team Products') }}</a>@endif
                 <p class="bulk-note">No long form here. Click request quote and complete the details on the quote page.</p>
             </div>
         </div>

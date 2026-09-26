@@ -35,6 +35,18 @@ final class PaymentGatewayManager
         return array_keys((array) config('payments.gateways', []));
     }
 
+    public function capabilities(string $code): array
+    {
+        $code = strtolower(trim($code));
+
+        return array_merge([
+            'is_online' => false,
+            'requires_provider_redirect' => false,
+            'requires_manual_review' => true,
+            'allows_saved_methods' => false,
+        ], (array) config("payments.gateways.{$code}.capabilities", []));
+    }
+
     public function isAvailable(string $code): bool
     {
         try {

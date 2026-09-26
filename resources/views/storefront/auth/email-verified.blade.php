@@ -40,11 +40,11 @@
             </div>
 
             <div class="mt-7 grid gap-3 sm:grid-cols-2">
-                <a href="{{ $continueUrl }}" class="btn btn-red h-12 w-full rounded-2xl text-sm">
+                <a href="{{ $continueUrl }}" class="btn btn-primary btn-lg w-full">
                     {{ $continueLabel }}
                 </a>
 
-                <a href="{{ route('products.index') }}" class="btn btn-white h-12 w-full rounded-2xl text-sm">
+                <a href="{{ route('products.index') }}" class="btn btn-outline btn-lg w-full">
                     Continue Shopping
                 </a>
             </div>

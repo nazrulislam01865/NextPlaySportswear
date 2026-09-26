@@ -1,14 +1,14 @@
 <x-storefront.account.orders.page :seo="$seo" :account="$account" :navigation="$navigation" :title="'Order '.$order->order_number" subtitle="Authenticated order details, status history, items, payment, shipment, documents, and available post-purchase actions." eyebrow="Authenticated order details">
-    <x-slot:actions><a class="btn btn-white" href="{{ route('account.orders.index') }}">Back to Orders</a></x-slot:actions>
+    <x-slot:actions><a class="btn btn-outline" href="{{ route('account.orders.index') }}">Back to Orders</a></x-slot:actions>
 
     <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_330px] lg:items-start">
         <div class="space-y-6">
             <section class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-card md:p-7">
                 <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-start"><div><p class="text-xs font-black uppercase tracking-wide text-slate-400">Placed {{ $order->placed_at?->format('M d, Y · g:i A') }}</p><h3 class="mt-2 text-2xl font-black">{{ $order->statusLabel() }}</h3><p class="mt-1 text-sm text-slate-500">Payment: {{ $order->paymentStatusLabel() }} · Fulfillment: {{ $order->fulfillmentStatusLabel() }}</p></div><x-storefront.account.orders.status-pill :status="$order->status" /></div>
                 <div class="mt-5 flex flex-wrap gap-2">
-                    @if($order->canPay())<a class="btn btn-red" href="{{ route('account.orders.pay',$order) }}">Pay for Order</a>@endif
-                    @if($order->payment_status==='failed')<a class="btn btn-red" href="{{ route('account.orders.payment.retry',$order) }}">Retry Payment</a>@endif
-                    <a class="btn btn-white" href="{{ route('account.orders.reorder',$order) }}">Order Again</a>
+                    @if($order->canPay())<a class="btn btn-primary" href="{{ route('account.orders.pay',$order) }}">Pay for Order</a>@endif
+                    @if($order->payment_status==='failed')<a class="btn btn-primary" href="{{ route('account.orders.payment.retry',$order) }}">Retry Payment</a>@endif
+                    <a class="btn btn-outline" href="{{ route('account.orders.reorder',$order) }}">Order Again</a>
                     @if($order->canRequestChange())<a class="btn btn-light" href="{{ route('account.orders.change',$order) }}">Request Change</a>@endif
                     @if($order->canRequestCancellation())<a class="btn btn-light" href="{{ route('account.orders.cancel',$order) }}">Request Cancellation</a>@endif
                     @if($order->canRequestReturn())<a class="btn btn-light" href="{{ route('account.orders.returns.create',$order) }}">Start Return</a>@endif
@@ -27,7 +27,7 @@
 
             @if($order->shipments->isNotEmpty())<section class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-card"><div class="flex items-center justify-between"><h3 class="text-xl font-black">Shipments</h3><a class="text-sm font-black text-brand-red" href="{{ route('account.orders.shipments',$order) }}">View split shipment plan →</a></div><div class="mt-4 grid gap-3">@foreach($order->shipments as $shipment)<a href="{{ route('account.orders.shipments.show',[$order,$shipment]) }}" class="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 p-4 sm:flex-row sm:items-center"><div><p class="font-black">{{ $shipment->shipment_number }}</p><p class="text-sm text-slate-500">{{ $shipment->carrier ?: 'Carrier pending' }} · {{ $shipment->tracking_number ?: 'Tracking pending' }}</p></div><x-storefront.account.orders.status-pill :status="$shipment->status" /></a>@endforeach</div></section>@endif
 
-            <section class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-card"><h3 class="text-xl font-black">Documents & Downloads</h3><div class="mt-4 flex flex-wrap gap-2"><a class="btn btn-white" href="{{ route('account.orders.invoice',$order) }}">Secure Invoice</a>@foreach($order->creditNotes as $note)<a class="btn btn-white" href="{{ route('account.credit-notes.show',$note) }}">Credit Note {{ $note->credit_note_number }}</a>@endforeach @if($order->downloads->isNotEmpty())<a class="btn btn-white" href="{{ route('account.downloads.index') }}">Order Downloads</a>@endif</div></section>
+            <section class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-card"><h3 class="text-xl font-black">Documents & Downloads</h3><div class="mt-4 flex flex-wrap gap-2"><a class="btn btn-outline" href="{{ route('account.orders.invoice',$order) }}">Secure Invoice</a>@foreach($order->creditNotes as $note)<a class="btn btn-outline" href="{{ route('account.credit-notes.show',$note) }}">Credit Note {{ $note->credit_note_number }}</a>@endforeach @if($order->downloads->isNotEmpty())<a class="btn btn-outline" href="{{ route('account.downloads.index') }}">Order Downloads</a>@endif</div></section>
         </div>
         <x-storefront.account.orders.summary :order="$order" />
     </div>

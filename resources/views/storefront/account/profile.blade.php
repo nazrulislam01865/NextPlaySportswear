@@ -88,8 +88,8 @@
                     </div>
 
                     <div class="flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-end">
-                        <a href="{{ route('account.dashboard') }}" class="btn btn-white rounded-2xl">Cancel</a>
-                        <button type="submit" class="btn btn-red rounded-2xl">Save Profile</button>
+                        <a href="{{ route('account.dashboard') }}" class="btn btn-outline">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save Profile</button>
                     </div>
                 </form>
             </x-storefront.account.section-panel>
@@ -131,7 +131,7 @@
                         </div>
 
                         <div class="flex justify-end border-t border-slate-200 pt-5">
-                            <button type="submit" class="btn btn-red rounded-2xl">Update Password</button>
+                            <button type="submit" class="btn btn-primary">Update Password</button>
                         </div>
                     </form>
                 </x-storefront.account.section-panel>

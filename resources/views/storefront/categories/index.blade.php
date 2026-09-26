@@ -85,7 +85,7 @@
                     <span class="text-xs font-black uppercase tracking-[.08em] text-brand-red">Team and bulk ordering</span>
                     <h2 class="mt-2 font-display text-[clamp(32px,4vw,42px)] font-bold uppercase leading-[1.02]">Ordering for a Team, School, League, or Event?</h2>
                     <p class="mt-3 text-white/90">Bulk orders need a little more detail. Send us your product choice, quantity, logo, size list, player names, numbers, color preference, and delivery timeline. We’ll help you prepare a clear quote.</p>
-                    <a class="btn btn-red mt-[18px] max-sm:w-full" href="{{ route('quote.request') }}">Request Bulk Quote</a>
+                    <a class="btn btn-primary mt-[18px] max-sm:w-full" href="{{ route('quote.request') }}">Request Bulk Quote</a>
                     <div class="mt-[18px] border-l-[3px] border-brand-red pl-3 text-[13px] text-white/90">You can place regular orders directly on the website using Add to Cart. For larger orders, especially 500+ or 1,000+ pieces, contact us by email or WhatsApp for a custom quotation and possible special bulk pricing.</div>
                 </div>
 
@@ -103,8 +103,8 @@
             <h2 class="font-display text-[clamp(28px,4vw,42px)] font-bold uppercase leading-[1.05] text-brand-ink">Ready to Find Your Gear?</h2>
             <p class="mx-auto mt-2 max-w-[660px] text-slate-500">Choose a category to start shopping, or send us your order details if you need help with team, school, event, or bulk production.</p>
             <div class="mt-5 flex flex-wrap justify-center gap-3">
-                <a class="btn btn-red max-sm:w-full" href="#categories">Browse All Categories</a>
-                <a class="btn btn-white max-sm:w-full" href="{{ route('quote.request') }}">Request Bulk Quote</a>
+                <a class="btn btn-primary max-sm:w-full" href="#categories">Browse All Categories</a>
+                <a class="btn btn-outline max-sm:w-full" href="{{ route('quote.request') }}">Request Bulk Quote</a>
             </div>
             <div class="mt-3.5 text-[13px] text-slate-500">Email: <strong class="text-brand-ink">{{ config('storefront.email') }}</strong> &nbsp; | &nbsp; WhatsApp: <strong class="text-brand-ink">{{ config('storefront.whatsapp') }}</strong></div>
         </div>

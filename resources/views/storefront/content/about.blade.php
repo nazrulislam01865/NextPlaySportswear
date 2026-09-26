@@ -9,8 +9,8 @@
         :image="asset('storage/storefront/content/about.webp')"
         image-alt="Sports team gathering before a game"
     >
-        <a href="{{ route('categories.index') }}" class="btn btn-red">Browse Categories</a>
-        <a href="{{ route('contact') }}" class="btn btn-white">Talk to Our Team</a>
+        <a href="{{ route('categories.index') }}" class="btn btn-primary">Browse Categories</a>
+        <a href="{{ route('contact') }}" class="btn btn-outline">Talk to Our Team</a>
     </x-storefront.content.hero>
 
     <section class="section-padding">

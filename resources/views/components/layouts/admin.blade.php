@@ -91,7 +91,7 @@
                     @endif
                 @endif
 
-                @if($canAdmin('customization.view') || $canAdmin('shipping.view'))
+                @if($canAdmin('products.view') || $canAdmin('customization.view') || $canAdmin('shipping.view'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Master Data</p>
                     @php
                         $customizationMenuGroups = \App\Enums\JerseyCustomizationType::menuGroups();
@@ -162,7 +162,7 @@
                     <x-admin.sidebar-group
                         label="Master Data"
                         icon="◈"
-                        :active="$isCustomizationActive || $isSizeOptionActive || $isTrainingVestCustomizationActive || $isWorldCupCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*') || request()->routeIs('admin.faqs.*')"
+                        :active="$isCustomizationActive || $isSizeOptionActive || $isTrainingVestCustomizationActive || $isWorldCupCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*') || request()->routeIs('admin.faqs.*') || request()->routeIs('admin.genders.*')"
                     >
                         @if($canAdmin('customization.view'))
                         @foreach($primaryCustomizationMenuGroups as $groupKey => $customizationGroup)
@@ -260,6 +260,13 @@
                                 :active="request()->routeIs('admin.faqs.*')"
                             >{{ $trailingMasterDataNumbers['faqs'] }} FAQs</x-admin.sidebar-sub-link>
                         @endif
+
+                        @if($canAdmin('products.view'))
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.genders.index')"
+                                :active="request()->routeIs('admin.genders.*')"
+                            >{{ $trailingMasterDataNumbers['genders'] }} Gender</x-admin.sidebar-sub-link>
+                        @endif
                     </x-admin.sidebar-group>
                 @endif
 
@@ -280,8 +287,11 @@
                     @endif
                 @endif
 
-                @if($canAdmin('homepage_sections.view') || $canAdmin('homepage_slides.view') || $canAdmin('newsletters.view') || $canAdmin('rural_surcharges.view') || $canAdmin('payment_methods.view'))
+                @if($canAdmin('storefront_branding.view') || $canAdmin('homepage_sections.view') || $canAdmin('homepage_slides.view') || $canAdmin('newsletters.view') || $canAdmin('rural_surcharges.view') || $canAdmin('payment_methods.view'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Store</p>
+                    @if($canAdmin('storefront_branding.view'))
+                        <x-admin.sidebar-link :href="route('admin.storefront-branding.edit')" :active="request()->routeIs('admin.storefront-branding.*')" icon="◆">Storefront Branding</x-admin.sidebar-link>
+                    @endif
                     @if($canAdmin('homepage_sections.view'))
                         @php($homepageDefinitions = \App\Support\HomepageSectionRegistry::orderedDefinitions())
                         <x-admin.sidebar-group

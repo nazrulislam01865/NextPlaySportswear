@@ -225,7 +225,7 @@
             border: 1px solid #dbe3ee;
             border-radius: 9999px;
             background: rgba(255, 255, 255, .96);
-            color: #15345d;
+            color: var(--np-color-navy);
             box-shadow: 0 12px 30px rgba(15, 23, 42, .16);
             backdrop-filter: blur(8px);
         }
@@ -276,7 +276,7 @@
 
         .np-product-share-menu button:hover {
             background: #f1f5f9;
-            color: #15345d;
+            color: var(--np-color-navy);
         }
 
         .np-product-wishlist-button[aria-pressed="true"] svg {

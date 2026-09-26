@@ -9,8 +9,8 @@
         :image="asset('storage/storefront/content/payment.webp')"
         image-alt="Secure online payment on a mobile device"
     >
-        <a href="#payment-types" class="btn btn-red">View Payment Guidance</a>
-        <a href="{{ route('contact') }}" class="btn btn-white">Ask a Payment Question</a>
+        <a href="#payment-types" class="btn btn-primary">View Payment Guidance</a>
+        <a href="{{ route('contact') }}" class="btn btn-outline">Ask a Payment Question</a>
     </x-storefront.content.hero>
 
     <section class="section-padding" id="payment-types">

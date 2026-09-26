@@ -9,8 +9,8 @@
         :image="asset('storage/storefront/content/artwork-guidelines.webp')"
         image-alt="Designer preparing digital artwork on a desk"
     >
-        <a href="#file-types" class="btn btn-red">View File Requirements</a>
-        <a href="{{ route('contact') }}" class="btn btn-white">Ask About Artwork</a>
+        <a href="#file-types" class="btn btn-primary">View File Requirements</a>
+        <a href="{{ route('contact') }}" class="btn btn-outline">Ask About Artwork</a>
     </x-storefront.content.hero>
 
     <section class="section-padding" id="file-types">

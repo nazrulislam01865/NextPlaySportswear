@@ -43,12 +43,12 @@
     $wishlistPrice = $displayUnitPrice;
     $wishlistCurrency = (string) ($product['currency'] ?? 'USD');
     $productTag = trim((string) ($product['tag'] ?? ''));
-    // Shared product-card switch. Keep this false to hide the CUSTOMIZABLE badge everywhere
-    // this reusable component is used. Change it to true here when the badge is needed again.
-    $showCustomizableBadge = false;
-    $isCustomizableTag = strcasecmp($productTag, 'customizable') === 0;
-    $showProductTag = $productTag !== ''
-        && (! $isCustomizableTag || $showCustomizableBadge);
+    $normalizedProductTag = strtolower($productTag);
+    $isCustomizableProductTag = in_array($normalizedProductTag, ['customizable', 'customisable', 'c'], true);
+    $showProductTag = $productTag !== '';
+    $productTagModifierClass = $isCustomizableProductTag
+        ? 'np-product-card-badge--customizable'
+        : '';
 @endphp
 
 <article class="np-product-card np-product-card--nextplay np-product-card--canonical" data-product-card data-product-id="{{ $product['id'] ?? '' }}">
@@ -65,7 +65,7 @@
         </a>
 
         @if ($showProductTag)
-            <span class="np-product-card-badge {{ $tagClass }}">
+            <span class="np-product-card-badge {{ $tagClass }} {{ $productTagModifierClass }}">
                 {{ $productTag }}
             </span>
         @endif
@@ -130,7 +130,7 @@
             @endif
         </div>
 
-        <a href="{{ $configureUrl }}" class="np-product-card-button">
+        <a href="{{ $configureUrl }}" class="btn btn-product np-product-card-button">
             Customize &amp; Order
         </a>
     </div>

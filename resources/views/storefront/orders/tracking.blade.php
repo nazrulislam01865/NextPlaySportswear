@@ -10,8 +10,8 @@
     status-subtitle="Estimated delivery: {{ $order['estimated_delivery'] }}"
 >
     <x-slot:actions>
-        <a href="{{ route('orders.details.legacy') }}" class="btn btn-red">Order Details</a>
-        <a href="{{ route('products.index') }}" class="btn btn-white">Continue Shopping</a>
+        <a href="{{ route('orders.details.legacy') }}" class="btn btn-primary">Order Details</a>
+        <a href="{{ route('products.index') }}" class="btn btn-outline">Continue Shopping</a>
     </x-slot:actions>
 
     <section class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-card lg:p-7">
@@ -30,7 +30,7 @@
                     Email
                     <input type="email" name="email" value="{{ old('email', $order['is_demo'] ? '' : $order['customer_email']) }}" placeholder="you@example.com" class="h-11 rounded-xl border border-slate-300 px-3 text-sm font-semibold outline-none focus:border-brand-blue">
                 </label>
-                <button type="submit" class="btn btn-red self-end">Track</button>
+                <button type="submit" class="btn btn-primary self-end">Track</button>
             </form>
         </div>
 

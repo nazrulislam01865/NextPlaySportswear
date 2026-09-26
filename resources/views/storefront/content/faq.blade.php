@@ -31,8 +31,8 @@
         :image="asset('storage/storefront/content/faq.webp')"
         image-alt="Customer searching support information on a laptop"
     >
-        <a href="#faq-browser" class="btn btn-red">Browse Questions</a>
-        <a href="{{ route('contact') }}" class="btn btn-white">Contact Support</a>
+        <a href="#faq-browser" class="btn btn-primary">Browse Questions</a>
+        <a href="{{ route('contact') }}" class="btn btn-outline">Contact Support</a>
     </x-storefront.content.hero>
 
     <section class="section-padding" id="faq-browser">

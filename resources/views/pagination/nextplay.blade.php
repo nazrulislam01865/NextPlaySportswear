@@ -20,6 +20,7 @@
             request()->routeIs('admin.payment-methods.*') => 'payment method',
             request()->routeIs('admin.shipping-methods.*') => 'shipping method',
             request()->routeIs('admin.production-methods.*') => 'production method',
+            request()->routeIs('admin.genders.*') => 'gender',
             request()->routeIs('admin.homepage-slides.*') => 'slide',
             request()->routeIs('admin.attributes.*') => 'attribute',
             request()->routeIs('admin.size-option-groups.*', 'admin.training-vest-customization-options.*', 'admin.jersey-customization-options.*') => 'option',

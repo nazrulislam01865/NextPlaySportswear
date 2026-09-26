@@ -53,6 +53,7 @@ class ProductCustomizationMenuRegistryTest extends TestCase
             'production_methods' => '1.30',
             'shipping_methods' => '1.31',
             'faqs' => '1.32',
+            'genders' => '1.33',
         ], ProductCustomizationMenuRegistry::trailingMasterDataNumbers());
     }
 }

@@ -75,6 +75,8 @@ class PaymentMethodService
 
     private function toCheckoutOption(PaymentMethod $method, float $total): array
     {
+        $capabilities = $this->gateways->capabilities((string) $method->provider);
+
         return [
             'id' => $method->id,
             'code' => $method->normalizedCode(),
@@ -90,10 +92,10 @@ class PaymentMethodService
             'display_amount' => '$'.number_format($total, 2),
             'minimum_total' => $method->minimum_total === null ? null : (float) $method->minimum_total,
             'maximum_total' => $method->maximum_total === null ? null : (float) $method->maximum_total,
-            'is_online' => (bool) $method->is_online,
-            'requires_provider_redirect' => (bool) $method->requires_provider_redirect,
-            'requires_manual_review' => (bool) $method->requires_manual_review,
-            'allows_saved_methods' => (bool) $method->allows_saved_methods,
+            'is_online' => (bool) $capabilities['is_online'],
+            'requires_provider_redirect' => (bool) $capabilities['requires_provider_redirect'],
+            'requires_manual_review' => (bool) $capabilities['requires_manual_review'],
+            'allows_saved_methods' => (bool) $capabilities['allows_saved_methods'],
             'is_default' => (bool) $method->is_default,
             'is_active' => (bool) $method->is_active,
             'sort_order' => (int) $method->sort_order,

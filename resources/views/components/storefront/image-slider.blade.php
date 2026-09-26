@@ -52,11 +52,11 @@
                             </p>
 
                             <div class="mt-8 flex flex-col gap-3 sm:flex-row">
-                                <a href="{{ $slide['primary_url'] }}" class="btn btn-red">
+                                <a href="{{ $slide['primary_url'] }}" class="btn btn-primary">
                                     {{ $slide['primary_label'] }}
                                 </a>
 
-                                <a href="{{ $slide['secondary_url'] }}" class="btn btn-white">
+                                <a href="{{ $slide['secondary_url'] }}" class="btn btn-outline">
                                     {{ $slide['secondary_label'] }}
                                 </a>
                             </div>

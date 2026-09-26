@@ -23,6 +23,7 @@ class CustomerPasswordResetTest extends TestCase
         // transport is contacted. Production defaults to synchronous delivery
         // for this security-critical message.
         config()->set('transactional_email.enabled', true);
+        config()->set('transactional_email.delivery.mode', 'queue');
         config()->set('transactional_email.queue.enabled', true);
         config()->set('transactional_email.critical.password_reset_sync', false);
     }

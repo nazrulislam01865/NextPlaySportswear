@@ -128,7 +128,7 @@
             line-height: 1.2;
             text-decoration: none;
         }
-        .np-product-signals__rating:hover { color: #e91d33; }
+        .np-product-signals__rating:hover { color: var(--np-color-primary); }
         .np-product-signals__stars {
             color: #f5a400;
             font-size: 1.05rem;
@@ -183,7 +183,7 @@
             stroke-linejoin: round;
         }
         .np-product-signal-button strong { font-weight: 850; }
-        .np-product-signal-button.is-saved { border-color: rgba(233, 29, 51, .3); background: rgba(233, 29, 51, .06); color: #e91d33; }
+        .np-product-signal-button.is-saved { border-color: rgba(233, 29, 51, .3); background: rgba(233, 29, 51, .06); color: var(--np-color-primary); }
         .np-product-signal-button.is-saved svg { fill: currentColor; }
         .np-product-signal-button--activity {
             max-width: min(100%, 15.5rem);
@@ -202,7 +202,7 @@
             margin-top: .4rem !important;
         }
         .np-product-share-menu button { display: flex; width: 100%; align-items: center; gap: .7rem; border-radius: .7rem; padding: .65rem .7rem; text-align: left; font-size: .82rem; font-weight: 700; color: #334155; transition: background-color .18s ease, color .18s ease; }
-        .np-product-share-menu button:hover { background: #f1f5f9; color: #15345d; }
+        .np-product-share-menu button:hover { background: #f1f5f9; color: var(--np-color-navy); }
         .np-product-share-menu button svg, .np-product-share-menu button > span { width: 1rem; height: 1rem; flex: 0 0 1rem; display: inline-grid; place-items: center; font-weight: 900; }
         @media (max-width: 900px) {
             .np-product-signals__actions { gap: .38rem; }

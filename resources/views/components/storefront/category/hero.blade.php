@@ -42,8 +42,8 @@
             </ul>
 
             <div class="mt-8 flex flex-wrap gap-3">
-                <a href="#category-products" class="btn btn-red">Shop {{ $category['short_title'] }}</a>
-                <a href="{{ route('quote.request') }}" class="btn border border-white/30 bg-white/10 text-white backdrop-blur-sm hover:bg-white hover:text-brand-ink">Request Team Quote</a>
+                <a href="#category-products" class="btn btn-primary">Shop {{ $category['short_title'] }}</a>
+                <a href="{{ route('quote.request') }}" class="btn btn-outline-inverse backdrop-blur-sm">Request Team Quote</a>
             </div>
         </div>
     </div>

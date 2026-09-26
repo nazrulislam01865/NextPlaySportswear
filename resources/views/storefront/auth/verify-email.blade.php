@@ -50,12 +50,12 @@
             <div class="mt-6 grid gap-3 sm:grid-cols-2">
                 <form method="POST" action="{{ route('verification.send') }}" data-single-submit>
                     @csrf
-                    <button type="submit" class="btn btn-red h-12 w-full rounded-2xl text-sm">
+                    <button type="submit" class="btn btn-primary btn-lg w-full">
                         Resend Verification Email
                     </button>
                 </form>
 
-                <a href="{{ route('home') }}" class="btn btn-white h-12 w-full rounded-2xl text-sm">
+                <a href="{{ route('home') }}" class="btn btn-outline btn-lg w-full">
                     Continue Shopping
                 </a>
             </div>

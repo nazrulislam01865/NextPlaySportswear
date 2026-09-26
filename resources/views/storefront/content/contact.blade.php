@@ -9,8 +9,8 @@
         :image="asset('storage/storefront/content/contact.webp')"
         image-alt="Customer support team working together"
     >
-        <a href="#contact-form" class="btn btn-red">Send a Message</a>
-        <a href="{{ route('faq') }}" class="btn btn-white">Browse FAQs</a>
+        <a href="#contact-form" class="btn btn-primary">Send a Message</a>
+        <a href="{{ route('faq') }}" class="btn btn-outline">Browse FAQs</a>
     </x-storefront.content.hero>
 
     <section class="section-padding" id="contact-form">
@@ -106,7 +106,7 @@
                     </div>
                     <div class="flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
                         <p class="text-xs leading-5 text-slate-500">By submitting this form, you agree that we may use the information to respond to your request.</p>
-                        <button type="submit" class="btn btn-red shrink-0">Send Message</button>
+                        <button type="submit" class="btn btn-primary shrink-0">Send Message</button>
                     </div>
                 </form>
             </div>

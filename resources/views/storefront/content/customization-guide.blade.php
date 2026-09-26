@@ -9,8 +9,8 @@
         :image="asset('storage/storefront/content/customization-guide.webp')"
         image-alt="Custom sports uniforms and team gear"
     >
-        <a href="#custom-options" class="btn btn-red">Explore Options</a>
-        <a href="{{ route('quote.request') }}" class="btn btn-white">Start a Custom Quote</a>
+        <a href="#custom-options" class="btn btn-primary">Explore Options</a>
+        <a href="{{ route('quote.request') }}" class="btn btn-outline">Start a Custom Quote</a>
     </x-storefront.content.hero>
 
     <section class="section-padding" id="custom-options">

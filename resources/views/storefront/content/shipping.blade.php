@@ -9,8 +9,8 @@
         :image="asset('storage/storefront/content/shipping.webp')"
         image-alt="Packages prepared in a shipping warehouse"
     >
-        <a href="{{ route('orders.track') }}" class="btn btn-red">Track an Order</a>
-        <a href="#delivery-timeline" class="btn btn-white">View Delivery Steps</a>
+        <a href="{{ route('orders.track') }}" class="btn btn-primary">Track an Order</a>
+        <a href="#delivery-timeline" class="btn btn-outline">View Delivery Steps</a>
     </x-storefront.content.hero>
 
     <section class="section-padding" id="delivery-timeline">
@@ -85,7 +85,7 @@
             <div class="rounded-3xl bg-brand-navy p-7 text-white shadow-soft">
                 <h2 class="font-display text-3xl font-bold uppercase">Lost, damaged, or missing items</h2>
                 <p class="mt-3 text-sm leading-6 text-white/75">Contact support with the order number, carrier tracking, carton count, photos, and a clear list of affected products. Do not discard packaging until the carrier or support team confirms it is no longer required.</p>
-                <a href="{{ route('contact') }}" class="btn btn-red mt-6">Report a Delivery Issue</a>
+                <a href="{{ route('contact') }}" class="btn btn-primary mt-6">Report a Delivery Issue</a>
             </div>
         </div>
     </section>

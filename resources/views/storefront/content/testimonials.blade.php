@@ -114,16 +114,16 @@
 <x-layouts.storefront :seo="$seo" :structured-data="[$reviewSchema]">
     <style>
         .np-reviews-page {
-            --np-ink: #111827;
-            --np-muted: #64748b;
-            --np-line: #e2e8f0;
-            --np-soft: #f8fafc;
-            --np-white: #ffffff;
-            --np-red: #ef233c;
-            --np-red-dark: #dc2626;
-            --np-gold: #f59e0b;
-            --np-navy: #0f172a;
-            --np-green: #16a34a;
+            --np-ink: var(--np-color-heading);
+            --np-muted: var(--np-color-muted);
+            --np-line: var(--np-color-border);
+            --np-soft: var(--np-color-soft);
+            --np-white: var(--np-color-page);
+            --np-red: var(--np-color-primary);
+            --np-red-dark: var(--np-color-primary-hover);
+            --np-gold: var(--np-color-warning);
+            --np-navy: var(--np-color-navy-dark);
+            --np-green: var(--np-color-success);
             --np-radius: 24px;
             --np-shadow: 0 18px 45px rgba(15, 23, 42, .10);
             background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
@@ -145,7 +145,7 @@
         .np-rating-note { margin-top: 6px; color: var(--np-muted); font-size: 13px; font-weight: 800; }
         .np-rating-bars { margin-top: 18px; }
         .np-bar-row { display: grid; grid-template-columns: 46px 1fr 36px; gap: 10px; align-items: center; margin-top: 9px; color: var(--np-muted); font-size: 12px; font-weight: 800; }
-        .np-bar { height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
+        .np-bar { height: 8px; background: var(--np-color-border); border-radius: 999px; overflow: hidden; }
         .np-bar span { display: block; height: 100%; background: var(--np-gold); border-radius: inherit; }
 
         .np-featured-story { margin-top: 30px; background: linear-gradient(135deg, var(--np-navy), #1e293b); color: white; border-radius: 30px; padding: 30px; box-shadow: var(--np-shadow); display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; overflow: hidden; position: relative; }
@@ -158,10 +158,6 @@
         .np-featured-person strong { display: block; }
         .np-featured-person small { display: block; margin-top: 4px; color: #cbd5e1; }
         .np-featured-actions { display: flex; flex-direction: column; gap: 12px; min-width: 210px; }
-        .np-review-btn { display: inline-flex; min-height: 46px; align-items: center; justify-content: center; gap: 8px; border-radius: 999px; border: 1px solid var(--np-line); background: var(--np-white); color: var(--np-ink); padding: 10px 18px; font-size: 14px; font-weight: 900; text-decoration: none; transition: .2s ease; }
-        .np-review-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(15, 23, 42, .12); }
-        .np-review-btn.is-red { border-color: var(--np-red); background: var(--np-red); color: white; }
-        .np-review-btn.is-red:hover { background: var(--np-red-dark); }
 
         .np-reviews-section { padding: 34px 0 82px; }
         .np-filter-panel { position: sticky; top: 88px; z-index: 20; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 16px; border: 1px solid var(--np-line); border-radius: 22px; background: rgba(255, 255, 255, .94); backdrop-filter: blur(12px); box-shadow: 0 10px 30px rgba(15, 23, 42, .06); }
@@ -246,8 +242,8 @@
                         </div>
                     </div>
                     <div class="np-featured-actions">
-                        <a href="{{ route('quote.request') }}" class="np-review-btn is-red">Request a team quote</a>
-                        <a href="{{ route('contact') }}?topic=testimonial" class="np-review-btn">Share your experience</a>
+                        <a href="{{ route('quote.request') }}" class="btn btn-primary btn-lg">Request a team quote</a>
+                        <a href="{{ route('contact') }}?topic=testimonial" class="btn btn-outline btn-lg">Share your experience</a>
                     </div>
                 </article>
             </div>
@@ -285,7 +281,7 @@
                     <p>Try another keyword or remove one of the filters.</p>
                 </div>
                 <div class="np-load-wrap">
-                    <button class="np-review-btn is-red" type="button" id="npReviewsLoadMore">Load more stories</button>
+                    <button class="btn btn-primary btn-lg" type="button" id="npReviewsLoadMore">Load more stories</button>
                 </div>
             </div>
         </section>

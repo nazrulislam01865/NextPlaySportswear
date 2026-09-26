@@ -34,13 +34,14 @@ final class ProductCustomizationMenuRegistry
         return $groups;
     }
 
-    /** @return array{production_methods: string, shipping_methods: string, faqs: string} */
+    /** @return array{production_methods: string, shipping_methods: string, faqs: string, genders: string} */
     public static function trailingMasterDataNumbers(): array
     {
         return [
             'production_methods' => '1.30',
             'shipping_methods' => '1.31',
             'faqs' => '1.32',
+            'genders' => '1.33',
         ];
     }
 }

@@ -107,6 +107,9 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
             ->middleware('throttle:30,1')
             ->name('media-library.store');
 
+        Route::get('/storefront-branding', [\App\Http\Controllers\Admin\StorefrontBrandingController::class, 'edit'])->name('storefront-branding.edit');
+        Route::put('/storefront-branding', [\App\Http\Controllers\Admin\StorefrontBrandingController::class, 'update'])->name('storefront-branding.update');
+
         Route::get('/homepage', [\App\Http\Controllers\Admin\HomepageSectionController::class, 'index'])->name('homepage.sections.index');
         Route::get('/homepage/sections/{key}', [\App\Http\Controllers\Admin\HomepageSectionController::class, 'edit'])->name('homepage.sections.edit');
         Route::patch('/homepage/sections/{key}', [\App\Http\Controllers\Admin\HomepageSectionController::class, 'update'])->name('homepage.sections.update');
@@ -214,6 +217,8 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
             ->parameters(['shipping-methods' => 'shippingMethod'])
             ->except('show');
         Route::resource('faqs', \App\Http\Controllers\Admin\FaqController::class)
+            ->except('show');
+        Route::resource('genders', \App\Http\Controllers\Admin\GenderController::class)
             ->except('show');
         Route::resource('payment-methods', \App\Http\Controllers\Admin\PaymentMethodController::class)
             ->parameters(['payment-methods' => 'paymentMethod'])

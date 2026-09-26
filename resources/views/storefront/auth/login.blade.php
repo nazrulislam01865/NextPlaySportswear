@@ -44,7 +44,7 @@
                 required
             />
 
-            <button type="submit" class="np-customer-login__submit">
+            <button type="submit" class="btn btn-primary btn-lg np-customer-login__submit">
                 Sign In
             </button>
         </form>

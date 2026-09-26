@@ -1,0 +1,202 @@
+/*
+ * NextPlay Storefront Design System
+ *
+ * Single source of truth for customer-facing brand colors, typography and
+ * shared action geometry. Storefront pages/components consume these tokens;
+ * they must not create parallel brand palettes or font stacks.
+ */
+
+@font-face {
+    font-family: "Expose";
+    src: url("../fonts/expose/Expose-Regular.woff2") format("woff2");
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Expose";
+    src: url("../fonts/expose/Expose-Medium.woff2") format("woff2");
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Expose";
+    src: url("../fonts/expose/Expose-Bold.woff2") format("woff2");
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Expose";
+    src: url("../fonts/expose/Expose-Black.woff2") format("woff2");
+    font-style: normal;
+    font-weight: 900;
+    font-display: swap;
+}
+
+:root {
+    /* Approved NextPlay brand foundation. */
+    --np-color-primary: #061F44;
+    --np-color-primary-rgb: 6 31 68;
+    --np-color-primary-hover: #061F44;
+    --np-color-secondary: #CF5D38;
+    --np-color-secondary-rgb: 207 93 56;
+    --np-color-secondary-hover: #CF5D38;
+
+    /* Compatibility names: all active brand identity resolves to the two
+       approved brand colors rather than maintaining a legacy palette. */
+    --np-color-navy: var(--np-color-primary);
+    --np-color-navy-dark: var(--np-color-primary);
+    --np-color-blue: var(--np-color-primary);
+    --np-color-orange: #CF5D38;
+
+    /* Supporting semantic neutrals and states. */
+    --np-color-heading: var(--np-color-primary);
+    --np-color-body: #334155;
+    --np-color-muted: #64748B;
+    --np-color-page: #FFFFFF;
+    --np-color-soft: #F7F5F2;
+    --np-color-border: #E2E8F0;
+    --np-color-on-dark-muted: #D8E1EC;
+    --np-color-placeholder: #94A3B8;
+    --np-color-success: #15803D;
+    --np-color-warning: #F59E0B;
+    --np-color-error: #DC2626;
+
+    /* Semantic action colors. */
+    --np-color-action-primary: var(--np-color-primary);
+    --np-color-action-secondary: var(--np-color-secondary);
+    --np-color-link: var(--np-color-primary);
+    --np-color-link-hover: var(--np-color-secondary);
+    --np-color-focus: var(--np-color-secondary);
+
+    /* One storefront family. Hierarchy comes from weight/size, not a second
+       font family. */
+    --np-font-body: "Expose", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --np-font-heading: "Expose", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+    --np-font-weight-regular: 400;
+    --np-font-weight-medium: 500;
+    --np-font-weight-bold: 700;
+    --np-font-weight-black: 900;
+
+    /* Approved typography scale. All tracking is zero. */
+    --np-title-1-size: 48px;
+    --np-title-1-weight: 900;
+    --np-title-1-line-height: 1.15;
+
+    --np-title-2-size: 32px;
+    --np-title-2-weight: 900;
+    --np-title-2-line-height: 1.15;
+
+    --np-title-3-size: 24px;
+    --np-title-3-weight: 900;
+    --np-title-3-line-height: 1.20;
+
+    --np-title-4-size: 16px;
+    --np-title-4-weight: 900;
+    --np-title-4-line-height: 1.30;
+
+    --np-body-1-size: 18px;
+    --np-body-1-weight: 400;
+    --np-body-1-line-height: 1.40;
+
+    --np-body-2-size: 14px;
+    --np-body-2-weight: 400;
+    --np-body-2-line-height: 1.40;
+
+    --np-tag-size: 16px;
+    --np-tag-weight: 500;
+    --np-tag-line-height: 1.40;
+
+    --np-cta-all-caps-large-size: 18px;
+    --np-cta-all-caps-large-weight: 700;
+    --np-cta-all-caps-large-line-height: 1;
+    --np-cta-all-caps-regular-size: 16px;
+    --np-cta-all-caps-regular-weight: 700;
+    --np-cta-all-caps-regular-line-height: 1;
+    --np-cta-normal-large-size: 18px;
+    --np-cta-normal-large-weight: 400;
+    --np-cta-normal-large-line-height: 1;
+    --np-cta-normal-regular-size: 16px;
+    --np-cta-normal-regular-weight: 400;
+    --np-cta-normal-regular-line-height: 1;
+    --np-cta-normal-small-size: 14px;
+    --np-cta-normal-small-weight: 500;
+    --np-cta-normal-small-line-height: 1;
+    --np-letter-spacing: 0;
+
+    /* Compatibility semantic typography used throughout existing storefront
+       CSS. These aliases keep layout stable while centralizing visual identity. */
+    --np-text-body-size: var(--np-body-2-size);
+    --np-text-body-weight: var(--np-body-2-weight);
+    --np-text-body-line-height: var(--np-body-2-line-height);
+
+    --np-page-title-size: clamp(36px, 4.6vw, var(--np-title-1-size));
+    --np-page-title-weight: var(--np-title-1-weight);
+    --np-page-title-line-height: var(--np-title-1-line-height);
+
+    --np-section-heading-size: var(--np-title-2-size);
+    --np-section-heading-fluid-size: clamp(28px, 3vw, var(--np-title-2-size));
+    --np-section-heading-weight: var(--np-title-2-weight);
+    --np-section-heading-line-height: var(--np-title-2-line-height);
+    --np-section-heading-fluid-line-height: var(--np-title-2-line-height);
+    --np-section-description-size: var(--np-body-2-size);
+    --np-section-description-weight: var(--np-body-2-weight);
+    --np-section-description-line-height: var(--np-body-2-line-height);
+
+    --np-card-title-size: var(--np-title-4-size);
+    --np-card-title-fluid-size: var(--np-title-4-size);
+    --np-card-title-weight: var(--np-title-4-weight);
+    --np-card-title-line-height: var(--np-title-4-line-height);
+
+    --np-label-size: var(--np-tag-size);
+    --np-label-weight: var(--np-tag-weight);
+    --np-label-line-height: var(--np-tag-line-height);
+    --np-helper-text-size: var(--np-body-2-size);
+    --np-helper-text-weight: var(--np-body-2-weight);
+    --np-helper-text-line-height: var(--np-body-2-line-height);
+    --np-eyebrow-size: var(--np-tag-size);
+    --np-eyebrow-weight: var(--np-tag-weight);
+    --np-eyebrow-line-height: var(--np-tag-line-height);
+
+    /* Canonical storefront button geometry/state tokens. */
+    --np-button-height: 44px;
+    --np-button-height-sm: 40px;
+    --np-button-height-lg: 48px;
+    --np-button-height-xl: 54px;
+    --np-button-product-height: 3.2rem;
+    --np-button-padding-x: 18px;
+    --np-button-padding-x-sm: 14px;
+    --np-button-padding-x-lg: 20px;
+    --np-button-padding-x-xl: 24px;
+    --np-button-product-padding-x: 1rem;
+    --np-button-font-size: var(--np-cta-all-caps-regular-size);
+    --np-button-font-size-sm: var(--np-cta-normal-small-size);
+    --np-button-font-size-lg: var(--np-cta-all-caps-large-size);
+    --np-button-font-size-xl: var(--np-cta-all-caps-large-size);
+    --np-button-product-font-size: var(--np-cta-normal-regular-size);
+    --np-button-font-weight: var(--np-cta-all-caps-regular-weight);
+    --np-button-line-height: 1;
+    --np-button-radius: .4rem;
+    --np-button-border-width: 1px;
+    --np-button-gap: 8px;
+    --np-button-icon-size: 1rem;
+    --np-button-transition-duration: .18s;
+    --np-button-transition-easing: ease;
+    --np-button-hover-translate: -1px;
+    --np-button-focus-ring-width: 3px;
+    --np-button-focus-ring-offset: 3px;
+    --np-button-focus-ring-color: rgba(207, 93, 56, .38);
+    --np-button-disabled-opacity: .50;
+    --np-button-loading-opacity: .70;
+    --np-button-primary-shadow: 0 8px 18px rgba(6, 31, 68, .20);
+    --np-button-primary-shadow-hover: 0 12px 24px rgba(6, 31, 68, .25);
+    --np-button-secondary-shadow: 0 8px 18px rgba(207, 93, 56, .20);
+    --np-button-product-shadow: 0 12px 26px rgba(6, 31, 68, .20);
+    --np-button-product-shadow-hover: 0 14px 25px rgba(6, 31, 68, .24);
+}

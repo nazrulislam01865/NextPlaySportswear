@@ -78,7 +78,7 @@
 
             <div class="flex flex-col-reverse gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
                 <a class="btn btn-light" href="{{ route('checkout.information') }}">Back</a>
-                <button class="btn btn-red" type="submit">Continue to Billing</button>
+                <button class="btn btn-primary" type="submit">Continue to Billing</button>
             </div>
         </form>
     </x-storefront.checkout.panel>

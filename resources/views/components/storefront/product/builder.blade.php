@@ -174,7 +174,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                     <strong class="block text-sm text-brand-ink">Editing the saved cart item</strong>
                     <p class="mt-1 text-xs leading-5 text-slate-600">Sizes, customization choices, delivery options, roster entries, and retained artwork have been restored.</p>
                 </div>
-                <a href="{{ route('cart.index') }}" class="btn btn-white shrink-0">Cancel Editing</a>
+                <a href="{{ route('cart.index') }}" class="btn btn-outline shrink-0">Cancel Editing</a>
             </div>
         @endif
 
@@ -380,13 +380,13 @@ window.productBuilderFabricPricing = function (config = {}) {
                 @once
                     <style>
                         .np-artwork-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;margin-top:1rem}
-                        .np-artwork-preview-card{display:grid;grid-template-columns:76px minmax(0,1fr) auto;align-items:center;gap:.8rem;min-width:0;padding:.7rem;border:1px solid #e2e8f0;border-radius:16px;background:#f8fafc}
+                        .np-artwork-preview-card{display:grid;grid-template-columns:76px minmax(0,1fr) auto;align-items:center;gap:.8rem;min-width:0;padding:.7rem;border:1px solid var(--np-color-border);border-radius:16px;background:#f8fafc}
                         .np-artwork-preview-media{display:grid;width:76px;height:76px;place-items:center;overflow:hidden;border:1px solid #dbe4ef;border-radius:12px;background:#fff}
                         .np-artwork-preview-image{width:100%;height:100%;object-fit:contain;padding:.3rem}
                         .np-artwork-file-icon{display:grid;width:100%;height:100%;place-items:center;background:linear-gradient(145deg,#eff6ff,#fff);font-size:.72rem;font-weight:900;letter-spacing:.08em;color:#1d4f91}
                         .np-artwork-preview-copy{min-width:0}
                         .np-artwork-preview-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#102342;font-size:.82rem}
-                        .np-artwork-preview-meta{display:block;margin-top:.2rem;color:#64748b;font-size:.75rem}
+                        .np-artwork-preview-meta{display:block;margin-top:.2rem;color:var(--np-color-muted);font-size:.75rem}
                         .np-artwork-preview-actions{display:flex;align-items:center;gap:.45rem}
                         .np-artwork-view-button,.np-artwork-remove-button{display:grid;min-width:38px;height:38px;place-items:center;border-radius:999px;font-size:.75rem;font-weight:900;text-decoration:none;transition:background-color .15s ease,border-color .15s ease,color .15s ease}
                         .np-artwork-view-button{padding:0 .75rem;border:1px solid #bfd0e6;background:#fff;color:#1d4f91}
@@ -616,7 +616,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                     </section>
                 @endif
 
-                <div class="xl:hidden"><button type="submit" class="btn btn-red w-full py-4">{{ $isEditing ? 'Update Cart Item' : 'Add Configured Product' }}</button></div>
+                <div class="xl:hidden"><button type="submit" class="btn btn-primary btn-xl w-full">{{ $isEditing ? 'Update Cart Item' : 'Add Configured Product' }}</button></div>
             </form>
 
             <aside class="h-fit overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-hero xl:sticky xl:top-36">
@@ -639,7 +639,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                     <div class="flex justify-between"><span class="text-slate-500">Quantity</span><strong x-text="totalQuantity()"></strong></div>
                     <div class="flex items-end justify-between border-t border-dashed border-slate-300 pt-4"><span class="font-black">Estimated total</span><strong class="text-2xl font-black text-brand-red" x-text="money(totalPrice())"></strong></div>
                 </div>
-                <div class="px-5 pb-5"><button type="button" class="btn btn-red hidden w-full py-4 xl:flex" @click="$root.querySelector('form').requestSubmit()">{{ $isEditing ? 'Update Cart Item' : 'Add Configured Product' }}</button><p class="mt-3 text-center text-[10px] leading-4 text-slate-500">Final prices, selections, sizes, shipping, roster information, and files are recalculated and validated by the Laravel backend.</p></div>
+                <div class="px-5 pb-5"><button type="button" class="btn btn-primary btn-xl hidden w-full xl:flex" @click="$root.querySelector('form').requestSubmit()">{{ $isEditing ? 'Update Cart Item' : 'Add Configured Product' }}</button><p class="mt-3 text-center text-[10px] leading-4 text-slate-500">Final prices, selections, sizes, shipping, roster information, and files are recalculated and validated by the Laravel backend.</p></div>
             </aside>
         </div>
 

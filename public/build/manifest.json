@@ -10,22 +10,50 @@
     "isDynamicEntry": true
   },
   "resources/css/admin.css": {
-    "file": "assets/admin-Gs06hsWw.css",
+    "file": "assets/admin-Cot2tdke.css",
     "name": "admin",
     "names": [
       "admin.css"
     ],
     "src": "resources/css/admin.css",
-    "isEntry": true
+    "isEntry": true,
+    "assets": [
+      "assets/Expose-Regular-BOjfCJMT.woff2",
+      "assets/Expose-Medium-CDDCfgwp.woff2",
+      "assets/Expose-Bold-F_o53Q6y.woff2",
+      "assets/Expose-Black-CCoJbLcu.woff2"
+    ]
   },
   "resources/css/storefront.css": {
-    "file": "assets/storefront-CCQNJtRw.css",
+    "file": "assets/storefront-CWrLPGg-.css",
     "name": "storefront",
     "names": [
       "storefront.css"
     ],
     "src": "resources/css/storefront.css",
-    "isEntry": true
+    "isEntry": true,
+    "assets": [
+      "assets/Expose-Regular-BOjfCJMT.woff2",
+      "assets/Expose-Medium-CDDCfgwp.woff2",
+      "assets/Expose-Bold-F_o53Q6y.woff2",
+      "assets/Expose-Black-CCoJbLcu.woff2"
+    ]
+  },
+  "resources/fonts/expose/Expose-Black.woff2": {
+    "file": "assets/Expose-Black-CCoJbLcu.woff2",
+    "src": "resources/fonts/expose/Expose-Black.woff2"
+  },
+  "resources/fonts/expose/Expose-Bold.woff2": {
+    "file": "assets/Expose-Bold-F_o53Q6y.woff2",
+    "src": "resources/fonts/expose/Expose-Bold.woff2"
+  },
+  "resources/fonts/expose/Expose-Medium.woff2": {
+    "file": "assets/Expose-Medium-CDDCfgwp.woff2",
+    "src": "resources/fonts/expose/Expose-Medium.woff2"
+  },
+  "resources/fonts/expose/Expose-Regular.woff2": {
+    "file": "assets/Expose-Regular-BOjfCJMT.woff2",
+    "src": "resources/fonts/expose/Expose-Regular.woff2"
   },
   "resources/js/admin.js": {
     "file": "assets/admin-DoPAE94f.js",

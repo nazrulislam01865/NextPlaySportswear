@@ -56,6 +56,7 @@
             <div class="divide-y divide-slate-100">
                 @forelse($recentNotifications as $notification)
                     @php($data = is_array($notification->data) ? $notification->data : [])
+                    @php($changeDetails = is_array($data['change_details'] ?? null) ? array_values(array_filter($data['change_details'])) : [])
                     <article class="grid gap-4 p-5 lg:grid-cols-[auto_minmax(220px,1fr)_auto] lg:items-center {{ $notification->read_at ? '' : 'bg-slate-50/70' }}">
                         <div class="grid h-11 w-11 place-items-center rounded-2xl bg-slate-100 text-lg font-black text-brand-dark">
                             {{ $data['icon'] ?? '🔔' }}
@@ -68,6 +69,16 @@
                                 @endunless
                             </div>
                             <p class="mt-1 text-sm leading-6 text-slate-600">{{ $data['message'] ?? 'Admin activity notification.' }}</p>
+                            @if($changeDetails !== [])
+                                <div class="admin-notification-change-list mt-2" aria-label="Changes made">
+                                    @foreach(array_slice($changeDetails, 0, 4) as $detail)
+                                        <span>{{ $detail }}</span>
+                                    @endforeach
+                                    @if(count($changeDetails) > 4)
+                                        <span>+{{ count($changeDetails) - 4 }} more changes</span>
+                                    @endif
+                                </div>
+                            @endif
                             <p class="mt-1 text-xs font-semibold text-slate-400">{{ optional($notification->created_at)->format('M d, Y · g:i A') }}</p>
                         </div>
                         <div class="flex flex-wrap gap-2 lg:justify-end">

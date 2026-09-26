@@ -10,8 +10,8 @@
     status-subtitle="Estimated delivery: {{ $order['estimated_delivery'] }}"
 >
     <x-slot:actions>
-        <a href="{{ route('orders.details.legacy') }}" class="btn btn-red">View Order Details</a>
-        <a href="{{ route('orders.track') }}" class="btn btn-white">Track Order</a>
+        <a href="{{ route('orders.details.legacy') }}" class="btn btn-primary">View Order Details</a>
+        <a href="{{ route('orders.track') }}" class="btn btn-outline">Track Order</a>
     </x-slot:actions>
 
     <section class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-card lg:p-7">

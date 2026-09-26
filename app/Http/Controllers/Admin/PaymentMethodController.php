@@ -132,6 +132,14 @@ class PaymentMethodController extends Controller
         $data = $request->validated();
         unset($data['footer_icon'], $data['remove_footer_icon']);
 
+        // Security-sensitive gateway behavior is defined by code/config, not
+        // editable database switches. Admins control presentation, limits,
+        // ordering and enabled state; the adapter controls payment behavior.
+        $capabilities = $this->gateways->capabilities((string) $data['provider']);
+        foreach (['is_online', 'requires_provider_redirect', 'requires_manual_review', 'allows_saved_methods'] as $key) {
+            $data[$key] = (bool) $capabilities[$key];
+        }
+
         return $data;
     }
 

@@ -54,16 +54,16 @@
 <section class="np-testimonials-v2" id="testimonials" data-np-testimonials-section>
     <style>
         .np-testimonials-v2 {
-            --np-ink: #111827;
-            --np-muted: #64748b;
-            --np-line: #e2e8f0;
-            --np-soft: #f8fafc;
-            --np-white: #ffffff;
-            --np-red: #ef233c;
-            --np-red-dark: #dc2626;
-            --np-gold: #f59e0b;
-            --np-navy: #0f172a;
-            --np-green: #16a34a;
+            --np-ink: var(--np-color-heading);
+            --np-muted: var(--np-color-muted);
+            --np-line: var(--np-color-border);
+            --np-soft: var(--np-color-soft);
+            --np-white: var(--np-color-page);
+            --np-red: var(--np-color-primary);
+            --np-red-dark: var(--np-color-primary-hover);
+            --np-gold: var(--np-color-warning);
+            --np-navy: var(--np-color-navy-dark);
+            --np-green: var(--np-color-success);
             --np-radius: 24px;
             --np-shadow: 0 18px 45px rgba(15, 23, 42, .10);
             position: relative;
@@ -684,7 +684,7 @@
         /* Prototype-matched upper testimonial section. Lower testimonial sections remain unchanged. */
         .np-testimonials-v2 {
             padding: 24px 0 66px;
-            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-family: var(--np-font-body);
             background:
                 radial-gradient(circle at 97% 7%, rgba(239, 35, 60, .12), transparent 26%),
                 linear-gradient(180deg, #ffffff 0%, #ffffff 72%, #f8fafc 100%);
@@ -744,7 +744,7 @@
         .np-testimonials-btn {
             min-height: 60px;
             padding: 15px 25px;
-            border-color: #e2e8f0;
+            border-color: var(--np-color-border);
             font-size: 17px;
             font-weight: 800;
         }
@@ -1282,6 +1282,35 @@
             .np-featured-quote { margin-top: 34px; font-size: clamp(26px, 7.8vw, 34px); }
         }
 
+        /* Phase 3: legacy prototype layers remain for non-button layout only.
+           Final CTA geometry/states resolve from the global button tokens. */
+        .np-testimonials-btn.btn {
+            min-height: var(--np-button-height-lg) !important;
+            border-radius: var(--np-button-radius) !important;
+            padding: 0 var(--np-button-padding-x-lg) !important;
+            font-size: var(--np-button-font-size-lg) !important;
+            font-weight: var(--np-button-font-weight) !important;
+            line-height: var(--np-button-line-height) !important;
+            transition-duration: var(--np-button-transition-duration) !important;
+        }
+        .np-testimonials-btn.btn-primary {
+            border-color: var(--np-color-primary) !important;
+            background: var(--np-color-primary) !important;
+            color: #fff !important;
+            box-shadow: var(--np-button-primary-shadow) !important;
+        }
+        .np-testimonials-btn.btn-primary:hover {
+            border-color: var(--np-color-primary-hover) !important;
+            background: var(--np-color-primary-hover) !important;
+            box-shadow: var(--np-button-primary-shadow-hover) !important;
+        }
+        .np-testimonials-btn.btn-outline {
+            border-color: var(--np-color-border) !important;
+            background: var(--np-color-page) !important;
+            color: var(--np-color-heading) !important;
+            box-shadow: none !important;
+        }
+
     </style>
 
     <div class="np-testimonials-shell">
@@ -1295,8 +1324,8 @@
                 />
 
                 <div class="np-testimonials-actions">
-                    <a class="np-testimonials-btn is-red np-home-action" href="{{ $primaryHref }}">{{ $primaryLabel }}</a>
-                    <a class="np-testimonials-btn np-home-action" href="{{ $secondaryHref }}">{{ $secondaryLabel }}</a>
+                    <a class="btn btn-primary btn-lg np-testimonials-btn np-home-action" href="{{ $primaryHref }}">{{ $primaryLabel }}</a>
+                    <a class="btn btn-outline btn-lg np-testimonials-btn np-home-action" href="{{ $secondaryHref }}">{{ $secondaryLabel }}</a>
                 </div>
 
                 <div class="np-review-platforms" aria-label="Review sharing platforms">

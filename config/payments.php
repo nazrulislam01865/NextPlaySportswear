@@ -20,6 +20,12 @@ return [
         'manual' => [
             'driver' => ManualGateway::class,
             'enabled' => true,
+            'capabilities' => [
+                'is_online' => false,
+                'requires_provider_redirect' => false,
+                'requires_manual_review' => true,
+                'allows_saved_methods' => false,
+            ],
         ],
 
         'stripe' => [
@@ -30,11 +36,18 @@ return [
             'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
             'currency' => strtoupper((string) env('STRIPE_CURRENCY', 'USD')),
             'checkout_expires_minutes' => (int) env('STRIPE_CHECKOUT_EXPIRES_MINUTES', 30),
+            'capabilities' => [
+                'is_online' => true,
+                'requires_provider_redirect' => true,
+                'requires_manual_review' => false,
+                'allows_saved_methods' => false,
+            ],
         ],
     ],
 
     'webhooks' => [
         'queue' => env('PAYMENT_WEBHOOK_QUEUE', 'payments'),
+        'claim_timeout_minutes' => (int) env('PAYMENT_WEBHOOK_CLAIM_TIMEOUT_MINUTES', 10),
     ],
 
     'reconciliation' => [

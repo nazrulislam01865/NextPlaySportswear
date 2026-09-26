@@ -6,16 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\OrderPayment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 final class PaymentReturnController extends Controller
 {
-    public function __invoke(Request $request, string $provider): RedirectResponse
+    public function __invoke(Request $request, string $provider): RedirectResponse|View
     {
         $sessionId = trim((string) $request->query('session_id', ''));
 
         if ($sessionId === '') {
-            return redirect()->route('order.confirmation')
-                ->with('status', 'Your payment is being verified securely.');
+            return $this->verificationView($provider, 'Your payment return was received. Provider confirmation is still being verified securely.');
         }
 
         $payment = OrderPayment::query()
@@ -32,7 +32,19 @@ final class PaymentReturnController extends Controller
             return redirect()->route('account.orders.show', $payment->order)->with('status', $message);
         }
 
-        return redirect()->route('order.confirmation')
-            ->with('status', 'Payment return received. The order will update only after provider verification.');
+        return $this->verificationView($provider, 'Payment return received. The order will update only after signed provider verification.');
+    }
+
+    private function verificationView(string $provider, string $message): View
+    {
+        return view('storefront.payments.verifying', [
+            'provider' => ucfirst($provider),
+            'message' => $message,
+            'seo' => [
+                'title' => 'Payment Verification | NextPlay Sportswear',
+                'description' => 'Secure payment verification status.',
+                'robots' => 'noindex, nofollow',
+            ],
+        ]);
     }
 }

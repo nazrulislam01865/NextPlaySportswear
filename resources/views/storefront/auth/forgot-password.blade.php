@@ -10,13 +10,13 @@
                 @csrf
                 <input type="hidden" name="email" value="{{ old('email') }}">
 
-                <button type="submit" class="np-system-card__primary" data-submitting-label="Resending…">
+                <button type="submit" class="btn btn-primary btn-lg np-system-card__primary" data-submitting-label="Resending…">
                     Resend Link
                 </button>
             </form>
 
             <x-slot:footer>
-                <a href="{{ route('login') }}" class="np-system-card__secondary-link">
+                <a href="{{ route('login') }}" class="btn btn-link np-system-card__secondary-link">
                     Back to Sign In
                 </a>
             </x-slot:footer>
@@ -40,13 +40,13 @@
                     autofocus
                 />
 
-                <button type="submit" class="np-system-card__primary" data-submitting-label="Sending…">
+                <button type="submit" class="btn btn-primary btn-lg np-system-card__primary" data-submitting-label="Sending…">
                     Send Reset Link
                 </button>
             </form>
 
             <x-slot:footer>
-                <a href="{{ route('login') }}" class="np-system-card__secondary-link">
+                <a href="{{ route('login') }}" class="btn btn-link np-system-card__secondary-link">
                     Back to Sign In
                 </a>
             </x-slot:footer>

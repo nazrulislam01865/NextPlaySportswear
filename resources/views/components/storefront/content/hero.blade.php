@@ -49,7 +49,7 @@
                 <p class="text-xs font-black uppercase tracking-[.18em] text-red-300">Need direct help?</p>
                 <h2 class="mt-3 font-display text-3xl font-bold uppercase leading-tight">Talk to our support team</h2>
                 <p class="mt-3 text-sm leading-6 text-white/75">Questions about sizes, artwork, shipping, returns, or a team order can be sent through our contact page.</p>
-                <a href="{{ route('contact') }}" class="btn btn-red mt-6">Contact Us</a>
+                <a href="{{ route('contact') }}" class="btn btn-primary mt-6">Contact Us</a>
             </div>
         @endif
     </div>

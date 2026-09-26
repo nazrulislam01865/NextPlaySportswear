@@ -18,8 +18,8 @@
                     <p>Tell us what you need for your team, school, league, or event. Share your items, quantity, sizes, artwork, delivery date, and shipping details. We will review everything and prepare a clear quote.</p>
                 </div>
                 <div class="bulk-quote-page-head-actions">
-                    <a class="bulk-page-btn bulk-page-btn-ghost" href="#faq">Read FAQ</a>
-                    <a class="bulk-page-btn bulk-page-btn-red" href="#quote">Start Form →</a>
+                    <a class="btn btn-outline btn-lg bulk-page-btn" href="#faq">Read FAQ</a>
+                    <a class="btn btn-primary btn-lg bulk-page-btn" href="#quote">Start Form →</a>
                 </div>
             </div>
             <div class="bulk-quote-trust-strip">
@@ -224,7 +224,7 @@
 
                         <div class="bulk-quote-submit-row">
                             <div class="bulk-quote-privacy">🛡️ Your details are used only to prepare your quote.</div>
-                            <button class="bulk-page-btn bulk-page-btn-red" type="submit">Request Bulk Quote →</button>
+                            <button class="btn btn-primary btn-lg bulk-page-btn" type="submit">Request Bulk Quote →</button>
                         </div>
                     </div>
                 </form>

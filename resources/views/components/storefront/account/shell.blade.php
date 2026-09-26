@@ -60,7 +60,7 @@
 
                         <form method="POST" action="{{ route('logout') }}" class="mt-5">
                             @csrf
-                            <button type="submit" class="btn btn-white w-full border-brand-red text-brand-red hover:bg-brand-red hover:text-white">
+                            <button type="submit" class="btn btn-danger-outline w-full">
                                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                                     <path d="M16 17l5-5-5-5"></path>

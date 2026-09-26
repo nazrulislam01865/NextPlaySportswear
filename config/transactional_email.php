@@ -12,20 +12,49 @@ return [
         env('MAIL_MAILER', 'log')
     ),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Delivery Mode
+    |--------------------------------------------------------------------------
+    |
+    | "after_response" is the safe default for normal transactional email.
+    | It sends after the HTTP response in the current PHP process and therefore
+    | does not depend on a long-running queue worker. This prevents a stopped
+    | worker from silently leaving customer emails in the jobs table forever.
+    |
+    | Use "queue" only when production has a supervised queue worker. Use
+    | "sync" when every message must be sent before the request completes.
+    |
+    | Supported: "after_response", "queue", "sync"
+    |
+    */
+    'delivery' => [
+        'mode' => env(
+            'TRANSACTIONAL_EMAIL_DELIVERY_MODE',
+            'after_response'
+        ),
+    ],
+
     'critical' => [
 
-        // Password reset is user-blocking and security-critical. It is
-        // queued by default so valid and unknown reset requests have similar
-        // response behavior and SMTP latency cannot reveal account existence.
-        // Set true only if you explicitly accept that timing/reliability tradeoff.
+        // Verification is user-blocking. By default the SMTP/API provider must
+        // accept the message before registration/resend reports success.
+        'email_verification_sync' => filter_var(
+            env('TRANSACTIONAL_EMAIL_VERIFICATION_SYNC', true),
+            FILTER_VALIDATE_BOOLEAN
+        ),
+
+        // Password reset is user-blocking and security-critical. The provider
+        // must accept it before Laravel reports that a reset link was sent.
         'password_reset_sync' => filter_var(
-            env('TRANSACTIONAL_EMAIL_PASSWORD_RESET_SYNC', false),
+            env('TRANSACTIONAL_EMAIL_PASSWORD_RESET_SYNC', true),
             FILTER_VALIDATE_BOOLEAN
         ),
     ],
 
     'queue' => [
 
+        // Backward-compatible switch used only when delivery.mode = "queue".
         'enabled' => filter_var(
             env('TRANSACTIONAL_EMAIL_QUEUE', true),
             FILTER_VALIDATE_BOOLEAN

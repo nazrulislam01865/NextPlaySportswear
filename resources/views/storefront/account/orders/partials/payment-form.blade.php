@@ -44,7 +44,7 @@
             @endif
         </fieldset>
 
-        <button class="btn btn-red mt-6 w-full sm:w-auto" type="submit" @disabled(empty($paymentOptions))>
+        <button class="btn btn-primary mt-6 w-full sm:w-auto" type="submit" @disabled(empty($paymentOptions))>
             {{ $retryMode ? 'Retry Secure Payment' : 'Continue to Secure Provider' }}
         </button>
     </form>

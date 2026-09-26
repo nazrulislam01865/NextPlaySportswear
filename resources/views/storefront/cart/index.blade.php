@@ -39,7 +39,7 @@
                     </div>
                     <h2>Your cart is empty</h2>
                     <p>Find something you love and add it to your cart.</p>
-                    <a href="{{ route('products.index') }}" class="btn btn-red np-cart-empty-cta">
+                    <a href="{{ route('products.index') }}" class="btn btn-primary np-cart-empty-cta">
                         <span>Shop Products</span>
                         <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
                             <path d="M4 10h11M11 6l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>

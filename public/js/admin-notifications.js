@@ -44,6 +44,12 @@
         const unread = !notification.read_at;
         const id = escapeHtml(notification.id || '');
         const url = data.url ? escapeHtml(data.url) : '';
+        const changeDetails = Array.isArray(data.change_details)
+            ? data.change_details.filter(Boolean).slice(0, 4)
+            : [];
+        const changeDetailsMarkup = changeDetails.length
+            ? `<div class="admin-notification-change-list">${changeDetails.map((detail) => `<span>${escapeHtml(detail)}</span>`).join('')}</div>`
+            : '';
         const openMarkup = url
             ? `<a href="${url}" class="admin-notification-open" data-notification-id="${id}">Open</a>`
             : '';
@@ -54,6 +60,7 @@
                 <div class="admin-notification-item-copy">
                     <strong>${escapeHtml(data.title || 'NextPlay Notification')}</strong>
                     <p>${escapeHtml(data.message || '')}</p>
+                    ${changeDetailsMarkup}
                     <small>${escapeHtml(notification.created_at_human || formatTime(notification.created_at))}</small>
                     <div class="admin-notification-item-actions">
                         ${openMarkup}
@@ -126,7 +133,10 @@
         const data = notification.data || {};
         const toast = document.getElementById('adminToast');
         if (!toast) return;
-        toast.textContent = `${data.icon || '🔔'} ${data.title || 'Notification'}: ${data.message || ''}`;
+        const firstChange = Array.isArray(data.change_details) && data.change_details.length
+            ? ` ${data.change_details[0]}`
+            : '';
+        toast.textContent = `${data.icon || '🔔'} ${data.title || 'Notification'}: ${data.message || ''}${firstChange}`;
         toast.classList.add('show');
         window.setTimeout(() => toast.classList.remove('show'), 5200);
     }

@@ -135,7 +135,7 @@ class AdminNotificationService
         ], $extra));
     }
 
-    public function productChanged(Product $product, string $action, ?User $actor = null, ?string $url = null): int
+    public function productChanged(Product $product, string $action, ?User $actor = null, ?string $url = null, array $changeDetails = []): int
     {
         $action = in_array($action, ['created', 'updated', 'deleted', 'duplicated'], true) ? $action : 'updated';
         $actorName = trim((string) ($actor?->name ?: $actor?->email ?: 'An administrator'));
@@ -178,12 +178,22 @@ class AdminNotificationService
             'resource_name' => $productName,
             'resource_code' => $sku,
             'action' => $action,
+            'change_details' => $changeDetails,
             'occurred_at' => now()->toIso8601String(),
         ]);
     }
 
     private function normalizeData(array $data): array
     {
+        $changeDetails = collect($data['change_details'] ?? [])
+            ->filter(fn ($detail): bool => is_scalar($detail))
+            ->map(fn ($detail): string => trim((string) $detail))
+            ->filter()
+            ->unique()
+            ->take(12)
+            ->values()
+            ->all();
+
         return [
             'title' => trim((string) ($data['title'] ?? 'NextPlay Notification')),
             'message' => trim((string) ($data['message'] ?? '')),
@@ -197,6 +207,7 @@ class AdminNotificationService
             'resource_name' => trim((string) ($data['resource_name'] ?? '')),
             'resource_code' => trim((string) ($data['resource_code'] ?? '')),
             'action' => trim((string) ($data['action'] ?? '')),
+            'change_details' => $changeDetails,
             'route_name' => trim((string) ($data['route_name'] ?? '')),
             'request_method' => trim((string) ($data['request_method'] ?? '')),
             'occurred_at' => (string) ($data['occurred_at'] ?? now()->toIso8601String()),

@@ -7,7 +7,7 @@
     eyebrow="Digital fulfillment"
 >
     <x-slot:actions>
-        <a class="btn btn-white" href="{{ route('account.orders.index') }}">Order History</a>
+        <a class="btn btn-outline" href="{{ route('account.orders.index') }}">Order History</a>
     </x-slot:actions>
 
     <div class="rounded-3xl border border-blue-200 bg-blue-50 p-5 text-sm leading-6 text-blue-800">
@@ -39,7 +39,7 @@
                     </div>
                     @if($download->isAvailable())
                         <a
-                            class="btn btn-red"
+                            class="btn btn-primary"
                             href="{{ URL::temporarySignedRoute('account.downloads.download', now()->addMinutes(10), ['download' => $download]) }}"
                         >Download</a>
                     @else

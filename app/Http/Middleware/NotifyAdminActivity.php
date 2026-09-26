@@ -19,15 +19,18 @@ class NotifyAdminActivity
 {
     public function handle(Request $request, Closure $next): Response
     {
+        $routeModel = $this->firstRouteModel($request);
+        $beforeAttributes = $routeModel?->getAttributes() ?? [];
         $response = $next($request);
 
         if ($this->shouldNotify($request, $response)) {
             try {
                 $routeName = (string) $request->route()?->getName();
                 $resourceInfo = $this->resourceInfo($request, $routeName);
+                $action = $this->actionFor($request, $routeName);
 
                 app(AdminNotificationService::class)->adminActivity(
-                    $this->actionFor($request, $routeName),
+                    $action,
                     $resourceInfo['label'],
                     $resourceInfo['name'],
                     Auth::guard('admin')->user(),
@@ -37,6 +40,9 @@ class NotifyAdminActivity
                         'resource_code' => $resourceInfo['code'],
                         'route_name' => $routeName,
                         'request_method' => $request->method(),
+                        'change_details' => $action === 'updated'
+                            ? $this->modelChangeDetails($routeModel, $beforeAttributes)
+                            : [],
                     ]
                 );
             } catch (Throwable $exception) {
@@ -260,5 +266,104 @@ class NotifyAdminActivity
         }
 
         return url()->previous() ?: route('admin.dashboard');
+    }
+
+    /**
+     * Build a small, safe attribute diff for generic admin update notifications.
+     * Product updates use their richer dedicated catalog change tracker instead.
+     *
+     * @param array<string, mixed> $before
+     * @return array<int, string>
+     */
+    private function modelChangeDetails(?Model $model, array $before): array
+    {
+        if (! $model || $before === []) {
+            return [];
+        }
+
+        $fresh = $model->fresh();
+        if (! $fresh) {
+            return [];
+        }
+
+        $after = $fresh->getAttributes();
+        $currency = trim((string) ($after['currency'] ?? $before['currency'] ?? ''));
+        $details = [];
+
+        foreach ($after as $field => $newValue) {
+            if (! array_key_exists($field, $before) || $this->skipAuditAttribute($field)) {
+                continue;
+            }
+
+            $oldValue = $before[$field];
+            if ((string) $oldValue === (string) $newValue) {
+                continue;
+            }
+
+            $label = Str::of($field)->replace('_', ' ')->headline()->toString();
+            $details[] = $this->formatAuditChange($field, $label, $oldValue, $newValue, $currency);
+
+            if (count($details) >= 8) {
+                break;
+            }
+        }
+
+        return array_values(array_unique(array_filter($details)));
+    }
+
+    private function skipAuditAttribute(string $field): bool
+    {
+        if (in_array($field, [
+            'id', 'created_at', 'updated_at', 'deleted_at', 'created_by', 'updated_by',
+            'remember_token', 'email_verified_at', 'last_login_at', 'last_login_ip',
+        ], true)) {
+            return true;
+        }
+
+        return Str::contains(Str::lower($field), [
+            'password', 'token', 'secret', 'credential', 'private_key', 'api_key', 'signature',
+        ]);
+    }
+
+    private function formatAuditChange(string $field, string $label, mixed $oldValue, mixed $newValue, string $currency): string
+    {
+        if ($this->isLongAuditValue($oldValue) || $this->isLongAuditValue($newValue)) {
+            return 'Updated '.Str::lower($label);
+        }
+
+        $old = $this->auditDisplayValue($field, $oldValue, $currency);
+        $new = $this->auditDisplayValue($field, $newValue, $currency);
+
+        return 'Updated '.Str::lower($label).' from '.$old.' to '.$new;
+    }
+
+    private function isLongAuditValue(mixed $value): bool
+    {
+        if (is_array($value) || is_object($value)) {
+            return true;
+        }
+
+        $text = trim((string) $value);
+
+        return mb_strlen($text) > 70 || Str::contains($text, ['<p', '<div', '<table', '{', '[']);
+    }
+
+    private function auditDisplayValue(string $field, mixed $value, string $currency): string
+    {
+        if ($value === null || $value === '') {
+            return 'Not set';
+        }
+
+        if (Str::startsWith($field, 'is_') || Str::startsWith($field, 'has_') || in_array($field, ['active', 'enabled'], true)) {
+            return filter_var($value, FILTER_VALIDATE_BOOL) ? 'Yes' : 'No';
+        }
+
+        if (Str::contains($field, ['price', 'amount', 'cost', 'total']) && is_numeric($value)) {
+            return trim(($currency !== '' ? $currency.' ' : '').number_format((float) $value, 2, '.', ','));
+        }
+
+        $text = trim((string) $value);
+
+        return $text !== '' ? $text : 'Not set';
     }
 }

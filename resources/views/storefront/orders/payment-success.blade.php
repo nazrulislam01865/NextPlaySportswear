@@ -10,8 +10,8 @@
     status-subtitle="Payment method: {{ $order['payment_method']['label'] ?? 'Secure provider' }}"
 >
     <x-slot:actions>
-        <a href="{{ route('order.confirmation') }}" class="btn btn-red">View Confirmation</a>
-        <a href="{{ route('orders.invoice.legacy') }}" class="btn btn-white">View Invoice</a>
+        <a href="{{ route('order.confirmation') }}" class="btn btn-primary">View Confirmation</a>
+        <a href="{{ route('orders.invoice.legacy') }}" class="btn btn-outline">View Invoice</a>
     </x-slot:actions>
 
     <section class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-card lg:p-7">
@@ -35,8 +35,8 @@
         </div>
 
         <div class="mt-6 flex flex-col gap-3 sm:flex-row">
-            <a href="{{ route('orders.track') }}" class="btn btn-red">Track Order</a>
-            <a href="{{ route('orders.invoice.legacy') }}" class="btn btn-white">Download Invoice</a>
+            <a href="{{ route('orders.track') }}" class="btn btn-primary">Track Order</a>
+            <a href="{{ route('orders.invoice.legacy') }}" class="btn btn-outline">Download Invoice</a>
         </div>
     </section>
 </x-storefront.order.shell>

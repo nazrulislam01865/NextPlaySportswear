@@ -17,7 +17,7 @@
     <div class="site-container overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-card sm:rounded-[28px]">
         <div class="np-product-detail-tabs flex overflow-x-auto border-b border-slate-200 bg-slate-50">
             @foreach(['description'=>'Description','specifications'=>'Specifications','customization'=>'Customization & Artwork','fulfillment'=>'Fulfillment','faq'=>'FAQ'] as $key => $label)
-                <button type="button" @click="tab='{{ $key }}'" :class="tab === '{{ $key }}' ? 'bg-white text-brand-red shadow-[inset_0_-3px_0_#e91d33]' : 'text-slate-600'" class="np-product-detail-tab min-h-12 min-w-[132px] flex-1 border-r border-slate-200 px-3 py-3 text-[11px] font-black leading-tight last:border-r-0 sm:px-5 sm:py-4 sm:text-sm">{{ $label }}</button>
+                <button type="button" @click="tab='{{ $key }}'" :class="tab === '{{ $key }}' ? 'bg-white text-brand-red shadow-[inset_0_-3px_0_currentColor]' : 'text-slate-600'" class="np-product-detail-tab min-h-12 min-w-[132px] flex-1 border-r border-slate-200 px-3 py-3 text-[11px] font-black leading-tight last:border-r-0 sm:px-5 sm:py-4 sm:text-sm">{{ $label }}</button>
             @endforeach
         </div>
         <div class="p-4 sm:p-6">

@@ -10,6 +10,7 @@ use App\Http\Requests\Admin\ProductFormRequest;
 use App\Models\CatalogAttribute;
 use App\Models\Category;
 use App\Models\Faq;
+use App\Models\Gender;
 use App\Models\JerseyCustomizationOption;
 use App\Models\WorldCupCustomizationOption;
 use App\Models\MediaLibraryImage;
@@ -334,8 +335,9 @@ class ProductController extends Controller
     {
         $product->load($this->relations());
         $before = $this->productChangeSummaryService->snapshot($product);
+        $changeDetails = [];
 
-        DB::transaction(function () use ($request, $product, $before): void {
+        DB::transaction(function () use ($request, $product, $before, &$changeDetails): void {
             $product->update($this->productPayload($request, $product));
             $this->syncRelations($product, $request);
             $product->load($this->relations());
@@ -343,6 +345,7 @@ class ProductController extends Controller
 
             $product->refresh()->load($this->relations());
             $after = $this->productChangeSummaryService->snapshot($product);
+            $changeDetails = $this->productChangeSummaryService->changeDetails($before, $after);
 
             $product->forceFill([
                 'last_update_summary' => $this->productChangeSummaryService->summarize($before, $after),
@@ -355,7 +358,8 @@ class ProductController extends Controller
             $product->fresh() ?? $product,
             'updated',
             auth('admin')->user(),
-            route('admin.products.edit', $product)
+            route('admin.products.edit', $product),
+            $changeDetails
         );
 
         return redirect()->route('admin.products.edit', $product)->with('status', 'Product updated successfully.');
@@ -581,6 +585,17 @@ class ProductController extends Controller
             ->ordered()
             ->get();
 
+        $genderOptions = Gender::query()
+            ->where(function ($query) use ($product): void {
+                $query->where('is_active', true);
+
+                if ($product->gender_id) {
+                    $query->orWhere('id', $product->gender_id);
+                }
+            })
+            ->ordered()
+            ->get();
+
         return view($view, [
             'product' => $product,
             'categoryOptions' => $this->categoryTreeService->leafOptions(),
@@ -595,13 +610,14 @@ class ProductController extends Controller
             'productionMethodOptions' => $productionMethodOptions,
             'shippingMethodOptions' => $shippingMethodOptions,
             'faqOptions' => $faqOptions,
+            'genderOptions' => $genderOptions,
         ]);
     }
 
     private function relations(): array
     {
         return [
-            'category', 'subcategory', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'sizeGroups.masterGroup',
+            'category', 'subcategory', 'gender', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'sizeGroups.masterGroup',
             'priceTiers', 'fabricPriceTables.tiers', 'artworkMethods', 'productionSpeeds.productionMethod', 'shippingMethods', 'faqs',
         ];
     }
@@ -659,7 +675,7 @@ class ProductController extends Controller
         $data = $request->validated();
 
         $payload = Arr::only($data, [
-            'category_id', 'subcategory_id', 'name', 'slug', 'sku', 'status', 'product_type', 'product_profile', 'brand',
+            'category_id', 'subcategory_id', 'name', 'slug', 'sku', 'status', 'product_type', 'gender_id', 'product_profile', 'brand',
             'badge_label', 'badge_color', 'short_description', 'base_price', 'compare_at_price',
             'cost_price', 'currency', 'rating_average', 'reviews_count', 'recent_viewers_count',
             'favorites_count', 'recent_orders_count', 'minimum_quantity', 'maximum_quantity', 'is_featured',

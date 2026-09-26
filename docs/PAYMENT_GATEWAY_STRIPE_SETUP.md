@@ -7,7 +7,7 @@ The payment layer is now provider-agnostic. Checkout and order controllers do no
 Security changes included:
 
 - Raw card/CVV collection was removed from the customer account area.
-- Stripe is hidden from customer checkout until the SDK, secret key and webhook secret are all configured.
+- Stripe is hidden from customer checkout until the SDK, secret key and webhook secret are all configured. The code can be deployed before the webhook secret exists; leave `STRIPE_ENABLED=false` until it is added.
 - Provider codes are centrally registered in `config/payments.php`; admins cannot invent an unimplemented provider code.
 - Every payment attempt gets its own idempotency key.
 - Stripe Checkout is created only after the order DB transaction has committed.
@@ -17,7 +17,9 @@ Security changes included:
 - Webhook payloads are encrypted at rest using Laravel's encrypted cast.
 - Amount and currency are checked against the server-side order payment before `paid` is accepted.
 - Payment/order rows are locked while finalizing to prevent double processing.
-- Webhook processing is queued and reconciliation runs every 15 minutes as a safety net.
+- Webhook processing is queued, duplicate jobs are uniquely claimed, and reconciliation runs every 15 minutes as a safety net.
+- Stripe refunds are initiated through the same centralized gateway adapter, use a stable refund idempotency key, and update payment/refund totals only after provider success.
+- Security-sensitive provider behavior (hosted redirect/manual review/saved-card capability) is defined in `config/payments.php`, not trusted from editable admin database flags.
 - API keys are environment-only and never stored in the admin payment method table.
 
 ## Architecture
@@ -52,23 +54,17 @@ Stripe
   -> mark order payment_status=paid and status=payment_review
 ```
 
-## Step 1 - Install Stripe PHP SDK and refresh composer.lock
+## Step 1 - Install project dependencies
 
-The ZIP was built in an environment without Composer/network access, so `composer.json` has been updated but the existing `composer.lock` cannot be regenerated here.
+`stripe/stripe-php` is already declared in `composer.json` and locked in `composer.lock`. Do not run a targeted Stripe update during a normal production deployment.
 
-Run this once from the project root:
-
-```bash
-composer update stripe/stripe-php --with-all-dependencies
-```
-
-After that, normal deployments can use:
+Use the lock file:
 
 ```bash
 composer install --no-dev --optimize-autoloader
 ```
 
-Requirements used by Stripe PHP: PHP, cURL, JSON and mbstring.
+Requirements used by Stripe PHP include PHP, cURL, JSON and mbstring.
 
 ## Step 2 - Migrate the database
 
@@ -104,6 +100,7 @@ Never paste live secret keys into source code, database fields, admin forms, log
 ```dotenv
 PAYMENT_DEFAULT_GATEWAY=stripe
 PAYMENT_WEBHOOK_QUEUE=payments
+PAYMENT_WEBHOOK_CLAIM_TIMEOUT_MINUTES=10
 PAYMENT_RECONCILE_AFTER_MINUTES=10
 PAYMENT_RECONCILE_BATCH_SIZE=100
 
@@ -123,6 +120,18 @@ php artisan config:cache
 ```
 
 If any of the SDK/secret key/webhook secret is missing, Stripe deliberately does not appear as an available checkout method.
+
+
+## Can the code be deployed before the webhook secret exists?
+
+Yes. The implementation does not require a real `whsec_...` value to be present in source code. Deploy the code with `STRIPE_ENABLED=false`, add the API/webhook secrets directly to the server environment later, then enable Stripe and rebuild Laravel's config cache. This deliberately prevents customers from starting live Stripe Checkout while the signed webhook source-of-truth is unavailable.
+
+```bash
+php artisan optimize:clear
+php artisan config:cache
+```
+
+Never use the publishable key as the webhook secret. The webhook secret always begins with `whsec_...` and belongs to the exact Stripe webhook endpoint/environment.
 
 ## Step 5 - Local webhook testing
 
@@ -176,6 +185,9 @@ Subscribe at minimum to:
 - `checkout.session.async_payment_succeeded`
 - `checkout.session.async_payment_failed`
 - `checkout.session.expired`
+- `refund.created`
+- `refund.updated`
+- `refund.failed`
 
 Copy that endpoint's live `whsec_...` value into the production environment. Test-mode and live-mode webhook secrets are different.
 
@@ -208,7 +220,10 @@ Use Stripe test mode and validate at least:
 - expired Checkout Session
 - retry payment from an existing order
 - amount/currency mismatch protection
-- reconciliation after a deliberately missed webhook
+- reconciliation after a deliberately missed payment webhook
+- full and partial Stripe refund
+- duplicate refund submission (must not double-refund)
+- pending/failed refund webhook update
 
 Do not switch to live mode after only testing one successful card.
 

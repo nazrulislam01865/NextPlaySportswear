@@ -9,8 +9,8 @@
         :image="asset('storage/storefront/content/how-to-order.webp')"
         image-alt="Order planning notes and laptop"
     >
-        <a href="#order-paths" class="btn btn-red">Choose Your Path</a>
-        <a href="{{ route('quote.request') }}" class="btn btn-white">Request a Quote</a>
+        <a href="#order-paths" class="btn btn-primary">Choose Your Path</a>
+        <a href="{{ route('quote.request') }}" class="btn btn-outline">Request a Quote</a>
     </x-storefront.content.hero>
 
     <section class="section-padding" id="order-paths">
@@ -26,7 +26,7 @@
                             <li class="flex gap-3"><span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-navy font-display font-bold text-white">{{ $i + 1 }}</span><p class="pt-1 text-sm leading-6 text-slate-600">{{ $step }}</p></li>
                         @endforeach
                     </ol>
-                    <a href="{{ route('products.index') }}" class="btn btn-red mt-7">Shop Products</a>
+                    <a href="{{ route('products.index') }}" class="btn btn-primary mt-7">Shop Products</a>
                 </article>
 
                 <article class="rounded-3xl border border-slate-200 bg-brand-navy p-7 text-white shadow-soft sm:p-9">
@@ -38,7 +38,7 @@
                             <li class="flex gap-3"><span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-red font-display font-bold text-white">{{ $i + 1 }}</span><p class="pt-1 text-sm leading-6 text-white/75">{{ $step }}</p></li>
                         @endforeach
                     </ol>
-                    <a href="{{ route('quote.request') }}" class="btn btn-red mt-7">Request a Quote</a>
+                    <a href="{{ route('quote.request') }}" class="btn btn-primary mt-7">Request a Quote</a>
                 </article>
             </div>
         </div>

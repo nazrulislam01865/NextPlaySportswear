@@ -10,8 +10,8 @@
     status-subtitle="Placed {{ $order['placed_display'] }}"
 >
     <x-slot:actions>
-        <a href="{{ route('orders.track') }}" class="btn btn-red">Track Order</a>
-        <a href="{{ route('orders.invoice.legacy') }}" class="btn btn-white">Invoice</a>
+        <a href="{{ route('orders.track') }}" class="btn btn-primary">Track Order</a>
+        <a href="{{ route('orders.invoice.legacy') }}" class="btn btn-outline">Invoice</a>
     </x-slot:actions>
 
     <section class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-card lg:p-7">
@@ -92,9 +92,9 @@
         </div>
 
         <div class="mt-6 flex flex-col gap-3 sm:flex-row">
-            <a href="{{ route('orders.track') }}" class="btn btn-red">Track Order</a>
-            <a href="{{ route('orders.invoice.legacy') }}" class="btn btn-white">Download Invoice</a>
-            <a href="{{ route('quote.request') }}" class="btn btn-white">Ask About Order</a>
+            <a href="{{ route('orders.track') }}" class="btn btn-primary">Track Order</a>
+            <a href="{{ route('orders.invoice.legacy') }}" class="btn btn-outline">Download Invoice</a>
+            <a href="{{ route('quote.request') }}" class="btn btn-outline">Ask About Order</a>
         </div>
     </section>
 </x-storefront.order.shell>

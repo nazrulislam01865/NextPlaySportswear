@@ -19,8 +19,8 @@
                 @endif
 
                 <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                    <a href="{{ route('account.dashboard') }}" class="btn btn-red">My Account</a>
-                    <a href="{{ route('products.index') }}" class="btn btn-white">Continue Shopping</a>
+                    <a href="{{ route('account.dashboard') }}" class="btn btn-primary">My Account</a>
+                    <a href="{{ route('products.index') }}" class="btn btn-outline">Continue Shopping</a>
                 </div>
             </div>
         </div>

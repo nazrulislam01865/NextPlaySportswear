@@ -63,6 +63,116 @@ class ProductCardTemplateUpdateTest extends TestCase
         $this->assertStringNotContainsString('Artwork upload', $html);
     }
 
+    public function test_product_card_renders_an_explicit_customizable_gallery_badge(): void
+    {
+        $html = Blade::render('<x-storefront.product-card :product="$product" />', [
+            'product' => [
+                'id' => 0,
+                'slug' => 'custom-baseball-jersey',
+                'title' => 'Custom Baseball Jersey',
+                'summary' => 'Custom team jersey.',
+                'sku' => 'NPS-BSB-017',
+                'category' => 'Baseball Jerseys',
+                'price' => 'From $12.00',
+                'base_price' => 12.00,
+                'display_unit_price' => 12.00,
+                'currency' => 'USD',
+                'is_customizable' => true,
+                'tag' => 'Customizable',
+                'tag_color' => 'blue',
+                'image' => '/images/product-placeholder.svg',
+                'alt' => 'Custom Baseball Jersey',
+                'url' => '#',
+            ],
+        ]);
+
+        $this->assertStringContainsString('np-product-card-badge', $html);
+        $this->assertStringContainsString('np-product-card-badge--customizable', $html);
+        $this->assertStringContainsString('Customizable', $html);
+    }
+
+    public function test_customizable_badge_uses_compact_square_off_white_orange_and_title_aligned_styling(): void
+    {
+        $themeCss = file_get_contents(resource_path('css/storefront-theme.css'));
+        $css = file_get_contents(resource_path('css/storefront.css'));
+
+        $this->assertStringContainsString('--np-color-orange: #CF5D38;', $themeCss);
+        $this->assertStringContainsString('.np-product-card-badge--customizable {', $css);
+        $this->assertStringContainsString('min-height: 1.6rem;', $css);
+        $this->assertStringContainsString('padding: .34rem .58rem;', $css);
+        $this->assertStringContainsString('border-radius: 0;', $css);
+        $this->assertStringContainsString('background: var(--np-color-soft);', $css);
+        $this->assertStringContainsString('left: 1.42rem;', $css);
+        $this->assertStringContainsString('left: 1.08rem;', $css);
+        $this->assertStringContainsString('left: 1.05rem;', $css);
+        $this->assertStringContainsString('color: var(--np-color-orange);', $css);
+        $this->assertStringContainsString('box-shadow: none;', $css);
+    }
+
+    public function test_compiled_storefront_asset_contains_current_customizable_badge_style(): void
+    {
+        $manifest = json_decode(file_get_contents(public_path('build/manifest.json')), true, 512, JSON_THROW_ON_ERROR);
+        $asset = public_path('build/'.$manifest['resources/css/storefront.css']['file']);
+        $compiledCss = file_get_contents($asset);
+
+        $this->assertStringContainsString('.np-product-card-badge--customizable', $compiledCss);
+        $this->assertStringContainsString('background:var(--np-color-soft)', $compiledCss);
+        $this->assertStringContainsString('color:var(--np-color-orange)', $compiledCss);
+        $this->assertStringContainsString('border-radius:0', $compiledCss);
+    }
+
+    public function test_legacy_single_letter_customizable_badge_uses_the_customizable_style_until_cleanup_runs(): void
+    {
+        $html = Blade::render('<x-storefront.product-card :product="$product" />', [
+            'product' => [
+                'id' => 0,
+                'title' => 'Legacy Customizable Product',
+                'sku' => 'LEGACY-C',
+                'category' => 'Legacy',
+                'display_unit_price' => 10.00,
+                'currency' => 'USD',
+                'is_customizable' => true,
+                'tag' => 'C',
+                'tag_color' => 'red',
+                'image' => '/images/product-placeholder.svg',
+                'alt' => 'Legacy Customizable Product',
+                'url' => '#',
+            ],
+        ]);
+
+        $this->assertStringContainsString('np-product-card-badge--customizable', $html);
+        $this->assertStringContainsString('>
+                C
+            </span>', $html);
+    }
+
+    public function test_product_card_does_not_invent_a_badge_for_a_customizable_product(): void
+    {
+        $html = Blade::render('<x-storefront.product-card :product="$product" />', [
+            'product' => [
+                'id' => 0,
+                'slug' => 'custom-baseball-jersey',
+                'title' => 'Custom Baseball Jersey',
+                'summary' => 'Custom team jersey.',
+                'sku' => 'NPS-BSB-017',
+                'category' => 'Baseball Jerseys',
+                'price' => 'From $12.00',
+                'base_price' => 12.00,
+                'display_unit_price' => 12.00,
+                'currency' => 'USD',
+                'is_customizable' => true,
+                'tag' => null,
+                'tag_color' => 'blue',
+                'image' => '/images/product-placeholder.svg',
+                'alt' => 'Custom Baseball Jersey',
+                'url' => '#',
+            ],
+        ]);
+
+        $this->assertStringNotContainsString('np-product-card-badge', $html);
+        $this->assertStringNotContainsString('Customizable', $html);
+    }
+
     public function test_product_card_css_has_one_global_source_of_truth(): void
     {
         $css = file_get_contents(resource_path('css/storefront.css'));

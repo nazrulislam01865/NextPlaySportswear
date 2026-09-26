@@ -15,7 +15,7 @@ class Product extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'category_id', 'subcategory_id', 'name', 'slug', 'sku', 'status', 'product_type', 'product_profile', 'brand',
+        'category_id', 'subcategory_id', 'name', 'slug', 'sku', 'status', 'product_type', 'gender_id', 'product_profile', 'brand',
         'badge_label', 'badge_color', 'short_description', 'description_html', 'detail_information_html',
         'customization_artwork_html', 'fulfillment_html', 'features',
         'specifications', 'base_price', 'compare_at_price', 'cost_price', 'currency',
@@ -102,6 +102,10 @@ class Product extends Model
         return $this->belongsTo(Category::class, 'subcategory_id');
     }
 
+    public function gender(): BelongsTo
+    {
+        return $this->belongsTo(Gender::class);
+    }
 
     public function categories(): BelongsToMany
     {

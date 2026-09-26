@@ -55,7 +55,7 @@
                     required
                 />
 
-                <button type="submit" class="btn btn-red h-12 w-full rounded-2xl text-base" data-submitting-label="Resetting password…">
+                <button type="submit" class="btn btn-primary btn-lg w-full" data-submitting-label="Resetting password…">
                     Reset Password
                 </button>
             </form>

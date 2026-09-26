@@ -9,8 +9,8 @@
         :image="asset('storage/storefront/content/returns.webp')"
         image-alt="Customer service representative reviewing an order"
     >
-        <a href="#eligibility" class="btn btn-red">Check Eligibility</a>
-        <a href="{{ route('contact') }}" class="btn btn-white">Start a Support Request</a>
+        <a href="#eligibility" class="btn btn-primary">Check Eligibility</a>
+        <a href="{{ route('contact') }}" class="btn btn-outline">Start a Support Request</a>
     </x-storefront.content.hero>
 
     <section class="section-padding" id="eligibility">

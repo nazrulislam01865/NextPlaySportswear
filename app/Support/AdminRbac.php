@@ -109,6 +109,8 @@ class AdminRbac
             self::permission('coupons.view', 'Commerce', 'View', 'View Coupons', 'Open discounts and coupon lists.', 'admin.coupons.index', 130),
             self::permission('coupons.manage', 'Commerce', 'Manage', 'Manage Coupons', 'Create and update discounts and coupons.', 'admin.coupons.store', 131),
 
+            self::permission('storefront_branding.view', 'Storefront', 'View', 'View Storefront Branding', 'Open storefront logo and branding controls.', 'admin.storefront-branding.edit', 150),
+            self::permission('storefront_branding.manage', 'Storefront', 'Manage', 'Manage Storefront Branding', 'Upload, replace or remove the storefront logo.', 'admin.storefront-branding.update', 151),
             self::permission('homepage_sections.view', 'Storefront', 'View', 'View Homepage Sections', 'Open homepage section controls.', 'admin.homepage.sections.index', 160),
             self::permission('homepage_sections.manage', 'Storefront', 'Manage', 'Manage Homepage Sections', 'Update homepage section text, buttons, images, items, visibility and display order.', 'admin.homepage.sections.update', 161),
             self::permission('homepage_slides.view', 'Storefront', 'View', 'View Homepage Slider', 'Open homepage slide records.', 'admin.homepage-slides.index', 170),
@@ -157,6 +159,7 @@ class AdminRbac
             'dashboard.view',
             'menus.view', 'menus.manage',
             'media.view', 'media.manage',
+            'storefront_branding.view', 'storefront_branding.manage',
             'homepage_sections.view', 'homepage_sections.manage',
             'homepage_slides.view', 'homepage_slides.manage',
             'shipping.view', 'shipping.manage',
@@ -349,6 +352,7 @@ class AdminRbac
             'customization.view' => 'admin.jersey-customization-options.index',
             'menus.view' => 'admin.menus.index',
             'media.view' => 'admin.media-library.index',
+            'storefront_branding.view' => 'admin.storefront-branding.edit',
             'homepage_sections.view' => 'admin.homepage.sections.index',
             'homepage_slides.view' => 'admin.homepage-slides.index',
             'coupons.view' => 'admin.coupons.index',
@@ -414,6 +418,12 @@ class AdminRbac
             return self::resourcePermission($name, 'media');
         }
 
+        if (Str::startsWith($name, 'storefront-branding.')) {
+            return $name === 'storefront-branding.update'
+                ? 'storefront_branding.manage'
+                : 'storefront_branding.view';
+        }
+
         foreach ([
             'attributes' => 'attributes',
             'menus' => 'menus',
@@ -423,6 +433,7 @@ class AdminRbac
             'production-methods' => 'shipping',
             'shipping-methods' => 'shipping',
             'faqs' => 'customization',
+            'genders' => 'products',
             'rural-area-surcharges' => 'rural_surcharges',
             'payment-methods' => 'payment_methods',
             'newsletter-subscribers' => 'newsletters',

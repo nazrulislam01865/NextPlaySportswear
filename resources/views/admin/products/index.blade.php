@@ -205,14 +205,15 @@
                                     <span class="product-status product-status--{{ $product->status === 'active' && $product->is_active ? 'active' : 'inactive' }}">{{ ucfirst($product->status) }}</span>
                                 </td>
                                 <td>
+                                    @php($badgeLabel = trim((string) $product->badge_label))
                                     <div class="product-flags">
                                         @if($product->is_featured)
                                             <span class="product-flag product-flag--featured">Featured</span>
                                         @endif
-                                        @if($product->is_customizable)
-                                            <span class="product-flag product-flag--customizable">Customizable</span>
+                                        @if($badgeLabel !== '')
+                                            <span class="product-flag product-flag--customizable">{{ $badgeLabel }}</span>
                                         @endif
-                                        @if(! $product->is_featured && ! $product->is_customizable)
+                                        @if(! $product->is_featured && $badgeLabel === '')
                                             <span class="product-muted-placeholder">—</span>
                                         @endif
                                     </div>

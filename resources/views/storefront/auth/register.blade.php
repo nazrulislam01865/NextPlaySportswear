@@ -57,7 +57,7 @@
 
             <x-storefront.auth.register-terms />
 
-            <button type="submit" class="np-customer-login__submit">
+            <button type="submit" class="btn btn-primary btn-lg np-customer-login__submit">
                 Create Account
             </button>
         </form>
