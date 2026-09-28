@@ -112,6 +112,114 @@ class StripePaymentArchitectureTest extends TestCase
             ->assertDontSee('NP-DEMO-10482');
     }
 
+    public function test_verified_stripe_payment_advances_order_directly_to_design_review(): void
+    {
+        $customer = User::factory()->create(['role' => 'customer', 'is_active' => true]);
+        $order = $this->pendingStripeOrder($customer);
+        $payment = $this->processingStripePayment($order);
+        $orchestrator = app(PaymentOrchestrator::class);
+        $orchestrator->reconcile($payment);
+
+        $order->refresh();
+        $payment->refresh();
+
+        $this->assertSame('paid', $payment->status);
+        $this->assertNotNull($payment->paid_at);
+        $this->assertSame('paid', $order->payment_status);
+        $this->assertNotNull($order->paid_at);
+        $this->assertSame('design_review', $order->status);
+        $this->assertFalse($order->canApproveAfterPayment());
+
+        $history = $order->histories()->where('title', 'Payment confirmed')->firstOrFail();
+        $this->assertSame('design_review', $history->status);
+        $this->assertStringContainsString('moved to design review', strtolower((string) $history->description));
+
+        // Reconciliation can run again after provider confirmation. It must stay
+        // idempotent and must not add another payment-confirmed history entry.
+        $orchestrator->reconcile($payment->fresh());
+
+        $this->assertSame('design_review', $order->fresh()->status);
+        $this->assertSame(1, $order->histories()->where('title', 'Payment confirmed')->count());
+    }
+
+    public function test_duplicate_confirmed_stripe_payment_is_flagged_without_advancing_review_order(): void
+    {
+        $customer = User::factory()->create(['role' => 'customer', 'is_active' => true]);
+        $order = $this->pendingStripeOrder($customer);
+        $paymentMethod = PaymentMethod::query()->where('provider', 'stripe')->firstOrFail();
+
+        $order->update(['payment_status' => 'paid', 'status' => 'payment_review', 'paid_at' => now()->subMinute()]);
+
+        OrderPayment::query()->create([
+            'order_id' => $order->id,
+            'payment_method_id' => $paymentMethod->id,
+            'gateway' => 'stripe',
+            'provider' => 'stripe',
+            'provider_reference' => 'cs_test_original_'.$order->id,
+            'provider_session_id' => 'cs_test_original_'.$order->id,
+            'provider_payment_id' => 'pi_test_original_'.$order->id,
+            'idempotency_key' => hash('sha256', 'original-'.$order->id),
+            'status' => 'paid',
+            'amount' => 115,
+            'currency' => 'USD',
+            'attempted_at' => now()->subMinutes(2),
+            'paid_at' => now()->subMinute(),
+            'refunded_amount' => 0,
+        ]);
+
+        $duplicate = $this->processingStripePayment($order, 'duplicate');
+        app(PaymentOrchestrator::class)->reconcile($duplicate);
+
+        $duplicate->refresh();
+        $this->assertSame('paid', $duplicate->status);
+        $this->assertTrue((bool) data_get($duplicate->metadata, 'duplicate_payment_review_required'));
+        $this->assertSame('payment_review', $order->fresh()->status);
+        $this->assertTrue($order->histories()->where('title', 'Additional payment detected')->exists());
+    }
+
+    private function pendingStripeOrder(User $customer): Order
+    {
+        return Order::query()->create([
+            'user_id' => $customer->id,
+            'order_number' => 'NP-'.Str::upper(Str::random(10)),
+            'status' => 'pending_payment',
+            'payment_status' => 'processing',
+            'fulfillment_status' => 'unfulfilled',
+            'currency' => 'USD',
+            'customer_name' => $customer->name,
+            'customer_email' => $customer->email,
+            'subtotal' => 100,
+            'customization_total' => 0,
+            'discount_total' => 0,
+            'shipping_total' => 10,
+            'tax_total' => 5,
+            'grand_total' => 115,
+            'total_quantity' => 2,
+            'placed_at' => now(),
+        ]);
+    }
+
+    private function processingStripePayment(Order $order, string $suffix = 'primary'): OrderPayment
+    {
+        $paymentMethod = PaymentMethod::query()->where('provider', 'stripe')->firstOrFail();
+
+        return OrderPayment::query()->create([
+            'order_id' => $order->id,
+            'payment_method_id' => $paymentMethod->id,
+            'gateway' => 'stripe',
+            'provider' => 'stripe',
+            'provider_reference' => 'cs_test_'.$suffix.'_'.$order->id,
+            'provider_session_id' => 'cs_test_'.$suffix.'_'.$order->id,
+            'provider_payment_id' => 'pi_test_'.$suffix.'_'.$order->id,
+            'idempotency_key' => hash('sha256', $suffix.'-'.$order->id),
+            'status' => 'processing',
+            'amount' => 115,
+            'currency' => 'USD',
+            'attempted_at' => now(),
+            'refunded_amount' => 0,
+        ]);
+    }
+
     private function paidOrder(User $customer): Order
     {
         return Order::query()->create([

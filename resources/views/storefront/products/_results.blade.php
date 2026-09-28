@@ -1,7 +1,18 @@
 @if ($products->count())
+    @if(!empty($productTopBanner))
+        <div class="mb-4">
+            <x-storefront.sale-banner :banner="$productTopBanner" />
+        </div>
+    @endif
+
     <div class="np-product-listing-grid np-product-listing-grid--three grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         @foreach ($products as $product)
             <x-storefront.product-card :product="$product" />
+            @if($loop->iteration === 6 && !empty($productAfterRowTwoBanner))
+                <div class="col-span-full">
+                    <x-storefront.sale-banner :banner="$productAfterRowTwoBanner" />
+                </div>
+            @endif
         @endforeach
     </div>
     <div class="mt-7">{{ $products->links('pagination.nextplay', ['itemName' => 'product']) }}</div>

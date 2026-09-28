@@ -639,8 +639,13 @@ final class PaymentOrchestrator
                 return;
             }
 
-            $nextStatus = in_array($order->status, ['pending_payment', 'payment_failed', 'payment_review'], true)
-                ? 'payment_review'
+            $needsPostPaymentTransition = in_array(
+                $order->status,
+                ['pending_payment', 'payment_failed', 'payment_review'],
+                true,
+            );
+            $nextStatus = $needsPostPaymentTransition
+                ? ($lockedPayment->provider === 'stripe' ? 'design_review' : 'payment_review')
                 : $order->status;
 
             $order->update([
@@ -652,7 +657,9 @@ final class PaymentOrchestrator
             $order->histories()->create([
                 'status' => $nextStatus,
                 'title' => 'Payment confirmed',
-                'description' => 'The payment provider confirmed the server-verified amount and currency. The order is ready for payment review.',
+                'description' => $nextStatus === 'design_review'
+                    ? 'The payment provider confirmed the server-verified amount and currency. The order has moved to design review.'
+                    : 'The payment provider confirmed the server-verified amount and currency. The order payment is marked paid.',
                 'metadata' => ['order_payment_id' => $lockedPayment->id, 'provider' => $lockedPayment->provider],
                 'occurred_at' => now(),
             ]);

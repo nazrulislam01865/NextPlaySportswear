@@ -1,4 +1,9 @@
 @if($products->count())
+    @if(!empty($categoryTopBanner))
+        <div class="mb-4">
+            <x-storefront.sale-banner :banner="$categoryTopBanner" />
+        </div>
+    @endif
     <div class="np-product-listing-grid np-product-listing-grid--three grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         @foreach($products as $product)
             <x-storefront.product-card :product="$product" />

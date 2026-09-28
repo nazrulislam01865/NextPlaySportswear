@@ -34,7 +34,7 @@ final class ProductCustomizationMenuRegistry
         return $groups;
     }
 
-    /** @return array{production_methods: string, shipping_methods: string, faqs: string, genders: string} */
+    /** @return array{production_methods: string, shipping_methods: string, faqs: string, genders: string, time_zones: string} */
     public static function trailingMasterDataNumbers(): array
     {
         return [
@@ -42,6 +42,7 @@ final class ProductCustomizationMenuRegistry
             'shipping_methods' => '1.31',
             'faqs' => '1.32',
             'genders' => '1.33',
+            'time_zones' => '1.34',
         ];
     }
 }

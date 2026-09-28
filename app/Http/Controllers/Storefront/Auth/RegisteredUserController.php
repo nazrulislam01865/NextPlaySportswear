@@ -36,14 +36,17 @@ class RegisteredUserController extends Controller
     {
         $user = $this->registration->register($request->validated());
         $verificationDeliveryFailed = false;
+        $verificationEnabled = (bool) config('security.email_verification.enabled', false);
 
-        try {
-            // Laravel's Registered listener calls the user's verification
-            // notification method when the model implements MustVerifyEmail.
-            event(new Registered($user));
-        } catch (Throwable $exception) {
-            $verificationDeliveryFailed = true;
-            report($exception);
+        if ($verificationEnabled) {
+            try {
+                // Laravel's Registered listener calls the user's verification
+                // notification method when the model implements MustVerifyEmail.
+                event(new Registered($user));
+            } catch (Throwable $exception) {
+                $verificationDeliveryFailed = true;
+                report($exception);
+            }
         }
 
         // Customer registration must not destroy an independent admin login
@@ -51,6 +54,17 @@ class RegisteredUserController extends Controller
         Auth::guard('web')->login($user);
         Auth::shouldUse('web');
         $request->session()->regenerate();
+
+        if (! $verificationEnabled) {
+            $destination = StorefrontRedirect::intended(
+                $request,
+                route('account.dashboard')
+            );
+
+            return redirect()
+                ->to($destination)
+                ->with('status', 'Your account was created successfully and is ready to use.');
+        }
 
         // Preserve a safe storefront destination (for example checkout) until
         // verification succeeds. The verified middleware will enforce access.

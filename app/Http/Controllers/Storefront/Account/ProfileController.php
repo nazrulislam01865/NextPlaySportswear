@@ -52,7 +52,9 @@ class ProfileController extends Controller
         ]);
 
         if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
+            $user->email_verified_at = config('security.email_verification.enabled', false)
+                ? null
+                : now();
         }
 
         $emailChanged = $user->isDirty('email');
@@ -60,6 +62,13 @@ class ProfileController extends Controller
 
         if ($emailChanged) {
             $this->emails->emailAddressChanged($user, $oldEmail);
+
+            if (! config('security.email_verification.enabled', false)) {
+                return back()->with(
+                    'status',
+                    'Your profile and email address have been updated successfully.'
+                );
+            }
 
             try {
                 $user->sendEmailVerificationNotification();

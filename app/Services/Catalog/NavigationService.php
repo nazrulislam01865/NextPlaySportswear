@@ -5,13 +5,14 @@ namespace App\Services\Catalog;
 use App\Models\Category;
 use App\Models\Menu;
 use App\Models\MenuItem;
+use App\Services\Promotions\SaleCampaignService;
 use App\ViewModels\Catalog\NavigationItem;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 class NavigationService
 {
-    private const CACHE_VERSION = 'v9';
+    private const CACHE_VERSION = 'v10';
 
     /** @var array<string, Collection<int, NavigationItem>> */
     private array $runtimeItems = [];
@@ -49,6 +50,10 @@ class NavigationService
             Cache::forget($cacheKey);
             $payload = $this->buildPayload($location);
             Cache::put($cacheKey, $payload, $ttl);
+        }
+
+        if ($location === 'header-primary') {
+            $payload = $this->applyDynamicSaleNavigation($payload);
         }
 
         return $this->runtimeItems[$location] = collect($payload)
@@ -185,6 +190,10 @@ class NavigationService
     {
         $items = collect($payload)
             ->filter(fn (mixed $item): bool => is_array($item) && trim((string) ($item['label'] ?? '')) !== '')
+            ->reject(fn (array $item): bool =>
+                ($item['link_type'] ?? null) === 'route'
+                && ($item['route_name'] ?? null) === 'how-to-order'
+            )
             ->unique(function (array $item): string {
                 $type = (string) ($item['link_type'] ?? 'custom');
                 $destination = match ($type) {
@@ -240,6 +249,59 @@ class NavigationService
 
         return $this->runtimeReachableCategorySlugs = collect($rows)
             ->mapWithKeys(fn (mixed $slug, mixed $id): array => [(int) $id => (string) $slug]);
+    }
+
+    /**
+     * Keep Sale directly after All Products while an admin-enabled live campaign
+     * is eligible for the Sale page. This is evaluated after the navigation cache
+     * is loaded so campaign start/end times are reflected immediately.
+     *
+     * @param  array<int, array<string, mixed>>  $payload
+     * @return array<int, array<string, mixed>>
+     */
+    private function applyDynamicSaleNavigation(array $payload): array
+    {
+        $items = collect($payload)
+            ->filter(fn (mixed $item): bool => is_array($item))
+            ->values();
+
+        $existingSale = $items->first(fn (array $item): bool =>
+            ($item['link_type'] ?? null) === 'route' && ($item['route_name'] ?? null) === 'sale.index'
+        );
+
+        $items = $items
+            ->reject(fn (array $item): bool =>
+                ($item['link_type'] ?? null) === 'route' && ($item['route_name'] ?? null) === 'sale.index'
+            )
+            ->values();
+
+        if (! app(SaleCampaignService::class)->hasActiveSalePageCampaign()) {
+            return $items->all();
+        }
+
+        $saleItem = is_array($existingSale) ? $existingSale : [
+            'label' => 'Sale',
+            'link_type' => 'route',
+            'category_slug' => null,
+            'icon_url' => null,
+            'route_name' => 'sale.index',
+            'url' => null,
+            'target' => '_self',
+            'css_class' => '',
+            'children' => [],
+        ];
+
+        $allProductsIndex = $items->search(fn (array $item): bool =>
+            ($item['link_type'] ?? null) === 'route' && ($item['route_name'] ?? null) === 'products.index'
+        );
+
+        if ($allProductsIndex === false) {
+            $items->push($saleItem);
+        } else {
+            $items->splice(((int) $allProductsIndex) + 1, 0, [$saleItem]);
+        }
+
+        return $items->values()->all();
     }
 
     /** @return array<int, array<string, mixed>> */

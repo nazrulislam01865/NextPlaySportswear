@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Storefront\CategoryFilterRequest;
 use App\Models\UrlRedirect;
 use App\Services\Catalog\CategoryContentService;
+use App\Services\Promotions\SaleBannerService;
 use App\Services\Storefront\CategoryCatalogService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -15,6 +16,7 @@ class CategoryController extends Controller
     public function __construct(
         private readonly CategoryCatalogService $catalog,
         private readonly CategoryContentService $content,
+        private readonly SaleBannerService $saleBanners,
     ) {}
 
     public function index(): View
@@ -65,10 +67,13 @@ class CategoryController extends Controller
         $products = $this->catalog->productsFor($category, $filters);
         $categoryData = $this->catalog->categoryData($category);
 
+        $categoryTopBanner = $this->saleBanners->firstForPlacement(\App\Models\SaleBanner::PLACEMENT_CATEGORY_TOP);
+
         if ($request->header('X-Storefront-Partial') === 'product-results') {
             return view('storefront.categories._product-results', [
                 'products' => $products,
                 'category' => $categoryData,
+                'categoryTopBanner' => $categoryTopBanner,
             ]);
         }
 
@@ -121,6 +126,7 @@ class CategoryController extends Controller
             'sports' => $this->catalog->sports(),
             'contentBlocks' => $this->content->resolve($category),
             'hasFilters' => $hasFilters,
+            'categoryTopBanner' => $categoryTopBanner,
             'seo' => [
                 'title' => ($category->meta_title ?: $category->name).' | '.config('storefront.name'),
                 'description' => $category->meta_description ?: $category->short_description ?: $category->description,

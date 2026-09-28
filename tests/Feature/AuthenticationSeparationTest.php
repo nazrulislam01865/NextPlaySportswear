@@ -240,7 +240,7 @@ class AuthenticationSeparationTest extends TestCase
             'password_confirmation' => 'Password123',
             'terms' => '1',
             'website' => '',
-        ])->assertRedirect(route('verification.notice'));
+        ])->assertRedirect(route('account.dashboard'));
 
         $customer = User::query()->where('email', 'customer@example.com')->firstOrFail();
 
@@ -248,9 +248,7 @@ class AuthenticationSeparationTest extends TestCase
         $this->assertTrue($customer->is_active);
         $this->assertTrue(Hash::check('Password123', $customer->password));
         $this->assertNotSame('Password123', $customer->password);
-        $this->assertNull($customer->email_verified_at);
-
-        $customer->markEmailAsVerified();
+        $this->assertNotNull($customer->email_verified_at);
 
         $this->post(route('logout'))->assertRedirect(route('home'));
 

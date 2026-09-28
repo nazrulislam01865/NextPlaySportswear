@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Gender;
 use App\Models\Product;
 use App\Models\ProductFabricPriceTable;
+use App\Services\Promotions\SaleCampaignService;
 use App\Support\PriceTableShipping;
 use App\Support\ProductRoster;
 use App\Support\ProductSizing;
@@ -20,6 +21,11 @@ use Illuminate\Support\Str;
 
 class ProductCatalogService
 {
+    public function __construct(
+        private readonly SaleCampaignService $saleCampaigns,
+    ) {
+    }
+
     /** @var array<int, array<string, mixed>>|null */
     private ?array $hydratedProducts = null;
 
@@ -48,7 +54,7 @@ class ProductCatalogService
             $cacheKey = 'catalog.product-summaries.'.$cacheVersion;
             $ttl = max(60, (int) config('catalog.category_cache_seconds', 1800));
 
-            return $this->hydratedProducts = Cache::remember($cacheKey, $ttl, fn (): array => Product::query()
+            $baseProducts = Cache::remember($cacheKey, $ttl, fn (): array => Product::query()
                 ->published()
                 ->with($this->listingRelations())
                 ->orderBy('sort_order')
@@ -58,6 +64,8 @@ class ProductCatalogService
                 ->map(fn (Product $product): array => $this->fromListingModel($product))
                 ->values()
                 ->all());
+
+            return $this->hydratedProducts = $this->applySaleCampaignPricingList($baseProducts);
         }
 
         return $this->hydratedProducts = collect($this->products())
@@ -92,7 +100,7 @@ class ProductCatalogService
             $this->applyProductListingSort($products, (string) ($filters['sort'] ?? 'featured'));
 
             $paginator = $products->paginate($perPage)->withQueryString();
-            $paginator->through(fn (Product $product): array => $this->fromListingModel($product));
+            $paginator->through(fn (Product $product): array => $this->applySaleCampaignPricing($this->fromListingModel($product)));
 
             return $paginator;
         }
@@ -127,7 +135,7 @@ class ProductCatalogService
             return $products
                 ->limit($limit)
                 ->get()
-                ->map(fn (Product $product): array => $this->fromSuggestionModel($product))
+                ->map(fn (Product $product): array => $this->applySaleCampaignPricing($this->fromSuggestionModel($product)))
                 ->values()
                 ->all();
         }
@@ -194,17 +202,25 @@ class ProductCatalogService
      * @param array<int, int|string> $selectedCategoryIds
      * @return array<int, array<string, mixed>>
      */
-    public function categoryFilterTree(array $selectedCategoryIds = []): array
+    public function categoryFilterTree(array $selectedCategoryIds = [], ?array $scopeProductIds = null): array
     {
         if (! Schema::hasTable('categories') || ! Schema::hasTable('products')) {
             return [];
         }
 
         $selectedCategoryIds = $this->normalizeCategoryFilterIds($selectedCategoryIds);
-        $cacheKey = 'catalog.products.category-filter-tree.icon-v5-batched-counts.'.$this->catalogCacheVersionSuffix();
+        $normalizedScopeIds = $scopeProductIds === null ? null : collect($scopeProductIds)
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+        $scopeSuffix = $normalizedScopeIds === null ? 'all' : sha1(implode(',', $normalizedScopeIds));
+        $cacheKey = 'catalog.products.category-filter-tree.icon-v5-batched-counts.'.$this->catalogCacheVersionSuffix().'.'.$scopeSuffix;
         $ttl = max(60, (int) config('catalog.facets_cache_seconds', 300));
 
-        $tree = Cache::remember($cacheKey, $ttl, function (): array {
+        $tree = Cache::remember($cacheKey, $ttl, function () use ($normalizedScopeIds): array {
             $parents = Category::query()
                 ->storefrontReachable()
                 ->whereNull('parent_id')
@@ -220,7 +236,7 @@ class ProductCatalogService
                 ->values()
                 ->all();
 
-            $productCounts = $this->categoryProductCounts($countCategoryIds);
+            $productCounts = $this->categoryProductCounts($countCategoryIds, $normalizedScopeIds);
 
             return $parents
                 ->map(function (Category $parent) use ($productCounts): array {
@@ -284,7 +300,7 @@ class ProductCatalogService
      * @param array<int, int> $categoryIds
      * @return array<int, int>
      */
-    private function categoryProductCounts(array $categoryIds): array
+    private function categoryProductCounts(array $categoryIds, ?array $scopeProductIds = null): array
     {
         $categoryIds = collect($categoryIds)
             ->map(fn ($id): int => (int) $id)
@@ -315,6 +331,13 @@ class ProductCatalogService
 
         $legacyRows = Product::query()
             ->published()
+            ->when($scopeProductIds !== null, function (Builder $query) use ($scopeProductIds): void {
+                if ($scopeProductIds === []) {
+                    $query->whereRaw('1 = 0');
+                } else {
+                    $query->whereIn('products.id', $scopeProductIds);
+                }
+            })
             ->where(function (Builder $query) use ($relevantCategoryIds): void {
                 $query->whereIn('products.category_id', $relevantCategoryIds)
                     ->orWhereIn('products.subcategory_id', $relevantCategoryIds);
@@ -334,6 +357,13 @@ class ProductCatalogService
         if (Schema::hasTable('category_product')) {
             $publishedProducts = Product::query()
                 ->published()
+                ->when($scopeProductIds !== null, function (Builder $query) use ($scopeProductIds): void {
+                    if ($scopeProductIds === []) {
+                        $query->whereRaw('1 = 0');
+                    } else {
+                        $query->whereIn('products.id', $scopeProductIds);
+                    }
+                })
                 ->select('products.id');
 
             $pivotRows = DB::table('category_product as category_count_cp')
@@ -649,21 +679,36 @@ class ProductCatalogService
      * @param array<string, mixed> $filters
      * @return array<string, mixed>
      */
-    public function filterOptions(array $filters): array
+    public function filterOptions(array $filters, ?array $scopeProductIds = null): array
     {
         $categoryIds = $this->normalizeCategoryFilterIds($filters['categories'] ?? []);
         $sportIds = $this->normalizeCategoryFilterIds($filters['sports'] ?? []);
         $queryText = trim((string) ($filters['q'] ?? ''));
         $tag = trim((string) ($filters['tag'] ?? ''));
         $version = $this->catalogCacheVersionSuffix();
-        $scopeKey = sha1(json_encode([$categoryIds, $sportIds, Str::lower($queryText), Str::lower($tag)], JSON_THROW_ON_ERROR));
+        $normalizedScopeIds = $scopeProductIds === null ? null : collect($scopeProductIds)
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+        $scopeProductsHash = $normalizedScopeIds === null ? 'all' : sha1(implode(',', $normalizedScopeIds));
+        $scopeKey = sha1(json_encode([$categoryIds, $sportIds, Str::lower($queryText), Str::lower($tag), $scopeProductsHash], JSON_THROW_ON_ERROR));
         $ttl = max(60, (int) config('catalog.facets_cache_seconds', 300));
 
         $shared = Cache::remember(
             'catalog.products.complete-filter-options.'.$version.'.'.$scopeKey,
             $ttl,
-            function () use ($categoryIds, $sportIds, $queryText, $tag): array {
+            function () use ($categoryIds, $sportIds, $queryText, $tag, $normalizedScopeIds): array {
                 $categoryScoped = Product::query()->published();
+                if ($normalizedScopeIds !== null) {
+                    if ($normalizedScopeIds === []) {
+                        $categoryScoped->whereRaw('1 = 0');
+                    } else {
+                        $categoryScoped->whereIn('products.id', $normalizedScopeIds);
+                    }
+                }
                 $this->applyProductSearchFilters($categoryScoped, $queryText, $tag);
                 $this->applyProductCategoryFilters($categoryScoped, $categoryIds);
 
@@ -687,7 +732,7 @@ class ProductCatalogService
         })->values()->all();
 
         return array_merge([
-            'categories' => $this->categoryFilterTree($categoryIds),
+            'categories' => $this->categoryFilterTree($categoryIds, $normalizedScopeIds),
         ], $shared);
     }
 
@@ -1525,7 +1570,7 @@ class ProductCatalogService
             }
 
             if ($product = $query->where('slug', $slug)->first()) {
-                return $this->fromModel($product);
+                return $this->applySaleCampaignPricing($this->fromModel($product));
             }
         }
 
@@ -1547,7 +1592,7 @@ class ProductCatalogService
             }
 
             if ($product = $query->where('slug', $slug)->first()) {
-                return $this->fromListingModel($product);
+                return $this->applySaleCampaignPricing($this->fromListingModel($product));
             }
         }
 
@@ -1593,7 +1638,7 @@ class ProductCatalogService
                 ->orderByDesc('published_at')
                 ->limit(max(20, $limit * 6))
                 ->get()
-                ->map(fn (Product $candidate): array => $this->fromListingModel($candidate));
+                ->map(fn (Product $candidate): array => $this->applySaleCampaignPricing($this->fromListingModel($candidate)));
 
             if ($candidates->isNotEmpty()) {
                 return $this->rankRelatedProducts($candidates, $product, $limit);
@@ -1662,6 +1707,9 @@ class ProductCatalogService
             'sku' => $product->sku,
             'category' => $primaryCategory?->name ?: 'Custom Sportswear',
             'sport' => $primaryCategory?->name ?: 'Custom Sportswear',
+            'category_ids' => collect([$product->category_id, $product->subcategory_id])
+                ->merge($product->relationLoaded('categories') ? $product->categories->pluck('id') : collect())
+                ->filter()->map(fn ($id): int => (int) $id)->unique()->values()->all(),
             'price' => $this->formatDisplayPrice($cardPricing['unit_price']),
             'base_price' => (float) $product->base_price,
             'display_unit_price' => $cardPricing['unit_price'],
@@ -1774,7 +1822,7 @@ class ProductCatalogService
             );
 
             if ($databaseProducts !== []) {
-                return $this->featuredProducts[$cacheIndex] = $databaseProducts;
+                return $this->featuredProducts[$cacheIndex] = $this->applySaleCampaignPricingList($databaseProducts);
             }
         }
 
@@ -1829,7 +1877,7 @@ class ProductCatalogService
             );
 
             if ($databaseProducts !== []) {
-                return $this->latestProducts[$limit] = $databaseProducts;
+                return $this->latestProducts[$limit] = $this->applySaleCampaignPricingList($databaseProducts);
             }
         }
 
@@ -1861,7 +1909,7 @@ class ProductCatalogService
             );
 
             if ($databaseProducts !== []) {
-                return $this->bestSellingProducts[$limit] = $databaseProducts;
+                return $this->bestSellingProducts[$limit] = $this->applySaleCampaignPricingList($databaseProducts);
             }
         }
 
@@ -1940,6 +1988,170 @@ class ProductCatalogService
         }
 
         return $products->take($limit)->values()->all();
+    }
+
+    /**
+     * Add live sale-campaign pricing after catalog cache hydration so scheduled
+     * promotions become visible immediately without shortening product caches.
+     *
+     * @param array<string, mixed> $product
+     * @return array<string, mixed>
+     */
+    public function applySaleCampaignPricing(array $product): array
+    {
+        $existingPrice = max(0, (float) ($product['display_unit_price'] ?? $product['base_price'] ?? 0));
+        $originalPrice = max(0, (float) ($product['original_price'] ?? $existingPrice));
+        $context = $this->saleCampaigns->contextForProduct($product, $originalPrice);
+        $best = $context['best'] ?? null;
+
+        $product['sale_campaigns'] = $context['eligible_campaigns'] ?? [];
+        $product['sale_page_eligible'] = (bool) ($context['sale_page_eligible'] ?? false);
+        $product['sale_campaign'] = $best;
+        $product['sale_campaign_original_price'] = $originalPrice;
+        $product['sale_badge_label'] = null;
+
+        if (! is_array($best) || (float) ($best['sale_price'] ?? $originalPrice) >= $existingPrice) {
+            return $product;
+        }
+
+        $salePrice = max(0, (float) $best['sale_price']);
+        $product['display_unit_price'] = $salePrice;
+        $product['discount_price'] = $salePrice;
+        $product['original_price'] = $originalPrice;
+        $product['original_price_label'] = '$'.number_format($originalPrice, 2);
+        $product['display_compare_at_price'] = $originalPrice;
+        $product['compare_at_price_label'] = '$'.number_format($originalPrice, 2);
+        $product['discount_percentage'] = (int) ($best['discount_percentage'] ?? 0);
+        $product['price'] = $this->formatDisplayPrice($salePrice);
+        $product['sale_badge_label'] = ! empty($best['show_sale_badge']) ? 'Sale' : null;
+
+        return $product;
+    }
+
+    /** @param array<int, array<string, mixed>> $products */
+    private function applySaleCampaignPricingList(array $products): array
+    {
+        return collect($products)
+            ->map(fn (array $product): array => $this->applySaleCampaignPricing($product))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Return the filtered/sorted product ids for the supplied Sale campaign scope.
+     * This keeps the Sale page grouping lightweight: we determine the global page
+     * once, then hydrate only the product cards visible on that page.
+     *
+     * @param array<string, mixed> $filters
+     * @param array<int, int> $saleProductIds
+     * @return array<int, int>
+     */
+    public function filteredSaleProductIds(array $filters, array $saleProductIds): array
+    {
+        $saleProductIds = collect($saleProductIds)
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (! Schema::hasTable('products') || $saleProductIds === []) {
+            return [];
+        }
+
+        $filters['categories'] = $this->normalizeCategoryFilterIds($filters['categories'] ?? []);
+        $filters['sports'] = $this->normalizeCategoryFilterIds($filters['sports'] ?? []);
+
+        $products = Product::query()
+            ->published()
+            ->whereIn('products.id', $saleProductIds);
+
+        $this->applyProductSearchFilters($products, $filters['q'] ?? null, $filters['tag'] ?? null);
+        $this->applyProductCategoryFilters($products, $filters['categories']);
+        $this->applyProductCategoryFilters($products, $filters['sports']);
+        $this->applyCommonCatalogFilters($products, $filters);
+        $this->applyProductListingSort($products, (string) ($filters['sort'] ?? 'featured'));
+
+        return $products->pluck('products.id')
+            ->map(fn ($id): int => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Hydrate product cards in exactly the id order requested.
+     *
+     * @param array<int, int> $productIds
+     * @return array<int, array<string, mixed>>
+     */
+    public function saleProductsByIds(array $productIds): array
+    {
+        $orderedIds = collect($productIds)
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->values();
+
+        if (! Schema::hasTable('products') || $orderedIds->isEmpty()) {
+            return [];
+        }
+
+        $products = Product::query()
+            ->published()
+            ->whereIn('products.id', $orderedIds->unique()->all())
+            ->with($this->listingRelations())
+            ->get()
+            ->keyBy(fn (Product $product): int => (int) $product->id);
+
+        return $orderedIds
+            ->map(function (int $id) use ($products): ?array {
+                $product = $products->get($id);
+
+                return $product instanceof Product
+                    ? $this->applySaleCampaignPricing($this->fromListingModel($product))
+                    : null;
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @param array<int, int>|null $saleProductIds
+     */
+    public function saleProductsPaginated(array $filters = [], ?int $perPage = null, ?array $saleProductIds = null, string $pageName = 'page'): LengthAwarePaginator
+    {
+        $perPage = $this->listingPageSize($perPage);
+        $saleProductIds ??= $this->saleCampaigns->salePageProductIds();
+        $saleProductIds = collect($saleProductIds)
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (! Schema::hasTable('products') || $saleProductIds === []) {
+            return $this->paginateArray(collect(), $perPage);
+        }
+
+        $filters['categories'] = $this->normalizeCategoryFilterIds($filters['categories'] ?? []);
+        $filters['sports'] = $this->normalizeCategoryFilterIds($filters['sports'] ?? []);
+
+        $products = Product::query()
+            ->published()
+            ->whereIn('products.id', $saleProductIds)
+            ->with($this->listingRelations());
+
+        $this->applyProductSearchFilters($products, $filters['q'] ?? null, $filters['tag'] ?? null);
+        $this->applyProductCategoryFilters($products, $filters['categories']);
+        $this->applyProductCategoryFilters($products, $filters['sports']);
+        $this->applyCommonCatalogFilters($products, $filters);
+        $this->applyProductListingSort($products, (string) ($filters['sort'] ?? 'featured'));
+
+        $paginator = $products->paginate($perPage, ['*'], $pageName)->withQueryString();
+        $paginator->through(fn (Product $product): array => $this->applySaleCampaignPricing($this->fromListingModel($product)));
+
+        return $paginator;
     }
 
     private function normalizeColorHex(?string $color): ?string
@@ -2035,6 +2247,9 @@ class ProductCatalogService
                 'slug' => $category->slug,
                 'primary' => (int) $category->id === (int) ($primaryCategory?->id),
             ])->values()->all(),
+            'category_ids' => collect([$product->category_id, $product->subcategory_id])
+                ->merge($product->relationLoaded('categories') ? $product->categories->pluck('id') : collect())
+                ->filter()->map(fn ($id): int => (int) $id)->unique()->values()->all(),
             'attributes' => [],
             'sku' => $specificationSku !== '' ? $specificationSku : $product->sku,
             'rating' => $rating,
@@ -2671,6 +2886,9 @@ class ProductCatalogService
             'subcategory' => $product->subcategory?->name,
             'subcategory_slug' => $product->subcategory?->slug,
             'categories' => $visibleCategories->map(fn ($category) => ['id' => $category->id, 'name' => $category->name, 'slug' => $category->slug, 'primary' => (int) $category->id === (int) ($primaryCategory?->id)])->values()->all(),
+            'category_ids' => collect([$product->category_id, $product->subcategory_id])
+                ->merge($product->relationLoaded('categories') ? $product->categories->pluck('id') : collect())
+                ->filter()->map(fn ($id): int => (int) $id)->unique()->values()->all(),
             'attributes' => $product->relationLoaded('attributeValues') ? $product->attributeValues->groupBy('attribute.slug')->map(fn ($values) => $values->pluck('label')->values()->all())->all() : [],
             'sku' => $specificationSku !== '' ? $specificationSku : $product->sku,
             'rating' => $rating,

@@ -70,7 +70,19 @@ class AuthenticatedSessionController extends Controller
         $customer = Auth::guard('web')->user();
         $customer?->forceFill(['last_login_at' => now()])->saveQuietly();
 
-        if (! $customer?->hasVerifiedEmail()) {
+        $verificationEnabled = (bool) config('security.email_verification.enabled', false);
+
+        if (
+            ! $verificationEnabled
+            && $customer
+            && $customer->email_verified_at === null
+        ) {
+            // Repair legacy unverified customer rows while verification is
+            // intentionally muted so admin/customer status remains consistent.
+            $customer->forceFill(['email_verified_at' => now()])->saveQuietly();
+        }
+
+        if ($verificationEnabled && ! $customer?->hasVerifiedEmail()) {
             // Keep the original safe destination (for example checkout) in
             // session until the signed email-verification link succeeds. Do
             // not consume it here, otherwise the verification-success page

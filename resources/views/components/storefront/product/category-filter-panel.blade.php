@@ -5,6 +5,9 @@
     'tag' => '',
     'idPrefix' => 'product-filter',
     'heading' => 'Filters',
+    'action' => null,
+    'resetUrl' => null,
+    'ariaLabel' => 'Filter all products',
 ])
 
 @php
@@ -15,15 +18,17 @@
         ->values()
         ->all();
     $filterScrollThreshold = 12;
+    $filterAction = $action ?: route('products.index');
+    $filterResetUrl = $resetUrl ?: $filterAction;
 @endphp
 
-<form method="GET" action="{{ route('products.index') }}" class="np-catalog-filter-form" data-product-filter-form aria-label="Filter all products">
+<form method="GET" action="{{ $filterAction }}" class="np-catalog-filter-form" data-product-filter-form aria-label="{{ $ariaLabel }}">
     <div class="np-catalog-filter-header">
         <div>
             <h3>{{ $heading }}</h3>
         </div>
         @if(request()->query())
-            <a href="{{ route('products.index') }}" class="np-catalog-filter-reset">Reset</a>
+            <a href="{{ $filterResetUrl }}" class="np-catalog-filter-reset">Reset</a>
         @endif
     </div>
 
@@ -111,6 +116,6 @@
     </div>
 
     <div class="np-catalog-filter-actions">
-        <a href="{{ route('products.index') }}" class="btn btn-outline btn-sm">Clear</a>
+        <a href="{{ $filterResetUrl }}" class="btn btn-outline btn-sm">Clear</a>
     </div>
 </form>

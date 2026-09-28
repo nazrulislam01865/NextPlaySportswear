@@ -20,7 +20,9 @@ final class CustomerRegistrationService
                 'email' => Str::lower(trim($data['email'])),
                 'role' => 'customer',
                 'is_active' => true,
-                'email_verified_at' => null,
+                'email_verified_at' => config('security.email_verification.enabled', false)
+                    ? null
+                    : now(),
                 'password' => $data['password'],
             ]);
             $user->save();

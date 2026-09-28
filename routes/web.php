@@ -197,6 +197,20 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
             'size-option-groups' => 'sizeOptionGroup',
         ])->except('show');
         Route::resource('menus', \App\Http\Controllers\Admin\MenuController::class)->except('show');
+        Route::get('/promotions/sales', [\App\Http\Controllers\Admin\SaleCampaignController::class, 'index'])->name('promotions.sales.index');
+        Route::get('/promotions/sales/options', [\App\Http\Controllers\Admin\SaleCampaignController::class, 'options'])->name('promotions.sales.options');
+        Route::get('/promotions/sales/create', [\App\Http\Controllers\Admin\SaleCampaignController::class, 'create'])->name('promotions.sales.create');
+        Route::post('/promotions/sales', [\App\Http\Controllers\Admin\SaleCampaignController::class, 'store'])->name('promotions.sales.store');
+        Route::get('/promotions/sales/{saleCampaign}/edit', [\App\Http\Controllers\Admin\SaleCampaignController::class, 'edit'])->name('promotions.sales.edit');
+        Route::put('/promotions/sales/{saleCampaign}', [\App\Http\Controllers\Admin\SaleCampaignController::class, 'update'])->name('promotions.sales.update');
+        Route::get('/promotions/banners', [\App\Http\Controllers\Admin\SaleBannerController::class, 'index'])->name('promotions.banners.index');
+        Route::post('/promotions/banners', [\App\Http\Controllers\Admin\SaleBannerController::class, 'store'])->name('promotions.banners.store');
+        Route::put('/promotions/banners/{saleBanner}', [\App\Http\Controllers\Admin\SaleBannerController::class, 'update'])->name('promotions.banners.update');
+        Route::delete('/promotions/banners/{saleBanner}', [\App\Http\Controllers\Admin\SaleBannerController::class, 'destroy'])->name('promotions.banners.destroy');
+        Route::post('/promotions/banners/reorder', [\App\Http\Controllers\Admin\SaleBannerController::class, 'reorder'])->name('promotions.banners.reorder');
+        Route::resource('time-zones', \App\Http\Controllers\Admin\TimeZoneController::class)
+            ->parameters(['time-zones' => 'timeZone'])
+            ->except('show');
         Route::resource('coupons', \App\Http\Controllers\Admin\CouponController::class)->except('show');
         Route::post('/rural-area-surcharges/import/start', [\App\Http\Controllers\Admin\RuralAreaSurchargeController::class, 'importStart'])
             ->middleware('throttle:10,1')
@@ -399,6 +413,7 @@ Route::get('/category/{slug}', [CategoryController::class, 'show'])
     ->where('slug', '[a-z0-9-]+')
     ->name('categories.show');
 
+Route::get('/sale', [ProductController::class, 'sale'])->name('sale.index');
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
 Route::get('/products/search-suggestions', [ProductController::class, 'suggestions'])
     ->middleware('throttle:60,1')

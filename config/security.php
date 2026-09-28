@@ -3,6 +3,22 @@
 return [
 
     'email_verification' => [
+        /*
+         * Temporary operational switch for customer email verification.
+         *
+         * When disabled, newly registered customers are stamped as verified
+         * immediately and no verification link is sent. Existing unverified
+         * customer sessions are also allowed through the verified middleware,
+         * and their timestamp is repaired on the next successful login.
+         *
+         * Set EMAIL_VERIFICATION_ENABLED=true to restore the existing signed
+         * verification-link flow without another code deployment.
+         */
+        'enabled' => filter_var(
+            env('EMAIL_VERIFICATION_ENABLED', false),
+            FILTER_VALIDATE_BOOLEAN
+        ),
+
         'expire_minutes' => (int) env('EMAIL_VERIFICATION_LINK_EXPIRE_MINUTES', 60),
         'resend' => [
             'ip_per_minute' => (int) env('EMAIL_VERIFICATION_RESEND_IP_PER_MINUTE', 6),

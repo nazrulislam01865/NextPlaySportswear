@@ -1,4 +1,5 @@
 @import './storefront-theme.css';
+@import './admin-modern.css';
 @import './pagination.css';
 
 @tailwind base;

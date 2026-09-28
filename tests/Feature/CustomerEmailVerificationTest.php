@@ -24,7 +24,53 @@ class CustomerEmailVerificationTest extends TestCase
         config()->set('transactional_email.delivery.mode', 'queue');
         config()->set('transactional_email.queue.enabled', true);
         config()->set('transactional_email.critical.email_verification_sync', false);
+        config()->set('security.email_verification.enabled', true);
         config()->set('security.email_verification.expire_minutes', 60);
+    }
+
+    public function test_registration_auto_verifies_and_skips_verification_email_when_verification_is_disabled(): void
+    {
+        Queue::fake();
+        config()->set('security.email_verification.enabled', false);
+        config()->set('transactional_email.enabled', false);
+
+        $this->post(route('register.store'), [
+            'name' => 'Automatic Verification Customer',
+            'email' => ' AUTO@EXAMPLE.COM ',
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+            'terms' => '1',
+            'website' => '',
+        ])
+            ->assertRedirect(route('account.dashboard'))
+            ->assertSessionHas('status');
+
+        $customer = User::query()->where('email', 'auto@example.com')->firstOrFail();
+
+        $this->assertNotNull($customer->email_verified_at);
+        $this->assertAuthenticatedAs($customer, 'web');
+        Queue::assertNothingPushed();
+    }
+
+    public function test_disabled_verification_repairs_legacy_unverified_customer_on_login(): void
+    {
+        config()->set('security.email_verification.enabled', false);
+
+        $customer = User::factory()->unverified()->create([
+            'role' => 'customer',
+            'is_active' => true,
+            'password' => 'Password123',
+        ]);
+
+        $this->post(route('login.store'), [
+            'email' => $customer->email,
+            'password' => 'Password123',
+        ])
+            ->assertRedirect(route('account.dashboard'))
+            ->assertSessionHas('status');
+
+        $this->assertNotNull($customer->fresh()->email_verified_at);
+        $this->assertAuthenticatedAs($customer->fresh(), 'web');
     }
 
     public function test_registration_creates_an_unverified_customer_and_queues_a_signed_verification_email(): void
@@ -319,6 +365,40 @@ class CustomerEmailVerificationTest extends TestCase
         Queue::assertPushed(SendTransactionalEmail::class, function (SendTransactionalEmail $job): bool {
             return $job->message->key === 'customer.email-verification'
                 && data_get($job->message->recipients, '0.email') === 'new-address@example.com';
+        });
+    }
+
+    public function test_changing_profile_email_stays_verified_when_verification_is_disabled(): void
+    {
+        Queue::fake();
+        config()->set('security.email_verification.enabled', false);
+
+        $customer = User::factory()->create([
+            'role' => 'customer',
+            'is_active' => true,
+            'auth_session_version' => 0,
+        ]);
+
+        $this->actingAs($customer, 'web')
+            ->withSession([EnforceCustomerSessionVersion::SESSION_KEY => 0])
+            ->patch(route('account.profile.update'), [
+                'name' => $customer->name,
+                'email' => 'muted-verification@example.com',
+                'phone' => '',
+                'company_name' => '',
+                'preferred_sport' => null,
+                'marketing_consent' => '0',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('status');
+
+        $customer->refresh();
+
+        $this->assertSame('muted-verification@example.com', $customer->email);
+        $this->assertNotNull($customer->email_verified_at);
+
+        Queue::assertNotPushed(SendTransactionalEmail::class, function (SendTransactionalEmail $job): bool {
+            return $job->message->key === 'customer.email-verification';
         });
     }
 }

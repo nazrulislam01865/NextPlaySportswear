@@ -93,6 +93,22 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Keep Laravel's verified middleware reversible while verification is
+     * temporarily muted. Customers created while the switch is disabled are
+     * still persisted with email_verified_at, but this also prevents legacy
+     * unverified customer sessions from being trapped on the verification
+     * notice until they next log in and receive a persisted timestamp.
+     */
+    public function hasVerifiedEmail(): bool
+    {
+        if ($this->isCustomer() && ! config('security.email_verification.enabled', false)) {
+            return true;
+        }
+
+        return $this->email_verified_at !== null;
+    }
+
+    /**
      * email
      */
     public function sendPasswordResetNotification(

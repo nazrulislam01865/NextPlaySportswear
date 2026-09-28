@@ -8,6 +8,7 @@ use App\Models\ShoppingCart;
 use App\Models\ShoppingCartItem;
 use App\Models\User;
 use App\Services\Discounts\CouponService;
+use App\Services\Promotions\SaleCampaignService;
 use App\Services\Storefront\ProductCatalogService;
 use App\Support\PriceTableShipping;
 use App\Support\ProductRoster;
@@ -30,6 +31,7 @@ class CartService
     public function __construct(
         private readonly ProductCatalogService $products,
         private readonly CouponService $coupons,
+        private readonly SaleCampaignService $saleCampaigns,
     ) {
     }
 
@@ -898,7 +900,7 @@ class CartService
             'customization_total' => (float) ($item['customization_total'] ?? 0),
             'line_total' => (float) ($item['line_total'] ?? 0),
             'customization' => $item['customization'] ?? [],
-            'product_snapshot' => Arr::only($product, ['id', 'slug', 'title', 'short_title', 'summary', 'sku', 'category', 'sport', 'image', 'alt', 'url', 'base_price', 'price']),
+            'product_snapshot' => Arr::only($product, ['id', 'slug', 'title', 'short_title', 'summary', 'sku', 'category', 'sport', 'image', 'alt', 'url', 'base_price', 'price', 'sale_campaign', 'sale_campaigns', 'sale_campaign_original_price', 'sale_badge_label']),
         ]);
 
         $record->saveQuietly();
@@ -1050,6 +1052,10 @@ class CartService
         $configuredQuantity = (int) collect($customization['configuration']['quantities'] ?? [])->sum();
         $quantity = $this->sanitizeQuantity($configuredQuantity > 0 ? $configuredQuantity : (int) ($item['quantity'] ?? 1), $product);
         $unitPrice = $this->unitPriceForQuantity($product, $quantity, $customization);
+        $campaignPricing = $this->saleCampaigns->pricingForProduct($product, $unitPrice);
+        if (is_array($campaignPricing) && (float) ($campaignPricing['sale_price'] ?? $unitPrice) < $unitPrice) {
+            $unitPrice = max(0, (float) $campaignPricing['sale_price']);
+        }
         $shippingCharge = $this->productShippingCharge($product, $customization, $quantity);
         $customization = $this->withFulfillmentPricing($customization, $shippingCharge, $quantity);
         $customizationPricing = $this->customizationPricing($product, $customization, $quantity);
@@ -1060,7 +1066,7 @@ class CartService
 
         return array_merge($item, [
             'key' => $item['key'] ?? $this->makeItemKey($product['slug'], $customization),
-            'product' => Arr::only($product, ['id', 'slug', 'title', 'short_title', 'summary', 'sku', 'category', 'sport', 'image', 'alt', 'url', 'base_price', 'price']),
+            'product' => Arr::only($product, ['id', 'slug', 'title', 'short_title', 'summary', 'sku', 'category', 'sport', 'image', 'alt', 'url', 'base_price', 'price', 'sale_campaign', 'sale_campaigns', 'sale_badge_label']),
             'quantity' => $quantity,
             'quantity_min' => $this->minimumQuantityForProduct($product),
             'quantity_max' => $this->maximumQuantityForProduct($product),
@@ -1823,7 +1829,11 @@ class CartService
                 && (($tier['max'] ?? null) === null || $quantity <= (int) $tier['max']);
         });
 
-        return round((float) ($tier['unit'] ?? $product['base_price'] ?? 0), 2);
+        $fallbackPrice = ! empty($product['sale_campaign'])
+            ? ($product['sale_campaign_original_price'] ?? $product['original_price'] ?? $product['base_price'] ?? 0)
+            : ($product['base_price'] ?? 0);
+
+        return round((float) ($tier['unit'] ?? $fallbackPrice), 2);
     }
 
     /**

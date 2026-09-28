@@ -1,0 +1,303 @@
+/* Sale Campaign page additions.
+   The shared admin shell, typography, colors, cards, buttons and inputs remain
+   controlled by the existing admin design system. These rules only provide the
+   page-specific responsive layout that is not part of the shared primitives. */
+
+.np-sale-layout {
+    display: grid;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.np-sale-discount-layout,
+.np-sale-target-layout,
+.np-sale-display-layout {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.np-sale-schedule-fields {
+    display: grid;
+    gap: 1rem;
+}
+
+.np-sale-inline-date-time {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 112px;
+    gap: .625rem;
+    margin-top: .5rem;
+}
+
+.np-sale-inline-date-time .admin-input {
+    margin-top: 0;
+}
+
+.np-sale-weekday-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .5rem;
+}
+
+.np-sale-summary-row {
+    display: grid;
+    grid-template-columns: 110px minmax(0, 1fr);
+    gap: .75rem;
+}
+
+.np-sale-product-card {
+    display: grid;
+    grid-template-columns: 130px minmax(0, 1fr);
+    min-height: 150px;
+}
+
+.np-sale-promo-banner {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem;
+    background: #fff0e9;
+    padding: 1.5rem 1.25rem;
+}
+
+.np-sale-promo-banner__copy {
+    position: relative;
+    z-index: 10;
+    max-width: 75%;
+}
+
+.np-sale-promo-banner__stripe,
+.np-sale-promo-banner__stripe::before {
+    position: absolute;
+    content: '';
+    right: -.5rem;
+    bottom: -3rem;
+    width: 3rem;
+    height: 10rem;
+    transform: rotate(45deg);
+    background: rgba(207, 93, 56, .10);
+}
+
+.np-sale-promo-banner__stripe::before {
+    right: 3.75rem;
+    bottom: -.75rem;
+    width: 2rem;
+}
+
+.np-sale-upload-preview {
+    aspect-ratio: 8 / 3;
+    width: 100%;
+    object-fit: cover;
+}
+
+@media (min-width: 640px) {
+    .np-sale-weekday-grid {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .np-sale-discount-layout {
+        grid-template-columns: minmax(0, 1fr) 260px;
+    }
+
+    .np-sale-schedule-fields {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(220px, .78fr);
+        align-items: end;
+    }
+
+    .np-sale-weekday-repeat-row {
+        grid-template-columns: minmax(0, 1.45fr) minmax(300px, .8fr);
+        align-items: end;
+    }
+
+    .np-sale-target-layout {
+        grid-template-columns: minmax(0, 1.25fr) minmax(260px, .75fr);
+    }
+
+    .np-sale-display-layout {
+        grid-template-columns: minmax(0, 1.25fr) 180px minmax(220px, .75fr);
+    }
+}
+
+@media (min-width: 1280px) {
+    .np-sale-layout {
+        grid-template-columns: minmax(0, 1fr) 380px;
+    }
+
+    .np-sale-summary-sticky {
+        position: sticky;
+        top: 120px;
+    }
+}
+
+@media (max-width: 520px) {
+    .np-sale-summary-row {
+        grid-template-columns: 92px minmax(0, 1fr);
+    }
+
+    .np-sale-product-card {
+        grid-template-columns: 100px minmax(0, 1fr);
+    }
+}
+
+/* Compact, admin-consistent numeric controls used by the sale campaign page. */
+.np-sale-number-control {
+    display: flex;
+    width: 100%;
+    height: 3rem;
+    margin-top: .5rem;
+    overflow: hidden;
+    border: 1px solid #d8e0ec;
+    border-radius: .75rem;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+    transition: border-color .16s ease, box-shadow .16s ease;
+}
+
+.np-sale-number-control:focus-within {
+    border-color: #2467b7;
+    box-shadow: 0 0 0 3px rgba(36, 103, 183, .11);
+}
+
+.np-sale-number-input {
+    min-width: 0;
+    flex: 1 1 auto;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    padding: 0 .9rem;
+    color: #0f172a;
+    font: inherit;
+    font-size: .875rem;
+    font-weight: 600;
+    outline: none;
+}
+
+.np-sale-number-input::placeholder {
+    color: #94a3b8;
+}
+
+.np-sale-number-input::-webkit-outer-spin-button,
+.np-sale-number-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.np-sale-number-input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.np-sale-number-addon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.75rem;
+    padding: 0 .8rem;
+    background: #f8fafc;
+    color: #475569;
+    font-size: .875rem;
+    font-weight: 900;
+    user-select: none;
+}
+
+.np-sale-number-addon--prefix {
+    border-right: 1px solid #e2e8f0;
+}
+
+.np-sale-number-addon--suffix {
+    border-left: 1px solid #e2e8f0;
+}
+
+/* Schedule recurrence controls follow the supplied prototype: weekday buttons on
+   the left and one compact repeat switch on the right. */
+.np-sale-weekday-repeat-row {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1rem;
+    align-items: end;
+}
+
+.np-sale-weekday-heading {
+    margin: 0 0 .55rem;
+    color: #334155;
+    font-size: .8125rem;
+    font-weight: 800;
+}
+
+.np-sale-switch {
+    display: inline-flex;
+    cursor: pointer;
+    flex: 0 0 auto;
+    padding-top: .05rem;
+}
+
+.np-sale-switch__track {
+    position: relative;
+    display: block;
+    width: 2.7rem;
+    height: 1.45rem;
+    border: 1px solid #b8c5d6;
+    border-radius: 999px;
+    background: #dbe4ef;
+    transition: background-color .16s ease, border-color .16s ease;
+}
+
+.np-sale-switch__track.is-active {
+    border-color: var(--np-color-primary, #061f44);
+    background: var(--np-color-primary, #061f44);
+}
+
+.np-sale-switch__thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 1.075rem;
+    height: 1.075rem;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .18);
+    transition: transform .16s ease;
+}
+
+.np-sale-switch__track.is-active .np-sale-switch__thumb {
+    transform: translateX(1.18rem);
+}
+
+.np-sale-repeat-inline {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    min-height: 2.7rem;
+    cursor: pointer;
+}
+
+.np-sale-weekday-button {
+    min-height: 2.45rem;
+    border: 1px solid #d8e0ec;
+    border-radius: .45rem;
+    background: #f8fafc;
+    color: #334155;
+    padding: .45rem .55rem;
+    font-size: .75rem;
+    font-weight: 800;
+    transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
+}
+
+.np-sale-weekday-button:hover {
+    border-color: #a9b7ca;
+    background: #f1f5f9;
+}
+
+.np-sale-weekday-button.is-selected {
+    border-color: var(--np-color-primary, #061f44);
+    background: var(--np-color-primary, #061f44);
+    color: #fff;
+    box-shadow: 0 1px 2px rgba(6, 31, 68, .14);
+}
+
+@media (max-width: 639px) {
+    .np-sale-inline-date-time {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+

@@ -28,7 +28,7 @@ class MenuController extends Controller
         'home' => 'Home',
         'categories.index' => 'Shop Products / Categories',
         'products.index' => 'All Products',
-        'how-to-order' => 'How It Works',
+        'sale.index' => 'Sale',
         'quote.request' => 'Request a Quote',
         'shipping' => 'Shipping & Delivery',
         'orders.track' => 'Track Order',

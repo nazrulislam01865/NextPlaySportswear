@@ -12,6 +12,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/admin.css', 'resources/js/admin.js'])
+    @stack('admin-page-styles')
     @php
         $adminPusherEnabled = filled(config('services.pusher.key'))
             && filled(config('services.pusher.secret'))
@@ -91,7 +92,7 @@
                     @endif
                 @endif
 
-                @if($canAdmin('products.view') || $canAdmin('customization.view') || $canAdmin('shipping.view'))
+                @if($canAdmin('products.view') || $canAdmin('customization.view') || $canAdmin('shipping.view') || $canAdmin('coupons.view') || $canAdmin('coupons.manage'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Master Data</p>
                     @php
                         $customizationMenuGroups = \App\Enums\JerseyCustomizationType::menuGroups();
@@ -162,7 +163,7 @@
                     <x-admin.sidebar-group
                         label="Master Data"
                         icon="◈"
-                        :active="$isCustomizationActive || $isSizeOptionActive || $isTrainingVestCustomizationActive || $isWorldCupCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*') || request()->routeIs('admin.faqs.*') || request()->routeIs('admin.genders.*')"
+                        :active="$isCustomizationActive || $isSizeOptionActive || $isTrainingVestCustomizationActive || $isWorldCupCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*') || request()->routeIs('admin.faqs.*') || request()->routeIs('admin.genders.*') || request()->routeIs('admin.time-zones.*')"
                     >
                         @if($canAdmin('customization.view'))
                         @foreach($primaryCustomizationMenuGroups as $groupKey => $customizationGroup)
@@ -267,10 +268,17 @@
                                 :active="request()->routeIs('admin.genders.*')"
                             >{{ $trailingMasterDataNumbers['genders'] }} Gender</x-admin.sidebar-sub-link>
                         @endif
+
+                        @if($canAdmin('coupons.view') || $canAdmin('coupons.manage'))
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.time-zones.index')"
+                                :active="request()->routeIs('admin.time-zones.*')"
+                            >{{ $trailingMasterDataNumbers['time_zones'] }} Time Zones</x-admin.sidebar-sub-link>
+                        @endif
                     </x-admin.sidebar-group>
                 @endif
 
-                @if($canAdmin('orders.view') || $canAdmin('returns.view') || $canAdmin('customers.view') || $canAdmin('coupons.view'))
+                @if($canAdmin('orders.view') || $canAdmin('returns.view') || $canAdmin('customers.view') || $canAdmin('coupons.view') || $canAdmin('coupons.manage'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Commerce</p>
                     @if($canAdmin('orders.view'))
                         <x-admin.sidebar-link :href="route('admin.orders.index')" :active="request()->routeIs('admin.orders.*')" icon="▣">Orders</x-admin.sidebar-link>
@@ -281,6 +289,22 @@
                     @endif
                     @if($canAdmin('customers.view'))
                         <x-admin.sidebar-link :href="route('admin.customers.index')" :active="request()->routeIs('admin.customers.*')" icon="◎">Customers</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('coupons.manage'))
+                        <x-admin.sidebar-group
+                            label="Promotions"
+                            icon="%"
+                            :active="request()->routeIs('admin.promotions.*')"
+                        >
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.promotions.sales.index')"
+                                :active="request()->routeIs('admin.promotions.sales.*')"
+                            >Campaigns</x-admin.sidebar-sub-link>
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.promotions.banners.index')"
+                                :active="request()->routeIs('admin.promotions.banners.*')"
+                            >Banners</x-admin.sidebar-sub-link>
+                        </x-admin.sidebar-group>
                     @endif
                     @if($canAdmin('coupons.view'))
                         <x-admin.sidebar-link :href="route('admin.coupons.index')" :active="request()->routeIs('admin.coupons.*')" icon="%">Discounts & Coupons</x-admin.sidebar-link>
@@ -449,5 +473,6 @@
         @endif
         <script src="{{ asset('js/admin-notifications.js') }}?v={{ $adminNotificationsJsVersion }}"></script>
     @endauth
+    @stack('admin-page-scripts')
 </body>
 </html>

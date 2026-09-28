@@ -43,6 +43,11 @@
     $wishlistPrice = $displayUnitPrice;
     $wishlistCurrency = (string) ($product['currency'] ?? 'USD');
     $productTag = trim((string) ($product['tag'] ?? ''));
+    $saleBadge = trim((string) ($product['sale_badge_label'] ?? ''));
+    if ($saleBadge !== '') {
+        $productTag = $saleBadge;
+        $tagClass = 'np-product-card-badge--red';
+    }
     $normalizedProductTag = strtolower($productTag);
     $isCustomizableProductTag = in_array($normalizedProductTag, ['customizable', 'customisable', 'c'], true);
     $showProductTag = $productTag !== '';

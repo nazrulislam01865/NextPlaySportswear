@@ -51,6 +51,7 @@
         'price_tiers' => $product['price_tiers'] ?? [],
         'price_table' => $product['price_table'] ?? [],
         'fabric_price_tables' => $product['fabric_price_tables'] ?? [],
+        'sale_campaigns' => $product['sale_campaigns'] ?? [],
         'edit_mode' => $isEditing,
         'edit_item_key' => $isEditing ? (string) $editItem['key'] : null,
         'initial_state' => $isEditing ? [
@@ -143,13 +144,30 @@ window.productBuilderFabricPricing = function (config = {}) {
                 },
             }));
         },
+        campaignPrice(originalPrice) {
+            const price = Math.max(0, Number(originalPrice || 0));
+            const campaigns = Array.isArray(config.sale_campaigns) ? config.sale_campaigns : [];
+            if (!campaigns.length || price <= 0) return price;
+
+            let bestPrice = price;
+            for (const campaign of campaigns) {
+                const value = Math.max(0, Number(campaign?.discount_value || 0));
+                let discount = campaign?.discount_type === 'fixed' ? value : price * (value / 100);
+                const maximum = Number(campaign?.maximum_discount || 0);
+                if (maximum > 0) discount = Math.min(discount, maximum);
+                discount = Math.min(price, Math.max(0, discount));
+                bestPrice = Math.min(bestPrice, Math.max(0, price - discount));
+            }
+
+            return Number(bestPrice.toFixed(2));
+        },
         tierPrice() {
             const quantity = Math.max(this.totalQuantity ? this.totalQuantity() : 1, Number(config.minimum_quantity || 1));
             const tier = (this.activePriceTiers() || []).find((candidate) => {
                 return quantity >= Number(candidate.min || 1) && (candidate.max === null || candidate.max === undefined || quantity <= Number(candidate.max));
             });
 
-            return Number(tier?.unit ?? config.base_price ?? 0);
+            return this.campaignPrice(Number(tier?.unit ?? config.base_price ?? 0));
         },
         sync() {
             baseSync.call(this);

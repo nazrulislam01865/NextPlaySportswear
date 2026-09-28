@@ -179,6 +179,8 @@ class NotifyAdminActivity
             'attributes.' => 'Catalog attribute',
             'categories.' => 'Category',
             'menus.' => 'Navigation menu',
+            'promotions.banners.' => 'Sale banner',
+            'promotions.sales.' => 'Sale campaign',
             'coupons.' => 'Coupon',
             'customers.' => 'Customer account',
             'users.' => 'Admin user',

@@ -96,7 +96,7 @@ This update includes `2026_09_07_000002_add_welcome_email_sent_at_to_users_table
 - The hash is tied to the user's current email, so a link for an old email stops working after an address change.
 - Verification links expire (60 minutes by default).
 - Resend is limited independently by source IP and authenticated account.
-- Account and checkout routes reject authenticated-but-unverified customers through Laravel's `verified` middleware.
+- When `EMAIL_VERIFICATION_ENABLED=true`, account and checkout routes reject authenticated-but-unverified customers through Laravel's `verified` middleware. When the temporary mute switch is off, customers are treated as verified as described below.
 - Registration keeps the existing honeypot, CSRF protection, unique database constraint, normalized email, and strong password validation.
 - Email delivery remains provider-agnostic and queueable through the centralized email service.
 - No SMTP credentials are committed to source code.
@@ -115,3 +115,21 @@ MAIL_MAILER=log
 Register a customer, then inspect `storage/logs/laravel.log` for the generated verification email and signed URL.
 
 For a real provider, switch the mailer/credentials in `.env`, clear cached config, and keep the queue worker running.
+
+## Temporary verification mute switch
+
+Customer email verification can be disabled without removing the signed-link implementation:
+
+```env
+EMAIL_VERIFICATION_ENABLED=false
+```
+
+With the switch disabled, new customer registrations are saved with `email_verified_at` immediately, no verification link is sent, existing unverified customers are allowed to sign in and are stamped verified on successful login, and customer email changes remain verified without a new verification link.
+
+To restore the original verification workflow later:
+
+```env
+EMAIL_VERIFICATION_ENABLED=true
+```
+
+After changing the production `.env`, rebuild Laravel's cached configuration with `php artisan optimize:clear && php artisan config:cache`.

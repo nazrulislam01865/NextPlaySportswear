@@ -40,6 +40,13 @@
                 </button>
             @endforeach
 
+            @if(filled($badge))
+                <span
+                    class="np-product-gallery-sale-badge"
+                    style="position:absolute;left:1rem;top:1rem;z-index:18;display:inline-flex;align-items:center;min-height:2rem;padding:.48rem .78rem;border-radius:.55rem;background:var(--np-color-secondary);color:#fff;font-size:.72rem;font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.05em;box-shadow:0 8px 18px rgba(15,23,42,.14);"
+                >{{ $badge }}</span>
+            @endif
+
             <button
                 type="button"
                 class="np-product-wishlist-button absolute right-4 top-4 z-20 grid h-12 w-12 place-items-center rounded-full border border-slate-200 bg-white/95 text-brand-navy shadow-lg backdrop-blur transition hover:-translate-y-0.5 hover:border-brand-red hover:text-brand-red focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/25 disabled:cursor-wait disabled:opacity-60 sm:right-5 sm:top-5"

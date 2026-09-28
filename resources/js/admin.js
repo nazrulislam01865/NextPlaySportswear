@@ -3346,6 +3346,291 @@ window.adminRemoteAreaImporter = (config = {}) => ({
     },
 });
 
+
+window.adminSaleCampaignForm = (initial = {}, banners = []) => ({
+    campaignName: String(initial.campaignName || ''),
+    internalCode: String(initial.internalCode || ''),
+    status: String(initial.status || 'draft'),
+    discountType: String(initial.discountType || 'percentage'),
+    discountValue: Number(initial.discountValue ?? 15),
+    maximumDiscount: initial.maximumDiscount ?? '',
+    startDate: String(initial.startDate || ''),
+    startTime: String(initial.startTime || '00:00'),
+    endDate: String(initial.endDate || ''),
+    endTime: String(initial.endTime || '23:59'),
+    timezone: String(initial.timezone || 'Europe/London'),
+    repeatWeekdays: Boolean(initial.repeatWeekdays),
+    allWeekdays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    weekdays: Array.isArray(initial.weekdays) ? [...initial.weekdays] : [],
+    appliesTo: String(initial.appliesTo || 'all'),
+    selectedTargets: Array.isArray(initial.selectedTargets) ? initial.selectedTargets.map(item => ({ ...item })) : [],
+    excludedProducts: Array.isArray(initial.excludedProducts) ? initial.excludedProducts.map(item => ({ ...item })) : [],
+    showSaleBadge: initial.showSaleBadge !== false,
+    showSalePage: initial.showSalePage !== false,
+    priority: Math.max(1, Number(initial.priority ?? 1)),
+    defaultProduct: initial.defaultProduct && typeof initial.defaultProduct === 'object'
+        ? { ...initial.defaultProduct }
+        : { id: 0, name: 'Product preview', price: 40, imageUrl: '' },
+    optionsUrl: String(initial.optionsUrl || ''),
+    banners: Array.isArray(banners) ? banners.map(item => ({ ...item })) : [],
+    selectedBanner: initial.selectedBanner && typeof initial.selectedBanner === 'object'
+        ? { ...initial.selectedBanner }
+        : null,
+    bannerPickerOpen: false,
+    targetSearch: '',
+    targetResults: [],
+    targetPickerOpen: false,
+    targetLoading: false,
+    targetRequestId: 0,
+    excludeSearch: '',
+    excludeResults: [],
+    excludePickerOpen: false,
+    excludeLoading: false,
+    excludeRequestId: 0,
+    currencySymbol: '\u00A3',
+
+    toggleWeekday(day) {
+        if (this.weekdays.includes(day)) {
+            this.weekdays = this.weekdays.filter(value => value !== day);
+            return;
+        }
+
+        this.weekdays.push(day);
+        this.weekdays = this.allWeekdays.filter(value => this.weekdays.includes(value));
+    },
+
+    resetTargetSelection() {
+        this.selectedTargets = [];
+        this.targetSearch = '';
+        this.targetResults = [];
+        this.targetPickerOpen = false;
+    },
+
+    async fetchOptions(type, query) {
+        if (!this.optionsUrl) return [];
+
+        const url = new URL(this.optionsUrl, window.location.href);
+        url.searchParams.set('type', type);
+        if (query) url.searchParams.set('q', query);
+
+        const response = await fetch(url.toString(), {
+            method: 'GET',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        });
+
+        if (!response.ok) {
+            throw new Error('Unable to load promotion options.');
+        }
+
+        const payload = await response.json();
+        return Array.isArray(payload.options) ? payload.options : [];
+    },
+
+    async searchTargets() {
+        if (this.appliesTo === 'all') {
+            this.targetPickerOpen = false;
+            this.targetResults = [];
+            return;
+        }
+
+        const requestId = ++this.targetRequestId;
+        this.targetLoading = true;
+        this.targetPickerOpen = true;
+
+        try {
+            const options = await this.fetchOptions(this.appliesTo, this.targetSearch.trim());
+            if (requestId !== this.targetRequestId) return;
+            this.targetResults = options.filter(option => !this.selectedTargets.some(item => Number(item.id) === Number(option.id)));
+        } catch (error) {
+            if (requestId !== this.targetRequestId) return;
+            this.targetResults = [];
+        } finally {
+            if (requestId === this.targetRequestId) this.targetLoading = false;
+        }
+    },
+
+    addTarget(option) {
+        if (!option || this.selectedTargets.some(item => Number(item.id) === Number(option.id))) return;
+        this.selectedTargets.push({ ...option });
+        this.targetSearch = '';
+        this.targetResults = [];
+        this.targetPickerOpen = false;
+    },
+
+    removeTarget(id) {
+        this.selectedTargets = this.selectedTargets.filter(item => Number(item.id) !== Number(id));
+    },
+
+    async searchExcludedProducts() {
+        const requestId = ++this.excludeRequestId;
+        this.excludeLoading = true;
+        this.excludePickerOpen = true;
+
+        try {
+            const options = await this.fetchOptions('excluded_products', this.excludeSearch.trim());
+            if (requestId !== this.excludeRequestId) return;
+            this.excludeResults = options.filter(option => !this.excludedProducts.some(item => Number(item.id) === Number(option.id)));
+        } catch (error) {
+            if (requestId !== this.excludeRequestId) return;
+            this.excludeResults = [];
+        } finally {
+            if (requestId === this.excludeRequestId) this.excludeLoading = false;
+        }
+    },
+
+    addExcludedProduct(option) {
+        if (!option || this.excludedProducts.some(item => Number(item.id) === Number(option.id))) return;
+        this.excludedProducts.push({ ...option });
+        this.excludeSearch = '';
+        this.excludeResults = [];
+        this.excludePickerOpen = false;
+    },
+
+    removeExcludedProduct(id) {
+        this.excludedProducts = this.excludedProducts.filter(item => Number(item.id) !== Number(id));
+    },
+
+    selectBanner(banner) {
+        this.selectedBanner = banner ? { ...banner } : null;
+        this.bannerPickerOpen = false;
+    },
+
+    removeBanner() {
+        this.selectedBanner = null;
+        this.bannerPickerOpen = false;
+    },
+
+    cleanNumber(value) {
+        const number = Number(value || 0);
+        if (!Number.isFinite(number)) return '0';
+        return Number.isInteger(number) ? String(number) : number.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+    },
+
+    money(value) {
+        const number = Number(value || 0);
+        return `${this.currencySymbol}${Math.max(0, number).toFixed(2)}`;
+    },
+
+    formatDate(date) {
+        const value = String(date || '').trim();
+        const slashMatch = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        if (slashMatch) {
+            const [, day, month, year] = slashMatch;
+            return `${Number(day)} ${months[Number(month) - 1] || month} ${year}`;
+        }
+
+        if (isoMatch) {
+            const [, year, month, day] = isoMatch;
+            return `${Number(day)} ${months[Number(month) - 1] || month} ${year}`;
+        }
+
+        return value || '-';
+    },
+
+    get targetFieldLabel() {
+        return {
+            parent_categories: 'Select parent categories *',
+            product_categories: 'Select product categories *',
+            subcategories: 'Select subcategories *',
+            products: 'Select products *',
+        }[this.appliesTo] || 'Select items *';
+    },
+
+    get targetSearchPlaceholder() {
+        return {
+            parent_categories: 'Search parent categories...',
+            product_categories: 'Search product categories...',
+            subcategories: 'Search subcategories...',
+            products: 'Search products...',
+        }[this.appliesTo] || 'Search...';
+    },
+
+    get targetNoun() {
+        return {
+            parent_categories: ['parent category', 'parent categories'],
+            product_categories: ['product category', 'product categories'],
+            subcategories: ['subcategory', 'subcategories'],
+            products: ['product', 'products'],
+        }[this.appliesTo] || ['item', 'items'];
+    },
+
+    get targetSelectionSummary() {
+        const count = this.selectedTargets.length;
+        const noun = count === 1 ? this.targetNoun[0] : this.targetNoun[1];
+        return `${count} ${noun} selected`;
+    },
+
+    get appliesSummary() {
+        if (this.appliesTo === 'all') return 'All products';
+        const count = this.selectedTargets.length;
+        const noun = count === 1 ? this.targetNoun[0] : this.targetNoun[1];
+        return `${count} ${noun}`;
+    },
+
+    get previewProduct() {
+        if (this.appliesTo === 'products' && this.selectedTargets.length > 0) {
+            return this.selectedTargets[0];
+        }
+
+        return this.defaultProduct;
+    },
+
+    get examplePrice() {
+        const value = Number(this.previewProduct?.price ?? 0);
+        return value > 0 ? value : 40;
+    },
+
+    get exampleDiscount() {
+        const value = Math.max(0, Number(this.discountValue || 0));
+        let discount = this.discountType === 'fixed'
+            ? value
+            : this.examplePrice * (value / 100);
+
+        const cap = Number(this.maximumDiscount || 0);
+        if (cap > 0) discount = Math.min(discount, cap);
+
+        return Math.min(this.examplePrice, Math.max(0, discount));
+    },
+
+    get exampleSalePrice() {
+        return Math.max(0, this.examplePrice - this.exampleDiscount);
+    },
+
+    get discountBadge() {
+        return this.discountType === 'fixed'
+            ? `${this.money(this.discountValue)} OFF`
+            : `${this.cleanNumber(this.discountValue)}% OFF`;
+    },
+
+    get discountSummary() {
+        const base = this.discountType === 'fixed'
+            ? `${this.money(this.discountValue)} off`
+            : `${this.cleanNumber(this.discountValue)}% off`;
+        const cap = Number(this.maximumDiscount || 0);
+        return `${base} (max discount: ${cap > 0 ? this.money(cap) : 'none'})`;
+    },
+
+    get statusLabel() {
+        return this.status === 'live' ? 'Live' : 'Draft';
+    },
+
+    get scheduleSummary() {
+        return `${this.formatDate(this.startDate)}, ${this.startTime || '00:00'} - ${this.formatDate(this.endDate)}, ${this.endTime || '23:59'}`;
+    },
+
+    get weekdaySummary() {
+        if (!this.repeatWeekdays || this.weekdays.length === 0) return '';
+        return `Repeats weekly on ${this.weekdays.join(', ')}`;
+    },
+});
+
 Alpine.start();
 
 /**

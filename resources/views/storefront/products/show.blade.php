@@ -440,7 +440,7 @@
                 x-init="init()"
             >
                 <div class="np-product-hero-grid grid min-w-0 gap-8 lg:items-start xl:gap-10">
-                    <x-storefront.product.gallery :gallery="$product['gallery']" :badge="$product['tag']" :social="$productSocial" />
+                    <x-storefront.product.gallery :gallery="$product['gallery']" :badge="($product['sale_badge_label'] ?? null) ?: $product['tag']" :social="$productSocial" />
 
                     <article class="min-w-0 lg:pt-1">
                         <h1 class="np-product-title max-w-3xl font-black text-slate-950">

@@ -159,6 +159,7 @@
                         @include('storefront.categories._product-results', [
                             'products' => $products,
                             'category' => $category,
+                            'categoryTopBanner' => $categoryTopBanner,
                         ])
                     </div>
                 </div>

@@ -424,6 +424,12 @@ class AdminRbac
                 : 'storefront_branding.view';
         }
 
+        if (Str::startsWith($name, 'promotions.')) {
+            return Str::startsWith($name, ['promotions.sales.', 'promotions.banners.'])
+                ? 'coupons.manage'
+                : 'coupons.view';
+        }
+
         foreach ([
             'attributes' => 'attributes',
             'menus' => 'menus',
@@ -434,6 +440,7 @@ class AdminRbac
             'shipping-methods' => 'shipping',
             'faqs' => 'customization',
             'genders' => 'products',
+            'time-zones' => 'coupons',
             'rural-area-surcharges' => 'rural_surcharges',
             'payment-methods' => 'payment_methods',
             'newsletter-subscribers' => 'newsletters',
