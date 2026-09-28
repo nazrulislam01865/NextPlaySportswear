@@ -16,7 +16,11 @@ class AddCartItemRequest extends FormRequest
         return [
             'product_slug' => ['required', 'string', 'max:180'],
             'quantity' => ['required', 'integer', 'min:1', 'max:999'],
-            'design_option' => ['nullable', 'string', 'max:80'],
+            // The storefront submits the complete human-readable option summary here.
+            // CartService safely condenses the stored/display value to 80 characters, but
+            // validation must accept the full summary first or valid configurations with
+            // several selected options are rejected before they reach the cart service.
+            'design_option' => ['nullable', 'string', 'max:1000'],
             'delivery_preference' => ['nullable', 'string', 'max:80'],
             'size_summary' => ['nullable', 'string', 'max:600'],
             'artwork_status' => ['nullable', 'string', 'max:120'],

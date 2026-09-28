@@ -216,11 +216,11 @@ window.productBuilderFabricPricing = function (config = {}) {
                 @endif
                 <input type="hidden" name="product_slug" value="{{ $product['slug'] }}">
                 <input type="hidden" name="quantity" :value="totalQuantity()">
-                <input type="hidden" name="design_option" :value="selectionSummary() || 'Configured product'">
+                <input type="hidden" name="design_option" :value="(selectionSummary() || 'Configured product').slice(0, 80)">
                 <input type="hidden" name="delivery_preference" :value="deliveryLabel()">
                 <input type="hidden" name="size_summary" :value="sizeSummary()">
                 <input type="hidden" name="artwork_status" :value="artworkLabel()">
-                <input type="hidden" name="notes" :value="selectionSummary()">
+                <input type="hidden" name="notes" :value="selectionSummary().slice(0, 1000)">
                 <input type="hidden" name="configuration_json" :value="configurationJson">
 
                 @if($fixedGroups->isNotEmpty())

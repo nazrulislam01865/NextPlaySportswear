@@ -2,13 +2,53 @@
 
 namespace Tests\Feature;
 
+use App\Http\Requests\Storefront\AddCartItemRequest;
 use App\Services\Cart\CartService;
 use App\Services\Discounts\CouponService;
 use App\Services\Storefront\ProductCatalogService;
+use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
 
 class ProductConfigurationBackendTest extends TestCase
 {
+    public function test_cart_request_accepts_complete_design_summary_longer_than_eighty_characters(): void
+    {
+        $designSummary = 'Fabric: Pro Performance Mesh; Primary Color: Navy Blue; Secondary Color: White; Collar: V-Neck; Imprint: Front and Back';
+
+        $validator = Validator::make([
+            'product_slug' => 'test-jersey',
+            'quantity' => 12,
+            'design_option' => $designSummary,
+            'notes' => $designSummary,
+            'configuration_json' => json_encode([
+                'selections' => [
+                    'fabric' => 'pro-performance-mesh',
+                    'primary-color' => 'navy-blue',
+                    'secondary-color' => 'white',
+                    'collar' => 'v-neck',
+                ],
+            ], JSON_THROW_ON_ERROR),
+        ], (new AddCartItemRequest())->rules());
+
+        $this->assertGreaterThan(80, strlen($designSummary));
+        $this->assertFalse($validator->fails(), $validator->errors()->toJson());
+    }
+
+    public function test_product_builder_keeps_generated_summary_fields_inside_http_limits(): void
+    {
+        $builder = file_get_contents(resource_path('views/components/storefront/product/builder.blade.php'));
+
+        $this->assertStringContainsString(
+            'name="design_option" :value="(selectionSummary() || \'Configured product\').slice(0, 80)"',
+            $builder
+        );
+        $this->assertStringContainsString(
+            'name="notes" :value="selectionSummary().slice(0, 1000)"',
+            $builder
+        );
+    }
+
+
     public function test_fixed_options_shipping_and_roster_are_enforced_server_side(): void
     {
         $product = $this->jerseyFixture();
