@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PromotionBannerPlacement;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,17 +11,12 @@ class SaleBanner extends Model
 {
     use HasFactory;
 
-    public const PLACEMENT_SALE_TOP = 'sale_top';
-    public const PLACEMENT_PRODUCT_TOP = 'product_top';
-    public const PLACEMENT_PRODUCT_AFTER_ROW_2 = 'product_after_row_2';
-    public const PLACEMENT_CATEGORY_TOP = 'category_top';
-
-    public const PLACEMENTS = [
-        self::PLACEMENT_SALE_TOP,
-        self::PLACEMENT_PRODUCT_TOP,
-        self::PLACEMENT_PRODUCT_AFTER_ROW_2,
-        self::PLACEMENT_CATEGORY_TOP,
-    ];
+    public const PLACEMENT_SALE_TOP = PromotionBannerPlacement::SALE_TOP;
+    public const PLACEMENT_SALE_MIDDLE = PromotionBannerPlacement::SALE_MIDDLE;
+    public const PLACEMENT_ALL_PRODUCTS_TOP = PromotionBannerPlacement::ALL_PRODUCTS_TOP;
+    public const PLACEMENT_ALL_PRODUCTS_MIDDLE = PromotionBannerPlacement::ALL_PRODUCTS_MIDDLE;
+    public const PLACEMENT_CATEGORY_TOP = PromotionBannerPlacement::CATEGORY_TOP;
+    public const PLACEMENTS = PromotionBannerPlacement::ALL;
 
     protected $fillable = [
         'sale_campaign_id',

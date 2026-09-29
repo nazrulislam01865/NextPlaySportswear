@@ -1,17 +1,18 @@
 @if ($products->count())
-    @if(!empty($productTopBanner))
-        <div class="mb-4">
-            <x-storefront.sale-banner :banner="$productTopBanner" />
-        </div>
-    @endif
-
+    @php($middleIndices = (array) ($allProductsMiddleInsertionIndices ?? []))
     <div class="np-product-listing-grid np-product-listing-grid--three grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         @foreach ($products as $product)
             <x-storefront.product-card :product="$product" />
-            @if($loop->iteration === 6 && !empty($productAfterRowTwoBanner))
-                <div class="col-span-full">
-                    <x-storefront.sale-banner :banner="$productAfterRowTwoBanner" />
-                </div>
+            @php($productIndex = $loop->iteration)
+
+            @if($allProductsMiddleBanner ?? null)
+                @foreach(range(1, 5) as $columns)
+                    @if(($middleIndices[$columns] ?? null) === $productIndex)
+                        <div class="np-promotion-midpoint-banner np-promotion-midpoint-banner--cols-{{ $columns }}">
+                            <x-storefront.sale-banner :banner="$allProductsMiddleBanner" />
+                        </div>
+                    @endif
+                @endforeach
             @endif
         @endforeach
     </div>

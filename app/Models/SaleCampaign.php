@@ -31,6 +31,12 @@ class SaleCampaign extends Model
         'priority',
         'homepage_slide_id',
         'banner_image_path',
+        'banner_mobile_image_path',
+        'banner_placements',
+        'banner_heading',
+        'banner_alt_text',
+        'banner_cta_label',
+        'banner_destination_link',
         'created_by',
         'updated_by',
     ];
@@ -47,6 +53,7 @@ class SaleCampaign extends Model
             'show_sale_badge' => 'boolean',
             'show_sale_page' => 'boolean',
             'priority' => 'integer',
+            'banner_placements' => 'array',
         ];
     }
 

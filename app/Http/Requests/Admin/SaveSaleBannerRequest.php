@@ -3,8 +3,11 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\SaleBanner;
+use App\Support\PublicUrl;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class SaveSaleBannerRequest extends FormRequest
 {
@@ -19,7 +22,12 @@ class SaveSaleBannerRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:255'],
-            'sale_campaign_id' => ['nullable', 'integer', 'exists:sale_campaigns,id'],
+            'sale_campaign_id' => [
+                'nullable',
+                Rule::requiredIf(fn (): bool => $this->boolean('inherit_campaign_schedule')),
+                'integer',
+                'exists:sale_campaigns,id',
+            ],
             'desktop_image' => [$editing ? 'nullable' : 'required', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:12288'],
             'mobile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:12288'],
             'remove_mobile_image' => ['nullable', 'boolean'],
@@ -31,14 +39,13 @@ class SaveSaleBannerRequest extends FormRequest
                 'string',
                 'max:2048',
                 function (string $attribute, mixed $value, \Closure $fail): void {
-                    $link = trim((string) $value);
-                    if (! str_starts_with($link, '/') && filter_var($link, FILTER_VALIDATE_URL) === false) {
-                        $fail('The destination link must be a relative path beginning with / or a valid full URL.');
+                    if (! PublicUrl::isAllowed((string) $value)) {
+                        $fail('The destination link must be a safe relative path or a valid HTTP/HTTPS URL.');
                     }
                 },
             ],
             'placements' => ['required', 'array', 'min:1'],
-            'placements.*' => ['required', 'string', Rule::in(SaleBanner::PLACEMENTS)],
+            'placements.*' => ['required', 'string', 'distinct', Rule::in(SaleBanner::PLACEMENTS)],
             'priority' => ['required', 'integer', 'min:1', 'max:999'],
             'inherit_campaign_schedule' => ['required', 'boolean'],
             'timezone' => [
@@ -54,12 +61,43 @@ class SaveSaleBannerRequest extends FormRequest
         ];
     }
 
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                if ($this->boolean('inherit_campaign_schedule')) {
+                    return;
+                }
+
+                try {
+                    $start = CarbonImmutable::createFromFormat(
+                        'Y-m-d H:i',
+                        (string) $this->input('start_date').' '.(string) $this->input('start_time'),
+                        (string) $this->input('timezone')
+                    );
+                    $end = CarbonImmutable::createFromFormat(
+                        'Y-m-d H:i',
+                        (string) $this->input('end_date').' '.(string) $this->input('end_time'),
+                        (string) $this->input('timezone')
+                    );
+
+                    if ($start && $end && $end->lessThanOrEqualTo($start)) {
+                        $validator->errors()->add('end_date', 'The banner end date and time must be after the start date and time.');
+                    }
+                } catch (\Throwable) {
+                    // Field-level date/timezone validation will report malformed input.
+                }
+            },
+        ];
+    }
+
     protected function prepareForValidation(): void
     {
         $this->merge([
             'inherit_campaign_schedule' => $this->boolean('inherit_campaign_schedule'),
             'remove_mobile_image' => $this->boolean('remove_mobile_image'),
             'placements' => array_values(array_unique((array) $this->input('placements', []))),
+            'destination_link' => trim((string) $this->input('destination_link', '')),
         ]);
     }
 }

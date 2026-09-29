@@ -43,6 +43,12 @@
                 </div>
             </div>
 
+            @if($allProductsTopBanner ?? null)
+                <div class="np-products-page__top-banner mb-5">
+                    <x-storefront.sale-banner :banner="$allProductsTopBanner" />
+                </div>
+            @endif
+
             <div class="np-catalog-active-bar np-catalog-active-bar--plain mb-5">
                 <div class="np-catalog-active-summary">
                     <strong>{{ number_format($products->total()) }} results</strong>
@@ -78,7 +84,11 @@
                 </aside>
 
                 <div data-product-results aria-live="polite">
-                    @include('storefront.products._results', ['products' => $products])
+                    @include('storefront.products._results', [
+                        'products' => $products,
+                        'allProductsMiddleBanner' => $allProductsMiddleBanner,
+                        'allProductsMiddleInsertionIndices' => $allProductsMiddleInsertionIndices,
+                    ])
                 </div>
             </div>
 

@@ -22,7 +22,7 @@ class StorefrontContentPagesTest extends TestCase
     public static function contentPageProvider(): array
     {
         return [
-            ['about', 'Built Around Teams'],
+            ['about', 'ABOUT NEXTPLAY'],
             ['contact', 'Send Us a Message'],
             ['faq', 'Common Questions'],
             ['how-to-order', 'Two Ways to Order'],
@@ -38,6 +38,25 @@ class StorefrontContentPagesTest extends TestCase
             ['cookies', 'Cookie Policy'],
             ['accessibility', 'Accessibility Statement'],
         ];
+    }
+
+    public function test_about_page_matches_the_approved_nextplay_content_structure(): void
+    {
+        $this->get(route('about'))
+            ->assertOk()
+            ->assertSee('Sportswear for teams, clubs and people who love to play.')
+            ->assertSee('We help teams bring their ideas to life through custom sportswear and everyday performance gear.')
+            ->assertSee('WHAT WE DO')
+            ->assertSee('Custom Teamwear')
+            ->assertSee('Sportswear & Gear')
+            ->assertSee('Bulk Orders')
+            ->assertSee('HOW WE WORK')
+            ->assertSee('Choose a product')
+            ->assertSee('Personalise it')
+            ->assertSee('Review your details')
+            ->assertSee('Place your order')
+            ->assertSee('Explore custom options for your club, event or organisation.')
+            ->assertSee('NEED HELP?');
     }
 
     public function test_contact_message_can_be_submitted(): void

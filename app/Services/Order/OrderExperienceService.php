@@ -2,6 +2,7 @@
 
 namespace App\Services\Order;
 
+use App\Models\Order;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -11,15 +12,26 @@ class OrderExperienceService
     private const CHECKOUT_SESSION_KEY = 'nextplay_checkout';
     private const TRACKED_ORDER_KEY = 'nextplay_tracked_order';
 
-    public function pageData(?array $order = null): array
+    public function pageData(?array $order = null, bool $allowDemo = true): array
     {
-        $order = $this->normalizeOrder($order ?? $this->currentOrder() ?? $this->demoOrder());
+        $resolved = $order;
+
+        if (! is_array($resolved) && $allowDemo) {
+            $resolved = $this->currentOrder() ?? $this->demoOrder();
+        }
+
+        $normalized = is_array($resolved) ? $this->normalizeOrder($resolved) : null;
 
         return [
-            'order' => $order,
-            'timeline' => $this->timeline($order),
+            'order' => $normalized,
+            'timeline' => $normalized ? $this->timeline($normalized) : [],
+            'trackingTimeline' => $normalized ? $this->trackingTimeline($normalized) : [],
             'supportTips' => $this->supportTips(),
-            'orderSummary' => $this->summary($order),
+            'orderSummary' => $normalized ? $this->summary($normalized) : [
+                'order_number' => null,
+                'items' => [],
+                'totals' => [],
+            ],
             'seo' => [
                 'title' => 'Order Updates | NextPlay Sportswear',
                 'description' => 'Secure order status, payment, tracking, invoice, and confirmation pages for NextPlay Sportswear customers.',
@@ -36,53 +48,109 @@ class OrderExperienceService
         return is_array($order) ? $order : null;
     }
 
+    /**
+     * Reload the verified order from the database on every request so tracking
+     * always reflects the latest admin, payment, fulfillment, and shipment state.
+     */
     public function trackedOrder(): ?array
     {
-        $order = session(self::TRACKED_ORDER_KEY);
+        $state = session(self::TRACKED_ORDER_KEY);
 
-        return is_array($order) ? $order : null;
+        if (! is_array($state)) {
+            return null;
+        }
+
+        $query = $this->trackingQuery();
+
+        if (! empty($state['order_id'])) {
+            $order = $query->whereKey((int) $state['order_id'])->first();
+        } elseif (filled($state['order_number'] ?? null) && filled($state['customer_email'] ?? null)) {
+            // Backward compatibility for sessions created by the previous
+            // snapshot-based tracker. Re-verify the email before upgrading it.
+            $order = $query
+                ->where('order_number', Str::upper(trim((string) $state['order_number'])))
+                ->whereRaw('LOWER(customer_email) = ?', [Str::lower(trim((string) $state['customer_email']))])
+                ->first();
+        } else {
+            $order = null;
+        }
+
+        if (! $order instanceof Order) {
+            session()->forget(self::TRACKED_ORDER_KEY);
+
+            return null;
+        }
+
+        session()->put(self::TRACKED_ORDER_KEY, [
+            'order_id' => $order->id,
+            'order_number' => $order->order_number,
+        ]);
+
+        return $this->orderSnapshot($order);
     }
 
     public function lookupForTracking(array $payload): ?array
     {
-        $orderNumber = Str::upper(trim((string) ($payload['order_number'] ?? '')));
+        $identifier = trim((string) ($payload['order_number'] ?? ''));
+        $orderNumber = Str::upper(ltrim($identifier, "# \t\n\r\0\x0B"));
         $email = Str::lower(trim((string) ($payload['email'] ?? '')));
-        $order = $this->currentOrder();
 
-        if (! is_array($order)) {
+        if ($identifier === '' || $email === '') {
             return null;
         }
 
-        $matchesOrder = hash_equals(Str::upper((string) ($order['order_number'] ?? '')), $orderNumber);
-        $matchesEmail = hash_equals(Str::lower((string) ($order['customer_email'] ?? '')), $email);
+        $order = $this->trackingQuery()
+            ->where('order_number', $orderNumber)
+            ->whereRaw('LOWER(customer_email) = ?', [$email])
+            ->first();
 
-        if (! $matchesOrder || ! $matchesEmail) {
+        // Also accept an actual shipment tracking number in the same field.
+        // This keeps the prototype unchanged while making "tracking ID + email"
+        // work after a shipment has been created.
+        if (! $order instanceof Order) {
+            $trackingNumber = Str::lower(preg_replace('/\s+/', '', $identifier) ?? $identifier);
+            $order = $this->trackingQuery()
+                ->whereRaw('LOWER(customer_email) = ?', [$email])
+                ->whereHas('shipments', function ($query) use ($trackingNumber): void {
+                    $query->whereRaw("REPLACE(LOWER(tracking_number), ' ', '') = ?", [$trackingNumber]);
+                })
+                ->first();
+        }
+
+        if (! $order instanceof Order) {
+            session()->forget(self::TRACKED_ORDER_KEY);
+
             return null;
         }
 
-        $normalized = $this->normalizeOrder($order);
-        session()->put(self::TRACKED_ORDER_KEY, $normalized);
+        session()->put(self::TRACKED_ORDER_KEY, [
+            'order_id' => $order->id,
+            'order_number' => $order->order_number,
+        ]);
 
-        return $normalized;
+        return $this->orderSnapshot($order);
     }
 
     public function orderForNumber(?string $orderNumber = null, bool $allowDemo = true): ?array
     {
-        $order = $this->currentOrder();
+        $current = $this->currentOrder();
 
-        if ($orderNumber !== null && is_array($order)) {
-            $matches = hash_equals(
-                Str::upper((string) ($order['order_number'] ?? '')),
-                Str::upper(trim($orderNumber))
-            );
+        if ($orderNumber !== null) {
+            $requested = Str::upper(trim($orderNumber));
 
-            if ($matches) {
-                return $this->normalizeOrder($order);
+            foreach ([$this->trackedOrder(), $current] as $order) {
+                if (! is_array($order)) {
+                    continue;
+                }
+
+                if (hash_equals(Str::upper((string) ($order['order_number'] ?? '')), $requested)) {
+                    return $this->normalizeOrder($order);
+                }
             }
         }
 
-        if ($orderNumber === null && is_array($order)) {
-            return $this->normalizeOrder($order);
+        if ($orderNumber === null && is_array($current)) {
+            return $this->normalizeOrder($current);
         }
 
         if ($allowDemo) {
@@ -267,7 +335,134 @@ class OrderExperienceService
                 'quantity' => (int) ($totals['quantity'] ?? collect($items)->sum('quantity')),
             ],
             'is_demo' => (bool) ($order['is_demo'] ?? false),
+            'histories' => array_values((array) ($order['histories'] ?? [])),
+            'shipments' => array_values((array) ($order['shipments'] ?? [])),
         ]);
+    }
+
+    /**
+     * Build the public progress line from the actual order-status vocabulary used
+     * by this project. Exceptional states are represented explicitly instead of
+     * being forced into a fake linear prototype stage.
+     */
+    public function trackingTimeline(array $order): array
+    {
+        $status = (string) ($order['status'] ?? 'pending_payment');
+        $paymentStatus = (string) ($order['payment_status'] ?? 'pending');
+
+        $steps = [
+            [
+                'key' => 'placed',
+                'title' => 'Order Placed',
+                'description' => 'Your NextPlay order was received successfully.',
+            ],
+            [
+                'key' => 'payment',
+                'title' => match ($paymentStatus) {
+                    'paid' => 'Payment Confirmed',
+                    'processing' => 'Payment Processing',
+                    'failed' => 'Payment Failed',
+                    'partially_refunded' => 'Payment Partially Refunded',
+                    'refunded' => 'Payment Refunded',
+                    default => $status === 'quote_invoice_requested' ? 'Invoice Requested' : 'Payment Review',
+                },
+                'description' => match ($paymentStatus) {
+                    'paid' => 'Your payment has been confirmed.',
+                    'processing' => 'Your payment is being verified.',
+                    'failed' => 'The payment attempt was not completed successfully.',
+                    'partially_refunded' => 'Part of the confirmed payment has been refunded.',
+                    'refunded' => 'The confirmed payment has been refunded.',
+                    default => $status === 'quote_invoice_requested'
+                        ? 'Your order is waiting for invoice or manual payment processing.'
+                        : 'Your payment is waiting for confirmation.',
+                },
+            ],
+            [
+                'key' => 'design_review',
+                'title' => 'Design Review',
+                'description' => 'Artwork, logo placement, names, numbers, sizes, and order details are being reviewed.',
+            ],
+            [
+                'key' => 'proof_approval',
+                'title' => 'Proof Approval',
+                'description' => 'The final design proof is reviewed and approved before production.',
+            ],
+            [
+                'key' => 'in_production',
+                'title' => 'In Production',
+                'description' => 'Your approved items are being produced and customised.',
+            ],
+            [
+                'key' => 'shipped',
+                'title' => $status === 'partially_shipped' ? 'Partially Shipped' : 'Shipped',
+                'description' => $status === 'partially_shipped'
+                    ? 'Part of your order has shipped. Remaining items are still being fulfilled.'
+                    : 'Your order has left production and is with the carrier.',
+            ],
+            [
+                'key' => 'delivered',
+                'title' => 'Delivered',
+                'description' => 'Your order has been delivered.',
+            ],
+            [
+                'key' => 'completed',
+                'title' => 'Completed',
+                'description' => 'Your order workflow is complete.',
+            ],
+        ];
+
+        $currentIndex = $this->progressIndexForStatus($status);
+
+        if (in_array($status, ['cancelled', 'on_hold'], true)) {
+            $furthestIndex = $this->furthestProgressIndex($order);
+            $completedThrough = max(0, $furthestIndex - 1);
+            $visible = [];
+
+            foreach ($steps as $index => $step) {
+                if ($index > $completedThrough) {
+                    break;
+                }
+
+                $visible[] = array_merge($step, ['state' => 'done']);
+            }
+
+            $visible[] = [
+                'key' => $status,
+                'title' => (string) config('commerce.order_statuses.'.$status, Str::headline($status)->toString()),
+                'description' => $status === 'cancelled'
+                    ? 'This order has been cancelled and will not continue through fulfillment.'
+                    : 'This order is currently on hold. Contact support if you need more information.',
+                'state' => 'current',
+            ];
+
+            if ($status === 'on_hold') {
+                foreach ($steps as $index => $step) {
+                    if ($index >= max(1, $furthestIndex)) {
+                        $visible[] = array_merge($step, ['state' => 'pending']);
+                    }
+                }
+            }
+
+            return $visible;
+        }
+
+        return collect($steps)->map(function (array $step, int $index) use ($currentIndex, $status, $paymentStatus): array {
+            $state = $index < $currentIndex ? 'done' : ($index === $currentIndex ? 'current' : 'pending');
+
+            if ($index === 1 && $paymentStatus === 'failed') {
+                $state = 'current';
+            }
+
+            if ($index === 1 && in_array($paymentStatus, ['partially_refunded', 'refunded'], true) && $currentIndex > 1) {
+                $state = 'done';
+            }
+
+            if ($status === 'payment_failed' && $index > 1) {
+                $state = 'pending';
+            }
+
+            return array_merge($step, ['state' => $state]);
+        })->all();
     }
 
     public function timeline(array $order): array
@@ -334,6 +529,107 @@ class OrderExperienceService
             $address['country'] ?? null,
             $address['phone'] ?? null,
         ]);
+    }
+
+    private function trackingQuery()
+    {
+        return Order::query()->with([
+            'items',
+            'histories',
+            'shipments',
+        ]);
+    }
+
+    private function orderSnapshot(Order $order): array
+    {
+        $order->loadMissing(['items', 'histories', 'shipments']);
+
+        return $this->normalizeOrder([
+            'id' => $order->id,
+            'order_number' => $order->order_number,
+            'status' => $order->status,
+            'payment_status' => $order->payment_status,
+            'fulfillment_status' => $order->fulfillment_status,
+            'customer_email' => $order->customer_email,
+            'customer_name' => $order->customer_name,
+            'items' => $order->items->map(fn ($item): array => [
+                'product' => [
+                    'title' => $item->product_name,
+                    'image' => $item->image_url ?: asset('images/product-placeholder.svg'),
+                    'alt' => $item->product_name,
+                    'slug' => $item->product_slug,
+                    'sku' => $item->sku,
+                ],
+                'quantity' => (int) $item->quantity,
+                'unit_price' => (float) $item->unit_price,
+                'customization_unit_price' => (float) $item->customization_unit_price,
+                'line_total' => (float) $item->line_total,
+                'customization' => (array) ($item->customization ?? []),
+            ])->all(),
+            'totals' => [
+                'subtotal' => (float) $order->subtotal,
+                'customization_total' => (float) $order->customization_total,
+                'discount' => (float) $order->discount_total,
+                'coupon_code' => $order->coupon_code,
+                'shipping' => (float) $order->shipping_total,
+                'rural_surcharge' => (float) ($order->rural_surcharge_total ?? 0),
+                'product_shipping_total' => (float) ($order->product_shipping_total ?? 0),
+                'tax' => (float) $order->tax_total,
+                'total' => (float) $order->grand_total,
+                'quantity' => (int) $order->total_quantity,
+            ],
+            'information' => (array) ($order->information ?? []),
+            'shipping_address' => (array) ($order->shipping_address ?? []),
+            'billing_address' => (array) ($order->billing_address ?? []),
+            'shipping_method' => (array) ($order->shipping_method ?? []),
+            'payment_method' => (array) ($order->payment_method ?? []),
+            'placed_at' => $order->placed_at?->toIso8601String(),
+            'histories' => $order->histories
+                ->sortBy('occurred_at')
+                ->map(fn ($history): array => [
+                    'status' => (string) $history->status,
+                    'title' => (string) $history->title,
+                    'description' => (string) ($history->description ?? ''),
+                    'occurred_at' => $history->occurred_at?->toIso8601String(),
+                ])->values()->all(),
+            'shipments' => $order->shipments->map(fn ($shipment): array => [
+                'shipment_number' => (string) $shipment->shipment_number,
+                'status' => (string) $shipment->status,
+                'status_label' => $shipment->statusLabel(),
+                'carrier' => (string) ($shipment->carrier ?? ''),
+                'service' => (string) ($shipment->service ?? ''),
+                'tracking_number' => (string) ($shipment->tracking_number ?? ''),
+                'tracking_url' => (string) ($shipment->tracking_url ?? ''),
+                'shipped_at' => $shipment->shipped_at?->toIso8601String(),
+                'estimated_delivery_at' => $shipment->estimated_delivery_at?->toIso8601String(),
+                'delivered_at' => $shipment->delivered_at?->toIso8601String(),
+            ])->values()->all(),
+            'is_demo' => false,
+        ]);
+    }
+
+    private function progressIndexForStatus(string $status): int
+    {
+        return match ($status) {
+            'pending_payment', 'payment_review', 'payment_failed', 'quote_invoice_requested' => 1,
+            'design_review' => 2,
+            'proof_approval' => 3,
+            'in_production' => 4,
+            'partially_shipped', 'shipped' => 5,
+            'delivered' => 6,
+            'completed' => 7,
+            default => 0,
+        };
+    }
+
+    private function furthestProgressIndex(array $order): int
+    {
+        $indices = collect((array) ($order['histories'] ?? []))
+            ->map(fn ($history): int => $this->progressIndexForStatus((string) data_get($history, 'status', '')))
+            ->push($this->progressIndexForStatus((string) ($order['status'] ?? '')))
+            ->filter(fn (int $index): bool => $index >= 0);
+
+        return max(0, (int) $indices->max());
     }
 
     private function supportTips(): array

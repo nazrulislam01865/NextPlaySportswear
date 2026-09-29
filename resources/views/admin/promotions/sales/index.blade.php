@@ -37,20 +37,14 @@
                 <tbody class="divide-y divide-slate-100">
                     @forelse($campaigns as $campaign)
                         @php
-                            $now = now('UTC');
-                            $isLive = $campaign->status === 'live';
-                            $isScheduled = $isLive && $campaign->starts_at && $campaign->starts_at->isFuture();
-                            $isEnded = $isLive && $campaign->ends_at && $campaign->ends_at->isPast();
-                            $isWithinDates = $isLive && !$isScheduled && !$isEnded;
-                            $localNow = $now->copy()->timezone($campaign->timezone ?: 'UTC');
-                            $weekdayActive = !$campaign->repeat_weekdays || in_array($localNow->format('D'), (array) $campaign->weekdays, true);
-                            $isActiveNow = $isWithinDates && $weekdayActive;
-                            $statusLabel = $campaign->status === 'draft'
-                                ? 'Draft'
-                                : ($isScheduled ? 'Scheduled' : ($isEnded ? 'Ended' : ($isActiveNow ? 'Active' : 'Paused today')));
-                            $statusClass = $isActiveNow
-                                ? 'bg-emerald-50 text-emerald-700'
-                                : ($campaign->status === 'draft' ? 'bg-slate-100 text-slate-600' : 'bg-amber-50 text-amber-700');
+                            $statusLabel = $campaignStatuses[$campaign->id] ?? 'Draft';
+                            $statusClass = match ($statusLabel) {
+                                'Active' => 'bg-emerald-50 text-emerald-700',
+                                'Draft' => 'bg-slate-100 text-slate-600',
+                                'Ended' => 'bg-slate-100 text-slate-500',
+                                default => 'bg-amber-50 text-amber-700',
+                            };
+                            $displayTimezone = $campaignDisplayTimezones[$campaign->id] ?? 'UTC';
                             $targetCount = $campaign->applies_to === 'products'
                                 ? $campaign->products_count
                                 : ($campaign->applies_to === 'all' ? null : $campaign->categories_count);
@@ -88,12 +82,12 @@
                                 @endif
                             </td>
                             <td class="px-5 py-4 text-xs leading-5 text-slate-600">
-                                <span class="block">{{ $campaign->starts_at?->timezone($campaign->timezone)->format('d M Y, H:i') }}</span>
-                                <span class="block">to {{ $campaign->ends_at?->timezone($campaign->timezone)->format('d M Y, H:i') }}</span>
+                                <span class="block">{{ $campaign->starts_at?->copy()->timezone($displayTimezone)->format('d M Y, H:i') }}</span>
+                                <span class="block">to {{ $campaign->ends_at?->copy()->timezone($displayTimezone)->format('d M Y, H:i') }}</span>
                                 @if($campaign->repeat_weekdays)
                                     <span class="block font-semibold text-slate-500">{{ implode(', ', (array) $campaign->weekdays) }}</span>
                                 @endif
-                                <span class="block text-slate-400">{{ $campaign->timezone }}</span>
+                                <span class="block text-slate-400">{{ $displayTimezone }}</span>
                             </td>
                             <td class="px-5 py-4 text-xs leading-5 text-slate-600">
                                 <span class="block">Badge: {{ $campaign->show_sale_badge ? 'Yes' : 'No' }}</span>

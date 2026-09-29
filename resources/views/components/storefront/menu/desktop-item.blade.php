@@ -18,6 +18,7 @@
 <div @class([
     'np-menu-item np-category-menu-item',
     'np-menu-item-right' => $align === 'right',
+    'np-shop-menu-item' => $isShopMega,
     'is-active' => $isActive,
 ])>
     <a
@@ -27,12 +28,19 @@
         class="np-category-link np-menu-link {{ $item->css_class }} {{ $isActive ? 'is-active' : '' }}"
         @if($isActive) aria-current="page" @endif
         @if($children->isNotEmpty()) aria-haspopup="true" aria-expanded="false" @endif
+        @if($isShopMega) data-shop-mega-trigger @endif
         data-header-analytics="header_navigation_click"
         data-header-analytics-label="{{ str($item->label)->slug('_') }}"
     >
         <span>{{ $item->label }}</span>
         @if($children->isNotEmpty())
-            <svg class="np-category-caret" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+            <svg class="np-category-caret" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                @if($isShopMega)
+                    <path d="m9 18 6-6-6-6" />
+                @else
+                    <path d="m6 9 6 6 6-6" />
+                @endif
+            </svg>
         @endif
     </a>
 

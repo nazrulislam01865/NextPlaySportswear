@@ -62,6 +62,7 @@ Route::post('/bulk-quote', [BulkQuoteController::class, 'store'])
     ->middleware('throttle:4,1')
     ->name('quote.request.store');
 Route::get('/shipping-delivery', [ContentPageController::class, 'shipping'])->name('shipping');
+Route::get('/sustainability', [ContentPageController::class, 'sustainability'])->name('sustainability');
 Route::get('/returns-refunds-exchanges', [ContentPageController::class, 'returns'])->name('returns');
 Route::get('/payment-information', [ContentPageController::class, 'payment'])->name('payment-information');
 Route::get('/privacy-policy', [ContentPageController::class, 'privacy'])->name('privacy');
@@ -109,6 +110,15 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
 
         Route::get('/storefront-branding', [\App\Http\Controllers\Admin\StorefrontBrandingController::class, 'edit'])->name('storefront-branding.edit');
         Route::put('/storefront-branding', [\App\Http\Controllers\Admin\StorefrontBrandingController::class, 'update'])->name('storefront-branding.update');
+
+        Route::get('/about-page', [\App\Http\Controllers\Admin\AboutPageController::class, 'edit'])->name('about-page.edit');
+        Route::put('/about-page', [\App\Http\Controllers\Admin\AboutPageController::class, 'update'])->name('about-page.update');
+
+        Route::get('/shipping-delivery-page', [\App\Http\Controllers\Admin\ShippingDeliveryPageController::class, 'edit'])->name('shipping-delivery-page.edit');
+        Route::put('/shipping-delivery-page', [\App\Http\Controllers\Admin\ShippingDeliveryPageController::class, 'update'])->name('shipping-delivery-page.update');
+
+        Route::get('/sustainability-page', [\App\Http\Controllers\Admin\SustainabilityPageController::class, 'edit'])->name('sustainability-page.edit');
+        Route::put('/sustainability-page', [\App\Http\Controllers\Admin\SustainabilityPageController::class, 'update'])->name('sustainability-page.update');
 
         Route::get('/homepage', [\App\Http\Controllers\Admin\HomepageSectionController::class, 'index'])->name('homepage.sections.index');
         Route::get('/homepage/sections/{key}', [\App\Http\Controllers\Admin\HomepageSectionController::class, 'edit'])->name('homepage.sections.edit');

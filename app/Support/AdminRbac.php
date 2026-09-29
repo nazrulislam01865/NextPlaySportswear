@@ -111,6 +111,12 @@ class AdminRbac
 
             self::permission('storefront_branding.view', 'Storefront', 'View', 'View Storefront Branding', 'Open storefront logo and branding controls.', 'admin.storefront-branding.edit', 150),
             self::permission('storefront_branding.manage', 'Storefront', 'Manage', 'Manage Storefront Branding', 'Upload, replace or remove the storefront logo.', 'admin.storefront-branding.update', 151),
+            self::permission('about_page.view', 'Storefront', 'View', 'View About Page', 'Open the About NextPlay content editor.', 'admin.about-page.edit', 154),
+            self::permission('about_page.manage', 'Storefront', 'Manage', 'Manage About Page', 'Update About NextPlay text, links, SEO, images and icons.', 'admin.about-page.update', 155),
+            self::permission('shipping_delivery_page.view', 'Storefront', 'View', 'View Shipping & Delivery Page', 'Open the Shipping & Delivery page content editor.', 'admin.shipping-delivery-page.edit', 156),
+            self::permission('shipping_delivery_page.manage', 'Storefront', 'Manage', 'Manage Shipping & Delivery Page', 'Update Shipping & Delivery page text, links, SEO and icons.', 'admin.shipping-delivery-page.update', 157),
+            self::permission('sustainability_page.view', 'Storefront', 'View', 'View Sustainability Page', 'Open the Sustainability page content editor.', 'admin.sustainability-page.edit', 158),
+            self::permission('sustainability_page.manage', 'Storefront', 'Manage', 'Manage Sustainability Page', 'Update Sustainability page text, links, SEO, images and icons.', 'admin.sustainability-page.update', 159),
             self::permission('homepage_sections.view', 'Storefront', 'View', 'View Homepage Sections', 'Open homepage section controls.', 'admin.homepage.sections.index', 160),
             self::permission('homepage_sections.manage', 'Storefront', 'Manage', 'Manage Homepage Sections', 'Update homepage section text, buttons, images, items, visibility and display order.', 'admin.homepage.sections.update', 161),
             self::permission('homepage_slides.view', 'Storefront', 'View', 'View Homepage Slider', 'Open homepage slide records.', 'admin.homepage-slides.index', 170),
@@ -160,6 +166,9 @@ class AdminRbac
             'menus.view', 'menus.manage',
             'media.view', 'media.manage',
             'storefront_branding.view', 'storefront_branding.manage',
+            'about_page.view', 'about_page.manage',
+            'shipping_delivery_page.view', 'shipping_delivery_page.manage',
+            'sustainability_page.view', 'sustainability_page.manage',
             'homepage_sections.view', 'homepage_sections.manage',
             'homepage_slides.view', 'homepage_slides.manage',
             'shipping.view', 'shipping.manage',
@@ -353,6 +362,9 @@ class AdminRbac
             'menus.view' => 'admin.menus.index',
             'media.view' => 'admin.media-library.index',
             'storefront_branding.view' => 'admin.storefront-branding.edit',
+            'about_page.view' => 'admin.about-page.edit',
+            'shipping_delivery_page.view' => 'admin.shipping-delivery-page.edit',
+            'sustainability_page.view' => 'admin.sustainability-page.edit',
             'homepage_sections.view' => 'admin.homepage.sections.index',
             'homepage_slides.view' => 'admin.homepage-slides.index',
             'coupons.view' => 'admin.coupons.index',
@@ -422,6 +434,24 @@ class AdminRbac
             return $name === 'storefront-branding.update'
                 ? 'storefront_branding.manage'
                 : 'storefront_branding.view';
+        }
+
+        if (Str::startsWith($name, 'about-page.')) {
+            return $name === 'about-page.update'
+                ? 'about_page.manage'
+                : 'about_page.view';
+        }
+
+        if (Str::startsWith($name, 'shipping-delivery-page.')) {
+            return $name === 'shipping-delivery-page.update'
+                ? 'shipping_delivery_page.manage'
+                : 'shipping_delivery_page.view';
+        }
+
+        if (Str::startsWith($name, 'sustainability-page.')) {
+            return $name === 'sustainability-page.update'
+                ? 'sustainability_page.manage'
+                : 'sustainability_page.view';
         }
 
         if (Str::startsWith($name, 'promotions.')) {

@@ -292,7 +292,7 @@
                                         </span>
                                         <span class="min-w-0 flex-1">
                                             <span class="block truncate text-sm font-black leading-5 text-brand-ink">{{ $previewTitle }}</span>
-                                            <span class="mt-1 block text-xs font-bold text-slate-500">Qty {{ (int) ($item['quantity'] ?? 0) }} · ${{ number_format((float) ($item['unit_price'] ?? 0), 2) }} each</span>
+                                            <span class="mt-1 block text-xs font-bold text-slate-500">Qty {{ (int) ($item['quantity'] ?? 0) }} · ${{ number_format((float) ($item['display_unit_price'] ?? $item['unit_price'] ?? 0), 2) }} each</span>
                                             <span class="mt-1 block text-sm font-black text-brand-red">${{ number_format((float) ($item['line_total'] ?? 0), 2) }}</span>
                                         </span>
                                     </a>

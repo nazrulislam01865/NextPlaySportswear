@@ -1,6 +1,5 @@
 window.adminSaleCampaignFormV2 = (initial = {}) => ({
     campaignName: String(initial.campaignName || ''),
-    internalCode: String(initial.internalCode || ''),
     status: String(initial.status || 'draft'),
     discountType: String(initial.discountType || 'percentage'),
     discountValue: Number(initial.discountValue ?? 15),
@@ -38,9 +37,17 @@ window.adminSaleCampaignFormV2 = (initial = {}) => ({
     excludeLoading: false,
     excludeRequestId: 0,
     previewIndex: 0,
-    bannerPreviewUrl: String(initial.bannerImageUrl || ''),
-    bannerFileName: String(initial.bannerFileName || ''),
+    bannerPlacements: Array.isArray(initial.bannerPlacements) ? [...initial.bannerPlacements] : ['sale_top'],
+    bannerDesktopPreviewUrl: String(initial.bannerDesktopPreviewUrl || ''),
+    bannerDesktopFileName: String(initial.bannerDesktopFileName || ''),
+    bannerMobilePreviewUrl: String(initial.bannerMobilePreviewUrl || ''),
+    bannerMobileFileName: String(initial.bannerMobileFileName || ''),
+    bannerHeading: String(initial.bannerHeading || ''),
+    bannerAltText: String(initial.bannerAltText || ''),
+    bannerCtaLabel: String(initial.bannerCtaLabel || 'Shop Sale'),
+    bannerDestinationLink: String(initial.bannerDestinationLink || '/sale'),
     removeBannerImage: false,
+    removeBannerMobileImage: false,
 
     toggleWeekday(day) {
         if (this.weekdays.includes(day)) {
@@ -136,41 +143,78 @@ window.adminSaleCampaignFormV2 = (initial = {}) => ({
         }
     },
 
+    closeExcludePicker() {
+        this.excludeRequestId += 1;
+        this.excludePickerOpen = false;
+        this.excludeLoading = false;
+        this.excludeResults = [];
+    },
+
+    handleExcludeBlur(event) {
+        const nextFocusedElement = event ? event.relatedTarget : null;
+        const pickerRoot = this.$refs && this.$refs.excludePickerRoot ? this.$refs.excludePickerRoot : null;
+
+        if (nextFocusedElement && pickerRoot && pickerRoot.contains(nextFocusedElement)) {
+            return;
+        }
+
+        this.closeExcludePicker();
+    },
+
     addExcludedProduct(option) {
         if (!option || this.excludedProducts.some(item => Number(item.id) === Number(option.id))) return;
         this.excludedProducts.push({ ...option });
         this.excludeSearch = '';
-        this.excludeResults = [];
-        this.excludePickerOpen = false;
+        this.closeExcludePicker();
     },
 
     removeExcludedProduct(id) {
         this.excludedProducts = this.excludedProducts.filter(item => Number(item.id) !== Number(id));
     },
 
-    handleBannerFile(file) {
-        if (!file) {
-            this.clearBannerFile();
-            return;
-        }
+    toggleBannerPlacement(value, checked) {
+        if (checked && !this.bannerPlacements.includes(value)) this.bannerPlacements.push(value);
+        if (!checked) this.bannerPlacements = this.bannerPlacements.filter(item => item !== value);
+    },
 
-        if (this.bannerPreviewUrl && this.bannerPreviewUrl.startsWith('blob:')) {
-            URL.revokeObjectURL(this.bannerPreviewUrl);
+    handleBannerDesktopFile(file) {
+        if (!file) return;
+        if (this.bannerDesktopPreviewUrl && this.bannerDesktopPreviewUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(this.bannerDesktopPreviewUrl);
         }
-
-        this.bannerPreviewUrl = URL.createObjectURL(file);
-        this.bannerFileName = String(file.name || 'Campaign banner');
+        this.bannerDesktopPreviewUrl = URL.createObjectURL(file);
+        this.bannerDesktopFileName = String(file.name || 'Campaign desktop banner');
         this.removeBannerImage = false;
     },
 
-    clearBannerFile() {
-        if (this.bannerPreviewUrl && this.bannerPreviewUrl.startsWith('blob:')) {
-            URL.revokeObjectURL(this.bannerPreviewUrl);
+    clearBannerDesktopFile() {
+        if (this.bannerDesktopPreviewUrl && this.bannerDesktopPreviewUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(this.bannerDesktopPreviewUrl);
         }
-        this.bannerPreviewUrl = '';
-        this.bannerFileName = '';
-        this.removeBannerImage = Boolean(initial.bannerImageUrl);
-        if (this.$refs.bannerInput) this.$refs.bannerInput.value = '';
+        this.bannerDesktopPreviewUrl = '';
+        this.bannerDesktopFileName = '';
+        this.removeBannerImage = Boolean(initial.bannerDesktopPreviewUrl);
+        if (this.$refs.bannerDesktopInput) this.$refs.bannerDesktopInput.value = '';
+    },
+
+    handleBannerMobileFile(file) {
+        if (!file) return;
+        if (this.bannerMobilePreviewUrl && this.bannerMobilePreviewUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(this.bannerMobilePreviewUrl);
+        }
+        this.bannerMobilePreviewUrl = URL.createObjectURL(file);
+        this.bannerMobileFileName = String(file.name || 'Campaign mobile banner');
+        this.removeBannerMobileImage = false;
+    },
+
+    clearBannerMobileFile() {
+        if (this.bannerMobilePreviewUrl && this.bannerMobilePreviewUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(this.bannerMobilePreviewUrl);
+        }
+        this.bannerMobilePreviewUrl = '';
+        this.bannerMobileFileName = '';
+        this.removeBannerMobileImage = Boolean(initial.bannerMobilePreviewUrl);
+        if (this.$refs.bannerMobileInput) this.$refs.bannerMobileInput.value = '';
     },
 
     clampPreviewIndex() {

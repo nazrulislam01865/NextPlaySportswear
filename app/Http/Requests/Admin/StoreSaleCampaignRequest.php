@@ -4,6 +4,8 @@ namespace App\Http\Requests\Admin;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Support\PromotionBannerPlacement;
+use App\Support\PublicUrl;
 use DateTimeZone;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -27,9 +29,6 @@ class StoreSaleCampaignRequest extends FormRequest
 
         $this->merge([
             'status' => $status,
-            'internal_code' => $this->filled('internal_code')
-                ? strtoupper(trim((string) $this->input('internal_code')))
-                : null,
             'repeat_weekdays' => filter_var($this->input('repeat_weekdays', false), FILTER_VALIDATE_BOOLEAN),
             'show_sale_badge' => filter_var($this->input('show_sale_badge', false), FILTER_VALIDATE_BOOLEAN),
             'show_sale_page' => filter_var($this->input('show_sale_page', false), FILTER_VALIDATE_BOOLEAN),
@@ -37,6 +36,13 @@ class StoreSaleCampaignRequest extends FormRequest
             'excluded_product_ids' => array_values(array_unique(array_map('intval', (array) $this->input('excluded_product_ids', [])))),
             'weekdays' => array_values(array_unique((array) $this->input('weekdays', []))),
             'remove_banner_image' => filter_var($this->input('remove_banner_image', false), FILTER_VALIDATE_BOOLEAN),
+            'remove_banner_mobile_image' => filter_var($this->input('remove_banner_mobile_image', false), FILTER_VALIDATE_BOOLEAN),
+            'banner_placements_present' => filter_var($this->input('banner_placements_present', false), FILTER_VALIDATE_BOOLEAN),
+            'banner_placements' => array_values(array_unique((array) $this->input('banner_placements', []))),
+            'banner_heading' => $this->filled('banner_heading') ? trim((string) $this->input('banner_heading')) : null,
+            'banner_alt_text' => $this->filled('banner_alt_text') ? trim((string) $this->input('banner_alt_text')) : null,
+            'banner_cta_label' => $this->filled('banner_cta_label') ? trim((string) $this->input('banner_cta_label')) : null,
+            'banner_destination_link' => $this->filled('banner_destination_link') ? trim((string) $this->input('banner_destination_link')) : null,
         ]);
     }
 
@@ -44,13 +50,6 @@ class StoreSaleCampaignRequest extends FormRequest
     {
         return [
             'campaign_name' => ['required', 'string', 'max:255'],
-            'internal_code' => [
-                'nullable',
-                'string',
-                'max:100',
-                'regex:/^[A-Z0-9_-]+$/',
-                Rule::unique('sale_campaigns', 'internal_code')->ignore($this->route('saleCampaign')?->id),
-            ],
             'status' => ['required', Rule::in(['draft', 'live'])],
             'submit_action' => ['nullable', Rule::in(['draft', 'publish'])],
             'discount_type' => ['required', Rule::in(['percentage', 'fixed'])],
@@ -72,8 +71,26 @@ class StoreSaleCampaignRequest extends FormRequest
             'show_sale_badge' => ['required', 'boolean'],
             'show_sale_page' => ['required', 'boolean'],
             'priority' => ['required', 'integer', 'min:1', 'max:1000000'],
-            'banner_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:10240'],
+            'banner_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:12288'],
+            'banner_mobile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:12288'],
             'remove_banner_image' => ['required', 'boolean'],
+            'remove_banner_mobile_image' => ['required', 'boolean'],
+            'banner_placements_present' => ['required', 'boolean'],
+            'banner_placements' => ['array'],
+            'banner_placements.*' => ['required', 'string', 'distinct', Rule::in(PromotionBannerPlacement::ALL)],
+            'banner_heading' => ['nullable', 'string', 'max:255'],
+            'banner_alt_text' => ['nullable', 'string', 'max:255'],
+            'banner_cta_label' => ['nullable', 'string', 'max:80'],
+            'banner_destination_link' => [
+                'nullable',
+                'string',
+                'max:2048',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (filled($value) && ! PublicUrl::isAllowed($value)) {
+                        $fail('The banner destination must be a safe relative path or a valid HTTP/HTTPS URL.');
+                    }
+                },
+            ],
         ];
     }
 

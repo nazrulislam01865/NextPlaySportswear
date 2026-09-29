@@ -7,8 +7,9 @@ $summary = file_get_contents($root.'/resources/views/components/storefront/cart/
 $css = file_get_contents($root.'/resources/css/storefront.css');
 $controller = file_get_contents($root.'/app/Http/Controllers/Storefront/CartController.php');
 $service = file_get_contents($root.'/app/Services/Cart/CartService.php');
+$header = file_get_contents($root.'/resources/views/components/storefront/header.blade.php');
 
-foreach (compact('view', 'item', 'summary', 'css', 'controller', 'service') as $name => $contents) {
+foreach (compact('view', 'item', 'summary', 'css', 'controller', 'service', 'header') as $name => $contents) {
     if ($contents === false) {
         fwrite(STDERR, "Unable to read {$name} source.\n");
         exit(1);
@@ -40,15 +41,20 @@ $expect(str_contains($item, 'Customization details saved'), 'Cart item shows the
 $expect(str_contains($item, 'data-cart-quantity-form'), 'Quantity update forms remain wired.');
 $expect(str_contains($item, 'data-cart-remove-form'), 'Remove form remains wired.');
 $expect(str_contains($item, 'data-cart-item-money="line_total"'), 'Line total remains AJAX-refreshable.');
-$expect(str_contains($item, "'line_subtotal'") && str_contains($item, "'customization_total'"), 'Prototype item total excludes shipping that is calculated at checkout.');
+$expect(str_contains($item, "\$item['line_total']"), 'Cart item uses the authoritative configured line total from the backend.');
+$expect(str_contains($item, "'product_shipping_total'"), 'Cart item fallback includes product-level shipping selected in the configurator.');
 $expect(! str_contains($item, 'Edit Options'), 'Prototype cart row does not show the legacy Edit Options action.');
 $expect(! str_contains($item, 'Production &amp; shipping'), 'Prototype cart row does not expose the legacy production panel.');
 
 $expect(str_contains($summary, '>Order Summary<'), 'Summary title matches the prototype.');
 $expect(str_contains($summary, '>Items ('), 'Summary shows item quantity in the Items row.');
-$expect(str_contains($summary, 'Calculated at checkout'), 'Summary shipping copy matches the prototype.');
+$expect(str_contains($summary, 'Calculated at checkout'), 'Summary retains the checkout-shipping fallback when no product-level shipping is selected.');
+$expect(str_contains($summary, 'data-cart-money="product_shipping_total"'), 'Summary exposes configured product-level shipping when present.');
 $expect(str_contains($summary, 'Estimated subtotal'), 'Summary subtotal label matches the prototype.');
-$expect(str_contains($service, "'estimated_subtotal' => round(max(0, \$merchandiseTotal - \$discount), 2)"), 'Cart summary exposes the estimated subtotal used by the prototype.');
+$expect(str_contains($service, '$configuredItemsTotal = $merchandiseTotal + $productShippingTotal;'), 'Cart summary combines configured merchandise and selected product shipping.');
+$expect(str_contains($service, "'estimated_subtotal' => round(max(0, \$configuredItemsTotal - \$discount), 2)"), 'Visible cart subtotal includes the configured product total shown on the product page.');
+$expect(str_contains($service, "SUM(line_total)"), 'Header cart subtotal uses configured line totals instead of dropping product shipping.');
+$expect(str_contains($header, "display_unit_price"), 'Header cart preview shows the configured per-unit amount rather than the base tier price.');
 $expect(str_contains($summary, 'Proceed to Checkout'), 'Summary keeps the checkout CTA.');
 $expect(str_contains($summary, 'Continue Shopping'), 'Summary keeps the continue-shopping CTA.');
 $expect(str_contains($summary, 'Have a promo code?'), 'Promo code is presented as the prototype accordion row.');

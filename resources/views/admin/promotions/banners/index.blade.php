@@ -12,12 +12,7 @@
     subtitle="Manage promotional banners to feature campaigns across your store."
 >
     @php
-        $placementLabels = [
-            \App\Models\SaleBanner::PLACEMENT_SALE_TOP => 'Sale list: top',
-            \App\Models\SaleBanner::PLACEMENT_PRODUCT_TOP => 'Product list: above results',
-            \App\Models\SaleBanner::PLACEMENT_PRODUCT_AFTER_ROW_2 => 'Product list: after row 2',
-            \App\Models\SaleBanner::PLACEMENT_CATEGORY_TOP => 'Category list: top',
-        ];
+        $placementLabels = \App\Support\PromotionBannerPlacement::labels();
         $selected = $selectedBanner;
         $formAction = $selected ? route('admin.promotions.banners.update', $selected) : route('admin.promotions.banners.store');
     @endphp

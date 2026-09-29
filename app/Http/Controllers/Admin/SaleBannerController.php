@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\SaleBanner;
 use App\Models\SaleCampaign;
 use App\Models\TimeZone;
+use App\Services\Promotions\PromotionScheduleService;
 use App\Services\Promotions\SaleBannerService;
 use App\Support\PublicMedia;
 use Carbon\CarbonImmutable;
@@ -21,8 +22,10 @@ use Throwable;
 
 class SaleBannerController extends Controller
 {
-    public function __construct(private readonly SaleBannerService $bannerService)
-    {
+    public function __construct(
+        private readonly SaleBannerService $bannerService,
+        private readonly PromotionScheduleService $schedule,
+    ) {
     }
 
     public function index(Request $request): View
@@ -74,6 +77,13 @@ class SaleBannerController extends Controller
             'bannerStatuses' => $banners->mapWithKeys(fn (SaleBanner $banner): array => [
                 $banner->id => $this->bannerService->status($banner),
             ]),
+            'bannerScheduleTimezones' => $banners->mapWithKeys(function (SaleBanner $banner): array {
+                $timezone = $banner->inherit_campaign_schedule
+                    ? ($banner->campaign?->timezone ?: $banner->timezone)
+                    : $banner->timezone;
+
+                return [$banner->id => $this->schedule->normalizeTimezone($timezone)];
+            }),
             'initialBanner' => $this->formPayload($selected, $defaultTimezone),
         ]);
     }
@@ -196,8 +206,9 @@ class SaleBannerController extends Controller
     /** @return array<string, mixed> */
     private function formPayload(?SaleBanner $banner, string $defaultTimezone): array
     {
-        $timezone = (string) old('timezone', $banner?->timezone ?: $defaultTimezone);
-        $now = CarbonImmutable::now($timezone ?: 'UTC');
+        $requestedTimezone = (string) old('timezone', $banner?->timezone ?: $defaultTimezone);
+        $timezone = $this->schedule->normalizeTimezone($requestedTimezone ?: $defaultTimezone);
+        $now = CarbonImmutable::now($timezone);
         $startsAt = $banner?->starts_at?->copy()->timezone($timezone);
         $endsAt = $banner?->ends_at?->copy()->timezone($timezone);
 

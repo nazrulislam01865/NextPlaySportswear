@@ -1,16 +1,16 @@
 <x-admin.section-card
     title="Placement Preview"
-    description="See how the selected banner will appear around real storefront products."
+    description="See how the selected banner artwork appears in top and middle storefront placements."
 >
     <div class="np-placement-preview-card">
-        <h3>1. Banner at top of product list</h3>
+        <h3>1. Sale page — top</h3>
         <div class="np-store-preview-shell">
             <div class="np-store-preview-header">
                 <div class="np-store-preview-brand">NEXTPLAY <span>SPORTSWEAR</span></div>
                 <div class="np-store-preview-search">Search products, kits, bags, sport...</div>
             </div>
-            <div class="np-store-preview-nav"><span>Home</span><span>Shop Products</span><span>All Products</span><span>Bulk Quote</span></div>
-            <div class="np-store-preview-title-row"><strong>ALL PRODUCTS</strong><span>Sort by&nbsp; Featured⌄</span></div>
+            <div class="np-store-preview-nav"><span>Home</span><span>Shop Products</span><span>All Products</span><span>Sale</span><span>Bulk Quote</span></div>
+            <div class="np-store-preview-title-row"><strong>SALE PRODUCTS</strong><span>Sort by&nbsp; Featured⌄</span></div>
             <div class="np-store-preview-body">
                 <aside class="np-store-preview-filters">
                     <strong>FILTERS</strong>
@@ -44,7 +44,7 @@
     </div>
 
     <div class="np-placement-preview-card">
-        <h3>2. Banner after second product row</h3>
+        <h3>2. Middle of product list</h3>
         <div class="np-store-preview-products np-store-preview-products--wide">
             @forelse($previewProducts as $product)
                 <article><img src="{{ $product['image'] }}" alt=""><strong>{{ \Illuminate\Support\Str::limit($product['name'], 22) }}</strong></article>

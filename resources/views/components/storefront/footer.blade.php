@@ -37,6 +37,7 @@
                                 <li><a href="{{ route('contact') }}">Contact Us</a></li>
                             @elseif($column['key'] === 'footer_company')
                                 <li><a href="{{ route('about') }}">About Us</a></li>
+                                <li><a href="{{ route('sustainability') }}">Sustainability</a></li>
                                 <li><a href="{{ route('privacy') }}">Privacy Policy</a></li>
                             @else
                                 <li><a href="{{ route('categories.index') }}">Browse Categories</a></li>

@@ -4,14 +4,19 @@ namespace App\Services\Promotions;
 
 use App\Models\Product;
 use App\Models\SaleCampaign;
+use App\Support\PromotionBannerPlacement;
 use App\Support\PublicMedia;
-use Carbon\CarbonImmutable;
+use App\Support\PublicUrl;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class SaleCampaignService
 {
+    public function __construct(private readonly PromotionScheduleService $schedule)
+    {
+    }
+
     /** @var Collection<int, array<string, mixed>>|null */
     private ?Collection $activeCampaigns = null;
 
@@ -86,6 +91,37 @@ class SaleCampaignService
     {
         return $this->activeCampaigns()
             ->contains(fn (array $campaign): bool => (bool) $campaign['show_sale_page']);
+    }
+
+    /**
+     * Ordered active Campaign candidates for one shared storefront banner slot.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function bannerCandidates(string $placement, ?int $categoryId = null): array
+    {
+        if (! in_array($placement, PromotionBannerPlacement::ALL, true)) {
+            return [];
+        }
+
+        $campaigns = $this->activeCampaigns();
+
+        if (in_array($placement, [PromotionBannerPlacement::SALE_TOP, PromotionBannerPlacement::SALE_MIDDLE], true)) {
+            $campaigns = $campaigns->filter(fn (array $campaign): bool => (bool) $campaign['show_sale_page']);
+        } elseif ($placement === PromotionBannerPlacement::CATEGORY_TOP) {
+            if ($categoryId === null || $categoryId <= 0) {
+                return [];
+            }
+
+            $campaigns = $campaigns->filter(
+                fn (array $campaign): bool => $this->campaignAppliesToCategory($campaign, $categoryId)
+            );
+        }
+
+        return $campaigns
+            ->map(fn (array $campaign): array => $this->publicCampaignPayload($campaign))
+            ->values()
+            ->all();
     }
 
     /** @return array<int, int> */
@@ -233,12 +269,8 @@ class SaleCampaignService
             return $this->activeCampaigns = collect();
         }
 
-        $nowUtc = CarbonImmutable::now('UTC');
-
         $campaigns = SaleCampaign::query()
             ->where('status', 'live')
-            ->where('starts_at', '<=', $nowUtc)
-            ->where('ends_at', '>=', $nowUtc)
             ->with([
                 'categories:id',
                 'products:id',
@@ -247,29 +279,7 @@ class SaleCampaignService
             ->orderByDesc('priority')
             ->orderByDesc('id')
             ->get()
-            ->filter(function (SaleCampaign $campaign) use ($nowUtc): bool {
-                if (! $campaign->repeat_weekdays) {
-                    return true;
-                }
-
-                $weekdays = collect((array) $campaign->weekdays)
-                    ->map(fn ($day): string => trim((string) $day))
-                    ->filter()
-                    ->values()
-                    ->all();
-
-                if ($weekdays === []) {
-                    return false;
-                }
-
-                try {
-                    $localDay = $nowUtc->setTimezone($campaign->timezone ?: 'UTC')->format('D');
-                } catch (\Throwable) {
-                    $localDay = $nowUtc->format('D');
-                }
-
-                return in_array($localDay, $weekdays, true);
-            })
+            ->filter(fn (SaleCampaign $campaign): bool => $this->schedule->campaignIsActive($campaign))
             ->values();
 
         $targetCategoryIds = $campaigns
@@ -321,11 +331,71 @@ class SaleCampaignService
                 'banner_image_url' => filled($campaign->banner_image_path)
                     ? PublicMedia::storedPathUrl((string) $campaign->banner_image_path)
                     : null,
+                'banner_mobile_image_url' => filled($campaign->banner_mobile_image_path)
+                    ? PublicMedia::storedPathUrl((string) $campaign->banner_mobile_image_path)
+                    : null,
+                'banner_placements' => array_values(array_filter(
+                    (array) $campaign->banner_placements,
+                    fn ($placement): bool => in_array($placement, PromotionBannerPlacement::ALL, true)
+                )),
+                'banner_heading' => trim((string) $campaign->banner_heading),
+                'banner_alt_text' => trim((string) $campaign->banner_alt_text),
+                'banner_cta_label' => trim((string) $campaign->banner_cta_label),
+                'banner_destination_link' => trim((string) $campaign->banner_destination_link),
                 'starts_at' => $campaign->starts_at?->copy()->timezone('UTC')->toIso8601String(),
                 'ends_at' => $campaign->ends_at?->copy()->timezone('UTC')->toIso8601String(),
                 'timezone' => (string) $campaign->timezone,
             ];
         })->values();
+    }
+
+    /** @param array<string, mixed> $campaign */
+    private function campaignAppliesToCategory(array $campaign, int $categoryId): bool
+    {
+        if ($campaign['applies_to'] === 'all') {
+            return true;
+        }
+
+        if (in_array($campaign['applies_to'], ['parent_categories', 'subcategories', 'product_categories'], true)) {
+            return in_array($categoryId, (array) $campaign['expanded_category_ids'], true);
+        }
+
+        if ($campaign['applies_to'] !== 'products') {
+            return false;
+        }
+
+        $productIds = array_values(array_diff(
+            (array) $campaign['product_ids'],
+            (array) $campaign['excluded_product_ids']
+        ));
+        if ($productIds === [] || ! Schema::hasTable('products')) {
+            return false;
+        }
+
+        $categoryIds = [$categoryId];
+        if (Schema::hasTable('category_closure')) {
+            $categoryIds = DB::table('category_closure')
+                ->where('ancestor_id', $categoryId)
+                ->pluck('descendant_id')
+                ->push($categoryId)
+                ->map(fn ($id): int => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        return Product::query()
+            ->whereIn('products.id', $productIds)
+            ->where(function ($query) use ($categoryIds): void {
+                $query->whereIn('products.category_id', $categoryIds)
+                    ->orWhereIn('products.subcategory_id', $categoryIds);
+
+                if (Schema::hasTable('category_product')) {
+                    $query->orWhereHas('categories', fn ($categoryQuery) => $categoryQuery
+                        ->whereIn('categories.id', $categoryIds));
+                }
+            })
+            ->exists();
     }
 
     /**
@@ -360,6 +430,48 @@ class SaleCampaignService
     }
 
     /**
+     * Normalize the image uploaded directly on a campaign into the exact payload
+     * consumed by the shared storefront sale-banner component.
+     *
+     * @param  array<string, mixed>  $campaign
+     * @return array<string, mixed>|null
+     */
+    private function campaignBannerPayload(array $campaign): ?array
+    {
+        $desktopImage = trim((string) ($campaign['banner_image_url'] ?? ''));
+        if ($desktopImage === '') {
+            return null;
+        }
+
+        $campaignName = trim((string) ($campaign['name'] ?? ''));
+        $heading = trim((string) ($campaign['banner_heading'] ?? '')) ?: $campaignName;
+        $altText = trim((string) ($campaign['banner_alt_text'] ?? ''))
+            ?: ($campaignName !== '' ? $campaignName.' banner' : 'Sale campaign banner');
+        $ctaLabel = trim((string) ($campaign['banner_cta_label'] ?? '')) ?: 'Shop Sale';
+        $destination = trim((string) ($campaign['banner_destination_link'] ?? '')) ?: '/sale';
+
+        if (! PublicUrl::isAllowed($destination)) {
+            $destination = '/sale';
+        }
+
+        return [
+            'id' => (int) ($campaign['id'] ?? 0),
+            'name' => $campaignName !== '' ? $campaignName.' campaign banner' : 'Campaign banner',
+            'desktop_image_url' => $desktopImage,
+            'mobile_image_url' => filled($campaign['banner_mobile_image_url'] ?? null)
+                ? trim((string) $campaign['banner_mobile_image_url'])
+                : null,
+            'placements' => array_values((array) ($campaign['banner_placements'] ?? [])),
+            'alt_text' => $altText,
+            'heading' => $heading,
+            'cta_label' => $ctaLabel,
+            'destination_link' => $destination,
+            'campaign_id' => (int) ($campaign['id'] ?? 0),
+            'source' => 'campaign',
+        ];
+    }
+
+    /**
      * @param  array<string, mixed>  $campaign
      * @return array<string, mixed>
      */
@@ -375,6 +487,10 @@ class SaleCampaignService
             'show_sale_page' => (bool) $campaign['show_sale_page'],
             'priority' => (int) $campaign['priority'],
             'banner_image_url' => $campaign['banner_image_url'],
+            'desktop_image_url' => $campaign['banner_image_url'],
+            'mobile_image_url' => $campaign['banner_mobile_image_url'] ?? null,
+            'placements' => array_values((array) ($campaign['banner_placements'] ?? [])),
+            'campaign_banner' => $this->campaignBannerPayload($campaign),
             'starts_at' => $campaign['starts_at'],
             'ends_at' => $campaign['ends_at'],
             'timezone' => (string) $campaign['timezone'],

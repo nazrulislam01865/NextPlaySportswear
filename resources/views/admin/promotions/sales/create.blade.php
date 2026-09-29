@@ -40,7 +40,14 @@
 
                         <label class="admin-label">
                             Internal code
-                            <input type="text" name="internal_code" x-model="internalCode" class="admin-input uppercase" maxlength="100" autocomplete="off" placeholder="AUTUMN24" @input="internalCode = internalCode.toUpperCase().replace(/[^A-Z0-9_-]/g, '')">
+                            <input
+                                type="text"
+                                class="admin-input uppercase bg-slate-50 text-slate-600"
+                                value="{{ $editingCampaign?->internal_code ?: 'Generated automatically when saved' }}"
+                                readonly
+                                aria-readonly="true"
+                            >
+                            <small class="mt-1 block font-normal text-slate-500">Generated automatically from the campaign name and kept stable after saving.</small>
                         </label>
 
                         <label class="admin-label">
@@ -266,7 +273,7 @@
                         <input type="hidden" name="excluded_product_ids[]" :value="product.id">
                     </template>
 
-                    <div class="relative mt-5 border-t border-slate-100 pt-5" @click.outside="excludePickerOpen = false">
+                    <div x-ref="excludePickerRoot" class="relative mt-5 border-t border-slate-100 pt-5" @click.outside="closeExcludePicker()">
                         <label class="admin-label max-w-2xl">
                             Exclude products <span class="text-xs font-semibold text-slate-400">(optional)</span>
                             <input
@@ -275,6 +282,8 @@
                                 placeholder="Search and select products to exclude..."
                                 @focus="searchExcludedProducts()"
                                 @input.debounce.250ms="searchExcludedProducts()"
+                                @blur="handleExcludeBlur($event)"
+                                @keydown.escape.stop.prevent="closeExcludePicker()"
                                 class="admin-input"
                                 autocomplete="off"
                             >
@@ -284,7 +293,7 @@
                             <p x-show="excludeLoading" class="px-3 py-3 text-sm font-semibold text-slate-500">Searching...</p>
                             <p x-show="!excludeLoading && excludeResults.length === 0" class="px-3 py-3 text-sm font-semibold text-slate-500">No matching products found.</p>
                             <template x-for="option in excludeResults" :key="`exclude-result-${option.id}`">
-                                <button type="button" @click="addExcludedProduct(option)" class="block w-full rounded-lg px-3 py-2.5 text-left hover:bg-slate-50">
+                                <button type="button" @mousedown.prevent @click="addExcludedProduct(option)" class="block w-full rounded-lg px-3 py-2.5 text-left hover:bg-slate-50 focus:bg-slate-50 focus:outline-none">
                                     <strong class="block text-sm font-black text-brand-ink" x-text="option.name"></strong>
                                     <span class="mt-1 block text-xs font-medium text-slate-500" x-text="option.sku ? `SKU: ${option.sku}` : option.path"></span>
                                 </button>
@@ -403,40 +412,134 @@
                         </div>
                     </div>
 
-                    <div class="mt-6">
-                        <h3 class="text-sm font-black text-brand-ink">Banner placement</h3>
-                        <input type="hidden" name="remove_banner_image" :value="removeBannerImage ? 1 : 0" form="sale-campaign-form">
-                        <input
-                            x-ref="bannerInput"
-                            type="file"
-                            name="banner_image"
-                            form="sale-campaign-form"
-                            accept="image/jpeg,image/png,image/webp,image/avif"
-                            class="hidden"
-                            @change="handleBannerFile($event.target.files && $event.target.files[0] ? $event.target.files[0] : null)"
-                        >
-
-                        <div x-show="!bannerPreviewUrl" class="mt-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center">
-                            <div class="mx-auto grid h-11 w-11 place-items-center rounded-xl bg-white text-xl shadow-sm">▧</div>
-                            <p class="mt-3 text-sm font-black text-brand-ink">No banner uploaded yet.</p>
-                            <p class="mt-1 text-xs font-medium leading-5 text-slate-500">Upload a campaign banner directly from this page.</p>
-                            <button type="button" @click="$refs.bannerInput.click()" class="btn btn-white mt-4">Upload Banner</button>
-                        </div>
-
-                        <div x-show="bannerPreviewUrl" x-cloak class="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                            <img :src="bannerPreviewUrl" alt="Selected campaign banner preview" class="np-sale-upload-preview bg-slate-100">
-                            <div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                                <div class="min-w-0">
-                                    <p class="truncate text-sm font-black text-brand-ink" x-text="bannerFileName"></p>
-                                    <p class="mt-1 text-xs font-medium text-slate-500">This image will be saved with the campaign.</p>
-                                </div>
-                                <div class="flex gap-2">
-                                    <button type="button" @click="$refs.bannerInput.click()" class="btn btn-white">Replace</button>
-                                    <button type="button" @click="clearBannerFile()" class="btn btn-white text-red-700">Remove</button>
-                                </div>
+                    <div class="np-sale-banner-tools mt-6">
+                        <div class="np-sale-banner-tools__heading">
+                            <div>
+                                <h3 class="text-sm font-black text-brand-ink">Banner media & placement</h3>
+                                <p class="mt-1 text-xs font-medium leading-5 text-slate-500">Upload responsive campaign artwork, then choose exactly where it should appear.</p>
                             </div>
                         </div>
-                        @error('banner_image')<p class="mt-2 text-sm font-bold text-red-600">{{ $message }}</p>@enderror
+                        <input type="hidden" name="remove_banner_image" :value="removeBannerImage ? 1 : 0" form="sale-campaign-form">
+                        <input type="hidden" name="remove_banner_mobile_image" :value="removeBannerMobileImage ? 1 : 0" form="sale-campaign-form">
+                        <input type="hidden" name="banner_placements_present" value="1" form="sale-campaign-form">
+
+                        <div class="np-sale-banner-media-grid mt-4">
+                            <section class="np-sale-banner-device-card">
+                                <div class="np-sale-banner-device-card__head">
+                                    <div>
+                                        <p class="np-sale-banner-device-card__title">Desktop banner</p>
+                                        <p class="np-sale-banner-device-card__hint">Wide artwork for desktop and larger screens.</p>
+                                    </div>
+                                    <span class="np-sale-banner-ratio" aria-label="recommended ratio 24:5">24:5 ratio</span>
+                                </div>
+                                <input
+                                    x-ref="bannerDesktopInput"
+                                    type="file"
+                                    name="banner_image"
+                                    form="sale-campaign-form"
+                                    accept="image/jpeg,image/png,image/webp,image/avif"
+                                    class="hidden"
+                                    @change="handleBannerDesktopFile($event.target.files && $event.target.files[0] ? $event.target.files[0] : null)"
+                                >
+                                <div x-show="!bannerDesktopPreviewUrl" class="np-sale-banner-dropzone">
+                                    <div class="mx-auto grid h-11 w-11 place-items-center rounded-xl bg-white text-xl shadow-sm">▧</div>
+                                    <p class="mt-3 text-sm font-black text-brand-ink">No desktop banner uploaded.</p>
+                                    <p class="mt-1 text-xs font-medium leading-5 text-slate-500">JPG, PNG, WebP or AVIF · up to 12MB</p>
+                                    <button type="button" @click="$refs.bannerDesktopInput.click()" class="btn btn-white mt-4">Upload Desktop</button>
+                                </div>
+                                <div x-show="bannerDesktopPreviewUrl" x-cloak class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                                    <img :src="bannerDesktopPreviewUrl" alt="Selected campaign desktop banner preview" class="np-sale-upload-preview bg-slate-100">
+                                    <div class="flex flex-col gap-3 p-4">
+                                        <p class="truncate text-sm font-black text-brand-ink" x-text="bannerDesktopFileName"></p>
+                                        <div class="flex gap-2">
+                                            <button type="button" @click="$refs.bannerDesktopInput.click()" class="btn btn-white">Replace</button>
+                                            <button type="button" @click="clearBannerDesktopFile()" class="btn btn-white text-red-700">Remove</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                @error('banner_image')<p class="mt-2 text-sm font-bold text-red-600">{{ $message }}</p>@enderror
+                            </section>
+
+                            <section class="np-sale-banner-device-card">
+                                <div class="np-sale-banner-device-card__head">
+                                    <div>
+                                        <p class="np-sale-banner-device-card__title">Mobile banner</p>
+                                        <p class="np-sale-banner-device-card__hint">Portrait-friendly artwork for phones and narrow screens.</p>
+                                    </div>
+                                    <span class="np-sale-banner-ratio" aria-label="recommended ratio 5:4">5:4 ratio</span>
+                                </div>
+                                <input
+                                    x-ref="bannerMobileInput"
+                                    type="file"
+                                    name="banner_mobile_image"
+                                    form="sale-campaign-form"
+                                    accept="image/jpeg,image/png,image/webp,image/avif"
+                                    class="hidden"
+                                    @change="handleBannerMobileFile($event.target.files && $event.target.files[0] ? $event.target.files[0] : null)"
+                                >
+                                <div x-show="!bannerMobilePreviewUrl" class="np-sale-banner-dropzone">
+                                    <div class="mx-auto grid h-11 w-11 place-items-center rounded-xl bg-white text-xl shadow-sm">▧</div>
+                                    <p class="mt-3 text-sm font-black text-brand-ink">No mobile banner uploaded.</p>
+                                    <p class="mt-1 text-xs font-medium leading-5 text-slate-500">JPG, PNG, WebP or AVIF · up to 12MB</p>
+                                    <button type="button" @click="$refs.bannerMobileInput.click()" class="btn btn-white mt-4">Upload Mobile</button>
+                                </div>
+                                <div x-show="bannerMobilePreviewUrl" x-cloak class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                                    <img :src="bannerMobilePreviewUrl" alt="Selected campaign mobile banner preview" class="np-sale-upload-preview bg-slate-100">
+                                    <div class="flex flex-col gap-3 p-4">
+                                        <p class="truncate text-sm font-black text-brand-ink" x-text="bannerMobileFileName"></p>
+                                        <div class="flex gap-2">
+                                            <button type="button" @click="$refs.bannerMobileInput.click()" class="btn btn-white">Replace</button>
+                                            <button type="button" @click="clearBannerMobileFile()" class="btn btn-white text-red-700">Remove</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                @error('banner_mobile_image')<p class="mt-2 text-sm font-bold text-red-600">{{ $message }}</p>@enderror
+                            </section>
+                        </div>
+
+                        <div class="np-sale-banner-placement mt-5">
+                            <div class="np-sale-banner-placement__head">
+                                <div>
+                                    <h4>Where should this banner appear?</h4>
+                                    <p>Select one or more storefront placements. You can change these later.</p>
+                                </div>
+                                <span class="np-sale-banner-placement__count" x-text="`${bannerPlacements.length} selected`"></span>
+                            </div>
+                            @include('admin.promotions._banner-placement-fields', [
+                                'placementState' => 'bannerPlacements',
+                                'toggleMethod' => 'toggleBannerPlacement',
+                                'fieldName' => 'banner_placements',
+                                'formId' => 'sale-campaign-form',
+                            ])
+                            @error('banner_placements')<p class="mt-2 text-sm font-bold text-red-600">{{ $message }}</p>@enderror
+                            @error('banner_placements.*')<p class="mt-2 text-sm font-bold text-red-600">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                            <label class="admin-label">
+                                Banner heading
+                                <input type="text" name="banner_heading" form="sale-campaign-form" x-model="bannerHeading" class="admin-input" maxlength="255" :placeholder="campaignName || 'Campaign banner heading'">
+                                @error('banner_heading')<span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
+                            </label>
+
+                            <label class="admin-label">
+                                Image alt text
+                                <input type="text" name="banner_alt_text" form="sale-campaign-form" x-model="bannerAltText" class="admin-input" maxlength="255" :placeholder="campaignName ? `${campaignName} banner` : 'Campaign banner'">
+                                @error('banner_alt_text')<span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
+                            </label>
+
+                            <label class="admin-label">
+                                CTA label
+                                <input type="text" name="banner_cta_label" form="sale-campaign-form" x-model="bannerCtaLabel" class="admin-input" maxlength="80" placeholder="Shop Sale">
+                                @error('banner_cta_label')<span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
+                            </label>
+
+                            <label class="admin-label">
+                                Destination link
+                                <input type="text" name="banner_destination_link" form="sale-campaign-form" x-model="bannerDestinationLink" class="admin-input" maxlength="2048" placeholder="/sale">
+                                @error('banner_destination_link')<span class="mt-1 block text-xs font-bold text-red-600">{{ $message }}</span>@enderror
+                            </label>
+                        </div>
                     </div>
                 </section>
             </aside>

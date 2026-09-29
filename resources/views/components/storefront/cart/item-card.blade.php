@@ -8,7 +8,15 @@
     $maximumQuantity = max($minimumQuantity, (int) ($item['quantity_max'] ?? 999));
     $decreaseQuantity = max($minimumQuantity, $quantity - 1);
     $increaseQuantity = min($maximumQuantity, $quantity + 1);
-    $displayLineTotal = (float) ($item['line_subtotal'] ?? 0) + (float) ($item['customization_total'] ?? 0);
+    // Use the same configured total that was calculated on the product page.
+    // This includes selected options/production/size charges and product-level
+    // shipping, so the cart cannot fall back to showing only the tier base price.
+    $displayLineTotal = (float) ($item['line_total'] ?? 0);
+    if ($displayLineTotal <= 0) {
+        $displayLineTotal = (float) ($item['line_subtotal'] ?? 0)
+            + (float) ($item['customization_total'] ?? 0)
+            + (float) ($item['product_shipping_total'] ?? 0);
+    }
     $unitDisplayPrice = $quantity > 0
         ? ($displayLineTotal / $quantity)
         : (float) ($item['unit_price'] ?? 0);

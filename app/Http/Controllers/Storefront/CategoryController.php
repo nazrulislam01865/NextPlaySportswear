@@ -7,7 +7,9 @@ use App\Http\Requests\Storefront\CategoryFilterRequest;
 use App\Models\UrlRedirect;
 use App\Services\Catalog\CategoryContentService;
 use App\Services\Promotions\SaleBannerService;
+use App\Services\Promotions\SaleCampaignService;
 use App\Services\Storefront\CategoryCatalogService;
+use App\Support\PromotionBannerPlacement;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 
@@ -17,6 +19,7 @@ class CategoryController extends Controller
         private readonly CategoryCatalogService $catalog,
         private readonly CategoryContentService $content,
         private readonly SaleBannerService $saleBanners,
+        private readonly SaleCampaignService $saleCampaigns,
     ) {}
 
     public function index(): View
@@ -67,7 +70,10 @@ class CategoryController extends Controller
         $products = $this->catalog->productsFor($category, $filters);
         $categoryData = $this->catalog->categoryData($category);
 
-        $categoryTopBanner = $this->saleBanners->firstForPlacement(\App\Models\SaleBanner::PLACEMENT_CATEGORY_TOP);
+        $categoryTopBanner = $this->saleBanners->resolvePageSlot(
+            $this->saleCampaigns->bannerCandidates(PromotionBannerPlacement::CATEGORY_TOP, (int) $category->id),
+            PromotionBannerPlacement::CATEGORY_TOP
+        );
 
         if ($request->header('X-Storefront-Partial') === 'product-results') {
             return view('storefront.categories._product-results', [

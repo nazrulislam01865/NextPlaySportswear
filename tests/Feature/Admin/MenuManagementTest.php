@@ -83,7 +83,7 @@ class MenuManagementTest extends TestCase
         $navigation->flushCache();
         $labels = $navigation->items('header-primary')->pluck('label')->all();
 
-        $this->assertSame(['Home', 'All Products', 'How It Works', 'Bulk Quote'], $labels);
+        $this->assertSame(['Home', 'All Products', 'Sale', 'How It Works', 'Bulk Quote'], $labels);
     }
 
     public function test_header_menu_update_discards_stale_shop_descendants_before_validation(): void
@@ -170,6 +170,21 @@ class MenuManagementTest extends TestCase
 
         $response->assertOk();
         $this->assertSame(1, substr_count($response->getContent(), 'Choose a category for this menu item.'));
+    }
+
+    public function test_sale_navigation_is_present_without_any_active_campaign(): void
+    {
+        $navigation = app(\App\Services\Catalog\NavigationService::class);
+        $navigation->flushCache();
+
+        $items = $navigation->items('header-primary')->values();
+        $routes = $items->map(fn ($item) => $item->route_name)->all();
+        $saleIndexes = array_keys($routes, 'sale.index', true);
+        $productsIndex = array_search('products.index', $routes, true);
+
+        $this->assertCount(1, $saleIndexes);
+        $this->assertNotFalse($productsIndex);
+        $this->assertSame($productsIndex + 1, $saleIndexes[0]);
     }
 
     private function routeItem(

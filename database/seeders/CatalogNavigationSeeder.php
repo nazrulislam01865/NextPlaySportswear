@@ -225,7 +225,7 @@ class CatalogNavigationSeeder extends Seeder
             ['Help Center', 'faq'], ['How to Order', 'how-to-order'], ['Track Order', 'orders.track'], ['Size Guide', 'size-guide'], ['Contact Us', 'contact'],
         ]);
         $this->seedRouteFooter('Footer Company', 'footer-company', [
-            ['About Us', 'about'], ['Shipping & Delivery', 'shipping'], ['Returns & Refunds', 'returns'], ['Payment Information', 'payment-information'],
+            ['About Us', 'about'], ['Shipping & Delivery', 'shipping'], ['Returns & Refunds', 'returns'], ['Payment Information', 'payment-information'], ['Sustainability', 'sustainability'],
         ]);
     }
 

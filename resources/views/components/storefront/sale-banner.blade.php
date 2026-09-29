@@ -18,7 +18,7 @@
                 width:100%;
                 aspect-ratio:4.75/1;
                 min-height:0;
-                max-height:190px;
+                max-height:150px;
                 overflow:hidden;
                 border:0;
                 border-radius:var(--np-button-radius,.4rem);
@@ -93,7 +93,7 @@
             @media(max-width:900px){
                 .np-store-sale-banner{
                     aspect-ratio:4/1;
-                    max-height:170px;
+                    max-height:140px;
                 }
             }
 

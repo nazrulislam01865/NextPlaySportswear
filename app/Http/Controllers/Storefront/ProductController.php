@@ -6,14 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Storefront\ProductFilterRequest;
 use App\Models\ProductWishlist;
 use App\Services\Cart\CartService;
+use App\Services\Promotions\PromotionBannerPositionService;
 use App\Services\Promotions\SaleBannerService;
 use App\Services\Promotions\SaleCampaignService;
 use App\Services\Storefront\ProductCatalogService;
 use App\Support\CatalogPageAppearance;
+use App\Support\PromotionBannerPlacement;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 
 class ProductController extends Controller
 {
@@ -22,6 +23,7 @@ class ProductController extends Controller
         private readonly CartService $cart,
         private readonly SaleCampaignService $saleCampaigns,
         private readonly SaleBannerService $saleBanners,
+        private readonly PromotionBannerPositionService $bannerPositions,
     ) {
     }
 
@@ -32,17 +34,25 @@ class ProductController extends Controller
         $filters['sports'] = $this->productCatalogService->normalizeCategoryFilterIds($filters['sports']);
 
         $products = $this->productCatalogService->searchPaginated($filters);
-        $productTopBanner = $this->saleBanners->firstForPlacement(\App\Models\SaleBanner::PLACEMENT_PRODUCT_TOP);
-        $productAfterRowTwoBanner = $this->saleBanners->firstForPlacement(\App\Models\SaleBanner::PLACEMENT_PRODUCT_AFTER_ROW_2);
+
+        $allProductsMiddleBanner = $this->saleBanners->resolvePageSlot(
+            $this->saleCampaigns->bannerCandidates(PromotionBannerPlacement::ALL_PRODUCTS_MIDDLE),
+            PromotionBannerPlacement::ALL_PRODUCTS_MIDDLE
+        );
+        $allProductsMiddleInsertionIndices = $this->insertionIndices($products->count());
 
         if ($request->header('X-Storefront-Partial') === 'product-results') {
             return view('storefront.products._results', [
                 'products' => $products,
-                'productTopBanner' => $productTopBanner,
-                'productAfterRowTwoBanner' => $productAfterRowTwoBanner,
+                'allProductsMiddleBanner' => $allProductsMiddleBanner,
+                'allProductsMiddleInsertionIndices' => $allProductsMiddleInsertionIndices,
             ]);
         }
 
+        $allProductsTopBanner = $this->saleBanners->resolvePageSlot(
+            $this->saleCampaigns->bannerCandidates(PromotionBannerPlacement::ALL_PRODUCTS_TOP),
+            PromotionBannerPlacement::ALL_PRODUCTS_TOP
+        );
         $filterOptions = $this->productCatalogService->filterOptions($filters);
         $hasFilters = $this->hasCatalogFilters($filters);
 
@@ -57,8 +67,9 @@ class ProductController extends Controller
             'hasFilters' => $hasFilters,
             'activeFilterCount' => $this->activeFilterCount($filters),
             'catalogBanner' => CatalogPageAppearance::productsBanner(),
-            'productTopBanner' => $productTopBanner,
-            'productAfterRowTwoBanner' => $productAfterRowTwoBanner,
+            'allProductsTopBanner' => $allProductsTopBanner,
+            'allProductsMiddleBanner' => $allProductsMiddleBanner,
+            'allProductsMiddleInsertionIndices' => $allProductsMiddleInsertionIndices,
             'seo' => [
                 'title' => filled($filters['tag'])
                     ? 'Products tagged '.$filters['tag'].' | '.config('storefront.name')
@@ -77,121 +88,40 @@ class ProductController extends Controller
         $filters['categories'] = $this->productCatalogService->normalizeCategoryFilterIds($filters['categories']);
         $filters['sports'] = $this->productCatalogService->normalizeCategoryFilterIds($filters['sports']);
 
-        $campaignGroups = collect($this->saleCampaigns->salePageCampaignGroups())->values();
-        $saleProductIds = $campaignGroups
-            ->flatMap(fn (array $group): array => $group['product_ids'])
-            ->map(fn ($id): int => (int) $id)
-            ->filter(fn (int $id): bool => $id > 0)
-            ->unique()
-            ->values()
-            ->all();
-
-        // Apply the shared All Products filters/sort once. Campaign sections then
-        // preserve this product order without creating a separate paginator per campaign.
-        $filteredProductIds = $this->productCatalogService->filteredSaleProductIds($filters, $saleProductIds);
-        $filteredOrder = array_flip($filteredProductIds);
-        $filteredLookup = array_fill_keys($filteredProductIds, true);
-
-        $saleTopBanners = $this->saleBanners
-            ->forPlacement(\App\Models\SaleBanner::PLACEMENT_SALE_TOP)
-            ->filter(fn (array $banner): bool => ! empty($banner['campaign_id']))
-            ->groupBy(fn (array $banner): int => (int) $banner['campaign_id']);
-
-        $orderedGroups = $campaignGroups
-            ->map(function (array $group) use ($filteredLookup, $filteredOrder): array {
-                $productIds = collect($group['product_ids'])
-                    ->map(fn ($id): int => (int) $id)
-                    ->filter(fn (int $id): bool => isset($filteredLookup[$id]))
-                    ->sortBy(fn (int $id): int => $filteredOrder[$id] ?? PHP_INT_MAX)
-                    ->values()
-                    ->all();
-
-                $group['filtered_product_ids'] = $productIds;
-
-                return $group;
-            })
-            ->filter(fn (array $group): bool => $group['filtered_product_ids'] !== [])
-            ->values();
-
-        // Flatten campaign/product membership only for pagination. A product can belong
-        // to more than one campaign; in that case it remains in each relevant campaign
-        // section, while pagination stays at the bottom of the complete Sale listing.
-        $sequence = $orderedGroups->flatMap(function (array $group): array {
-            $campaignId = (int) $group['campaign']['id'];
-
-            return collect($group['filtered_product_ids'])
-                ->map(fn (int $productId): array => [
-                    'campaign_id' => $campaignId,
-                    'product_id' => $productId,
-                ])
-                ->all();
-        })->values();
-
-        $perPage = max(1, min(
-            (int) config('catalog.products_page_size', config('catalog.category_page_size', 24)),
-            60
-        ));
-        $page = max(1, (int) $request->query('page', 1));
-        $pageSequence = $sequence->forPage($page, $perPage)->values();
-
-        $pageProducts = collect($this->productCatalogService->saleProductsByIds(
-            $pageSequence->pluck('product_id')->unique()->values()->all()
-        ))->keyBy(fn (array $product): int => (int) $product['id']);
-
-        $groupsByCampaign = $orderedGroups->keyBy(fn (array $group): int => (int) $group['campaign']['id']);
-        $campaignSections = [];
-
-        foreach ($pageSequence as $entry) {
-            $campaignId = (int) $entry['campaign_id'];
-            $productId = (int) $entry['product_id'];
-            $group = $groupsByCampaign->get($campaignId);
-            $product = $pageProducts->get($productId);
-
-            if (! is_array($group) || ! is_array($product)) {
-                continue;
-            }
-
-            $lastIndex = array_key_last($campaignSections);
-            if ($lastIndex === null || (int) $campaignSections[$lastIndex]['campaign']['id'] !== $campaignId) {
-                $campaignSections[] = [
-                    'campaign' => $group['campaign'],
-                    // Only the highest-priority active Sale-top banner represents this
-                    // campaign here. Other banner placements stay on their own pages.
-                    'primary_banner' => collect($saleTopBanners->get($campaignId, collect()))->first(),
-                    'products' => [],
-                ];
-                $lastIndex = array_key_last($campaignSections);
-            }
-
-            $campaignSections[$lastIndex]['products'][] = $product;
-        }
-
-        $salePaginator = new LengthAwarePaginator(
-            $pageSequence->all(),
-            $sequence->count(),
-            $perPage,
-            $page,
-            [
-                'path' => $request->url(),
-                'query' => $request->query(),
-                'pageName' => 'page',
-            ]
+        $saleProductIds = $this->saleCampaigns->salePageProductIds();
+        $saleProducts = $this->productCatalogService->saleProductsPaginated(
+            $filters,
+            null,
+            $saleProductIds
         );
+
+        $saleMiddleBanner = $this->saleBanners->resolvePageSlot(
+            $this->saleCampaigns->bannerCandidates(PromotionBannerPlacement::SALE_MIDDLE),
+            PromotionBannerPlacement::SALE_MIDDLE
+        );
+        $saleMiddleInsertionIndices = $this->insertionIndices($saleProducts->count());
 
         if ($request->header('X-Storefront-Partial') === 'product-results') {
             return view('storefront.products._sale-results', [
-                'campaignSections' => $campaignSections,
-                'salePaginator' => $salePaginator,
+                'saleProducts' => $saleProducts,
+                'saleMiddleBanner' => $saleMiddleBanner,
+                'saleMiddleInsertionIndices' => $saleMiddleInsertionIndices,
             ]);
         }
 
-        $saleResultCount = count($filteredProductIds);
+        $saleTopBanner = $this->saleBanners->resolvePageSlot(
+            $this->saleCampaigns->bannerCandidates(PromotionBannerPlacement::SALE_TOP),
+            PromotionBannerPlacement::SALE_TOP
+        );
+        $saleResultCount = $saleProducts->total();
         $filterOptions = $this->productCatalogService->filterOptions($filters, $saleProductIds);
 
         return view('storefront.products.sale', [
             'saleResultCount' => $saleResultCount,
-            'campaignSections' => $campaignSections,
-            'salePaginator' => $salePaginator,
+            'saleProducts' => $saleProducts,
+            'saleTopBanner' => $saleTopBanner,
+            'saleMiddleBanner' => $saleMiddleBanner,
+            'saleMiddleInsertionIndices' => $saleMiddleInsertionIndices,
             'filters' => $filters,
             'filterOptions' => $filterOptions,
             'hasFilters' => $this->hasCatalogFilters($filters),
@@ -202,6 +132,17 @@ class ProductController extends Controller
                 'canonical' => route('sale.index'),
             ],
         ]);
+    }
+
+    /** @return array<int, int|null> */
+    private function insertionIndices(int $productCount): array
+    {
+        $indices = [];
+        foreach (range(1, 5) as $columns) {
+            $indices[$columns] = $this->bannerPositions->insertionIndex($productCount, $columns);
+        }
+
+        return $indices;
     }
 
     /** @param array<string, mixed> $filters */

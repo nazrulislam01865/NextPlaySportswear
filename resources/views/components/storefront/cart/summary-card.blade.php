@@ -15,13 +15,20 @@
         </div>
         <div>
             <dt>Shipping</dt>
-            <dd class="np-cart-summary-shipping">Calculated at checkout</dd>
+            @if ((float) ($cart['product_shipping_total'] ?? 0) > 0)
+                <dd class="np-cart-summary-shipping">
+                    <span class="block text-sm font-bold text-brand-ink" data-cart-money="product_shipping_total">${{ number_format((float) $cart['product_shipping_total'], 2) }}</span>
+                    <span class="mt-0.5 block text-[10px] font-medium text-slate-500">Selected with products</span>
+                </dd>
+            @else
+                <dd class="np-cart-summary-shipping">Calculated at checkout</dd>
+            @endif
         </div>
     </dl>
 
     <div class="np-cart-summary-total">
         <span>Estimated subtotal</span>
-        <strong data-cart-money="estimated_subtotal">${{ number_format((float) ($cart['estimated_subtotal'] ?? max(0, $cart['merchandise_total'] - $cart['discount'])), 2) }}</strong>
+        <strong data-cart-money="estimated_subtotal">${{ number_format((float) ($cart['estimated_subtotal'] ?? max(0, $cart['merchandise_total'] + ($cart['product_shipping_total'] ?? 0) - $cart['discount'])), 2) }}</strong>
     </div>
 
     <div class="np-cart-summary-actions">

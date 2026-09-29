@@ -40,8 +40,17 @@ $expect(
 
 $expect(
     str_contains($controller, "view('storefront.products._results'")
-        && str_contains($controller, "'products' => \$products"),
-    'The controller returns only the product results partial for asynchronous sorting.'
+        && str_contains($controller, "'products' => \$products")
+        && str_contains($controller, "'allProductsMiddleBanner' => \$allProductsMiddleBanner"),
+    'The controller returns product results plus at most the page-level middle promotion slot for asynchronous sorting.'
+);
+
+$resultsPartial = file_get_contents($root.'/resources/views/storefront/products/_results.blade.php');
+$expect(
+    is_string($resultsPartial)
+        && str_contains($resultsPartial, '$allProductsMiddleBanner')
+        && ! str_contains($resultsPartial, '$allProductsTopBanner'),
+    'AJAX results can refresh the single middle slot but never re-emit the full-page top slot.'
 );
 
 $expect(

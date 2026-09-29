@@ -3,14 +3,28 @@
 namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
+use App\Services\Storefront\AboutPageService;
 use App\Services\Storefront\HomepageSectionService;
+use App\Services\Storefront\ShippingDeliveryPageService;
+use App\Services\Storefront\SustainabilityPageService;
 use Illuminate\View\View;
 
 class ContentPageController extends Controller
 {
-    public function about(): View
+    public function about(AboutPageService $aboutPage): View
     {
-        return view('storefront.content.about');
+        $about = $aboutPage->settings();
+        $seo = [
+            'title' => (string) data_get($about, 'seo.title'),
+            'description' => (string) data_get($about, 'seo.description'),
+            'robots' => 'index, follow',
+            'canonical' => route('about'),
+            'og_title' => (string) data_get($about, 'seo.title'),
+            'og_description' => (string) data_get($about, 'seo.description'),
+            'schema_type' => 'AboutPage',
+        ];
+
+        return view('storefront.content.about', compact('about', 'seo'));
     }
 
     public function faq(): View
@@ -91,9 +105,36 @@ class ContentPageController extends Controller
         return view('storefront.content.bulk-ordering');
     }
 
-    public function shipping(): View
+    public function shipping(ShippingDeliveryPageService $shippingDeliveryPage): View
     {
-        return view('storefront.content.shipping');
+        $shippingDelivery = $shippingDeliveryPage->settings();
+        $seo = [
+            'title' => (string) data_get($shippingDelivery, 'seo.title'),
+            'description' => (string) data_get($shippingDelivery, 'seo.description'),
+            'robots' => 'index, follow',
+            'canonical' => route('shipping'),
+            'og_title' => (string) data_get($shippingDelivery, 'seo.title'),
+            'og_description' => (string) data_get($shippingDelivery, 'seo.description'),
+            'schema_type' => 'WebPage',
+        ];
+
+        return view('storefront.content.shipping', compact('shippingDelivery', 'seo'));
+    }
+
+    public function sustainability(SustainabilityPageService $sustainabilityPage): View
+    {
+        $sustainability = $sustainabilityPage->settings();
+        $seo = [
+            'title' => (string) data_get($sustainability, 'seo.title'),
+            'description' => (string) data_get($sustainability, 'seo.description'),
+            'robots' => 'index, follow',
+            'canonical' => route('sustainability'),
+            'og_title' => (string) data_get($sustainability, 'seo.title'),
+            'og_description' => (string) data_get($sustainability, 'seo.description'),
+            'schema_type' => 'WebPage',
+        ];
+
+        return view('storefront.content.sustainability', compact('sustainability', 'seo'));
     }
 
     public function returns(): View

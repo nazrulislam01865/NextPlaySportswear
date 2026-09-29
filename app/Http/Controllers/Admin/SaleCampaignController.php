@@ -8,6 +8,9 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\SaleCampaign;
 use App\Models\TimeZone;
+use App\Services\Promotions\PromotionScheduleService;
+use App\Services\Promotions\SaleCampaignCodeGenerator;
+use App\Support\PromotionBannerPlacement;
 use App\Support\PublicMedia;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -20,6 +23,12 @@ use Throwable;
 
 class SaleCampaignController extends Controller
 {
+    public function __construct(
+        private readonly SaleCampaignCodeGenerator $codeGenerator,
+        private readonly PromotionScheduleService $schedule,
+    ) {
+    }
+
     public function index(Request $request): View
     {
         $queryText = trim((string) $request->query('q', ''));
@@ -38,9 +47,18 @@ class SaleCampaignController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        $campaignStatuses = $campaigns->getCollection()->mapWithKeys(
+            fn (SaleCampaign $campaign): array => [$campaign->id => $this->schedule->campaignStatus($campaign)]
+        );
+        $campaignDisplayTimezones = $campaigns->getCollection()->mapWithKeys(
+            fn (SaleCampaign $campaign): array => [$campaign->id => $this->schedule->normalizeTimezone($campaign->timezone)]
+        );
+
         return view('admin.promotions.sales.index', [
             'campaigns' => $campaigns,
             'filters' => ['q' => $queryText, 'status' => $status],
+            'campaignStatuses' => $campaignStatuses,
+            'campaignDisplayTimezones' => $campaignDisplayTimezones,
         ]);
     }
 
@@ -142,10 +160,17 @@ class SaleCampaignController extends Controller
             'excluded_product_ids',
             $campaign?->excludedProducts->pluck('id')->map(fn ($id): int => (int) $id)->all() ?? []
         ))));
+        $placementsWerePreviouslySubmitted = filter_var(
+            old('banner_placements_present', false),
+            FILTER_VALIDATE_BOOLEAN
+        );
+        $initialBannerPlacements = $placementsWerePreviouslySubmitted
+            ? array_values((array) old('banner_placements', []))
+            : array_values((array) ($campaign?->banner_placements ?? [PromotionBannerPlacement::SALE_TOP]));
 
         $initialCampaign = [
             'campaignName' => (string) old('campaign_name', $campaign?->name ?? ''),
-            'internalCode' => (string) old('internal_code', $campaign?->internal_code ?? ''),
+            'internalCode' => (string) ($campaign?->internal_code ?? ''),
             'status' => (string) old('status', $campaign?->status ?? 'draft'),
             'discountType' => (string) old('discount_type', $campaign?->discount_type ?? 'percentage'),
             'discountValue' => (float) old('discount_value', $campaign?->discount_value ?? 15),
@@ -164,12 +189,23 @@ class SaleCampaignController extends Controller
             'showSalePage' => filter_var(old('show_sale_page', $campaign?->show_sale_page ?? true), FILTER_VALIDATE_BOOLEAN),
             'priority' => (int) old('priority', $campaign?->priority ?? 1),
             'optionsUrl' => route('admin.promotions.sales.options'),
-            'bannerImageUrl' => $campaign && filled($campaign->banner_image_path)
+            'bannerDesktopPreviewUrl' => $campaign && filled($campaign->banner_image_path)
                 ? PublicMedia::storedPathUrl((string) $campaign->banner_image_path)
                 : '',
-            'bannerFileName' => $campaign && filled($campaign->banner_image_path)
+            'bannerDesktopFileName' => $campaign && filled($campaign->banner_image_path)
                 ? basename((string) $campaign->banner_image_path)
                 : '',
+            'bannerMobilePreviewUrl' => $campaign && filled($campaign->banner_mobile_image_path)
+                ? PublicMedia::storedPathUrl((string) $campaign->banner_mobile_image_path)
+                : '',
+            'bannerMobileFileName' => $campaign && filled($campaign->banner_mobile_image_path)
+                ? basename((string) $campaign->banner_mobile_image_path)
+                : '',
+            'bannerPlacements' => $initialBannerPlacements,
+            'bannerHeading' => (string) old('banner_heading', $campaign?->banner_heading ?: ($campaign?->name ?? '')),
+            'bannerAltText' => (string) old('banner_alt_text', $campaign?->banner_alt_text ?: ($campaign?->name ? $campaign->name.' banner' : '')),
+            'bannerCtaLabel' => (string) old('banner_cta_label', $campaign?->banner_cta_label ?: 'Shop Sale'),
+            'bannerDestinationLink' => (string) old('banner_destination_link', $campaign?->banner_destination_link ?: '/sale'),
         ];
 
         return view('admin.promotions.sales.create', [
@@ -201,9 +237,24 @@ class SaleCampaignController extends Controller
         };
 
         $userId = auth('admin')->id();
-        $oldBannerPath = $campaign->banner_image_path;
-        $storedBannerPath = null;
-        $removeBanner = (bool) ($data['remove_banner_image'] ?? false);
+        $oldDesktopPath = $campaign->banner_image_path;
+        $oldMobilePath = $campaign->banner_mobile_image_path;
+        $storedPaths = [];
+        $removeDesktop = (bool) ($data['remove_banner_image'] ?? false);
+        $removeMobile = (bool) ($data['remove_banner_mobile_image'] ?? false);
+        $placementsWereSubmitted = (bool) ($data['banner_placements_present'] ?? false);
+        $bannerPlacements = $placementsWereSubmitted
+            ? array_values($data['banner_placements'] ?? [])
+            : array_values((array) ($campaign->banner_placements ?? []));
+
+        if (! $placementsWereSubmitted && $creating && $request->hasFile('banner_image')) {
+            $bannerPlacements = [PromotionBannerPlacement::SALE_TOP];
+        }
+
+        $internalCode = trim((string) $campaign->internal_code);
+        if ($internalCode === '') {
+            $internalCode = $this->codeGenerator->generate((string) $data['campaign_name']);
+        }
 
         try {
             DB::transaction(function () use (
@@ -215,8 +266,11 @@ class SaleCampaignController extends Controller
                 $userId,
                 $campaign,
                 $creating,
-                $removeBanner,
-                &$storedBannerPath
+                $removeDesktop,
+                $removeMobile,
+                $bannerPlacements,
+                $internalCode,
+                &$storedPaths
             ): void {
                 if ($creating) {
                     $campaign->created_by = $userId;
@@ -224,7 +278,7 @@ class SaleCampaignController extends Controller
 
                 $campaign->fill([
                     'name' => $data['campaign_name'],
-                    'internal_code' => $data['internal_code'] ?: null,
+                    'internal_code' => $internalCode,
                     'status' => $status,
                     'discount_type' => $data['discount_type'],
                     'discount_value' => $data['discount_value'],
@@ -239,16 +293,30 @@ class SaleCampaignController extends Controller
                     'show_sale_page' => (bool) $data['show_sale_page'],
                     'priority' => (int) $data['priority'],
                     'homepage_slide_id' => null,
+                    'banner_placements' => $bannerPlacements,
+                    'banner_heading' => ($data['banner_heading'] ?? null) ?: $data['campaign_name'],
+                    'banner_alt_text' => ($data['banner_alt_text'] ?? null) ?: $data['campaign_name'].' banner',
+                    'banner_cta_label' => ($data['banner_cta_label'] ?? null) ?: 'Shop Sale',
+                    'banner_destination_link' => ($data['banner_destination_link'] ?? null) ?: '/sale',
                     'updated_by' => $userId,
                 ]);
                 $campaign->save();
 
                 if ($request->hasFile('banner_image')) {
-                    $storedBannerPath = $request->file('banner_image')->store("promotions/sale-campaigns/{$campaign->id}", 'public');
-                    $campaign->forceFill(['banner_image_path' => $storedBannerPath])->save();
-                } elseif ($removeBanner) {
-                    $campaign->forceFill(['banner_image_path' => null])->save();
+                    $storedPaths['desktop'] = $request->file('banner_image')->store("promotions/sale-campaigns/{$campaign->id}", 'public');
+                    $campaign->banner_image_path = $storedPaths['desktop'];
+                } elseif ($removeDesktop) {
+                    $campaign->banner_image_path = null;
                 }
+
+                if ($request->hasFile('banner_mobile_image')) {
+                    $storedPaths['mobile'] = $request->file('banner_mobile_image')->store("promotions/sale-campaigns/{$campaign->id}", 'public');
+                    $campaign->banner_mobile_image_path = $storedPaths['mobile'];
+                } elseif ($removeMobile) {
+                    $campaign->banner_mobile_image_path = null;
+                }
+
+                $campaign->save();
 
                 $targetIds = array_values($data['target_ids'] ?? []);
                 if ($data['applies_to'] === 'products') {
@@ -265,15 +333,18 @@ class SaleCampaignController extends Controller
                 $campaign->excludedProducts()->sync(array_values($data['excluded_product_ids'] ?? []));
             });
         } catch (Throwable $exception) {
-            if ($storedBannerPath && Storage::disk('public')->exists($storedBannerPath)) {
-                Storage::disk('public')->delete($storedBannerPath);
+            foreach ($storedPaths as $path) {
+                Storage::disk('public')->delete((string) $path);
             }
 
             throw $exception;
         }
 
-        if (($storedBannerPath || $removeBanner) && filled($oldBannerPath) && $oldBannerPath !== $storedBannerPath) {
-            Storage::disk('public')->delete((string) $oldBannerPath);
+        if ((isset($storedPaths['desktop']) || $removeDesktop) && filled($oldDesktopPath) && $oldDesktopPath !== ($storedPaths['desktop'] ?? null)) {
+            Storage::disk('public')->delete((string) $oldDesktopPath);
+        }
+        if ((isset($storedPaths['mobile']) || $removeMobile) && filled($oldMobilePath) && $oldMobilePath !== ($storedPaths['mobile'] ?? null)) {
+            Storage::disk('public')->delete((string) $oldMobilePath);
         }
 
         $message = $status === 'live'

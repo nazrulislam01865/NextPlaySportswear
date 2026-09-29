@@ -24,7 +24,7 @@
 
             <div class="np-banner-image-grid">
                 <div>
-                    <label class="admin-label">Desktop image <span class="np-banner-recommendation">(recommended 1440 × 300)</span></label>
+                    <label class="admin-label">Desktop image <span class="np-banner-recommendation">(recommended ratio 24:5)</span></label>
                     <input x-ref="desktopInput" class="sr-only" type="file" name="desktop_image" accept="image/jpeg,image/png,image/webp,image/avif" @change="setDesktopFile($event.target.files[0])" {{ $selected ? '' : 'required' }}>
                     <div class="np-banner-upload-preview" :class="desktopPreviewUrl ? 'has-image' : ''">
                         <template x-if="desktopPreviewUrl"><img :src="desktopPreviewUrl" alt="Desktop banner preview"></template>
@@ -38,7 +38,7 @@
                 </div>
 
                 <div>
-                    <label class="admin-label">Mobile image <span class="np-banner-recommendation">(recommended 750 × 600)</span></label>
+                    <label class="admin-label">Mobile image <span class="np-banner-recommendation">(recommended ratio 5:4)</span></label>
                     <input x-ref="mobileInput" class="sr-only" type="file" name="mobile_image" accept="image/jpeg,image/png,image/webp,image/avif" @change="setMobileFile($event.target.files[0])">
                     <input type="hidden" name="remove_mobile_image" :value="removeMobile ? 1 : 0">
                     <div class="np-banner-upload-preview np-banner-upload-preview--mobile" :class="mobilePreviewUrl ? 'has-image' : ''">
@@ -72,11 +72,11 @@
         <x-admin.section-card title="2. Placement" description="Choose where this banner will appear and review the actual content overlay." id="banner-placement">
             <div class="np-banner-placement-grid">
                 <div>
-                    <div class="np-banner-check-list">
-                        @foreach($placementLabels as $value => $label)
-                            <label><input type="checkbox" name="placements[]" value="{{ $value }}" :checked="placements.includes(@js($value))" @change="togglePlacement(@js($value), $event.target.checked)"><span>{{ $label }}</span></label>
-                        @endforeach
-                    </div>
+                    @include('admin.promotions._banner-placement-fields', [
+                        'placementState' => 'placements',
+                        'toggleMethod' => 'togglePlacement',
+                        'fieldName' => 'placements',
+                    ])
                     @error('placements')<p class="np-banner-field-error">{{ $message }}</p>@enderror
 
                     <label class="admin-label np-banner-priority-label">Display priority
@@ -112,7 +112,7 @@
             <div class="np-banner-schedule-row">
                 <label class="np-banner-inherit-check">
                     <input type="checkbox" name="inherit_campaign_schedule" value="1" :checked="inheritSchedule" @change="inheritSchedule=$event.target.checked">
-                    <span><strong>Inherit campaign schedule</strong><small x-show="campaignId">Banner automatically follows the linked campaign dates.</small></span>
+                    <span><strong>Inherit campaign schedule</strong><small x-show="campaignId">Banner follows the linked campaign schedule, including its selected weekdays.</small></span>
                 </label>
                 <label class="admin-label">Time zone
                     <select class="admin-input" name="timezone" x-model="timezone" required>

@@ -7,7 +7,7 @@
         </div>
     </section>
 
-    <section class="section-padding bg-slate-50">
+    <section class="section-padding bg-slate-50 np-sale-page">
         <div class="site-container np-products-catalog-container" x-data="{filtersOpen:false}">
             <div class="mb-5 flex items-end justify-between gap-4 lg:hidden">
                 <div>
@@ -41,6 +41,12 @@
                 </aside>
 
                 <div class="min-w-0">
+                    @if($saleTopBanner ?? null)
+                        <div class="np-sale-page__top-banner mb-5">
+                            <x-storefront.sale-banner :banner="$saleTopBanner" />
+                        </div>
+                    @endif
+
                     <div class="np-catalog-active-bar np-catalog-active-bar--plain mb-5">
                         <div class="np-catalog-active-summary">
                             <span class="text-sm font-semibold text-slate-600">Sale applies to eligible options. Final price shown before checkout.</span>
@@ -65,8 +71,9 @@
 
                     <div data-product-results aria-live="polite">
                         @include('storefront.products._sale-results', [
-                            'campaignSections' => $campaignSections,
-                            'salePaginator' => $salePaginator,
+                            'saleProducts' => $saleProducts,
+                            'saleMiddleBanner' => $saleMiddleBanner,
+                            'saleMiddleInsertionIndices' => $saleMiddleInsertionIndices,
                         ])
                     </div>
                 </div>

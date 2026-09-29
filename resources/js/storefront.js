@@ -2553,7 +2553,10 @@ const syncShopMenuPosition = () => {
 
 const closeOpenDesktopMenus = (except = null) => {
     document.querySelectorAll('.np-menu-item.is-open').forEach((item) => {
-        if (item !== except) item.classList.remove('is-open');
+        if (item === except) return;
+
+        item.classList.remove('is-open');
+        item.querySelector(':scope > .np-menu-link')?.setAttribute('aria-expanded', 'false');
     });
 };
 
@@ -2564,6 +2567,9 @@ const setupStorefrontMenus = () => {
         const trigger = item.querySelector(':scope > .np-menu-link');
         const panel = item.querySelector(':scope > .np-menu-panel');
         if (!trigger || !panel) return;
+
+        const isClickOnlyShopMega = item.classList.contains('np-shop-menu-item')
+            || trigger.hasAttribute('data-shop-mega-trigger');
 
         trigger.setAttribute('aria-haspopup', 'true');
         trigger.setAttribute('aria-expanded', item.classList.contains('is-open') ? 'true' : 'false');
@@ -2578,6 +2584,13 @@ const setupStorefrontMenus = () => {
             }
             trigger.setAttribute('aria-expanded', item.classList.contains('is-open') ? 'true' : 'false');
         };
+
+        if (isClickOnlyShopMega) {
+            trigger.addEventListener('click', (event) => {
+                event.preventDefault();
+                setOpen(!item.classList.contains('is-open'));
+            });
+        }
 
         trigger.addEventListener('keydown', (event) => {
             if (event.key === 'Enter' || event.key === ' ') {
@@ -2605,7 +2618,9 @@ const setupStorefrontMenus = () => {
 
         item.addEventListener('pointerenter', syncShopMenuPosition, { passive: true });
         item.addEventListener('focusin', syncShopMenuPosition);
-        item.addEventListener('pointerleave', () => setOpen(false), { passive: true });
+        if (!isClickOnlyShopMega) {
+            item.addEventListener('pointerleave', () => setOpen(false), { passive: true });
+        }
     });
 
     document.addEventListener('click', (event) => {

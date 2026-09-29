@@ -10,13 +10,17 @@
                     'Active' => 'is-active',
                     'Scheduled' => 'is-scheduled',
                     'Ended' => 'is-ended',
+                    'Paused today' => 'is-scheduled',
                     default => 'is-draft',
                 };
                 $campaign = $banner->campaign;
                 $scheduleStart = $banner->inherit_campaign_schedule ? $campaign?->starts_at : $banner->starts_at;
                 $scheduleEnd = $banner->inherit_campaign_schedule ? $campaign?->ends_at : $banner->ends_at;
-                $scheduleTimezone = $banner->inherit_campaign_schedule ? ($campaign?->timezone ?: $banner->timezone) : $banner->timezone;
-                $placement = collect((array) $banner->placements)->first();
+                $scheduleTimezone = $bannerScheduleTimezones[$banner->id] ?? 'UTC';
+                $placementSummary = collect((array) $banner->placements)
+                    ->map(fn ($placement): string => $placementLabels[$placement] ?? (string) $placement)
+                    ->filter()
+                    ->implode(', ');
             @endphp
             <article
                 class="np-banner-list-item {{ $selected?->id === $banner->id ? 'is-selected' : '' }}"
@@ -29,7 +33,7 @@
                 </div>
                 <div class="np-banner-list-copy">
                     <strong>{{ $banner->name }}</strong>
-                    <span>Placement: {{ $placementLabels[$placement] ?? 'Multiple placements' }}</span>
+                    <span>Placement: {{ $placementSummary !== '' ? $placementSummary : 'No active placement' }}</span>
                     <span>Linked campaign: {{ $campaign?->name ?? 'None' }}</span>
                     <div class="np-banner-list-meta">
                         @if($scheduleStart && $scheduleEnd)

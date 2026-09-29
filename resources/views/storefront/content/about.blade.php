@@ -1,75 +1,118 @@
-<x-layouts.storefront :seo="[
-    'title' => 'About Us | ' . config('storefront.name'),
-    'description' => 'Learn how NextPlay Sportswear supports teams, schools, businesses, events, and individual buyers with custom sportswear and clear order guidance.',
-]">
-    <x-storefront.content.hero
-        eyebrow="About NextPlay"
-        title="Built Around Teams, Details, and Better Ordering"
-        description="NextPlay Sportswear helps teams, schools, clubs, businesses, event organizers, and individual buyers turn an idea into wearable team gear. Our goal is to make custom ordering easier to understand from the first product choice to final delivery."
-        :image="asset('storage/storefront/content/about.webp')"
-        image-alt="Sports team gathering before a game"
-    >
-        <a href="{{ route('categories.index') }}" class="btn btn-primary">Browse Categories</a>
-        <a href="{{ route('contact') }}" class="btn btn-outline">Talk to Our Team</a>
-    </x-storefront.content.hero>
-
-    <section class="section-padding">
-        <div class="site-container grid gap-10 lg:grid-cols-[.9fr_1.1fr] lg:items-center">
-            <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-soft">
-                <img loading="lazy" src="{{ asset('storage/storefront/home/baseball.webp') }}" width="900" height="620" decoding="async" alt="Custom sports uniforms prepared for a team" class="h-[360px] w-full rounded-2xl object-cover">
+<x-layouts.storefront :seo="$seo">
+    <div class="np-about-page">
+        <section class="np-about-hero" aria-labelledby="about-nextplay-title">
+            <div class="np-about-container">
+                <p class="np-about-eyebrow np-about-eyebrow--inverse">{{ data_get($about, 'hero.eyebrow') }}</p>
+                <h1 id="about-nextplay-title">{{ data_get($about, 'hero.title') }}</h1>
+                <p class="np-about-hero__description">{{ data_get($about, 'hero.description') }}</p>
             </div>
-            <div>
-                <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">Our purpose</p>
-                <h2 class="mt-2 font-display text-3xl font-bold uppercase leading-tight text-brand-ink sm:text-4xl">Custom gear should feel organized—not confusing</h2>
-                <p class="mt-5 text-sm leading-7 text-slate-600 sm:text-base">A custom order can include product style, sizes, quantities, names, numbers, logos, colors, artwork, production timing, and delivery requirements. We organize those details into a clear process so customers know what is needed before production begins.</p>
-                <p class="mt-4 text-sm leading-7 text-slate-600 sm:text-base">The storefront supports regular online shopping as well as quote-based team and bulk orders. That gives individual buyers a straightforward checkout while larger organizations can receive guidance for more complex requirements.</p>
-                <div class="mt-6 grid gap-3 sm:grid-cols-2">
-                    <div class="rounded-xl bg-slate-50 p-4"><strong class="block text-brand-ink">Online ordering</strong><span class="mt-1 block text-sm text-slate-500">For eligible products and regular quantities.</span></div>
-                    <div class="rounded-xl bg-slate-50 p-4"><strong class="block text-brand-ink">Team quote support</strong><span class="mt-1 block text-sm text-slate-500">For rosters, artwork, special pricing, and deadlines.</span></div>
+        </section>
+
+        <section class="np-about-intro" aria-labelledby="about-intro-title">
+            <div class="np-about-container np-about-intro__grid">
+                <div class="np-about-intro__copy">
+                    <h2 id="about-intro-title">{{ data_get($about, 'introduction.title') }}</h2>
+                    <p>{{ data_get($about, 'introduction.description') }}</p>
+                </div>
+                <figure class="np-about-intro__media">
+                    <img
+                        src="{{ data_get($about, 'introduction.image_url') }}"
+                        width="520"
+                        height="258"
+                        alt="{{ data_get($about, 'introduction.image_alt') }}"
+                        decoding="async"
+                        fetchpriority="high"
+                    >
+                </figure>
+            </div>
+        </section>
+
+        <section class="np-about-section np-about-section--soft" aria-labelledby="about-services-title">
+            <div class="np-about-container">
+                <h2 id="about-services-title" class="np-about-section-title">{{ data_get($about, 'what_we_do.title') }}</h2>
+                <div class="np-about-services-grid">
+                    @foreach(data_get($about, 'what_we_do.cards', []) as $card)
+                        <x-storefront.about.service-card
+                            :icon="data_get($card, 'fallback_icon')"
+                            :icon-url="data_get($card, 'icon_url')"
+                            :icon-alt="data_get($card, 'icon_alt', '')"
+                            :title="data_get($card, 'title')"
+                            :description="data_get($card, 'description')"
+                        />
+                    @endforeach
+                </div>
+
+                <h2 id="about-process-title" class="np-about-section-title np-about-section-title--process">{{ data_get($about, 'how_we_work.title') }}</h2>
+                <div class="np-about-process-grid" aria-labelledby="about-process-title">
+                    @foreach(data_get($about, 'how_we_work.steps', []) as $index => $step)
+                        <x-storefront.about.process-step
+                            :number="data_get($step, 'number')"
+                            :icon="data_get($step, 'fallback_icon')"
+                            :icon-url="data_get($step, 'icon_url')"
+                            :icon-alt="data_get($step, 'icon_alt', '')"
+                            :title="data_get($step, 'title')"
+                            :description="data_get($step, 'description')"
+                            :last="$index === 3"
+                        />
+                    @endforeach
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <section class="section-alt section-padding">
-        <div class="site-container">
-            <x-storefront.section-heading eyebrow="What guides us" title="How We Approach Every Order" description="Practical principles that keep the shopping and customization process clear." />
-            <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-                <x-storefront.content.icon-card icon="1" title="Clear product information" description="Customers should understand available options, price direction, minimum quantities, and customization requirements before committing." />
-                <x-storefront.content.icon-card icon="2" title="Accurate custom details" description="Names, numbers, sizes, logo placement, colors, and artwork approvals must be organized and reviewable." />
-                <x-storefront.content.icon-card icon="3" title="Support before production" description="Complex orders deserve a clear review before materials are committed and production begins." />
-                <x-storefront.content.icon-card icon="4" title="Honest order communication" description="Production and delivery estimates should be communicated as estimates unless a specific commitment is confirmed." />
-            </div>
-        </div>
-    </section>
-
-    <section class="section-padding">
-        <div class="site-container">
-            <x-storefront.section-heading eyebrow="Who we serve" title="Made for More Than One Type of Buyer" description="The same storefront can support individual products and coordinated organization-wide orders." />
-            <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                @foreach([
-                    ['Teams & Leagues', 'Uniforms, rosters, practice gear, player bags, and repeat-order support.'],
-                    ['Schools & Colleges', 'Athletic programs, spirit wear, event apparel, staff clothing, and promotional products.'],
-                    ['Businesses & Events', 'Branded apparel, caps, bags, giveaways, campaign products, and staff orders.'],
-                    ['Clubs & Community Groups', 'Shared colors, logos, member sizes, supporter wear, and event merchandise.'],
-                    ['Coaches & Organizers', 'Centralized order details, deadlines, artwork review, and delivery planning.'],
-                    ['Individual Buyers', 'Single products and smaller custom orders where the selected product allows it.'],
-                ] as [$title, $description])
-                    <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-card">
-                        <h3 class="font-display text-xl font-bold uppercase text-brand-ink">{{ $title }}</h3>
-                        <p class="mt-2 text-sm leading-6 text-slate-500">{{ $description }}</p>
-                    </article>
+        <section class="np-about-gallery" aria-label="NextPlay sportswear in action">
+            <div class="np-about-gallery__grid">
+                @foreach(data_get($about, 'gallery.items', []) as $item)
+                    <figure class="np-about-gallery__item np-about-gallery__item--{{ data_get($item, 'id') }}">
+                        <img
+                            src="{{ data_get($item, 'image_url') }}"
+                            width="{{ data_get($item, 'id') === 'team' ? 310 : (data_get($item, 'id') === 'fabric' ? 174 : (data_get($item, 'id') === 'number' ? 208 : 239)) }}"
+                            height="174"
+                            loading="lazy"
+                            decoding="async"
+                            alt="{{ data_get($item, 'image_alt') }}"
+                        >
+                    </figure>
                 @endforeach
             </div>
-        </div>
-    </section>
+        </section>
 
-    <x-storefront.content.cta
-        title="Ready to Start Your Next Order?"
-        description="Browse products for regular orders or send your requirements for team, school, event, and bulk pricing."
-        primary-label="Shop Products"
-        :primary-href="route('products.index')"
-        secondary-label="Request a Quote"
-        :secondary-href="route('quote.request')"
-    />
+        <section class="np-about-cta" aria-labelledby="about-cta-title">
+            <div class="np-about-container np-about-cta__inner">
+                <div class="np-about-cta__copy">
+                    <p class="np-about-eyebrow">{{ data_get($about, 'cta.eyebrow') }}</p>
+                    <h2 id="about-cta-title">{{ data_get($about, 'cta.title') }}</h2>
+                </div>
+                <div class="np-about-cta__actions">
+                    <a href="{{ data_get($about, 'cta.primary_url') }}" class="btn btn-secondary btn-lg np-about-cta__button">
+                        <span>{{ data_get($about, 'cta.primary_label') }}</span>
+                        <x-storefront.about.icon name="chevron-right" :size="18" />
+                    </a>
+                    <a href="{{ data_get($about, 'cta.secondary_url') }}" class="btn btn-outline btn-lg np-about-cta__button np-about-cta__button--outline">
+                        <span>{{ data_get($about, 'cta.secondary_label') }}</span>
+                        <x-storefront.about.icon name="chevron-right" :size="18" />
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section class="np-about-help" aria-labelledby="about-help-title">
+            <div class="np-about-container np-about-help__inner">
+                @if(filled(data_get($about, 'help.icon_url')))
+                    <span class="np-about-icon np-about-help__icon">
+                        <img src="{{ data_get($about, 'help.icon_url') }}" alt="{{ data_get($about, 'help.icon_alt') }}" loading="lazy" decoding="async" style="display:block;width:48px;height:48px;object-fit:contain;">
+                    </span>
+                @else
+                    <x-storefront.about.icon :name="data_get($about, 'help.fallback_icon')" :size="48" class="np-about-help__icon" />
+                @endif
+                <div class="np-about-help__copy">
+                    <h2 id="about-help-title">{{ data_get($about, 'help.title') }}</h2>
+                    <p>{{ data_get($about, 'help.description') }}</p>
+                </div>
+                <a href="{{ data_get($about, 'help.button_url') }}" class="btn btn-outline btn-sm np-about-help__button">
+                    <span>{{ data_get($about, 'help.button_label') }}</span>
+                    <x-storefront.about.icon name="chevron-right" :size="16" />
+                </a>
+            </div>
+        </section>
+    </div>
 </x-layouts.storefront>

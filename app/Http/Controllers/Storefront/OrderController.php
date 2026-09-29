@@ -67,13 +67,13 @@ class OrderController extends Controller
 
     public function tracking(Request $request): View
     {
-        $order = $this->orders->trackedOrder() ?? $this->orders->orderForNumber(null, allowDemo: true);
+        $order = $this->orders->trackedOrder();
 
         return $this->view('storefront.orders.tracking', $order, [
             'title' => 'Track Order | NextPlay Sportswear',
             'description' => 'Track custom sportswear production, design review, shipping, and delivery status.',
             'robots' => 'noindex, nofollow',
-        ]);
+        ], allowDemo: false);
     }
 
     public function lookup(TrackOrderRequest $request): RedirectResponse
@@ -106,9 +106,9 @@ class OrderController extends Controller
         ]);
     }
 
-    private function view(string $view, array $order, array $seo): View
+    private function view(string $view, ?array $order, array $seo, bool $allowDemo = true): View
     {
-        return view($view, array_merge($this->orders->pageData($order), [
+        return view($view, array_merge($this->orders->pageData($order, $allowDemo), [
             'seo' => $seo,
         ]));
     }

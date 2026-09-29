@@ -5,7 +5,6 @@ namespace App\Services\Catalog;
 use App\Models\Category;
 use App\Models\Menu;
 use App\Models\MenuItem;
-use App\Services\Promotions\SaleCampaignService;
 use App\ViewModels\Catalog\NavigationItem;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -252,9 +251,8 @@ class NavigationService
     }
 
     /**
-     * Keep Sale directly after All Products while an admin-enabled live campaign
-     * is eligible for the Sale page. This is evaluated after the navigation cache
-     * is loaded so campaign start/end times are reflected immediately.
+     * Keep Sale directly after All Products at all times. Runtime promotion state
+     * affects Sale page content, never whether customers can reach the Sale page.
      *
      * @param  array<int, array<string, mixed>>  $payload
      * @return array<int, array<string, mixed>>
@@ -274,10 +272,6 @@ class NavigationService
                 ($item['link_type'] ?? null) === 'route' && ($item['route_name'] ?? null) === 'sale.index'
             )
             ->values();
-
-        if (! app(SaleCampaignService::class)->hasActiveSalePageCampaign()) {
-            return $items->all();
-        }
 
         $saleItem = is_array($existingSale) ? $existingSale : [
             'label' => 'Sale',

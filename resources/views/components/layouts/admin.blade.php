@@ -311,10 +311,19 @@
                     @endif
                 @endif
 
-                @if($canAdmin('storefront_branding.view') || $canAdmin('homepage_sections.view') || $canAdmin('homepage_slides.view') || $canAdmin('newsletters.view') || $canAdmin('rural_surcharges.view') || $canAdmin('payment_methods.view'))
+                @if($canAdmin('storefront_branding.view') || $canAdmin('about_page.view') || $canAdmin('shipping_delivery_page.view') || $canAdmin('sustainability_page.view') || $canAdmin('homepage_sections.view') || $canAdmin('homepage_slides.view') || $canAdmin('newsletters.view') || $canAdmin('rural_surcharges.view') || $canAdmin('payment_methods.view'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Store</p>
                     @if($canAdmin('storefront_branding.view'))
                         <x-admin.sidebar-link :href="route('admin.storefront-branding.edit')" :active="request()->routeIs('admin.storefront-branding.*')" icon="◆">Storefront Branding</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('about_page.view'))
+                        <x-admin.sidebar-link :href="route('admin.about-page.edit')" :active="request()->routeIs('admin.about-page.*')" icon="◫">About Page</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('shipping_delivery_page.view'))
+                        <x-admin.sidebar-link :href="route('admin.shipping-delivery-page.edit')" :active="request()->routeIs('admin.shipping-delivery-page.*')" icon="▤">Shipping & Delivery Page</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('sustainability_page.view'))
+                        <x-admin.sidebar-link :href="route('admin.sustainability-page.edit')" :active="request()->routeIs('admin.sustainability-page.*')" icon="♻">Sustainability Page</x-admin.sidebar-link>
                     @endif
                     @if($canAdmin('homepage_sections.view'))
                         @php($homepageDefinitions = \App\Support\HomepageSectionRegistry::orderedDefinitions())

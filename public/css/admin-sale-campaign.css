@@ -301,3 +301,189 @@
     }
 }
 
+
+/* Campaign banner editor: the campaign summary column is narrow on desktop, so
+   media controls use their own container-aware layout instead of viewport-based
+   Tailwind columns. This keeps the shared admin theme while avoiding cramped
+   upload cards and wrapped placement checkboxes. */
+.np-sale-banner-tools {
+    container-type: inline-size;
+}
+
+.np-sale-banner-tools__heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+}
+
+.np-sale-banner-media-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: .875rem;
+}
+
+.np-sale-banner-device-card {
+    min-width: 0;
+    padding: .875rem;
+    border: 1px solid #dbe3ef;
+    border-radius: 1rem;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .03);
+}
+
+.np-sale-banner-device-card__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-bottom: .75rem;
+}
+
+.np-sale-banner-device-card__title {
+    margin: 0;
+    color: var(--np-color-primary, #061f44);
+    font-size: .875rem;
+    font-weight: 900;
+    line-height: 1.25rem;
+}
+
+.np-sale-banner-device-card__hint {
+    margin: .15rem 0 0;
+    color: #64748b;
+    font-size: .75rem;
+    font-weight: 600;
+    line-height: 1.15rem;
+}
+
+.np-sale-banner-ratio {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    min-height: 1.75rem;
+    padding: .2rem .55rem;
+    border: 1px solid #d7e1ee;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: #51647d;
+    font-size: .7rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.np-sale-banner-dropzone {
+    padding: 1.35rem 1rem;
+    border: 1px dashed #c7d3e2;
+    border-radius: .875rem;
+    background: #f8fafc;
+    text-align: center;
+    transition: border-color .16s ease, background-color .16s ease;
+}
+
+.np-sale-banner-dropzone:hover {
+    border-color: #9cafc5;
+    background: #f4f7fb;
+}
+
+.np-sale-banner-placement {
+    padding: .875rem;
+    border: 1px solid #dbe3ef;
+    border-radius: 1rem;
+    background: #f8fafc;
+}
+
+.np-sale-banner-placement__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-bottom: .75rem;
+}
+
+.np-sale-banner-placement__head h4 {
+    margin: 0;
+    color: var(--np-color-primary, #061f44);
+    font-size: .875rem;
+    font-weight: 900;
+    line-height: 1.25rem;
+}
+
+.np-sale-banner-placement__head p {
+    margin: .15rem 0 0;
+    color: #64748b;
+    font-size: .75rem;
+    font-weight: 600;
+    line-height: 1.15rem;
+}
+
+.np-sale-banner-placement__count {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    min-height: 1.75rem;
+    padding: .2rem .55rem;
+    border-radius: 999px;
+    background: #eaf1fa;
+    color: var(--np-color-primary, #061f44);
+    font-size: .7rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.np-sale-banner-placement .np-banner-check-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: .55rem;
+}
+
+.np-sale-banner-placement .np-banner-check-list label {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    gap: .65rem;
+    padding: .7rem .75rem;
+    border: 1px solid #dbe3ef;
+    border-radius: .75rem;
+    background: #fff;
+    color: #294462;
+    font-size: .78rem;
+    font-weight: 800;
+    line-height: 1.15rem;
+    cursor: pointer;
+    transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+.np-sale-banner-placement .np-banner-check-list label:hover {
+    border-color: #afc0d4;
+    background: #fbfdff;
+}
+
+.np-sale-banner-placement .np-banner-check-list input {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    margin: .02rem 0 0;
+    accent-color: var(--np-color-primary, #061f44);
+}
+
+@supports selector(label:has(input:checked)) {
+    .np-sale-banner-placement .np-banner-check-list label:has(input:checked) {
+        border-color: var(--np-color-primary, #061f44);
+        background: #f2f7fd;
+        box-shadow: 0 0 0 1px rgba(6, 31, 68, .05);
+    }
+}
+
+@container (min-width: 640px) {
+    .np-sale-banner-media-grid,
+    .np-sale-banner-placement .np-banner-check-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 420px) {
+    .np-sale-banner-device-card__head,
+    .np-sale-banner-placement__head {
+        flex-direction: column;
+    }
+}

@@ -56,6 +56,11 @@ class CartService
             (int) $genericShippingItems->sum('quantity')
         );
         $productShippingTotal = (float) collect($items)->sum('product_shipping_total');
+        // Product-level shipping is chosen inside the product configurator and is
+        // therefore part of the configured product price the customer has already
+        // seen before adding the item to cart. Keep generic/remote checkout shipping
+        // separate, but include this configured charge in the cart's visible subtotal.
+        $configuredItemsTotal = $merchandiseTotal + $productShippingTotal;
         $shipping = $additionalShipping + $productShippingTotal;
         $tax = $this->calculateTax($merchandiseTotal - $discount);
         $total = max(0, $merchandiseTotal - $discount + $shipping + $tax);
@@ -70,7 +75,8 @@ class CartService
             'subtotal' => round($subtotal, 2),
             'customization_total' => round($customizationTotal, 2),
             'merchandise_total' => round($merchandiseTotal, 2),
-            'estimated_subtotal' => round(max(0, $merchandiseTotal - $discount), 2),
+            'configured_items_total' => round($configuredItemsTotal, 2),
+            'estimated_subtotal' => round(max(0, $configuredItemsTotal - $discount), 2),
             'discount' => round($discount, 2),
             'shipping' => round($shipping, 2),
             'additional_shipping' => round($additionalShipping, 2),
@@ -121,7 +127,7 @@ class CartService
                 $totals = $cart->items()
                     ->selectRaw('COUNT(*) as item_count')
                     ->selectRaw('COALESCE(SUM(quantity), 0) as total_quantity')
-                    ->selectRaw('COALESCE(SUM(line_subtotal + customization_total), 0) as current_total')
+                    ->selectRaw('COALESCE(SUM(line_total), 0) as current_total')
                     ->first();
 
                 $databaseItemCount = (int) ($totals?->item_count ?? 0);
@@ -684,16 +690,21 @@ class CartService
         }
 
         $unitPrice = (float) ($item['unit_price'] ?? $product['base_price'] ?? 0);
-        $hasMerchandiseBreakdown = array_key_exists('line_subtotal', $item)
-            || array_key_exists('customization_total', $item);
-        $lineTotal = $hasMerchandiseBreakdown
-            ? (float) ($item['line_subtotal'] ?? ($unitPrice * $quantity))
+        // line_total is the authoritative configured product total. It already
+        // contains base/tier pricing, selected options, production, size/fixed
+        // charges, and the product-level shipping selected on the product page.
+        $lineTotal = (float) ($item['line_total'] ?? 0);
+
+        if ($lineTotal <= 0) {
+            $lineTotal = (float) ($item['line_subtotal'] ?? ($unitPrice * $quantity))
                 + (float) ($item['customization_total'] ?? 0)
-            : (float) ($item['line_total'] ?? 0);
+                + (float) ($item['product_shipping_total'] ?? 0);
+        }
 
         if ($lineTotal <= 0) {
             $lineTotal = ($unitPrice + (float) ($item['customization_unit_price'] ?? 0)) * $quantity;
         }
+        $displayUnitPrice = $quantity > 0 ? $lineTotal / $quantity : $unitPrice;
 
         $product = array_merge([
             'slug' => $slug,
@@ -718,6 +729,7 @@ class CartService
             'product' => $product,
             'quantity' => $quantity,
             'unit_price' => round($unitPrice, 2),
+            'display_unit_price' => round($displayUnitPrice, 2),
             'line_total' => round($lineTotal, 2),
         ];
     }
