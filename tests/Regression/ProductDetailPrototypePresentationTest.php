@@ -42,9 +42,9 @@ $expect(str_contains($builder, 'Request Bulk Quote'), 'Hero contains the Request
 $expect(str_contains($orderSummary, 'Your Custom Order'), 'Sticky order summary matches prototype title.');
 $expect(str_contains($orderSummary, 'Selected Fabric'), 'Sticky order summary exposes selected fabric.');
 $expect(str_contains($orderSummary, 'Selected Sizes &amp; Quantities'), 'Sticky order summary exposes size quantities.');
-$expect(str_contains($orderSummary, 'Production Lead Time'), 'Sticky order summary exposes the production lead time.');
+$expect(str_contains($orderSummary, 'Production &amp; Shipping'), 'Sticky order summary exposes production and shipping.');
 $expect(str_contains($orderSummary, 'Shipping'), 'Sticky order summary exposes shipping.');
-$expect(str_contains($orderSummary, 'Estimated Total'), 'Review sidebar includes the prototype estimated-total state.');
+$expect(str_contains($orderSummary, 'Total <small>(Estimated)</small>'), 'Review sidebar includes the prototype total-estimated state.');
 $expect(str_contains($builder, 'np-product-review-card'), 'Review step contains the prototype order summary card.');
 $expect(str_contains($builder, 'Free design review'), 'Review step keeps prototype trust messaging.');
 $expect(str_contains($builder, 'Secure checkout'), 'Review step keeps secure checkout trust messaging.');
@@ -72,7 +72,7 @@ $expect(str_contains($prototypeCss, 'var(--np-font-heading)'), 'Product-detail C
 $expect(! str_contains($prototypeCss, 'width: min(1500px'), 'Product-detail desktop layout must not override the centralized 1180px storefront container.');
 $expect(str_contains($prototypeCss, 'grid-template-columns: minmax(0, 555px) minmax(0, 1fr)'), 'Desktop hero uses the prototype 555px gallery column.');
 $expect(str_contains($prototypeCss, 'aspect-ratio: 277 / 263'), 'Desktop gallery stage matches the prototype landscape proportion instead of forcing a square.');
-$expect(str_contains($prototypeCss, 'grid-template-columns: repeat(3, minmax(0, 104px))'), 'Material options keep the compact prototype card width.');
+$expect(str_contains($prototypeCss, 'grid-template-columns: repeat(3, minmax(0, 118px))'), 'Material options use the refined larger image-card width.');
 $expect(str_contains($prototypeCss, 'font-size: clamp(1.55rem, 2vw, 1.75rem)'), 'Product title uses the compact prototype scale.');
 
 if ($failures !== []) {

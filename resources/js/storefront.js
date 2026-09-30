@@ -1805,85 +1805,98 @@ window.productBuilder = (config = {}) => ({
         });
     },
 
-    validate() {
+    validationIssue() {
         const minimum = Number(config.minimum_quantity || 1);
         const maximum = Number(config.maximum_quantity || 999);
         const total = this.totalQuantity();
 
         if (total < minimum) {
-            window.alert(`Please select at least ${minimum} piece${minimum === 1 ? '' : 's'}.`);
-            (document.getElementById('size-quantity') || document.getElementById('product-quantity'))?.scrollIntoView({ behavior: 'smooth' });
-            return false;
+            return {
+                message: `Please select at least ${minimum} piece${minimum === 1 ? '' : 's'}.`,
+                targetId: 'size-quantity',
+            };
         }
 
         if (total > maximum) {
-            window.alert(`The maximum quantity for this product is ${maximum}.`);
-            (document.getElementById('size-quantity') || document.getElementById('product-quantity'))?.scrollIntoView({ behavior: 'smooth' });
-            return false;
+            return {
+                message: `The maximum quantity for this product is ${maximum}.`,
+                targetId: 'size-quantity',
+            };
         }
 
         for (const group of (config.option_groups || [])) {
             if ((group.display_mode || 'customer') !== 'customer' || !group.required) continue;
 
             if (group.type === 'checkbox' && (this.multiSelections[group.id] || []).length < Math.max(1, Number(group.minimum_selections || 1))) {
-                window.alert(`Please select ${group.label}.`);
-                return false;
+                return { message: `Please select ${group.label}.`, targetId: 'configure-product' };
             }
             if (['image', 'swatch', 'buttons', 'select'].includes(group.type) && !this.selections[group.id]) {
-                window.alert(`Please select ${group.label}.`);
-                return false;
+                return { message: `Please select ${group.label}.`, targetId: 'configure-product' };
             }
             if (!['image', 'swatch', 'buttons', 'select', 'checkbox', 'file'].includes(group.type) && !this.inputs[group.id]) {
-                window.alert(`Please complete ${group.label}.`);
-                return false;
+                return { message: `Please complete ${group.label}.`, targetId: 'configure-product' };
             }
         }
 
         if (config.artwork_upload?.enabled) {
             const maximumFiles = Math.max(1, Math.min(12, Number(config.artwork_upload?.max_files || 5)));
             if (config.artwork_upload?.required && this.artworkFiles.length === 0) {
-                window.alert('Please upload the required custom artwork.');
-                document.getElementById('artwork-upload')?.scrollIntoView({ behavior: 'smooth' });
-                return false;
+                return { message: 'Please upload the required custom artwork.', targetId: 'artwork-upload' };
             }
             if (this.artworkFiles.length > maximumFiles) {
-                window.alert(`You can upload a maximum of ${maximumFiles} artwork files.`);
-                return false;
+                return { message: `You can upload a maximum of ${maximumFiles} artwork files.`, targetId: 'artwork-upload' };
             }
         }
 
         if (this.currentProductionOptions().length && !this.productionSpeed) {
-            window.alert('Please choose a production option.');
-            document.getElementById('delivery-options')?.scrollIntoView({ behavior: 'smooth' });
-            return false;
+            return { message: 'Please choose a production option.', targetId: 'production-shipping' };
         }
 
         if ((config.shipping_methods || []).length && !this.shippingMethod) {
-            window.alert('Please choose a shipping method.');
-            return false;
+            return { message: 'Please choose a shipping method.', targetId: 'production-shipping' };
         }
 
         if (this.rosterEnabled) {
             if (this.totalQuantity() > 250) {
-                window.alert('Per-item details are limited to 250 pieces per configured cart line.');
-                return false;
+                return { message: 'Per-item details are limited to 250 pieces per configured cart line.', targetId: 'product-roster' };
             }
 
             const requiredFields = (productRosterSettings(config).fields || []).filter(field => field.enabled !== false && field.required);
             for (let rowIndex = 0; rowIndex < this.rosterRows.length; rowIndex += 1) {
                 for (const field of requiredFields) {
                     if (!String(this.rosterRows[rowIndex]?.values?.[field.key] || '').trim()) {
-                        window.alert(`Complete ${field.label} for item ${rowIndex + 1}.`);
-                        document.getElementById('product-roster')?.scrollIntoView({ behavior: 'smooth' });
-                        return false;
+                        return {
+                            message: `Complete ${field.label} for item ${rowIndex + 1}.`,
+                            targetId: 'product-roster',
+                        };
                     }
                 }
             }
         }
 
+        return null;
+    },
+
+    canAddToCart() {
+        return this.validationIssue() === null;
+    },
+
+    validate() {
+        const issue = this.validationIssue();
+        if (issue) {
+            window.alert(issue.message);
+            if (issue.targetId) {
+                const target = document.getElementById(issue.targetId)
+                    || (issue.targetId === 'size-quantity' ? document.getElementById('product-quantity') : null);
+                target?.scrollIntoView({ behavior: 'smooth' });
+            }
+            return false;
+        }
+
         this.sync();
         return true;
     },
+
 });
 
 

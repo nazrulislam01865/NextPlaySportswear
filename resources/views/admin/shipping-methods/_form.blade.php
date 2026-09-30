@@ -5,7 +5,7 @@
     $startsAfterArtwork = old('starts_after_artwork_approval') !== null ? filter_var(old('starts_after_artwork_approval'), FILTER_VALIDATE_BOOLEAN) : (bool) ($method->starts_after_artwork_approval ?? true);
 @endphp
 
-<form method="POST" action="{{ $action }}" class="space-y-6">
+<form method="POST" action="{{ $action }}" class="space-y-6" enctype="multipart/form-data">
     @csrf
     @if($formMethod !== 'POST') @method($formMethod) @endif
 
@@ -52,6 +52,9 @@
             </label>
         </div>
     </x-admin.section-card>
+
+
+    <x-admin.master-method-media :method="$method" />
 
     <x-admin.section-card title="Status" description="Only active shipping methods are shown to customers. Choose one default method for easier checkout.">
         <div class="grid gap-4 sm:grid-cols-2">

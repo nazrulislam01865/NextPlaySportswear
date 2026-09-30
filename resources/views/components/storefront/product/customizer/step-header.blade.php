@@ -13,7 +13,7 @@
             <strong>{{ $title }}</strong>
             @if(filled($description))<small>{{ $description }}</small>@endif
         </span>
-        <span class="np-proto-step-state is-complete" x-show="activeCustomizerStep > {{ $number }}" x-cloak>✓ Completed</span>
+        <span class="np-proto-step-state is-complete" x-show="completedCustomizerStep >= {{ $number }} && activeCustomizerStep !== {{ $number }}" x-cloak>✓ Completed</span>
         <span class="np-proto-step-state is-active" x-show="activeCustomizerStep === {{ $number }}" x-cloak><i aria-hidden="true"></i> In Progress</span>
         <span class="np-proto-step-chevron" :class="activeCustomizerStep === {{ $number }} ? 'is-open' : ''" aria-hidden="true">⌄</span>
     </button>

@@ -5,11 +5,16 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ShippingMethodRequest;
 use App\Models\ShippingMethod;
+use App\Services\Catalog\MasterMethodMediaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 class ShippingMethodController extends Controller
 {
+    public function __construct(private readonly MasterMethodMediaService $media)
+    {
+    }
+
     public function index(): View
     {
         return view('admin.shipping-methods.index', [
@@ -40,7 +45,9 @@ class ShippingMethodController extends Controller
         if (empty($data['sort_order'])) {
             $data['sort_order'] = ((int) ShippingMethod::query()->max('sort_order')) + 10;
         }
+        unset($data['image_file'], $data['image_url'], $data['remove_image']);
         $method = ShippingMethod::create($data);
+        $this->media->persist($method, $request, 'master-data/shipping-methods');
         $this->syncDefault($method);
 
         return redirect()->route('admin.shipping-methods.index')
@@ -58,7 +65,9 @@ class ShippingMethodController extends Controller
     {
         $data = $request->validated();
         $data['sort_order'] = $shippingMethod->sort_order ?: (((int) ShippingMethod::query()->whereKeyNot($shippingMethod->id)->max('sort_order')) + 10);
+        unset($data['image_file'], $data['image_url'], $data['remove_image']);
         $shippingMethod->update($data);
+        $this->media->persist($shippingMethod, $request, 'master-data/shipping-methods');
         $this->syncDefault($shippingMethod);
 
         return redirect()->route('admin.shipping-methods.index')
@@ -67,6 +76,7 @@ class ShippingMethodController extends Controller
 
     public function destroy(ShippingMethod $shippingMethod): RedirectResponse
     {
+        $this->media->deleteOwned($shippingMethod->image_path, 'master-data/shipping-methods');
         $shippingMethod->delete();
 
         if (! ShippingMethod::query()->where('is_default', true)->exists()) {

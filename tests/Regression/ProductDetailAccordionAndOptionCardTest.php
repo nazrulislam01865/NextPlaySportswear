@@ -3,11 +3,12 @@
 $root = dirname(__DIR__, 2);
 $builder = file_get_contents($root.'/resources/views/components/storefront/product/builder.blade.php');
 $stepHeader = file_get_contents($root.'/resources/views/components/storefront/product/customizer/step-header.blade.php');
+$navigation = file_get_contents($root.'/resources/views/components/storefront/product/customizer/navigation.blade.php');
 $optionGroup = file_get_contents($root.'/resources/views/components/storefront/product/option-group.blade.php');
 $optionChoicePath = $root.'/resources/views/components/storefront/product/customizer/option-choice.blade.php';
 $css = file_get_contents($root.'/resources/css/storefront.css');
 
-foreach (compact('builder', 'stepHeader', 'optionGroup', 'css') as $name => $contents) {
+foreach (compact('builder', 'stepHeader', 'navigation', 'optionGroup', 'css') as $name => $contents) {
     if ($contents === false) {
         fwrite(STDERR, "Unable to read {$name} source.\n");
         exit(1);
@@ -32,7 +33,7 @@ foreach (range(1, 6) as $step) {
 $expect(! str_contains($builder, 'np-proto-review-completed'), 'Review step no longer renders a separate duplicate completed-step list.');
 
 $expect(str_contains($stepHeader, '@click="openCustomizerStep({{ $number }})"'), 'Reusable step header opens the selected accordion step.');
-$expect(str_contains($stepHeader, 'activeCustomizerStep > {{ $number }}'), 'Reusable step header exposes completed state for previous steps.');
+$expect(str_contains($stepHeader, 'completedCustomizerStep >= {{ $number }}'), 'Reusable step header exposes completed state only for steps that were actually advanced through.');
 $expect(str_contains($stepHeader, 'activeCustomizerStep === {{ $number }}'), 'Reusable step header exposes the active in-progress state.');
 $expect(str_contains($stepHeader, ':aria-expanded="activeCustomizerStep === {{ $number }} ? \'true\' : \'false\'"'), 'Accordion headers expose accessible expanded state.');
 

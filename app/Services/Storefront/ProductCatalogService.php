@@ -1669,7 +1669,7 @@ class ProductCatalogService
             'fabricPriceTables.tiers',
             'artworkMethods',
             'productionSpeeds.productionMethod',
-            'shippingMethods',
+            'shippingMethods.shippingMethod',
             'faqs',
         ];
     }
@@ -2971,6 +2971,7 @@ class ProductCatalogService
                     'id' => $speed->code,
                     'label' => $name,
                     'description' => $description,
+                    'image' => $method?->imageUrl(),
                     'price_delta' => (float) $speed->price_adjustment,
                     'minimum_quantity' => (int) ($speed->minimum_quantity ?: 1),
                     'maximum_quantity' => $speed->maximum_quantity === null ? null : (int) $speed->maximum_quantity,
@@ -2983,9 +2984,14 @@ class ProductCatalogService
             })->values()->all() : [],
             'shipping_methods_enabled' => (bool) $product->shipping_methods_enabled,
             'shipping_methods' => $product->shipping_methods_enabled ? $product->shippingMethods->where('is_active', true)->map(function ($method) use ($priceTableHeaders): array {
+                $masterMethod = $method->relationLoaded('shippingMethod') ? $method->shippingMethod : null;
+                $label = $masterMethod?->name ?: $method->name;
+                $description = $masterMethod?->description ?: $method->description;
+                $minimumDays = $masterMethod?->minimum_days ?? $method->minimum_days;
+                $maximumDays = $masterMethod?->maximum_days ?? $method->maximum_days;
                 $chargeType = $method->charge_type ?: 'per_unit';
                 $isMasterMethod = $chargeType === 'master_method';
-                $priceTableColumn = PriceTableShipping::columnIndex((array) $priceTableHeaders, (string) $method->name, (string) $method->code);
+                $priceTableColumn = PriceTableShipping::columnIndex((array) $priceTableHeaders, (string) $label, (string) $method->code);
 
                 // Master shipping records only provide the customer-facing name and
                 // day range. Their price must come from the matching product/fabric
@@ -2996,8 +3002,9 @@ class ProductCatalogService
 
                 return [
                     'id' => $method->code,
-                    'label' => $method->name,
-                    'description' => $method->description,
+                    'label' => $label,
+                    'description' => $description,
+                    'image' => $masterMethod?->imageUrl(),
                     'price_source' => $usesPriceTable ? 'price_table' : 'legacy',
                     'requires_price_table' => $usesPriceTable,
                     'price_table_column' => $priceTableColumn,
@@ -3008,8 +3015,8 @@ class ProductCatalogService
                     'free_shipping_minimum' => $method->free_shipping_minimum !== null ? (float) $method->free_shipping_minimum : null,
                     'charge_type' => $usesPriceTable ? 'price_table' : ($isMasterMethod ? 'master_method' : $chargeType),
                     'charge_application' => $method->charge_application,
-                    'minimum_days' => $method->minimum_days,
-                    'maximum_days' => $method->maximum_days,
+                    'minimum_days' => $minimumDays,
+                    'maximum_days' => $maximumDays,
                     'default' => (bool) $method->is_default,
                     'is_quote_based' => (bool) ($method->is_quote_based ?? false),
                 ];

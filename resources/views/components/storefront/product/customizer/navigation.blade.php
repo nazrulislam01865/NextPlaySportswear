@@ -23,7 +23,7 @@
     @if($submit)
         <button type="submit" class="btn btn-secondary np-proto-next-button">{{ $nextLabel }}</button>
     @elseif($nextStep !== null)
-        <button type="button" class="btn btn-secondary np-proto-next-button" @click="openCustomizerStep({{ (int) $nextStep }})">
+        <button type="button" class="btn btn-secondary np-proto-next-button" @click="advanceCustomizerStep({{ (int) $nextStep }})">
             {{ $nextLabel }} <span aria-hidden="true">→</span>
         </button>
     @endif

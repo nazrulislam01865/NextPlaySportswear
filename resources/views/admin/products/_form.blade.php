@@ -496,6 +496,7 @@
         'productName' => old('name', $product->name),
         'productSku' => old('sku', $storedSpecificationRows->get('SKU') ?: $product->sku),
         'shortDescription' => old('short_description', $product->short_description),
+        'features' => old('features', $product->features ?? []),
         'descriptionHtml' => old('description_html', $product->description_html),
         'fulfillmentHtml' => old('fulfillment_html', $product->fulfillment_html),
         'slug' => old('slug', $product->slug),
@@ -1138,6 +1139,24 @@ window.productFaqSelector = function (initial = {}) {
                     <label class="admin-label np-emphasis-label">Short product summary <span class="text-brand-red">*</span>
                         <textarea class="admin-textarea np-textarea-sm" name="short_description" maxlength="1500" x-model="shortDescription" placeholder="Describe your product in a few words..."></textarea>
                     </label>
+
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                                <label class="admin-label np-emphasis-label mb-0">Product Highlights</label>
+                                <p class="mt-1 text-xs leading-5 text-slate-500">Add product-specific selling points for the storefront. The product page shows the first 4 highlights only. These do not affect customization or pricing.</p>
+                            </div>
+                            <button type="button" class="np-secondary-button" @click="addFeature()">＋ Add highlight</button>
+                        </div>
+                        <div class="mt-4 space-y-3">
+                            <template x-for="(feature, index) in features" :key="index">
+                                <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                                    <input class="admin-input !mt-0" :name="`features[${index}]`" x-model="features[index]" maxlength="500" placeholder="e.g., Breathable mesh construction for airflow">
+                                    <button type="button" class="np-danger-link self-center px-2 py-2" @click="features.splice(index, 1); if (!features.length) features.push('')">Remove</button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
 
                     <div class="np-product-spec-card rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm" data-field-name="product_specification_text" x-data="productSpecificationEditor(@js($productSpecificationText), @js($productSpecificationAutoValues))" x-init="init()">
                         <div class="mb-4 flex items-center justify-between gap-3">

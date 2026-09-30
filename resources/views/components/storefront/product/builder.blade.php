@@ -83,6 +83,10 @@
     $nonMaterialOptionGroups = $customerOptionGroups
         ->reject(fn ($group) => $materialGroup && (string) ($group['id'] ?? '') === (string) ($materialGroup['id'] ?? ''))
         ->values();
+    $reviewOptionGroups = $allGroups
+        ->filter(fn ($group) => ($group['display_mode'] ?? 'customer') !== 'hidden')
+        ->reject(fn ($group) => $materialGroup && (string) ($group['id'] ?? '') === (string) ($materialGroup['id'] ?? ''))
+        ->values();
     $sizeGroupsWithCharts = collect($product['size_groups'] ?? [])->filter(fn ($group) => (bool) data_get($group, 'chart.enabled'));
     $firstChartGroup = $sizeGroupsWithCharts->first();
     $roster = \App\Support\ProductRoster::settings($product);
@@ -90,11 +94,22 @@
     $enabledRosterFields = collect($roster['fields'] ?? [])->filter(fn ($field) => (bool) ($field['enabled'] ?? true))->values();
     $artworkUpload = $product['artwork_upload'] ?? ['enabled' => false];
     $sample = $product['sample'] ?? ['available' => false, 'charge' => 0, 'charge_type' => 'fixed_order'];
-    $features = collect($product['features'] ?? [])->filter(fn ($feature) => filled(is_array($feature) ? ($feature['label'] ?? $feature['title'] ?? null) : $feature))->take(4)->values();
-    $firstSizeGroup = collect($product['size_groups'] ?? [])->first();
-    $sizeLabels = collect($firstSizeGroup['sizes'] ?? [])->pluck('label')->filter()->values();
-    $sizeRangeLabel = $sizeLabels->isNotEmpty()
-        ? ($sizeLabels->count() === 1 ? $sizeLabels->first() : $sizeLabels->first().' – '.$sizeLabels->last())
+    $productHighlights = collect($product['features'] ?? [])
+        ->map(fn ($feature) => trim((string) $feature))
+        ->filter()
+        ->take(4)
+        ->values();
+    $sizeRangeItems = collect($product['size_groups'] ?? [])->map(function ($group) {
+        $labels = collect($group['sizes'] ?? [])->pluck('label')->filter()->values();
+        $range = $labels->isNotEmpty()
+            ? ($labels->count() === 1 ? $labels->first() : $labels->first().' – '.$labels->last())
+            : 'Configured sizes';
+        $groupLabel = trim((string) ($group['label'] ?? ''));
+
+        return $groupLabel !== '' ? $groupLabel.': '.$range : $range;
+    })->filter()->values();
+    $sizeRangeLabel = $sizeRangeItems->isNotEmpty()
+        ? $sizeRangeItems->implode(' · ')
         : 'Configured sizes';
     $hasProductionOptions = ! empty($product['production_speeds'] ?? []);
     $productionStepDescription = $hasProductionOptions
@@ -119,6 +134,31 @@ window.productBuilderFabricPricing = function (config = {}) {
 
     return Object.assign(builder, {
         activeCustomizerStep: 1,
+        completedCustomizerStep: Object.keys(config.initial_state || {}).length ? 5 : 0,
+        skuCopied: false,
+        async copySku(value) {
+            const text = String(value || '').trim();
+            if (!text) return;
+            try {
+                if (navigator.clipboard?.writeText) {
+                    await navigator.clipboard.writeText(text);
+                } else {
+                    const area = document.createElement('textarea');
+                    area.value = text;
+                    area.setAttribute('readonly', '');
+                    area.style.position = 'fixed';
+                    area.style.opacity = '0';
+                    document.body.appendChild(area);
+                    area.select();
+                    document.execCommand('copy');
+                    area.remove();
+                }
+                this.skuCopied = true;
+                window.setTimeout(() => { this.skuCopied = false; }, 1600);
+            } catch (error) {
+                this.skuCopied = false;
+            }
+        },
         artworkMode: 'upload',
         artworkHelpNotes: '',
         artworkHelpStyle: 'modern',
@@ -126,6 +166,14 @@ window.productBuilderFabricPricing = function (config = {}) {
         openCustomizerStep(step) {
             const next = Math.max(1, Math.min(6, Number(step || 1)));
             this.activeCustomizerStep = next;
+        },
+        advanceCustomizerStep(step) {
+            const current = Math.max(1, Math.min(6, Number(this.activeCustomizerStep || 1)));
+            const next = Math.max(1, Math.min(6, Number(step || current)));
+            if (next === current + 1) {
+                this.completedCustomizerStep = Math.max(Number(this.completedCustomizerStep || 0), current);
+            }
+            this.openCustomizerStep(next);
         },
         setArtworkMode(mode) {
             if (!['upload', 'existing', 'help'].includes(mode)) return;
@@ -215,6 +263,37 @@ window.productBuilderFabricPricing = function (config = {}) {
             });
             return this.campaignPrice(Number(tier?.unit ?? config.base_price ?? 0));
         },
+        canAddToCart() {
+            return this.activeCustomizerStep === 6;
+        },
+        optionGroupSummary(group) {
+            if (!group) return 'Not selected';
+            if (group.type === 'checkbox') {
+                const labels = (this.multiSelections?.[group.id] || [])
+                    .map((id) => this.optionValue?.(group, id)?.label)
+                    .filter(Boolean);
+                return labels.length ? labels.join(', ') : 'Not selected';
+            }
+            if (['image', 'swatch', 'buttons', 'select'].includes(group.type)) {
+                return this.optionValue?.(group, this.selections?.[group.id])?.label || 'Not selected';
+            }
+            const value = this.inputs?.[group.id];
+            return String(value || '').trim() || 'Not provided';
+        },
+        shippingEstimatedAmount() {
+            const quantity = Math.max(0, Number(this.totalQuantity?.() || 0));
+            const breakdown = this.priceAdjustments?.() || {};
+            return Math.max(0, Number(breakdown.shippingPerUnit || 0) * quantity + Number(breakdown.shippingFixed || 0));
+        },
+        productPriceAmount() {
+            return Math.max(0, Number(this.totalPrice?.() || 0) - this.shippingEstimatedAmount());
+        },
+        remoteAreaSurchargeAmount() {
+            return 0;
+        },
+        estimatedOrderTotal() {
+            return Math.max(0, Number(this.totalPrice?.() || 0) + this.remoteAreaSurchargeAmount());
+        },
         sync() {
             baseSync.call(this);
             this.notifyPriceTableChange();
@@ -241,21 +320,15 @@ window.productBuilderFabricPricing = function (config = {}) {
 
                     <div class="np-product-title-meta">
                         <x-storefront.product.purchase-signals :product="$product" />
-                        @if(filled($product['sku'] ?? null))
-                            <span class="np-product-sku">SKU: {{ $product['sku'] }}</span>
-                        @endif
                     </div>
 
                     @if(filled($product['summary']))
                         <p class="np-product-summary">{{ $product['summary'] }}</p>
                     @endif
 
-                    @if($features->isNotEmpty())
+                    @if($productHighlights->isNotEmpty())
                         <div class="np-product-feature-strip" aria-label="Product highlights">
-                            @foreach($features as $index => $feature)
-                                @php
-                                    $featureText = is_array($feature) ? ($feature['label'] ?? $feature['title'] ?? '') : $feature;
-                                @endphp
+                            @foreach($productHighlights as $index => $feature)
                                 <div class="np-product-feature-item">
                                     <span class="np-product-feature-icon" aria-hidden="true">
                                         @if($index % 4 === 0)
@@ -268,7 +341,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                                             <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 3 3 0 0 0 3-3c0-1.7-1.3-3-3-3h-1a2 2 0 0 1-2-2c0-1.1.9-2 2-2h4a3 3 0 0 0 0-6h-3Z"/></svg>
                                         @endif
                                     </span>
-                                    <span>{{ $featureText }}</span>
+                                    <strong>{{ $feature }}</strong>
                                 </div>
                             @endforeach
                         </div>
@@ -361,6 +434,7 @@ window.productBuilderFabricPricing = function (config = {}) {
 
             <div class="np-product-customizer-grid">
                 <form
+                    id="np-product-config-form"
                     method="POST"
                     enctype="multipart/form-data"
                     action="{{ $isEditing ? route('cart.items.options.update', $editItem['key']) : route('cart.items.store') }}"
@@ -461,7 +535,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                                                         @php $key = $group['id'].':'.$size['code']; @endphp
                                                         <tr>
                                                             <td class="is-quantity">{{ $size['label'] }}</td>
-                                                            <td><img class="np-proto-size-sample" src="{{ $product['image'] }}" alt=""></td>
+                                                            <td><img class="np-proto-size-sample np-proto-size-image" src="{{ $product['image'] }}" alt=""></td>
                                                             <td>
                                                                 <div class="np-size-counter np-proto-size-counter">
                                                                     <button type="button" @click="changeQuantity(@js($key), Number(quantities[@js($key)] || 0)-1)" aria-label="Decrease {{ $size['label'] }} quantity">−</button>
@@ -517,7 +591,7 @@ window.productBuilderFabricPricing = function (config = {}) {
 
                                     <div class="touch-scroll-x np-proto-roster-table-wrap">
                                         <table class="np-proto-data-table np-proto-roster-table">
-                                            <thead><tr><th>#</th><th>Size</th>@foreach($enabledRosterFields as $field)<th>{{ $field['label'] }}@if(($field['max_length'] ?? null))<small>(Max {{ (int) $field['max_length'] }} characters)</small>@endif</th>@endforeach<th>Preview</th><th></th></tr></thead>
+                                            <thead><tr><th>#</th><th>Size</th>@foreach($enabledRosterFields as $field)<th>{{ $field['label'] }}@if(($field['max_length'] ?? null))<small>(Max {{ (int) $field['max_length'] }} characters)</small>@endif</th>@endforeach<th></th></tr></thead>
                                             <tbody>
                                                 <template x-for="(row, rowIndex) in rosterRows" :key="`${row.size_key || 'item'}:${rowIndex}`">
                                                     <tr>
@@ -526,7 +600,6 @@ window.productBuilderFabricPricing = function (config = {}) {
                                                         @foreach($enabledRosterFields as $field)
                                                             <td><input class="np-proto-table-input" type="text" @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif maxlength="{{ min(120, max(1, (int) ($field['max_length'] ?? 60))) }}" x-model="row.values[@js($field['key'])]" @input="sync()" @change="commitRosterField(rowIndex, @js($field), $event.target.value)" placeholder="{{ $field['label'] }}"></td>
                                                         @endforeach
-                                                        <td><img class="np-proto-roster-preview" src="{{ $product['image'] }}" alt=""></td>
                                                         <td><button type="button" class="np-proto-icon-button" @click="clearRosterRow(rowIndex)" aria-label="Clear player row"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13"/></svg></button></td>
                                                     </tr>
                                                 </template>
@@ -640,7 +713,10 @@ window.productBuilderFabricPricing = function (config = {}) {
                                         <button type="button" class="np-proto-choice-card" :class="productionSpeed === option.id ? 'is-selected' : ''" @click="chooseProductionSpeed(option.id)">
                                             <span class="np-proto-choice-radio"></span>
                                             <span class="np-proto-choice-copy"><strong x-text="option.label"></strong><b x-text="productionDaysOnlyLabel(option)"></b><small x-text="option.description || chargeLabel(option)"></small></span>
-                                            <span class="np-proto-choice-media"><svg viewBox="0 0 48 48"><path d="M8 34h32M12 34V17l9 6v-9l10 7V10h5v24"/><path d="M17 39h2M29 39h2"/></svg></span>
+                                            <span class="np-proto-choice-media">
+                                                <template x-if="option.image"><img :src="option.image" :alt="option.label" loading="lazy" decoding="async"></template>
+                                                <svg x-show="!option.image" viewBox="0 0 48 48"><path d="M8 34h32M12 34V17l9 6v-9l10 7V10h5v24"/><path d="M17 39h2M29 39h2"/></svg>
+                                            </span>
                                         </button>
                                     </template>
                                 </div>
@@ -655,7 +731,13 @@ window.productBuilderFabricPricing = function (config = {}) {
                                             <button type="button" class="np-proto-choice-card" :class="shippingMethod === @js($method['id']) ? 'is-selected' : ''" @click="chooseShippingMethod(@js($method['id']))">
                                                 <span class="np-proto-choice-radio"></span>
                                                 <span class="np-proto-choice-copy"><strong>{{ $method['label'] }}</strong><b x-text="shippingDaysOnlyLabel({{ $methodJson }})"></b><small>{{ $method['description'] ?? 'Worldwide delivery option.' }}</small></span>
-                                                <span class="np-proto-choice-media"><svg viewBox="0 0 48 48"><path d="M7 29h23V15H7z"/><path d="M30 21h7l5 6v2H30z"/><circle cx="15" cy="34" r="4"/><circle cx="35" cy="34" r="4"/></svg></span>
+                                                <span class="np-proto-choice-media">
+                                                    @if(filled($method['image'] ?? null))
+                                                        <img src="{{ $method['image'] }}" alt="{{ $method['label'] }}" loading="lazy" decoding="async">
+                                                    @else
+                                                        <svg viewBox="0 0 48 48"><path d="M7 29h23V15H7z"/><path d="M30 21h7l5 6v2H30z"/><circle cx="15" cy="34" r="4"/><circle cx="35" cy="34" r="4"/></svg>
+                                                    @endif
+                                                </span>
                                             </button>
                                         @endforeach
                                     </div>
@@ -687,7 +769,11 @@ window.productBuilderFabricPricing = function (config = {}) {
                             <div class="np-proto-step-content">
                                 <div class="np-product-review-card">
                                     <div class="np-product-review-summary">
-                                        <div class="np-product-review-card-title"><h3>Order Summary</h3><button type="button" @click="openCustomizerStep(1)">Edit</button></div>
+                                        <div class="np-product-review-card-title">
+                                            <h3>Order Summary</h3>
+                                            <button type="button" @click="openCustomizerStep(1)">Edit</button>
+                                        </div>
+
                                         <div class="np-product-review-product">
                                             <img src="{{ $product['image'] }}" alt="{{ $product['alt'] ?? $product['title'] }}">
                                             <div>
@@ -698,10 +784,32 @@ window.productBuilderFabricPricing = function (config = {}) {
                                                 @if($materialGroup)
                                                     <small x-text="`Fabric: ${optionValue(@js($materialGroup), selections[@js($materialGroup['id'])])?.label || 'Configured'}`"></small>
                                                 @endif
-                                                <small x-text="artworkFiles.length ? `Design: Upload Artwork (${artworkFiles.length} files)` : 'Design: Artwork not selected'"></small>
+                                                <small><span x-text="totalQuantity()"></span> total pieces</small>
                                             </div>
                                         </div>
-                                        <div class="np-product-review-sizes">
+
+                                        <div class="np-product-review-section">
+                                            <div class="np-product-review-card-title">
+                                                <h4>Selected Options</h4>
+                                                <button type="button" @click="openCustomizerStep(1)">Edit</button>
+                                            </div>
+                                            <div class="np-review-detail-list">
+                                                @if($materialGroup)
+                                                    <div>
+                                                        <span>{{ $materialGroup['label'] ?? 'Fabric' }}</span>
+                                                        <strong x-text="optionGroupSummary(@js($materialGroup))"></strong>
+                                                    </div>
+                                                @endif
+                                                @foreach($reviewOptionGroups as $group)
+                                                    <div>
+                                                        <span>{{ $group['label'] }}</span>
+                                                        <strong x-text="optionGroupSummary(@js($group))"></strong>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+
+                                        <div class="np-product-review-sizes np-product-review-section">
                                             <div class="np-product-review-card-title">
                                                 <h4>Sizes &amp; Quantities</h4>
                                                 <button type="button" @click="openCustomizerStep(2)">Edit</button>
@@ -710,10 +818,8 @@ window.productBuilderFabricPricing = function (config = {}) {
                                                 @foreach($product['size_groups'] as $group)
                                                     <div class="np-review-size-matrix">
                                                         @foreach($group['sizes'] as $size)
-                                                            @php
-                                                                $key = $group['id'].':'.$size['code'];
-                                                            @endphp
-                                                            <div>
+                                                            @php $key = $group['id'].':'.$size['code']; @endphp
+                                                            <div :class="Number(quantities[@js($key)] || 0) > 0 ? 'is-selected' : ''">
                                                                 <strong>{{ $size['label'] }}</strong>
                                                                 <span x-text="quantities[@js($key)] || 0"></span>
                                                             </div>
@@ -726,31 +832,95 @@ window.productBuilderFabricPricing = function (config = {}) {
                                                 @endforeach
                                             @else
                                                 <div class="np-review-size-matrix">
-                                                    <div class="is-total">
-                                                        <strong>Total</strong>
-                                                        <span x-text="totalQuantity()"></span>
-                                                    </div>
+                                                    <div class="is-total"><strong>Total</strong><span x-text="totalQuantity()"></span></div>
                                                 </div>
                                             @endif
                                         </div>
+
+                                        <div class="np-product-review-section">
+                                            <div class="np-product-review-card-title">
+                                                <h4>Player Names &amp; Numbers</h4>
+                                                <button type="button" @click="openCustomizerStep(3)">Edit</button>
+                                            </div>
+                                            @if($rosterEnabled)
+                                                <div class="np-review-roster-summary" x-show="rosterEnabled" x-cloak>
+                                                    <div class="np-review-detail-list">
+                                                        <div><span>Players</span><strong x-text="`${rosterRows.length} player${rosterRows.length === 1 ? '' : 's'}`"></strong></div>
+                                                    </div>
+                                                    <div class="np-review-roster-list">
+                                                        <template x-for="(row, rowIndex) in rosterRows" :key="`review:${row.size_key || 'item'}:${rowIndex}`">
+                                                            <div class="np-review-roster-row">
+                                                                <span class="is-index" x-text="rowIndex + 1"></span>
+                                                                <strong x-text="row.size_label || '—'"></strong>
+                                                                @foreach($enabledRosterFields as $field)
+                                                                    <span><small>{{ $field['label'] }}</small><b x-text="row.values[@js($field['key'])] || '—'"></b></span>
+                                                                @endforeach
+                                                            </div>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                                <p class="np-review-empty" x-show="!rosterEnabled" x-cloak>Player details are not enabled for this order.</p>
+                                            @else
+                                                <p class="np-review-empty">Player details are not required for this product.</p>
+                                            @endif
+                                        </div>
+
+                                        <div class="np-product-review-section">
+                                            <div class="np-product-review-card-title">
+                                                <h4>Artwork</h4>
+                                                <button type="button" @click="openCustomizerStep(4)">Edit</button>
+                                            </div>
+                                            <div class="np-review-detail-list">
+                                                <div><span>Status</span><strong x-text="artworkFiles.length ? `${artworkFiles.length} file${artworkFiles.length === 1 ? '' : 's'} uploaded` : 'Not selected yet'"></strong></div>
+                                            </div>
+                                            <div class="np-review-artwork-list" x-show="artworkFiles.length" x-cloak>
+                                                <template x-for="file in artworkFiles" :key="file.key || file.name">
+                                                    <span x-text="file.name"></span>
+                                                </template>
+                                            </div>
+                                        </div>
+
+                                        <div class="np-product-review-section">
+                                            <div class="np-product-review-card-title">
+                                                <h4>Production &amp; Shipping</h4>
+                                                <button type="button" @click="openCustomizerStep(5)">Edit</button>
+                                            </div>
+                                            <div class="np-review-detail-list">
+                                                <div x-show="currentProductionOptions().length > 0" x-cloak><span>Production</span><strong><span x-text="speedLabel()"></span> · <span x-text="productionDaysOnlyLabel()"></span></strong></div>
+                                                <div><span>Shipping</span><strong><span x-text="shippingLabel()"></span> · <span x-text="shippingDaysOnlyLabel()"></span></strong></div>
+                                                <div><span>Estimated Delivery</span><strong x-text="totalDeliveryDaysLabel()"></strong></div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="np-product-review-pricing">
+
+                                    <aside class="np-product-review-pricing" aria-label="Order pricing">
                                         <h3>Pricing</h3>
                                         <div><span>Unit Price</span><strong x-text="money(unitPrice())"></strong></div>
                                         <div><span>Total Pieces</span><strong x-text="totalQuantity()"></strong></div>
-                                        <div class="is-total"><span>Product Total</span><strong x-text="money(totalPrice())"></strong></div>
-                                        <button type="submit" class="btn btn-secondary btn-xl">{{ $isEditing ? 'Update Cart Item' : 'Add to Cart' }}</button>
-                                        <button type="button" class="btn btn-outline btn-xl" @click="toggleWishlist()">♡ <span x-text="wishlisted ? 'Saved for Later' : 'Save for Later'"></span></button>
-                                        <div class="np-product-review-trust"><div><span>✓</span><p><strong>Free design review</strong><small>We’ll check your artwork for best results</small></p></div><div><span>♙</span><p><strong>Secure checkout</strong><small>Your information is safe with us</small></p></div><div><span>◎</span><p><strong>Worldwide shipping</strong><small>Delivering to 100+ countries</small></p></div></div>
-                                    </div>
+                                        <div><span>Product Price</span><strong x-text="money(productPriceAmount())"></strong></div>
+                                        <div><span>Shipping (Estimated)</span><strong x-text="money(shippingEstimatedAmount())"></strong></div>
+                                        <div><span>Remote Area Surcharge</span><strong x-text="money(remoteAreaSurchargeAmount())"></strong></div>
+                                        <div class="is-total"><span>Estimated Total</span><strong x-text="money(estimatedOrderTotal())"></strong></div>
+                                        <button type="submit" class="btn btn-secondary btn-xl np-review-add-to-cart" :disabled="!canAddToCart()" :aria-disabled="!canAddToCart() ? 'true' : 'false'">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2 11h10l3-7H7"/><circle cx="10" cy="19" r="1.5"/><circle cx="18" cy="19" r="1.5"/></svg>
+                                            {{ $isEditing ? 'Update Cart Item' : 'Add to Cart' }}
+                                        </button>
+                                        <button type="button" class="btn btn-outline btn-xl np-review-save-later" @click="toggleWishlist()" :aria-pressed="wishlisted ? 'true' : 'false'">
+                                            <span aria-hidden="true">♡</span><span x-text="wishlisted ? 'Saved for Later' : 'Save for Later'"></span>
+                                        </button>
+                                        <div class="np-product-review-trust">
+                                            <div><span>✓</span><p><strong>Free design review</strong><small>We’ll check your artwork for best results</small></p></div>
+                                            <div><span>♙</span><p><strong>Secure checkout</strong><small>Your information is safe with us</small></p></div>
+                                            <div><span>◎</span><p><strong>Worldwide shipping</strong><small>Delivering to 100+ countries</small></p></div>
+                                        </div>
+                                    </aside>
                                 </div>
                             </div>
-
                         </div>
                     </section>
                 </form>
 
-                <x-storefront.product.customizer.order-summary :product="$product" :material-group="$materialGroup" :size-range-label="$sizeRangeLabel" />
+                <x-storefront.product.customizer.order-summary :product="$product" :material-group="$materialGroup" :size-range-label="$sizeRangeLabel" :is-editing="$isEditing" />
             </div>
         </section>
 
@@ -759,6 +929,19 @@ window.productBuilderFabricPricing = function (config = {}) {
             <div x-show="sizeChartOpen" x-cloak class="np-size-chart-modal" role="dialog" aria-modal="true" aria-label="Product size chart" @click.self="closeSizeChart()">
                 <div class="np-size-chart-dialog">
                     <div class="np-size-chart-dialog__head"><div><small>Administrator provided</small><h3 x-text="chartGroup()?.chart?.title || 'Size Chart'"></h3></div><button type="button" @click="closeSizeChart()" aria-label="Close size chart">×</button></div>
+                    @if($sizeGroupsWithCharts->count() > 1)
+                        <div class="np-size-chart-tabs" role="tablist" aria-label="Available size charts">
+                            @foreach($sizeGroupsWithCharts as $group)
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    :aria-selected="activeChartGroup === @js($group['id']) ? 'true' : 'false'"
+                                    :class="activeChartGroup === @js($group['id']) ? 'is-active' : ''"
+                                    @click="activeChartGroup = @js($group['id'])"
+                                >{{ $group['label'] }}</button>
+                            @endforeach
+                        </div>
+                    @endif
                     @foreach($sizeGroupsWithCharts as $group)
                         @php $hasStructuredSizeTable = ! empty(data_get($group, 'chart.columns')) && ! empty(data_get($group, 'chart.rows')); @endphp
                         <div x-show="activeChartGroup === @js($group['id'])" x-cloak class="np-size-chart-dialog__body">

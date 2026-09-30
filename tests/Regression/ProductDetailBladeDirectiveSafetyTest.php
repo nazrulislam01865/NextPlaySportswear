@@ -30,6 +30,21 @@ foreach (preg_split('/\R/', $review) as $lineNumber => $line) {
     $expect(count($matches[0]) <= 1, 'Review step keeps Blade structural directives on separate lines.');
 }
 
+
+$orderSummaryPath = $root.'/resources/views/components/storefront/product/customizer/order-summary.blade.php';
+$orderSummary = file_get_contents($orderSummaryPath);
+
+$expect($orderSummary !== false, 'Order summary Blade source is readable.');
+if ($orderSummary !== false) {
+    foreach (preg_split('/\R/', $orderSummary) as $lineNumber => $line) {
+        preg_match_all('/@(if|elseif|else|endif|foreach|endforeach|for|endfor|while|endwhile|forelse|endforelse)\b/', $line, $matches);
+        $expect(
+            count($matches[0]) <= 1,
+            'Order summary keeps Blade structural directives on separate lines (line '.($lineNumber + 1).').'
+        );
+    }
+}
+
 if ($failures !== []) {
     fwrite(STDERR, "Product detail Blade directive safety regression failed:\n");
     foreach (array_unique($failures) as $failure) {

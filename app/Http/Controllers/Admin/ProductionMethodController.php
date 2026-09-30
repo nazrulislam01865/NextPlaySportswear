@@ -5,11 +5,16 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ProductionMethodRequest;
 use App\Models\ProductionMethod;
+use App\Services\Catalog\MasterMethodMediaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 class ProductionMethodController extends Controller
 {
+    public function __construct(private readonly MasterMethodMediaService $media)
+    {
+    }
+
     public function index(): View
     {
         return view('admin.production-methods.index', [
@@ -36,7 +41,9 @@ class ProductionMethodController extends Controller
             $data['sort_order'] = ((int) ProductionMethod::query()->max('sort_order')) + 10;
         }
 
+        unset($data['image_file'], $data['image_url'], $data['remove_image']);
         $method = ProductionMethod::create($data);
+        $this->media->persist($method, $request, 'master-data/production-methods');
         $this->syncDefault($method);
 
         return redirect()->route('admin.production-methods.index')
@@ -54,7 +61,9 @@ class ProductionMethodController extends Controller
     {
         $data = $request->validated();
         $data['sort_order'] = $productionMethod->sort_order ?: (((int) ProductionMethod::query()->whereKeyNot($productionMethod->id)->max('sort_order')) + 10);
+        unset($data['image_file'], $data['image_url'], $data['remove_image']);
         $productionMethod->update($data);
+        $this->media->persist($productionMethod, $request, 'master-data/production-methods');
         $this->syncDefault($productionMethod);
 
         return redirect()->route('admin.production-methods.index')
@@ -63,6 +72,7 @@ class ProductionMethodController extends Controller
 
     public function destroy(ProductionMethod $productionMethod): RedirectResponse
     {
+        $this->media->deleteOwned($productionMethod->image_path, 'master-data/production-methods');
         $productionMethod->delete();
 
         if (! ProductionMethod::query()->where('is_default', true)->exists()) {

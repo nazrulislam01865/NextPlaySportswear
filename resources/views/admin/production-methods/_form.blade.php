@@ -4,7 +4,7 @@
     $isDefault = old('is_default') !== null ? filter_var(old('is_default'), FILTER_VALIDATE_BOOLEAN) : (bool) ($method->is_default ?? false);
 @endphp
 
-<form method="POST" action="{{ $action }}" class="space-y-6">
+<form method="POST" action="{{ $action }}" class="space-y-6" enctype="multipart/form-data">
     @csrf
     @if($formMethod !== 'POST') @method($formMethod) @endif
 
@@ -38,6 +38,9 @@
             </label>
         </div>
     </x-admin.section-card>
+
+
+    <x-admin.master-method-media :method="$method" />
 
     <x-admin.section-card title="Status" description="Only active production methods are shown in product setup and on the storefront.">
         <div class="grid gap-4 sm:grid-cols-2">

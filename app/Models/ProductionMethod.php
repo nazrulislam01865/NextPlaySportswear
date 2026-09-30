@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PublicMedia;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,8 @@ use Illuminate\Support\Str;
     'name',
     'code',
     'description',
+    'image_path',
+    'image_url',
     'minimum_days',
     'maximum_days',
     'is_default',
@@ -30,6 +33,11 @@ class ProductionMethod extends Model
             'is_active' => 'boolean',
             'sort_order' => 'integer',
         ];
+    }
+
+    public function imageUrl(): ?string
+    {
+        return PublicMedia::url($this->image_path, $this->image_url);
     }
 
     public function scopeActive($query)

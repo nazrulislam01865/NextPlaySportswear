@@ -29,6 +29,16 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c5.2 0 9.4 4.4 10.7 6.1.4.5.4 1.2 0 1.8C21.4 14.6 17.2 19 12 19S2.6 14.6 1.3 12.9a1.5 1.5 0 0 1 0-1.8C2.6 9.4 6.8 5 12 5Zm0 2C7.8 7 4.3 10.4 3.2 12c1.1 1.6 4.6 5 8.8 5s7.7-3.4 8.8-5C19.7 10.4 16.2 7 12 7Zm0 2.2a2.8 2.8 0 1 1 0 5.6 2.8 2.8 0 0 1 0-5.6Z" /></svg>
             <span data-product-detail-activity-label>{{ $activityLabel }}</span>
         </div>
+
+        @if(filled($product['sku'] ?? null))
+            <div class="np-product-sku-inline" aria-label="Product SKU">
+                <strong>SKU: {{ $product['sku'] }}</strong>
+                <button type="button" @click="copySku(@js($product['sku']))" :title="skuCopied ? 'Copied' : 'Copy SKU'" aria-label="Copy SKU">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+                    <span x-text="skuCopied ? 'Copied' : 'Copy'">Copy</span>
+                </button>
+            </div>
+        @endif
     </div>
 
     <div class="np-product-signals__actions">

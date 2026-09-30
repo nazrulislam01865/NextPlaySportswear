@@ -57,19 +57,19 @@ $expect(str_contains($builder, 'Important Notes'), 'Production step includes the
 $expect(str_contains($builder, ':title="$customizerSteps[2][\'title\']"'), 'Size step uses the centralized accordion step title.');
 $expect(str_contains($builder, 'Sample Image'), 'Size step includes the prototype sample-image table column.');
 $expect(str_contains($builder, 'Clear All'), 'Roster step includes the prototype clear-all action.');
-$expect(str_contains($builder, 'Preview'), 'Roster step includes the prototype preview column.');
+$expect(! str_contains($builder, '<th>Preview</th>'), 'Roster preview column is intentionally hidden in the refined prototype.');
 $expect(str_contains($builder, 'Review & Add to Cart'), 'Final review step keeps the exact prototype label.');
 $expect(str_contains(file_get_contents($componentPaths['step-header']), 'In Progress'), 'Reusable accordion step header exposes the prototype in-progress state.');
-$expect(str_contains(file_get_contents($componentPaths['order-summary']), 'Players to Add'), 'Step 3 sidebar exposes the prototype Players to Add fact.');
-$expect(str_contains(file_get_contents($componentPaths['order-summary']), "artworkMode === 'help'"), 'Player summary appears on artwork help/review states exactly where the prototypes show it.');
-$expect(str_contains(file_get_contents($componentPaths['order-summary']), 'Estimated Delivery'), 'Step 5 sidebar exposes the prototype Estimated Delivery summary.');
+$expect(str_contains(file_get_contents($componentPaths['order-summary']), 'Player Names &amp; Numbers'), 'Sidebar exposes the prototype player-details section.');
+$expect(str_contains(file_get_contents($componentPaths['order-summary']), 'Selected Sizes &amp; Quantities'), 'Sidebar keeps the selected size/quantity section visible throughout customization.');
+$expect(str_contains(file_get_contents($componentPaths['order-summary']), 'Production &amp; Shipping'), 'Sidebar exposes the prototype production and shipping section.');
 $expect(str_contains(file_get_contents($componentPaths['order-summary']), 'np-custom-order-method-lines'), 'Production and shipping sidebar uses the prototype two-line method summary.');
-$expect(str_contains(file_get_contents($componentPaths['order-summary']), 'activeCustomizerStep === 1'), 'Order sidebar has explicit step-specific content instead of one generic fact list.');
+$expect(str_contains(file_get_contents($componentPaths['order-summary']), 'np-custom-order-pricing'), 'Order sidebar uses one persistent prototype summary with pricing instead of step-specific fact lists.');
 
 $prototypePos = strpos($css, 'NEXTPLAY_PRODUCT_DETAIL_PROTOTYPE');
 $prototypeCss = $prototypePos === false ? '' : substr($css, $prototypePos);
-$expect(str_contains($prototypeCss, 'grid-template-columns: minmax(0, 1fr) 300px'), 'Desktop customizer matches the prototype main/sidebar proportion.');
-$expect(str_contains($prototypeCss, 'gap: 28px'), 'Desktop customizer matches the prototype column gap.');
+$expect(str_contains($prototypeCss, 'grid-template-columns: minmax(0, 1fr) 340px'), 'Desktop customizer uses the refined prototype main/sidebar proportion.');
+$expect(str_contains($prototypeCss, 'gap: 24px'), 'Desktop customizer uses the refined prototype column gap.');
 $expect(str_contains($prototypeCss, '.np-proto-step-card'), 'Prototype step cards have a dedicated reusable visual contract.');
 $expect(str_contains($prototypeCss, '.np-proto-review-status'), 'Review in-progress state has a dedicated prototype style.');
 $expect(str_contains($prototypeCss, '.np-proto-data-table'), 'Prototype table styling is centralized.');
@@ -79,7 +79,7 @@ $expect(str_contains($prototypeCss, '.np-proto-artwork-tabs'), 'Artwork tabs use
 $expect(str_contains($prototypeCss, '.np-proto-color-picker'), 'Artwork help color preferences use a dedicated prototype style.');
 $expect(str_contains($prototypeCss, '76px 32px 32px 32px'), 'Artwork file rows allocate separate preview, download, and delete action columns.');
 $expect(str_contains($prototypeCss, '.np-proto-choice-card'), 'Production/shipping choices use one reusable card style.');
-$expect(str_contains($prototypeCss, '.np-custom-order-delivery'), 'Step 5 estimated-delivery sidebar row has a dedicated prototype style.');
+$expect(str_contains($prototypeCss, '.np-custom-order-pricing'), 'Persistent sidebar pricing block has a dedicated prototype style.');
 $expect(str_contains($prototypeCss, '.np-custom-order-method-lines'), 'Production/shipping method lines have a dedicated prototype style.');
 $expect(str_contains($prototypeCss, 'var(--np-color-primary)'), 'Full redesign continues using the centralized primary theme token.');
 $expect(str_contains($prototypeCss, 'var(--np-color-secondary)'), 'Full redesign continues using the centralized secondary theme token.');
