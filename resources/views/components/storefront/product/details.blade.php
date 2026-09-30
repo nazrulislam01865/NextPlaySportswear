@@ -16,10 +16,10 @@
 <section class="np-product-information" x-data="{ tab: 'description' }" aria-labelledby="product-information-title">
     <div class="site-container">
         <div class="np-product-information-card">
-            <h2 id="product-information-title" class="np-product-information-title"><span aria-hidden="true">◉</span> Product Information</h2>
+            <h2 id="product-information-title" class="np-product-information-title">Product Information</h2>
         <div class="np-product-detail-tabs">
             @foreach(['description'=>'Description','specifications'=>'Specifications','customization'=>'Customization & Artwork','fulfillment'=>'Fulfillment','faq'=>'FAQ'] as $key => $label)
-                <button type="button" @click="tab='{{ $key }}'" :class="tab === '{{ $key }}' ? 'bg-white text-brand-red shadow-[inset_0_-3px_0_currentColor]' : 'text-slate-600'" class="np-product-detail-tab">{{ $label }}</button>
+                <button type="button" @click="tab='{{ $key }}'" :class="tab === '{{ $key }}' ? 'is-active' : ''" class="np-product-detail-tab">{{ $label }}</button>
             @endforeach
         </div>
         <div class="np-product-information-body">

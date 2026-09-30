@@ -163,9 +163,25 @@ window.productBuilderFabricPricing = function (config = {}) {
         artworkHelpNotes: '',
         artworkHelpStyle: 'modern',
         artworkHelpColor: '',
+        scrollCustomizerStepIntoView(step, behavior = 'smooth') {
+            const next = Math.max(1, Math.min(6, Number(step || 1)));
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const panel = document.getElementById(`np-product-step-panel-${next}`);
+                    const card = panel?.closest('.np-proto-step-card');
+                    if (!card) return;
+
+                    const header = document.querySelector('.np-site-header');
+                    const headerHeight = header?.getBoundingClientRect().height || 0;
+                    const top = window.scrollY + card.getBoundingClientRect().top - headerHeight - 12;
+                    window.scrollTo({ top: Math.max(0, top), behavior });
+                });
+            });
+        },
         openCustomizerStep(step) {
             const next = Math.max(1, Math.min(6, Number(step || 1)));
             this.activeCustomizerStep = next;
+            this.scrollCustomizerStepIntoView(next);
         },
         advanceCustomizerStep(step) {
             const current = Math.max(1, Math.min(6, Number(this.activeCustomizerStep || 1)));
@@ -189,11 +205,11 @@ window.productBuilderFabricPricing = function (config = {}) {
             (this.rosterRows || []).forEach((row) => {
                 Object.keys(row.values || {}).forEach((key) => { row.values[key] = ''; });
             });
+            Object.keys(this.rosterSharedValues || {}).forEach((key) => { this.rosterSharedValues[key] = ''; });
             this.sync();
         },
         startCustomizing() {
-            this.activeCustomizerStep = 1;
-            requestAnimationFrame(() => document.getElementById('configure-product')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+            this.openCustomizerStep(1);
         },
         selectedPricedFabricValue() {
             for (const group of (config.option_groups || [])) {
@@ -575,14 +591,28 @@ window.productBuilderFabricPricing = function (config = {}) {
                         <div id="np-product-step-panel-3" class="np-proto-step-expanded" x-show="activeCustomizerStep === 3" x-cloak>
                             <div class="np-proto-step-content">
                             @if($rosterEnabled)
-                                @if($roster['optional'] ?? true)
-                                    <label class="np-roster-toggle" x-show="!rosterEnabled">
-                                        <input type="checkbox" :checked="rosterEnabled" @change="toggleRoster($event.target.checked)">
-                                        <span><strong>Add individual player/item details</strong><small>Enable player names and numbers for this order.</small></span>
-                                    </label>
-                                @endif
-
                                 <div x-show="rosterEnabled" x-cloak>
+                                    <div class="np-roster-same-for-all" x-show="rosterRows.length > 0" x-cloak>
+                                        <label class="np-roster-same-toggle">
+                                            <input type="checkbox" :checked="rosterSameForAll" @change="setRosterSameForAll($event.target.checked)">
+                                            <span><strong>Use the same name &amp; number for all items</strong><small>Enter the shared details once and apply them to every selected piece.</small></span>
+                                        </label>
+                                        <div class="np-roster-shared-fields" x-show="rosterSameForAll" x-cloak>
+                                            @foreach($enabledRosterFields as $field)
+                                                <label>
+                                                    <span>{{ $field['label'] }}</span>
+                                                    <input
+                                                        type="text"
+                                                        @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif
+                                                        maxlength="{{ min(120, max(1, (int) ($field['max_length'] ?? 60))) }}"
+                                                        :value="rosterSharedValues[@js($field['key'])] || ''"
+                                                        @input="updateRosterSharedField(@js($field), $event.target.value)"
+                                                        placeholder="{{ $field['label'] }}"
+                                                    >
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    </div>
                                     <div class="np-proto-player-summary-row">
                                         <div class="np-proto-player-product"><img src="{{ $product['image'] }}" alt=""><span><small>Selected Fabric</small>@if($materialGroup)<strong x-text="optionValue(@js($materialGroup), selections[@js($materialGroup['id'])])?.label || 'Configured fabric'"></strong>@else<strong>Configured fabric</strong>@endif</span><button type="button" @click="openCustomizerStep(1)">Change</button></div>
                                         <div class="np-proto-player-stat"><svg viewBox="0 0 24 24"><path d="M8 4 4 7l3 4v9h10v-9l3-4-4-3-2 3h-4L8 4Z"/></svg><span><small>Total Pieces</small><strong x-text="totalQuantity()"></strong></span></div>
@@ -598,9 +628,9 @@ window.productBuilderFabricPricing = function (config = {}) {
                                                         <td x-text="rowIndex + 1"></td>
                                                         <td class="is-quantity" x-text="row.size_label || '—'"></td>
                                                         @foreach($enabledRosterFields as $field)
-                                                            <td><input class="np-proto-table-input" type="text" @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif maxlength="{{ min(120, max(1, (int) ($field['max_length'] ?? 60))) }}" x-model="row.values[@js($field['key'])]" @input="sync()" @change="commitRosterField(rowIndex, @js($field), $event.target.value)" placeholder="{{ $field['label'] }}"></td>
+                                                            <td><input class="np-proto-table-input" type="text" @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif maxlength="{{ min(120, max(1, (int) ($field['max_length'] ?? 60))) }}" x-model="row.values[@js($field['key'])]" :disabled="rosterSameForAll" @input="sync()" @change="commitRosterField(rowIndex, @js($field), $event.target.value)" placeholder="{{ $field['label'] }}"></td>
                                                         @endforeach
-                                                        <td><button type="button" class="np-proto-icon-button" @click="clearRosterRow(rowIndex)" aria-label="Clear player row"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13"/></svg></button></td>
+                                                        <td><button type="button" class="np-roster-remove-button" @click="clearRosterRow(rowIndex)" aria-label="Remove player details"><span aria-hidden="true">×</span><span>Remove</span></button></td>
                                                     </tr>
                                                 </template>
                                             </tbody>

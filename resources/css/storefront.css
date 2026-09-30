@@ -18834,6 +18834,34 @@ button.np-shipping-delivery-tab[disabled] {
 .storefront-clean-ui .np-proto-icon-button { display: inline-grid; width: 29px; height: 29px; place-items: center; border: 0; background: transparent; color: var(--np-color-primary); }
 .storefront-clean-ui .np-proto-icon-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
+.storefront-clean-ui .np-roster-remove-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 30px;
+    padding: 4px 8px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--np-color-error);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+}
+.storefront-clean-ui .np-roster-remove-button > span:first-child {
+    font-size: 17px;
+    font-weight: 500;
+    line-height: .8;
+}
+.storefront-clean-ui .np-roster-remove-button:hover,
+.storefront-clean-ui .np-roster-remove-button:focus-visible {
+    border-color: var(--np-color-error);
+    background: color-mix(in srgb, var(--np-color-error) 7%, transparent);
+}
+
 .storefront-clean-ui .np-proto-artwork-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 12px; border: 1px solid #dfe5ec; border-radius: 6px 6px 0 0; overflow: hidden; }
 .storefront-clean-ui .np-proto-artwork-tabs > button { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: center; gap: 9px; min-height: 56px; border: 0; border-right: 1px solid #dfe5ec; background: #fff; padding: 9px 12px; color: var(--np-color-primary); text-align: left; }
 .storefront-clean-ui .np-proto-artwork-tabs > button:last-child { border-right: 0; }
@@ -19743,4 +19771,175 @@ button.np-shipping-delivery-tab[disabled] {
     border-color: var(--np-color-secondary);
     background: color-mix(in srgb, var(--np-color-secondary) 8%, #fff);
     color: var(--np-color-secondary);
+}
+
+
+/* NEXTPLAY_PRODUCT_DETAIL_CUSTOMIZER_POLISH */
+/* Selection cards: thin accent border, soft accent wash, compact orange check. */
+.storefront-clean-ui .np-proto-option-card.is-selected {
+    border: 1px solid var(--np-color-secondary);
+    background: rgb(var(--np-color-secondary-rgb) / .055);
+    padding: 10px 14px;
+    box-shadow: none;
+}
+.storefront-clean-ui .np-proto-option-card .np-proto-selected-check {
+    top: 9px;
+    right: 9px;
+    width: 16px;
+    height: 16px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--np-color-secondary);
+    color: #fff;
+    font-size: 12px;
+    line-height: 1;
+}
+.storefront-clean-ui .np-proto-option-charge { font-weight: 600; }
+.storefront-clean-ui .np-proto-option-charge.is-included {
+    color: var(--np-color-muted) !important;
+    font-weight: 500;
+}
+
+/* Size summary: keep the selected fabric media/name/change action inside the row. */
+.storefront-clean-ui .np-proto-size-summary-fabric {
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    min-width: 0;
+}
+.storefront-clean-ui .np-proto-size-summary-fabric .np-custom-order-fabric-preview {
+    width: 64px;
+    height: 56px;
+}
+.storefront-clean-ui .np-proto-size-summary-fabric > span:nth-child(2) { min-width: 0; }
+.storefront-clean-ui .np-proto-size-summary-fabric strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+.storefront-clean-ui .np-proto-size-summary-fabric button { white-space: nowrap; }
+
+/* Player rows appear automatically once quantity exists; shared-details helper is optional. */
+.storefront-clean-ui .np-roster-same-for-all {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 14px;
+    border: 1px solid var(--np-product-card-border);
+    border-radius: 6px;
+    background: var(--np-product-soft-bg);
+    padding: 12px 14px;
+}
+.storefront-clean-ui .np-roster-same-toggle {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    cursor: pointer;
+}
+.storefront-clean-ui .np-roster-same-toggle input { margin-top: 3px; accent-color: var(--np-color-secondary); }
+.storefront-clean-ui .np-roster-same-toggle span { display: grid; gap: 2px; }
+.storefront-clean-ui .np-roster-same-toggle strong { color: var(--np-color-primary); font-size: 14px; font-weight: 800; }
+.storefront-clean-ui .np-roster-same-toggle small { color: var(--np-color-muted); font-size: 12px; }
+.storefront-clean-ui .np-roster-shared-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+.storefront-clean-ui .np-roster-shared-fields label { display: grid; gap: 5px; }
+.storefront-clean-ui .np-roster-shared-fields label > span { color: var(--np-color-primary); font-size: 12px; font-weight: 800; }
+.storefront-clean-ui .np-roster-shared-fields input {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid var(--np-product-card-border);
+    border-radius: 5px;
+    background: #fff;
+    padding: 8px 10px;
+    color: var(--np-color-primary);
+    font-size: 14px;
+}
+.storefront-clean-ui .np-proto-table-input:disabled { background: var(--np-product-soft-bg); color: var(--np-color-muted); cursor: not-allowed; }
+
+/* Production/shipping selection uses the same thin selected treatment. */
+.storefront-clean-ui .np-proto-choice-card.is-selected {
+    border: 1px solid var(--np-color-secondary);
+    background: rgb(var(--np-color-secondary-rgb) / .055);
+    padding: 9px;
+    box-shadow: none;
+}
+
+/* Product information title and tabs follow the storefront menu underline treatment. */
+.storefront-clean-ui .np-product-information-title { padding-left: 16px; }
+.storefront-clean-ui .np-product-information .np-product-detail-tabs {
+    border-top: 1px solid var(--np-color-border);
+    border-bottom: 1px solid var(--np-color-border);
+    background: #fff;
+}
+.storefront-clean-ui .np-product-information .np-product-detail-tab {
+    position: relative;
+    border-right: 0;
+    background: transparent;
+    color: var(--np-color-primary);
+    box-shadow: none;
+}
+.storefront-clean-ui .np-product-information .np-product-detail-tab::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    background: transparent;
+}
+.storefront-clean-ui .np-product-information .np-product-detail-tab.is-active { color: var(--np-color-primary); }
+.storefront-clean-ui .np-product-information .np-product-detail-tab.is-active::after { background: var(--np-color-secondary); }
+
+@media (max-width: 767px) {
+    .storefront-clean-ui .np-roster-shared-fields { grid-template-columns: 1fr; }
+    .storefront-clean-ui .np-proto-size-summary-fabric { grid-template-columns: 56px minmax(0, 1fr) auto; }
+    .storefront-clean-ui .np-proto-size-summary-fabric .np-custom-order-fabric-preview { width: 56px; height: 50px; }
+}
+
+
+/* NEXTPLAY_PRODUCT_DETAIL_STEP_SCROLL_AND_MATERIAL_POLISH */
+.storefront-clean-ui .np-product-material-media {
+    border: 1px solid transparent;
+}
+
+.storefront-clean-ui .np-product-material-card.is-selected .np-product-material-media {
+    border: 1px solid var(--np-color-secondary);
+    box-shadow: none;
+}
+
+/* NEXTPLAY_PRODUCT_DETAIL_MATERIAL_IMAGE_FLUSH */
+.storefront-clean-ui .np-product-material-media {
+    display: block;
+    width: 116px;
+    height: auto;
+    aspect-ratio: auto;
+    padding: 0;
+    margin: 0;
+    place-items: unset;
+    overflow: hidden;
+    background: transparent;
+}
+
+.storefront-clean-ui .np-product-material-media img {
+    display: block;
+    width: 100%;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    object-fit: initial;
+    border-radius: 0;
+}
+
+.storefront-clean-ui .np-product-material-swatch,
+.storefront-clean-ui .np-product-material-placeholder {
+    display: block;
+    width: 100%;
+    height: 84px;
+    padding: 0;
+    margin: 0;
+    border-radius: 0;
+}
+.storefront-clean-ui .np-product-material-placeholder {
+    width: 100%;
+    height: 84px;
 }

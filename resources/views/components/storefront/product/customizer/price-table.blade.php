@@ -6,7 +6,6 @@
                     <template x-for="(header, headerIndex) in (table().headers || [])" :key="`price-head-${headerIndex}`">
                         <th>
                             <span x-text="header"></span>
-                            <span x-show="headerIndex > 0" class="np-proto-table-help" aria-hidden="true">?</span>
                         </th>
                     </template>
                 </tr>

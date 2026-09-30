@@ -41,7 +41,7 @@
         @if(filled($value['description'] ?? null))
             <small>{{ $value['description'] }}</small>
         @endif
-        <small class="np-proto-option-charge" x-text="chargeLabel(@js($value))"></small>
+        <small class="np-proto-option-charge" :class="chargeLabel(@js($value)) === 'Included' ? 'is-included' : ''" x-text="chargeLabel(@js($value))"></small>
     </span>
 
     <span class="np-proto-selected-check" aria-hidden="true">✓</span>

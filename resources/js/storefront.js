@@ -651,6 +651,8 @@ window.productBuilder = (config = {}) => ({
     shippingMethod: config.shipping_methods?.find(method => method.default)?.id || config.shipping_methods?.[0]?.id || null,
     rosterEnabled: Boolean(productRosterSettings(config).enabled && !productRosterSettings(config).optional),
     rosterRows: [],
+    rosterSameForAll: false,
+    rosterSharedValues: {},
     sampleRequested: false,
     sizeChartOpen: false,
     activeChartGroup: null,
@@ -663,6 +665,7 @@ window.productBuilder = (config = {}) => ({
         if (this.initialized) return;
         this.initialized = true;
         this.initProductSocial();
+        this.rosterSharedValues = this.blankRosterValues();
 
         (config.option_groups || []).forEach(group => {
             const mode = group.display_mode || 'customer';
@@ -1704,6 +1707,7 @@ window.productBuilder = (config = {}) => ({
             return;
         }
 
+        if (rosterSettings.enabled && this.totalQuantity() > 0) this.rosterEnabled = true;
         if (!rosterSettings.optional) this.rosterEnabled = true;
         if (!this.rosterEnabled) {
             this.rosterRows = [];
@@ -1725,6 +1729,7 @@ window.productBuilder = (config = {}) => ({
                     values: old?.values ? { ...this.blankRosterValues(), ...old.values } : this.blankRosterValues(),
                 };
             });
+            if (this.rosterSameForAll) this.applyRosterSharedValues();
             return;
         }
 
@@ -1752,6 +1757,34 @@ window.productBuilder = (config = {}) => ({
             }
         }));
         this.rosterRows = rows;
+        if (this.rosterSameForAll) this.applyRosterSharedValues();
+    },
+
+    applyRosterSharedValues() {
+        const shared = { ...this.blankRosterValues(), ...(this.rosterSharedValues || {}) };
+        (this.rosterRows || []).forEach(row => {
+            row.values = { ...this.blankRosterValues(), ...(row.values || {}), ...shared };
+        });
+    },
+
+    setRosterSameForAll(enabled) {
+        this.rosterSameForAll = Boolean(enabled);
+        if (this.rosterSameForAll) {
+            const firstValues = this.rosterRows?.[0]?.values || {};
+            this.rosterSharedValues = { ...this.blankRosterValues(), ...firstValues };
+            this.applyRosterSharedValues();
+        }
+        this.sync();
+    },
+
+    updateRosterSharedField(field, value) {
+        if (!field?.key) return;
+        this.rosterSharedValues[field.key] = value;
+        (this.rosterRows || []).forEach(row => {
+            if (!row.values) row.values = this.blankRosterValues();
+            row.values[field.key] = value;
+        });
+        this.sync();
     },
 
     toggleRoster(enabled) {
@@ -1801,6 +1834,7 @@ window.productBuilder = (config = {}) => ({
             shipping_method: this.shippingMethod,
             roster_enabled: this.rosterEnabled,
             roster: this.rosterRows,
+            roster_same_for_all: this.rosterSameForAll,
             sample_requested: this.sampleRequested,
         });
     },
