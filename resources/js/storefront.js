@@ -643,7 +643,7 @@ window.productBuilder = (config = {}) => ({
     multiSelections: {},
     inputs: {},
     quantities: {},
-    orderQuantity: Number(config.minimum_quantity || 1),
+    orderQuantity: 0,
     activeSizeGroup: config.size_groups?.[0]?.id || null,
     artworkFiles: [],
     artworkSequence: 0,
@@ -735,7 +735,7 @@ window.productBuilder = (config = {}) => ({
             } else {
                 const minimum = Number(config.minimum_quantity || 1);
                 const maximum = Number(config.maximum_quantity || 999);
-                this.orderQuantity = Math.max(minimum, Math.min(maximum, Number(initial.order_quantity || minimum)));
+                this.orderQuantity = Math.max(0, Math.min(maximum, Number(initial.order_quantity || 0)));
             }
 
             const requestedShipping = String(initial.shipping_method || '');
@@ -943,10 +943,9 @@ window.productBuilder = (config = {}) => ({
     },
 
     setOrderQuantity(amount) {
-        const minimum = Number(config.minimum_quantity || 1);
         const maximum = Number(config.maximum_quantity || 999);
         const previous = Number(this.orderQuantity || 0);
-        const next = Math.max(minimum, Math.min(maximum, Number(amount || minimum)));
+        const next = Math.max(0, Math.min(maximum, Number(amount || 0)));
         this.orderQuantity = next;
         this.syncProductionSpeed();
         this.syncRosterRows();
@@ -1846,7 +1845,8 @@ window.productBuilder = (config = {}) => ({
 
         if (total < minimum) {
             return {
-                message: `Please select at least ${minimum} piece${minimum === 1 ? '' : 's'}.`,
+                title: 'Minimum order quantity',
+                message: `Minimum order quantity is ${minimum} piece${minimum === 1 ? '' : 's'}. Please select at least ${minimum} before adding to cart.`,
                 targetId: 'size-quantity',
             };
         }
@@ -1918,11 +1918,31 @@ window.productBuilder = (config = {}) => ({
     validate() {
         const issue = this.validationIssue();
         if (issue) {
-            window.alert(issue.message);
-            if (issue.targetId) {
+            const targetSteps = {
+                'configure-product': 1,
+                'size-quantity': 2,
+                'product-roster': 3,
+                'artwork-upload': 4,
+                'production-shipping': 5,
+            };
+            const targetStep = targetSteps[issue.targetId] || null;
+            if (targetStep && typeof this.openCustomizerStep === 'function') {
+                this.openCustomizerStep(targetStep);
+            } else if (issue.targetId) {
                 const target = document.getElementById(issue.targetId)
                     || (issue.targetId === 'size-quantity' ? document.getElementById('product-quantity') : null);
-                target?.scrollIntoView({ behavior: 'smooth' });
+                target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            if (typeof window.showStorefrontToast === 'function') {
+                this.notifyCustomization(
+                    issue.title || 'Complete your order',
+                    issue.message,
+                    `validation:${issue.targetId || 'product'}`,
+                    'warning',
+                );
+            } else {
+                window.alert(issue.message);
             }
             return false;
         }

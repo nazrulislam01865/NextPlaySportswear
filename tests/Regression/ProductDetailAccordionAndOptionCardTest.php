@@ -26,16 +26,17 @@ $expect(! str_contains($builder, '<x-storefront.product.customizer.stepper'), 'C
 $expect(substr_count($builder, 'class="np-proto-step-card"') >= 6, 'All six customization steps remain rendered as stacked accordion cards.');
 foreach (range(1, 6) as $step) {
     $expect(
-        str_contains($builder, 'class="np-proto-step-expanded" x-show="activeCustomizerStep === '.$step.'"'),
-        "Step {$step} only toggles its expanded body while its header stays visible."
+        str_contains($builder, 'class="np-proto-step-expanded" x-show="isCustomizerStepOpen('.$step.')"'),
+        "Step {$step} uses independent open-state visibility while its header stays visible."
     );
 }
+$expect(str_contains($builder, 'openCustomizerSteps: { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true }'), 'All six customization steps are expanded on initial load.');
 $expect(! str_contains($builder, 'np-proto-review-completed'), 'Review step no longer renders a separate duplicate completed-step list.');
 
-$expect(str_contains($stepHeader, '@click="openCustomizerStep({{ $number }})"'), 'Reusable step header opens the selected accordion step.');
+$expect(str_contains($stepHeader, '@click="toggleCustomizerStep({{ $number }})"'), 'Reusable step header independently toggles the selected accordion step.');
 $expect(str_contains($stepHeader, 'completedCustomizerStep >= {{ $number }}'), 'Reusable step header exposes completed state only for steps that were actually advanced through.');
 $expect(str_contains($stepHeader, 'activeCustomizerStep === {{ $number }}'), 'Reusable step header exposes the active in-progress state.');
-$expect(str_contains($stepHeader, ':aria-expanded="activeCustomizerStep === {{ $number }} ? \'true\' : \'false\'"'), 'Accordion headers expose accessible expanded state.');
+$expect(str_contains($stepHeader, ':aria-expanded="isCustomizerStepOpen({{ $number }}) ? \'true\' : \'false\'"'), 'Accordion headers expose accessible independent expanded state.');
 
 $expect(is_file($optionChoicePath), 'Reusable option-choice component exists for product selections.');
 if (is_file($optionChoicePath)) {

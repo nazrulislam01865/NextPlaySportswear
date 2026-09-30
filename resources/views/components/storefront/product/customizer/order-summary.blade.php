@@ -1,6 +1,23 @@
 @props(['product', 'materialGroup' => null, 'sizeRangeLabel' => 'Configured sizes', 'isEditing' => false])
 
-<aside class="np-custom-order-card" aria-label="Your Custom Order">
+<aside class="np-custom-order-card" :class="mobileOrderSummaryOpen ? 'is-mobile-open' : ''" aria-label="Your Custom Order">
+    <div class="np-custom-order-mobile-capsule">
+        <button
+            type="button"
+            class="np-custom-order-mobile-capsule__summary"
+            @click="toggleMobileOrderSummary()"
+            :aria-expanded="mobileOrderSummaryOpen ? 'true' : 'false'"
+            aria-controls="np-mobile-custom-order-panel"
+            aria-label="Toggle Your Custom Order summary"
+        >
+            <span><small>Subtotal</small><strong x-text="money(productPriceAmount())"></strong></span>
+            <span class="np-custom-order-mobile-capsule__chevron" :class="mobileOrderSummaryOpen ? 'is-open' : ''" aria-hidden="true">⌃</span>
+        </button>
+    </div>
+
+    <button type="button" class="np-custom-order-mobile-backdrop" x-show="mobileOrderSummaryOpen" x-cloak @click="closeMobileOrderSummary()" aria-label="Close custom order summary"></button>
+
+    <div id="np-mobile-custom-order-panel" class="np-custom-order-panel">
     <div class="np-custom-order-card__head">
         <h3>Your Custom Order</h3>
     </div>
@@ -59,6 +76,7 @@
             <div class="np-custom-order-size-total">
                 <span>Total Pieces</span>
                 <strong x-text="totalQuantity()"></strong>
+                <small>Minimum order: {{ number_format((int) ($product['minimum_quantity'] ?? 1)) }} piece{{ (int) ($product['minimum_quantity'] ?? 1) === 1 ? '' : 's' }}</small>
             </div>
         </div>
     </section>
@@ -139,5 +157,6 @@
             Save as Quote
         </a>
         <p class="np-custom-order-disabled-note" x-show="!canAddToCart()" x-cloak>Complete all required steps to enable Add to Cart.</p>
+    </div>
     </div>
 </aside>

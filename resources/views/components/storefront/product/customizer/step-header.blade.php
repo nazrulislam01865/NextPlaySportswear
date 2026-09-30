@@ -4,8 +4,8 @@
     <button
         type="button"
         class="np-proto-step-toggle"
-        @click="openCustomizerStep({{ $number }})"
-        :aria-expanded="activeCustomizerStep === {{ $number }} ? 'true' : 'false'"
+        @click="toggleCustomizerStep({{ $number }})"
+        :aria-expanded="isCustomizerStepOpen({{ $number }}) ? 'true' : 'false'"
         aria-controls="np-product-step-panel-{{ $number }}"
     >
         <span class="np-proto-step-number">{{ $number }}</span>
@@ -15,9 +15,9 @@
         </span>
         <span class="np-proto-step-state is-complete" x-show="completedCustomizerStep >= {{ $number }} && activeCustomizerStep !== {{ $number }}" x-cloak>✓ Completed</span>
         <span class="np-proto-step-state is-active" x-show="activeCustomizerStep === {{ $number }}" x-cloak><i aria-hidden="true"></i> In Progress</span>
-        <span class="np-proto-step-chevron" :class="activeCustomizerStep === {{ $number }} ? 'is-open' : ''" aria-hidden="true">⌄</span>
+        <span class="np-proto-step-chevron" :class="isCustomizerStepOpen({{ $number }}) ? 'is-open' : ''" aria-hidden="true">⌄</span>
     </button>
     @isset($action)
-        <div class="np-proto-step-action" x-show="activeCustomizerStep === {{ $number }}" x-cloak>{{ $action }}</div>
+        <div class="np-proto-step-action" x-show="isCustomizerStepOpen({{ $number }})" x-cloak>{{ $action }}</div>
     @endisset
 </header>

@@ -37,8 +37,9 @@ $expect(substr_count($builder, '<x-storefront.product.customizer.navigation') >=
 $expect(substr_count($builder, '<x-storefront.product.customizer.step-header') >= 6, 'All six steps reuse one step-header component.');
 
 foreach (range(1, 6) as $step) {
-    $expect(str_contains($builder, 'x-show="activeCustomizerStep === '.$step.'"'), "Step {$step} has an explicit active-step panel.");
+    $expect(str_contains($builder, 'x-show="isCustomizerStepOpen('.$step.')"'), "Step {$step} has an explicit independently-open panel.");
 }
+$expect(str_contains($builder, 'openCustomizerSteps: { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true }'), 'All six prototype steps are open on initial load.');
 
 $expect(str_contains($builder, "artworkMode: 'upload'"), 'Artwork step has one local tab state without a new backend subsystem.');
 $expect(str_contains($builder, "setArtworkMode(mode)"), 'Artwork mode tabs switch inside the existing Alpine builder state.');

@@ -134,6 +134,8 @@ window.productBuilderFabricPricing = function (config = {}) {
 
     return Object.assign(builder, {
         activeCustomizerStep: 1,
+        openCustomizerSteps: { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true },
+        mobileOrderSummaryOpen: false,
         completedCustomizerStep: Object.keys(config.initial_state || {}).length ? 5 : 0,
         skuCopied: false,
         async copySku(value) {
@@ -178,16 +180,40 @@ window.productBuilderFabricPricing = function (config = {}) {
                 });
             });
         },
+        isCustomizerStepOpen(step) {
+            const next = Math.max(1, Math.min(6, Number(step || 1)));
+            return this.openCustomizerSteps?.[next] !== false;
+        },
+        toggleCustomizerStep(step) {
+            const next = Math.max(1, Math.min(6, Number(step || 1)));
+            if (!this.openCustomizerSteps) this.openCustomizerSteps = { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true };
+            this.openCustomizerSteps[next] = !this.isCustomizerStepOpen(next);
+            if (this.openCustomizerSteps[next]) {
+                this.activeCustomizerStep = next;
+                this.scrollCustomizerStepIntoView(next);
+            }
+        },
         openCustomizerStep(step) {
             const next = Math.max(1, Math.min(6, Number(step || 1)));
+            if (!this.openCustomizerSteps) this.openCustomizerSteps = { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true };
+            this.openCustomizerSteps[next] = true;
             this.activeCustomizerStep = next;
+            this.mobileOrderSummaryOpen = false;
             this.scrollCustomizerStepIntoView(next);
+        },
+        toggleMobileOrderSummary() {
+            this.mobileOrderSummaryOpen = !this.mobileOrderSummaryOpen;
+        },
+        closeMobileOrderSummary() {
+            this.mobileOrderSummaryOpen = false;
         },
         advanceCustomizerStep(step) {
             const current = Math.max(1, Math.min(6, Number(this.activeCustomizerStep || 1)));
             const next = Math.max(1, Math.min(6, Number(step || current)));
             if (next === current + 1) {
                 this.completedCustomizerStep = Math.max(Number(this.completedCustomizerStep || 0), current);
+                if (!this.openCustomizerSteps) this.openCustomizerSteps = { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true };
+                this.openCustomizerSteps[current] = false;
             }
             this.openCustomizerStep(next);
         },
@@ -479,7 +505,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                             :description="$customizerSteps[1]['description']"
                         />
 
-                        <div id="np-product-step-panel-1" class="np-proto-step-expanded" x-show="activeCustomizerStep === 1" x-cloak>
+                        <div id="np-product-step-panel-1" class="np-proto-step-expanded" x-show="isCustomizerStepOpen(1)" x-cloak>
                             <div class="np-proto-step-content">
                             @if($materialGroup)
                                 <div class="np-proto-option-grid np-proto-fabric-grid" role="radiogroup" aria-label="Fabric options">
@@ -524,7 +550,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                             @endif
                         </x-storefront.product.customizer.step-header>
 
-                        <div id="np-product-step-panel-2" class="np-proto-step-expanded" x-show="activeCustomizerStep === 2" x-cloak>
+                        <div id="np-product-step-panel-2" class="np-proto-step-expanded" x-show="isCustomizerStepOpen(2)" x-cloak>
                             <div class="np-proto-step-content">
                             <div class="np-proto-size-summary-row">
                                 @if($materialGroup)
@@ -550,9 +576,9 @@ window.productBuilderFabricPricing = function (config = {}) {
                                                     @foreach($group['sizes'] as $size)
                                                         @php $key = $group['id'].':'.$size['code']; @endphp
                                                         <tr>
-                                                            <td class="is-quantity">{{ $size['label'] }}</td>
-                                                            <td><img class="np-proto-size-sample np-proto-size-image" src="{{ $product['image'] }}" alt=""></td>
-                                                            <td>
+                                                            <td class="is-quantity" data-label="Size">{{ $size['label'] }}</td>
+                                                            <td data-label="Sample Image"><img class="np-proto-size-sample np-proto-size-image" src="{{ $product['image'] }}" alt=""></td>
+                                                            <td data-label="Your Quantity">
                                                                 <div class="np-size-counter np-proto-size-counter">
                                                                     <button type="button" @click="changeQuantity(@js($key), Number(quantities[@js($key)] || 0)-1)" aria-label="Decrease {{ $size['label'] }} quantity">−</button>
                                                                     <input type="number" min="0" :max="config.maximum_quantity || 999" :value="quantities[@js($key)]" @change="changeQuantity(@js($key), $event.target.value)" aria-label="{{ $size['label'] }} quantity">
@@ -569,7 +595,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                             @else
                                 <div class="np-product-single-quantity">
                                     <div><strong>Order quantity</strong><small>Minimum {{ number_format((int) ($product['minimum_quantity'] ?? 1)) }} piece{{ (int) ($product['minimum_quantity'] ?? 1) === 1 ? '' : 's' }}</small></div>
-                                    <div class="np-size-counter"><button type="button" @click="setOrderQuantity(Number(orderQuantity || 0)-1)">−</button><input type="number" :value="orderQuantity" @change="setOrderQuantity($event.target.value)"><button type="button" @click="setOrderQuantity(Number(orderQuantity || 0)+1)">+</button></div>
+                                    <div class="np-size-counter"><button type="button" @click="setOrderQuantity(Number(orderQuantity || 0)-1)">−</button><input type="number" min="0" :max="config.maximum_quantity || 999" :value="orderQuantity" @change="setOrderQuantity($event.target.value)" aria-label="Order quantity"><button type="button" @click="setOrderQuantity(Number(orderQuantity || 0)+1)">+</button></div>
                                 </div>
                             @endif
                         </div>
@@ -588,7 +614,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                             <x-slot:action><button type="button" class="btn btn-outline np-proto-inline-action" @click="clearRosterRows()"><span aria-hidden="true">⌫</span> Clear All</button></x-slot:action>
                         </x-storefront.product.customizer.step-header>
 
-                        <div id="np-product-step-panel-3" class="np-proto-step-expanded" x-show="activeCustomizerStep === 3" x-cloak>
+                        <div id="np-product-step-panel-3" class="np-proto-step-expanded" x-show="isCustomizerStepOpen(3)" x-cloak>
                             <div class="np-proto-step-content">
                             @if($rosterEnabled)
                                 <div x-show="rosterEnabled" x-cloak>
@@ -625,12 +651,12 @@ window.productBuilderFabricPricing = function (config = {}) {
                                             <tbody>
                                                 <template x-for="(row, rowIndex) in rosterRows" :key="`${row.size_key || 'item'}:${rowIndex}`">
                                                     <tr>
-                                                        <td x-text="rowIndex + 1"></td>
-                                                        <td class="is-quantity" x-text="row.size_label || '—'"></td>
+                                                        <td data-label="#" x-text="rowIndex + 1"></td>
+                                                        <td class="is-quantity" data-label="Size" x-text="row.size_label || '—'"></td>
                                                         @foreach($enabledRosterFields as $field)
-                                                            <td><input class="np-proto-table-input" type="text" @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif maxlength="{{ min(120, max(1, (int) ($field['max_length'] ?? 60))) }}" x-model="row.values[@js($field['key'])]" :disabled="rosterSameForAll" @input="sync()" @change="commitRosterField(rowIndex, @js($field), $event.target.value)" placeholder="{{ $field['label'] }}"></td>
+                                                            <td data-label="{{ $field['label'] }}"><input class="np-proto-table-input" type="text" @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif maxlength="{{ min(120, max(1, (int) ($field['max_length'] ?? 60))) }}" x-model="row.values[@js($field['key'])]" :disabled="rosterSameForAll" @input="sync()" @change="commitRosterField(rowIndex, @js($field), $event.target.value)" placeholder="{{ $field['label'] }}"></td>
                                                         @endforeach
-                                                        <td><button type="button" class="np-roster-remove-button" @click="clearRosterRow(rowIndex)" aria-label="Remove player details"><span aria-hidden="true">×</span><span>Remove</span></button></td>
+                                                        <td data-label="Action"><button type="button" class="np-roster-remove-button" @click="clearRosterRow(rowIndex)" aria-label="Remove player details"><span aria-hidden="true">×</span><span>Remove</span></button></td>
                                                     </tr>
                                                 </template>
                                             </tbody>
@@ -654,7 +680,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                             :description="$customizerSteps[4]['description']"
                         />
 
-                        <div id="np-product-step-panel-4" class="np-proto-step-expanded" x-show="activeCustomizerStep === 4" x-cloak>
+                        <div id="np-product-step-panel-4" class="np-proto-step-expanded" x-show="isCustomizerStepOpen(4)" x-cloak>
                             <div class="np-proto-step-content">
                             <div class="np-proto-artwork-tabs" role="tablist" aria-label="Artwork options">
                                 <button type="button" :class="artworkMode === 'upload' ? 'is-active' : ''" @click="setArtworkMode('upload')"><svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M5 14a4 4 0 0 0 1 8h12a4 4 0 0 0 1-8"/></svg><span><strong>Upload New Artwork</strong><small>Upload your files for us to review.</small></span></button>
@@ -734,7 +760,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                             :description="$productionStepDescription"
                         />
 
-                        <div id="np-product-step-panel-5" class="np-proto-step-expanded" x-show="activeCustomizerStep === 5" x-cloak>
+                        <div id="np-product-step-panel-5" class="np-proto-step-expanded" x-show="isCustomizerStepOpen(5)" x-cloak>
                             <div class="np-proto-step-content">
                             <div x-show="currentProductionOptions().length > 0" class="np-proto-choice-section">
                                 <h4 class="np-proto-section-title"><svg viewBox="0 0 24 24"><path d="M5 21V10l4 4V8l4 4V3h3v18H5Z"/></svg> Production Lead Time</h4>
@@ -795,7 +821,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                             :title="$customizerSteps[6]['title']"
                             :description="$customizerSteps[6]['description']"
                         />
-                        <div id="np-product-step-panel-6" class="np-proto-step-expanded" x-show="activeCustomizerStep === 6" x-cloak>
+                        <div id="np-product-step-panel-6" class="np-proto-step-expanded" x-show="isCustomizerStepOpen(6)" x-cloak>
                             <div class="np-proto-step-content">
                                 <div class="np-product-review-card">
                                     <div class="np-product-review-summary">
@@ -927,6 +953,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                                         <h3>Pricing</h3>
                                         <div><span>Unit Price</span><strong x-text="money(unitPrice())"></strong></div>
                                         <div><span>Total Pieces</span><strong x-text="totalQuantity()"></strong></div>
+                                        <div><span>Minimum Order Quantity</span><strong>{{ number_format((int) ($product['minimum_quantity'] ?? 1)) }} piece{{ (int) ($product['minimum_quantity'] ?? 1) === 1 ? '' : 's' }}</strong></div>
                                         <div><span>Product Price</span><strong x-text="money(productPriceAmount())"></strong></div>
                                         <div><span>Shipping (Estimated)</span><strong x-text="money(shippingEstimatedAmount())"></strong></div>
                                         <div><span>Remote Area Surcharge</span><strong x-text="money(remoteAreaSurchargeAmount())"></strong></div>

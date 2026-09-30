@@ -1756,8 +1756,10 @@ class CartService
         $maximum = $this->maximumQuantityForProduct($product);
 
         abort_if($maximum < $minimum, 422, 'This product is currently unavailable in the required minimum quantity.');
+        abort_if($quantity < $minimum, 422, 'Minimum order quantity is '.$minimum.' piece'.($minimum === 1 ? '' : 's').'.');
+        abort_if($quantity > $maximum, 422, 'The maximum order quantity for this product is '.$maximum.'.');
 
-        return min(max($quantity, $minimum), $maximum);
+        return $quantity;
     }
 
     private function minimumQuantityForProduct(array $product): int
