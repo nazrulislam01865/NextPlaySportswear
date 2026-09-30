@@ -12,7 +12,7 @@
     <div class="p-4 sm:p-5">
         <label
             class="group flex cursor-pointer flex-col gap-4 rounded-2xl border-2 p-4 transition sm:flex-row sm:items-center sm:justify-between sm:p-5"
-            :class="sampleRequested ? 'border-brand-blue bg-blue-50/60 shadow-[0_0_0_1px_#2563eb]' : 'border-slate-200 bg-white hover:border-brand-blue'"
+            :class="sampleRequested ? 'border-brand-blue bg-blue-50/60 shadow-sm' : 'border-slate-200 bg-white hover:border-brand-blue'"
         >
             <span class="flex min-w-0 items-start gap-3">
                 <span class="mt-0.5 flex shrink-0 items-center justify-center">

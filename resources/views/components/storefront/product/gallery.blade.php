@@ -1,7 +1,6 @@
 @props([
     'gallery' => [],
     'badge' => null,
-    'social' => [],
 ])
 
 @php
@@ -9,18 +8,16 @@
         ->filter(fn ($image) => is_array($image) && filled($image['url'] ?? null))
         ->values()
         ->all();
+    $galleryCount = count($gallery);
 @endphp
 
-<div class="np-product-gallery-column min-w-0">
-    <div class="product-gallery-frame relative">
-        <div
-            class="np-product-gallery-main relative"
-            x-init="$el.dataset.galleryReady = 'true'; $nextTick(() => window.nextPlayLockGalleryStage?.($el))"
-        >
+<div class="np-product-gallery-column">
+    <div class="product-gallery-frame np-product-gallery-stage">
+        <div class="np-product-gallery-main" x-init="$el.dataset.galleryReady = 'true'">
             @foreach($gallery as $index => $image)
                 <button
                     type="button"
-                    class="np-product-gallery-slide block w-full cursor-zoom-in border-0 bg-transparent p-0 leading-none shadow-none"
+                    class="np-product-gallery-slide"
                     :class="galleryIndex === {{ $index }} ? 'is-active' : 'is-inactive'"
                     :aria-hidden="galleryIndex === {{ $index }} ? 'false' : 'true'"
                     :tabindex="galleryIndex === {{ $index }} ? 0 : -1"
@@ -30,79 +27,81 @@
                     <img
                         src="{{ $image['url'] }}"
                         alt="{{ $image['alt'] ?? '' }}"
-                        class="np-product-gallery-image block h-auto w-full"
+                        class="np-product-gallery-image"
                         width="900"
                         height="900"
                         decoding="async"
                         loading="{{ $index === 0 ? 'eager' : 'lazy' }}"
-                        @load="$el.closest('.np-product-gallery-slide')?.classList.add('is-loaded')"
+                        @load="markGalleryImageReady({{ $index }}, $event)"
+                        x-on:error="markGalleryImageError({{ $index }})"
                     >
                 </button>
             @endforeach
 
             @if(filled($badge))
-                <span
-                    class="np-product-gallery-sale-badge"
-                    style="position:absolute;left:1rem;top:1rem;z-index:18;display:inline-flex;align-items:center;min-height:2rem;padding:.48rem .78rem;border-radius:.55rem;background:var(--np-color-secondary);color:#fff;font-size:.72rem;font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.05em;box-shadow:0 8px 18px rgba(15,23,42,.14);"
-                >{{ $badge }}</span>
+                <span class="np-product-gallery-sale-badge">{{ $badge }}</span>
             @endif
 
             <button
                 type="button"
-                class="np-product-wishlist-button absolute right-4 top-4 z-20 grid h-12 w-12 place-items-center rounded-full border border-slate-200 bg-white/95 text-brand-navy shadow-lg backdrop-blur transition hover:-translate-y-0.5 hover:border-brand-red hover:text-brand-red focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/25 disabled:cursor-wait disabled:opacity-60 sm:right-5 sm:top-5"
+                class="np-product-wishlist-button"
                 @click.stop="toggleWishlist()"
                 :aria-label="wishlistLabel()"
                 :title="wishlistLabel()"
                 :aria-pressed="wishlisted ? 'true' : 'false'"
                 :disabled="wishlistBusy"
             >
-                <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    :fill="wishlisted ? 'currentColor' : 'none'"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
-                    class="transition-transform"
-                    :class="wishlisted ? 'scale-110 text-brand-red' : ''"
-                >
+                <svg viewBox="0 0 24 24" :fill="wishlisted ? 'currentColor' : 'none'" aria-hidden="true">
                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"></path>
                 </svg>
-                <span class="sr-only" x-text="wishlistLabel()"></span>
+            </button>
+
+            @if($galleryCount > 1)
+                <button
+                    type="button"
+                    class="np-product-gallery-arrow np-product-gallery-arrow--previous"
+                    @click.stop="selectGalleryImage((galleryIndex - 1 + {{ $galleryCount }}) % {{ $galleryCount }})"
+                    aria-label="Previous product image"
+                >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+
+                <button
+                    type="button"
+                    class="np-product-gallery-arrow np-product-gallery-arrow--next"
+                    @click.stop="selectGalleryImage((galleryIndex + 1) % {{ $galleryCount }})"
+                    aria-label="Next product image"
+                >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+            @endif
+
+            <button
+                type="button"
+                class="np-product-gallery-zoom"
+                @click.stop="$dispatch('open-product-image', currentImage())"
+                aria-label="Zoom product image"
+            >
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M11 8v6M8 11h6"/></svg>
             </button>
         </div>
     </div>
 
-    @if(count($gallery) > 1)
-        <div class="np-product-gallery-thumbnails mt-4 flex gap-3 overflow-x-auto pb-2" aria-label="Product image gallery">
+    @if($galleryCount > 1)
+        <div class="np-product-gallery-thumbnails" aria-label="Product image gallery">
             @foreach($gallery as $index => $image)
                 <button
                     type="button"
-                    @click="
-                        const nextIndex = {{ $index }};
-                        if (galleryIndex === nextIndex) return;
-                        const targetUrl = config.gallery?.[nextIndex]?.url;
-                        const activate = () => window.requestAnimationFrame(() => { galleryIndex = nextIndex; });
-                        if (!targetUrl) { activate(); return; }
-                        const preloader = new Image();
-                        preloader.decoding = 'async';
-                        preloader.onload = activate;
-                        preloader.onerror = activate;
-                        preloader.src = targetUrl;
-                        if (preloader.complete) activate();
-                    "
+                    @click="selectGalleryImage({{ $index }})"
                     :aria-current="galleryIndex === {{ $index }} ? 'true' : 'false'"
-                    :class="galleryIndex === {{ $index }} ? 'opacity-100 is-active' : 'opacity-70 hover:opacity-100'"
-                    class="np-product-gallery-thumb border-0 bg-transparent p-0 leading-none shadow-none transition-opacity focus-visible:outline-none"
+                    :class="galleryIndex === {{ $index }} ? 'is-active' : ''"
+                    class="np-product-gallery-thumb"
                     aria-label="View image {{ $index + 1 }}"
                 >
                     <img
                         src="{{ $image['url'] }}"
                         alt="{{ $image['alt'] ?? '' }}"
-                        class="np-product-gallery-thumb-image block h-auto w-full"
+                        class="np-product-gallery-thumb-image"
                         width="150"
                         height="150"
                         loading="lazy"

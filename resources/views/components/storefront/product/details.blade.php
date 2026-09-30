@@ -13,14 +13,16 @@
         ->filter(fn ($value, $label) => filled($label) && filled($value));
 @endphp
 
-<section class="section-padding bg-white" x-data="{ tab: 'description' }">
-    <div class="site-container overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-card sm:rounded-[28px]">
-        <div class="np-product-detail-tabs flex overflow-x-auto border-b border-slate-200 bg-slate-50">
+<section class="np-product-information" x-data="{ tab: 'description' }" aria-labelledby="product-information-title">
+    <div class="site-container">
+        <div class="np-product-information-card">
+            <h2 id="product-information-title" class="np-product-information-title"><span aria-hidden="true">◉</span> Product Information</h2>
+        <div class="np-product-detail-tabs">
             @foreach(['description'=>'Description','specifications'=>'Specifications','customization'=>'Customization & Artwork','fulfillment'=>'Fulfillment','faq'=>'FAQ'] as $key => $label)
-                <button type="button" @click="tab='{{ $key }}'" :class="tab === '{{ $key }}' ? 'bg-white text-brand-red shadow-[inset_0_-3px_0_currentColor]' : 'text-slate-600'" class="np-product-detail-tab min-h-12 min-w-[132px] flex-1 border-r border-slate-200 px-3 py-3 text-[11px] font-black leading-tight last:border-r-0 sm:px-5 sm:py-4 sm:text-sm">{{ $label }}</button>
+                <button type="button" @click="tab='{{ $key }}'" :class="tab === '{{ $key }}' ? 'bg-white text-brand-red shadow-[inset_0_-3px_0_currentColor]' : 'text-slate-600'" class="np-product-detail-tab">{{ $label }}</button>
             @endforeach
         </div>
-        <div class="p-4 sm:p-6">
+        <div class="np-product-information-body">
             <div x-show="tab === 'description'" class="space-y-6">
                 <div class="product-rich-content">{!! $product['description_html'] !!}</div>
             </div>
@@ -93,6 +95,7 @@
             </div>
 
             <div x-show="tab === 'faq'" class="space-y-3">@forelse($product['faqs'] as $faq)<details class="rounded-2xl border border-slate-200 bg-white p-4"><summary class="cursor-pointer list-none font-black text-brand-ink">{{ $faq['question'] }}</summary><p class="mt-3 text-sm leading-7 text-slate-600">{{ $faq['answer'] }}</p></details>@empty<p class="text-sm text-slate-500">No product-specific FAQs have been added.</p>@endforelse</div>
+            </div>
         </div>
     </div>
 </section>

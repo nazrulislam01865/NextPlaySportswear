@@ -1,4 +1,5 @@
-@props(['product', 'editItem' => null])
+@props(['product', 'editItem' => null, 'social' => []])
+
 @php
     $isEditing = is_array($editItem) && filled($editItem['key'] ?? null);
     $editCustomization = $isEditing ? (array) ($editItem['customization'] ?? []) : [];
@@ -45,13 +46,13 @@
         'production_speeds' => $product['production_speeds'] ?? [],
         'shipping_methods' => $product['shipping_methods'] ?? [],
         'roster' => \App\Support\ProductRoster::settings($product),
-        // Legacy alias keeps older cached JS/templates compatible during rollout.
         'jersey_roster' => \App\Support\ProductRoster::settings($product),
         'sample' => $product['sample'] ?? ['available' => false, 'charge' => 0, 'charge_type' => 'fixed_order'],
         'price_tiers' => $product['price_tiers'] ?? [],
         'price_table' => $product['price_table'] ?? [],
         'fabric_price_tables' => $product['fabric_price_tables'] ?? [],
         'sale_campaigns' => $product['sale_campaigns'] ?? [],
+        'social' => $social,
         'edit_mode' => $isEditing,
         'edit_item_key' => $isEditing ? (string) $editItem['key'] : null,
         'initial_state' => $isEditing ? [
@@ -72,12 +73,41 @@
     $allGroups = collect($product['option_groups'] ?? []);
     $fixedGroups = $allGroups->where('display_mode', 'fixed');
     $customerOptionGroups = $allGroups->where('display_mode', 'customer');
+    $materialGroup = $customerOptionGroups
+        ->filter(fn ($group) => in_array($group['type'] ?? '', ['image', 'swatch', 'buttons', 'select'], true))
+        ->first(function ($group) {
+            $label = strtolower((string) ($group['label'] ?? ''));
+            $hasFabricPricing = collect($group['values'] ?? [])->contains(fn ($value) => ! empty(data_get($value, 'fabric_price_table.price_tiers')));
+            return $hasFabricPricing || str_contains($label, 'fabric') || str_contains($label, 'material');
+        });
+    $nonMaterialOptionGroups = $customerOptionGroups
+        ->reject(fn ($group) => $materialGroup && (string) ($group['id'] ?? '') === (string) ($materialGroup['id'] ?? ''))
+        ->values();
     $sizeGroupsWithCharts = collect($product['size_groups'] ?? [])->filter(fn ($group) => (bool) data_get($group, 'chart.enabled'));
+    $firstChartGroup = $sizeGroupsWithCharts->first();
     $roster = \App\Support\ProductRoster::settings($product);
     $rosterEnabled = (bool) ($roster['enabled'] ?? false);
+    $enabledRosterFields = collect($roster['fields'] ?? [])->filter(fn ($field) => (bool) ($field['enabled'] ?? true))->values();
     $artworkUpload = $product['artwork_upload'] ?? ['enabled' => false];
     $sample = $product['sample'] ?? ['available' => false, 'charge' => 0, 'charge_type' => 'fixed_order'];
-    $stepNumber = 1;
+    $features = collect($product['features'] ?? [])->filter(fn ($feature) => filled(is_array($feature) ? ($feature['label'] ?? $feature['title'] ?? null) : $feature))->take(4)->values();
+    $firstSizeGroup = collect($product['size_groups'] ?? [])->first();
+    $sizeLabels = collect($firstSizeGroup['sizes'] ?? [])->pluck('label')->filter()->values();
+    $sizeRangeLabel = $sizeLabels->isNotEmpty()
+        ? ($sizeLabels->count() === 1 ? $sizeLabels->first() : $sizeLabels->first().' – '.$sizeLabels->last())
+        : 'Configured sizes';
+    $hasProductionOptions = ! empty($product['production_speeds'] ?? []);
+    $productionStepDescription = $hasProductionOptions
+        ? 'Choose your production timeline and shipping method based on your schedule.'
+        : 'Choose your shipping method for this order.';
+    $customizerSteps = [
+        1 => ['title' => 'Price & Fabric', 'description' => 'Choose your product, fabric and options to get started.'],
+        2 => ['title' => 'Sizes & Quantities', 'description' => 'Set the sizes and quantities for your order.'],
+        3 => ['title' => 'Player Names & Numbers', 'description' => 'Add player names, numbers and configured item details.'],
+        4 => ['title' => 'Upload Artwork', 'description' => 'Add your design files, choose from existing designs, or request our design support.'],
+        5 => ['title' => 'Production & Shipping', 'description' => 'Choose your production timeline and shipping method.'],
+        6 => ['title' => 'Review & Add to Cart', 'description' => 'Review your selections and add to cart.'],
+    ];
 @endphp
 
 @once
@@ -88,6 +118,35 @@ window.productBuilderFabricPricing = function (config = {}) {
     const baseSync = builder.sync || function () {};
 
     return Object.assign(builder, {
+        activeCustomizerStep: 1,
+        artworkMode: 'upload',
+        artworkHelpNotes: '',
+        artworkHelpStyle: 'modern',
+        artworkHelpColor: '',
+        openCustomizerStep(step) {
+            const next = Math.max(1, Math.min(6, Number(step || 1)));
+            this.activeCustomizerStep = next;
+        },
+        setArtworkMode(mode) {
+            if (!['upload', 'existing', 'help'].includes(mode)) return;
+            this.artworkMode = mode;
+        },
+        clearRosterRow(rowIndex) {
+            const row = this.rosterRows?.[Number(rowIndex)];
+            if (!row) return;
+            Object.keys(row.values || {}).forEach((key) => { row.values[key] = ''; });
+            this.sync();
+        },
+        clearRosterRows() {
+            (this.rosterRows || []).forEach((row) => {
+                Object.keys(row.values || {}).forEach((key) => { row.values[key] = ''; });
+            });
+            this.sync();
+        },
+        startCustomizing() {
+            this.activeCustomizerStep = 1;
+            requestAnimationFrame(() => document.getElementById('configure-product')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+        },
         selectedPricedFabricValue() {
             for (const group of (config.option_groups || [])) {
                 if (group.display_mode === 'hidden') continue;
@@ -96,35 +155,25 @@ window.productBuilderFabricPricing = function (config = {}) {
                     const selected = this.multiSelections?.[group.id] || [];
                     for (const valueId of selected) {
                         const value = (group.values || []).find((candidate) => candidate.id === valueId);
-                        if (value?.fabric_price_table?.price_tiers?.length) {
-                            return value;
-                        }
+                        if (value?.fabric_price_table?.price_tiers?.length) return value;
                     }
                     continue;
                 }
 
                 const value = this.optionValue ? this.optionValue(group, this.selections?.[group.id]) : null;
-                if (value?.fabric_price_table?.price_tiers?.length) {
-                    return value;
-                }
+                if (value?.fabric_price_table?.price_tiers?.length) return value;
             }
 
             return null;
         },
         activePriceTable() {
             const fabricValue = this.selectedPricedFabricValue();
-            if (fabricValue?.fabric_price_table?.rows?.length) {
-                return fabricValue.fabric_price_table;
-            }
-
+            if (fabricValue?.fabric_price_table?.rows?.length) return fabricValue.fabric_price_table;
             return config.price_table || null;
         },
         activePriceTiers() {
             const fabricValue = this.selectedPricedFabricValue();
-            if (fabricValue?.fabric_price_table?.price_tiers?.length) {
-                return fabricValue.fabric_price_table.price_tiers;
-            }
-
+            if (fabricValue?.fabric_price_table?.price_tiers?.length) return fabricValue.fabric_price_table.price_tiers;
             return config.price_tiers || [];
         },
         priceTableSourceLabel() {
@@ -132,8 +181,7 @@ window.productBuilderFabricPricing = function (config = {}) {
             return fabricValue?.fabric_price_table?.label ? `${fabricValue.fabric_price_table.label} fabric price` : '';
         },
         priceTableSourceKey() {
-            const fabricValue = this.selectedPricedFabricValue();
-            return fabricValue?.fabric_price_table?.key || '';
+            return this.selectedPricedFabricValue()?.fabric_price_table?.key || '';
         },
         notifyPriceTableChange() {
             window.dispatchEvent(new CustomEvent('product-price-table-updated', {
@@ -158,7 +206,6 @@ window.productBuilderFabricPricing = function (config = {}) {
                 discount = Math.min(price, Math.max(0, discount));
                 bestPrice = Math.min(bestPrice, Math.max(0, price - discount));
             }
-
             return Number(bestPrice.toFixed(2));
         },
         tierPrice() {
@@ -166,7 +213,6 @@ window.productBuilderFabricPricing = function (config = {}) {
             const tier = (this.activePriceTiers() || []).find((candidate) => {
                 return quantity >= Number(candidate.min || 1) && (candidate.max === null || candidate.max === undefined || quantity <= Number(candidate.max));
             });
-
             return this.campaignPrice(Number(tier?.unit ?? config.base_price ?? 0));
         },
         sync() {
@@ -178,504 +224,550 @@ window.productBuilderFabricPricing = function (config = {}) {
 </script>
 @endonce
 
-<section id="configure-product" class="section-padding bg-slate-100" aria-labelledby="configure-product-heading">
-    <div class="site-container" x-data="productBuilderFabricPricing(@js($builderConfig))" x-init="init()" @keydown.escape.window="closeSizeChart()">
-        <div class="max-w-3xl">
-            <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">{{ $isEditing ? 'Edit cart configuration' : 'Product configuration' }}</p>
-            <h2 id="configure-product-heading" class="mt-1 font-display text-3xl font-bold uppercase leading-tight tracking-tight text-brand-ink sm:text-5xl">{{ $isEditing ? 'Update This Product' : 'Configure This Product' }}</h2>
-            <p class="mt-3 text-sm leading-7 text-slate-600">{{ $isEditing ? 'Your saved cart selections are loaded below. Adjust only what you need, then update the existing cart item.' : 'The choices below are controlled separately for this product. Fixed details are shown for reference, while customer-customizable features can be selected before adding the item to cart.' }}</p>
-        </div>
+{{-- NEXTPLAY_PRODUCT_DETAIL_PROTOTYPE --}}
+<section class="np-product-detail-prototype" x-data="productBuilderFabricPricing(@js($builderConfig))" x-init="init()" @keydown.escape.window="closeSizeChart()">
+    <div class="site-container">
+        <section class="np-product-detail-hero" aria-labelledby="product-detail-title">
+            <div class="np-product-hero-grid">
+                <x-storefront.product.gallery :gallery="$product['gallery']" :badge="($product['sale_badge_label'] ?? null) ?: $product['tag']" />
 
-        @if($isEditing)
-            <div class="mt-6 flex flex-col gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <strong class="block text-sm text-brand-ink">Editing the saved cart item</strong>
-                    <p class="mt-1 text-xs leading-5 text-slate-600">Sizes, customization choices, delivery options, roster entries, and retained artwork have been restored.</p>
-                </div>
-                <a href="{{ route('cart.index') }}" class="btn btn-outline shrink-0">Cancel Editing</a>
-            </div>
-        @endif
+                <article class="np-product-hero-content">
+                    <div class="np-product-category-trail">
+                        @if(filled($product['category'] ?? null))<span>{{ $product['category'] }}</span>@endif
+                        @if(filled($product['subcategory'] ?? null))<span aria-hidden="true">/</span><span>{{ $product['subcategory'] }}</span>@endif
+                    </div>
 
-        @if($errors->any())
-            <div class="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
-                <strong class="block font-black">Please review the product configuration.</strong>
-                <ul class="mt-2 list-disc space-y-1 pl-5">
-                    @foreach($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
+                    <h1 id="product-detail-title" class="np-product-title">{{ $product['title'] }}</h1>
 
-        <div class="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <form method="POST" enctype="multipart/form-data" action="{{ $isEditing ? route('cart.items.options.update', $editItem['key']) : route('cart.items.store') }}" class="space-y-5" @submit="if(!validate()) $event.preventDefault()">
-                @csrf
-                @if($isEditing)
-                    @method('PATCH')
-                    <input type="hidden" name="retained_artwork_json" :value="retainedArtworkJson()">
-                @endif
-                <input type="hidden" name="product_slug" value="{{ $product['slug'] }}">
-                <input type="hidden" name="quantity" :value="totalQuantity()">
-                <input type="hidden" name="design_option" :value="(selectionSummary() || 'Configured product').slice(0, 80)">
-                <input type="hidden" name="delivery_preference" :value="deliveryLabel()">
-                <input type="hidden" name="size_summary" :value="sizeSummary()">
-                <input type="hidden" name="artwork_status" :value="artworkLabel()">
-                <input type="hidden" name="notes" :value="selectionSummary().slice(0, 1000)">
-                <input type="hidden" name="configuration_json" :value="configurationJson">
+                    <div class="np-product-title-meta">
+                        <x-storefront.product.purchase-signals :product="$product" />
+                        @if(filled($product['sku'] ?? null))
+                            <span class="np-product-sku">SKU: {{ $product['sku'] }}</span>
+                        @endif
+                    </div>
 
-                @if($fixedGroups->isNotEmpty())
-                    <section class="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-card" aria-labelledby="included-details-title">
-                        <div class="border-b border-slate-200 bg-slate-50 p-5 sm:p-6">
-                            <h3 id="included-details-title" class="text-xl font-black text-brand-ink">Included Product Details</h3>
-                            <p class="mt-1 text-sm leading-6 text-slate-500">These values are set by the administrator for this product and cannot be changed.</p>
-                        </div>
-                        <div class="grid gap-px bg-slate-200 sm:grid-cols-2">
-                            @foreach($fixedGroups as $group)
+                    @if(filled($product['summary']))
+                        <p class="np-product-summary">{{ $product['summary'] }}</p>
+                    @endif
+
+                    @if($features->isNotEmpty())
+                        <div class="np-product-feature-strip" aria-label="Product highlights">
+                            @foreach($features as $index => $feature)
                                 @php
-                                    $values = collect($group['values'] ?? []);
-                                    if (($group['type'] ?? '') === 'checkbox') {
-                                        $selectedValues = $values->where('default', true);
-                                    } else {
-                                        $fixedValue = $values->firstWhere('id', $group['fixed_value_code'] ?? null) ?? $values->firstWhere('default', true) ?? $values->first();
-                                        $selectedValues = $fixedValue ? collect([$fixedValue]) : collect();
-                                    }
+                                    $featureText = is_array($feature) ? ($feature['label'] ?? $feature['title'] ?? '') : $feature;
                                 @endphp
-                                <div class="min-w-0 bg-white p-5">
-                                    <span class="text-[10px] font-black uppercase tracking-[.14em] text-slate-400">{{ $group['label'] }}</span>
-                                    @if($selectedValues->isNotEmpty())
-                                        <div class="mt-3 space-y-3">
-                                            @foreach($selectedValues as $value)
-                                                <div class="flex min-w-0 items-center gap-3">
-                                                    @if(!empty($value['image']))
-                                                        <img src="{{ $value['image'] }}" alt="{{ $value['label'] }}" class="h-14 w-14 shrink-0 rounded-xl border border-slate-200 object-cover" loading="lazy" decoding="async">
-                                                    @elseif(!empty($value['color']))
-                                                        <span class="h-10 w-10 shrink-0 rounded-full border-4 border-white shadow ring-1 ring-slate-200" style="background-color: {{ $value['color'] }}"></span>
-                                                    @endif
-                                                    <div class="min-w-0">
-                                                        <strong class="block break-words text-sm text-brand-ink">{{ $value['label'] }}</strong>
-                                                        @if(!empty($value['description']))<small class="mt-1 block text-xs leading-5 text-slate-500">{{ $value['description'] }}</small>@endif
-                                                    </div>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    @elseif(filled($group['fixed_text_value'] ?? null))
-                                        <strong class="mt-2 block break-words text-sm text-brand-ink">{{ $group['fixed_text_value'] }}</strong>
-                                    @else
-                                        <strong class="mt-2 block text-sm text-brand-ink">Configured by admin</strong>
-                                    @endif
+                                <div class="np-product-feature-item">
+                                    <span class="np-product-feature-icon" aria-hidden="true">
+                                        @if($index % 4 === 0)
+                                            <svg viewBox="0 0 24 24"><path d="M4 8h16M4 16h16M8 4v16M16 4v16"/></svg>
+                                        @elseif($index % 4 === 1)
+                                            <svg viewBox="0 0 24 24"><path d="M12 3s6 6.4 6 11a6 6 0 0 1-12 0c0-4.6 6-11 6-11Z"/></svg>
+                                        @elseif($index % 4 === 2)
+                                            <svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.4 8 8 9 4.6-1 8-4 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+                                        @else
+                                            <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 3 3 0 0 0 3-3c0-1.7-1.3-3-3-3h-1a2 2 0 0 1-2-2c0-1.1.9-2 2-2h4a3 3 0 0 0 0-6h-3Z"/></svg>
+                                        @endif
+                                    </span>
+                                    <span>{{ $featureText }}</span>
                                 </div>
                             @endforeach
                         </div>
-                    </section>
-                @endif
+                    @endif
 
-                @if($product['is_customizable'] && $customerOptionGroups->isNotEmpty())
-                    <section class="rounded-[28px] border border-slate-200 bg-white shadow-card" id="product-options">
-                        <div class="flex items-start gap-4 border-b border-slate-200 bg-gradient-to-r from-white to-red-50 p-5 sm:p-6">
-                            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-dark font-black text-white">{{ $stepNumber++ }}</span>
-                            <div><h3 class="text-xl font-black leading-tight text-brand-ink sm:text-2xl">Choose Product Features</h3><p class="mt-1 text-sm leading-6 text-slate-500">Select only the colors, fabrics, collars, surcharges, and other options enabled for this product.</p></div>
+                    @if($materialGroup)
+                        <div class="np-product-material-options">
+                            <div class="np-product-section-label-row">
+                                <h2>Material Option</h2>
+                                <span class="np-product-help" title="Material pricing and availability are configured for this product.">?</span>
+                            </div>
+                            <div class="np-product-material-grid">
+                                @foreach($materialGroup['values'] as $value)
+                                    @php
+                                        $valueImages = collect($value['images'] ?? [])->map(fn ($image) => is_array($image) ? ($image['url'] ?? null) : $image)->filter()->values();
+                                        $preview = $valueImages->first() ?: ($value['image'] ?? null);
+                                    @endphp
+                                    <button
+                                        type="button"
+                                        class="np-product-material-card"
+                                        :class="selections[@js($materialGroup['id'])] === @js($value['id']) ? 'is-selected' : ''"
+                                        @click="choose(@js($materialGroup), @js($value['id']))"
+                                    >
+                                        <span class="np-product-material-media">
+                                            @if($preview)
+                                                <img src="{{ $preview }}" alt="{{ $value['label'] }}" loading="lazy" decoding="async">
+                                            @elseif(!empty($value['color']))
+                                                <span class="np-product-material-swatch" style="background-color: {{ $value['color'] }}"></span>
+                                            @else
+                                                <span class="np-product-material-placeholder" aria-hidden="true"></span>
+                                            @endif
+                                        </span>
+                                        <strong>{{ $value['label'] }}</strong>
+                                        @if(filled($value['description'] ?? null))<small>{{ $value['description'] }}</small>@endif
+                                    </button>
+                                @endforeach
+                            </div>
                         </div>
-                        <div class="space-y-6 p-5 sm:p-6">
-                            @foreach($customerOptionGroups as $group)<x-storefront.product.option-group :group="$group" />@endforeach
+                    @endif
+
+                    <div class="np-product-order-facts">
+                        <div>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4 4 7l3 4v9h10v-9l3-4-4-3-2 3h-4L8 4Z"/></svg>
+                            <span><small>Sizes</small><strong>{{ $sizeRangeLabel }}</strong></span>
                         </div>
-                    </section>
-                @endif
-
-
-
-                @if((bool) ($sample['available'] ?? false))
-                    <x-storefront.product.sample-option :sample="$sample" :step-number="$stepNumber++" />
-                @endif
-
-                @if(!empty($product['size_groups']))
-                    <section class="rounded-[28px] border border-slate-200 bg-white shadow-card" id="size-quantity">
-                        <div class="flex items-start gap-4 border-b border-slate-200 bg-gradient-to-r from-white to-red-50 p-5 sm:p-6">
-                            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-dark font-black text-white">{{ $stepNumber++ }}</span>
-                            <div><h3 class="text-xl font-black leading-tight text-brand-ink sm:text-2xl">Select Sizes & Quantities</h3><p class="mt-1 text-sm leading-6 text-slate-500">Choose from the Adult, Youth, Women, or other size groups configured for this product.</p></div>
+                        <div>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 4-8 4-8-4 8-4Z"/><path d="m4 7 8 4 8-4v10l-8 4-8-4V7Z"/></svg>
+                            <span><small>Minimum Order Quantity</small><strong>{{ number_format((int) ($product['minimum_quantity'] ?? 1)) }} Piece{{ (int) ($product['minimum_quantity'] ?? 1) === 1 ? '' : 's' }}</strong></span>
                         </div>
-                        <div class="p-5 sm:p-6">
-                            <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                                <div class="flex flex-wrap gap-2">
-                                    @foreach($product['size_groups'] as $group)
-                                        <button type="button" @click="activeSizeGroup=@js($group['id'])" :class="activeSizeGroup === @js($group['id']) ? 'bg-brand-dark text-white' : 'border border-slate-300 bg-white text-slate-700'" class="rounded-xl px-4 py-2 text-sm font-black">{{ $group['label'] }}</button>
+                        @if($firstChartGroup)
+                            <button type="button" @click="openSizeChart(@js($firstChartGroup['id']))">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6V3Z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg>
+                                <strong>View Size Guide</strong><span aria-hidden="true">›</span>
+                            </button>
+                        @endif
+                    </div>
+
+                    <div class="np-product-hero-actions">
+                        <button type="button" class="btn btn-secondary btn-xl" @click="startCustomizing()">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 4 6 6-10 10H4v-6L14 4Z"/><path d="m12 6 6 6"/></svg>
+                            Start Customizing
+                            <span aria-hidden="true">›</span>
+                        </button>
+                        <a class="btn btn-outline btn-xl" href="{{ route('quote.request', ['product' => $product['slug']]) }}">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6V3Z"/><path d="M9 10h6M9 14h6"/></svg>
+                            Request Bulk Quote
+                        </a>
+                    </div>
+                    <p class="np-product-hero-help">Choose sizes, quantities, player details &amp; artwork in the next steps.</p>
+                </article>
+            </div>
+        </section>
+
+        <section id="configure-product" class="np-product-customizer" aria-labelledby="configure-product-heading">
+            <h2 id="configure-product-heading" class="sr-only">Configure {{ $product['title'] }}</h2>
+
+            @if($isEditing)
+                <div class="np-product-edit-notice">
+                    <div><strong>Editing the saved cart item</strong><p>Your saved selections are loaded. Update only what you need.</p></div>
+                    <a href="{{ route('cart.index') }}" class="btn btn-outline">Cancel Editing</a>
+                </div>
+            @endif
+
+            @if($errors->any())
+                <div class="np-product-config-errors" role="alert">
+                    <strong>Please review the product configuration.</strong>
+                    <ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+                </div>
+            @endif
+
+            <div class="np-product-customizer-grid">
+                <form
+                    method="POST"
+                    enctype="multipart/form-data"
+                    action="{{ $isEditing ? route('cart.items.options.update', $editItem['key']) : route('cart.items.store') }}"
+                    class="np-product-config-form"
+                    @submit="if(!validate()) $event.preventDefault()"
+                >
+                    @csrf
+                    @if($isEditing)
+                        @method('PATCH')
+                        <input type="hidden" name="retained_artwork_json" :value="retainedArtworkJson()">
+                    @endif
+                    <input type="hidden" name="product_slug" value="{{ $product['slug'] }}">
+                    <input type="hidden" name="quantity" :value="totalQuantity()">
+                    <input type="hidden" name="design_option" :value="(selectionSummary() || 'Configured product').slice(0, 80)">
+                    <input type="hidden" name="delivery_preference" :value="deliveryLabel()">
+                    <input type="hidden" name="size_summary" :value="sizeSummary()">
+                    <input type="hidden" name="artwork_status" :value="artworkLabel()">
+                    <input type="hidden" name="notes" :value="`${selectionSummary()}${artworkMode === 'help' && artworkHelpNotes ? ` | Artwork help: ${artworkHelpNotes}` : ''}${artworkMode === 'help' ? ` | Design style: ${artworkHelpStyle}` : ''}${artworkMode === 'help' && artworkHelpColor ? ` | Color preference: ${artworkHelpColor}` : ''}`.slice(0, 1000)">
+                    <input type="hidden" name="configuration_json" :value="configurationJson">
+
+                    {{-- STEP 1: PRICE & FABRIC --}}
+                    <section class="np-proto-step-card">
+                        <x-storefront.product.customizer.step-header
+                            :number="1"
+                            :title="$customizerSteps[1]['title']"
+                            :description="$customizerSteps[1]['description']"
+                        />
+
+                        <div id="np-product-step-panel-1" class="np-proto-step-expanded" x-show="activeCustomizerStep === 1" x-cloak>
+                            <div class="np-proto-step-content">
+                            @if($materialGroup)
+                                <div class="np-proto-option-grid np-proto-fabric-grid" role="radiogroup" aria-label="Fabric options">
+                                    @foreach($materialGroup['values'] as $value)
+                                        <x-storefront.product.customizer.option-choice :group="$materialGroup" :value="$value" />
                                     @endforeach
                                 </div>
-                                <strong class="text-sm text-brand-blue">Total: <span x-text="totalQuantity()"></span> pcs</strong>
+                            @endif
+
+                            @if($nonMaterialOptionGroups->isNotEmpty())
+                                <div class="np-proto-extra-options">
+                                    @foreach($nonMaterialOptionGroups as $group)<x-storefront.product.option-group :group="$group" />@endforeach
+                                </div>
+                            @endif
+
+                            <x-storefront.product.customizer.price-table />
+                        </div>
+
+                        <x-storefront.product.customizer.navigation
+                            :back-to-product="true"
+                            back-label="Back to Product"
+                            :next-step="2"
+                            next-label="Next: Sizes & Quantities"
+                        />
+                        </div>
+                    </section>
+
+                    {{-- STEP 2: SIZES & QUANTITIES --}}
+                    <section class="np-proto-step-card" id="size-quantity">
+                        <x-storefront.product.customizer.step-header
+                            :number="2"
+                            :title="$customizerSteps[2]['title']"
+                            :description="$customizerSteps[2]['description']"
+                        >
+                            @if($firstChartGroup)
+                                <x-slot:action>
+                                    <button type="button" class="btn btn-outline np-proto-inline-action" @click="openSizeChart(@js($firstChartGroup['id']))">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6V3Z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg>
+                                        View Size Guide
+                                    </button>
+                                </x-slot:action>
+                            @endif
+                        </x-storefront.product.customizer.step-header>
+
+                        <div id="np-product-step-panel-2" class="np-proto-step-expanded" x-show="activeCustomizerStep === 2" x-cloak>
+                            <div class="np-proto-step-content">
+                            <div class="np-proto-size-summary-row">
+                                @if($materialGroup)
+                                    <div class="np-proto-size-summary-fabric">
+                                        <span class="np-custom-order-fabric-preview"><img x-show="optionValue(@js($materialGroup), selections[@js($materialGroup['id'])])?.image" :src="optionValue(@js($materialGroup), selections[@js($materialGroup['id'])])?.image" alt=""></span>
+                                        <span><small>Selected Fabric</small><strong x-text="optionValue(@js($materialGroup), selections[@js($materialGroup['id'])])?.label || 'Configured fabric'"></strong></span>
+                                        <button type="button" @click="openCustomizerStep(1)">Change</button>
+                                    </div>
+                                @endif
+                                <div class="np-proto-size-summary-fact"><svg viewBox="0 0 24 24"><path d="M8 4 4 7l3 4v9h10v-9l3-4-4-3-2 3h-4L8 4Z"/></svg><span><small>Sizes Available</small><strong>{{ $sizeRangeLabel }}</strong></span></div>
+                                <div class="np-proto-size-summary-fact"><svg viewBox="0 0 24 24"><path d="m12 3 8 4-8 4-8-4 8-4Z"/><path d="m4 7 8 4 8-4v10l-8 4-8-4V7Z"/></svg><span><small>Minimum Order Quantity</small><strong>{{ number_format((int) ($product['minimum_quantity'] ?? 1)) }} Piece{{ (int) ($product['minimum_quantity'] ?? 1) === 1 ? '' : 's' }}</strong></span></div>
+                                <div class="np-proto-size-summary-note"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>You can add multiple sizes. Final price will be calculated based on total quantity.</span></div>
                             </div>
 
-                            @foreach($product['size_groups'] as $group)
-                                <div x-show="activeSizeGroup === @js($group['id'])" x-cloak class="overflow-hidden rounded-2xl border border-slate-200">
-                                    @if(filled($group['description_html'] ?? null))
-                                        <div class="prose prose-sm max-w-none border-b border-slate-200 bg-slate-50 px-4 py-4 text-slate-600 sm:px-5">{!! $group['description_html'] !!}</div>
-                                    @endif
-                                    @if(data_get($group, 'chart.enabled'))
-                                        <div class="flex flex-col gap-3 border-b border-slate-200 bg-blue-50/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                                            <p class="text-xs font-bold leading-5 text-slate-600">Use the administrator-provided {{ $group['label'] }} measurements before selecting quantities.</p>
-                                            <button type="button" class="shrink-0 rounded-xl border border-brand-blue bg-white px-4 py-2 text-xs font-black text-brand-blue" @click="openSizeChart(@js($group['id']))">View Size Chart</button>
+                            @if(!empty($product['size_groups']))
+                                @foreach($product['size_groups'] as $group)
+                                    <div class="np-proto-size-table-wrap">
+                                        @if(count($product['size_groups']) > 1)<h4 class="np-proto-subsection-title">{{ $group['label'] }}</h4>@endif
+                                        <div class="touch-scroll-x">
+                                            <table class="np-proto-data-table np-proto-size-table">
+                                                <thead><tr><th>Size</th><th>Sample Image</th><th>Your Quantity</th></tr></thead>
+                                                <tbody>
+                                                    @foreach($group['sizes'] as $size)
+                                                        @php $key = $group['id'].':'.$size['code']; @endphp
+                                                        <tr>
+                                                            <td class="is-quantity">{{ $size['label'] }}</td>
+                                                            <td><img class="np-proto-size-sample" src="{{ $product['image'] }}" alt=""></td>
+                                                            <td>
+                                                                <div class="np-size-counter np-proto-size-counter">
+                                                                    <button type="button" @click="changeQuantity(@js($key), Number(quantities[@js($key)] || 0)-1)" aria-label="Decrease {{ $size['label'] }} quantity">−</button>
+                                                                    <input type="number" min="0" :max="config.maximum_quantity || 999" :value="quantities[@js($key)]" @change="changeQuantity(@js($key), $event.target.value)" aria-label="{{ $size['label'] }} quantity">
+                                                                    <button type="button" @click="changeQuantity(@js($key), Number(quantities[@js($key)] || 0)+1)" aria-label="Increase {{ $size['label'] }} quantity">+</button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
                                         </div>
-                                    @endif
+                                    </div>
+                                @endforeach
+                            @else
+                                <div class="np-product-single-quantity">
+                                    <div><strong>Order quantity</strong><small>Minimum {{ number_format((int) ($product['minimum_quantity'] ?? 1)) }} piece{{ (int) ($product['minimum_quantity'] ?? 1) === 1 ? '' : 's' }}</small></div>
+                                    <div class="np-size-counter"><button type="button" @click="setOrderQuantity(Number(orderQuantity || 0)-1)">−</button><input type="number" :value="orderQuantity" @change="setOrderQuantity($event.target.value)"><button type="button" @click="setOrderQuantity(Number(orderQuantity || 0)+1)">+</button></div>
+                                </div>
+                            @endif
+                        </div>
 
-                                    <div class="grid gap-3 p-3 sm:hidden">
-                                        @foreach($group['sizes'] as $size)
-                                            @php $key = $group['id'].':'.$size['code']; @endphp
-                                            <div class="rounded-2xl bg-slate-50 p-4">
-                                                <div class="flex items-center justify-between gap-3">
-                                                    <div>
-                                                        <strong class="text-base text-brand-ink">{{ $size['label'] }}</strong>
-                                                        <x-storefront.product.size-charge-label :amount="$size['price_delta'] ?? 0" class="mt-1 block text-xs" />
-                                                    </div>
-                                                    <div class="grid h-11 w-32 grid-cols-[40px_1fr_40px] overflow-hidden rounded-xl border border-slate-300 bg-white">
-                                                        <button type="button" class="bg-slate-100 font-black" @click="changeQuantity(@js($key), Number(quantities[@js($key)] || 0)-1)" aria-label="Decrease {{ $size['label'] }} quantity">−</button>
-                                                        <input class="min-w-0 border-0 text-center font-black" type="number" min="0" :max="config.maximum_quantity || 999" :value="quantities[@js($key)]" @change="changeQuantity(@js($key), $event.target.value)" aria-label="{{ $size['label'] }} quantity">
-                                                        <button type="button" class="bg-slate-100 font-black" @click="changeQuantity(@js($key), Number(quantities[@js($key)] || 0)+1)" aria-label="Increase {{ $size['label'] }} quantity">+</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        @endforeach
+                        <x-storefront.product.customizer.navigation :back-step="1" back-label="Back: Price & Fabric" :next-step="3" next-label="Next: Player Names & Numbers" />
+                        </div>
+                    </section>
+
+                    {{-- STEP 3: PLAYER NAMES & NUMBERS --}}
+                    <section class="np-proto-step-card" id="product-roster">
+                        <x-storefront.product.customizer.step-header
+                            :number="3"
+                            :title="$customizerSteps[3]['title']"
+                            :description="$customizerSteps[3]['description']"
+                        >
+                            <x-slot:action><button type="button" class="btn btn-outline np-proto-inline-action" @click="clearRosterRows()"><span aria-hidden="true">⌫</span> Clear All</button></x-slot:action>
+                        </x-storefront.product.customizer.step-header>
+
+                        <div id="np-product-step-panel-3" class="np-proto-step-expanded" x-show="activeCustomizerStep === 3" x-cloak>
+                            <div class="np-proto-step-content">
+                            @if($rosterEnabled)
+                                @if($roster['optional'] ?? true)
+                                    <label class="np-roster-toggle" x-show="!rosterEnabled">
+                                        <input type="checkbox" :checked="rosterEnabled" @change="toggleRoster($event.target.checked)">
+                                        <span><strong>Add individual player/item details</strong><small>Enable player names and numbers for this order.</small></span>
+                                    </label>
+                                @endif
+
+                                <div x-show="rosterEnabled" x-cloak>
+                                    <div class="np-proto-player-summary-row">
+                                        <div class="np-proto-player-product"><img src="{{ $product['image'] }}" alt=""><span><small>Selected Fabric</small>@if($materialGroup)<strong x-text="optionValue(@js($materialGroup), selections[@js($materialGroup['id'])])?.label || 'Configured fabric'"></strong>@else<strong>Configured fabric</strong>@endif</span><button type="button" @click="openCustomizerStep(1)">Change</button></div>
+                                        <div class="np-proto-player-stat"><svg viewBox="0 0 24 24"><path d="M8 4 4 7l3 4v9h10v-9l3-4-4-3-2 3h-4L8 4Z"/></svg><span><small>Total Pieces</small><strong x-text="totalQuantity()"></strong></span></div>
+                                        <div class="np-proto-player-stat"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span><small>Players</small><strong><span x-text="rosterRows.length"></span> entries required</strong></span></div>
                                     </div>
 
-                                    <div class="touch-scroll-x hidden sm:block" tabindex="0" aria-label="Size quantity table">
-                                        <table class="w-full min-w-[600px] text-sm">
-                                            <thead class="bg-slate-50 text-left text-[10px] font-black uppercase tracking-[.12em] text-slate-500"><tr><th class="px-4 py-3">Size</th><th class="px-4 py-3">Extra charge</th><th class="px-4 py-3">Quantity</th></tr></thead>
-                                            <tbody class="divide-y divide-slate-100">
-                                                @foreach($group['sizes'] as $size)
-                                                    @php $key = $group['id'].':'.$size['code']; @endphp
+                                    <div class="touch-scroll-x np-proto-roster-table-wrap">
+                                        <table class="np-proto-data-table np-proto-roster-table">
+                                            <thead><tr><th>#</th><th>Size</th>@foreach($enabledRosterFields as $field)<th>{{ $field['label'] }}@if(($field['max_length'] ?? null))<small>(Max {{ (int) $field['max_length'] }} characters)</small>@endif</th>@endforeach<th>Preview</th><th></th></tr></thead>
+                                            <tbody>
+                                                <template x-for="(row, rowIndex) in rosterRows" :key="`${row.size_key || 'item'}:${rowIndex}`">
                                                     <tr>
-                                                        <td class="px-4 py-3 font-black">{{ $size['label'] }}</td>
-                                                        <td class="px-4 py-3">
-                                                            <x-storefront.product.size-charge-label :amount="$size['price_delta'] ?? 0" />
-                                                        </td>
-                                                        <td class="px-4 py-3"><div class="grid h-10 w-32 grid-cols-[36px_1fr_36px] overflow-hidden rounded-xl border border-slate-300"><button type="button" class="bg-slate-100 font-black" aria-label="Decrease {{ $size['label'] }} quantity" @click="changeQuantity(@js($key), Number(quantities[@js($key)] || 0)-1)">−</button><input class="min-w-0 border-0 text-center font-black" type="number" min="0" :max="config.maximum_quantity || 999" :value="quantities[@js($key)]" @change="changeQuantity(@js($key), $event.target.value)"><button type="button" class="bg-slate-100 font-black" aria-label="Increase {{ $size['label'] }} quantity" @click="changeQuantity(@js($key), Number(quantities[@js($key)] || 0)+1)">+</button></div></td>
+                                                        <td x-text="rowIndex + 1"></td>
+                                                        <td class="is-quantity" x-text="row.size_label || '—'"></td>
+                                                        @foreach($enabledRosterFields as $field)
+                                                            <td><input class="np-proto-table-input" type="text" @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif maxlength="{{ min(120, max(1, (int) ($field['max_length'] ?? 60))) }}" x-model="row.values[@js($field['key'])]" @input="sync()" @change="commitRosterField(rowIndex, @js($field), $event.target.value)" placeholder="{{ $field['label'] }}"></td>
+                                                        @endforeach
+                                                        <td><img class="np-proto-roster-preview" src="{{ $product['image'] }}" alt=""></td>
+                                                        <td><button type="button" class="np-proto-icon-button" @click="clearRosterRow(rowIndex)" aria-label="Clear player row"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13"/></svg></button></td>
                                                     </tr>
-                                                @endforeach
+                                                </template>
                                             </tbody>
                                         </table>
                                     </div>
                                 </div>
-                            @endforeach
-                        </div>
-                    </section>
-                @endif
-
-                @if(empty($product['size_groups']))
-                    <section class="rounded-[28px] border border-slate-200 bg-white shadow-card" id="product-quantity">
-                        <div class="flex items-start gap-4 border-b border-slate-200 bg-gradient-to-r from-white to-red-50 p-5 sm:p-6">
-                            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-dark font-black text-white">{{ $stepNumber++ }}</span>
-                            <div><h3 class="text-xl font-black leading-tight text-brand-ink sm:text-2xl">Select Quantity</h3><p class="mt-1 text-sm leading-6 text-slate-500">This product does not use a size chart. Choose the total order quantity.</p></div>
-                        </div>
-                        <div class="p-5 sm:p-6">
-                            <div class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                    <strong class="block text-sm text-brand-ink">Order quantity</strong>
-                                    <small class="mt-1 block text-xs leading-5 text-slate-500">
-                                        Minimum {{ number_format((int) ($product['minimum_quantity'] ?? 1)) }} piece{{ (int) ($product['minimum_quantity'] ?? 1) === 1 ? '' : 's' }}
-                                        @if(!empty($product['maximum_quantity']))
-                                            · Maximum {{ number_format((int) $product['maximum_quantity']) }} pieces
-                                        @endif
-                                    </small>
-                                </div>
-                                <div class="grid h-12 w-full max-w-[190px] grid-cols-[44px_1fr_44px] overflow-hidden rounded-xl border border-slate-300 bg-white">
-                                    <button type="button" class="bg-slate-100 font-black" @click="setOrderQuantity(Number(orderQuantity || 0)-1)" aria-label="Decrease quantity">−</button>
-                                    <input class="min-w-0 border-0 text-center font-black" type="number" min="{{ (int) ($product['minimum_quantity'] ?? 1) }}" @if(!empty($product['maximum_quantity'])) max="{{ (int) $product['maximum_quantity'] }}" @endif :value="orderQuantity" @change="setOrderQuantity($event.target.value)" aria-label="Order quantity">
-                                    <button type="button" class="bg-slate-100 font-black" @click="setOrderQuantity(Number(orderQuantity || 0)+1)" aria-label="Increase quantity">+</button>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                @endif
-
-                @if($rosterEnabled)
-                    <x-storefront.product.roster-fields
-                        :roster="$roster"
-                        :step-number="$stepNumber"
-                        :has-size-groups="! empty($product['size_groups'])"
-                    />
-                    @php
-                        $stepNumber++;
-                    @endphp
-                @endif
-
-                @once
-                    <style>
-                        .np-artwork-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;margin-top:1rem}
-                        .np-artwork-preview-card{display:grid;grid-template-columns:76px minmax(0,1fr) auto;align-items:center;gap:.8rem;min-width:0;padding:.7rem;border:1px solid var(--np-color-border);border-radius:16px;background:#f8fafc}
-                        .np-artwork-preview-media{display:grid;width:76px;height:76px;place-items:center;overflow:hidden;border:1px solid #dbe4ef;border-radius:12px;background:#fff}
-                        .np-artwork-preview-image{width:100%;height:100%;object-fit:contain;padding:.3rem}
-                        .np-artwork-file-icon{display:grid;width:100%;height:100%;place-items:center;background:linear-gradient(145deg,#eff6ff,#fff);font-size:.72rem;font-weight:900;letter-spacing:.08em;color:#1d4f91}
-                        .np-artwork-preview-copy{min-width:0}
-                        .np-artwork-preview-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#102342;font-size:.82rem}
-                        .np-artwork-preview-meta{display:block;margin-top:.2rem;color:var(--np-color-muted);font-size:.75rem}
-                        .np-artwork-preview-actions{display:flex;align-items:center;gap:.45rem}
-                        .np-artwork-view-button,.np-artwork-remove-button{display:grid;min-width:38px;height:38px;place-items:center;border-radius:999px;font-size:.75rem;font-weight:900;text-decoration:none;transition:background-color .15s ease,border-color .15s ease,color .15s ease}
-                        .np-artwork-view-button{padding:0 .75rem;border:1px solid #bfd0e6;background:#fff;color:#1d4f91}
-                        .np-artwork-view-button:hover{border-color:#1d4f91;background:#eff6ff}
-                        .np-artwork-remove-button{border:1px solid #fecaca;background:#fff;color:#e11d2e}
-                        .np-artwork-remove-button:hover{background:#fff1f2}
-                        .np-artwork-view-button:focus-visible,.np-artwork-remove-button:focus-visible{outline:3px solid rgba(29,79,145,.28);outline-offset:2px}
-                        @media(max-width:767px){
-                            .np-artwork-preview-grid{grid-template-columns:1fr}
-                            .np-artwork-preview-card{grid-template-columns:64px minmax(0,1fr) auto}
-                            .np-artwork-preview-media{width:64px;height:64px}
-                        }
-                        @media(max-width:430px){
-                            .np-artwork-preview-card{grid-template-columns:58px minmax(0,1fr);align-items:start}
-                            .np-artwork-preview-media{width:58px;height:58px}
-                            .np-artwork-preview-actions{grid-column:1/-1;justify-content:flex-end}
-                        }
-                    </style>
-                @endonce
-
-                @if((bool) ($artworkUpload['enabled'] ?? false))
-                    @php
-                        $artworkTypes = collect($artworkUpload['accepted_types'] ?? ['pdf','svg','png','jpg','jpeg','webp'])
-                            ->map(fn ($type) => strtolower(ltrim(trim((string) $type), '.')))->filter()->unique()->values();
-                        $artworkAccept = $artworkTypes->map(fn ($type) => '.'.$type)->implode(',');
-                        $artworkMaxFiles = max(1, min(12, (int) ($artworkUpload['max_files'] ?? 5)));
-                        $artworkMaxSize = max(1, min(25, (int) ($artworkUpload['max_file_size_mb'] ?? 15)));
-                    @endphp
-                    <section class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-card sm:p-6" id="artwork-upload">
-                        <div class="flex items-start gap-4">
-                            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-dark font-black text-white">{{ $stepNumber++ }}</span>
-
-                            <div class="min-w-0 flex-1">
-                                <h3 class="text-xl font-black leading-tight text-brand-ink sm:text-2xl">{{ $artworkUpload['title'] ?? 'Upload Custom Artwork' }}</h3>
-                                <p class="mt-1 text-sm leading-6 text-slate-500">{{ $artworkUpload['description'] ?? 'Upload one or more artwork files for the production team.' }}</p>
-
-                                {{-- Restore the compact artwork control used by the older storefront design.
-                                     Keep the current multi-file handling, validation and edit-cart support. --}}
-                                <label class="mt-5 grid gap-2 text-sm font-black text-slate-800">
-                                    <span>
-                                        Artwork / logo files
-                                        @if($artworkUpload['required'] ?? false)<span class="text-brand-red">*</span>@endif
-                                    </span>
-                                    <input
-                                        x-ref="artworkInput"
-                                        type="file"
-                                        name="artwork_files[]"
-                                        multiple
-                                        accept="{{ $artworkAccept }}"
-                                        @change="handleArtworkFiles($event)"
-                                        @if(($artworkUpload['required'] ?? false) && empty($existingArtwork)) required @endif
-                                        class="w-full rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-brand-ink file:px-4 file:py-2 file:text-sm file:font-black file:text-white hover:border-brand-blue focus-within:border-brand-blue"
-                                    >
-                                    <span class="text-xs font-medium leading-5 text-slate-500">
-                                        Upload logo or reference artwork. Up to {{ $artworkMaxFiles }} files · {{ $artworkMaxSize }} MB each · {{ $artworkTypes->map(fn ($type) => strtoupper($type))->implode(', ') }}.
-                                    </span>
-                                </label>
-
-                                <div x-show="artworkFiles.length" x-cloak class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                    <div class="flex items-center justify-between gap-3">
-                                        <div>
-                                            <strong class="text-sm text-brand-ink">Selected artwork</strong>
-                                            <p class="mt-1 text-xs text-slate-500">Review or remove files before adding the configured product.</p>
-                                        </div>
-                                        <span class="shrink-0 text-xs font-black text-brand-blue"><span x-text="artworkFiles.length"></span> / {{ $artworkMaxFiles }} files</span>
-                                    </div>
-
-                                    <ul class="np-artwork-preview-grid">
-                                        <template x-for="(file, fileIndex) in artworkFiles" :key="file.key || `${file.name}:${file.size}:${fileIndex}`">
-                                            <li class="np-artwork-preview-card">
-                                                <div class="np-artwork-preview-media">
-                                                    <template x-if="artworkCanPreview(file)">
-                                                        <img
-                                                            :src="artworkFileUrl(file)"
-                                                            :alt="`Preview of ${file.name}`"
-                                                            class="np-artwork-preview-image"
-                                                        >
-                                                    </template>
-                                                    <template x-if="!artworkCanPreview(file)">
-                                                        <div class="np-artwork-file-icon" aria-hidden="true">
-                                                            <span x-text="artworkExtension(file)"></span>
-                                                        </div>
-                                                    </template>
-                                                </div>
-
-                                                <div class="np-artwork-preview-copy">
-                                                    <strong class="np-artwork-preview-name" x-text="file.name"></strong>
-                                                    <span class="np-artwork-preview-meta" x-text="file.existing ? `${file.sizeLabel} · Saved` : `${file.sizeLabel} · New`"></span>
-                                                </div>
-
-                                                <div class="np-artwork-preview-actions">
-                                                    <a
-                                                        x-show="artworkCanOpen(file)"
-                                                        x-cloak
-                                                        :href="artworkFileUrl(file)"
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        class="np-artwork-view-button"
-                                                        :aria-label="`View ${file.name}`"
-                                                    >View</a>
-                                                    <button
-                                                        type="button"
-                                                        class="np-artwork-remove-button"
-                                                        @click="removeArtworkFile(fileIndex)"
-                                                        :aria-label="`Remove ${file.name}`"
-                                                    >×</button>
-                                                </div>
-                                            </li>
-                                        </template>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                @endif
-
-                @if(!empty($product['production_speeds']) || !empty($product['shipping_methods']))
-                    <section
-                        class="overflow-hidden rounded-[28px] border border-slate-200 bg-slate-50 shadow-card"
-                        id="delivery-options"
-                        x-show="currentProductionOptions().length > 0 || @js(!empty($product['shipping_methods']))"
-                    >
-                        <div class="p-5 sm:p-6">
-                            <div class="flex items-start gap-4">
-                                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-slate-950 text-sm font-black text-white sm:h-10 sm:w-10">{{ $stepNumber++ }}</span>
-                                <div class="min-w-0 flex-1">
-                                    <h3 class="text-xl font-black leading-tight text-brand-ink sm:text-2xl">Production &amp; Shipping</h3>
-                                    <p class="mt-1 text-sm leading-6 text-slate-500">Choose the production timeline and shipment timeline for this custom order.</p>
-                                </div>
-                            </div>
-
-                            @if(!empty($product['production_speeds']))
-                                <div x-show="currentProductionOptions().length > 0" class="mt-6">
-                                    <div class="mb-3 flex flex-wrap items-end justify-between gap-2 pl-0 sm:pl-[52px]">
-                                        <div>
-                                            <h4 class="text-sm font-black text-slate-700">Production option</h4>
-                                            <p class="mt-1 text-xs leading-5 text-slate-500">Available for <strong class="text-brand-blue" x-text="productionRangeLabel()"></strong>. Your selected production time is added into every shipping estimate below.</p>
-                                        </div>
-                                        <small class="text-[11px] font-bold uppercase tracking-[.14em] text-slate-400">Choose one</small>
-                                    </div>
-
-                                    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                                        <template x-for="option in currentProductionOptions()" :key="option.id">
-                                            <button
-                                                type="button"
-                                                @click="chooseProductionSpeed(option.id)"
-                                                :class="productionSpeed === option.id ? 'border-brand-blue bg-white shadow-[0_0_0_1px_#2563eb]' : 'border-slate-200 bg-white hover:border-slate-300'"
-                                                class="relative rounded-2xl border-2 p-4 text-left transition"
-                                            >
-                                                <span x-show="productionSpeed === option.id" class="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-brand-blue text-xs font-black text-white">✓</span>
-                                                <span class="inline-grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-brand-blue">
-                                                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21h16"/><path d="M6 21V9l6 4V9l6 4v8"/><path d="M8 17h1"/><path d="M12 17h1"/><path d="M16 17h1"/></svg>
-                                                </span>
-                                                <strong class="mt-3 block pr-8 text-sm text-brand-ink" x-text="option.label"></strong>
-                                                <span class="mt-2 block text-2xl font-black tracking-tight text-slate-950" x-text="productionDaysOnlyLabel(option)"></span>
-                                                <span class="mt-1 block text-xs font-semibold text-slate-500">Production time</span>
-                                                <span class="mt-3 block text-xs font-black" :class="chargeLabel(option) === 'Included' ? 'text-green-700' : 'text-brand-red'" x-text="chargeLabel(option)"></span>
-                                                <span x-show="option.description" class="mt-2 block text-xs leading-5 text-slate-500" x-text="option.description"></span>
-                                            </button>
-                                        </template>
-                                    </div>
-                                </div>
+                            @else
+                                <div class="np-proto-empty-state"><strong>Player names and numbers are not required for this product.</strong></div>
                             @endif
+                        </div>
+
+                        <x-storefront.product.customizer.navigation :back-step="2" back-label="Back: Sizes & Quantities" :next-step="4" next-label="Next: Upload Artwork" />
+                        </div>
+                    </section>
+
+                    {{-- STEP 4: ARTWORK --}}
+                    <section class="np-proto-step-card" id="artwork-upload">
+                        <x-storefront.product.customizer.step-header
+                            :number="4"
+                            :title="$customizerSteps[4]['title']"
+                            :description="$customizerSteps[4]['description']"
+                        />
+
+                        <div id="np-product-step-panel-4" class="np-proto-step-expanded" x-show="activeCustomizerStep === 4" x-cloak>
+                            <div class="np-proto-step-content">
+                            <div class="np-proto-artwork-tabs" role="tablist" aria-label="Artwork options">
+                                <button type="button" :class="artworkMode === 'upload' ? 'is-active' : ''" @click="setArtworkMode('upload')"><svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M5 14a4 4 0 0 0 1 8h12a4 4 0 0 0 1-8"/></svg><span><strong>Upload New Artwork</strong><small>Upload your files for us to review.</small></span></button>
+                                <button type="button" :class="artworkMode === 'existing' ? 'is-active' : ''" @click="setArtworkMode('existing')"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m6 16 4-4 3 3 2-2 3 3"/></svg><span><strong>Use Existing Design</strong><small>Choose from your previously uploaded designs.</small></span></button>
+                                <button type="button" :class="artworkMode === 'help' ? 'is-active' : ''" @click="setArtworkMode('help')"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4V5Z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/></svg><span><strong>Need Help with Artwork?</strong><small>Our design team will assist you.</small></span></button>
+                            </div>
+
+                            <div x-show="artworkMode === 'upload'" x-cloak>
+                                @if((bool) ($artworkUpload['enabled'] ?? false))
+                                    <div class="np-proto-upload-grid">
+                                        <label class="np-proto-upload-dropzone">
+                                            <svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M5 14a4 4 0 0 0 1 8h12a4 4 0 0 0 1-8"/></svg>
+                                            <strong>Drag &amp; drop files here</strong>
+                                            <span>or click to browse</span>
+                                            <input x-ref="artworkInput" type="file" name="artwork_files[]" multiple accept="{{ collect($artworkUpload['accepted_types'] ?? [])->map(fn ($type) => '.'.ltrim($type, '.'))->implode(',') }}" @change="handleArtworkFiles($event)" @if(($artworkUpload['required'] ?? false) && empty($existingArtwork)) required @endif>
+                                        </label>
+                                        <div class="np-proto-upload-specs"><strong>Supported file formats</strong><span>{{ collect($artworkUpload['accepted_types'] ?? [])->map(fn ($type) => strtoupper($type))->implode(', ') ?: 'PDF, SVG, PNG, JPG' }}</span><strong>Max file size</strong><span>{{ (int) ($artworkUpload['max_file_size_mb'] ?? 15) }} MB per file</span><small>You can upload multiple files.</small></div>
+                                    </div>
+
+                                    <div class="np-proto-uploaded-files" x-show="artworkFiles.length" x-cloak>
+                                        <div class="np-proto-uploaded-files__head"><h4>Uploaded Files (<span x-text="artworkFiles.length"></span>)</h4><button type="button" @click="while(artworkFiles.length) removeArtworkFile(artworkFiles.length - 1)">Remove All</button></div>
+                                        <template x-for="(file, fileIndex) in artworkFiles" :key="file.key">
+                                            <div class="np-proto-file-row">
+                                                <span class="np-proto-file-thumb"><img x-show="file.previewUrl || file.url" :src="file.previewUrl || file.url" alt=""><svg x-show="!file.previewUrl && !file.url" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6V3Z"/><path d="M9 12h6M9 16h6"/></svg></span>
+                                                <strong x-text="file.name"></strong>
+                                                <small x-text="file.sizeLabel"></small>
+                                                <span class="np-proto-file-status">● <span>Uploaded</span></span>
+                                                <a class="np-proto-icon-button" :href="file.previewUrl || file.url || null" target="_blank" rel="noopener" aria-label="Preview artwork"><svg viewBox="0 0 24 24"><path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></a>
+                                                <a class="np-proto-icon-button" :href="file.previewUrl || file.url || null" :download="file.name" aria-label="Download artwork"><svg viewBox="0 0 24 24"><path d="M12 4v11M8 11l4 4 4-4"/><path d="M5 19h14"/></svg></a>
+                                                <button type="button" class="np-proto-icon-button" @click="removeArtworkFile(fileIndex)" aria-label="Remove artwork file"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13"/></svg></button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                @else
+                                    <div class="np-proto-empty-state"><strong>Artwork upload is not required for this product.</strong></div>
+                                @endif
+
+                                <div class="np-proto-info-panel"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><div><strong>What happens next?</strong><ul><li>We will review your artwork for print readiness.</li><li>If any adjustments are needed, our team will contact you.</li><li>You can continue to the next step now, or save and come back later.</li></ul></div></div>
+                            </div>
+
+                            <div x-show="artworkMode === 'existing'" x-cloak>
+                                <div class="np-proto-existing-header"><div><h4>My Designs</h4><p>Choose from designs already attached to this saved order.</p></div></div>
+                                <div class="np-proto-design-grid" x-show="artworkFiles.filter(file => file.existing).length">
+                                    <template x-for="file in artworkFiles.filter(file => file.existing)" :key="file.key">
+                                        <article class="np-proto-design-card is-selected"><span class="np-proto-design-check">✓</span><div class="np-proto-design-media"><img x-show="file.url" :src="file.url" alt=""></div><strong x-text="file.name"></strong><small>Saved artwork</small></article>
+                                    </template>
+                                </div>
+                                <div class="np-proto-empty-state" x-show="!artworkFiles.filter(file => file.existing).length"><strong>No saved designs are attached to this order yet.</strong><span>Upload artwork to make it available here while editing the cart item.</span></div>
+                            </div>
+
+                            <div x-show="artworkMode === 'help'" x-cloak>
+                                <div class="np-proto-help-grid">
+                                    <div class="np-proto-help-form">
+                                        <h4>Share Your Design Ideas</h4><p>Tell us what you have in mind. Our professional design team will create the artwork for your approval.</p>
+                                        <label><strong>Describe Your Ideas <span class="np-required">*</span></strong><textarea maxlength="500" x-model="artworkHelpNotes" placeholder="Example: I want a design similar to this image, with our logo and player numbers."></textarea><small><span x-text="artworkHelpNotes.length"></span>/500</small></label>
+                                        <div class="np-proto-help-upload"><strong>Reference Images <span>(Optional)</span></strong><label class="np-proto-upload-dropzone is-compact"><svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M5 14a4 4 0 0 0 1 8h12a4 4 0 0 0 1-8"/></svg><strong>Drag &amp; drop images here</strong><span>or click to browse</span><input type="file" name="artwork_files[]" multiple accept="image/png,image/jpeg,image/webp" @change="handleArtworkFiles($event)"></label></div>
+                                        <div class="np-proto-help-preferences">
+                                            <div class="np-proto-color-picker"><strong>Color Preference <span>(Optional)</span></strong><div><template x-for="color in ['#082b63','#ef233c','#111827','#ffffff','#f5c518','#0f9f8f','#1665d8','#ef70a1','#ff6b1a']"><button type="button" :class="artworkHelpColor === color ? 'is-selected' : ''" :style="`--swatch:${color}`" @click="artworkHelpColor = color" :aria-label="`Choose ${color} color preference`"></button></template><button type="button" class="is-more" @click="artworkHelpColor = ''" aria-label="Clear color preference">+</button></div></div>
+                                            <div class="np-proto-style-picker"><strong>Design Style <span>(Optional)</span></strong><div><template x-for="style in ['modern','classic','bold','minimal','other']"><button type="button" :class="artworkHelpStyle === style ? 'is-selected' : ''" @click="artworkHelpStyle = style" x-text="style.charAt(0).toUpperCase()+style.slice(1)"></button></template></div></div>
+                                        </div>
+                                    </div>
+                                    <aside class="np-proto-inspiration"><h4>Design Inspiration</h4><p>Use your product images as references while describing the design direction.</p><div class="np-proto-inspiration-grid">@foreach(collect($product['gallery'] ?? [])->take(6) as $image)<figure><img src="{{ $image['url'] ?? '' }}" alt=""><figcaption>Style Example {{ $loop->iteration }}</figcaption></figure>@endforeach</div></aside>
+                                </div>
+                                <div class="np-proto-info-panel"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><div><strong>What happens next?</strong><ul><li>Our design team will prepare options based on your requirements.</li><li>We will send the artwork to you for approval through the normal order communication process.</li><li>You can continue to the next step now.</li></ul></div></div>
+                            </div>
+                        </div>
+
+                        <x-storefront.product.customizer.navigation :back-step="3" back-label="Back: Player Names & Numbers" :next-step="5" next-label="Next: Production & Shipping" />
+                        </div>
+                    </section>
+
+                    {{-- STEP 5: PRODUCTION & SHIPPING --}}
+                    <section class="np-proto-step-card" id="production-shipping">
+                        <x-storefront.product.customizer.step-header
+                            :number="5"
+                            title="Production & Shipping"
+                            :description="$productionStepDescription"
+                        />
+
+                        <div id="np-product-step-panel-5" class="np-proto-step-expanded" x-show="activeCustomizerStep === 5" x-cloak>
+                            <div class="np-proto-step-content">
+                            <div x-show="currentProductionOptions().length > 0" class="np-proto-choice-section">
+                                <h4 class="np-proto-section-title"><svg viewBox="0 0 24 24"><path d="M5 21V10l4 4V8l4 4V3h3v18H5Z"/></svg> Production Lead Time</h4>
+                                <div class="np-proto-choice-grid">
+                                    <template x-for="option in currentProductionOptions()" :key="option.id">
+                                        <button type="button" class="np-proto-choice-card" :class="productionSpeed === option.id ? 'is-selected' : ''" @click="chooseProductionSpeed(option.id)">
+                                            <span class="np-proto-choice-radio"></span>
+                                            <span class="np-proto-choice-copy"><strong x-text="option.label"></strong><b x-text="productionDaysOnlyLabel(option)"></b><small x-text="option.description || chargeLabel(option)"></small></span>
+                                            <span class="np-proto-choice-media"><svg viewBox="0 0 48 48"><path d="M8 34h32M12 34V17l9 6v-9l10 7V10h5v24"/><path d="M17 39h2M29 39h2"/></svg></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
 
                             @if(!empty($product['shipping_methods']))
-                                <div class="mt-6 border-t border-slate-200 pt-6">
-                                    <div class="mb-3 flex flex-wrap items-end justify-between gap-2 pl-0 sm:pl-[52px]">
-                                        <div>
-                                            <h4 class="text-sm font-black text-slate-700">Shipping</h4>
-                                            <p class="mt-1 text-xs leading-5 text-slate-500">Choose the shipment timeline after production is complete.</p>
-                                        </div>
-                                        <small class="text-[11px] font-bold uppercase tracking-[.14em] text-slate-400">Choose one</small>
-                                    </div>
-
-                                    <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                                <div class="np-proto-choice-section">
+                                    <h4 class="np-proto-section-title"><svg viewBox="0 0 24 24"><path d="M3 6h12v10H3z"/><path d="M15 10h4l2 3v3h-6z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg> Shipping Method</h4>
+                                    <div class="np-proto-choice-grid">
                                         @foreach($product['shipping_methods'] as $method)
-                                            @php
-                                                $methodJson = json_encode($method, JSON_THROW_ON_ERROR);
-                                                $labelLower = strtolower((string) ($method['label'] ?? ''));
-                                                $isRush = str_contains($labelLower, 'rush') || str_contains($labelLower, 'urgent');
-                                                $isExpress = str_contains($labelLower, 'express') || str_contains($labelLower, 'fast');
-                                            @endphp
-                                            <button
-                                                type="button"
-                                                @click="chooseShippingMethod(@js($method['id']))"
-                                                :class="shippingMethod === @js($method['id']) ? 'border-brand-blue bg-white shadow-[0_0_0_1px_#2563eb]' : 'border-slate-200 bg-white hover:border-slate-300'"
-                                                class="relative rounded-2xl border-2 p-4 text-left transition"
-                                            >
-                                                @if(!empty($method['default']))
-                                                    <span class="absolute -top-3 left-4 rounded-lg bg-blue-50 px-3 py-1 text-[11px] font-bold text-brand-blue">Most popular</span>
-                                                @endif
-                                                <span x-show="shippingMethod === @js($method['id'])" class="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-brand-blue text-xs font-black text-white">✓</span>
-
-                                                <span class="flex items-center gap-2 pr-8">
-                                                    <span class="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-600" :class="shippingMethod === @js($method['id']) ? 'text-brand-blue' : 'text-slate-600'">
-                                                        @if($isRush)
-                                                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 16c-2 1-3 2.5-3 4 2.5 0 4-.8 5-2"/><path d="M12 3c2.8 1.2 5.2 3.6 6.5 6.5-2.5 0-5 1-6.8 2.8S9 16.6 9 19c-2.9-1.3-5.3-3.7-6.5-6.5C3.6 8.1 7.6 4.1 12 3Z"/><path d="M15 9h.01"/></svg>
-                                                        @elseif($isExpress)
-                                                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 3 5 14h6l-1 7 8-11h-6l1-7Z"/></svg>
-                                                        @else
-                                                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h12v10H3z"/><path d="M15 10h4l2 3v3h-6z"/><path d="M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg>
-                                                        @endif
-                                                    </span>
-                                                    <strong class="text-sm text-brand-ink">{{ $method['label'] }}</strong>
-                                                </span>
-
-                                                <span class="mt-4 block text-2xl font-black tracking-tight text-slate-950" x-text="shippingDaysOnlyLabel({{ $methodJson }})"></span>
-                                                <span class="mt-1 block text-xs font-semibold text-slate-500">Shipment timeline</span>
-                                                <span class="mt-3 block text-xs font-black" :class="shippingChargeLabel({{ $methodJson }}) === 'Included' ? 'text-green-700' : (['Contact us for price', 'Select quantity first'].includes(shippingChargeLabel({{ $methodJson }})) ? 'text-slate-500' : 'text-brand-red')" x-text="shippingChargeLabel({{ $methodJson }})"></span>
-                                                @if(!empty($method['description']))
-                                                    <span class="mt-2 block text-xs leading-5 text-slate-500">{{ $method['description'] }}</span>
-                                                @endif
-                                                @if(!empty($method['is_quote_based']))
-                                                    <span class="mt-2 inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-amber-700">Quote review</span>
-                                                @endif
+                                            @php $methodJson = json_encode($method, JSON_THROW_ON_ERROR); @endphp
+                                            <button type="button" class="np-proto-choice-card" :class="shippingMethod === @js($method['id']) ? 'is-selected' : ''" @click="chooseShippingMethod(@js($method['id']))">
+                                                <span class="np-proto-choice-radio"></span>
+                                                <span class="np-proto-choice-copy"><strong>{{ $method['label'] }}</strong><b x-text="shippingDaysOnlyLabel({{ $methodJson }})"></b><small>{{ $method['description'] ?? 'Worldwide delivery option.' }}</small></span>
+                                                <span class="np-proto-choice-media"><svg viewBox="0 0 48 48"><path d="M7 29h23V15H7z"/><path d="M30 21h7l5 6v2H30z"/><circle cx="15" cy="34" r="4"/><circle cx="35" cy="34" r="4"/></svg></span>
                                             </button>
                                         @endforeach
                                     </div>
                                 </div>
                             @endif
 
-                            <div class="mt-6 flex items-start gap-3 border-t border-slate-200 pt-5 text-xs leading-5 text-slate-500">
-                                <svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 12v-4"/><path d="M12 16h.01"/><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"/></svg>
-                                <span>These are estimated day ranges before checkout. Custom production starts after artwork, names, numbers, and sizes are confirmed. Exact delivery dates can be confirmed after artwork approval.</span>
+                            <div class="np-proto-delivery-panel" x-show="currentProductionOptions().length > 0 && (config.shipping_methods || []).length > 0" x-cloak>
+                                <h4 class="np-proto-section-title"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg> Estimated Delivery</h4>
+                                <div class="np-proto-delivery-equation"><div><svg viewBox="0 0 24 24"><path d="M5 21V10l4 4V8l4 4V3h3v18H5Z"/></svg><span><small>Production Time</small><strong x-text="productionDaysOnlyLabel()"></strong></span></div><b>+</b><div><svg viewBox="0 0 24 24"><path d="M3 6h12v10H3z"/><path d="M15 10h4l2 3v3h-6z"/></svg><span><small>Shipping Time</small><strong x-text="shippingDaysOnlyLabel()"></strong></span></div><b>=</b><div class="is-estimate"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg><span><small>Estimated Delivery</small><strong x-text="totalDeliveryDaysLabel()"></strong><em>(After order confirmation)</em></span></div></div>
                             </div>
+
+                            <div class="np-proto-worldwide-panel" x-show="currentProductionOptions().length === 0 && (config.shipping_methods || []).length > 0" x-cloak><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 4 6 4 9s-1 6-4 9M12 3c-3 3-4 6-4 9s1 6 4 9"/></svg><div><strong>Worldwide Shipping</strong><p>We ship worldwide including USA. Final shipping cost is calculated from the selected shipping method and order configuration.</p></div></div>
+
+                            <div class="np-proto-important-notes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><div><strong>Important Notes</strong><ul><li>Production starts after artwork approval and payment confirmation.</li><li>Delivery time may vary based on order quantity, destination and customs clearance.</li><li>You will receive tracking information once your order ships.</li></ul></div></div>
+                        </div>
+
+                        <x-storefront.product.customizer.navigation :back-step="4" back-label="Back: Upload Artwork" :next-step="6" next-label="Next: Review & Add to Cart" />
                         </div>
                     </section>
-                @endif
 
-                <div class="xl:hidden"><button type="submit" class="btn btn-primary btn-xl w-full">{{ $isEditing ? 'Update Cart Item' : 'Add Configured Product' }}</button></div>
-            </form>
+                    {{-- STEP 6: REVIEW & ADD TO CART --}}
+                    <section class="np-proto-step-card" id="review-add-to-cart">
+                        <x-storefront.product.customizer.step-header
+                            :number="6"
+                            :title="$customizerSteps[6]['title']"
+                            :description="$customizerSteps[6]['description']"
+                        />
+                        <div id="np-product-step-panel-6" class="np-proto-step-expanded" x-show="activeCustomizerStep === 6" x-cloak>
+                            <div class="np-proto-step-content">
+                                <div class="np-product-review-card">
+                                    <div class="np-product-review-summary">
+                                        <div class="np-product-review-card-title"><h3>Order Summary</h3><button type="button" @click="openCustomizerStep(1)">Edit</button></div>
+                                        <div class="np-product-review-product">
+                                            <img src="{{ $product['image'] }}" alt="{{ $product['alt'] ?? $product['title'] }}">
+                                            <div>
+                                                <strong>{{ $product['title'] }}</strong>
+                                                @if(filled($product['sku'] ?? null))
+                                                    <small>SKU: {{ $product['sku'] }}</small>
+                                                @endif
+                                                @if($materialGroup)
+                                                    <small x-text="`Fabric: ${optionValue(@js($materialGroup), selections[@js($materialGroup['id'])])?.label || 'Configured'}`"></small>
+                                                @endif
+                                                <small x-text="artworkFiles.length ? `Design: Upload Artwork (${artworkFiles.length} files)` : 'Design: Artwork not selected'"></small>
+                                            </div>
+                                        </div>
+                                        <div class="np-product-review-sizes">
+                                            <div class="np-product-review-card-title">
+                                                <h4>Sizes &amp; Quantities</h4>
+                                                <button type="button" @click="openCustomizerStep(2)">Edit</button>
+                                            </div>
+                                            @if(!empty($product['size_groups']))
+                                                @foreach($product['size_groups'] as $group)
+                                                    <div class="np-review-size-matrix">
+                                                        @foreach($group['sizes'] as $size)
+                                                            @php
+                                                                $key = $group['id'].':'.$size['code'];
+                                                            @endphp
+                                                            <div>
+                                                                <strong>{{ $size['label'] }}</strong>
+                                                                <span x-text="quantities[@js($key)] || 0"></span>
+                                                            </div>
+                                                        @endforeach
+                                                        <div class="is-total">
+                                                            <strong>Total</strong>
+                                                            <span x-text="totalQuantity()"></span>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            @else
+                                                <div class="np-review-size-matrix">
+                                                    <div class="is-total">
+                                                        <strong>Total</strong>
+                                                        <span x-text="totalQuantity()"></span>
+                                                    </div>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="np-product-review-pricing">
+                                        <h3>Pricing</h3>
+                                        <div><span>Unit Price</span><strong x-text="money(unitPrice())"></strong></div>
+                                        <div><span>Total Pieces</span><strong x-text="totalQuantity()"></strong></div>
+                                        <div class="is-total"><span>Product Total</span><strong x-text="money(totalPrice())"></strong></div>
+                                        <button type="submit" class="btn btn-secondary btn-xl">{{ $isEditing ? 'Update Cart Item' : 'Add to Cart' }}</button>
+                                        <button type="button" class="btn btn-outline btn-xl" @click="toggleWishlist()">♡ <span x-text="wishlisted ? 'Saved for Later' : 'Save for Later'"></span></button>
+                                        <div class="np-product-review-trust"><div><span>✓</span><p><strong>Free design review</strong><small>We’ll check your artwork for best results</small></p></div><div><span>♙</span><p><strong>Secure checkout</strong><small>Your information is safe with us</small></p></div><div><span>◎</span><p><strong>Worldwide shipping</strong><small>Delivering to 100+ countries</small></p></div></div>
+                                    </div>
+                                </div>
+                            </div>
 
-            <aside class="h-fit overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-hero xl:sticky xl:top-36">
-                <div class="bg-gradient-to-br from-brand-dark to-brand-navy p-5 text-white"><p class="text-[10px] font-black uppercase tracking-[.16em] text-blue-200">Live estimate</p><h3 class="mt-1 text-2xl font-black">Your Custom Order</h3></div>
-                <div class="grid min-w-0 grid-cols-[72px_minmax(0,1fr)] gap-3 border-b border-slate-200 p-5"><img src="{{ $product['image'] }}" alt="" class="h-[72px] w-[72px] rounded-xl bg-white object-contain"><div><strong class="block text-sm leading-5">{{ $product['title'] }}</strong><small class="mt-1 block text-xs text-slate-500">SKU: {{ $product['sku'] }}</small><small class="mt-1 block text-xs text-slate-500"><span x-text="totalQuantity()"></span> total pieces</small></div></div>
-                <div class="max-h-72 space-y-2 overflow-y-auto border-b border-slate-200 p-5 text-xs">
-                    <div class="flex justify-between gap-3"><span class="text-slate-500">Selections</span><strong class="min-w-0 break-words text-right" x-text="selectionSummary() || 'No options selected'"></strong></div>
-                    <div class="flex justify-between gap-3"><span class="text-slate-500">Sizes</span><strong class="min-w-0 break-words text-right" x-text="sizeSummary() || 'No quantities selected'"></strong></div>
-                    @if($rosterEnabled)<div class="flex justify-between gap-3"><span class="text-slate-500">Roster details</span><strong class="text-right" x-text="rosterSummary()"></strong></div>@endif
-                    @if((bool) ($sample['available'] ?? false))<div class="flex justify-between gap-3"><span class="text-slate-500">Sample</span><strong class="text-right" x-text="sampleSummary()"></strong></div>@endif
-                    @if((bool) ($artworkUpload['enabled'] ?? false))<div class="flex justify-between gap-3"><span class="text-slate-500">Artwork</span><strong class="text-right" x-text="artworkLabel()"></strong></div>@endif
-                    @if(!empty($product['production_speeds']))<div x-show="currentProductionSpeed()" class="flex justify-between gap-3"><span class="text-slate-500">Production</span><strong class="text-right" x-text="`${speedLabel()} · ${chargeLabel(currentProductionSpeed())}`"></strong></div>@endif
-                    @if(!empty($product['shipping_methods']))<div class="flex justify-between gap-3"><span class="text-slate-500">Shipping</span><strong class="text-right" x-text="shippingLabel()"></strong></div>@endif
-                </div>
-                <div class="space-y-3 p-5 text-sm">
-                    <div class="flex justify-between"><span class="text-slate-500">Tier base price</span><strong x-text="money(tierPrice())"></strong></div>
-                    <div class="flex justify-between"><span class="text-slate-500">Options / estimated unit</span><strong x-text="money(optionSurcharge())"></strong></div>
-                    <div x-show="fixedOrderSurcharge() !== 0" class="flex justify-between"><span class="text-slate-500">Fixed order charges</span><strong x-text="money(fixedOrderSurcharge())"></strong></div>
-                    <div class="flex justify-between"><span class="text-slate-500">Estimated unit price</span><strong x-text="money(unitPrice())"></strong></div>
-                    <div class="flex justify-between"><span class="text-slate-500">Quantity</span><strong x-text="totalQuantity()"></strong></div>
-                    <div class="flex items-end justify-between border-t border-dashed border-slate-300 pt-4"><span class="font-black">Estimated total</span><strong class="text-2xl font-black text-brand-red" x-text="money(totalPrice())"></strong></div>
-                </div>
-                <div class="px-5 pb-5"><button type="button" class="btn btn-primary btn-xl hidden w-full xl:flex" @click="$root.querySelector('form').requestSubmit()">{{ $isEditing ? 'Update Cart Item' : 'Add Configured Product' }}</button><p class="mt-3 text-center text-[10px] leading-4 text-slate-500">Final prices, selections, sizes, shipping, roster information, and files are recalculated and validated by the Laravel backend.</p></div>
-            </aside>
-        </div>
+                        </div>
+                    </section>
+                </form>
+
+                <x-storefront.product.customizer.order-summary :product="$product" :material-group="$materialGroup" :size-range-label="$sizeRangeLabel" />
+            </div>
+        </section>
+
 
         @if($sizeGroupsWithCharts->isNotEmpty())
-            <div x-show="sizeChartOpen" x-cloak class="fixed inset-0 z-[100] grid place-items-center bg-slate-950/70 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="Product size chart" @click.self="closeSizeChart()">
-                <div class="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[24px] bg-white shadow-2xl">
-                    <div class="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-5 py-4"><div><p class="text-[10px] font-black uppercase tracking-[.14em] text-brand-red">Administrator provided</p><h3 class="text-xl font-black text-brand-ink" x-text="chartGroup()?.chart?.title || 'Size Chart'"></h3></div><button type="button" class="grid h-10 w-10 place-items-center rounded-full border border-slate-300 text-xl font-black" @click="closeSizeChart()" aria-label="Close size chart">×</button></div>
+            <div x-show="sizeChartOpen" x-cloak class="np-size-chart-modal" role="dialog" aria-modal="true" aria-label="Product size chart" @click.self="closeSizeChart()">
+                <div class="np-size-chart-dialog">
+                    <div class="np-size-chart-dialog__head"><div><small>Administrator provided</small><h3 x-text="chartGroup()?.chart?.title || 'Size Chart'"></h3></div><button type="button" @click="closeSizeChart()" aria-label="Close size chart">×</button></div>
                     @foreach($sizeGroupsWithCharts as $group)
-                        @php
-                            $hasStructuredSizeTable = ! empty(data_get($group, 'chart.columns')) && ! empty(data_get($group, 'chart.rows'));
-                        @endphp
-                        <div x-show="activeChartGroup === @js($group['id'])" x-cloak class="p-5 sm:p-7">
-                            @if(data_get($group, 'chart.note'))<p class="mb-5 rounded-xl bg-blue-50 p-4 text-sm leading-6 text-slate-600">{{ data_get($group, 'chart.note') }}</p>@endif
+                        @php $hasStructuredSizeTable = ! empty(data_get($group, 'chart.columns')) && ! empty(data_get($group, 'chart.rows')); @endphp
+                        <div x-show="activeChartGroup === @js($group['id'])" x-cloak class="np-size-chart-dialog__body">
+                            @if(data_get($group, 'chart.note'))<p class="np-size-chart-note">{{ data_get($group, 'chart.note') }}</p>@endif
                             @if(data_get($group, 'chart.html') && ! $hasStructuredSizeTable)<div class="product-rich-content touch-scroll-x">{!! data_get($group, 'chart.html') !!}</div>@endif
-                            @if(data_get($group, 'chart.image'))<img src="{{ data_get($group, 'chart.image') }}" alt="{{ data_get($group, 'chart.title', $group['label'].' size chart') }}" class="mb-6 max-h-[520px] w-full rounded-2xl border border-slate-200 object-contain" loading="lazy" decoding="async">@endif
+                            @if(data_get($group, 'chart.image'))<img src="{{ data_get($group, 'chart.image') }}" alt="{{ data_get($group, 'chart.title', $group['label'].' size chart') }}" loading="lazy" decoding="async">@endif
                             @if($hasStructuredSizeTable)
-                                <div class="touch-scroll-x rounded-2xl border border-slate-200" tabindex="0">
-                                    <table class="w-full min-w-[620px] text-sm"><thead class="bg-brand-dark text-left text-xs font-black uppercase tracking-[.08em] text-white"><tr>@foreach(data_get($group, 'chart.columns', []) as $column)<th class="px-4 py-3">{{ $column }}</th>@endforeach</tr></thead><tbody class="divide-y divide-slate-100">@foreach(data_get($group, 'chart.rows', []) as $row)<tr class="odd:bg-slate-50">@foreach($row as $cell)<td class="px-4 py-3 font-semibold text-slate-700">{{ $cell }}</td>@endforeach</tr>@endforeach</tbody></table>
+                                <div class="touch-scroll-x">
+                                    <table><thead><tr>@foreach(data_get($group, 'chart.columns', []) as $column)<th>{{ $column }}</th>@endforeach</tr></thead><tbody>@foreach(data_get($group, 'chart.rows', []) as $row)<tr>@foreach($row as $cell)<td>{{ $cell }}</td>@endforeach</tr>@endforeach</tbody></table>
                                 </div>
                             @endif
                         </div>

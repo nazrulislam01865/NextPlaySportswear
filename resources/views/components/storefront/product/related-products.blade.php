@@ -33,8 +33,8 @@
         <style>
             .np-related-products {
                 padding: clamp(3rem, 5vw, 5rem) 0;
-                border-top: 1px solid #edf2f7;
-                background: #ffffff;
+                border-top: 1px solid var(--np-color-border);
+                background: #fff;
             }
 
             .np-related-products__header {
@@ -47,7 +47,7 @@
 
             .np-related-products__header h2 {
                 margin: 0;
-                color: #061744;
+                color: var(--np-color-primary);
                 font-family: var(--np-font-heading);
                 font-size: clamp(1.8rem, 3vw, 2.75rem);
                 font-weight: 800;
@@ -62,10 +62,10 @@
                 align-items: center;
                 justify-content: center;
                 padding: .7rem 1.15rem;
-                border: 1px solid #d7e0eb;
+                border: 1px solid var(--np-color-border);
                 border-radius: .75rem;
-                background: #ffffff;
-                color: #061744;
+                background: #fff;
+                color: var(--np-color-primary);
                 font-size: .82rem;
                 font-weight: 800;
                 transition: border-color .16s ease, color .16s ease, background .16s ease;
@@ -73,9 +73,9 @@
 
             .np-related-products__header > a:hover,
             .np-related-products__header > a:focus-visible {
-                border-color: #061744;
-                background: #061744;
-                color: #ffffff;
+                border-color: var(--np-color-primary);
+                background: var(--np-color-primary);
+                color: #fff;
                 outline: none;
             }
 
