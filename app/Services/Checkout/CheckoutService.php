@@ -11,6 +11,7 @@ use App\Services\Cart\CartService;
 use App\Services\Shipping\RuralAreaSurchargeService;
 use App\Services\Shipping\ShippingMethodService;
 use App\Services\Payments\PaymentMethodService;
+use App\Services\Referrals\ReferralOfferService;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +34,7 @@ class CheckoutService
         private readonly TransactionalEmailManager $emails,
         private readonly FlowTrackOrderSyncManager $flowTrackSync,
         private readonly OrderProductSnapshotFactory $productSnapshots,
+        private readonly ReferralOfferService $referrals,
     ) {
     }
 
@@ -297,6 +299,18 @@ class CheckoutService
             ]);
         }
 
+        $orderInformation = (array) ($state['information'] ?? []);
+        $referralOffer = (array) ($cart['referral_offer'] ?? []);
+        if ((bool) ($referralOffer['applied'] ?? false)) {
+            $activeOffer = $this->referrals->current($user);
+            $orderInformation['referral_offer'] = [
+                'applied' => true,
+                'amount' => round((float) ($referralOffer['amount'] ?? 0), 2),
+                'minimum_order' => round((float) ($referralOffer['minimum_order'] ?? ReferralOfferService::MINIMUM_ORDER), 2),
+                'referrer_id' => is_array($activeOffer) ? (int) ($activeOffer['referrer_id'] ?? 0) : null,
+            ];
+        }
+
         $existingSnapshot = $state['placed_order'] ?? null;
         if (is_array($existingSnapshot) && hash_equals((string) ($existingSnapshot['idempotency_key'] ?? ''), $idempotencyKey)) {
             return $existingSnapshot;
@@ -311,7 +325,7 @@ class CheckoutService
         $createdNewOrder = true;
 
         try {
-            $order = DB::transaction(function () use ($state, $cart, $summary, $idempotencyKey, $user, $couponValidation): Order {
+            $order = DB::transaction(function () use ($state, $cart, $summary, $idempotencyKey, $user, $couponValidation, $orderInformation): Order {
                 $paymentMethod = (string) ($summary['payment_method']['method'] ?? '');
                 $paymentRequiresManualReview = (bool) ($summary['payment_method']['requires_manual_review'] ?? false);
                 $paymentType = (string) ($summary['payment_method']['payment_type'] ?? '');
@@ -339,7 +353,7 @@ class CheckoutService
                     'tax_total' => $summary['tax'],
                     'grand_total' => $summary['total'],
                     'total_quantity' => $summary['quantity'],
-                    'information' => $state['information'] ?? [],
+                    'information' => $orderInformation,
                     'shipping_address' => $state['shipping_address'] ?? [],
                     'billing_address' => $state['billing_address'] ?? [],
                     'shipping_method' => $summary['shipping_method'] ?? ($state['shipping_method'] ?? []),
@@ -414,6 +428,9 @@ class CheckoutService
         $snapshot = $this->orderSnapshot($order);
         $this->mergeState('placed_order', $snapshot);
         $this->cart->clear(true);
+        if ((bool) data_get($snapshot, 'information.referral_offer.applied', false)) {
+            $this->referrals->clear();
+        }
 
         Log::info('Checkout order persisted', [
             'order_number' => $order->order_number,
@@ -457,6 +474,7 @@ class CheckoutService
                 'subtotal' => (float) $order->subtotal,
                 'customization_total' => (float) $order->customization_total,
                 'discount' => (float) $order->discount_total,
+                'referral_discount' => (float) data_get($order->information, 'referral_offer.amount', 0),
                 'coupon_code' => $order->coupon_code,
                 'shipping' => (float) $order->shipping_total,
                 'rural_surcharge' => (float) $order->rural_surcharge_total,
@@ -820,6 +838,8 @@ class CheckoutService
             'subtotal' => $cart['subtotal'],
             'customization_total' => $cart['customization_total'],
             'discount' => $cart['discount'],
+            'referral_discount' => $cart['referral_discount'] ?? 0,
+            'referral_offer' => $cart['referral_offer'] ?? [],
             'coupon_code' => $cart['coupon_code'] ?? null,
             'shipping_base' => round($productShippingTotal + $automaticShippingBase, 2),
             'rural_surcharge' => round($ruralSurcharge, 2),

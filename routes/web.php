@@ -21,6 +21,7 @@ use App\Http\Controllers\Storefront\OrderController;
 use App\Http\Controllers\Storefront\ProductController;
 use App\Http\Controllers\Storefront\ProductActivityController;
 use App\Http\Controllers\Storefront\ProductWishlistController;
+use App\Http\Controllers\Storefront\ReferralOfferController;
 use App\Http\Controllers\Payments\PaymentReturnController;
 use App\Http\Controllers\Webhooks\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -31,6 +32,10 @@ Route::get('/payments/{provider}/return', PaymentReturnController::class)
     ->name('payments.return');
 
 Route::get('/', HomeController::class)->name('home');
+Route::get('/referral/{token}', [ReferralOfferController::class, 'show'])
+    ->where('token', '[A-Za-z0-9_-]+')
+    ->middleware('throttle:60,1')
+    ->name('referral.offer');
 Route::get('/homepage/latest-products', [HomeController::class, 'latestProducts'])
     ->middleware('throttle:120,1')
     ->name('home.latest-products');
@@ -363,6 +368,8 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
 
 Route::middleware(['not.admin', 'auth:web', 'customer', 'verified'])->prefix('account')->name('account.')->group(function () {
     Route::get('/', [AccountController::class, 'index'])->name('dashboard');
+    Route::get('/rewards', [AccountController::class, 'rewards'])->name('rewards');
+    Route::get('/refer-a-friend', [AccountController::class, 'referrals'])->name('referrals');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])
         ->middleware('throttle:10,1')
@@ -472,6 +479,9 @@ Route::get('/invoice-download', [OrderController::class, 'invoice'])->name('orde
 Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->where('orderNumber', '[A-Za-z0-9\-]+')->name('orders.invoice');
 
 Route::prefix('checkout')->name('checkout.')->middleware(['not.admin', 'auth:web', 'customer', 'verified'])->group(function () {
+    Route::get('/referral', [CheckoutController::class, 'referral'])->name('referral');
+    Route::post('/referral', [CheckoutController::class, 'storeReferral'])->middleware('throttle:checkout-step')->name('referral.store');
+
     Route::get('/', [CheckoutController::class, 'information'])->name('index');
     Route::get('/information', [CheckoutController::class, 'information'])->name('information');
     Route::post('/information', [CheckoutController::class, 'storeInformation'])->middleware('throttle:checkout-step')->name('information.store');

@@ -9,6 +9,7 @@ use App\Models\ShoppingCartItem;
 use App\Models\User;
 use App\Services\Discounts\CouponService;
 use App\Services\Promotions\SaleCampaignService;
+use App\Services\Referrals\ReferralOfferService;
 use App\Services\Storefront\ProductCatalogService;
 use App\Support\PriceTableShipping;
 use App\Support\ProductRoster;
@@ -32,6 +33,7 @@ class CartService
         private readonly ProductCatalogService $products,
         private readonly CouponService $coupons,
         private readonly SaleCampaignService $saleCampaigns,
+        private readonly ReferralOfferService $referrals,
     ) {
     }
 
@@ -49,7 +51,14 @@ class CartService
         $couponValidation = $couponCode
             ? $this->coupons->validateForCart($couponCode, (float) $merchandiseTotal, $quantity, $this->currentUser())
             : null;
-        $discount = $couponValidation['valid'] ?? false ? (float) $couponValidation['discount'] : 0.00;
+        $couponDiscount = $couponValidation['valid'] ?? false ? (float) $couponValidation['discount'] : 0.00;
+        $referralOffer = $this->referrals->cartAdjustment(
+            $merchandiseTotal,
+            (bool) ($couponValidation['valid'] ?? false),
+            $this->currentUser()
+        );
+        $referralDiscount = (float) ($referralOffer['amount'] ?? 0.00);
+        $discount = $couponDiscount + $referralDiscount;
         $genericShippingItems = collect($items)->where('uses_product_shipping', false);
         $additionalShipping = $this->calculateShipping(
             (float) $genericShippingItems->sum(fn (array $item) => ($item['line_subtotal'] ?? 0) + ($item['customization_total'] ?? 0)),
@@ -78,6 +87,9 @@ class CartService
             'configured_items_total' => round($configuredItemsTotal, 2),
             'estimated_subtotal' => round(max(0, $configuredItemsTotal - $discount), 2),
             'discount' => round($discount, 2),
+            'coupon_discount' => round($couponDiscount, 2),
+            'referral_discount' => round($referralDiscount, 2),
+            'referral_offer' => $referralOffer,
             'shipping' => round($shipping, 2),
             'additional_shipping' => round($additionalShipping, 2),
             'product_shipping_total' => round($productShippingTotal, 2),

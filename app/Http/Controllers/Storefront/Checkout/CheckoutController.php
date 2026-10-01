@@ -10,8 +10,10 @@ use App\Http\Requests\Storefront\Checkout\CheckoutInformationRequest;
 use App\Http\Requests\Storefront\Checkout\PaymentMethodRequest;
 use App\Http\Requests\Storefront\Checkout\PlaceOrderRequest;
 use App\Http\Requests\Storefront\Checkout\ReviewConfirmationRequest;
+use App\Http\Requests\Storefront\Checkout\ReferralCheckoutRequest;
 use App\Http\Requests\Storefront\Checkout\ShippingAddressRequest;
 use App\Services\Checkout\CheckoutService;
+use App\Services\Referrals\ReferralOfferService;
 use App\Services\Payments\PaymentOrchestrator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,13 +25,100 @@ class CheckoutController extends Controller
     public function __construct(
         private readonly CheckoutService $checkout,
         private readonly PaymentOrchestrator $payments,
+        private readonly ReferralOfferService $referrals,
     ) {
+    }
+
+
+    public function referral(Request $request): View|RedirectResponse
+    {
+        if ($redirect = $this->guardCart()) {
+            return $redirect;
+        }
+
+        $offer = $this->referrals->current($request->user());
+        if (! is_array($offer)) {
+            return redirect()->route('checkout.information');
+        }
+
+        return $this->view('storefront.checkout.referral', 'Secure Checkout', 'Complete your delivery and payment preferences with your referral offer linked to this visit.', $request, 'information');
+    }
+
+    public function storeReferral(ReferralCheckoutRequest $request): RedirectResponse
+    {
+        if ($redirect = $this->guardCart()) {
+            return $redirect;
+        }
+
+        if (! is_array($this->referrals->current($request->user()))) {
+            return redirect()->route('checkout.information');
+        }
+
+        $data = $request->validated();
+
+        $this->checkout->storeInformation([
+            'contact_choice' => 'new',
+            'email' => $data['email'],
+            'phone' => $data['phone'] ?? '',
+            'first_name' => $data['first_name'],
+            'last_name' => $data['last_name'],
+            'order_note' => 'Referral checkout delivery preference: '.($data['delivery_preference'] === 'express' ? 'Express delivery' : 'Standard delivery'),
+            'save_to_account' => false,
+        ], $request->user());
+
+        $this->checkout->storeShippingAddress([
+            'address_choice' => 'new',
+            'first_name' => $data['first_name'],
+            'last_name' => $data['last_name'],
+            'company_name' => '',
+            'address_line_1' => $data['address_line_1'],
+            'address_line_2' => $data['address_line_2'] ?? '',
+            'city' => $data['city'],
+            'state' => $data['state'] ?? '',
+            'country' => $data['country'],
+            'postal_code' => $data['postal_code'],
+            'phone' => $data['phone'] ?? '',
+            'email' => $data['email'],
+            'delivery_instruction' => '',
+            'save_to_account' => false,
+        ], $request->user());
+
+        if ((bool) ($data['billing_same_as_shipping'] ?? false)) {
+            $this->checkout->storeBillingAddress(['same_as_shipping' => true], $request->user());
+        } else {
+            $this->checkout->storeBillingAddress([
+                'same_as_shipping' => false,
+                'address_choice' => 'new',
+                'first_name' => $data['billing_first_name'],
+                'last_name' => $data['billing_last_name'],
+                'company_name' => '',
+                'address_line_1' => $data['billing_address_line_1'],
+                'address_line_2' => $data['billing_address_line_2'] ?? '',
+                'city' => $data['billing_city'],
+                'state' => $data['billing_state'] ?? '',
+                'country' => $data['billing_country'],
+                'postal_code' => $data['billing_postal_code'],
+                'phone' => $data['phone'] ?? '',
+                'email' => $data['email'],
+                'save_to_account' => false,
+            ], $request->user());
+        }
+
+        $this->checkout->storePaymentMethod([
+            'payment_method' => $data['payment_method'],
+        ], $request->user());
+
+        return redirect()->route('checkout.review')->with('status', 'Checkout details saved. Review the final total before placing your order.');
     }
 
     public function information(Request $request): View|RedirectResponse
     {
         if ($redirect = $this->guardCart()) {
             return $redirect;
+        }
+
+        if (is_array($this->referrals->current($request->user()))) {
+            return redirect()->route('checkout.referral');
         }
 
         return $this->view('storefront.checkout.information', 'Checkout Information', 'Use saved contact details or add the minimum contact information needed for order updates.', $request, 'information');

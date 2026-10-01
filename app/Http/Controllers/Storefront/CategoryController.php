@@ -9,6 +9,7 @@ use App\Services\Catalog\CategoryContentService;
 use App\Services\Promotions\SaleBannerService;
 use App\Services\Promotions\SaleCampaignService;
 use App\Services\Storefront\CategoryCatalogService;
+use App\Services\Storefront\ShopBySportService;
 use App\Support\PromotionBannerPlacement;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -20,12 +21,13 @@ class CategoryController extends Controller
         private readonly CategoryContentService $content,
         private readonly SaleBannerService $saleBanners,
         private readonly SaleCampaignService $saleCampaigns,
+        private readonly ShopBySportService $shopBySport,
     ) {}
 
     public function index(): View
     {
         $categoryBrowser = $this->catalog->categoryBrowser();
-        $sports = $this->catalog->sports();
+        $sports = $this->shopBySport->categories();
 
         return view('storefront.categories.index', [
             'sports' => $sports,
@@ -129,7 +131,7 @@ class CategoryController extends Controller
             'filters' => $filters,
             'filterOptions' => $this->catalog->filterOptions($category),
             'activeFilterCount' => $activeFilterCount,
-            'sports' => $this->catalog->sports(),
+            'sports' => $this->shopBySport->categories(),
             'contentBlocks' => $this->content->resolve($category),
             'hasFilters' => $hasFilters,
             'categoryTopBanner' => $categoryTopBanner,

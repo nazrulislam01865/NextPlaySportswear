@@ -3,9 +3,14 @@
 namespace App\Services\Storefront;
 
 use App\Models\User;
+use App\Services\Referrals\ReferralOfferService;
 
 class CustomerAccountService
 {
+    public function __construct(private readonly ReferralOfferService $referrals)
+    {
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -101,6 +106,80 @@ class CustomerAccountService
 
 
     /**
+     * Presentation data for the approved rewards prototype. No reward ledger
+     * queries are made because this change is intentionally design-only.
+     *
+     * @return array<string, mixed>
+     */
+    public function rewardsPage(): array
+    {
+        $spent = 65.0;
+        $target = 100.0;
+        $rewardValue = 5.0;
+        $progressPercent = (int) round(min(100, max(0, ($spent / $target) * 100)));
+
+        return [
+            'is_example' => true,
+            'spent' => $spent,
+            'target' => $target,
+            'reward_value' => $rewardValue,
+            'remaining' => max(0, $target - $spent),
+            'progress_percent' => $progressPercent,
+            'available_rewards' => 0.0,
+            'activity' => [
+                ['date' => '12 Apr 2025', 'activity' => 'Purchase #NP104235', 'progress' => 42.0, 'status' => 'Added to progress'],
+                ['date' => '03 Apr 2025', 'activity' => 'Purchase #NP103892', 'progress' => 23.0, 'status' => 'Added to progress'],
+            ],
+        ];
+    }
+
+    /**
+     * Presentation data for the approved referral prototype. The generated
+     * share identifier is opaque and does not expose the customer's database ID.
+     *
+     * @return array<string, mixed>
+     */
+    public function referralsPage(User $user): array
+    {
+        $shareUrl = $this->referrals->shareUrl($user);
+        $subject = '£5 off your first eligible NEXTPLAY order';
+        $body = 'Use my NEXTPLAY referral link and get £5 off your first eligible order of £50 or more: '.$shareUrl;
+
+        return [
+            'is_example' => true,
+            'share_url' => $shareUrl,
+            'email_share_url' => 'mailto:?subject='.rawurlencode($subject).'&body='.rawurlencode($body),
+            'steps' => [
+                ['title' => 'Share your link', 'description' => 'Send your unique link to friends.'],
+                ['title' => 'Friend makes first £50+ eligible purchase', 'description' => 'Your friend gets £5 off their first eligible order of £50 or more.'],
+                ['title' => 'Both receive £5 rewards', 'description' => 'You get £5 off a future eligible order after their order is complete.'],
+            ],
+            'referrals' => [
+                ['friend' => 'j.smith***@gmail.com', 'status' => 'pending', 'reward' => '£5.00 (after order completes)'],
+                ['friend' => 'a.brown***@outlook.com', 'status' => 'completed', 'reward' => '£5.00 available'],
+            ],
+            'questions' => [
+                ['question' => 'When do rewards arrive?', 'answer' => 'Rewards are added after eligible orders are completed and the returns period has passed.'],
+                ['question' => 'What orders qualify?', 'answer' => 'Your friend must be a new customer and place a first eligible order of £50 or more. Exclusions may apply.'],
+            ],
+        ];
+    }
+
+    /**
+     * @return array<int, array{label: string, href: string, route: string, icon: string}>
+     */
+    public function rewardsNavigation(): array
+    {
+        return [
+            ['label' => 'My account', 'href' => route('account.dashboard'), 'route' => 'account.dashboard', 'icon' => 'account'],
+            ['label' => 'Orders', 'href' => route('account.orders.index'), 'route' => 'account.orders.*', 'icon' => 'orders'],
+            ['label' => 'My Rewards', 'href' => route('account.rewards'), 'route' => 'account.rewards', 'icon' => 'rewards'],
+            ['label' => 'Refer a Friend', 'href' => route('account.referrals'), 'route' => 'account.referrals', 'icon' => 'referral'],
+            ['label' => 'Addresses', 'href' => route('account.addresses.index'), 'route' => 'account.addresses.*', 'icon' => 'address'],
+        ];
+    }
+
+    /**
      * @return array<int, array<string, string>>
      */
     public function accountNavigation(): array
@@ -110,6 +189,8 @@ class CustomerAccountService
             ['label' => 'Profile & Security', 'href' => route('account.profile.edit'), 'route' => 'account.profile.edit'],
             ['label' => 'Order Center', 'href' => route('account.orders.dashboard'), 'route' => 'account.orders.dashboard'],
             ['label' => 'Order History', 'href' => route('account.orders.index'), 'route' => 'account.orders.index'],
+            ['label' => 'My Rewards', 'href' => route('account.rewards'), 'route' => 'account.rewards'],
+            ['label' => 'Refer a Friend', 'href' => route('account.referrals'), 'route' => 'account.referrals'],
             ['label' => 'Returns & Exchanges', 'href' => route('account.returns.index'), 'route' => 'account.returns.index'],
             ['label' => 'Order Downloads', 'href' => route('account.downloads.index'), 'route' => 'account.downloads.index'],
             ['label' => 'Saved Addresses', 'href' => route('account.addresses.index'), 'route' => 'account.addresses.index'],

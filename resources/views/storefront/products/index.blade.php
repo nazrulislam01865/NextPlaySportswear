@@ -27,16 +27,16 @@
         </div>
     </section>
 
-    <section class="section-padding bg-slate-50">
-        <div class="site-container np-products-catalog-container" x-data="{filtersOpen:false}">
-            <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <section class="section-padding bg-slate-50 np-catalog-page">
+        <div class="site-container np-products-catalog-container" x-data="catalogFilterDrawer()" @resize.window="if (window.innerWidth >= 1024) filtersOpen = false">
+            <div class="np-catalog-page__heading mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                     <h2 class="font-display text-4xl font-bold uppercase tracking-tight text-brand-ink">
                         {{ filled($filters['tag']) ? 'Tag: '.$filters['tag'] : (filled($filters['q']) ? 'Search: '.$filters['q'] : ($hasFilters ? 'Filtered Products' : 'All Products')) }}
                     </h2>
                 </div>
                 <div class="lg:hidden">
-                    <button type="button" class="btn btn-outline np-filter-mobile-open w-full sm:w-auto" x-on:click="filtersOpen=true">
+                    <button type="button" class="btn btn-outline np-filter-mobile-open w-full sm:w-auto" x-on:click="filtersOpen=true" :aria-expanded="filtersOpen" aria-controls="index-filter-drawer">
                         <span>Filters</span>
                         @if($activeFilterCount > 0)<span class="np-mobile-filter-count">{{ $activeFilterCount }}</span>@endif
                     </button>
@@ -83,7 +83,7 @@
                     />
                 </aside>
 
-                <div data-product-results aria-live="polite">
+                <div class="min-w-0" data-product-results aria-live="polite">
                     @include('storefront.products._results', [
                         'products' => $products,
                         'allProductsMiddleBanner' => $allProductsMiddleBanner,
@@ -92,10 +92,10 @@
                 </div>
             </div>
 
-            <div x-cloak x-show="filtersOpen" class="fixed inset-0 z-50 lg:hidden">
+            <div x-cloak x-show="filtersOpen" class="np-catalog-filter-overlay fixed inset-0 lg:hidden" @keydown.escape.window="filtersOpen = false" @keydown.tab="trapFilterFocus($event)">
                 <div class="absolute inset-0 bg-slate-950/60" x-on:click="filtersOpen=false"></div>
-                <aside class="np-filter-drawer absolute inset-y-0 right-0">
-                    <button type="button" class="np-filter-close" x-on:click="filtersOpen=false" aria-label="Close filters">×</button>
+                <aside id="index-filter-drawer" x-ref="filterDrawer" role="dialog" aria-modal="true" aria-label="Product filters" class="np-filter-drawer absolute inset-y-0 right-0">
+                    <button type="button" x-ref="filterClose" class="np-filter-close" x-on:click="filtersOpen=false" aria-label="Close filters">×</button>
                     <x-storefront.product.category-filter-panel
                         :options="$filterOptions"
                         :filters="$filters"

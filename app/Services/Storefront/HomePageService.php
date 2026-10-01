@@ -12,6 +12,7 @@ class HomePageService
         private readonly NavigationService $navigation,
         private readonly HomepageSliderService $homepageSlider,
         private readonly HomepageSectionService $homepageSections,
+        private readonly ShopBySportService $shopBySport,
     ) {
     }
     public function getHomePageData(): array
@@ -29,7 +30,7 @@ class HomePageService
             'latestProductsSignature' => $latestProductsFeed['signature'],
             'bestSellingProducts' => $this->bestSellingProducts(),
             'bestSellingGearCategories' => $this->bestSellingGearCategories(),
-            'sports' => $this->sports(),
+            'sports' => $this->shopBySport->categories(),
             'processSteps' => $this->sectionItems('process'),
             'faqs' => $this->faqItems(),
             'navigation' => $this->navigation->items('header-primary'),
@@ -287,13 +288,6 @@ class HomePageService
             'alt' => $alt,
             'link_label' => $label,
         ]);
-    }
-
-    private function sports(): array
-    {
-        return $this->categoriesForSection('shop_by_sport', fn (): array => collect($this->categoryCatalog->sports())
-            ->values()
-            ->all());
     }
 
     private function categoriesForSection(string $key, callable $fallback, ?int $limit = null): array

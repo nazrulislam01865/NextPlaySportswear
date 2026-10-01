@@ -31,7 +31,11 @@ class CartController extends Controller
     {
         $isPreview = $request->boolean('preview') || ($request->has('id') && $this->cart->summary()['is_empty']);
         $cart = $this->cart->summary($isPreview);
-        return view('storefront.cart.index', [
+        $view = (bool) data_get($cart, 'referral_offer.linked', false)
+            ? 'storefront.referral.cart'
+            : 'storefront.cart.index';
+
+        return view($view, [
             'cart' => $cart,
             'seo' => [
                 'title' => 'Shopping Cart | NextPlay Sportswear',

@@ -19,7 +19,11 @@ class OrderController extends Controller
     {
         $order = $this->orders->orderForNumber(null, allowDemo: true);
 
-        return $this->view('storefront.orders.confirmation', $order, [
+        $view = (bool) data_get($order, 'information.referral_offer.applied', false)
+            ? 'storefront.referral.confirmation'
+            : 'storefront.orders.confirmation';
+
+        return $this->view($view, $order, [
             'title' => 'Order Confirmation | NextPlay Sportswear',
             'description' => 'Order confirmation and next steps for your custom sportswear order.',
             'robots' => 'noindex, nofollow',

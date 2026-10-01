@@ -1,7 +1,7 @@
 <x-layouts.storefront :seo="$seo" :structured-data="$structuredData">
-    <script src="{{ asset('js/product-image-viewer.js') }}?v=20260930-product-detail-prototype"></script>
+    <script src="{{ asset('js/product-image-viewer.js') }}?v=20261001-preview-visible-v4"></script>
 
-    <div class="np-product-page" x-data="productImageViewer()" @open-product-image.window="open($event.detail)">
+    <div class="np-product-page" x-data="productImageViewerV4()" x-on:open-product-image.window="open($event.detail)">
         <span class="sr-only" data-product-view-track data-product-id="{{ $product['id'] ?? '' }}" aria-hidden="true"></span>
 
         <nav class="np-product-breadcrumb" aria-label="Breadcrumb">
@@ -30,48 +30,48 @@
         <x-storefront.product.reviews :product="$product" />
         <x-storefront.product.related-products :products="$relatedProducts" />
 
-        <div
-            x-cloak
-            x-show="imageOpen"
-            x-transition:enter="transition ease-out duration-200"
-            x-transition:enter-start="opacity-0"
-            x-transition:enter-end="opacity-100"
-            x-transition:leave="transition ease-in duration-150"
-            x-transition:leave-start="opacity-100"
-            x-transition:leave-end="opacity-0"
-            class="np-product-image-preview-overlay fixed inset-0 z-[80] flex items-center justify-center overflow-hidden"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Expanded product image"
-            @click.self="close()"
-            @keydown.escape.window="close()"
-        >
-            <button
-                type="button"
-                class="np-product-image-preview-close"
-                @click="close()"
-                aria-label="Close image preview"
-            >×</button>
-
-            <span
-                x-show="previewLoading"
-                class="np-product-image-preview-loader"
-                role="status"
-                aria-label="Preparing image preview"
-            ></span>
-
-            <img
+        <template x-teleport="body">
+            <div
                 x-cloak
-                x-show="!previewLoading && previewSrc"
-                x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="opacity-0 scale-[.985]"
-                x-transition:enter-end="opacity-100 scale-100"
-                :src="previewSrc"
-                :alt="image?.alt || 'Product image'"
-                class="np-product-image-preview"
-                decoding="async"
-                @load="previewLoading = false"
+                x-show="imageOpen"
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                class="np-product-image-preview-overlay fixed inset-0 flex items-center justify-center overflow-hidden"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Expanded product image"
+                x-on:click.self="close()"
+                x-on:keydown.escape.window="if (imageOpen) close()"
+                x-on:keydown.tab.prevent="$refs.previewClose.focus()"
             >
-        </div>
+                <div
+                    class="np-product-image-preview-frame"
+                    x-ref="previewFrame"
+                >
+                    <button
+                        type="button"
+                        class="np-product-image-preview-close"
+                        x-ref="previewClose"
+                        x-on:click="close()"
+                        aria-label="Close image preview"
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+                    </button>
+
+                    <img
+                        :src="previewSrc || null"
+                        :alt="image?.alt || 'Product image'"
+                        class="np-product-image-preview"
+                        x-ref="previewImage"
+                        decoding="async"
+                        x-on:error="close()"
+                    >
+                </div>
+            </div>
+        </template>
     </div>
 </x-layouts.storefront>

@@ -164,12 +164,14 @@
 
 @media (max-width: 767.98px) {
     .nextplay-pagination {
-        align-items: stretch;
+        align-items: center;
         flex-direction: column;
         gap: 0.5rem;
     }
 
     .nextplay-pagination__summary {
+        max-width: 100%;
+        text-align: center;
         white-space: normal;
     }
 
@@ -178,6 +180,9 @@
     }
 
     .nextplay-pagination__controls {
+        display: flex;
+        width: max-content;
+        margin-inline: auto;
         border-radius: 0.6875rem;
     }
 
@@ -194,13 +199,13 @@
 
     .nextplay-pagination__actions {
         width: 100%;
-        align-items: stretch;
+        align-items: center;
         flex-direction: column;
         gap: 0.625rem;
     }
 
     .nextplay-pagination__per-page {
-        justify-content: space-between;
+        justify-content: center;
     }
 
     .nextplay-pagination__per-page select {

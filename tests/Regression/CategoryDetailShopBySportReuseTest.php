@@ -5,6 +5,8 @@ $root = dirname(__DIR__, 2);
 $viewPath = $root.'/resources/views/storefront/categories/show.blade.php';
 $indexPath = $root.'/resources/views/storefront/categories/index.blade.php';
 $controllerPath = $root.'/app/Http/Controllers/Storefront/CategoryController.php';
+$homePageServicePath = $root.'/app/Services/Storefront/HomePageService.php';
+$shopBySportServicePath = $root.'/app/Services/Storefront/ShopBySportService.php';
 $cardPath = $root.'/resources/views/components/storefront/sport-index-card.blade.php';
 $cssPath = $root.'/resources/css/storefront.css';
 $catalogServicePath = $root.'/app/Services/Storefront/CategoryCatalogService.php';
@@ -16,6 +18,8 @@ $builtCssPaths = glob($root.'/public/build/assets/storefront-*.css') ?: [];
 $view = file_get_contents($viewPath);
 $index = file_get_contents($indexPath);
 $controller = file_get_contents($controllerPath);
+$homePageService = file_get_contents($homePageServicePath);
+$shopBySportService = file_get_contents($shopBySportServicePath);
 $card = file_get_contents($cardPath);
 $css = file_get_contents($cssPath);
 $catalogService = file_get_contents($catalogServicePath);
@@ -25,7 +29,8 @@ $mediaService = file_get_contents($mediaServicePath);
 $builtCss = $builtCssPaths !== [] ? file_get_contents($builtCssPaths[0]) : '';
 
 if (
-    $view === false || $index === false || $controller === false || $card === false
+    $view === false || $index === false || $controller === false || $homePageService === false
+    || $shopBySportService === false || $card === false
     || $css === false || $catalogService === false || $adminForm === false
     || $adminController === false || $mediaService === false || $builtCss === false
 ) {
@@ -95,9 +100,20 @@ $expect(
 );
 
 $expect(
-    str_contains($controller, "'sports' => \$this->catalog->sports()")
+    str_contains($controller, 'private readonly ShopBySportService $shopBySport')
+        && str_contains($controller, '$sports = $this->shopBySport->categories();')
+        && str_contains($controller, "'sports' => \$this->shopBySport->categories()")
+        && ! str_contains($controller, "'sports' => \$this->catalog->sports()")
         && ! str_contains($controller, "'relatedCategories' => \$this->catalog->relatedCategories(\$category)"),
-    'Category detail controller supplies sports and stops loading related categories.'
+    'Both category pages use the shared Shop by Sport source instead of loading an independent sport list.'
+);
+
+$expect(
+    str_contains($homePageService, "'sports' => \$this->shopBySport->categories()")
+        && str_contains($shopBySportService, "firstWhere('key', 'shop_by_sport')")
+        && str_contains($shopBySportService, '$this->catalog->categoriesByIds($categoryIds, count($categoryIds))')
+        && str_contains($shopBySportService, 'return $this->runtimeCategories = $this->catalog->sports();'),
+    'Homepage and category pages share one Shop by Sport list with the existing automatic sport fallback.'
 );
 
 $indexSportSectionStart = strpos($index, '<section class="bg-[#f3f5f7] py-[66px]" id="sports"');

@@ -33,10 +33,11 @@
         @if(filled($product['sku'] ?? null))
             <div class="np-product-sku-inline" aria-label="Product SKU">
                 <strong>SKU: {{ $product['sku'] }}</strong>
-                <button type="button" @click="copySku(@js($product['sku']))" :title="skuCopied ? 'Copied' : 'Copy SKU'" aria-label="Copy SKU">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
-                    <span x-text="skuCopied ? 'Copied' : 'Copy'">Copy</span>
+                <button type="button" @click="copySku(@js($product['sku']))" :title="skuCopied ? 'SKU copied' : 'Copy SKU'" :aria-label="skuCopied ? 'SKU copied' : 'Copy SKU'" aria-label="Copy SKU">
+                    <svg x-show="!skuCopied" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+                    <svg x-cloak x-show="skuCopied" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
                 </button>
+                <span class="sr-only" role="status" x-text="skuCopied ? 'SKU copied to clipboard.' : ''"></span>
             </div>
         @endif
     </div>

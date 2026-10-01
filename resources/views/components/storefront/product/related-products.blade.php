@@ -58,6 +58,8 @@
 
             .np-related-products__header > a {
                 display: inline-flex;
+                flex-shrink: 0;
+                white-space: nowrap;
                 min-height: 3rem;
                 align-items: center;
                 justify-content: center;
@@ -100,13 +102,21 @@
 
             @media (max-width: 560px) {
                 .np-related-products__header {
-                    align-items: flex-start;
+                    align-items: center;
+                    gap: .75rem;
+                }
+
+                .np-related-products__header h2 {
+                    min-width: 0;
+                    font-size: clamp(1.125rem, 4.5vw, 1.5rem);
+                    line-height: 1.2;
+                    text-transform: none;
                 }
 
                 .np-related-products__header > a {
-                    min-height: 2.6rem;
-                    padding: .6rem .85rem;
-                    font-size: .74rem;
+                    min-height: 2.75rem;
+                    padding: .5rem .65rem;
+                    font-size: .72rem;
                 }
             }
         </style>

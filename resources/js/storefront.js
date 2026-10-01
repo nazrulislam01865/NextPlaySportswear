@@ -4,6 +4,46 @@ import Alpine from 'alpinejs';
 
 window.Alpine = Alpine;
 
+window.catalogFilterDrawer = () => ({
+    filtersOpen: false,
+    filterTrigger: null,
+
+    init() {
+        this.$watch('filtersOpen', (open) => {
+            document.documentElement.classList.toggle('np-catalog-filters-open', open);
+            if (open) {
+                this.filterTrigger = document.activeElement;
+                this.$nextTick(() => requestAnimationFrame(() => {
+                    if (this.filtersOpen) this.$refs.filterClose?.focus({ preventScroll: true });
+                }));
+            } else {
+                if (this.filterTrigger?.isConnected) this.filterTrigger.focus({ preventScroll: true });
+                this.filterTrigger = null;
+            }
+        });
+    },
+
+    trapFilterFocus(event) {
+        if (!this.filtersOpen) return;
+        const controls = [...this.$refs.filterDrawer.querySelectorAll(
+            'button, a[href], input, select, textarea, summary, [tabindex]',
+        )].filter(el => !el.disabled && el.tabIndex >= 0 && el.getClientRects().length);
+        const first = controls[0];
+        const last = controls.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first?.focus();
+        }
+    },
+
+    destroy() {
+        document.documentElement.classList.remove('np-catalog-filters-open');
+    },
+});
+
 const setupGlobalImageFallbacks = () => {
     const body = document.body;
     const fallbackUrl = body?.dataset.imagePlaceholderUrl || '/images/product-placeholder.svg';
@@ -401,194 +441,27 @@ const createProductSocialActions = (socialConfig = {}) => ({
 });
 
 
-const productImagePreviewCache = new Map();
-
-const loadProductPreviewImage = (url) => new Promise((resolve, reject) => {
-    const image = new Image();
-    image.decoding = 'async';
+const normalizeProductPreviewUrl = (url) => {
+    const value = String(url || '').trim();
+    if (!value) return '';
 
     try {
-        const parsed = new URL(url, window.location.href);
-        if (parsed.origin !== window.location.origin) image.crossOrigin = 'anonymous';
+        const parsed = new URL(value, window.location.href);
+        const current = new URL(window.location.href);
+        const normalizeHost = host => host.toLowerCase().replace(/^www\./, '');
+
+        if (
+            parsed.protocol === current.protocol
+            && normalizeHost(parsed.hostname) === normalizeHost(current.hostname)
+        ) {
+            return `${current.origin}${parsed.pathname}${parsed.search}${parsed.hash}`;
+        }
+
+        return parsed.href;
     } catch (error) {
-        // Relative and data URLs do not need a cross-origin mode.
+        return value;
     }
-
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error('Product image could not be loaded.'));
-    image.src = url;
-});
-
-const canvasToObjectUrl = (canvas) => new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-        if (!blob) {
-            reject(new Error('Product image could not be prepared.'));
-            return;
-        }
-
-        resolve(URL.createObjectURL(blob));
-    }, 'image/png');
-});
-
-const trimProductPreviewWhitespace = async (url) => {
-    if (!url) return '';
-    if (productImagePreviewCache.has(url)) return productImagePreviewCache.get(url);
-
-    const image = await loadProductPreviewImage(url);
-    const sourceWidth = image.naturalWidth || image.width;
-    const sourceHeight = image.naturalHeight || image.height;
-
-    if (!sourceWidth || !sourceHeight) return url;
-
-    const analysisLimit = 1400;
-    const analysisScale = Math.min(1, analysisLimit / Math.max(sourceWidth, sourceHeight));
-    const analysisWidth = Math.max(1, Math.round(sourceWidth * analysisScale));
-    const analysisHeight = Math.max(1, Math.round(sourceHeight * analysisScale));
-    const analysisCanvas = document.createElement('canvas');
-    analysisCanvas.width = analysisWidth;
-    analysisCanvas.height = analysisHeight;
-
-    const analysisContext = analysisCanvas.getContext('2d', { willReadFrequently: true });
-    if (!analysisContext) return url;
-
-    analysisContext.drawImage(image, 0, 0, analysisWidth, analysisHeight);
-    const pixels = analysisContext.getImageData(0, 0, analysisWidth, analysisHeight).data;
-
-    const samplePatch = (startX, startY) => {
-        const samples = [];
-        const patch = Math.max(2, Math.min(8, Math.floor(Math.min(analysisWidth, analysisHeight) * .012)));
-
-        for (let y = 0; y < patch; y += 1) {
-            for (let x = 0; x < patch; x += 1) {
-                const px = Math.max(0, Math.min(analysisWidth - 1, startX + x));
-                const py = Math.max(0, Math.min(analysisHeight - 1, startY + y));
-                const offset = (py * analysisWidth + px) * 4;
-                samples.push([
-                    pixels[offset],
-                    pixels[offset + 1],
-                    pixels[offset + 2],
-                    pixels[offset + 3],
-                ]);
-            }
-        }
-
-        return [0, 1, 2, 3].map(channel => {
-            const values = samples.map(sample => sample[channel]).sort((a, b) => a - b);
-            return values[Math.floor(values.length / 2)] || 0;
-        });
-    };
-
-    const patchSize = Math.max(2, Math.min(8, Math.floor(Math.min(analysisWidth, analysisHeight) * .012)));
-    const cornerColours = [
-        samplePatch(0, 0),
-        samplePatch(Math.max(0, analysisWidth - patchSize), 0),
-        samplePatch(0, Math.max(0, analysisHeight - patchSize)),
-        samplePatch(Math.max(0, analysisWidth - patchSize), Math.max(0, analysisHeight - patchSize)),
-    ];
-    const mostlyLightCorners = cornerColours.filter(([r, g, b, a]) => a < 16 || (r > 226 && g > 226 && b > 226)).length >= 3;
-
-    const isBackgroundPixel = (offset) => {
-        const r = pixels[offset];
-        const g = pixels[offset + 1];
-        const b = pixels[offset + 2];
-        const a = pixels[offset + 3];
-
-        if (a <= 12) return true;
-        if (mostlyLightCorners && r >= 238 && g >= 238 && b >= 238) return true;
-
-        return cornerColours.some(([cr, cg, cb, ca]) => {
-            if (Math.abs(a - ca) > 70) return false;
-            const maxDifference = Math.max(Math.abs(r - cr), Math.abs(g - cg), Math.abs(b - cb));
-            const averageDifference = (Math.abs(r - cr) + Math.abs(g - cg) + Math.abs(b - cb)) / 3;
-            return maxDifference <= 26 && averageDifference <= 18;
-        });
-    };
-
-    const rowHasContent = (y) => {
-        let count = 0;
-        const needed = Math.max(3, Math.ceil(analysisWidth * .006));
-        for (let x = 0; x < analysisWidth; x += 1) {
-            if (!isBackgroundPixel((y * analysisWidth + x) * 4)) {
-                count += 1;
-                if (count >= needed) return true;
-            }
-        }
-        return false;
-    };
-
-    const columnHasContent = (x, top, bottom) => {
-        let count = 0;
-        const needed = Math.max(3, Math.ceil((bottom - top + 1) * .006));
-        for (let y = top; y <= bottom; y += 1) {
-            if (!isBackgroundPixel((y * analysisWidth + x) * 4)) {
-                count += 1;
-                if (count >= needed) return true;
-            }
-        }
-        return false;
-    };
-
-    let top = 0;
-    while (top < analysisHeight - 1 && !rowHasContent(top)) top += 1;
-    let bottom = analysisHeight - 1;
-    while (bottom > top && !rowHasContent(bottom)) bottom -= 1;
-    let left = 0;
-    while (left < analysisWidth - 1 && !columnHasContent(left, top, bottom)) left += 1;
-    let right = analysisWidth - 1;
-    while (right > left && !columnHasContent(right, top, bottom)) right -= 1;
-
-    const analysisPadding = Math.max(1, Math.round(Math.min(analysisWidth, analysisHeight) * .004));
-    top = Math.max(0, top - analysisPadding);
-    left = Math.max(0, left - analysisPadding);
-    bottom = Math.min(analysisHeight - 1, bottom + analysisPadding);
-    right = Math.min(analysisWidth - 1, right + analysisPadding);
-
-    const cropWidthRatio = (right - left + 1) / analysisWidth;
-    const cropHeightRatio = (bottom - top + 1) / analysisHeight;
-    const removedArea = 1 - (cropWidthRatio * cropHeightRatio);
-
-    if (removedArea < .018 || cropWidthRatio < .12 || cropHeightRatio < .12) {
-        productImagePreviewCache.set(url, url);
-        return url;
-    }
-
-    const sourceX = Math.max(0, Math.floor(left / analysisScale));
-    const sourceY = Math.max(0, Math.floor(top / analysisScale));
-    const sourceCropWidth = Math.min(sourceWidth - sourceX, Math.ceil((right - left + 1) / analysisScale));
-    const sourceCropHeight = Math.min(sourceHeight - sourceY, Math.ceil((bottom - top + 1) / analysisScale));
-    const outputLimit = 2800;
-    const outputScale = Math.min(1, outputLimit / Math.max(sourceCropWidth, sourceCropHeight));
-    const outputWidth = Math.max(1, Math.round(sourceCropWidth * outputScale));
-    const outputHeight = Math.max(1, Math.round(sourceCropHeight * outputScale));
-    const outputCanvas = document.createElement('canvas');
-    outputCanvas.width = outputWidth;
-    outputCanvas.height = outputHeight;
-
-    const outputContext = outputCanvas.getContext('2d');
-    if (!outputContext) return url;
-
-    outputContext.drawImage(
-        image,
-        sourceX,
-        sourceY,
-        sourceCropWidth,
-        sourceCropHeight,
-        0,
-        0,
-        outputWidth,
-        outputHeight,
-    );
-
-    const objectUrl = await canvasToObjectUrl(outputCanvas);
-    productImagePreviewCache.set(url, objectUrl);
-    return objectUrl;
 };
-
-window.addEventListener('beforeunload', () => {
-    productImagePreviewCache.forEach((cachedUrl, sourceUrl) => {
-        if (cachedUrl !== sourceUrl && cachedUrl.startsWith('blob:')) URL.revokeObjectURL(cachedUrl);
-    });
-});
 
 window.productImageViewer = () => ({
     imageOpen: false,
@@ -597,38 +470,88 @@ window.productImageViewer = () => ({
     previewLoading: false,
     previewFailed: false,
     previewToken: 0,
+    returnFocus: null,
 
-    async open(image = null) {
-        if (!image?.url) return;
-
-        const token = ++this.previewToken;
-        this.image = image;
-        this.previewSrc = '';
-        this.previewFailed = false;
-        this.previewLoading = true;
-        this.imageOpen = true;
-        document.documentElement.classList.add('np-product-preview-open');
-
-        try {
-            const preparedUrl = await trimProductPreviewWhitespace(String(image.url));
-            if (token !== this.previewToken || !this.imageOpen) return;
-            this.previewSrc = preparedUrl || String(image.url);
-        } catch (error) {
-            if (token !== this.previewToken || !this.imageOpen) return;
-            this.previewSrc = String(image.url);
-            this.previewFailed = true;
-        } finally {
-            if (token === this.previewToken) this.previewLoading = false;
+    resetPreviewFrame() {
+        const frame = this.$refs?.previewFrame;
+        const image = this.$refs?.previewImage;
+        if (frame) {
+            frame.style.removeProperty('width');
+            frame.style.removeProperty('height');
+        }
+        if (image) {
+            image.style.removeProperty('width');
+            image.style.removeProperty('height');
         }
     },
 
+    syncPreviewFrame() {
+        if (!this.imageOpen) return;
+
+        const frame = this.$refs?.previewFrame;
+        const image = this.$refs?.previewImage;
+        if (!frame || !image || image.offsetParent === null) return;
+
+        requestAnimationFrame(() => {
+            if (!this.imageOpen || !this.$refs?.previewFrame || !this.$refs?.previewImage) return;
+
+            const previewImage = this.$refs.previewImage;
+            const naturalWidth = Number(previewImage.naturalWidth || 0);
+            const naturalHeight = Number(previewImage.naturalHeight || 0);
+            if (!naturalWidth || !naturalHeight) return;
+
+            const viewportWidth = Math.max(
+                1,
+                Math.floor(window.visualViewport?.width || document.documentElement.clientWidth || window.innerWidth || 1),
+            );
+            const viewportHeight = Math.max(
+                1,
+                Math.floor(window.visualViewport?.height || document.documentElement.clientHeight || window.innerHeight || 1),
+            );
+            const maximumWidth = Math.min(viewportWidth, 1100);
+            const scale = Math.min(1, maximumWidth / naturalWidth, viewportHeight / naturalHeight);
+            const width = Math.max(1, Math.floor(naturalWidth * scale));
+            const height = Math.max(1, Math.floor(naturalHeight * scale));
+
+            // Give both the image and its containing frame the same exact box.
+            // This keeps the close control attached to the visible image corner.
+            previewImage.style.width = `${width}px`;
+            previewImage.style.height = `${height}px`;
+            this.$refs.previewFrame.style.width = `${width}px`;
+            this.$refs.previewFrame.style.height = `${height}px`;
+        });
+    },
+
+    open(image = null) {
+        if (!image?.url) return;
+
+        this.previewToken += 1;
+        if (!this.imageOpen) this.returnFocus = document.activeElement;
+        this.image = image;
+        this.previewSrc = normalizeProductPreviewUrl(image.url) || String(image.url);
+        this.previewFailed = false;
+        this.previewLoading = true;
+        this.imageOpen = true;
+        this.resetPreviewFrame();
+        document.documentElement.classList.add('np-product-preview-open');
+        this.$nextTick(() => {
+            if (this.imageOpen) this.$refs.previewClose?.focus({ preventScroll: true });
+        });
+    },
+
     close() {
+        if (!this.imageOpen) return;
         this.previewToken += 1;
         this.imageOpen = false;
         this.previewLoading = false;
+        this.resetPreviewFrame();
         document.documentElement.classList.remove('np-product-preview-open');
+        if (this.returnFocus?.isConnected) this.returnFocus.focus({ preventScroll: true });
+        this.returnFocus = null;
     },
 });
+
+window.productImageViewerV2 = window.productImageViewer;
 
 const productRosterSettings = (config = {}) => config.roster || config.jersey_roster || {};
 
@@ -4107,5 +4030,93 @@ if (document.readyState === 'loading') {
 } else {
     bootStorefront();
 }
+
+window.referralShareActions = (config = {}) => ({
+    busy: false,
+    copied: false,
+
+    normalizedPayload() {
+        return {
+            title: String(config.title || 'NEXTPLAY Refer a Friend'),
+            text: String(config.text || 'Use my NEXTPLAY referral link.'),
+            url: String(config.url || window.location.href),
+        };
+    },
+
+    announce(message, type = 'success', title = 'Refer a Friend') {
+        window.showStorefrontToast?.({
+            type,
+            title,
+            message,
+            key: 'account-referral-share',
+            duration: 3000,
+        });
+    },
+
+    async writeClipboard(value) {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(value);
+            return true;
+        }
+
+        const textarea = document.createElement('textarea');
+        textarea.value = value;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        textarea.style.pointerEvents = 'none';
+        document.body.appendChild(textarea);
+        textarea.select();
+
+        let copied = false;
+        try {
+            copied = document.execCommand('copy');
+        } finally {
+            textarea.remove();
+        }
+
+        if (!copied) throw new Error('Clipboard access is unavailable.');
+        return true;
+    },
+
+    async copyLink() {
+        if (this.busy) return;
+        this.busy = true;
+
+        try {
+            await this.writeClipboard(this.normalizedPayload().url);
+            this.copied = true;
+            this.announce('Referral link copied to your clipboard.');
+            window.setTimeout(() => { this.copied = false; }, 2200);
+        } catch (error) {
+            this.announce('The link could not be copied. Select the link and copy it manually.', 'error', 'Copy unavailable');
+        } finally {
+            this.busy = false;
+        }
+    },
+
+    async shareLink() {
+        if (this.busy) return;
+        this.busy = true;
+        const payload = this.normalizedPayload();
+
+        try {
+            if (typeof navigator.share === 'function') {
+                await navigator.share(payload);
+                return;
+            }
+
+            await this.writeClipboard(payload.url);
+            this.copied = true;
+            this.announce('Sharing is not available in this browser, so the referral link was copied instead.', 'info');
+            window.setTimeout(() => { this.copied = false; }, 2200);
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') return;
+            this.announce('The referral link could not be shared. Please try copying it instead.', 'error', 'Share unavailable');
+        } finally {
+            this.busy = false;
+        }
+    },
+});
 
 Alpine.start();

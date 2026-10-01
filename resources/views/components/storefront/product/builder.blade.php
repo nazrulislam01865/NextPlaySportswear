@@ -141,6 +141,7 @@ window.productBuilderFabricPricing = function (config = {}) {
         async copySku(value) {
             const text = String(value || '').trim();
             if (!text) return;
+            this.skuCopied = false;
             try {
                 if (navigator.clipboard?.writeText) {
                     await navigator.clipboard.writeText(text);
@@ -151,14 +152,24 @@ window.productBuilderFabricPricing = function (config = {}) {
                     area.style.position = 'fixed';
                     area.style.opacity = '0';
                     document.body.appendChild(area);
-                    area.select();
-                    document.execCommand('copy');
-                    area.remove();
+                    const focusedElement = document.activeElement;
+                    try {
+                        area.select();
+                        if (!document.execCommand('copy')) throw new Error('Copy failed');
+                    } finally {
+                        area.remove();
+                        focusedElement?.focus({ preventScroll: true });
+                    }
                 }
                 this.skuCopied = true;
                 window.setTimeout(() => { this.skuCopied = false; }, 1600);
             } catch (error) {
                 this.skuCopied = false;
+                window.showStorefrontToast?.({
+                    type: 'error',
+                    title: 'Could not copy SKU',
+                    message: 'Please select and copy the SKU manually.',
+                });
             }
         },
         artworkMode: 'upload',

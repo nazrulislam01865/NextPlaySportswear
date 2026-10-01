@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Storefront\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Storefront\Auth\RegisterRequest;
 use App\Services\Auth\CustomerRegistrationService;
+use App\Services\Referrals\ReferralOfferService;
 use App\Support\StorefrontRedirect;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -17,13 +18,31 @@ class RegisteredUserController extends Controller
 {
     public function __construct(
         private readonly CustomerRegistrationService $registration,
+        private readonly ReferralOfferService $referrals,
     ) {
     }
 
     public function create(Request $request): View
     {
+        $offer = $this->referrals->current();
+        $redirectUrl = StorefrontRedirect::capture($request);
+
+        if (is_array($offer)) {
+            $redirectUrl ??= route('products.index');
+
+            return view('storefront.referral.register', [
+                'offer' => $offer,
+                'redirectUrl' => $redirectUrl,
+                'seo' => [
+                    'title' => 'Create Your Account | NextPlay Sportswear',
+                    'description' => 'Create a NEXTPLAY account with your referral offer linked to this visit.',
+                    'robots' => 'noindex, nofollow',
+                ],
+            ]);
+        }
+
         return view('storefront.auth.register', [
-            'redirectUrl' => StorefrontRedirect::capture($request),
+            'redirectUrl' => $redirectUrl,
             'seo' => [
                 'title' => 'Create Customer Account | NextPlay Sportswear',
                 'description' => 'Create a NextPlay Sportswear customer account for faster checkout, quote requests, team order tracking, and custom design proof updates.',
@@ -34,7 +53,13 @@ class RegisteredUserController extends Controller
 
     public function store(RegisterRequest $request): RedirectResponse
     {
+        $referralOffer = $this->referrals->current();
         $user = $this->registration->register($request->validated());
+
+        if (is_array($referralOffer)) {
+            $this->referrals->attachNewCustomer($user);
+        }
+
         $verificationDeliveryFailed = false;
         $verificationEnabled = (bool) config('security.email_verification.enabled', false);
 
@@ -58,12 +83,14 @@ class RegisteredUserController extends Controller
         if (! $verificationEnabled) {
             $destination = StorefrontRedirect::intended(
                 $request,
-                route('account.dashboard')
+                is_array($referralOffer) ? route('products.index') : route('account.dashboard')
             );
 
             return redirect()
                 ->to($destination)
-                ->with('status', 'Your account was created successfully and is ready to use.');
+                ->with('status', is_array($referralOffer)
+                    ? 'Your account was created and your referral offer remains linked to this visit.'
+                    : 'Your account was created successfully and is ready to use.');
         }
 
         // Preserve a safe storefront destination (for example checkout) until
