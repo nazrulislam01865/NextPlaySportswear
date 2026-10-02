@@ -1,10 +1,16 @@
+@php
+    $reward = (float) ($offer['reward_amount'] ?? 0);
+    $minimum = (float) ($offer['minimum_order'] ?? 0);
+    $rewardLabel = number_format($reward, $reward == floor($reward) ? 0 : 2);
+    $minimumLabel = number_format($minimum, $minimum == floor($minimum) ? 0 : 2);
+@endphp
 <x-layouts.storefront :seo="$seo">
     <section class="np-referral-offer-page">
         <div class="np-referral-offer-hero">
             <div class="np-referral-offer-hero__copy">
                 <div class="np-referral-offer-hero__inner">
-                    <h1>YOUR FRIEND<br>SENT YOU £5</h1>
-                    <p>Get £5 off your first eligible NEXTPLAY order of £50 or more.</p>
+                    <h1>YOUR FRIEND<br>SENT YOU £{{ $rewardLabel }}</h1>
+                    <p>New customers get £{{ $rewardLabel }} off one eligible first NEXTPLAY order of £{{ $minimumLabel }} or more.</p>
                     <a href="{{ route('products.index') }}" class="btn btn-secondary np-referral-offer-hero__cta">
                         <span>SHOP NEXTPLAY</span>
                         <x-storefront.referral.icon name="arrow-right" :size="19" />
@@ -25,15 +31,15 @@
             <section class="np-referral-facts" aria-label="Referral offer summary">
                 <div class="np-referral-fact">
                     <span class="np-referral-fact__icon"><x-storefront.referral.icon name="gift" :size="38" /></span>
-                    <div><small>YOUR OFFER</small><strong>£5 <span>off</span></strong><p>Your first eligible order of £50 or more.</p></div>
+                    <div><small>YOUR OFFER</small><strong>£{{ $rewardLabel }} <span>off</span></strong><p>One eligible first order of £{{ $minimumLabel }} or more for a new customer account.</p></div>
                 </div>
                 <div class="np-referral-fact">
                     <span class="np-referral-fact__icon"><x-storefront.referral.icon name="bag" :size="38" /></span>
-                    <div><small>MINIMUM FIRST ORDER</small><strong>£50</strong><p>Minimum spend on your first order.</p></div>
+                    <div><small>MINIMUM FIRST ORDER</small><strong>£{{ $minimumLabel }}</strong><p>Minimum spend on your first order.</p></div>
                 </div>
                 <div class="np-referral-fact">
                     <span class="np-referral-fact__icon"><x-storefront.referral.icon name="card" :size="38" /></span>
-                    <div><small>APPLIED AT CHECKOUT</small><strong class="np-referral-fact__text">When eligible</strong><p>Your £5 offer will be applied when your order qualifies.</p></div>
+                    <div><small>APPLIED AT CHECKOUT</small><strong class="np-referral-fact__text">When eligible</strong><p>Your £{{ $rewardLabel }} offer will be applied when your order qualifies.</p></div>
                 </div>
                 <p class="np-referral-facts__note"><x-storefront.referral.icon name="info" :size="17" /> Offer subject to programme terms; quoted team orders excluded.</p>
             </section>
@@ -44,9 +50,9 @@
                     <a href="{{ route('terms') }}">Terms of the offer <x-storefront.referral.icon name="arrow-right" :size="18" /></a>
                 </div>
                 <div class="np-referral-how__grid">
-                    <div class="np-referral-how-step"><span>1</span><div><strong>Open your friend's link</strong><p>Use this referral link to shop so we can recognise your offer.</p></div></div>
-                    <div class="np-referral-how-step"><span>2</span><div><strong>Shop an eligible £50+ first order</strong><p>Browse NEXTPLAY and add £50 or more of eligible items to your basket.</p></div></div>
-                    <div class="np-referral-how-step"><span>3</span><div><strong>See your £5 offer at checkout</strong><p>Your £5 discount will be applied automatically when your order qualifies.</p></div></div>
+                    <div class="np-referral-how-step"><span>1</span><div><strong>Open your friend's link</strong><p>Use this referral link and create a new customer account so we can securely link the offer to you.</p></div></div>
+                    <div class="np-referral-how-step"><span>2</span><div><strong>Shop an eligible £{{ $minimumLabel }}+ first order</strong><p>Browse NEXTPLAY and add £{{ $minimumLabel }} or more of eligible items to your basket.</p></div></div>
+                    <div class="np-referral-how-step"><span>3</span><div><strong>See your £{{ $rewardLabel }} offer at checkout</strong><p>Your £{{ $rewardLabel }} discount will be applied automatically when your order qualifies.</p></div></div>
                 </div>
             </section>
 

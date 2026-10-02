@@ -2,6 +2,7 @@
     'seo' => [],
     'title',
     'subtitle',
+    'account' => [],
     'navigation' => [],
     'breadcrumb',
     'badge' => null,
@@ -18,12 +19,10 @@
                 <span aria-current="page">{{ $breadcrumb }}</span>
             </nav>
 
-            <div class="np-rewards-layout">
-                <aside class="np-rewards-layout__sidebar">
-                    <x-storefront.account.rewards.sidebar :navigation="$navigation" />
-                </aside>
+            <div class="np-account-prototype-layout np-rewards-account-layout">
+                <x-storefront.account.sidebar :account="$account" :navigation="$navigation" />
 
-                <div class="np-rewards-layout__content">
+                <div class="np-rewards-layout__content np-account-square-cards">
                     <header class="np-rewards-page-heading">
                         <div>
                             <h1>{{ $title }}</h1>

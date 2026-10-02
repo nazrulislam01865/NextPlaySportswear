@@ -289,6 +289,7 @@
                     @endif
                     @if($canAdmin('customers.view'))
                         <x-admin.sidebar-link :href="route('admin.customers.index')" :active="request()->routeIs('admin.customers.*')" icon="◎">Customers</x-admin.sidebar-link>
+                        <x-admin.sidebar-link :href="route('admin.reward-program.edit')" :active="request()->routeIs('admin.reward-program.*')" icon="★">Rewards Programme</x-admin.sidebar-link>
                     @endif
                     @if($canAdmin('coupons.manage'))
                         <x-admin.sidebar-group

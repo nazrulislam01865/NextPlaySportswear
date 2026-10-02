@@ -1,16 +1,22 @@
 @props([
     'variant' => 'rewards',
     'actionHref' => null,
+    'friendReward' => 5,
+    'referrerReward' => 5,
+    'minimumOrder' => 50,
 ])
 
 @php
     $isReferralPage = $variant === 'referral';
+    $give = number_format((float) $friendReward, ((float) $friendReward == floor((float) $friendReward)) ? 0 : 2);
+    $get = number_format((float) $referrerReward, ((float) $referrerReward == floor((float) $referrerReward)) ? 0 : 2);
+    $minimum = number_format((float) $minimumOrder, ((float) $minimumOrder == floor((float) $minimumOrder)) ? 0 : 2);
     $firstLine = $isReferralPage
-        ? 'Your friend gets £5 off their first eligible order of £50 or more.'
-        : 'Your friend gets £5 off their first eligible £50 order.';
+        ? "Your friend gets £{$give} off their first eligible order of £{$minimum} or more."
+        : "Your friend gets £{$give} off their first eligible £{$minimum} order.";
     $secondLine = $isReferralPage
-        ? 'You get £5 off a future eligible order after theirs is complete.'
-        : 'You get £5 when their order is complete.';
+        ? "You get £{$get} off a future eligible order after theirs is complete."
+        : "You get £{$get} when their order is complete.";
 @endphp
 
 <section class="np-rewards-referral-banner">
@@ -20,7 +26,7 @@
             <span>+</span>
         </div>
         <div>
-            <h2>GIVE £5. GET £5.</h2>
+            <h2>GIVE £{{ $give }}. GET £{{ $get }}.</h2>
             <p>{{ $firstLine }}</p>
             <p>{{ $secondLine }}</p>
         </div>

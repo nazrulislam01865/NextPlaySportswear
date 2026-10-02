@@ -24,7 +24,7 @@
                 <div class="np-referral-checkout-main">
                     <section class="np-referral-checkout-panel">
                         <div class="np-referral-checkout-panel__heading"><h2>CONTACT</h2><p>We'll send your order confirmation to this email address.</p></div>
-                        <label class="np-referral-field np-referral-field--full">Email address <span>*</span><input type="email" name="email" value="{{ old('email', $contact['email'] ?? auth()->user()?->email) }}" placeholder="you@example.com" autocomplete="email" required></label>
+                        <label class="np-referral-field np-referral-field--full">Email address <span>*</span><input type="email" name="email" value="{{ auth()->user()?->email }}" autocomplete="email" readonly required><small>This referral is tied to the new account that claimed the link.</small></label>
                     </section>
 
                     <section class="np-referral-checkout-panel">
@@ -101,7 +101,7 @@
                         @endforeach
                         <div class="np-referral-summary-divider"></div>
                         <div class="np-referral-summary-row"><span>Items subtotal ({{ $summary['quantity'] }} items)</span><strong>${{ number_format((float) ($summary['subtotal'] + $summary['customization_total']), 2) }}</strong></div>
-                        <div class="np-referral-summary-row np-referral-summary-row--reward np-referral-checkout-reward"><span><x-storefront.referral.icon name="gift" :size="24" /> <b>First order friend reward</b><small>Your friend's £5 offer is linked to this visit.<br><a href="{{ route('terms') }}">Offer terms</a></small></span><strong>{{ ($summary['referral_discount'] ?? 0) > 0 ? '−$'.number_format((float) $summary['referral_discount'], 2) : '$0.00' }}</strong></div>
+                        <div class="np-referral-summary-row np-referral-summary-row--reward np-referral-checkout-reward"><span><x-storefront.referral.icon name="gift" :size="24" /> <b>First order friend reward</b><small>Your friend's £{{ number_format((float) data_get($summary, 'referral_offer.reward_amount', 0), 0) }} offer is linked to this visit.<br><a href="{{ route('terms') }}">Offer terms</a></small></span><strong>{{ ($summary['referral_discount'] ?? 0) > 0 ? '−$'.number_format((float) $summary['referral_discount'], 2) : '$0.00' }}</strong></div>
                         <div class="np-referral-summary-row"><span>Delivery</span><span>Confirmed at review</span></div>
                         <div class="np-referral-summary-divider"></div>
                         <div class="np-referral-summary-total"><span>Estimated total<small>including configured charges</small></span><strong>${{ number_format((float) $summary['total'], 2) }}</strong></div>

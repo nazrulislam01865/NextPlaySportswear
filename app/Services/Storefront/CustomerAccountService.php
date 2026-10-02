@@ -4,11 +4,14 @@ namespace App\Services\Storefront;
 
 use App\Models\User;
 use App\Services\Referrals\ReferralOfferService;
+use App\Services\Rewards\RewardService;
 
 class CustomerAccountService
 {
-    public function __construct(private readonly ReferralOfferService $referrals)
-    {
+    public function __construct(
+        private readonly ReferralOfferService $referrals,
+        private readonly RewardService $rewards,
+    ) {
     }
 
     /**
@@ -16,10 +19,12 @@ class CustomerAccountService
      */
     public function dashboard(User $user): array
     {
+        $stats = $this->stats($user);
+
         return [
             'summary' => $this->summary($user),
-            'stats' => $this->stats($user),
-            'cards' => $this->cards($user),
+            'stats' => $stats,
+            'cards' => $this->cards(),
             'quickSteps' => $this->quickSteps(),
         ];
     }
@@ -105,78 +110,84 @@ class CustomerAccountService
     }
 
 
-    /**
-     * Presentation data for the approved rewards prototype. No reward ledger
-     * queries are made because this change is intentionally design-only.
-     *
-     * @return array<string, mixed>
-     */
-    public function rewardsPage(): array
+    /** @return array<string, mixed> */
+    public function sidebarData(User $user): array
     {
-        $spent = 65.0;
-        $target = 100.0;
-        $rewardValue = 5.0;
-        $progressPercent = (int) round(min(100, max(0, ($spent / $target) * 100)));
-
         return [
-            'is_example' => true,
-            'spent' => $spent,
-            'target' => $target,
-            'reward_value' => $rewardValue,
-            'remaining' => max(0, $target - $spent),
-            'progress_percent' => $progressPercent,
-            'available_rewards' => 0.0,
-            'activity' => [
-                ['date' => '12 Apr 2025', 'activity' => 'Purchase #NP104235', 'progress' => 42.0, 'status' => 'Added to progress'],
-                ['date' => '03 Apr 2025', 'activity' => 'Purchase #NP103892', 'progress' => 23.0, 'status' => 'Added to progress'],
-            ],
+            'summary' => $this->summary($user),
         ];
     }
 
-    /**
-     * Presentation data for the approved referral prototype. The generated
-     * share identifier is opaque and does not expose the customer's database ID.
-     *
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
+    public function rewardsPage(User $user): array
+    {
+        $data = $this->rewards->pageData($user);
+        $data['referral'] = $this->referrals->settings();
+
+        return $data;
+    }
+
+    /** @return array<string, mixed> */
     public function referralsPage(User $user): array
     {
         $shareUrl = $this->referrals->shareUrl($user);
-        $subject = '£5 off your first eligible NEXTPLAY order';
-        $body = 'Use my NEXTPLAY referral link and get £5 off your first eligible order of £50 or more: '.$shareUrl;
+        $settings = $this->referrals->settings();
+        $friendReward = (float) $settings['friend_reward_amount'];
+        $referrerReward = (float) $settings['referrer_reward_amount'];
+        $minimumOrder = (float) $settings['minimum_order'];
+        $subject = '£'.number_format($friendReward, 0).' off your first eligible NEXTPLAY order';
+        $body = 'Use my NEXTPLAY referral link and get £'.number_format($friendReward, 2).' off your first eligible order of £'.number_format($minimumOrder, 2).' or more: '.$shareUrl;
+
+        $referrals = $user->referralsMade()
+            ->with(['referredUser:id,email', 'order:id,order_number,status,customer_email'])
+            ->latest('id')
+            ->limit(50)
+            ->get()
+            ->map(function ($referral): array {
+                $email = (string) ($referral->referredUser?->email ?? $referral->order?->customer_email ?? 'Friend');
+                return [
+                    'friend' => $this->maskEmail($email),
+                    'status' => $referral->status,
+                    'reward' => $referral->rewarded_at
+                        ? '£'.number_format((float) $referral->referrer_reward_amount, 2).' available'
+                        : ($referral->status === 'cancelled'
+                            ? 'Not earned — order cancelled'
+                            : '£'.number_format((float) $referral->referrer_reward_amount, 2).' (after paid order completes)'),
+                ];
+            })
+            ->all();
 
         return [
-            'is_example' => true,
+            'is_example' => false,
+            'enabled' => (bool) $settings['enabled'],
             'share_url' => $shareUrl,
             'email_share_url' => 'mailto:?subject='.rawurlencode($subject).'&body='.rawurlencode($body),
+            'friend_reward_amount' => $friendReward,
+            'referrer_reward_amount' => $referrerReward,
+            'minimum_order' => $minimumOrder,
             'steps' => [
                 ['title' => 'Share your link', 'description' => 'Send your unique link to friends.'],
-                ['title' => 'Friend makes first £50+ eligible purchase', 'description' => 'Your friend gets £5 off their first eligible order of £50 or more.'],
-                ['title' => 'Both receive £5 rewards', 'description' => 'You get £5 off a future eligible order after their order is complete.'],
+                ['title' => 'Friend makes first £'.number_format($minimumOrder, 0).'+ eligible purchase', 'description' => 'Your friend gets £'.number_format($friendReward, 0).' off their first eligible order of £'.number_format($minimumOrder, 0).' or more.'],
+                ['title' => 'You receive your referral reward', 'description' => 'You get £'.number_format($referrerReward, 0).' to use on a future order after their order is completed.'],
             ],
-            'referrals' => [
-                ['friend' => 'j.smith***@gmail.com', 'status' => 'pending', 'reward' => '£5.00 (after order completes)'],
-                ['friend' => 'a.brown***@outlook.com', 'status' => 'completed', 'reward' => '£5.00 available'],
-            ],
+            'referrals' => $referrals,
             'questions' => [
-                ['question' => 'When do rewards arrive?', 'answer' => 'Rewards are added after eligible orders are completed and the returns period has passed.'],
-                ['question' => 'What orders qualify?', 'answer' => 'Your friend must be a new customer and place a first eligible order of £50 or more. Exclusions may apply.'],
+                ['question' => 'When do rewards arrive?', 'answer' => 'Referral rewards are added after the referred order is marked completed.'],
+                ['question' => 'What orders qualify?', 'answer' => 'Your friend must create a new customer account from your referral and use it once on their first eligible order of £'.number_format($minimumOrder, 0).' or more. Existing customers cannot redeem a referral.'],
             ],
         ];
     }
 
-    /**
-     * @return array<int, array{label: string, href: string, route: string, icon: string}>
-     */
-    public function rewardsNavigation(): array
+    private function maskEmail(string $email): string
     {
-        return [
-            ['label' => 'My account', 'href' => route('account.dashboard'), 'route' => 'account.dashboard', 'icon' => 'account'],
-            ['label' => 'Orders', 'href' => route('account.orders.index'), 'route' => 'account.orders.*', 'icon' => 'orders'],
-            ['label' => 'My Rewards', 'href' => route('account.rewards'), 'route' => 'account.rewards', 'icon' => 'rewards'],
-            ['label' => 'Refer a Friend', 'href' => route('account.referrals'), 'route' => 'account.referrals', 'icon' => 'referral'],
-            ['label' => 'Addresses', 'href' => route('account.addresses.index'), 'route' => 'account.addresses.*', 'icon' => 'address'],
-        ];
+        if (! str_contains($email, '@')) {
+            return $email;
+        }
+
+        [$local, $domain] = explode('@', $email, 2);
+        $visible = mb_substr($local, 0, min(2, mb_strlen($local)));
+
+        return $visible.'***@'.$domain;
     }
 
     /**
@@ -185,16 +196,16 @@ class CustomerAccountService
     public function accountNavigation(): array
     {
         return [
-            ['label' => 'Dashboard', 'href' => route('account.dashboard'), 'route' => 'account.dashboard'],
-            ['label' => 'Profile & Security', 'href' => route('account.profile.edit'), 'route' => 'account.profile.edit'],
-            ['label' => 'Order Center', 'href' => route('account.orders.dashboard'), 'route' => 'account.orders.dashboard'],
-            ['label' => 'Order History', 'href' => route('account.orders.index'), 'route' => 'account.orders.index'],
-            ['label' => 'My Rewards', 'href' => route('account.rewards'), 'route' => 'account.rewards'],
-            ['label' => 'Refer a Friend', 'href' => route('account.referrals'), 'route' => 'account.referrals'],
-            ['label' => 'Returns & Exchanges', 'href' => route('account.returns.index'), 'route' => 'account.returns.index'],
-            ['label' => 'Order Downloads', 'href' => route('account.downloads.index'), 'route' => 'account.downloads.index'],
-            ['label' => 'Saved Addresses', 'href' => route('account.addresses.index'), 'route' => 'account.addresses.index'],
-            ['label' => 'Payment Methods', 'href' => route('account.payment-methods.index'), 'route' => 'account.payment-methods.index'],
+            ['label' => 'Dashboard', 'href' => route('account.dashboard'), 'route' => 'account.dashboard', 'icon' => 'dashboard'],
+            ['label' => 'Profile & Security', 'href' => route('account.profile.edit'), 'route' => 'account.profile.edit', 'icon' => 'profile'],
+            ['label' => 'Order Center', 'href' => route('account.orders.dashboard'), 'route' => 'account.orders.dashboard', 'icon' => 'order-center'],
+            ['label' => 'Order History', 'href' => route('account.orders.index'), 'route' => 'account.orders.index', 'icon' => 'order-history'],
+            ['label' => 'My Rewards', 'href' => route('account.rewards'), 'route' => 'account.rewards', 'icon' => 'rewards'],
+            ['label' => 'Refer a Friend', 'href' => route('account.referrals'), 'route' => 'account.referrals', 'icon' => 'referral'],
+            ['label' => 'Returns & Exchanges', 'href' => route('account.returns.index'), 'route' => 'account.returns.index', 'icon' => 'returns'],
+            ['label' => 'Order Downloads', 'href' => route('account.downloads.index'), 'route' => 'account.downloads.index', 'icon' => 'downloads'],
+            ['label' => 'Saved Addresses', 'href' => route('account.addresses.index'), 'route' => 'account.addresses.index', 'icon' => 'address'],
+            ['label' => 'Payment Methods', 'href' => route('account.payment-methods.index'), 'route' => 'account.payment-methods.index', 'icon' => 'payment'],
         ];
     }
 
@@ -213,71 +224,85 @@ class CustomerAccountService
     }
 
     /**
-     * @return array<int, array<string, string>>
+     * @return array<string, int|float|string>
      */
     private function stats(User $user): array
     {
+        $orders = $user->orders()
+            ->reorder()
+            ->selectRaw("COUNT(*) as total_orders")
+            ->selectRaw("SUM(CASE WHEN status NOT IN ('completed', 'cancelled') THEN 1 ELSE 0 END) as open_orders")
+            ->selectRaw("SUM(CASE WHEN payment_status IN ('pending', 'failed', 'processing') THEN 1 ELSE 0 END) as awaiting_payment")
+            ->first();
+
+        $rewardBalance = max(0, $this->rewards->availableBalance($user));
+
         return [
-            ['label' => 'Open Orders', 'value' => (string) $user->orders()->whereNotIn('status', ['completed', 'cancelled'])->count(), 'description' => 'Production and delivery updates'],
-            ['label' => 'Saved Addresses', 'value' => (string) $user->customerAddresses()->count(), 'description' => 'Ready for faster checkout'],
-            ['label' => 'Payment Methods', 'value' => (string) $user->customerPaymentMethods()->count(), 'description' => 'Tokenized only, never raw cards'],
+            'total_orders' => (int) ($orders?->total_orders ?? 0),
+            'open_orders' => (int) ($orders?->open_orders ?? 0),
+            'awaiting_payment' => (int) ($orders?->awaiting_payment ?? 0),
+            'saved_addresses' => $user->customerAddresses()->count(),
+            'payment_methods' => $user->customerPaymentMethods()->count(),
+            'reward_balance' => $rewardBalance,
+            'reward_balance_display' => '£'.number_format($rewardBalance, 2),
         ];
     }
 
     /**
      * @return array<int, array<string, string>>
      */
-    private function cards(?User $user = null): array
+    private function cards(): array
     {
         return [
             [
                 'key' => 'orders',
                 'title' => 'Order History',
-                'description' => 'View order status, proof updates, tracking, invoices, returns, and repeat-order options.',
-                'badge' => $this->openOrderBadge($user),
-                'icon' => 'orders',
+                'description' => 'View past orders, track status, and reorder easily.',
+                'icon' => 'order-history',
+                'tone' => 'blue',
                 'href' => route('account.orders.index'),
             ],
             [
-                'key' => 'profile',
-                'title' => 'Account Settings',
-                'description' => 'Edit contact, organization, sport preference, and password settings.',
-                'icon' => 'settings',
-                'href' => route('account.profile.edit'),
+                'key' => 'order-center',
+                'title' => 'Order Center',
+                'description' => 'Create and manage new orders from start to finish.',
+                'icon' => 'order-center',
+                'tone' => 'orange',
+                'href' => route('account.orders.dashboard'),
             ],
             [
                 'key' => 'addresses',
                 'title' => 'Saved Addresses',
-                'description' => 'Save billing and shipping addresses for checkout.',
-                'icon' => 'location',
+                'description' => 'Manage your billing and shipping addresses.',
+                'icon' => 'address',
+                'tone' => 'blue',
                 'href' => route('account.addresses.index'),
             ],
             [
                 'key' => 'payment-methods',
-                'title' => 'Saved Payment Methods',
-                'description' => 'Manage provider-saved payment methods securely.',
+                'title' => 'Payment Methods',
+                'description' => 'Manage saved payment methods securely.',
                 'icon' => 'payment',
+                'tone' => 'green',
                 'href' => route('account.payment-methods.index'),
+            ],
+            [
+                'key' => 'profile',
+                'title' => 'Profile & Security',
+                'description' => 'Update your profile, organization settings and password.',
+                'icon' => 'profile',
+                'tone' => 'purple',
+                'href' => route('account.profile.edit'),
             ],
             [
                 'key' => 'support',
                 'title' => 'Support',
-                'description' => 'Contact support for design, order, return, or quote help.',
+                'description' => 'Get help with orders, returns, or quote requests.',
                 'icon' => 'support',
+                'tone' => 'slate',
                 'href' => route('contact'),
             ],
         ];
-    }
-
-    private function openOrderBadge(?User $user): string
-    {
-        if (! $user) {
-            return 'Orders';
-        }
-
-        return $user->orders()
-            ->whereNotIn('status', ['completed', 'cancelled'])
-            ->count().' open';
     }
 
     /**
@@ -286,9 +311,9 @@ class CustomerAccountService
     private function quickSteps(): array
     {
         return [
-            'Save your preferred address so checkout can pre-fill delivery details.',
-            'Use saved payment methods only through tokenized provider references; raw card data is never stored.',
-            'Upload artwork during product customization or later during proof review.',
+            'Save your preferred address for faster checkout.',
+            'Add a payment method for secure and easy payments.',
+            'Keep your profile information up to date.',
         ];
     }
 

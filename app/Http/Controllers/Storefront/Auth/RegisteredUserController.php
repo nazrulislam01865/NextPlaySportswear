@@ -54,7 +54,11 @@ class RegisteredUserController extends Controller
     public function store(RegisterRequest $request): RedirectResponse
     {
         $referralOffer = $this->referrals->current();
-        $user = $this->registration->register($request->validated());
+        $referrerId = is_array($referralOffer) ? (int) ($referralOffer['referrer_id'] ?? 0) : 0;
+        $user = $this->registration->register(
+            $request->validated(),
+            $referrerId > 0 ? $referrerId : null,
+        );
 
         if (is_array($referralOffer)) {
             $this->referrals->attachNewCustomer($user);

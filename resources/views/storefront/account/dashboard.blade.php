@@ -1,127 +1,103 @@
-<x-layouts.storefront :seo="$seo">
-    <x-storefront.account.shell
-        title="My Account"
-        subtitle="Your custom sportswear account center for orders, proofs, quotes, delivery details, returns, and support."
-        :account="$account"
-        :navigation="$navigation"
-        :full-width="true"
-    >
-        <div class="space-y-6">
-            <section class="overflow-hidden rounded-[30px] bg-white shadow-card ring-1 ring-slate-200">
-                <div class="grid gap-0 lg:grid-cols-[1.1fr_.9fr]">
-                    <div class="bg-gradient-to-br from-brand-navy via-brand-dark to-slate-950 p-6 text-white md:p-8">
-                        <div class="flex flex-col gap-5 sm:flex-row sm:items-center">
-                            <div class="grid h-20 w-20 shrink-0 place-items-center rounded-3xl bg-white/12 font-display text-3xl font-black text-white ring-1 ring-white/15">
-                                {{ $account['summary']['initials'] ?? 'NP' }}
-                            </div>
-                            <div class="min-w-0">
-                                <p class="text-xs font-black uppercase tracking-[0.24em] text-white/55">Welcome back</p>
-                                <h1 class="mt-2 truncate text-3xl font-black leading-tight md:text-4xl">
-                                    {{ $account['summary']['name'] }}
-                                </h1>
-                                <p class="mt-1 truncate text-sm font-bold text-white/70">{{ $account['summary']['email'] }}</p>
-                            </div>
-                        </div>
-
-                        <p class="mt-6 max-w-2xl text-sm leading-7 text-white/75 md:text-base">
-                            Manage team orders, proof approvals, artwork, delivery details, returns, and checkout information from one organized dashboard.
-                        </p>
-
-                        <div class="mt-6 flex flex-col gap-3 sm:flex-row">
-                            <a href="{{ route('products.index') }}" class="btn btn-primary">Start New Order</a>
-                            <a href="{{ route('quote.request') }}" class="btn btn-outline-inverse">Request Bulk Quote</a>
-                        </div>
-                    </div>
-
-                    <div class="grid content-between gap-5 bg-slate-50 p-6 md:p-8">
-                        <div class="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-                            @foreach ($account['stats'] as $stat)
-                                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                                    <p class="text-[11px] font-black uppercase tracking-widest text-slate-400">{{ $stat['label'] }}</p>
-                                    <p class="mt-2 font-display text-3xl font-black text-brand-navy">{{ $stat['value'] }}</p>
-                                    <p class="mt-1 text-xs font-semibold leading-5 text-slate-500">{{ $stat['description'] }}</p>
-                                </div>
-                            @endforeach
-                        </div>
-
-                        <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                    <p class="text-xs font-black uppercase tracking-widest text-slate-400">Account status</p>
-                                    <p class="mt-1 text-sm font-black text-brand-ink">{{ $account['summary']['membership'] ?? 'Customer account' }}</p>
-                                </div>
-                                <div class="flex flex-wrap gap-2">
-                                    <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black uppercase text-emerald-700">Secure session</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section class="rounded-[30px] border border-slate-200 bg-white p-5 shadow-card md:p-7">
-                <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+<x-storefront.account.page
+    :seo="$seo"
+    title="MY ACCOUNT"
+    subtitle="Manage your orders, quotes, addresses, payments, and account settings all in one place."
+    :account="$account"
+    :navigation="$navigation"
+>
+    <div class="np-account-dashboard">
+        <section class="np-account-dashboard-overview">
+            <div class="np-account-welcome-card">
+                <div class="np-account-welcome-card__person">
+                    <div class="np-account-welcome-card__avatar">{{ $account['summary']['initials'] ?? 'NP' }}</div>
                     <div>
-                        <p class="text-xs font-black uppercase tracking-[0.24em] text-brand-red">Account center</p>
-                        <h2 class="mt-2 text-3xl font-black tracking-tight text-brand-ink">Choose what you want to manage</h2>
-                        <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-                            Quick access to order history, repeat orders, quotes, saved addresses, payment methods, downloads, returns, and support.
-                        </p>
+                        <span>WELCOME BACK</span>
+                        <h2>{{ $account['summary']['name'] }}</h2>
+                        <p>{{ $account['summary']['email'] }}</p>
                     </div>
-
-                    <form method="POST" action="{{ route('logout') }}" class="shrink-0">
-                        @csrf
-                        <button type="submit" class="btn btn-danger-outline">
-                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
-                            Logout
-                        </button>
-                    </form>
                 </div>
 
-                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    @foreach ($account['cards'] as $card)
-                        <x-storefront.account.action-card
-                            :title="$card['title']"
-                            :description="$card['description']"
-                            :href="$card['href']"
-                            :icon="$card['icon']"
-                            :badge="$card['badge'] ?? null"
-                        />
+                <p class="np-account-welcome-card__description">Manage your team orders, proofs, delivery details, returns, and more from your account.</p>
+
+                <div class="np-account-welcome-card__actions">
+                    <a href="{{ route('products.index') }}" class="btn btn-secondary">
+                        <span>Start New Order</span>
+                        <x-storefront.account.icon name="arrow-right" :size="18" />
+                    </a>
+                    <a href="{{ route('quote.request') }}" class="btn btn-outline-inverse">Request Bulk Quote</a>
+                </div>
+            </div>
+
+            <div class="np-account-dashboard-metrics">
+                <div class="np-account-dashboard-metrics__grid">
+                    <x-storefront.account.dashboard-stat icon="order-history" :value="$account['stats']['open_orders']" label="Open Orders" tone="orange" :href="route('account.orders.index')" />
+                    <x-storefront.account.dashboard-stat icon="address" :value="$account['stats']['saved_addresses']" label="Saved Addresses" tone="blue" :href="route('account.addresses.index')" />
+                    <x-storefront.account.dashboard-stat icon="payment" :value="$account['stats']['payment_methods']" label="Payment Methods" tone="blue" :href="route('account.payment-methods.index')" />
+                    <x-storefront.account.dashboard-stat icon="rewards" :value="$account['stats']['reward_balance_display']" label="Rewards Balance" tone="orange" :href="route('account.rewards')" />
+                </div>
+
+                <div class="np-account-dashboard-status">
+                    <span class="np-account-dashboard-status__icon"><x-storefront.account.icon name="secure" :size="25" /></span>
+                    <span>
+                        <small>Account Status</small>
+                        <strong>{{ $account['summary']['membership'] ?? 'Customer account' }}</strong>
+                    </span>
+                    <span class="np-account-dashboard-status__badge">SECURE SESSION</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="np-account-panel np-account-center-panel">
+            <header class="np-account-panel__heading">
+                <span>ACCOUNT CENTER</span>
+                <h2>Quick Access to Your Account</h2>
+                <p>Manage your orders, account settings, addresses, payment methods and more.</p>
+            </header>
+
+            <div class="np-account-quick-grid">
+                @foreach($account['cards'] as $card)
+                    <x-storefront.account.quick-card
+                        :title="$card['title']"
+                        :description="$card['description']"
+                        :href="$card['href']"
+                        :icon="$card['icon']"
+                        :tone="$card['tone'] ?? 'blue'"
+                    />
+                @endforeach
+            </div>
+        </section>
+
+        <div class="np-account-dashboard-bottom">
+            <section class="np-account-panel np-account-setup-panel">
+                <header class="np-account-panel__heading">
+                    <span>RECOMMENDED SETUP</span>
+                    <h2>Make Future Orders Faster</h2>
+                    <p>Complete a few quick steps to save time on your next order.</p>
+                </header>
+
+                <ol class="np-account-setup-list">
+                    @foreach($account['quickSteps'] as $index => $step)
+                        <li>
+                            <span>{{ $index + 1 }}</span>
+                            <p>{{ $step }}</p>
+                            <x-storefront.account.icon name="chevron-right" :size="17" />
+                        </li>
                     @endforeach
-                </div>
+                </ol>
             </section>
 
-            <div class="grid gap-5 lg:grid-cols-[1fr_380px]">
-                <section class="rounded-[30px] border border-slate-200 bg-white p-5 shadow-card md:p-7">
-                    <div class="mb-5">
-                        <p class="text-xs font-black uppercase tracking-[0.24em] text-brand-red">Recommended setup</p>
-                        <h2 class="mt-2 text-2xl font-black text-brand-ink">Make future orders faster</h2>
-                    </div>
-
-                    <div class="grid gap-3">
-                        @foreach ($account['quickSteps'] as $index => $step)
-                            <div class="flex gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-brand-navy font-black text-white">{{ $index + 1 }}</span>
-                                <p class="text-sm font-semibold leading-6 text-slate-600">{{ $step }}</p>
-                            </div>
-                        @endforeach
-                    </div>
-                </section>
-
-                <section class="rounded-[30px] border border-brand-red/20 bg-white p-6 shadow-card">
-                    <div class="rounded-3xl bg-brand-red p-5 text-white">
-                        <p class="font-display text-3xl font-black uppercase italic">Need team help?</p>
-                        <p class="mt-2 text-sm font-semibold leading-6 text-white/85">
-                            Send your team colors, roster, deadline, and artwork. We will prepare the right quote flow for your custom sportswear order.
-                        </p>
-                    </div>
-
-                    <div class="mt-5 grid gap-3">
-                        <a href="{{ route('quote.request') }}" class="btn btn-primary w-full">Request Bulk Quote</a>
-                        <a href="{{ route('products.index') }}" class="btn btn-outline w-full">Browse Products</a>
-                    </div>
-                </section>
-            </div>
+            <section class="np-account-team-help">
+                <div class="np-account-team-help__icon"><x-storefront.account.icon name="team" :size="29" /></div>
+                <h2>Need Team Help?</h2>
+                <p>Send your team colors, roster, deadline, and artwork. We’ll prepare the right quote flow for your custom sportswear order.</p>
+                <div class="np-account-team-help__actions">
+                    <a href="{{ route('quote.request') }}" class="btn btn-primary">
+                        <span>Request Bulk Quote</span>
+                        <x-storefront.account.icon name="arrow-right" :size="18" />
+                    </a>
+                    <a href="{{ route('products.index') }}" class="btn btn-outline">Browse Products</a>
+                </div>
+            </section>
         </div>
-    </x-storefront.account.shell>
-</x-layouts.storefront>
+    </div>
+</x-storefront.account.page>

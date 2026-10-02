@@ -13,6 +13,10 @@
             <dt>Items (<span data-cart-quantity>{{ $cart['quantity'] }}</span>)</dt>
             <dd data-cart-money="merchandise_total">${{ number_format((float) $cart['merchandise_total'], 2) }}</dd>
         </div>
+        <div data-cart-discount-row class="{{ (float) ($cart['discount'] ?? 0) > 0 ? '' : 'hidden' }}">
+            <dt>Discounts</dt>
+            <dd class="font-black text-emerald-700">−<span data-cart-money="discount">${{ number_format((float) $cart['discount'], 2) }}</span></dd>
+        </div>
         <div>
             <dt>Shipping</dt>
             @if ((float) ($cart['product_shipping_total'] ?? 0) > 0)
@@ -30,6 +34,29 @@
         <span>Estimated subtotal</span>
         <strong data-cart-money="estimated_subtotal">${{ number_format((float) ($cart['estimated_subtotal'] ?? max(0, $cart['merchandise_total'] + ($cart['product_shipping_total'] ?? 0) - $cart['discount'])), 2) }}</strong>
     </div>
+
+    @if(auth('web')->check() && (((float) data_get($cart, 'reward.available', 0)) > 0 || (bool) data_get($cart, 'reward.applied', false)))
+        <div class="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs font-black uppercase tracking-[.14em] text-emerald-700">My Rewards</p>
+                    <p class="mt-1 text-sm font-bold leading-5 text-emerald-900">£{{ number_format((float) data_get($cart, 'reward.available', 0), 2) }} available</p>
+                    @if((bool) data_get($cart, 'reward.applied', false))
+                        <p class="mt-1 text-xs font-semibold text-emerald-700">£{{ number_format((float) data_get($cart, 'reward.amount', 0), 2) }} will be used on this order.</p>
+                    @else
+                        <p class="mt-1 text-xs font-semibold text-emerald-700">Apply your available balance to this upcoming order.</p>
+                    @endif
+                </div>
+                @if(! $cart['is_preview'])
+                    @if((bool) data_get($cart, 'reward.applied', false))
+                        <form method="POST" action="{{ route('cart.rewards.destroy') }}">@csrf @method('DELETE')<button type="submit" class="text-xs font-black text-emerald-800 underline">Remove</button></form>
+                    @else
+                        <form method="POST" action="{{ route('cart.rewards.apply') }}">@csrf<button type="submit" class="btn btn-light btn-sm">Use rewards</button></form>
+                    @endif
+                @endif
+            </div>
+        </div>
+    @endif
 
     <div class="np-cart-summary-actions">
         <a
@@ -132,6 +159,9 @@
 
                 const quantityNode = root.querySelector('[data-cart-quantity]');
                 if (quantityNode) quantityNode.textContent = String(Number(cart.quantity || 0));
+
+                const discountRow = root.querySelector('[data-cart-discount-row]');
+                if (discountRow) discountRow.classList.toggle('hidden', Number(cart.discount || 0) <= 0);
 
                 if (pill) pill.classList.toggle('hidden', !cart.coupon_code);
                 if (couponCode) couponCode.textContent = cart.coupon_code || '';

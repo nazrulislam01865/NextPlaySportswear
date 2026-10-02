@@ -34,9 +34,10 @@ final class ReferralCheckoutRequest extends FormRequest
         $country = (string) $this->input('country');
         $stateRequired = in_array($country, ['United States', 'Canada'], true);
         $sameBilling = $this->boolean('billing_same_as_shipping');
+        $accountEmail = strtolower(trim((string) $this->user()?->email));
 
         return [
-            'email' => ['required', 'email:rfc', 'max:255'],
+            'email' => ['required', 'email:rfc', 'max:255', Rule::in([$accountEmail])],
             'first_name' => ['required', 'string', 'min:2', 'max:120'],
             'last_name' => ['required', 'string', 'min:2', 'max:120'],
             'address_line_1' => ['required', 'string', 'min:4', 'max:190'],
@@ -45,7 +46,7 @@ final class ReferralCheckoutRequest extends FormRequest
             'state' => [$stateRequired ? 'required' : 'nullable', 'string', 'max:120'],
             'postal_code' => ['required', 'string', 'max:30', 'regex:/^[A-Za-z0-9\-\s]{3,30}$/'],
             'country' => ['required', 'string', 'max:120'],
-            'phone' => ['nullable', 'string', 'max:40', 'regex:/^[0-9+\-\s().]{7,40}$/'],
+            'phone' => ['required', 'string', 'max:40', 'regex:/^[0-9+\-\s().]{7,40}$/'],
             'delivery_preference' => ['required', Rule::in(['standard', 'express'])],
             'payment_method' => ['required', 'string', 'max:160', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
             'billing_same_as_shipping' => ['nullable', 'boolean'],
@@ -64,6 +65,8 @@ final class ReferralCheckoutRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'email.in' => 'Use the email address of the new account that claimed this referral offer.',
+            'phone.required' => 'Enter a phone number so we can complete your checkout details.',
             'postal_code.regex' => 'Enter a valid postcode or ZIP code.',
             'billing_postal_code.regex' => 'Enter a valid billing postcode or ZIP code.',
             'terms.accepted' => 'Please accept the Terms & Conditions before continuing to review.',

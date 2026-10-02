@@ -5,9 +5,10 @@
     'nextLabel' => 'Next',
     'submit' => false,
     'backToProduct' => false,
+    'step' => null,
 ])
 
-<footer class="np-proto-step-navigation">
+<footer class="np-proto-step-navigation" @if($step !== null) x-show="activeCustomizerStep === {{ (int) $step }}" x-cloak @endif>
     @if($backToProduct)
         <button type="button" class="btn btn-outline np-proto-back-button" @click="document.querySelector('.np-product-detail-hero')?.scrollIntoView({ behavior: 'smooth', block: 'start' })">
             <span aria-hidden="true">←</span> {{ $backLabel }}

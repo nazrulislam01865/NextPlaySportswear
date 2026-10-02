@@ -27,7 +27,7 @@ final class ReferralOfferController extends Controller
         return view('storefront.referral.offer', [
             'offer' => $offer,
             'seo' => [
-                'title' => 'Your £5 Referral Offer | NextPlay Sportswear',
+                'title' => 'Your £'.number_format((float) ($offer['reward_amount'] ?? 0), 0).' Referral Offer | NextPlay Sportswear',
                 'description' => 'Your NEXTPLAY referral offer is linked to this visit and will be applied when an eligible first order reaches the required spend.',
                 'robots' => 'noindex, nofollow',
             ],

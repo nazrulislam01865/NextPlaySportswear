@@ -4,6 +4,7 @@
     $normalized = strtolower(trim((string) $status));
     $label = match ($normalized) {
         'completed' => 'Completed',
+        'cancelled' => 'Cancelled',
         default => 'Pending',
     };
 @endphp

@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Discounts\CouponService;
 use App\Services\Promotions\SaleCampaignService;
 use App\Services\Referrals\ReferralOfferService;
+use App\Services\Rewards\RewardService;
 use App\Services\Storefront\ProductCatalogService;
 use App\Support\PriceTableShipping;
 use App\Support\ProductRoster;
@@ -29,12 +30,24 @@ class CartService
     /** @var array<int, array<string, mixed>> */
     private array $headerSummaryCache = [];
 
+    private readonly SaleCampaignService $saleCampaigns;
+
+    private readonly ReferralOfferService $referrals;
+
+    private readonly RewardService $rewards;
+
     public function __construct(
         private readonly ProductCatalogService $products,
         private readonly CouponService $coupons,
-        private readonly SaleCampaignService $saleCampaigns,
-        private readonly ReferralOfferService $referrals,
+        ?SaleCampaignService $saleCampaigns = null,
+        ?ReferralOfferService $referrals = null,
+        ?RewardService $rewards = null,
     ) {
+        // Keep direct construction used by existing backend tests compatible while
+        // production requests continue to receive these services through Laravel DI.
+        $this->saleCampaigns = $saleCampaigns ?? app(SaleCampaignService::class);
+        $this->referrals = $referrals ?? app(ReferralOfferService::class);
+        $this->rewards = $rewards ?? app(RewardService::class);
     }
 
     public function summary(bool $preview = false): array
@@ -58,7 +71,12 @@ class CartService
             $this->currentUser()
         );
         $referralDiscount = (float) ($referralOffer['amount'] ?? 0.00);
-        $discount = $couponDiscount + $referralDiscount;
+        $reward = $this->rewards->cartAdjustment(
+            max(0, $merchandiseTotal - $couponDiscount - $referralDiscount),
+            $this->currentUser()
+        );
+        $rewardDiscount = (float) ($reward['amount'] ?? 0.00);
+        $discount = $couponDiscount + $referralDiscount + $rewardDiscount;
         $genericShippingItems = collect($items)->where('uses_product_shipping', false);
         $additionalShipping = $this->calculateShipping(
             (float) $genericShippingItems->sum(fn (array $item) => ($item['line_subtotal'] ?? 0) + ($item['customization_total'] ?? 0)),
@@ -90,6 +108,8 @@ class CartService
             'coupon_discount' => round($couponDiscount, 2),
             'referral_discount' => round($referralDiscount, 2),
             'referral_offer' => $referralOffer,
+            'reward_discount' => round($rewardDiscount, 2),
+            'reward' => $reward,
             'shipping' => round($shipping, 2),
             'additional_shipping' => round($additionalShipping, 2),
             'product_shipping_total' => round($productShippingTotal, 2),

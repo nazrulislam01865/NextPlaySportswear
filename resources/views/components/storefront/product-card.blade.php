@@ -54,19 +54,45 @@
     $productTagModifierClass = $isCustomizableProductTag
         ? 'np-product-card-badge--customizable'
         : '';
+
+    $primaryImageUrl = trim((string) ($product['image'] ?? ''));
+    $hoverImageUrl = collect($product['gallery'] ?? [])
+        ->map(function ($image): string {
+            if (is_array($image)) {
+                return trim((string) ($image['url'] ?? ''));
+            }
+
+            return is_string($image) ? trim($image) : '';
+        })
+        ->first(fn (string $url): bool => $url !== '' && $url !== $primaryImageUrl);
 @endphp
 
 <article class="np-product-card np-product-card--nextplay np-product-card--canonical" data-product-card data-product-id="{{ $product['id'] ?? '' }}">
     <div class="np-product-card-media-wrap">
-        <a href="{{ $productUrl }}" class="np-product-square-media np-product-card-media" aria-label="View {{ $product['title'] }}">
+        <a
+            href="{{ $productUrl }}"
+            class="np-product-square-media np-product-card-media{{ $hoverImageUrl ? ' np-product-card-media--has-hover' : '' }}"
+            aria-label="View {{ $product['title'] }}"
+        >
             <img
                 src="{{ $product['image'] }}"
                 alt="{{ $product['alt'] }}"
-                class="np-product-square-image"
+                class="np-product-square-image np-product-card-image np-product-card-image--primary"
                 loading="lazy"
                 width="900"
                 height="900"
             >
+            @if ($hoverImageUrl)
+                <img
+                    src="{{ $hoverImageUrl }}"
+                    alt=""
+                    class="np-product-square-image np-product-card-image np-product-card-image--secondary"
+                    loading="lazy"
+                    width="900"
+                    height="900"
+                    aria-hidden="true"
+                >
+            @endif
         </a>
 
         @if ($showProductTag)

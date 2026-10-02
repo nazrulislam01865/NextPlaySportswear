@@ -2,6 +2,7 @@
     :seo="$seo"
     title="MY REWARDS"
     subtitle="A little more back when you shop and share."
+    :account="$account"
     :navigation="$navigation"
     breadcrumb="My Rewards"
     :badge="$rewards['is_example'] ? 'Example dashboard' : null"
@@ -37,7 +38,9 @@
         </div>
     </section>
 
-    <x-storefront.account.rewards.referral-banner :action-href="route('account.referrals')" />
+    @if($rewards['referral']['enabled'])
+        <x-storefront.account.rewards.referral-banner :action-href="route('account.referrals')" :friend-reward="$rewards['referral']['friend_reward_amount']" :referrer-reward="$rewards['referral']['referrer_reward_amount']" :minimum-order="$rewards['referral']['minimum_order']" />
+    @endif
 
     <section class="np-rewards-panel" aria-labelledby="reward-activity-title">
         <h2 id="reward-activity-title">REWARD ACTIVITY</h2>
@@ -52,14 +55,16 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($rewards['activity'] as $activity)
+                    @forelse ($rewards['activity'] as $activity)
                         <tr>
                             <td data-label="Date">{{ $activity['date'] }}</td>
                             <td data-label="Activity">{{ $activity['activity'] }}</td>
-                            <td data-label="Progress">£{{ number_format((float) $activity['progress'], 2) }}</td>
+                            <td data-label="Progress">{{ (float) $activity['progress'] >= 0 ? '+' : '−' }}£{{ number_format(abs((float) $activity['progress']), 2) }}</td>
                             <td data-label="Status">{{ $activity['status'] }}</td>
                         </tr>
-                    @endforeach
+                    @empty
+                        <tr><td colspan="4">No reward activity yet.</td></tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>

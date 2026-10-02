@@ -34,60 +34,9 @@
         @if ($fullWidth)
             {{ $slot }}
         @else
-            <div class="grid min-w-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)]">
-                <aside class="min-w-0 space-y-5">
-                    <div class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-card">
-                        <div class="flex items-center gap-4">
-                            <div class="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-brand-navy font-display text-2xl font-black text-white shadow-lg shadow-brand-navy/20">
-                                {{ $account['summary']['initials'] ?? 'NP' }}
-                            </div>
-                            <div class="min-w-0">
-                                <p class="truncate text-lg font-black text-brand-ink">{{ $account['summary']['name'] ?? auth()->user()?->name }}</p>
-                                <p class="truncate text-sm font-bold text-slate-500">{{ $account['summary']['email'] ?? auth()->user()?->email }}</p>
-                            </div>
-                        </div>
-
-                        <div class="mt-5 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm">
-                            <div class="flex items-center justify-between gap-3">
-                                <span class="font-bold text-slate-500">Rewards</span>
-                                <span class="rounded-full bg-brand-red px-3 py-1 text-xs font-black uppercase text-white">{{ $account['summary']['rewardBalance'] ?? '$0.00' }}</span>
-                            </div>
-                            <div class="flex items-center justify-between gap-3">
-                                <span class="font-bold text-slate-500">Account Type</span>
-                                <span class="font-black text-brand-ink">{{ $account['summary']['membership'] ?? 'Customer' }}</span>
-                            </div>
-                        </div>
-
-                        <form method="POST" action="{{ route('logout') }}" class="mt-5">
-                            @csrf
-                            <button type="submit" class="btn btn-danger-outline w-full">
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                                    <path d="M16 17l5-5-5-5"></path>
-                                    <path d="M21 12H9"></path>
-                                </svg>
-                                Logout
-                            </button>
-                        </form>
-                    </div>
-
-                    <nav class="rounded-[28px] border border-slate-200 bg-white p-3 shadow-card" aria-label="Account navigation">
-                        @foreach ($navigation as $item)
-                            @php
-                                $isActive = request()->url() === $item['href'];
-                            @endphp
-                            <a
-                                href="{{ $item['href'] }}"
-                                class="mb-1 flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-black transition last:mb-0 {{ $isActive ? 'bg-brand-navy text-white shadow-md shadow-brand-navy/10' : 'text-slate-700 hover:bg-slate-50 hover:text-brand-red' }}"
-                            >
-                                <span>{{ $item['label'] }}</span>
-                                <span aria-hidden="true">›</span>
-                            </a>
-                        @endforeach
-                    </nav>
-                </aside>
-
-                <div class="min-w-0">
+            <div class="np-account-prototype-layout">
+                <x-storefront.account.sidebar :account="$account" :navigation="$navigation" />
+                <div class="np-account-prototype-content np-account-square-cards">
                     {{ $slot }}
                 </div>
             </div>

@@ -12,6 +12,7 @@ use App\Services\Shipping\RuralAreaSurchargeService;
 use App\Services\Shipping\ShippingMethodService;
 use App\Services\Payments\PaymentMethodService;
 use App\Services\Referrals\ReferralOfferService;
+use App\Services\Rewards\RewardService;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +36,7 @@ class CheckoutService
         private readonly FlowTrackOrderSyncManager $flowTrackSync,
         private readonly OrderProductSnapshotFactory $productSnapshots,
         private readonly ReferralOfferService $referrals,
+        private readonly RewardService $rewards,
     ) {
     }
 
@@ -302,12 +304,40 @@ class CheckoutService
         $orderInformation = (array) ($state['information'] ?? []);
         $referralOffer = (array) ($cart['referral_offer'] ?? []);
         if ((bool) ($referralOffer['applied'] ?? false)) {
-            $activeOffer = $this->referrals->current($user);
+            if (! $user instanceof User) {
+                throw ValidationException::withMessages([
+                    'referral' => 'Create and sign in to the new customer account that claimed this referral before checkout.',
+                ]);
+            }
+
+            $activeOffer = $this->referrals->assertEligibleForCheckout(
+                $user,
+                $customerEmail,
+                (float) ($cart['merchandise_total'] ?? 0),
+                (bool) ($couponValidation['valid'] ?? false),
+            );
+
+            $expectedReferralDiscount = round((float) ($activeOffer['discount_amount'] ?? 0), 2);
+            if (abs($expectedReferralDiscount - round((float) ($referralOffer['amount'] ?? 0), 2)) > 0.009) {
+                throw ValidationException::withMessages([
+                    'referral' => 'The referral offer changed while you were checking out. Review the updated total and try again.',
+                ]);
+            }
+
             $orderInformation['referral_offer'] = [
                 'applied' => true,
-                'amount' => round((float) ($referralOffer['amount'] ?? 0), 2),
-                'minimum_order' => round((float) ($referralOffer['minimum_order'] ?? ReferralOfferService::MINIMUM_ORDER), 2),
-                'referrer_id' => is_array($activeOffer) ? (int) ($activeOffer['referrer_id'] ?? 0) : null,
+                'amount' => $expectedReferralDiscount,
+                'minimum_order' => round((float) ($activeOffer['minimum_order'] ?? ReferralOfferService::MINIMUM_ORDER), 2),
+                'referrer_reward_amount' => round((float) ($activeOffer['referrer_reward_amount'] ?? 0), 2),
+                'referrer_id' => (int) ($activeOffer['referrer_id'] ?? 0),
+            ];
+        }
+
+        $rewardDiscount = round((float) ($cart['reward_discount'] ?? 0), 2);
+        if ($rewardDiscount > 0 && $user instanceof User) {
+            $orderInformation['reward_redemption'] = [
+                'applied' => true,
+                'amount' => $rewardDiscount,
             ];
         }
 
@@ -325,7 +355,38 @@ class CheckoutService
         $createdNewOrder = true;
 
         try {
-            $order = DB::transaction(function () use ($state, $cart, $summary, $idempotencyKey, $user, $couponValidation, $orderInformation): Order {
+            $order = DB::transaction(function () use ($state, $cart, $summary, $idempotencyKey, $user, $couponValidation, $orderInformation, $rewardDiscount, $customerEmail): Order {
+                $lockedCustomer = null;
+                if ($user instanceof User) {
+                    $lockedCustomer = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+                }
+
+                if ((bool) data_get($orderInformation, 'referral_offer.applied', false)) {
+                    if (! $lockedCustomer instanceof User) {
+                        throw ValidationException::withMessages([
+                            'referral' => 'The referral customer account could not be validated.',
+                        ]);
+                    }
+
+                    // Re-check after locking the customer row so two browser tabs
+                    // cannot both consume the one-time first-order referral.
+                    $lockedOffer = $this->referrals->assertEligibleForCheckout(
+                        $lockedCustomer,
+                        $customerEmail,
+                        (float) ($cart['merchandise_total'] ?? 0),
+                        (bool) ($couponValidation['valid'] ?? false),
+                    );
+
+                    if (abs(
+                        round((float) ($lockedOffer['discount_amount'] ?? 0), 2)
+                        - round((float) data_get($orderInformation, 'referral_offer.amount', 0), 2)
+                    ) > 0.009) {
+                        throw ValidationException::withMessages([
+                            'referral' => 'The referral offer changed before the order was placed. Review the updated total and try again.',
+                        ]);
+                    }
+                }
+
                 $paymentMethod = (string) ($summary['payment_method']['method'] ?? '');
                 $paymentRequiresManualReview = (bool) ($summary['payment_method']['requires_manual_review'] ?? false);
                 $paymentType = (string) ($summary['payment_method']['payment_type'] ?? '');
@@ -362,6 +423,14 @@ class CheckoutService
                     'idempotency_key' => $idempotencyKey,
                     'placed_at' => now(),
                 ]);
+
+                if ($user instanceof User && $rewardDiscount > 0) {
+                    $this->rewards->reserveForOrder($order, $user, $rewardDiscount);
+                }
+
+                if ((bool) data_get($orderInformation, 'referral_offer.applied', false)) {
+                    $this->rewards->recordReferralOrder($order, $lockedCustomer, (array) $orderInformation['referral_offer']);
+                }
 
                 foreach ($cart['items'] as $cartItem) {
                     $productData = (array) ($cartItem['product'] ?? []);
@@ -423,11 +492,12 @@ class CheckoutService
             $createdNewOrder = false;
         }
 
-        $this->cart->recordCouponRedemption($order, (float) $order->discount_total, $user);
+        $this->cart->recordCouponRedemption($order, (float) ($cart['coupon_discount'] ?? 0), $user);
 
         $snapshot = $this->orderSnapshot($order);
         $this->mergeState('placed_order', $snapshot);
         $this->cart->clear(true);
+        $this->rewards->clearCartRedemption();
         if ((bool) data_get($snapshot, 'information.referral_offer.applied', false)) {
             $this->referrals->clear();
         }
@@ -475,6 +545,7 @@ class CheckoutService
                 'customization_total' => (float) $order->customization_total,
                 'discount' => (float) $order->discount_total,
                 'referral_discount' => (float) data_get($order->information, 'referral_offer.amount', 0),
+                'reward_discount' => (float) data_get($order->information, 'reward_redemption.amount', 0),
                 'coupon_code' => $order->coupon_code,
                 'shipping' => (float) $order->shipping_total,
                 'rural_surcharge' => (float) $order->rural_surcharge_total,
@@ -840,6 +911,8 @@ class CheckoutService
             'discount' => $cart['discount'],
             'referral_discount' => $cart['referral_discount'] ?? 0,
             'referral_offer' => $cart['referral_offer'] ?? [],
+            'reward_discount' => $cart['reward_discount'] ?? 0,
+            'reward' => $cart['reward'] ?? [],
             'coupon_code' => $cart['coupon_code'] ?? null,
             'shipping_base' => round($productShippingTotal + $automaticShippingBase, 2),
             'rural_surcharge' => round($ruralSurcharge, 2),

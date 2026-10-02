@@ -63,16 +63,48 @@ class OrderCenterController extends Controller
             });
         }
         if ($status = $request->query('status')) {
-            if (array_key_exists($status, config('commerce.order_statuses', []))) $orders->where('status', $status);
+            if (array_key_exists($status, config('commerce.order_statuses', []))) {
+                $orders->where('status', $status);
+            }
         }
         if ($payment = $request->query('payment_status')) {
-            if (array_key_exists($payment, config('commerce.payment_statuses', []))) $orders->where('payment_status', $payment);
+            if (array_key_exists($payment, config('commerce.payment_statuses', []))) {
+                $orders->where('payment_status', $payment);
+            }
         }
+
+        $period = (string) $request->query('period', '');
+        if ($period === '30') {
+            $orders->where('placed_at', '>=', now()->subDays(30));
+        } elseif ($period === '90') {
+            $orders->where('placed_at', '>=', now()->subDays(90));
+        } elseif ($period === 'year') {
+            $orders->where('placed_at', '>=', now()->startOfYear());
+        }
+
+        $sort = (string) $request->query('sort', 'recent');
+        match ($sort) {
+            'oldest' => $orders->orderBy('placed_at')->orderBy('id'),
+            'total_high' => $orders->orderByDesc('grand_total')->orderByDesc('id'),
+            'total_low' => $orders->orderBy('grand_total')->orderByDesc('id'),
+            default => $orders->orderByDesc('placed_at')->orderByDesc('id'),
+        };
 
         return $this->view('storefront.account.orders.index', $request, [
             'orders' => $orders->paginate(10)->withQueryString(),
             'orderStatuses' => config('commerce.order_statuses', []),
             'paymentStatuses' => config('commerce.payment_statuses', []),
+            'periodOptions' => [
+                '30' => 'Last 30 Days',
+                '90' => 'Last 90 Days',
+                'year' => 'This Year',
+            ],
+            'sortOptions' => [
+                'recent' => 'Most Recent',
+                'oldest' => 'Oldest',
+                'total_high' => 'Highest Total',
+                'total_low' => 'Lowest Total',
+            ],
         ], 'My Orders');
     }
 

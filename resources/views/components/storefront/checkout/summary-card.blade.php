@@ -73,6 +73,9 @@
         <div class="flex justify-between gap-4"><dt class="font-semibold text-slate-500">Merchandise subtotal</dt><dd class="font-black text-slate-900">${{ number_format($summary['subtotal'] ?? 0, 2) }}</dd></div>
         <div class="flex justify-between gap-4"><dt class="font-semibold text-slate-500">Customization</dt><dd class="font-black text-slate-900">${{ number_format($summary['customization_total'] ?? 0, 2) }}</dd></div>
         <div class="flex justify-between gap-4"><dt class="font-semibold text-slate-500">Discount @if(!empty($summary['coupon_code']))<span class="text-xs font-black text-green-700">({{ $summary['coupon_code'] }})</span>@endif</dt><dd class="font-black text-green-700">-${{ number_format($summary['discount'] ?? 0, 2) }}</dd></div>
+        @if((float) ($summary['reward_discount'] ?? 0) > 0)
+            <div class="flex justify-between gap-4 rounded-xl bg-emerald-50 px-3 py-2"><dt class="font-black text-emerald-700">My Rewards applied</dt><dd class="font-black text-emerald-700">−£{{ number_format((float) $summary['reward_discount'], 2) }}</dd></div>
+        @endif
         <div class="flex justify-between gap-4">
             <dt class="font-semibold text-slate-500">
                 Shipping charges

@@ -254,6 +254,9 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
             ->except('show');
 
 
+        Route::get('/reward-program', [\App\Http\Controllers\Admin\RewardProgramController::class, 'edit'])->name('reward-program.edit');
+        Route::put('/reward-program', [\App\Http\Controllers\Admin\RewardProgramController::class, 'update'])->name('reward-program.update');
+
         Route::get('/customers', [\App\Http\Controllers\Admin\CustomerController::class, 'index'])->name('customers.index');
         Route::get('/customers/{customer}', [\App\Http\Controllers\Admin\CustomerController::class, 'show'])->name('customers.show');
         Route::patch('/customers/{customer}/suspend', [\App\Http\Controllers\Admin\CustomerController::class, 'suspend'])
@@ -262,6 +265,12 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::patch('/customers/{customer}/reactivate', [\App\Http\Controllers\Admin\CustomerController::class, 'reactivate'])
             ->middleware('throttle:10,1')
             ->name('customers.reactivate');
+        Route::patch('/customers/{customer}/rewards', [\App\Http\Controllers\Admin\CustomerRewardController::class, 'update'])
+            ->middleware('throttle:20,1')
+            ->name('customers.rewards.update');
+        Route::post('/customers/{customer}/rewards', [\App\Http\Controllers\Admin\CustomerRewardController::class, 'store'])
+            ->middleware('throttle:20,1')
+            ->name('customers.rewards.store');
 
         Route::get('/users', [\App\Http\Controllers\Admin\AdminUserController::class, 'index'])->name('users.index');
         Route::post('/users', [\App\Http\Controllers\Admin\AdminUserController::class, 'store'])
@@ -466,6 +475,12 @@ Route::patch('/cart/items/{cartItem}', [CartController::class, 'update'])->name(
 Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.items.destroy');
 Route::post('/cart/coupon', [CartController::class, 'applyCoupon'])->name('cart.coupon.apply');
 Route::delete('/cart/coupon', [CartController::class, 'removeCoupon'])->name('cart.coupon.destroy');
+Route::post('/cart/rewards', [CartController::class, 'applyRewards'])
+    ->middleware(['not.admin', 'auth:web', 'customer', 'verified'])
+    ->name('cart.rewards.apply');
+Route::delete('/cart/rewards', [CartController::class, 'removeRewards'])
+    ->middleware(['not.admin', 'auth:web', 'customer', 'verified'])
+    ->name('cart.rewards.destroy');
 
 
 Route::get('/order-confirmation', [OrderController::class, 'confirmation'])->name('order.confirmation');

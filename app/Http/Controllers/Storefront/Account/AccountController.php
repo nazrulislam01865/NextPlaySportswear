@@ -26,8 +26,9 @@ class AccountController extends Controller
     {
         return view('storefront.account.rewards', [
             'seo' => $this->seo('My Rewards | NextPlay Sportswear'),
-            'rewards' => $this->accountService->rewardsPage(),
-            'navigation' => $this->accountService->rewardsNavigation(),
+            'rewards' => $this->accountService->rewardsPage($request->user()),
+            'account' => $this->accountService->sidebarData($request->user()),
+            'navigation' => $this->accountService->accountNavigation(),
         ]);
     }
 
@@ -36,7 +37,8 @@ class AccountController extends Controller
         return view('storefront.account.referrals', [
             'seo' => $this->seo('Refer a Friend | NextPlay Sportswear'),
             'referrals' => $this->accountService->referralsPage($request->user()),
-            'navigation' => $this->accountService->rewardsNavigation(),
+            'account' => $this->accountService->sidebarData($request->user()),
+            'navigation' => $this->accountService->accountNavigation(),
         ]);
     }
 

@@ -248,33 +248,180 @@ window.productBuilderFabricPricing = function (config = {}) {
         startCustomizing() {
             this.openCustomizerStep(1);
         },
-        selectedPricedFabricValue() {
-            for (const group of (config.option_groups || [])) {
-                if (group.display_mode === 'hidden') continue;
+        hasFabricPriceTableData(table) {
+            return Boolean(table && (
+                (Array.isArray(table.rows) && table.rows.length)
+                || (Array.isArray(table.price_tiers) && table.price_tiers.length)
+            ));
+        },
+        normalizeFabricPriceIdentity(value) {
+            return String(value || '')
+                .trim()
+                .toLowerCase()
+                .replace(/^master:/, '')
+                .replace(/^code:/, '')
+                .replace(/[^a-z0-9]+/g, '');
+        },
+        fabricPriceCellMatchesValue(cell, value) {
+            const cellIdentity = this.normalizeFabricPriceIdentity(cell);
+            if (!cellIdentity) return false;
 
-                if (group.type === 'checkbox') {
-                    const selected = this.multiSelections?.[group.id] || [];
-                    for (const valueId of selected) {
-                        const value = (group.values || []).find((candidate) => candidate.id === valueId);
-                        if (value?.fabric_price_table?.price_tiers?.length) return value;
-                    }
-                    continue;
+            const identities = [value?.id, value?.code, value?.label]
+                .map((candidate) => this.normalizeFabricPriceIdentity(candidate))
+                .filter((candidate) => candidate.length >= 2);
+
+            return identities.some((identity) => (
+                cellIdentity === identity
+                || cellIdentity.includes(identity)
+                || (identity.length >= 5 && identity.includes(cellIdentity))
+            ));
+        },
+        derivedFabricPriceTableFromDefault(value) {
+            const source = config.price_table || {};
+            const headers = Array.isArray(source.headers) ? source.headers.slice() : [];
+            const rows = Array.isArray(source.rows) ? source.rows.filter(Array.isArray) : [];
+            if (!value || headers.length < 2 || !rows.length) return null;
+
+            let fabricColumn = -1;
+            let bestMatches = 0;
+            headers.forEach((header, columnIndex) => {
+                const matches = rows.reduce((count, row) => count + (this.fabricPriceCellMatchesValue(row?.[columnIndex], value) ? 1 : 0), 0);
+                const headerText = String(header || '').toLowerCase();
+                const looksLikeFabricColumn = /(fabric|material|price\s*table)/i.test(headerText);
+                const weightedMatches = matches + (looksLikeFabricColumn && matches > 0 ? 0.25 : 0);
+                if (weightedMatches > bestMatches) {
+                    bestMatches = weightedMatches;
+                    fabricColumn = columnIndex;
                 }
+            });
 
-                const value = this.optionValue ? this.optionValue(group, this.selections?.[group.id]) : null;
-                if (value?.fabric_price_table?.price_tiers?.length) return value;
+            if (fabricColumn < 0 || bestMatches <= 0) return null;
+            const filteredRows = rows.filter((row) => this.fabricPriceCellMatchesValue(row?.[fabricColumn], value));
+            if (!filteredRows.length) return null;
+
+            const normalizedHeader = (header) => String(header || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+            const quantityColumn = headers.findIndex((header) => /\b(qty|quantity)\b/.test(normalizedHeader(header)));
+            let productPriceColumn = headers.findIndex((header, index) => {
+                if (index === fabricColumn) return false;
+                const text = normalizedHeader(header);
+                const isShipping = /\b(shipping|shipment|delivery|freight|surcharge)\b/.test(text);
+                return !isShipping && (
+                    /\b(product|unit|item) price\b/.test(text)
+                    || /\bprice (product|unit|item)\b/.test(text)
+                    || text === 'unit price'
+                );
+            });
+
+            if (productPriceColumn < 0) {
+                const highlighted = Number(source.highlight_column);
+                if (Number.isInteger(highlighted) && highlighted >= 0 && highlighted < headers.length && highlighted !== fabricColumn) {
+                    productPriceColumn = highlighted;
+                }
+            }
+
+            const outputHeaders = headers.filter((_, index) => index !== fabricColumn);
+            const outputRows = filteredRows.map((row) => row.filter((_, index) => index !== fabricColumn));
+            const outputPriceColumn = productPriceColumn < 0 ? -1 : productPriceColumn - (productPriceColumn > fabricColumn ? 1 : 0);
+            const outputQuantityColumn = quantityColumn < 0 ? 0 : quantityColumn - (quantityColumn > fabricColumn ? 1 : 0);
+            const parseRange = (raw) => {
+                const text = String(raw || '').replace(/[–—−]/g, '-').replace(/,/g, '').trim();
+                let match = text.match(/^(\d+)\s*(?:-|to)\s*(\d+)$/i);
+                if (match) return { min: Number(match[1]), max: Number(match[2]) };
+                match = text.match(/^(\d+)\s*(?:\+|plus)?$/i);
+                return match ? { min: Number(match[1]), max: null } : { min: null, max: null };
+            };
+            const parseMoney = (raw) => {
+                const match = String(raw ?? '').match(/-?\d[\d,]*(?:\.\d+)?/);
+                return match ? Number(match[0].replace(/,/g, '')) : null;
+            };
+            const priceTiers = outputPriceColumn < 0 ? [] : outputRows.map((row) => {
+                const label = String(row?.[outputQuantityColumn] ?? '').trim();
+                const range = parseRange(label);
+                const unit = parseMoney(row?.[outputPriceColumn]);
+                if (!Number.isFinite(range.min) || !Number.isFinite(unit)) return null;
+                return { label, min: range.min, max: range.max, unit, compare_at: null, savings_label: null };
+            }).filter(Boolean);
+            const identity = this.normalizeFabricPriceIdentity(value.id || value.code || value.label) || 'selected';
+
+            return {
+                key: `derived:${identity}`,
+                fabric_code: value.id || value.code || null,
+                label: value.label || value.id || 'Selected fabric',
+                headers: outputHeaders,
+                rows: outputRows,
+                highlight_column: outputPriceColumn >= 0 ? outputPriceColumn : Number(source.highlight_column || 1),
+                note: source.note || null,
+                price_tiers: priceTiers,
+                derived_from_default: true,
+            };
+        },
+        fabricPriceTableForValue(value) {
+            if (!value) return null;
+            if (this.hasFabricPriceTableData(value.fabric_price_table)) return value.fabric_price_table;
+
+            const identities = [value.id, value.code, value.label]
+                .map((candidate) => this.normalizeFabricPriceIdentity(candidate))
+                .filter(Boolean);
+            const configuredTable = (config.fabric_price_tables || []).find((table) => {
+                if (!this.hasFabricPriceTableData(table)) return false;
+                const tableIdentities = [table.key, table.fabric_code, table.label]
+                    .map((candidate) => this.normalizeFabricPriceIdentity(candidate))
+                    .filter(Boolean);
+                return tableIdentities.some((candidate) => identities.includes(candidate));
+            });
+
+            return configuredTable || this.derivedFabricPriceTableFromDefault(value);
+        },
+        selectedFabricPriceValue() {
+            for (const group of (config.option_groups || [])) {
+                if ((group.display_mode || 'customer') === 'hidden') continue;
+                const selectedValues = group.type === 'checkbox'
+                    ? (this.multiSelections?.[group.id] || []).map((valueId) => (group.values || []).find((candidate) => String(candidate.id) === String(valueId)))
+                    : [this.optionValue ? this.optionValue(group, this.selections?.[group.id]) : null];
+
+                for (const value of selectedValues.filter(Boolean)) {
+                    const table = this.fabricPriceTableForValue(value);
+                    if (table) return { ...value, fabric_price_table: table };
+                }
+            }
+            return null;
+        },
+        selectedFabricPriceTable() {
+            return this.selectedFabricPriceValue()?.fabric_price_table || null;
+        },
+        selectedPricedFabricValue() {
+            if (typeof this.selectedFabricPriceValue === 'function') {
+                return this.selectedFabricPriceValue();
+            }
+
+            for (const group of (config.option_groups || [])) {
+                if ((group.display_mode || 'customer') === 'hidden') continue;
+
+                const selectedValues = group.type === 'checkbox'
+                    ? (this.multiSelections?.[group.id] || []).map((valueId) => (group.values || []).find((candidate) => String(candidate.id) === String(valueId)))
+                    : [this.optionValue ? this.optionValue(group, this.selections?.[group.id]) : null];
+
+                for (const value of selectedValues.filter(Boolean)) {
+                    const table = value?.fabric_price_table;
+                    if (table && ((table.rows || []).length || (table.price_tiers || []).length)) return value;
+                }
             }
 
             return null;
         },
         activePriceTable() {
-            const fabricValue = this.selectedPricedFabricValue();
-            if (fabricValue?.fabric_price_table?.rows?.length) return fabricValue.fabric_price_table;
+            const fabricTable = typeof this.selectedFabricPriceTable === 'function'
+                ? this.selectedFabricPriceTable()
+                : this.selectedPricedFabricValue()?.fabric_price_table;
+
+            if (fabricTable && (fabricTable.rows || []).length) return fabricTable;
             return config.price_table || null;
         },
         activePriceTiers() {
-            const fabricValue = this.selectedPricedFabricValue();
-            if (fabricValue?.fabric_price_table?.price_tiers?.length) return fabricValue.fabric_price_table.price_tiers;
+            const fabricTable = typeof this.selectedFabricPriceTable === 'function'
+                ? this.selectedFabricPriceTable()
+                : this.selectedPricedFabricValue()?.fabric_price_table;
+            if (fabricTable?.price_tiers?.length) return fabricTable.price_tiers;
             return config.price_tiers || [];
         },
         priceTableSourceLabel() {
@@ -404,7 +551,6 @@ window.productBuilderFabricPricing = function (config = {}) {
                         <div class="np-product-material-options">
                             <div class="np-product-section-label-row">
                                 <h2>Material Option</h2>
-                                <span class="np-product-help" title="Material pricing and availability are configured for this product.">?</span>
                             </div>
                             <div class="np-product-material-grid">
                                 @foreach($materialGroup['values'] as $value)
@@ -536,6 +682,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                         </div>
 
                         <x-storefront.product.customizer.navigation
+                            :step="1"
                             :back-to-product="true"
                             back-label="Back to Product"
                             :next-step="2"
@@ -611,7 +758,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                             @endif
                         </div>
 
-                        <x-storefront.product.customizer.navigation :back-step="1" back-label="Back: Price & Fabric" :next-step="3" next-label="Next: Player Names & Numbers" />
+                        <x-storefront.product.customizer.navigation :step="2" :back-step="1" back-label="Back: Price & Fabric" :next-step="3" next-label="Next: Player Names & Numbers" />
                         </div>
                     </section>
 
@@ -628,7 +775,15 @@ window.productBuilderFabricPricing = function (config = {}) {
                         <div id="np-product-step-panel-3" class="np-proto-step-expanded" x-show="isCustomizerStepOpen(3)" x-cloak>
                             <div class="np-proto-step-content">
                             @if($rosterEnabled)
-                                <div x-show="rosterEnabled" x-cloak>
+                                <div
+                                    class="np-proto-empty-state np-proto-player-quantity-message"
+                                    x-show="totalQuantity() <= 0"
+                                    x-cloak
+                                    role="status"
+                                >
+                                    <strong>Select a quantity from the Sizes &amp; Quantities section to add player names and numbers.</strong>
+                                </div>
+                                <div x-show="rosterEnabled && totalQuantity() > 0" x-cloak>
                                     <div class="np-roster-same-for-all" x-show="rosterRows.length > 0" x-cloak>
                                         <label class="np-roster-same-toggle">
                                             <input type="checkbox" :checked="rosterSameForAll" @change="setRosterSameForAll($event.target.checked)">
@@ -679,7 +834,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                             @endif
                         </div>
 
-                        <x-storefront.product.customizer.navigation :back-step="2" back-label="Back: Sizes & Quantities" :next-step="4" next-label="Next: Upload Artwork" />
+                        <x-storefront.product.customizer.navigation :step="3" :back-step="2" back-label="Back: Sizes & Quantities" :next-step="4" next-label="Next: Upload Artwork" />
                         </div>
                     </section>
 
@@ -759,7 +914,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                             </div>
                         </div>
 
-                        <x-storefront.product.customizer.navigation :back-step="3" back-label="Back: Player Names & Numbers" :next-step="5" next-label="Next: Production & Shipping" />
+                        <x-storefront.product.customizer.navigation :step="4" :back-step="3" back-label="Back: Player Names & Numbers" :next-step="5" next-label="Next: Production & Shipping" />
                         </div>
                     </section>
 
@@ -821,7 +976,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                             <div class="np-proto-important-notes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><div><strong>Important Notes</strong><ul><li>Production starts after artwork approval and payment confirmation.</li><li>Delivery time may vary based on order quantity, destination and customs clearance.</li><li>You will receive tracking information once your order ships.</li></ul></div></div>
                         </div>
 
-                        <x-storefront.product.customizer.navigation :back-step="4" back-label="Back: Upload Artwork" :next-step="6" next-label="Next: Review & Add to Cart" />
+                        <x-storefront.product.customizer.navigation :step="5" :back-step="4" back-label="Back: Upload Artwork" :next-step="6" next-label="Next: Review & Add to Cart" />
                         </div>
                     </section>
 

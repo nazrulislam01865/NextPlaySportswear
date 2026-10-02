@@ -20,7 +20,7 @@
 
             <div class="np-referral-confirmation-grid">
                 <div class="np-referral-confirmation-main">
-                    <div class="np-referral-linked-banner"><span><x-storefront.referral.icon name="gift" :size="28" /></span><strong>Your £5 first-order reward was applied.</strong></div>
+                    <div class="np-referral-linked-banner"><span><x-storefront.referral.icon name="gift" :size="28" /></span><strong>Your £{{ number_format($referralDiscount, 2) }} first-order reward was applied.</strong></div>
 
                     <section class="np-referral-confirmation-panel">
                         <h2>ITEMS IN YOUR ORDER</h2>
@@ -62,7 +62,7 @@
                         <hr><p>Need to make changes? Contact our support team as soon as possible.</p><a href="{{ route('contact') }}">Email support</a>
                     </section>
 
-                    <div class="np-referral-final-note"><x-storefront.referral.icon name="gift" :size="28" /><p>Your friend's referral reward will be issued after this eligible order is completed and the returns period has passed.</p></div>
+                    <div class="np-referral-final-note"><x-storefront.referral.icon name="gift" :size="28" /><p>Your friend's referral reward will be issued after this eligible order is marked completed.</p></div>
                 </aside>
             </div>
         </div>

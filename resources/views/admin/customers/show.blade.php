@@ -125,6 +125,85 @@
         </section>
     </div>
 
+    <section class="mb-6 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
+        <div class="flex flex-col justify-between gap-4 border-b border-slate-100 p-5 lg:flex-row lg:items-center">
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-[.18em] text-slate-400">Rewards</p>
+                <h2 class="mt-1 text-xl font-black text-brand-ink">Customer reward account</h2>
+                <p class="mt-1 text-sm text-slate-500">Grant rewards individually and control the progress values displayed on this customer's My Rewards page.</p>
+            </div>
+            <div class="rounded-2xl bg-emerald-50 px-5 py-3 text-right">
+                <p class="text-[10px] font-black uppercase tracking-[.14em] text-emerald-700">Available balance</p>
+                <p class="mt-1 text-2xl font-black text-emerald-800">£{{ number_format((float)$rewardBalance, 2) }}</p>
+            </div>
+        </div>
+
+        <div class="grid gap-6 p-5 xl:grid-cols-2">
+            <form method="POST" action="{{ route('admin.customers.rewards.update', $customer) }}" class="rounded-2xl border border-slate-200 p-5">
+                @csrf
+                @method('PATCH')
+                <h3 class="font-black text-brand-ink">Reward progress display</h3>
+                <p class="mt-1 text-xs leading-5 text-slate-500">Leave override fields empty to use the global programme defaults. Current progress and the target determine the “until your next reward” amount.</p>
+                <div class="mt-4 grid gap-4 sm:grid-cols-3">
+                    <label class="text-xs font-black text-slate-600">Current progress (£)
+                        <input class="admin-input" type="number" step="0.01" min="0" name="progress_amount" value="{{ old('progress_amount', $rewardProfile->progress_amount) }}" required @disabled(!$canManageCustomer)>
+                    </label>
+                    <label class="text-xs font-black text-slate-600">Target override (£)
+                        <input class="admin-input" type="number" step="0.01" min="0.01" name="progress_target_override" value="{{ old('progress_target_override', $rewardProfile->progress_target_override) }}" placeholder="{{ number_format((float)$rewardSettings->default_progress_target, 2, '.', '') }}" @disabled(!$canManageCustomer)>
+                    </label>
+                    <label class="text-xs font-black text-slate-600">Next reward override (£)
+                        <input class="admin-input" type="number" step="0.01" min="0" name="reward_amount_override" value="{{ old('reward_amount_override', $rewardProfile->reward_amount_override) }}" placeholder="{{ number_format((float)$rewardSettings->default_reward_amount, 2, '.', '') }}" @disabled(!$canManageCustomer)>
+                    </label>
+                </div>
+                @if($canManageCustomer)
+                    <button class="btn btn-white mt-4" type="submit">Save progress settings</button>
+                @endif
+            </form>
+
+            <form method="POST" action="{{ route('admin.customers.rewards.store', $customer) }}" class="rounded-2xl border border-blue-100 bg-blue-50 p-5">
+                @csrf
+                <h3 class="font-black text-brand-ink">Grant reward</h3>
+                <p class="mt-1 text-xs leading-5 text-slate-500">The amount becomes immediately available for the customer to apply to an upcoming order.</p>
+                <div class="mt-4 grid gap-4 sm:grid-cols-[160px_1fr]">
+                    <label class="text-xs font-black text-slate-600">Amount (£)
+                        <input class="admin-input bg-white" type="number" step="0.01" min="0.01" name="amount" value="{{ old('amount', $rewardSettings->default_reward_amount) }}" required @disabled(!$canManageCustomer)>
+                    </label>
+                    <label class="text-xs font-black text-slate-600">Reason
+                        <input class="admin-input bg-white" type="text" maxlength="500" name="reason" value="{{ old('reason') }}" placeholder="Loyalty reward, service recovery, promotion..." required @disabled(!$canManageCustomer)>
+                    </label>
+                </div>
+                @if($canManageCustomer)
+                    <button class="btn btn-red mt-4" type="submit">Grant reward</button>
+                @endif
+            </form>
+        </div>
+
+        <div class="border-t border-slate-100 p-5">
+            <div class="mb-3 flex items-center justify-between gap-3">
+                <h3 class="font-black text-brand-ink">Recent reward activity</h3>
+                <a href="{{ route('admin.reward-program.edit') }}" class="text-xs font-black text-brand-blue">Programme settings</a>
+            </div>
+            <div class="admin-table-scroll" tabindex="0" aria-label="Reward activity">
+                <table class="admin-table min-w-[760px] text-sm">
+                    <thead class="bg-slate-50 text-left text-[10px] uppercase tracking-[.12em] text-slate-500"><tr><th class="px-4 py-3">Date</th><th class="px-4 py-3">Activity</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Order</th><th class="px-4 py-3 text-right">Amount</th></tr></thead>
+                    <tbody class="divide-y divide-slate-100">
+                    @forelse($rewardTransactions as $transaction)
+                        <tr>
+                            <td class="px-4 py-3 text-slate-500">{{ $transaction->created_at?->format('M d, Y - g:i A') }}</td>
+                            <td class="px-4 py-3 font-bold text-slate-700">{{ $transaction->description ?: str($transaction->type)->headline() }}</td>
+                            <td class="px-4 py-3"><span class="admin-status-pill border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase text-slate-600">{{ $transaction->status }}</span></td>
+                            <td class="px-4 py-3 text-slate-500">{{ $transaction->order?->order_number ?: '—' }}</td>
+                            <td class="px-4 py-3 text-right font-black {{ (float)$transaction->amount >= 0 ? 'text-emerald-700' : 'text-red-700' }}">{{ (float)$transaction->amount >= 0 ? '+' : '−' }}£{{ number_format(abs((float)$transaction->amount), 2) }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">No reward activity yet.</td></tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
     <div class="mb-6 grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,.9fr)]">
         <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-card">
             <div class="border-b border-slate-100 pb-4">

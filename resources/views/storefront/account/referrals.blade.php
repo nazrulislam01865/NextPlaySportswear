@@ -2,10 +2,17 @@
     :seo="$seo"
     title="REFER A FRIEND"
     subtitle="Share NEXTPLAY with friends. You’ll both get a little more back."
+    :account="$account"
     :navigation="$navigation"
     breadcrumb="Refer a Friend"
 >
-    <x-storefront.account.rewards.referral-banner variant="referral" />
+    @if(! $referrals['enabled'])
+        <section class="np-rewards-panel">
+            <h2>REFER A FRIEND IS CURRENTLY PAUSED</h2>
+            <p>The referral programme is not accepting new referrals right now. Existing earned rewards remain available in My Rewards.</p>
+        </section>
+    @else
+        <x-storefront.account.rewards.referral-banner variant="referral" :friend-reward="$referrals['friend_reward_amount']" :referrer-reward="$referrals['referrer_reward_amount']" :minimum-order="$referrals['minimum_order']" />
 
     <div class="np-referral-share-grid">
         <section
@@ -13,12 +20,12 @@
             x-data="referralShareActions(@js([
                 'url' => $referrals['share_url'],
                 'title' => 'NEXTPLAY Refer a Friend',
-                'text' => 'Use my NEXTPLAY referral link and get £5 off your first eligible order of £50 or more.',
+                'text' => 'Use my NEXTPLAY referral link and get £'.number_format((float) $referrals['friend_reward_amount'], 0).' off your first eligible order of £'.number_format((float) $referrals['minimum_order'], 0).' or more.',
             ]))"
             aria-labelledby="share-link-title"
         >
             <h2 id="share-link-title">SHARE YOUR LINK</h2>
-            <p class="np-referral-share-card__intro">Copy your unique link and share it with friends. When they place an eligible order, you’ll both get £5.</p>
+            <p class="np-referral-share-card__intro">Copy your unique link and share it with friends. Each new customer can redeem a referral once on their first eligible order. They get £{{ number_format((float) $referrals['friend_reward_amount'], 0) }} and you get £{{ number_format((float) $referrals['referrer_reward_amount'], 0) }} after completion.</p>
 
             <div class="np-referral-copy-row">
                 <label class="sr-only" for="referral-share-url">Your unique referral link</label>
@@ -42,7 +49,7 @@
 
             <div class="np-referral-note">
                 <x-storefront.account.rewards.icon name="info" :size="22" />
-                <p>Rewards are added after eligible orders are completed and the returns period has passed.</p>
+                <p>Rewards are added after eligible orders are marked completed.</p>
             </div>
         </section>
 
@@ -79,13 +86,15 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($referrals['referrals'] as $referral)
+                    @forelse ($referrals['referrals'] as $referral)
                         <tr>
                             <td data-label="Friend">{{ $referral['friend'] }}</td>
                             <td data-label="Order status"><x-storefront.account.rewards.status-pill :status="$referral['status']" /></td>
                             <td data-label="Your reward">{{ $referral['reward'] }}</td>
                         </tr>
-                    @endforeach
+                    @empty
+                        <tr><td colspan="3">You have not referred anyone yet.</td></tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
@@ -109,4 +118,5 @@
             </article>
         </div>
     </section>
+    @endif
 </x-storefront.account.rewards.page>

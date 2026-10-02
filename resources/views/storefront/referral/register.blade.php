@@ -1,3 +1,9 @@
+@php
+    $reward = (float) ($offer['reward_amount'] ?? 0);
+    $minimum = (float) ($offer['minimum_order'] ?? 0);
+    $rewardLabel = number_format($reward, $reward == floor($reward) ? 0 : 2);
+    $minimumLabel = number_format($minimum, $minimum == floor($minimum) ? 0 : 2);
+@endphp
 <x-layouts.storefront :seo="$seo">
     <section class="np-referral-register-page">
         <div class="site-container">
@@ -8,7 +14,7 @@
             <div class="np-referral-register-grid">
                 <section class="np-referral-register-card">
                     <h1>CREATE YOUR ACCOUNT</h1>
-                    <h2>Your friend's £5 offer is saved for this visit.</h2>
+                    <h2>Your friend's £{{ $rewardLabel }} offer is saved for this visit.</h2>
                     <p class="np-referral-register-card__intro">Create an account to continue and start shopping with your referral offer already linked to your order.</p>
 
                     @if ($errors->any())
@@ -37,15 +43,15 @@
                     </form>
 
                     <div class="np-referral-register-or"><span>OR</span></div>
-                    <a href="{{ route('products.index') }}" class="btn btn-outline np-referral-register-guest">CONTINUE SHOPPING AS GUEST <x-storefront.referral.icon name="arrow-right" :size="20" /></a>
-                    <p class="np-referral-register-card__fine">Your friend's offer stays linked to this session, even if you don't create an account now.</p>
+                    <a href="{{ route('products.index') }}" class="btn btn-outline np-referral-register-guest">CONTINUE SHOPPING <x-storefront.referral.icon name="arrow-right" :size="20" /></a>
+                    <p class="np-referral-register-card__fine">You can browse before registering, but the referral can only be redeemed by a new customer account created from this offer.</p>
                     <p class="np-referral-register-card__signin">Already have an account? <a href="{{ route('login', ['redirect' => route('products.index')]) }}">Sign in</a></p>
                 </section>
 
                 <aside class="np-referral-register-aside">
                     <div class="np-referral-register-aside__offer">
                         <span class="np-referral-register-aside__icon"><x-storefront.referral.icon name="gift" :size="48" /></span>
-                        <div><small>YOUR REFERRAL OFFER</small><strong>£5 <span>off</span></strong><p>your first eligible order of £50 or more.</p></div>
+                        <div><small>YOUR REFERRAL OFFER</small><strong>£{{ $rewardLabel }} <span>off</span></strong><p>your first eligible order of £{{ $minimumLabel }} or more.</p></div>
                     </div>
                     <div class="np-referral-register-aside__rules">
                         <p><x-storefront.referral.icon name="user" :size="26" /> New customers only</p>
@@ -53,7 +59,7 @@
                         <p><x-storefront.referral.icon name="card" :size="26" /> Shown at checkout when your order qualifies.</p>
                     </div>
                     <div class="np-referral-register-aside__callout"><span><x-storefront.referral.icon name="link" :size="32" /></span><div><strong>No code to remember</strong><p>Your friend's offer is already attached to this visit.</p></div></div>
-                    <div class="np-referral-register-aside__callout"><span><x-storefront.referral.icon name="cart" :size="32" /></span><div><strong>Prefer to shop first?</strong><p>Your offer stays linked as you browse this session.</p><a href="{{ route('products.index') }}">Continue shopping <x-storefront.referral.icon name="arrow-right" :size="18" /></a></div></div>
+                    <div class="np-referral-register-aside__callout"><span><x-storefront.referral.icon name="cart" :size="32" /></span><div><strong>Prefer to shop first?</strong><p>Your offer stays linked while you browse; create your new account before checkout to redeem it.</p><a href="{{ route('products.index') }}">Continue shopping <x-storefront.referral.icon name="arrow-right" :size="18" /></a></div></div>
                 </aside>
             </div>
         </div>

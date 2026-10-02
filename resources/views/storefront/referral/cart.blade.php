@@ -32,9 +32,9 @@
                                 @if (($offer['customer_status'] ?? '') === 'ineligible')
                                     This referral offer is for new customers only.
                                 @elseif ($rewardApplied)
-                                    Your friend's £5 offer is linked to this visit.
+                                    Your friend's £{{ number_format((float) ($offer['reward_amount'] ?? 0), 0) }} offer is linked to this visit.
                                 @else
-                                    Your friend's £5 offer is linked. Spend at least £50 on eligible items to activate it.
+                                    Your friend's £{{ number_format((float) ($offer['reward_amount'] ?? 0), 0) }} offer is linked. Spend at least £{{ number_format((float) ($offer['minimum_order'] ?? 0), 0) }} on eligible items to activate it.
                                 @endif
                             </strong>
                         </div>
@@ -78,11 +78,11 @@
                         <h2>ORDER SUMMARY</h2>
                         <div class="np-referral-cart-summary__body">
                             <div class="np-referral-summary-row"><span>Items subtotal ({{ $cart['quantity'] }} items)</span><strong>${{ number_format((float) ($cart['configured_items_total'] ?? $cart['merchandise_total']), 2) }}</strong></div>
-                            <div class="np-referral-summary-row np-referral-summary-row--reward"><span>Friend referral reward<small>First eligible order of £50 or more.<br><a href="{{ route('terms') }}">Offer terms</a></small></span><strong>{{ $rewardApplied ? '−$'.number_format((float) $cart['referral_discount'], 2) : '$0.00' }}</strong></div>
+                            <div class="np-referral-summary-row np-referral-summary-row--reward"><span>Friend referral reward<small>First eligible order of £{{ number_format((float) ($offer['minimum_order'] ?? 0), 0) }} or more.<br><a href="{{ route('terms') }}">Offer terms</a></small></span><strong>{{ $rewardApplied ? '−$'.number_format((float) $cart['referral_discount'], 2) : '$0.00' }}</strong></div>
                             <div class="np-referral-summary-row"><span>Delivery</span><span>Calculated at checkout</span></div>
                             <div class="np-referral-summary-divider"></div>
                             <div class="np-referral-summary-total"><span>Estimated total<small>before delivery</small></span><strong>${{ number_format((float) ($cart['estimated_subtotal'] ?? $cart['total']), 2) }}</strong></div>
-                            <div class="np-referral-summary-info"><x-storefront.referral.icon name="info" :size="24" /><p>The reward applies while your eligible items total at least £50. If your total falls below £50, the reward will be removed.</p></div>
+                            <div class="np-referral-summary-info"><x-storefront.referral.icon name="info" :size="24" /><p>The reward applies while your eligible items total at least £{{ number_format((float) ($offer['minimum_order'] ?? 0), 0) }}. If your total falls below that amount, the reward will be removed.</p></div>
                             <a href="{{ $checkoutUrl }}" class="btn btn-secondary np-referral-checkout-button">PROCEED TO CHECKOUT <x-storefront.referral.icon name="arrow-right" :size="20" /></a>
                         </div>
                     </aside>

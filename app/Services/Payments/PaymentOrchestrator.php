@@ -14,6 +14,7 @@ use App\Payments\DTO\GatewayRefundResult;
 use App\Payments\Exceptions\PaymentGatewayException;
 use App\Payments\Money;
 use App\Payments\PaymentGatewayManager;
+use App\Services\Rewards\RewardService;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -22,8 +23,10 @@ use Throwable;
 
 final class PaymentOrchestrator
 {
-    public function __construct(private readonly PaymentGatewayManager $gateways)
-    {
+    public function __construct(
+        private readonly PaymentGatewayManager $gateways,
+        private readonly RewardService $rewards,
+    ) {
     }
 
     public function initiateCheckout(Order $order, string $idempotencySeed): GatewayRedirect
@@ -653,6 +656,8 @@ final class PaymentOrchestrator
                 'paid_at' => $order->paid_at ?: now(),
                 'status' => $nextStatus,
             ]);
+
+            $this->rewards->redeemOrderReservation($order);
 
             $order->histories()->create([
                 'status' => $nextStatus,

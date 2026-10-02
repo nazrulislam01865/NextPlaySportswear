@@ -313,9 +313,13 @@ class OrderExperienceService
         $estimatedStart = $placedAt->copy()->addWeekdays($estimatedMinimumDays)->format('M d');
         $estimatedEnd = $placedAt->copy()->addWeekdays($estimatedMaximumDays)->format('M d');
 
+        $status = Str::lower(trim((string) ($order['status'] ?? 'design_review')));
+        $status = $status !== '' ? $status : 'design_review';
+
         return array_merge($order, [
             'order_number' => (string) ($order['order_number'] ?? 'NP-' . now()->format('ymd') . '-PENDING'),
-            'status' => (string) ($order['status'] ?? 'design_review'),
+            'status' => $status,
+            'status_label' => $this->orderStatusLabel($status),
             'payment_status' => (string) ($order['payment_status'] ?? 'pending'),
             'customer_email' => (string) ($order['customer_email'] ?? Arr::get($order, 'information.email', 'customer@example.com')),
             'customer_name' => trim((string) ($order['customer_name'] ?? '')) ?: trim((Arr::get($order, 'information.first_name', 'NextPlay') . ' ' . Arr::get($order, 'information.last_name', 'Customer'))),
@@ -429,7 +433,7 @@ class OrderExperienceService
 
             $visible[] = [
                 'key' => $status,
-                'title' => (string) config('commerce.order_statuses.'.$status, Str::headline($status)->toString()),
+                'title' => $this->orderStatusLabel($status),
                 'description' => $status === 'cancelled'
                     ? 'This order has been cancelled and will not continue through fulfillment.'
                     : 'This order is currently on hold. Contact support if you need more information.',
@@ -608,6 +612,20 @@ class OrderExperienceService
             ])->values()->all(),
             'is_demo' => false,
         ]);
+    }
+
+    private function orderStatusLabel(string $status): string
+    {
+        $normalized = Str::lower(trim($status));
+
+        if ($normalized === '') {
+            return 'Order Update';
+        }
+
+        return (string) config(
+            'commerce.order_statuses.'.$normalized,
+            Str::headline($normalized),
+        );
     }
 
     private function progressIndexForStatus(string $status): int

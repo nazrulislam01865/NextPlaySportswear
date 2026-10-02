@@ -105,7 +105,7 @@ class AdminRbac
             self::permission('returns.view', 'Commerce', 'View', 'View Returns & Exchanges', 'Open return and exchange requests and their attachments.', 'admin.returns.index', 110),
             self::permission('returns.manage', 'Commerce', 'Manage', 'Manage Returns & Exchanges', 'Update return and exchange status, refunds and review notes.', 'admin.returns.update', 111),
             self::permission('customers.view', 'Commerce', 'View', 'View Customers', 'Open storefront customer accounts, profile details, addresses, order history, return activity and safe payment metadata.', 'admin.customers.index', 120),
-            self::permission('customers.manage', 'Commerce', 'Manage', 'Manage Customer Access', 'Suspend and reactivate storefront customer accounts. Suspension immediately blocks authenticated customer access.', 'admin.customers.suspend', 121),
+            self::permission('customers.manage', 'Commerce', 'Manage', 'Manage Customers', 'Suspend and reactivate storefront customer accounts, and manage individual customer reward progress and reward grants.', 'admin.customers.suspend', 121),
             self::permission('coupons.view', 'Commerce', 'View', 'View Coupons', 'Open discounts and coupon lists.', 'admin.coupons.index', 130),
             self::permission('coupons.manage', 'Commerce', 'Manage', 'Manage Coupons', 'Create and update discounts and coupons.', 'admin.coupons.store', 131),
 
@@ -428,6 +428,10 @@ class AdminRbac
 
         if (Str::startsWith($name, 'media-library.')) {
             return self::resourcePermission($name, 'media');
+        }
+
+        if (Str::startsWith($name, 'reward-program.')) {
+            return $name === 'reward-program.update' ? 'customers.manage' : 'customers.view';
         }
 
         if (Str::startsWith($name, 'storefront-branding.')) {

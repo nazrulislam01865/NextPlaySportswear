@@ -9,6 +9,7 @@ use App\Http\Requests\Storefront\UpdateCartItemOptionsRequest;
 use App\Http\Requests\Storefront\UpdateCartItemRequest;
 use App\Services\Cart\CartService;
 use App\Services\Storefront\ProductCatalogService;
+use App\Services\Rewards\RewardService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,6 +25,7 @@ class CartController extends Controller
     public function __construct(
         private readonly CartService $cart,
         private readonly ProductCatalogService $products,
+        private readonly RewardService $rewards,
     ) {
     }
 
@@ -239,6 +241,38 @@ class CartController extends Controller
         return redirect()
             ->route('cart.index')
             ->with('status', 'Promo code removed.');
+    }
+
+    public function applyRewards(Request $request): RedirectResponse|JsonResponse
+    {
+        $this->rewards->requestCartRedemption($request->user());
+        $summary = $this->cart->summary();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Available rewards applied to this order.',
+                'cart' => $summary,
+            ]);
+        }
+
+        return redirect()->route('cart.index')->with('status', 'Available rewards applied to this order.');
+    }
+
+    public function removeRewards(Request $request): RedirectResponse|JsonResponse
+    {
+        $this->rewards->clearCartRedemption();
+        $summary = $this->cart->summary();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Reward redemption removed from this order.',
+                'cart' => $summary,
+            ]);
+        }
+
+        return redirect()->route('cart.index')->with('status', 'Reward redemption removed from this order.');
     }
 
     /**

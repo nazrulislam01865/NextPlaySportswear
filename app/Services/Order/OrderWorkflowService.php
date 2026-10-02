@@ -16,6 +16,7 @@ use App\Payments\Exceptions\PaymentGatewayException;
 use App\Services\Cart\CartService;
 use App\Services\Email\TransactionalEmailManager;
 use App\Services\Payments\PaymentOrchestrator;
+use App\Services\Rewards\RewardService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +30,7 @@ class OrderWorkflowService
         private readonly CartService $cart,
         private readonly TransactionalEmailManager $emails,
         private readonly PaymentOrchestrator $payments,
+        private readonly RewardService $rewards,
     ) {
     }
 
@@ -292,6 +294,10 @@ class OrderWorkflowService
             return $locked->fresh(['items', 'payments', 'histories']);
         });
 
+        if ($updated->payment_status === 'paid') {
+            $this->rewards->redeemOrderReservation($updated);
+        }
+
         $this->emails->orderUpdated($updated, $oldStatus, $oldPayment, $oldFulfillment);
 
         return $updated;
@@ -412,6 +418,17 @@ class OrderWorkflowService
 
             return $locked->fresh(['items', 'payments']);
         });
+
+        if ($updated->payment_status === 'paid') {
+            $this->rewards->redeemOrderReservation($updated);
+        }
+        if ($updated->status === 'cancelled' && $oldStatus !== 'cancelled') {
+            $this->rewards->releaseOrderReservation($updated);
+            $this->rewards->cancelReferralForOrder($updated);
+        }
+        if ($updated->status === 'completed' && $updated->payment_status === 'paid') {
+            $this->rewards->completeReferralForOrder($updated);
+        }
 
         $this->emails->orderUpdated($updated, $oldStatus, $oldPayment, $oldFulfillment);
 
@@ -603,6 +620,11 @@ class OrderWorkflowService
 
             return $locked->fresh(['order.items', 'user', 'resolver']);
         });
+
+        if ($updated->order?->status === 'cancelled') {
+            $this->rewards->releaseOrderReservation($updated->order);
+            $this->rewards->cancelReferralForOrder($updated->order);
+        }
 
         $this->emails->changeRequestUpdated($updated, $oldStatus);
 

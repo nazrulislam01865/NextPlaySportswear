@@ -57,6 +57,39 @@ class TrackOrderLookupTest extends TestCase
             ->assertSee('Status: In Production');
     }
 
+    public function test_tracking_page_renders_every_configured_order_status_without_errors(): void
+    {
+        foreach (config('commerce.order_statuses', []) as $status => $label) {
+            $orderNumber = 'NP-STATUS-'.strtoupper(substr(md5($status), 0, 8));
+            $this->createTrackableOrder($orderNumber, (string) $status);
+
+            $this->post(route('orders.track.lookup'), [
+                'order_number' => $orderNumber,
+                'email' => 'buyer@example.com',
+            ])->assertRedirect(route('orders.track'));
+
+            $this->get(route('orders.track'))
+                ->assertOk()
+                ->assertSee('Tracking Result')
+                ->assertSee('Status: '.$label);
+        }
+    }
+
+    public function test_tracking_page_safely_labels_an_unrecognized_historical_status(): void
+    {
+        $order = $this->createTrackableOrder('NP-STATUS-LEGACY', 'custom_review_pending');
+
+        $this->post(route('orders.track.lookup'), [
+            'order_number' => $order->order_number,
+            'email' => 'buyer@example.com',
+        ])->assertRedirect(route('orders.track'));
+
+        $this->get(route('orders.track'))
+            ->assertOk()
+            ->assertSee('Tracking Result')
+            ->assertSee('Status: Custom Review Pending');
+    }
+
     public function test_shipment_tracking_number_and_email_can_find_the_order_and_show_tracking_details(): void
     {
         $order = $this->createTrackableOrder('NP-260929-SHIP01', 'shipped');

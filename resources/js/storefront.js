@@ -987,22 +987,165 @@ window.productBuilder = (config = {}) => ({
         return this.dayRangeLabel(productionMin + shippingMin, productionMax + shippingMax, 'days');
     },
 
-    selectedFabricPriceTable() {
+    hasFabricPriceTableData(table) {
+        return Boolean(table && (
+            (Array.isArray(table.rows) && table.rows.length)
+            || (Array.isArray(table.price_tiers) && table.price_tiers.length)
+        ));
+    },
+
+    normalizeFabricPriceIdentity(value) {
+        return String(value || '')
+            .trim()
+            .toLowerCase()
+            .replace(/^master:/, '')
+            .replace(/^code:/, '')
+            .replace(/[^a-z0-9]+/g, '');
+    },
+
+    fabricPriceCellMatchesValue(cell, value) {
+        const cellIdentity = this.normalizeFabricPriceIdentity(cell);
+        if (!cellIdentity) return false;
+
+        const identities = [value?.id, value?.code, value?.label]
+            .map(candidate => this.normalizeFabricPriceIdentity(candidate))
+            .filter(candidate => candidate.length >= 2);
+
+        return identities.some((identity) => (
+            cellIdentity === identity
+            || cellIdentity.includes(identity)
+            || (identity.length >= 5 && identity.includes(cellIdentity))
+        ));
+    },
+
+    derivedFabricPriceTableFromDefault(value) {
+        const source = config.price_table || {};
+        const headers = Array.isArray(source.headers) ? source.headers.slice() : [];
+        const rows = Array.isArray(source.rows) ? source.rows.filter(Array.isArray) : [];
+        if (!value || headers.length < 2 || !rows.length) return null;
+
+        let fabricColumn = -1;
+        let bestMatches = 0;
+
+        headers.forEach((header, columnIndex) => {
+            const matches = rows.reduce((count, row) => count + (this.fabricPriceCellMatchesValue(row?.[columnIndex], value) ? 1 : 0), 0);
+            const headerText = this.normalizePriceText(header);
+            const looksLikeFabricColumn = /\b(fabric|material|price table)\b/.test(headerText);
+            const weightedMatches = matches + (looksLikeFabricColumn && matches > 0 ? 0.25 : 0);
+
+            if (weightedMatches > bestMatches) {
+                bestMatches = weightedMatches;
+                fabricColumn = columnIndex;
+            }
+        });
+
+        if (fabricColumn < 0 || bestMatches <= 0) return null;
+
+        const filteredRows = rows.filter(row => this.fabricPriceCellMatchesValue(row?.[fabricColumn], value));
+        if (!filteredRows.length) return null;
+
+        const quantityColumn = headers.findIndex(header => /\b(qty|quantity)\b/.test(this.normalizePriceText(header)));
+        let productPriceColumn = headers.findIndex((header, index) => {
+            if (index === fabricColumn) return false;
+            const text = this.normalizePriceText(header);
+            return !this.isShippingPriceHeader(header) && (
+                /\b(product|unit|item) price\b/.test(text)
+                || /\bprice (product|unit|item)\b/.test(text)
+                || text === 'unit price'
+            );
+        });
+
+        if (productPriceColumn < 0) {
+            const highlighted = Number(source.highlight_column);
+            if (Number.isInteger(highlighted) && highlighted >= 0 && highlighted < headers.length && highlighted !== fabricColumn) {
+                productPriceColumn = highlighted;
+            }
+        }
+
+        const outputHeaders = headers.filter((_, index) => index !== fabricColumn);
+        const outputRows = filteredRows.map(row => row.filter((_, index) => index !== fabricColumn));
+        const outputPriceColumn = productPriceColumn < 0
+            ? -1
+            : productPriceColumn - (productPriceColumn > fabricColumn ? 1 : 0);
+        const outputQuantityColumn = quantityColumn < 0
+            ? 0
+            : quantityColumn - (quantityColumn > fabricColumn ? 1 : 0);
+
+        const priceTiers = outputPriceColumn < 0 ? [] : outputRows.map((row) => {
+            const label = String(row?.[outputQuantityColumn] ?? '').trim();
+            const range = this.parseQuantityRangeFromLabel(label);
+            const unit = this.parseDisplayMoney(row?.[outputPriceColumn]);
+            if (!Number.isFinite(range.min) || !Number.isFinite(unit)) return null;
+            return {
+                label,
+                min: range.min,
+                max: range.max,
+                unit,
+                compare_at: null,
+                savings_label: null,
+            };
+        }).filter(Boolean);
+
+        const identity = this.normalizeFabricPriceIdentity(value.id || value.code || value.label) || 'selected';
+
+        return {
+            key: `derived:${identity}`,
+            fabric_code: value.id || value.code || null,
+            label: value.label || value.id || 'Selected fabric',
+            headers: outputHeaders,
+            rows: outputRows,
+            highlight_column: outputPriceColumn >= 0 ? outputPriceColumn : Number(source.highlight_column || 1),
+            note: source.note || null,
+            price_tiers: priceTiers,
+            derived_from_default: true,
+        };
+    },
+
+    fabricPriceTableForValue(value) {
+        if (!value) return null;
+        if (this.hasFabricPriceTableData(value.fabric_price_table)) return value.fabric_price_table;
+
+        const identities = [value.id, value.code, value.label]
+            .map(candidate => this.normalizeFabricPriceIdentity(candidate))
+            .filter(Boolean);
+
+        if (!identities.length) return null;
+
+        const configuredTable = (config.fabric_price_tables || []).find((table) => {
+            if (!this.hasFabricPriceTableData(table)) return false;
+            const tableIdentities = [table.key, table.fabric_code, table.label]
+                .map(candidate => this.normalizeFabricPriceIdentity(candidate))
+                .filter(Boolean);
+            return tableIdentities.some(candidate => identities.includes(candidate));
+        });
+
+        return configuredTable || this.derivedFabricPriceTableFromDefault(value);
+    },
+
+    selectedFabricPriceValue() {
         for (const group of (config.option_groups || [])) {
+            if ((group.display_mode || 'customer') === 'hidden') continue;
+
             if (['image', 'swatch', 'buttons', 'select'].includes(group.type)) {
-                const table = this.optionValue(group, this.selections[group.id])?.fabric_price_table;
-                if (table && ((table.rows || []).length || (table.price_tiers || []).length)) return table;
+                const value = this.optionValue(group, this.selections[group.id]);
+                const table = this.fabricPriceTableForValue(value);
+                if (table) return { ...value, fabric_price_table: table };
             }
 
             if (group.type === 'checkbox') {
                 for (const id of (this.multiSelections[group.id] || [])) {
-                    const table = this.optionValue(group, id)?.fabric_price_table;
-                    if (table && ((table.rows || []).length || (table.price_tiers || []).length)) return table;
+                    const value = this.optionValue(group, id);
+                    const table = this.fabricPriceTableForValue(value);
+                    if (table) return { ...value, fabric_price_table: table };
                 }
             }
         }
 
         return null;
+    },
+
+    selectedFabricPriceTable() {
+        return this.selectedFabricPriceValue()?.fabric_price_table || null;
     },
 
     activePriceTable() {

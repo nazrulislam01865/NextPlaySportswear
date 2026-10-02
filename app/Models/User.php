@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -70,6 +71,28 @@ class User extends Authenticatable implements MustVerifyEmail
     public function orderReturnRequests(): HasMany
     {
         return $this->hasMany(OrderReturnRequest::class)->latest('requested_at');
+    }
+
+    /** @return HasMany<RewardTransaction> */
+    public function rewardTransactions(): HasMany
+    {
+        return $this->hasMany(RewardTransaction::class)->latest();
+    }
+
+    public function rewardProfile(): HasOne
+    {
+        return $this->hasOne(CustomerRewardProfile::class);
+    }
+
+    public function referredBy(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'referred_by_user_id');
+    }
+
+    /** @return HasMany<CustomerReferral> */
+    public function referralsMade(): HasMany
+    {
+        return $this->hasMany(CustomerReferral::class, 'referrer_id')->latest();
     }
 
     public function adminRole(): BelongsTo

@@ -2,12 +2,8 @@
     $hasTrackingResult = is_array($order)
         && filled($order['order_number'] ?? null)
         && ! $errors->any();
-    $rawStatus = $hasTrackingResult
-        ? \Illuminate\Support\Str::lower((string) ($order['status'] ?? 'pending_payment'))
-        : null;
-
     $statusLabel = $hasTrackingResult
-        ? (string) config('commerce.order_statuses.'.$rawStatus, \Illuminate\Support\Str::headline((string) $rawStatus)->toString())
+        ? (string) ($order['status_label'] ?? 'Order Update')
         : '';
 
     $displayOrderNumber = $hasTrackingResult ? (string) $order['order_number'] : '';
