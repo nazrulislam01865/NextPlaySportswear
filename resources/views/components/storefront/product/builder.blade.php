@@ -80,6 +80,7 @@
             $hasFabricPricing = collect($group['values'] ?? [])->contains(fn ($value) => ! empty(data_get($value, 'fabric_price_table.price_tiers')));
             return $hasFabricPricing || str_contains($label, 'fabric') || str_contains($label, 'material');
         });
+    $builderConfig['material_group_id'] = $materialGroup['id'] ?? null;
     $nonMaterialOptionGroups = $customerOptionGroups
         ->reject(fn ($group) => $materialGroup && (string) ($group['id'] ?? '') === (string) ($materialGroup['id'] ?? ''))
         ->values();
@@ -260,6 +261,9 @@ window.productBuilderFabricPricing = function (config = {}) {
                 .toLowerCase()
                 .replace(/^master:/, '')
                 .replace(/^code:/, '')
+                .replace(/\b(\d+(?:\.\d+)?)\s*g(?:sm)?\b/g, '$1gsm')
+                .replace(/\b(\d+(?:\.\d+)?)\s*(?:grams?|grammes?)\s*(?:per\s*(?:square\s*)?(?:meter|metre|m2|m²))?\b/g, '$1gsm')
+                .replace(/\b(?:fabric|material|price|table|code)\b/g, ' ')
                 .replace(/[^a-z0-9]+/g, '');
         },
         fabricPriceCellMatchesValue(cell, value) {
@@ -373,6 +377,23 @@ window.productBuilderFabricPricing = function (config = {}) {
             return configuredTable || this.derivedFabricPriceTableFromDefault(value);
         },
         selectedFabricPriceValue() {
+            const materialGroupId = String(config.material_group_id || '').trim();
+            if (materialGroupId) {
+                const group = (config.option_groups || []).find((candidate) => String(candidate?.id || '') === materialGroupId);
+                if (group) {
+                    const selectedId = this.selections?.[group.id];
+                    const value = (this.optionValue ? this.optionValue(group, selectedId) : null)
+                        || (group.values || []).find((candidate) => candidate?.default)
+                        || (group.values || [])[0]
+                        || null;
+                    if (value) {
+                        const table = this.fabricPriceTableForValue(value);
+                        if (table) return { ...value, fabric_price_table: table };
+                    }
+                    return null;
+                }
+            }
+
             for (const group of (config.option_groups || [])) {
                 if ((group.display_mode || 'customer') === 'hidden') continue;
                 const selectedValues = group.type === 'checkbox'
