@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Storefront\StoreBulkQuoteRequest;
+use App\Models\BulkQuoteBudgetRange;
 use App\Models\BulkQuoteRequest;
+use App\Models\CountryCallingCode;
 use App\Models\User;
 use App\Services\AdminNotificationService;
 use App\Services\Email\TransactionalEmailManager;
@@ -45,7 +47,15 @@ class BulkQuoteController extends Controller
             ])->all(),
         ]];
 
-        return view('storefront.bulk-quote.create', compact('faqItems', 'structuredData'));
+        $countryCallingCodes = CountryCallingCode::query()->active()->ordered()->get();
+        $budgetRanges = BulkQuoteBudgetRange::query()->active()->ordered()->get();
+
+        return view('storefront.bulk-quote.create', compact(
+            'faqItems',
+            'structuredData',
+            'countryCallingCodes',
+            'budgetRanges',
+        ));
     }
 
     public function store(
@@ -55,6 +65,15 @@ class BulkQuoteController extends Controller
     ): RedirectResponse {
         $validated = $request->validated();
         unset($validated['company']);
+
+        $countryCallingCode = CountryCallingCode::query()
+            ->active()
+            ->findOrFail((int) $validated['phone_country_code_id']);
+        $phone = trim((string) $validated['phone']);
+        $validated['phone'] = str_starts_with($phone, $countryCallingCode->dial_code)
+            ? $phone
+            : trim($countryCallingCode->dial_code.' '.$phone);
+        unset($validated['phone_country_code_id']);
 
         $attachment = null;
         if ($request->hasFile('attachment')) {

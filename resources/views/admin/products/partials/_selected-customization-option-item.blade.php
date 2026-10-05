@@ -126,7 +126,7 @@
                                     <tbody class="divide-y divide-slate-100 bg-white">
                                         <template x-for="(row, rowIndex) in value.fabric_price_table.rows" :key="`fabric-row-${gIndex}-${vIndex}-${rowIndex}`">
                                             <tr>
-                                                <td class="min-w-[210px] px-3 py-3 align-top">
+                                                <td class="min-w-[210px] px-3 py-3" style="vertical-align: bottom;">
                                                     <input type="hidden" :name="`fabric_price_tables[${gIndex}_${vIndex}][price_table_rows][${rowIndex}][0]`" :value="quantityRangeLabel(row)">
                                                     <div class="grid grid-cols-2 gap-2">
                                                         <label class="text-[10px] font-black uppercase tracking-wide text-slate-500">
@@ -155,7 +155,7 @@
                                                     </div>
                                                 </td>
                                                 <template x-for="(cell, cellIndex) in row.cells" :key="`fabric-cell-${gIndex}-${vIndex}-${rowIndex}-${cellIndex}`">
-                                                    <td class="px-3 py-3 align-top">
+                                                    <td class="px-3 py-3" style="vertical-align: bottom;">
                                                         <input
                                                             class="admin-input !mt-0 h-10"
                                                             :class="Number(value.fabric_price_table.highlight_column || 1) === cellIndex + 1 ? 'border-brand-red/50 bg-red-50/40 font-black text-brand-red' : ''"
@@ -165,7 +165,7 @@
                                                         >
                                                     </td>
                                                 </template>
-                                                <td class="px-3 py-3 align-top">
+                                                <td class="px-3 py-3" style="vertical-align: bottom;">
                                                     <button type="button" class="rounded-full px-2 py-1 text-lg font-black text-slate-400 hover:bg-red-50 hover:text-red-600" @click="removeFabricPriceRow(value.fabric_price_table, rowIndex)" x-show="value.fabric_price_table.rows.length > 1">×</button>
                                                 </td>
                                             </tr>
@@ -183,18 +183,15 @@
                 </template>
             </div>
 
-            <div class="grid gap-2 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center sm:gap-5">
-                <span class="text-sm font-black text-slate-700">Default choice</span>
-                <div>
-                    <input type="hidden" :name="`option_groups[${gIndex}][values][${vIndex}][is_default]`" :value="value.is_default ? 1 : 0">
-                    <button
-                        type="button"
-                        class="btn w-full sm:w-auto"
-                        :class="value.is_default ? 'btn-navy' : 'btn-white'"
-                        @click="setDefaultValue(group,vIndex)"
-                        x-text="value.is_default ? 'Default choice' : 'Make default'"
-                    ></button>
-                </div>
+            <div class="flex justify-start">
+                <input type="hidden" :name="`option_groups[${gIndex}][values][${vIndex}][is_default]`" :value="value.is_default ? 1 : 0">
+                <button
+                    type="button"
+                    class="btn w-full sm:w-auto"
+                    :class="value.is_default ? 'btn-navy' : 'btn-white'"
+                    @click="setDefaultValue(group,vIndex)"
+                    x-text="value.is_default ? 'Default choice' : 'Make default'"
+                ></button>
             </div>
         </div>
     </div>

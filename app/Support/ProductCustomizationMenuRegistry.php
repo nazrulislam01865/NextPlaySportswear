@@ -34,7 +34,7 @@ final class ProductCustomizationMenuRegistry
         return $groups;
     }
 
-    /** @return array{production_methods: string, shipping_methods: string, faqs: string, genders: string, time_zones: string} */
+    /** @return array{production_methods: string, shipping_methods: string, faqs: string, genders: string, time_zones: string, country_calling_codes: string, bulk_quote_budget_ranges: string} */
     public static function trailingMasterDataNumbers(): array
     {
         return [
@@ -43,6 +43,8 @@ final class ProductCustomizationMenuRegistry
             'faqs' => '1.32',
             'genders' => '1.33',
             'time_zones' => '1.34',
+            'country_calling_codes' => '1.35',
+            'bulk_quote_budget_ranges' => '1.36',
         ];
     }
 }

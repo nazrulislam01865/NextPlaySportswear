@@ -1707,7 +1707,7 @@ class CartService
                 $submittedValues = (array) ($submittedRows[$index]['values'] ?? []);
                 $values = [];
                 foreach ($fields as $key => $field) {
-                    $maximum = max(1, min(120, (int) ($field['max_length'] ?? 60)));
+                    $maximum = max(1, (int) ($field['max_length'] ?? 60));
                     $value = Str::limit(trim((string) ($submittedValues[$key] ?? '')), $maximum, '');
                     if (($field['type'] ?? 'text') === 'number') {
                         $value = preg_replace('/[^0-9A-Za-z\-]/', '', $value) ?? '';

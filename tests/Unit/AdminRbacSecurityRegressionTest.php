@@ -30,6 +30,10 @@ class AdminRbacSecurityRegressionTest extends TestCase
             'bulk quote detail is order view' => ['admin.bulk-quotes.show', 'GET', 'orders.view'],
             'bulk quote update is order manage' => ['admin.bulk-quotes.update', 'PATCH', 'orders.manage'],
             'bulk quote retry is order manage' => ['admin.bulk-quotes.retry-sync', 'POST', 'orders.manage'],
+            'country calling code master list is order view' => ['admin.country-calling-codes.index', 'GET', 'orders.view'],
+            'country calling code master store is order manage' => ['admin.country-calling-codes.store', 'POST', 'orders.manage'],
+            'bulk quote budget master list is order view' => ['admin.bulk-quote-budget-ranges.index', 'GET', 'orders.view'],
+            'bulk quote budget master update is order manage' => ['admin.bulk-quote-budget-ranges.update', 'PUT', 'orders.manage'],
             'order sync retry is order manage' => ['admin.orders.retry-sync', 'POST', 'orders.manage'],
         ];
     }

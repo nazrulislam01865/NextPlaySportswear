@@ -145,15 +145,15 @@ class BulkQuoteRequest extends Model
 
     public function budgetRangeLabel(): string
     {
-        return match ($this->budget_range) {
-            'under-500' => 'Under $500',
-            '500-1500' => '$500–$1,500',
-            '1500-5000' => '$1,500–$5,000',
-            '5000-plus' => '$5,000+',
-            'not-sure' => 'Not sure yet',
-            null, '' => '—',
-            default => $this->humanizeValue($this->budget_range),
-        };
+        $value = trim((string) $this->budget_range);
+
+        if ($value === '') {
+            return '—';
+        }
+
+        return (string) (BulkQuoteBudgetRange::query()
+            ->where('value', $value)
+            ->value('label') ?: $this->humanizeValue($value));
     }
 
     public function preferredShippingMethodLabel(): string

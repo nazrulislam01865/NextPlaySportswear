@@ -64,7 +64,7 @@ Route::get('/customization-guide', [ContentPageController::class, 'customization
 Route::get('/bulk-team-ordering', [ContentPageController::class, 'bulkOrdering'])->name('bulk-ordering');
 Route::get('/bulk-quote', [BulkQuoteController::class, 'create'])->name('quote.request');
 Route::post('/bulk-quote', [BulkQuoteController::class, 'store'])
-    ->middleware('throttle:4,1')
+    ->middleware('throttle:bulk-quote')
     ->name('quote.request.store');
 Route::get('/shipping-delivery', [ContentPageController::class, 'shipping'])->name('shipping');
 Route::get('/sustainability', [ContentPageController::class, 'sustainability'])->name('sustainability');
@@ -115,6 +115,9 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
 
         Route::get('/storefront-branding', [\App\Http\Controllers\Admin\StorefrontBrandingController::class, 'edit'])->name('storefront-branding.edit');
         Route::put('/storefront-branding', [\App\Http\Controllers\Admin\StorefrontBrandingController::class, 'update'])->name('storefront-branding.update');
+
+        Route::get('/product-detail-controls', [\App\Http\Controllers\Admin\ProductDetailUiSettingsController::class, 'edit'])->name('product-detail-controls.edit');
+        Route::put('/product-detail-controls', [\App\Http\Controllers\Admin\ProductDetailUiSettingsController::class, 'update'])->name('product-detail-controls.update');
 
         Route::get('/about-page', [\App\Http\Controllers\Admin\AboutPageController::class, 'edit'])->name('about-page.edit');
         Route::put('/about-page', [\App\Http\Controllers\Admin\AboutPageController::class, 'update'])->name('about-page.update');
@@ -248,6 +251,12 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::resource('faqs', \App\Http\Controllers\Admin\FaqController::class)
             ->except('show');
         Route::resource('genders', \App\Http\Controllers\Admin\GenderController::class)
+            ->except('show');
+        Route::resource('country-calling-codes', \App\Http\Controllers\Admin\CountryCallingCodeController::class)
+            ->parameters(['country-calling-codes' => 'countryCallingCode'])
+            ->except('show');
+        Route::resource('bulk-quote-budget-ranges', \App\Http\Controllers\Admin\BulkQuoteBudgetRangeController::class)
+            ->parameters(['bulk-quote-budget-ranges' => 'bulkQuoteBudgetRange'])
             ->except('show');
         Route::resource('payment-methods', \App\Http\Controllers\Admin\PaymentMethodController::class)
             ->parameters(['payment-methods' => 'paymentMethod'])

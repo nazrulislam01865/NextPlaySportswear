@@ -8,6 +8,7 @@
     $ratingStars = $hasReviews ? str_repeat('★', max(1, min(5, (int) round((float) $rating)))) : '';
     $activityLabel = trim((string) ($product['shopper_activity'] ?? ''));
     $sampleAvailable = (bool) data_get($product, 'sample.available', false);
+    $ui = \App\Support\ProductStorefrontUi::settings($product['storefront_ui'] ?? []);
 @endphp
 
 <div class="np-product-signals" aria-label="Product rating and customer actions">
@@ -43,20 +44,23 @@
     </div>
 
     <div class="np-product-signals__actions">
-        <button
-            type="button"
-            class="np-product-signal-button"
-            :class="wishlisted ? 'is-saved' : ''"
-            @click="toggleWishlist()"
-            :aria-label="wishlistLabel()"
-            :title="wishlistLabel()"
-            :aria-pressed="wishlisted ? 'true' : 'false'"
-            :disabled="wishlistBusy"
-        >
-            <svg viewBox="0 0 24 24" :fill="wishlisted ? 'currentColor' : 'none'" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z" /></svg>
-            <span x-text="wishlisted ? 'Saved' : 'Save'">Save</span>
-        </button>
+        @if($ui['save_enabled'])
+            <button
+                type="button"
+                class="np-product-signal-button"
+                :class="wishlisted ? 'is-saved' : ''"
+                @click="toggleWishlist()"
+                :aria-label="wishlistLabel()"
+                :title="wishlistLabel()"
+                :aria-pressed="wishlisted ? 'true' : 'false'"
+                :disabled="wishlistBusy"
+            >
+                <x-storefront.product.ui-icon :src="$ui['save_icon']" name="heart" />
+                <span x-text="wishlisted ? 'Saved' : @js($ui['save_label'])">{{ $ui['save_label'] }}</span>
+            </button>
+        @endif
 
+        @if($ui['share_enabled'])
         <div class="np-product-share-wrapper" @click.outside="shareOpen = false" @keydown.escape.window="shareOpen = false">
             <button
                 type="button"
@@ -67,8 +71,8 @@
                 aria-label="Share this product"
                 :disabled="shareBusy"
             >
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.8-3.4a3.1 3.1 0 0 0 0-3.6l6.8-3.4A3 3 0 1 0 15 5c0 .2 0 .4.1.6L8.2 9a3 3 0 1 0 0 6l6.9 3.4A3 3 0 1 0 18 16Z" /></svg>
-                <span>Share</span>
+                <x-storefront.product.ui-icon :src="$ui['share_icon']" name="share" />
+                <span>{{ $ui['share_label'] }}</span>
             </button>
 
             <div
@@ -93,6 +97,7 @@
                 </button>
             </div>
         </div>
+        @endif
 
         @if($sampleAvailable)
             <button
@@ -100,8 +105,8 @@
                 class="np-product-signal-button"
                 @click="startCustomizing(); $nextTick(() => document.getElementById('sample-order')?.scrollIntoView({ behavior: 'smooth', block: 'center' }))"
             >
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v4l-2 3v8a3 3 0 0 1-3 3h0a3 3 0 0 1-3-3v-8L7 7V3Z"/><path d="M9 7h6"/></svg>
-                <span>Request a Sample</span>
+                <x-storefront.product.ui-icon :src="$ui['sample_icon']" name="sample" />
+                <span>{{ $ui['sample_label'] }}</span>
             </button>
         @endif
     </div>

@@ -60,7 +60,7 @@
                                         class="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold normal-case tracking-normal text-brand-ink"
                                         type="text"
                                         @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif
-                                        maxlength="{{ min(120, max(1, (int) ($field['max_length'] ?? 60))) }}"
+                                        maxlength="{{ max(1, (int) ($field['max_length'] ?? 60)) }}"
                                         x-model="row.values[@js($field['key'])]"
                                         @input="sync()"
                                         @change="commitRosterField(rowIndex, @js($field), $event.target.value)"

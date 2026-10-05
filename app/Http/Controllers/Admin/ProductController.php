@@ -913,7 +913,7 @@ class ProductController extends Controller
                 'type' => in_array(($field['type'] ?? 'text'), ['text', 'number'], true) ? $field['type'] : 'text',
                 'required' => (bool) ($field['required'] ?? false),
                 'enabled' => true,
-                'max_length' => max(1, min(120, (int) ($field['max_length'] ?? 60))),
+                'max_length' => max(1, (int) ($field['max_length'] ?? 60)),
             ])->unique('key')->values()->all();
         if ($request->exists('schema_json_text')) {
             $payload['schema_json'] = filled($data['schema_json_text'] ?? null)

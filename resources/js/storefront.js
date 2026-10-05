@@ -1989,14 +1989,15 @@ window.productBuilder = (config = {}) => ({
     validate() {
         const issue = this.validationIssue();
         if (issue) {
-            const targetSteps = {
+            const defaultTargetSteps = {
                 'configure-product': 1,
                 'size-quantity': 2,
                 'product-roster': 3,
                 'artwork-upload': 4,
                 'production-shipping': 5,
             };
-            const targetStep = targetSteps[issue.targetId] || null;
+            const configuredTargetStep = config.customizer_steps?.[issue.targetId];
+            const targetStep = Number(configuredTargetStep || defaultTargetSteps[issue.targetId] || 0) || null;
             if (targetStep && typeof this.openCustomizerStep === 'function') {
                 this.openCustomizerStep(targetStep);
             } else if (issue.targetId) {

@@ -159,6 +159,56 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        RateLimiter::for('bulk-quote', function (Request $request): array {
+            $ip = (string) ($request->ip() ?: 'unknown');
+            $email = strtolower(trim((string) $request->input('email')));
+            $emailFingerprint = $email !== ''
+                ? hash('sha256', substr($email, 0, 190))
+                : null;
+
+            $sessionId = $request->hasSession()
+                ? (string) $request->session()->getId()
+                : '';
+            $customerId = (string) ($request->user('web')?->getAuthIdentifier() ?: '');
+            $browserIdentity = $customerId !== ''
+                ? 'user:'.$customerId
+                : 'session:'.hash('sha256', $sessionId !== '' ? $sessionId : $ip);
+
+            $tooManyRequestsResponse = static function (Request $request): \Illuminate\Http\RedirectResponse {
+                return redirect()
+                    ->back()
+                    ->withInput($request->except(['_token', 'attachment', 'company']))
+                    ->withErrors([
+                        'bulk_quote_rate_limit' => 'You have submitted several quote requests in a short time. Please wait a moment and try again.',
+                    ]);
+            };
+
+            // The old numeric throttle allowed only four POST requests per minute
+            // and counted validation retries as attempts. That could lock a real
+            // customer out while correcting the form and showed Laravel's raw
+            // 429 page. These independent buckets keep abuse protection while
+            // allowing normal validation retries and users behind shared networks.
+            $limits = [
+                Limit::perMinute(30)
+                    ->by('bulk-quote-browser-minute:'.$browserIdentity)
+                    ->response($tooManyRequestsResponse),
+                Limit::perHour(120)
+                    ->by('bulk-quote-browser-hour:'.$browserIdentity)
+                    ->response($tooManyRequestsResponse),
+                Limit::perHour(300)
+                    ->by('bulk-quote-ip-hour:'.$ip)
+                    ->response($tooManyRequestsResponse),
+            ];
+
+            if ($emailFingerprint !== null) {
+                $limits[] = Limit::perHour(30)
+                    ->by('bulk-quote-email-hour:'.$emailFingerprint)
+                    ->response($tooManyRequestsResponse);
+            }
+
+            return $limits;
+        });
+
 
         RateLimiter::for('checkout-step', function (Request $request): Limit {
             $identity = (string) ($request->user('web')?->getAuthIdentifier() ?: $request->ip() ?: 'guest');

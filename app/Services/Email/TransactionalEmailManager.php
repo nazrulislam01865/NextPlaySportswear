@@ -261,7 +261,7 @@ final class TransactionalEmailManager
                     'Phone' => $quote->phone,
                     'Product Type' => $quote->product_type,
                     'Estimated Quantity' => $quote->estimated_quantity,
-                    'Budget' => $quote->budget_range,
+                    'Budget' => $quote->budgetRangeLabel(),
                     'Needed By' => $quote->needed_by?->format('M j, Y'),
                 ], static fn (mixed $value): bool => filled($value)),
                 replyTo: $quote->email,

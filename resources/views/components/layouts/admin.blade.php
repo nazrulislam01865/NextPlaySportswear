@@ -58,10 +58,13 @@
                     <x-admin.sidebar-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')" icon="▦">Dashboard</x-admin.sidebar-link>
                 @endif
 
-                @if($canAdmin('products.view') || $canAdmin('categories.view') || $canAdmin('attributes.view') || $canAdmin('menus.view') || $canAdmin('media.view'))
+                @if($canAdmin('products.view') || $canAdmin('product_detail_controls.view') || $canAdmin('categories.view') || $canAdmin('attributes.view') || $canAdmin('menus.view') || $canAdmin('media.view'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Catalog</p>
                     @if($canAdmin('products.view'))
                         <x-admin.sidebar-link :href="route('admin.products.index')" :active="request()->routeIs('admin.products.*')" icon="◇">Products</x-admin.sidebar-link>
+                    @endif
+                    @if(($canAdmin('product_detail_controls.view') || $canAdmin('products.view')) && \Illuminate\Support\Facades\Route::has('admin.product-detail-controls.edit'))
+                        <x-admin.sidebar-link :href="route('admin.product-detail-controls.edit')" :active="request()->routeIs('admin.product-detail-controls.*')" icon="▦">Product Detail Controls</x-admin.sidebar-link>
                     @endif
                     @if($canAdmin('media.view'))
                         <x-admin.sidebar-group
@@ -92,7 +95,7 @@
                     @endif
                 @endif
 
-                @if($canAdmin('products.view') || $canAdmin('customization.view') || $canAdmin('shipping.view') || $canAdmin('coupons.view') || $canAdmin('coupons.manage'))
+                @if($canAdmin('products.view') || $canAdmin('customization.view') || $canAdmin('shipping.view') || $canAdmin('coupons.view') || $canAdmin('coupons.manage') || $canAdmin('orders.view'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Master Data</p>
                     @php
                         $customizationMenuGroups = \App\Enums\JerseyCustomizationType::menuGroups();
@@ -163,7 +166,7 @@
                     <x-admin.sidebar-group
                         label="Master Data"
                         icon="◈"
-                        :active="$isCustomizationActive || $isSizeOptionActive || $isTrainingVestCustomizationActive || $isWorldCupCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*') || request()->routeIs('admin.faqs.*') || request()->routeIs('admin.genders.*') || request()->routeIs('admin.time-zones.*')"
+                        :active="$isCustomizationActive || $isSizeOptionActive || $isTrainingVestCustomizationActive || $isWorldCupCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*') || request()->routeIs('admin.faqs.*') || request()->routeIs('admin.genders.*') || request()->routeIs('admin.time-zones.*') || request()->routeIs('admin.country-calling-codes.*') || request()->routeIs('admin.bulk-quote-budget-ranges.*')"
                     >
                         @if($canAdmin('customization.view'))
                         @foreach($primaryCustomizationMenuGroups as $groupKey => $customizationGroup)
@@ -274,6 +277,17 @@
                                 :href="route('admin.time-zones.index')"
                                 :active="request()->routeIs('admin.time-zones.*')"
                             >{{ $trailingMasterDataNumbers['time_zones'] }} Time Zones</x-admin.sidebar-sub-link>
+                        @endif
+
+                        @if($canAdmin('orders.view'))
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.country-calling-codes.index')"
+                                :active="request()->routeIs('admin.country-calling-codes.*')"
+                            >{{ $trailingMasterDataNumbers['country_calling_codes'] }} Country Calling Codes</x-admin.sidebar-sub-link>
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.bulk-quote-budget-ranges.index')"
+                                :active="request()->routeIs('admin.bulk-quote-budget-ranges.*')"
+                            >{{ $trailingMasterDataNumbers['bulk_quote_budget_ranges'] }} Bulk Quote Budget Ranges</x-admin.sidebar-sub-link>
                         @endif
                     </x-admin.sidebar-group>
                 @endif

@@ -25,6 +25,7 @@ class StoreBulkQuoteRequest extends FormRequest
             'full_name' => trim((string) $this->input('full_name')),
             'organization' => trim((string) $this->input('organization')),
             'email' => strtolower(trim((string) $this->input('email'))),
+            'phone_country_code_id' => $this->input('phone_country_code_id'),
             'phone' => trim((string) $this->input('phone')),
             'product_type' => trim((string) $this->input('product_type')),
             'estimated_quantity' => trim((string) $this->input('estimated_quantity')),
@@ -47,6 +48,11 @@ class StoreBulkQuoteRequest extends FormRequest
             'full_name' => ['bail', 'required', 'string', 'min:2', 'max:120'],
             'organization' => ['bail', 'required', 'string', 'min:2', 'max:160'],
             'email' => ['bail', 'required', 'email:rfc', 'max:190'],
+            'phone_country_code_id' => [
+                'required',
+                'integer',
+                Rule::exists('country_calling_codes', 'id')->where(fn ($query) => $query->where('is_active', true)),
+            ],
             'phone' => ['bail', 'required', 'string', 'max:40', 'regex:/^[0-9+()\-\.\s]+$/'],
             'product_type' => ['bail', 'required', 'string', 'min:2', 'max:190'],
             'estimated_quantity' => [
@@ -54,7 +60,10 @@ class StoreBulkQuoteRequest extends FormRequest
                 Rule::in(['10-49', '50-99', '100-499', '500-999', '1000-plus']),
             ],
             'sizes_needed' => ['bail', 'required', 'string', 'min:1', 'max:190'],
-            'budget_range' => ['nullable', Rule::in(['under-500', '500-1500', '1500-5000', '5000-plus', 'not-sure'])],
+            'budget_range' => [
+                'nullable',
+                Rule::exists('bulk_quote_budget_ranges', 'value')->where(fn ($query) => $query->where('is_active', true)),
+            ],
             'artwork_details' => ['bail', 'required', 'string', 'min:10', 'max:5000'],
             'customization_types' => ['array', 'max:6'],
             'customization_types.*' => [
@@ -89,6 +98,7 @@ class StoreBulkQuoteRequest extends FormRequest
         return [
             'full_name' => 'full name',
             'organization' => 'company, team, or school',
+            'phone_country_code_id' => 'country calling code',
             'product_type' => 'items needed / product type',
             'estimated_quantity' => 'estimated quantity',
             'sizes_needed' => 'sizes needed',

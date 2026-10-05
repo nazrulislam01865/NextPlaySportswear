@@ -94,6 +94,7 @@
     $rosterEnabled = (bool) ($roster['enabled'] ?? false);
     $enabledRosterFields = collect($roster['fields'] ?? [])->filter(fn ($field) => (bool) ($field['enabled'] ?? true))->values();
     $artworkUpload = $product['artwork_upload'] ?? ['enabled' => false];
+    $ui = \App\Support\ProductStorefrontUi::settings($product['storefront_ui'] ?? []);
     $sample = $product['sample'] ?? ['available' => false, 'charge' => 0, 'charge_type' => 'fixed_order'];
     $productHighlightIcons = collect($product['feature_icons'] ?? []);
     $featureStorefront = $product['feature_storefront'] ?? null;
@@ -123,17 +124,48 @@
         ? $sizeRangeItems->implode(' · ')
         : 'Configured sizes';
     $hasProductionOptions = ! empty($product['production_speeds'] ?? []);
-    $productionStepDescription = $hasProductionOptions
-        ? 'Choose your production timeline and shipping method based on your schedule.'
-        : 'Choose your shipping method for this order.';
+    $productionStepDescription = $ui['production_step_description'];
+    // The roster is a real storefront step only when the product has the
+    // roster feature enabled and at least one enabled roster field. When it is
+    // unavailable, every later step moves up so numbering/navigation remains
+    // continuous (1, 2, 3, 4, 5) with no empty Player Names & Numbers card.
+    $showRosterStep = $rosterEnabled && $enabledRosterFields->isNotEmpty();
+    // Keep the JavaScript/cart configuration in sync with the visible steps.
+    // A product with the roster feature disabled (or with no enabled roster
+    // fields) must not create hidden roster rows behind the skipped UI.
+    $builderConfig['roster']['enabled'] = $showRosterStep;
+    $builderConfig['jersey_roster']['enabled'] = $showRosterStep;
+
+    $priceStep = 1;
+    $sizeStep = 2;
+    $rosterStep = $showRosterStep ? 3 : null;
+    $artworkStep = $showRosterStep ? 4 : 3;
+    $productionStep = $showRosterStep ? 5 : 4;
+    $reviewStep = $showRosterStep ? 6 : 5;
+    $customizerStepCount = $reviewStep;
+
     $customizerSteps = [
-        1 => ['title' => 'Price & Fabric', 'description' => 'Choose your product, fabric and options to get started.'],
-        2 => ['title' => 'Sizes & Quantities', 'description' => 'Set the sizes and quantities for your order.'],
-        3 => ['title' => 'Player Names & Numbers', 'description' => 'Add player names, numbers and configured item details.'],
-        4 => ['title' => 'Upload Artwork', 'description' => 'Add your design files, choose from existing designs, or request our design support.'],
-        5 => ['title' => 'Production & Shipping', 'description' => 'Choose your production timeline and shipping method.'],
-        6 => ['title' => 'Review & Add to Cart', 'description' => 'Review your selections and add to cart.'],
+        $priceStep => ['title' => 'Price & Fabric', 'description' => 'Choose your product, fabric and options to get started.'],
+        $sizeStep => ['title' => 'Sizes & Quantities', 'description' => 'Set the sizes and quantities for your order.'],
+        $artworkStep => ['title' => $ui['artwork_step_title'], 'description' => $ui['artwork_step_description']],
+        $productionStep => ['title' => $ui['production_step_title'], 'description' => $ui['production_step_description']],
+        $reviewStep => ['title' => 'Review & Add to Cart', 'description' => 'Review your selections and add to cart.'],
     ];
+    if ($showRosterStep) {
+        $customizerSteps[$rosterStep] = ['title' => 'Player Names & Numbers', 'description' => 'Add player names, numbers and configured item details.'];
+        ksort($customizerSteps);
+    }
+
+    $builderConfig['customizer_steps'] = [
+        'configure-product' => $priceStep,
+        'size-quantity' => $sizeStep,
+        'product-roster' => $rosterStep,
+        'artwork-upload' => $artworkStep,
+        'production-shipping' => $productionStep,
+        'review-add-to-cart' => $reviewStep,
+    ];
+    $builderConfig['customizer_step_count'] = $customizerStepCount;
+    $builderConfig['roster_step_enabled'] = $showRosterStep;
 @endphp
 
 @once
@@ -145,9 +177,10 @@ window.productBuilderFabricPricing = function (config = {}) {
 
     return Object.assign(builder, {
         activeCustomizerStep: 1,
-        openCustomizerSteps: { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true },
+        maxCustomizerStep: Number(config.customizer_step_count || 6),
+        openCustomizerSteps: Object.fromEntries(Array.from({ length: Number(config.customizer_step_count || 6) }, (_, index) => [index + 1, true])),
         mobileOrderSummaryOpen: false,
-        completedCustomizerStep: Object.keys(config.initial_state || {}).length ? 5 : 0,
+        completedCustomizerStep: Object.keys(config.initial_state || {}).length ? Math.max(0, Number(config.customizer_step_count || 6) - 1) : 0,
         skuCopied: false,
         async copySku(value) {
             const text = String(value || '').trim();
@@ -188,7 +221,7 @@ window.productBuilderFabricPricing = function (config = {}) {
         artworkHelpStyle: 'modern',
         artworkHelpColor: '',
         scrollCustomizerStepIntoView(step, behavior = 'smooth') {
-            const next = Math.max(1, Math.min(6, Number(step || 1)));
+            const next = Math.max(1, Math.min(Number(this.maxCustomizerStep || 1), Number(step || 1)));
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                     const panel = document.getElementById(`np-product-step-panel-${next}`);
@@ -203,12 +236,12 @@ window.productBuilderFabricPricing = function (config = {}) {
             });
         },
         isCustomizerStepOpen(step) {
-            const next = Math.max(1, Math.min(6, Number(step || 1)));
+            const next = Math.max(1, Math.min(Number(this.maxCustomizerStep || 1), Number(step || 1)));
             return this.openCustomizerSteps?.[next] !== false;
         },
         toggleCustomizerStep(step) {
-            const next = Math.max(1, Math.min(6, Number(step || 1)));
-            if (!this.openCustomizerSteps) this.openCustomizerSteps = { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true };
+            const next = Math.max(1, Math.min(Number(this.maxCustomizerStep || 1), Number(step || 1)));
+            if (!this.openCustomizerSteps) this.openCustomizerSteps = Object.fromEntries(Array.from({ length: Number(this.maxCustomizerStep || 1) }, (_, index) => [index + 1, true]));
             this.openCustomizerSteps[next] = !this.isCustomizerStepOpen(next);
             if (this.openCustomizerSteps[next]) {
                 this.activeCustomizerStep = next;
@@ -216,8 +249,8 @@ window.productBuilderFabricPricing = function (config = {}) {
             }
         },
         openCustomizerStep(step) {
-            const next = Math.max(1, Math.min(6, Number(step || 1)));
-            if (!this.openCustomizerSteps) this.openCustomizerSteps = { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true };
+            const next = Math.max(1, Math.min(Number(this.maxCustomizerStep || 1), Number(step || 1)));
+            if (!this.openCustomizerSteps) this.openCustomizerSteps = Object.fromEntries(Array.from({ length: Number(this.maxCustomizerStep || 1) }, (_, index) => [index + 1, true]));
             this.openCustomizerSteps[next] = true;
             this.activeCustomizerStep = next;
             this.mobileOrderSummaryOpen = false;
@@ -230,11 +263,11 @@ window.productBuilderFabricPricing = function (config = {}) {
             this.mobileOrderSummaryOpen = false;
         },
         advanceCustomizerStep(step) {
-            const current = Math.max(1, Math.min(6, Number(this.activeCustomizerStep || 1)));
-            const next = Math.max(1, Math.min(6, Number(step || current)));
+            const current = Math.max(1, Math.min(Number(this.maxCustomizerStep || 1), Number(this.activeCustomizerStep || 1)));
+            const next = Math.max(1, Math.min(Number(this.maxCustomizerStep || 1), Number(step || current)));
             if (next === current + 1) {
                 this.completedCustomizerStep = Math.max(Number(this.completedCustomizerStep || 0), current);
-                if (!this.openCustomizerSteps) this.openCustomizerSteps = { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true };
+                if (!this.openCustomizerSteps) this.openCustomizerSteps = Object.fromEntries(Array.from({ length: Number(this.maxCustomizerStep || 1) }, (_, index) => [index + 1, true]));
                 this.openCustomizerSteps[current] = false;
             }
             this.openCustomizerStep(next);
@@ -627,17 +660,17 @@ window.productBuilderFabricPricing = function (config = {}) {
 
                     <div class="np-product-order-facts">
                         <div>
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4 4 7l3 4v9h10v-9l3-4-4-3-2 3h-4L8 4Z"/></svg>
-                            <span><small>Sizes</small><strong>{{ $sizeRangeLabel }}</strong></span>
+                            <x-storefront.product.ui-icon :src="$ui['sizes_icon']" name="sizes" />
+                            <span><small>{{ $ui['sizes_label'] }}</small><strong>{{ $sizeRangeLabel }}</strong></span>
                         </div>
                         <div>
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 4-8 4-8-4 8-4Z"/><path d="m4 7 8 4 8-4v10l-8 4-8-4V7Z"/></svg>
-                            <span><small>Minimum Order Quantity</small><strong>{{ number_format((int) ($product['minimum_quantity'] ?? 1)) }} Piece{{ (int) ($product['minimum_quantity'] ?? 1) === 1 ? '' : 's' }}</strong></span>
+                            <x-storefront.product.ui-icon :src="$ui['minimum_order_icon']" name="box" />
+                            <span><small>{{ $ui['minimum_order_label'] }}</small><strong>{{ number_format((int) ($product['minimum_quantity'] ?? 1)) }} Piece{{ (int) ($product['minimum_quantity'] ?? 1) === 1 ? '' : 's' }}</strong></span>
                         </div>
                         @if($firstChartGroup)
                             <button type="button" @click="openSizeChart(@js($firstChartGroup['id']))">
-                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6V3Z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg>
-                                <strong>View Size Guide</strong><span aria-hidden="true">›</span>
+                                <x-storefront.product.ui-icon :src="$ui['size_guide_icon']" name="document" />
+                                <strong>{{ $ui['size_guide_label'] }}</strong><span aria-hidden="true">›</span>
                             </button>
                         @endif
                     </div>
@@ -741,8 +774,8 @@ window.productBuilderFabricPricing = function (config = {}) {
                             @if($firstChartGroup)
                                 <x-slot:action>
                                     <button type="button" class="btn btn-outline np-proto-inline-action" @click="openSizeChart(@js($firstChartGroup['id']))">
-                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6V3Z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg>
-                                        View Size Guide
+                                        <x-storefront.product.ui-icon :src="$ui['size_guide_icon']" name="document" />
+                                        {{ $ui['size_guide_label'] }}
                                     </button>
                                 </x-slot:action>
                             @endif
@@ -758,9 +791,9 @@ window.productBuilderFabricPricing = function (config = {}) {
                                         <button type="button" @click="openCustomizerStep(1)">Change</button>
                                     </div>
                                 @endif
-                                <div class="np-proto-size-summary-fact"><svg viewBox="0 0 24 24"><path d="M8 4 4 7l3 4v9h10v-9l3-4-4-3-2 3h-4L8 4Z"/></svg><span><small>Sizes Available</small><strong>{{ $sizeRangeLabel }}</strong></span></div>
-                                <div class="np-proto-size-summary-fact"><svg viewBox="0 0 24 24"><path d="m12 3 8 4-8 4-8-4 8-4Z"/><path d="m4 7 8 4 8-4v10l-8 4-8-4V7Z"/></svg><span><small>Minimum Order Quantity</small><strong>{{ number_format((int) ($product['minimum_quantity'] ?? 1)) }} Piece{{ (int) ($product['minimum_quantity'] ?? 1) === 1 ? '' : 's' }}</strong></span></div>
-                                <div class="np-proto-size-summary-note"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>You can add multiple sizes. Final price will be calculated based on total quantity.</span></div>
+                                <div class="np-proto-size-summary-fact"><x-storefront.product.ui-icon :src="$ui['sizes_icon']" name="sizes" /><span><small>{{ $ui['sizes_available_label'] }}</small><strong>{{ $sizeRangeLabel }}</strong></span></div>
+                                <div class="np-proto-size-summary-fact"><x-storefront.product.ui-icon :src="$ui['minimum_order_icon']" name="box" /><span><small>{{ $ui['minimum_order_label'] }}</small><strong>{{ number_format((int) ($product['minimum_quantity'] ?? 1)) }} Piece{{ (int) ($product['minimum_quantity'] ?? 1) === 1 ? '' : 's' }}</strong></span></div>
+                                <div class="np-proto-size-summary-note"><x-storefront.product.ui-icon :src="$ui['multiple_sizes_note_icon']" name="info" /><span>{{ $ui['multiple_sizes_note'] }}</span></div>
                             </div>
 
                             @if(!empty($product['size_groups']))
@@ -798,21 +831,28 @@ window.productBuilderFabricPricing = function (config = {}) {
                             @endif
                         </div>
 
-                        <x-storefront.product.customizer.navigation :step="2" :back-step="1" back-label="Back: Price & Fabric" :next-step="3" next-label="Next: Player Names & Numbers" />
+                        <x-storefront.product.customizer.navigation
+                            :step="$sizeStep"
+                            :back-step="$priceStep"
+                            back-label="Back: Price & Fabric"
+                            :next-step="$showRosterStep ? $rosterStep : $artworkStep"
+                            :next-label="$showRosterStep ? 'Next: Player Names & Numbers' : 'Next: Upload Artwork'"
+                        />
                         </div>
                     </section>
 
-                    {{-- STEP 3: PLAYER NAMES & NUMBERS --}}
+                    @if($showRosterStep)
+                    {{-- PLAYER NAMES & NUMBERS (conditional step) --}}
                     <section class="np-proto-step-card" id="product-roster">
                         <x-storefront.product.customizer.step-header
-                            :number="3"
-                            :title="$customizerSteps[3]['title']"
-                            :description="$customizerSteps[3]['description']"
+                            :number="$rosterStep"
+                            :title="$customizerSteps[$rosterStep]['title']"
+                            :description="$customizerSteps[$rosterStep]['description']"
                         >
                             <x-slot:action><button type="button" class="btn btn-outline np-proto-inline-action" @click="clearRosterRows()"><span aria-hidden="true">⌫</span> Clear All</button></x-slot:action>
                         </x-storefront.product.customizer.step-header>
 
-                        <div id="np-product-step-panel-3" class="np-proto-step-expanded" x-show="isCustomizerStepOpen(3)" x-cloak>
+                        <div id="np-product-step-panel-{{ $rosterStep }}" class="np-proto-step-expanded" x-show="isCustomizerStepOpen({{ $rosterStep }})" x-cloak>
                             <div class="np-proto-step-content">
                             @if($rosterEnabled)
                                 <div
@@ -836,7 +876,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                                                     <input
                                                         type="text"
                                                         @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif
-                                                        maxlength="{{ min(120, max(1, (int) ($field['max_length'] ?? 60))) }}"
+                                                        maxlength="{{ max(1, (int) ($field['max_length'] ?? 60)) }}"
                                                         :value="rosterSharedValues[@js($field['key'])] || ''"
                                                         @input="updateRosterSharedField(@js($field), $event.target.value)"
                                                         placeholder="{{ $field['label'] }}"
@@ -860,7 +900,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                                                         <td data-label="#" x-text="rowIndex + 1"></td>
                                                         <td class="is-quantity" data-label="Size" x-text="row.size_label || '—'"></td>
                                                         @foreach($enabledRosterFields as $field)
-                                                            <td data-label="{{ $field['label'] }}"><input class="np-proto-table-input" type="text" @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif maxlength="{{ min(120, max(1, (int) ($field['max_length'] ?? 60))) }}" x-model="row.values[@js($field['key'])]" :disabled="rosterSameForAll" @input="sync()" @change="commitRosterField(rowIndex, @js($field), $event.target.value)" placeholder="{{ $field['label'] }}"></td>
+                                                            <td data-label="{{ $field['label'] }}"><input class="np-proto-table-input" type="text" @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif maxlength="{{ max(1, (int) ($field['max_length'] ?? 60)) }}" x-model="row.values[@js($field['key'])]" :disabled="rosterSameForAll" @input="sync()" @change="commitRosterField(rowIndex, @js($field), $event.target.value)" placeholder="{{ $field['label'] }}"></td>
                                                         @endforeach
                                                         <td data-label="Action"><button type="button" class="np-roster-remove-button" @click="clearRosterRow(rowIndex)" aria-label="Remove player details"><span aria-hidden="true">×</span><span>Remove</span></button></td>
                                                     </tr>
@@ -869,41 +909,40 @@ window.productBuilderFabricPricing = function (config = {}) {
                                         </table>
                                     </div>
                                 </div>
-                            @else
-                                <div class="np-proto-empty-state"><strong>Player names and numbers are not required for this product.</strong></div>
                             @endif
                         </div>
 
-                        <x-storefront.product.customizer.navigation :step="3" :back-step="2" back-label="Back: Sizes & Quantities" :next-step="4" next-label="Next: Upload Artwork" />
+                        <x-storefront.product.customizer.navigation :step="$rosterStep" :back-step="$sizeStep" back-label="Back: Sizes & Quantities" :next-step="$artworkStep" next-label="Next: Upload Artwork" />
                         </div>
                     </section>
+                    @endif
 
-                    {{-- STEP 4: ARTWORK --}}
+                    {{-- UPLOAD ARTWORK --}}
                     <section class="np-proto-step-card" id="artwork-upload">
                         <x-storefront.product.customizer.step-header
-                            :number="4"
-                            :title="$customizerSteps[4]['title']"
-                            :description="$customizerSteps[4]['description']"
+                            :number="$artworkStep"
+                            :title="$customizerSteps[$artworkStep]['title']"
+                            :description="$customizerSteps[$artworkStep]['description']"
                         />
 
-                        <div id="np-product-step-panel-4" class="np-proto-step-expanded" x-show="isCustomizerStepOpen(4)" x-cloak>
+                        <div id="np-product-step-panel-{{ $artworkStep }}" class="np-proto-step-expanded" x-show="isCustomizerStepOpen({{ $artworkStep }})" x-cloak>
                             <div class="np-proto-step-content">
                             <div class="np-proto-artwork-tabs" role="tablist" aria-label="Artwork options">
-                                <button type="button" :class="artworkMode === 'upload' ? 'is-active' : ''" @click="setArtworkMode('upload')"><svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M5 14a4 4 0 0 0 1 8h12a4 4 0 0 0 1-8"/></svg><span><strong>Upload New Artwork</strong><small>Upload your files for us to review.</small></span></button>
-                                <button type="button" :class="artworkMode === 'existing' ? 'is-active' : ''" @click="setArtworkMode('existing')"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m6 16 4-4 3 3 2-2 3 3"/></svg><span><strong>Use Existing Design</strong><small>Choose from your previously uploaded designs.</small></span></button>
-                                <button type="button" :class="artworkMode === 'help' ? 'is-active' : ''" @click="setArtworkMode('help')"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4V5Z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/></svg><span><strong>Need Help with Artwork?</strong><small>Our design team will assist you.</small></span></button>
+                                <button type="button" :class="artworkMode === 'upload' ? 'is-active' : ''" @click="setArtworkMode('upload')"><x-storefront.product.ui-icon :src="$ui['artwork_upload_tab_icon']" name="upload" /><span><strong>{{ $ui['artwork_upload_tab_title'] }}</strong><small>{{ $ui['artwork_upload_tab_description'] }}</small></span></button>
+                                <button type="button" :class="artworkMode === 'existing' ? 'is-active' : ''" @click="setArtworkMode('existing')"><x-storefront.product.ui-icon :src="$ui['artwork_existing_tab_icon']" name="image" /><span><strong>{{ $ui['artwork_existing_tab_title'] }}</strong><small>{{ $ui['artwork_existing_tab_description'] }}</small></span></button>
+                                <button type="button" :class="artworkMode === 'help' ? 'is-active' : ''" @click="setArtworkMode('help')"><x-storefront.product.ui-icon :src="$ui['artwork_help_tab_icon']" name="message" /><span><strong>{{ $ui['artwork_help_tab_title'] }}</strong><small>{{ $ui['artwork_help_tab_description'] }}</small></span></button>
                             </div>
 
                             <div x-show="artworkMode === 'upload'" x-cloak>
                                 @if((bool) ($artworkUpload['enabled'] ?? false))
                                     <div class="np-proto-upload-grid">
                                         <label class="np-proto-upload-dropzone">
-                                            <svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M5 14a4 4 0 0 0 1 8h12a4 4 0 0 0 1-8"/></svg>
-                                            <strong>Drag &amp; drop files here</strong>
-                                            <span>or click to browse</span>
+                                            <x-storefront.product.ui-icon :src="$ui['artwork_drop_icon']" name="upload" />
+                                            <strong>{{ $ui['artwork_drop_title'] }}</strong>
+                                            <span>{{ $ui['artwork_browse_text'] }}</span>
                                             <input x-ref="artworkInput" type="file" name="artwork_files[]" multiple accept="{{ collect($artworkUpload['accepted_types'] ?? [])->map(fn ($type) => '.'.ltrim($type, '.'))->implode(',') }}" @change="handleArtworkFiles($event)" @if(($artworkUpload['required'] ?? false) && empty($existingArtwork)) required @endif>
                                         </label>
-                                        <div class="np-proto-upload-specs"><strong>Supported file formats</strong><span>{{ collect($artworkUpload['accepted_types'] ?? [])->map(fn ($type) => strtoupper($type))->implode(', ') ?: 'PDF, SVG, PNG, JPG' }}</span><strong>Max file size</strong><span>{{ (int) ($artworkUpload['max_file_size_mb'] ?? 15) }} MB per file</span><small>You can upload multiple files.</small></div>
+                                        <div class="np-proto-upload-specs"><strong>{{ $ui['artwork_formats_label'] }}</strong><span>{{ collect($artworkUpload['accepted_types'] ?? [])->map(fn ($type) => strtoupper($type))->implode(', ') ?: 'PDF, SVG, PNG, JPG' }}</span><strong>{{ $ui['artwork_max_size_label'] }}</strong><span>{{ (int) ($artworkUpload['max_file_size_mb'] ?? 15) }} MB per file</span><small>{{ $ui['artwork_multiple_files_text'] }}</small></div>
                                     </div>
 
                                     <div class="np-proto-uploaded-files" x-show="artworkFiles.length" x-cloak>
@@ -924,7 +963,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                                     <div class="np-proto-empty-state"><strong>Artwork upload is not required for this product.</strong></div>
                                 @endif
 
-                                <div class="np-proto-info-panel"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><div><strong>What happens next?</strong><ul><li>We will review your artwork for print readiness.</li><li>If any adjustments are needed, our team will contact you.</li><li>You can continue to the next step now, or save and come back later.</li></ul></div></div>
+                                <div class="np-proto-info-panel"><x-storefront.product.ui-icon :src="$ui['artwork_info_icon']" name="info" /><div><strong>{{ $ui['artwork_next_title'] }}</strong><ul>@foreach(\App\Support\ProductStorefrontUi::lines($ui['artwork_next_lines']) as $line)<li>{{ $line }}</li>@endforeach</ul></div></div>
                             </div>
 
                             <div x-show="artworkMode === 'existing'" x-cloak>
@@ -950,26 +989,32 @@ window.productBuilderFabricPricing = function (config = {}) {
                                     </div>
                                     <aside class="np-proto-inspiration"><h4>Design Inspiration</h4><p>Use your product images as references while describing the design direction.</p><div class="np-proto-inspiration-grid">@foreach(collect($product['gallery'] ?? [])->take(6) as $image)<figure><img src="{{ $image['url'] ?? '' }}" alt=""><figcaption>Style Example {{ $loop->iteration }}</figcaption></figure>@endforeach</div></aside>
                                 </div>
-                                <div class="np-proto-info-panel"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><div><strong>What happens next?</strong><ul><li>Our design team will prepare options based on your requirements.</li><li>We will send the artwork to you for approval through the normal order communication process.</li><li>You can continue to the next step now.</li></ul></div></div>
+                                <div class="np-proto-info-panel"><x-storefront.product.ui-icon :src="$ui['artwork_info_icon']" name="info" /><div><strong>{{ $ui['artwork_help_next_title'] }}</strong><ul>@foreach(\App\Support\ProductStorefrontUi::lines($ui['artwork_help_next_lines']) as $line)<li>{{ $line }}</li>@endforeach</ul></div></div>
                             </div>
                         </div>
 
-                        <x-storefront.product.customizer.navigation :step="4" :back-step="3" back-label="Back: Player Names & Numbers" :next-step="5" next-label="Next: Production & Shipping" />
+                        <x-storefront.product.customizer.navigation
+                            :step="$artworkStep"
+                            :back-step="$showRosterStep ? $rosterStep : $sizeStep"
+                            :back-label="$showRosterStep ? 'Back: Player Names & Numbers' : 'Back: Sizes & Quantities'"
+                            :next-step="$productionStep"
+                            next-label="Next: Production & Shipping"
+                        />
                         </div>
                     </section>
 
-                    {{-- STEP 5: PRODUCTION & SHIPPING --}}
+                    {{-- PRODUCTION & SHIPPING --}}
                     <section class="np-proto-step-card" id="production-shipping">
                         <x-storefront.product.customizer.step-header
-                            :number="5"
-                            title="Production & Shipping"
+                            :number="$productionStep"
+                            :title="$ui['production_step_title']"
                             :description="$productionStepDescription"
                         />
 
-                        <div id="np-product-step-panel-5" class="np-proto-step-expanded" x-show="isCustomizerStepOpen(5)" x-cloak>
+                        <div id="np-product-step-panel-{{ $productionStep }}" class="np-proto-step-expanded" x-show="isCustomizerStepOpen({{ $productionStep }})" x-cloak>
                             <div class="np-proto-step-content">
                             <div x-show="currentProductionOptions().length > 0" class="np-proto-choice-section">
-                                <h4 class="np-proto-section-title"><svg viewBox="0 0 24 24"><path d="M5 21V10l4 4V8l4 4V3h3v18H5Z"/></svg> Production Lead Time</h4>
+                                <h4 class="np-proto-section-title"><x-storefront.product.ui-icon :src="$ui['production_lead_time_icon']" name="factory" /> {{ $ui['production_lead_time_label'] }}</h4>
                                 <div class="np-proto-choice-grid">
                                     <template x-for="option in currentProductionOptions()" :key="option.id">
                                         <button type="button" class="np-proto-choice-card" :class="productionSpeed === option.id ? 'is-selected' : ''" @click="chooseProductionSpeed(option.id)">
@@ -986,7 +1031,7 @@ window.productBuilderFabricPricing = function (config = {}) {
 
                             @if(!empty($product['shipping_methods']))
                                 <div class="np-proto-choice-section">
-                                    <h4 class="np-proto-section-title"><svg viewBox="0 0 24 24"><path d="M3 6h12v10H3z"/><path d="M15 10h4l2 3v3h-6z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg> Shipping Method</h4>
+                                    <h4 class="np-proto-section-title"><x-storefront.product.ui-icon :src="$ui['shipping_method_icon']" name="truck" /> {{ $ui['shipping_method_label'] }}</h4>
                                     <div class="np-proto-choice-grid">
                                         @foreach($product['shipping_methods'] as $method)
                                             @php $methodJson = json_encode($method, JSON_THROW_ON_ERROR); @endphp
@@ -997,7 +1042,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                                                     @if(filled($method['image'] ?? null))
                                                         <img src="{{ $method['image'] }}" alt="{{ $method['label'] }}" loading="lazy" decoding="async">
                                                     @else
-                                                        <svg viewBox="0 0 48 48"><path d="M7 29h23V15H7z"/><path d="M30 21h7l5 6v2H30z"/><circle cx="15" cy="34" r="4"/><circle cx="35" cy="34" r="4"/></svg>
+                                                        <x-storefront.product.ui-icon :src="$ui['shipping_method_card_icon']" name="truck" />
                                                     @endif
                                                 </span>
                                             </button>
@@ -1007,27 +1052,27 @@ window.productBuilderFabricPricing = function (config = {}) {
                             @endif
 
                             <div class="np-proto-delivery-panel" x-show="currentProductionOptions().length > 0 && (config.shipping_methods || []).length > 0" x-cloak>
-                                <h4 class="np-proto-section-title"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg> Estimated Delivery</h4>
-                                <div class="np-proto-delivery-equation"><div><svg viewBox="0 0 24 24"><path d="M5 21V10l4 4V8l4 4V3h3v18H5Z"/></svg><span><small>Production Time</small><strong x-text="productionDaysOnlyLabel()"></strong></span></div><b>+</b><div><svg viewBox="0 0 24 24"><path d="M3 6h12v10H3z"/><path d="M15 10h4l2 3v3h-6z"/></svg><span><small>Shipping Time</small><strong x-text="shippingDaysOnlyLabel()"></strong></span></div><b>=</b><div class="is-estimate"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg><span><small>Estimated Delivery</small><strong x-text="totalDeliveryDaysLabel()"></strong><em>(After order confirmation)</em></span></div></div>
+                                <h4 class="np-proto-section-title"><x-storefront.product.ui-icon :src="$ui['estimated_delivery_title_icon']" name="calendar" /> {{ $ui['estimated_delivery_title'] }}</h4>
+                                <div class="np-proto-delivery-equation"><div><x-storefront.product.ui-icon :src="$ui['production_time_icon']" name="factory" /><span><small>{{ $ui['production_time_label'] }}</small><strong x-text="productionDaysOnlyLabel()"></strong></span></div><b>+</b><div><x-storefront.product.ui-icon :src="$ui['shipping_time_icon']" name="truck" /><span><small>{{ $ui['shipping_time_label'] }}</small><strong x-text="shippingDaysOnlyLabel()"></strong></span></div><b>=</b><div class="is-estimate"><x-storefront.product.ui-icon :src="$ui['estimated_delivery_icon']" name="calendar" /><span><small>{{ $ui['estimated_delivery_label'] }}</small><strong x-text="totalDeliveryDaysLabel()"></strong><em>{{ $ui['estimated_delivery_note'] }}</em></span></div></div>
                             </div>
 
-                            <div class="np-proto-worldwide-panel" x-show="currentProductionOptions().length === 0 && (config.shipping_methods || []).length > 0" x-cloak><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 4 6 4 9s-1 6-4 9M12 3c-3 3-4 6-4 9s1 6 4 9"/></svg><div><strong>Worldwide Shipping</strong><p>We ship worldwide including USA. Final shipping cost is calculated from the selected shipping method and order configuration.</p></div></div>
+                            <div class="np-proto-worldwide-panel" x-show="currentProductionOptions().length === 0 && (config.shipping_methods || []).length > 0" x-cloak><x-storefront.product.ui-icon :src="$ui['worldwide_shipping_icon']" name="globe" /><div><strong>{{ $ui['worldwide_shipping_title'] }}</strong><p>{{ $ui['worldwide_shipping_text'] }}</p></div></div>
 
-                            <div class="np-proto-important-notes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><div><strong>Important Notes</strong><ul><li>Production starts after artwork approval and payment confirmation.</li><li>Delivery time may vary based on order quantity, destination and customs clearance.</li><li>You will receive tracking information once your order ships.</li></ul></div></div>
+                            <div class="np-proto-important-notes"><x-storefront.product.ui-icon :src="$ui['important_notes_icon']" name="info" /><div><strong>{{ $ui['important_notes_title'] }}</strong><ul>@foreach(\App\Support\ProductStorefrontUi::lines($ui['important_notes_lines']) as $line)<li>{{ $line }}</li>@endforeach</ul></div></div>
                         </div>
 
-                        <x-storefront.product.customizer.navigation :step="5" :back-step="4" back-label="Back: Upload Artwork" :next-step="6" next-label="Next: Review & Add to Cart" />
+                        <x-storefront.product.customizer.navigation :step="$productionStep" :back-step="$artworkStep" back-label="Back: Upload Artwork" :next-step="$reviewStep" next-label="Next: Review & Add to Cart" />
                         </div>
                     </section>
 
-                    {{-- STEP 6: REVIEW & ADD TO CART --}}
+                    {{-- REVIEW & ADD TO CART --}}
                     <section class="np-proto-step-card" id="review-add-to-cart">
                         <x-storefront.product.customizer.step-header
-                            :number="6"
-                            :title="$customizerSteps[6]['title']"
-                            :description="$customizerSteps[6]['description']"
+                            :number="$reviewStep"
+                            :title="$customizerSteps[$reviewStep]['title']"
+                            :description="$customizerSteps[$reviewStep]['description']"
                         />
-                        <div id="np-product-step-panel-6" class="np-proto-step-expanded" x-show="isCustomizerStepOpen(6)" x-cloak>
+                        <div id="np-product-step-panel-{{ $reviewStep }}" class="np-proto-step-expanded" x-show="isCustomizerStepOpen({{ $reviewStep }})" x-cloak>
                             <div class="np-proto-step-content">
                                 <div class="np-product-review-card">
                                     <div class="np-product-review-summary">
@@ -1099,10 +1144,11 @@ window.productBuilderFabricPricing = function (config = {}) {
                                             @endif
                                         </div>
 
+                                        @if($showRosterStep)
                                         <div class="np-product-review-section">
                                             <div class="np-product-review-card-title">
                                                 <h4>Player Names &amp; Numbers</h4>
-                                                <button type="button" @click="openCustomizerStep(3)">Edit</button>
+                                                <button type="button" @click="openCustomizerStep({{ $rosterStep }})">Edit</button>
                                             </div>
                                             @if($rosterEnabled)
                                                 <div class="np-review-roster-summary" x-show="rosterEnabled" x-cloak>
@@ -1127,10 +1173,12 @@ window.productBuilderFabricPricing = function (config = {}) {
                                             @endif
                                         </div>
 
+                                        @endif
+
                                         <div class="np-product-review-section">
                                             <div class="np-product-review-card-title">
                                                 <h4>Artwork</h4>
-                                                <button type="button" @click="openCustomizerStep(4)">Edit</button>
+                                                <button type="button" @click="openCustomizerStep({{ $artworkStep }})">Edit</button>
                                             </div>
                                             <div class="np-review-detail-list">
                                                 <div><span>Status</span><strong x-text="artworkFiles.length ? `${artworkFiles.length} file${artworkFiles.length === 1 ? '' : 's'} uploaded` : 'Not selected yet'"></strong></div>
@@ -1145,12 +1193,12 @@ window.productBuilderFabricPricing = function (config = {}) {
                                         <div class="np-product-review-section">
                                             <div class="np-product-review-card-title">
                                                 <h4>Production &amp; Shipping</h4>
-                                                <button type="button" @click="openCustomizerStep(5)">Edit</button>
+                                                <button type="button" @click="openCustomizerStep({{ $productionStep }})">Edit</button>
                                             </div>
                                             <div class="np-review-detail-list">
                                                 <div x-show="currentProductionOptions().length > 0" x-cloak><span>Production</span><strong><span x-text="speedLabel()"></span> · <span x-text="productionDaysOnlyLabel()"></span></strong></div>
                                                 <div><span>Shipping</span><strong><span x-text="shippingLabel()"></span> · <span x-text="shippingDaysOnlyLabel()"></span></strong></div>
-                                                <div><span>Estimated Delivery</span><strong x-text="totalDeliveryDaysLabel()"></strong></div>
+                                                <div><span>{{ $ui['estimated_delivery_label'] }}</span><strong x-text="totalDeliveryDaysLabel()"></strong></div>
                                             </div>
                                         </div>
                                     </div>
@@ -1159,7 +1207,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                                         <h3>Pricing</h3>
                                         <div><span>Unit Price</span><strong x-text="money(unitPrice())"></strong></div>
                                         <div><span>Total Pieces</span><strong x-text="totalQuantity()"></strong></div>
-                                        <div><span>Minimum Order Quantity</span><strong>{{ number_format((int) ($product['minimum_quantity'] ?? 1)) }} piece{{ (int) ($product['minimum_quantity'] ?? 1) === 1 ? '' : 's' }}</strong></div>
+                                        <div><span>{{ $ui['minimum_order_label'] }}</span><strong>{{ number_format((int) ($product['minimum_quantity'] ?? 1)) }} piece{{ (int) ($product['minimum_quantity'] ?? 1) === 1 ? '' : 's' }}</strong></div>
                                         <div><span>Product Price</span><strong x-text="money(productPriceAmount())"></strong></div>
                                         <div><span>Shipping (Estimated)</span><strong x-text="money(shippingEstimatedAmount())"></strong></div>
                                         <div><span>Remote Area Surcharge</span><strong x-text="money(remoteAreaSurchargeAmount())"></strong></div>

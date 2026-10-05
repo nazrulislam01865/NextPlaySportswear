@@ -668,6 +668,29 @@ window.adminProductFormFabric = function (initial = {}) {
         isFabricGroup(group) {
             return this.fabricCustomizationTypes.includes(group?.jersey_customization_type || '');
         },
+        fabricPricingValues() {
+            return (this.optionGroups || []).flatMap((group) => {
+                if (! this.isFabricGroup(group)) {
+                    return [];
+                }
+
+                return (group.values || []).filter((value) => value && value.is_active !== false);
+            });
+        },
+        hasCompleteFabricPricing() {
+            const fabrics = this.fabricPricingValues();
+
+            return fabrics.length > 0
+                && fabrics.every((value) => Boolean(value?.fabric_price_table?.has_custom_pricing));
+        },
+        defaultFabricPricingLabel() {
+            const fabrics = this.fabricPricingValues();
+            const defaultFabric = fabrics.find((value) => Boolean(value?.is_default)) || fabrics[0] || null;
+
+            return defaultFabric?.label
+                ? `the default fabric (${defaultFabric.label})`
+                : 'the default fabric';
+        },
         priceImportDialogTitle() {
             return this.priceImportTargetTable
                 ? `Map the ${this.priceImportTargetLabel || 'fabric'} price table`
@@ -1479,7 +1502,7 @@ Lead Time:"></div>
                     <div>
                         <h2>2. Pricing &amp; Quantity Tiers</h2>
                     </div>
-                    <label class="np-import-button">
+                    <label class="np-import-button" x-show="!hasCompleteFabricPricing()" x-cloak>
                         <input x-ref="priceTableImportInput" type="file" accept=".xlsx,.csv" @change="importPriceTable($event)">
                         <span x-text="priceImportBusy ? 'Importing…' : 'Import Excel'">Import Excel</span>
                     </label>
@@ -1487,7 +1510,20 @@ Lead Time:"></div>
 
                 <input type="hidden" name="price_table_headers[0]" value="Quantity">
                 <input type="hidden" name="pricing_mode" x-model="pricingMode">
-                <div class="np-price-mode" role="group" aria-label="Price mode">
+
+                <div
+                    x-show="hasCompleteFabricPricing()"
+                    x-cloak
+                    class="mt-4 rounded-2xl border border-blue-200 bg-blue-50/70 px-4 py-3 text-sm text-slate-700"
+                >
+                    <strong class="font-black text-brand-ink">Fabric-based pricing is active.</strong>
+                    The default/fallback product price table is maintained automatically from
+                    <span class="font-black" x-text="defaultFabricPricingLabel()"></span>.
+                    Edit the customer-facing tables under <strong>Product Options</strong>.
+                </div>
+
+                <div x-show="!hasCompleteFabricPricing()" x-cloak>
+                <div class="np-price-mode mt-4" role="group" aria-label="Price mode">
                     <button type="button" :class="pricingMode === 'standard' ? 'is-selected' : ''" @click="pricingMode = 'standard'">
                         <span x-text="pricingMode === 'standard' ? '▣' : '▢'"></span> Standard pricing
                     </button>
@@ -1497,27 +1533,6 @@ Lead Time:"></div>
                 </div>
                 <p x-show="priceImportStatus" x-cloak class="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700" x-text="priceImportStatus"></p>
                 <p x-show="priceImportError" x-cloak class="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700" x-text="priceImportError"></p>
-
-                <div class="mt-4 grid gap-4 md:grid-cols-2">
-                    <label class="admin-label">Discount unit price
-                        <div class="relative mt-2">
-                            <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-black text-slate-400">$</span>
-                            <input
-                                class="admin-input mt-0"
-                                style="padding-left: 2rem;"
-                                type="number"
-                                name="compare_at_price"
-                                min="0"
-                                max="999999999.99"
-                                step="0.01"
-                                inputmode="decimal"
-                                value="{{ old('compare_at_price', $product->compare_at_price) }}"
-                                placeholder="4.20"
-                            >
-                        </div>
-                        <small class="np-field-help">Optional. Enter a price lower than the card's current “From” price. The storefront shows this as the new discounted price, crosses out the original/current price, and calculates the discount percentage automatically.</small>
-                    </label>
-                </div>
 
                 <div class="np-table-wrap mt-4">
                     <table class="np-simple-table">
@@ -1563,6 +1578,7 @@ Lead Time:"></div>
                 <label class="admin-label mt-4">Price table note
                     <textarea class="admin-textarea np-textarea-sm" name="price_table_note" placeholder="Optional note shown under the price table.">{{ old('price_table_note',$product->price_table_note) }}</textarea>
                 </label>
+                </div>
             </section>
 
             <section id="options" class="np-card">
@@ -1615,6 +1631,7 @@ Lead Time:"></div>
 
             </section>
 
+
             <section id="artwork" class="np-card"><header class="np-card__header"><div><h2>4. Custom Artwork Upload</h2><p>Allow customers to upload custom artwork for this product.</p></div></header><div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,.7fr)]"><div class="np-field-stack"><div class="grid gap-4 sm:grid-cols-2"><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4"><input type="hidden" name="artwork_upload_enabled" :value="artworkUploadEnabled ? 1 : 0"><input type="checkbox" x-model="artworkUploadEnabled"><span><strong class="block text-sm">Show artwork upload step</strong><small class="text-xs text-slate-500">The section disappears when disabled.</small></span></label><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4" :class="!artworkUploadEnabled && 'opacity-50'"><input type="hidden" name="artwork_upload_required" :value="artworkUploadRequired ? 1 : 0"><input type="checkbox" x-model="artworkUploadRequired" :disabled="!artworkUploadEnabled"><span><strong class="block text-sm">Artwork is required</strong><small class="text-xs text-slate-500">At least one file must be selected.</small></span></label></div><div x-show="artworkUploadEnabled" class="grid gap-4 sm:grid-cols-2"><label class="admin-label np-emphasis-label sm:col-span-2">Section title<input class="admin-input" name="artwork_upload_title" x-model="artworkUploadTitle" maxlength="180"></label><label class="admin-label np-emphasis-label sm:col-span-2">Upload instructions<textarea class="admin-textarea np-textarea-sm" name="artwork_upload_description" x-model="artworkUploadDescription" maxlength="3000"></textarea></label><label class="admin-label np-emphasis-label">Accepted extensions<input class="admin-input font-mono" name="artwork_upload_accepted_types" x-model="artworkUploadAcceptedTypes" placeholder="pdf,ai,png,jpg,jpeg,eps"></label><label class="admin-label">Maximum file size (MB)<input class="admin-input" type="number" min="1" max="25" name="artwork_upload_max_file_size_mb" x-model.number="artworkUploadMaxFileSizeMb"></label><label class="admin-label sm:col-span-2">Maximum files<input class="admin-input" type="number" min="1" max="12" name="artwork_upload_max_files" x-model.number="artworkUploadMaxFiles"></label></div></div><div x-show="artworkUploadEnabled" class="np-artwork-preview"><span>☁</span><strong>Upload area will appear on product page</strong><small>Drag &amp; drop or click to upload</small></div></div></section>
 
             <section id="fulfillment" class="np-card">
@@ -1628,21 +1645,24 @@ Lead Time:"></div>
                     <details class="np-config-panel" open>
                         <summary>Production methods</summary>
                         <input type="hidden" name="production_methods_from_master" value="1">
-                        <div class="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                            <label class="inline-flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700">
+                        <div class="np-production-methods-head">
+                            <label class="np-production-methods-toggle">
                                 <input type="hidden" name="production_methods_enabled" :value="productionMethodsEnabled ? 1 : 0">
-                                <input type="checkbox" x-model="productionMethodsEnabled" class="h-4 w-4 rounded border-slate-300 text-brand-red">
-                                <span>Show production methods on product page</span>
+                                <input type="checkbox" x-model="productionMethodsEnabled">
+                                <span>
+                                    <strong>Show production methods on product page</strong>
+                                    <small>Customers can choose from the production methods selected below.</small>
+                                </span>
                             </label>
-                            <div class="min-w-0 text-xs font-medium leading-5 text-slate-500 md:text-right">
-                                <p>Select reusable production methods from <strong>Master Data → Production Methods</strong>. Names, descriptions, and timelines stay controlled from master data; the extra charge is configured separately for this product.</p>
-                                <a href="{{ route('admin.production-methods.index') }}" target="_blank" class="mt-2 inline-flex font-black text-brand-blue hover:text-brand-red">Manage Production Methods ↗</a>
+                            <div class="np-production-methods-help">
+                                <p>Names, descriptions, and timelines come from <strong>Master Data → Production Methods</strong>. Only the extra charge is set for this product.</p>
+                                <a href="{{ route('admin.production-methods.index') }}" target="_blank" class="np-production-methods-link">Manage Production Methods ↗</a>
                             </div>
                         </div>
 
                         <div x-show="productionMethodsEnabled" class="mt-4" x-cloak>
                             @if(isset($productionMethodOptions) && $productionMethodOptions->isNotEmpty())
-                                <div class="grid items-stretch gap-3 xl:grid-cols-2">
+                                <div class="np-production-method-grid">
                                     @foreach($productionMethodOptions as $productionMethod)
                                         @php
                                             $normalizedProductionCode = \Illuminate\Support\Str::slug((string) $productionMethod->code);
@@ -1651,30 +1671,33 @@ Lead Time:"></div>
                                         @endphp
                                         <article
                                             x-data="{ selected: @js($isSelectedProduction) }"
-                                            @class([
-                                            'flex h-full flex-col justify-between rounded-2xl border bg-white p-4 transition',
-                                            'border-slate-300 bg-slate-50' => $isSelectedProduction,
-                                            'border-slate-200' => ! $isSelectedProduction,
-                                            ])
-                                            :class="selected ? 'border-brand-blue bg-blue-50 shadow-sm' : 'border-slate-200 bg-white'"
+                                            class="np-production-method-card"
+                                            :class="selected ? 'is-selected' : ''"
                                         >
-                                            <label class="grid min-w-0 cursor-pointer grid-cols-[auto_minmax(0,1fr)] gap-3">
-                                                <input type="checkbox" name="production_method_codes[]" value="{{ $productionMethod->code }}" x-model="selected" @checked($isSelectedProduction) class="mt-1 h-4 w-4 rounded border-slate-300 text-brand-red">
-                                                <span class="min-w-0">
-                                                    <span class="block truncate text-sm font-black text-brand-ink">{{ $productionMethod->name }}</span>
-                                                    <span class="mt-1 block text-xs font-medium leading-5 text-slate-500">{{ $productionMethod->minimum_days }}–{{ $productionMethod->maximum_days }} working days</span>
+                                            <label class="np-production-method-select">
+                                                <input type="checkbox" name="production_method_codes[]" value="{{ $productionMethod->code }}" x-model="selected" @checked($isSelectedProduction)>
+                                                <span class="np-production-method-copy">
+                                                    <span class="np-production-method-title-row">
+                                                        <strong>{{ $productionMethod->name }}</strong>
+                                                        <span class="np-production-method-badges">
+                                                            <span @class(['np-production-method-badge', 'is-active' => $productionMethod->is_active, 'is-inactive' => ! $productionMethod->is_active])>{{ $productionMethod->is_active ? 'Active' : 'Inactive' }}</span>
+                                                            @if($productionMethod->is_default)<span class="np-production-method-badge is-default">Default</span>@endif
+                                                        </span>
+                                                    </span>
+                                                    <span class="np-production-method-time">{{ $productionMethod->minimum_days }}–{{ $productionMethod->maximum_days }} working days</span>
                                                     @if($productionMethod->description)
-                                                        <span class="mt-2 block text-sm font-normal leading-6 text-slate-500">{{ $productionMethod->description }}</span>
+                                                        <span class="np-production-method-description">{{ $productionMethod->description }}</span>
                                                     @endif
                                                 </span>
                                             </label>
-                                            <label class="mt-4 block rounded-xl border border-slate-200 bg-slate-50 p-3" :class="!selected && 'opacity-50'">
-                                                <span class="flex flex-wrap items-center justify-between gap-2 text-xs font-black text-slate-700">
+
+                                            <div class="np-production-charge-panel" :class="!selected && 'is-disabled'">
+                                                <div class="np-production-charge-heading">
                                                     <span>Extra production charge</span>
-                                                    <span class="font-semibold text-slate-500">Per piece</span>
-                                                </span>
-                                                <div class="relative mt-2">
-                                                    <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-black text-slate-400">$</span>
+                                                    <small>Per piece</small>
+                                                </div>
+                                                <label class="np-production-money-field">
+                                                    <span class="np-production-money-prefix" aria-hidden="true">$</span>
                                                     <input
                                                         type="number"
                                                         min="0"
@@ -1684,16 +1707,11 @@ Lead Time:"></div>
                                                         name="production_method_price_adjustments[{{ $productionMethod->code }}]"
                                                         value="{{ number_format($productionMethodCharge, 2, '.', '') }}"
                                                         :disabled="!selected"
-                                                        class="admin-input mt-0"
-                                                        style="padding-left: 2rem;"
                                                         aria-label="Extra charge per piece for {{ $productionMethod->name }}"
                                                     >
-                                                </div>
-                                                <span class="mt-2 block text-[11px] font-medium leading-5 text-slate-500">Use 0.00 when this production method is included. Express and rush charges are added to every configured piece.</span>
-                                            </label>
-                                            <div class="mt-4 flex flex-wrap gap-2 text-xs font-medium">
-                                                <span @class(["rounded-full px-3 py-1.5 font-medium", "bg-emerald-50 text-emerald-700" => $productionMethod->is_active, "bg-slate-50 text-slate-500" => ! $productionMethod->is_active])>{{ $productionMethod->is_active ? 'Active' : 'Inactive' }}</span>
-                                                @if($productionMethod->is_default)<span class="rounded-full bg-amber-50 px-3 py-1.5 font-medium text-amber-700">Default</span>@endif
+                                                    <span class="np-production-money-suffix">/ piece</span>
+                                                </label>
+                                                <p>Use <strong>0.00</strong> when this method is included in the product price.</p>
                                             </div>
                                         </article>
                                     @endforeach

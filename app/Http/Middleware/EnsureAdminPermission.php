@@ -19,7 +19,15 @@ class EnsureAdminPermission
         $requiredPermission = $permission ?: AdminRbac::permissionForRoute($routeName, $request);
 
         if ($requiredPermission && ! $user?->canAdmin($requiredPermission)) {
-            abort(403, 'You do not have permission to access this admin section.');
+            $productDetailFallbackPermission = match ($requiredPermission) {
+                'product_detail_controls.view' => 'products.view',
+                'product_detail_controls.manage' => 'products.manage',
+                default => null,
+            };
+
+            if (! $productDetailFallbackPermission || ! $user?->canAdmin($productDetailFallbackPermission)) {
+                abort(403, 'You do not have permission to access this admin section.');
+            }
         }
 
         if (AdminRbac::requiresDeletePermission($request) && ! $user?->canDeleteAdminRecords()) {

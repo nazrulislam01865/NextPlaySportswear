@@ -87,7 +87,7 @@ class ProductFormRequest extends FormRequest
             'jersey_roster_fields.*.key' => ['nullable', 'string', 'max:80', 'regex:/^[a-z0-9_\-]+$/', 'distinct'],
             'jersey_roster_fields.*.label' => ['nullable', 'string', 'max:120'],
             'jersey_roster_fields.*.type' => ['nullable', Rule::in(['text', 'number'])],
-            'jersey_roster_fields.*.max_length' => ['nullable', 'integer', 'min:1', 'max:120'],
+            'jersey_roster_fields.*.max_length' => ['nullable', 'integer', 'min:1'],
             'jersey_roster_fields.*.required' => ['nullable', 'boolean'],
             'jersey_roster_fields.*.enabled' => ['nullable', 'boolean'],
             'sample_available' => ['nullable', 'boolean'],
@@ -341,6 +341,13 @@ class ProductFormRequest extends FormRequest
             'show_in_category_page' => $showInCategoryPage,
             'attribute_value_ids' => collect($this->input('attribute_value_ids', []))->map(fn ($id) => (int) $id)->filter()->unique()->values()->all(),
         ]);
+
+        // When every selected fabric has its own price table, the visible product-level
+        // table is only a technical fallback. Keep that fallback synchronized with the
+        // default fabric before normalizing pricing so cards, carts and legacy consumers
+        // continue to receive a deterministic base price without forcing admins to edit
+        // a duplicate table.
+        $this->syncDefaultPricingFromCompleteFabricPricing();
 
         $pricing = $this->normalizeVisiblePricing();
         $this->merge($pricing);
@@ -1023,6 +1030,95 @@ class ProductFormRequest extends FormRequest
             return $quantity >= 1
                 ? ['minimum_quantity' => $quantity, 'maximum_quantity' => $quantity]
                 : null;
+        }
+
+        return null;
+    }
+
+    private function syncDefaultPricingFromCompleteFabricPricing(): void
+    {
+        $tables = collect($this->input('fabric_price_tables', []))
+            ->filter(fn ($table): bool => is_array($table))
+            ->filter(fn (array $table): bool => trim((string) ($table['fabric_key'] ?? '')) !== '')
+            ->values();
+
+        if ($tables->isEmpty()
+            || $tables->contains(fn (array $table): bool => ! filter_var($table['has_custom_pricing'] ?? false, FILTER_VALIDATE_BOOLEAN))) {
+            return;
+        }
+
+        $defaultFabricKey = $this->submittedDefaultFabricKey();
+        $defaultTable = $defaultFabricKey !== null
+            ? $tables->first(fn (array $table): bool => trim((string) ($table['fabric_key'] ?? '')) === $defaultFabricKey)
+            : null;
+        $defaultTable = is_array($defaultTable) ? $defaultTable : $tables->first();
+
+        if (! is_array($defaultTable)) {
+            return;
+        }
+
+        $headers = collect($defaultTable['price_table_headers'] ?? [])
+            ->map(fn ($header) => trim((string) $header))
+            ->filter()
+            ->values();
+        if ($headers->isEmpty() || Str::lower((string) $headers->first()) !== 'quantity') {
+            $headers->prepend('Quantity');
+        }
+
+        $rows = collect($defaultTable['price_table_rows'] ?? [])
+            ->filter(fn ($row): bool => is_array($row))
+            ->values()
+            ->all();
+        $ranges = collect($defaultTable['price_table_ranges'] ?? [])
+            ->filter(fn ($range): bool => is_array($range))
+            ->values()
+            ->all();
+
+        if ($headers->count() < 2 || $rows === []) {
+            return;
+        }
+
+        $this->merge([
+            'price_table_headers' => $headers->take(20)->all(),
+            'price_table_rows' => $rows,
+            'price_table_ranges' => $ranges,
+            'price_table_highlight_column' => max(1, (int) ($defaultTable['price_table_highlight_column'] ?? 1)),
+            'price_table_note' => filled($defaultTable['price_table_note'] ?? null)
+                ? trim((string) $defaultTable['price_table_note'])
+                : null,
+        ]);
+    }
+
+    private function submittedDefaultFabricKey(): ?string
+    {
+        $fabricTypes = JerseyCustomizationType::fabricTypeValues();
+
+        foreach (collect($this->input('option_groups', [])) as $group) {
+            if (! is_array($group)
+                || ! in_array((string) ($group['jersey_customization_type'] ?? ''), $fabricTypes, true)) {
+                continue;
+            }
+
+            $values = collect($group['values'] ?? [])->filter(fn ($value): bool => is_array($value))->values();
+            if ($values->isEmpty()) {
+                continue;
+            }
+
+            $default = $values->first(fn (array $value): bool => filter_var($value['is_default'] ?? false, FILTER_VALIDATE_BOOLEAN));
+            $default = is_array($default) ? $default : $values->first();
+            if (! is_array($default)) {
+                continue;
+            }
+
+            $masterId = (int) ($default['jersey_customization_option_id'] ?? 0);
+            if ($masterId > 0) {
+                return 'master:'.$masterId;
+            }
+
+            $code = trim((string) ($default['code'] ?? $default['label'] ?? ''));
+            if ($code !== '') {
+                return 'code:'.Str::slug($code);
+            }
         }
 
         return null;
