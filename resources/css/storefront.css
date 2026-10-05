@@ -23625,3 +23625,30 @@ html.np-product-preview-open body { overflow: hidden; }
     border-color: var(--np-color-secondary);
     box-shadow: none;
 }
+
+/* Product highlight uploaded icons: use the storefront theme accent consistently. */
+.storefront-clean-ui .np-product-feature-icon {
+    flex-basis: 1.4rem;
+    width: 1.4rem;
+    height: 1.4rem;
+}
+
+.storefront-clean-ui .np-product-feature-icon svg {
+    width: 1.2rem;
+    height: 1.2rem;
+}
+
+.storefront-clean-ui .np-product-feature-icon-uploaded {
+    display: block;
+    width: 1.2rem;
+    height: 1.2rem;
+    background: var(--np-color-secondary);
+    -webkit-mask-image: var(--np-feature-icon-image);
+    mask-image: var(--np-feature-icon-image);
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+}

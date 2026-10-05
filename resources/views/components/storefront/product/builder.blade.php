@@ -568,7 +568,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                                 <div class="np-product-feature-item">
                                     <span class="np-product-feature-icon" aria-hidden="true">
                                         @if(filled($feature['icon'] ?? null))
-                                            <img src="{{ $feature['icon'] }}" alt="" loading="lazy" decoding="async">
+                                            <span class="np-product-feature-icon-uploaded" style="--np-feature-icon-image: url('{{ $feature['icon'] }}')"></span>
                                         @elseif($index % 4 === 0)
                                             <svg viewBox="0 0 24 24"><path d="M4 8h16M4 16h16M8 4v16M16 4v16"/></svg>
                                         @elseif($index % 4 === 1)

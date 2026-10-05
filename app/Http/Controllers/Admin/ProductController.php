@@ -20,6 +20,7 @@ use App\Models\SizeOptionGroup;
 use App\Models\ShippingMethod;
 use App\Services\Catalog\CategoryTreeService;
 use App\Services\Catalog\ProductOptionFilterSyncService;
+use App\Services\Catalog\ProductProductionMethodBulkService;
 use App\Services\Catalog\ProductChangeSummaryService;
 use App\Services\AdminNotificationService;
 use App\Services\Security\SafeHtmlService;
@@ -46,6 +47,7 @@ class ProductController extends Controller
         private readonly SafeHtmlService $safeHtml,
         private readonly CategoryTreeService $categoryTreeService,
         private readonly ProductOptionFilterSyncService $productOptionFilterSyncService,
+        private readonly ProductProductionMethodBulkService $productProductionMethodBulkService,
         private readonly ProductChangeSummaryService $productChangeSummaryService,
         private readonly AdminNotificationService $adminNotifications,
         private readonly ProductCatalogCacheService $productCatalogCache,
@@ -54,7 +56,14 @@ class ProductController extends Controller
 
     public function index(Request $request): View
     {
-        $query = Product::query()->with(['category', 'subcategory', 'categories', 'images', 'updater:id,name,email']);
+        $query = Product::query()->with([
+            'category',
+            'subcategory',
+            'categories',
+            'images',
+            'updater:id,name,email',
+            'productionSpeeds:id,product_id,production_method_id,name,code,is_active,sort_order',
+        ]);
 
         if ($search = trim((string) $request->query('q'))) {
             $query->where(fn ($builder) => $builder
@@ -82,10 +91,28 @@ class ProductController extends Controller
             $query->where('is_featured', true);
         }
 
+        $productionMethodsFilter = (string) $request->query('production_methods', '');
+        if ($productionMethodsFilter === 'enabled') {
+            $query->where('production_methods_enabled', true);
+        } elseif ($productionMethodsFilter === 'disabled') {
+            $query->where('production_methods_enabled', false);
+        }
+
+        $sort = (string) $request->query('sort', 'latest');
+        match ($sort) {
+            'production_enabled' => $query->orderByDesc('production_methods_enabled')->latest('updated_at'),
+            'production_disabled' => $query->orderBy('production_methods_enabled')->latest('updated_at'),
+            default => $query->latest('updated_at'),
+        };
+
         return view('admin.products.index', [
-            'products' => $query->latest()->paginate($this->adminPerPage(25))->withQueryString(),
-            'filters' => $request->only(['q', 'status', 'category_id', 'featured']),
+            'products' => $query->paginate($this->adminPerPage(25))->withQueryString(),
+            'filters' => $request->only(['q', 'status', 'category_id', 'featured', 'production_methods', 'sort']),
             'categoryOptions' => $this->categoryTreeService->flatOptions(),
+            'productionMethodOptions' => ProductionMethod::query()
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(['id', 'name', 'code', 'minimum_days', 'maximum_days', 'is_default', 'is_active']),
             'productStats' => $this->productStats(),
         ]);
     }
@@ -215,6 +242,59 @@ class ProductController extends Controller
             }
 
             return back()->with('status', "{$count} product records moved to trash.");
+        }
+
+        if ($action === 'production_enable') {
+            $result = $this->productProductionMethodBulkService->enableAndSet(
+                $ids,
+                collect($request->validated('production_method_ids', [])),
+                $actor?->id
+            );
+            $updated = (int) $result['updated'];
+            $methodNames = $result['methods']->pluck('name')->join(', ');
+
+            $this->flushProductCaches();
+
+            if ($updated > 0) {
+                $this->adminNotifications->adminActivity(
+                    'updated',
+                    'Products',
+                    $updated.' selected products production methods enabled'.($methodNames !== '' ? ': '.$methodNames : ''),
+                    $actor,
+                    route('admin.products.index'),
+                    [
+                        'resource_id' => null,
+                        'resource_code' => '',
+                        'route_name' => 'admin.products.bulk',
+                        'request_method' => 'POST',
+                    ]
+                );
+            }
+
+            return back()->with('status', $updated.' product'.($updated === 1 ? '' : 's').' updated with the selected production methods.');
+        }
+
+        if ($action === 'production_disable') {
+            $updated = $this->productProductionMethodBulkService->disable($ids, $actor?->id);
+            $this->flushProductCaches();
+
+            if ($updated > 0) {
+                $this->adminNotifications->adminActivity(
+                    'updated',
+                    'Products',
+                    $updated.' selected products production methods disabled',
+                    $actor,
+                    route('admin.products.index'),
+                    [
+                        'resource_id' => null,
+                        'resource_code' => '',
+                        'route_name' => 'admin.products.bulk',
+                        'request_method' => 'POST',
+                    ]
+                );
+            }
+
+            return back()->with('status', $updated.' product'.($updated === 1 ? '' : 's').' production methods disabled. Existing method assignments were preserved.');
         }
 
         $payload = match ($action) {

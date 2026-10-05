@@ -47,6 +47,8 @@
         $hasActiveFilters = filled($filters['q'] ?? null)
             || filled($filters['status'] ?? null)
             || filled($filters['category_id'] ?? null)
+            || filled($filters['production_methods'] ?? null)
+            || (($filters['sort'] ?? 'latest') !== 'latest')
             || (bool) ($filters['featured'] ?? false);
     @endphp
 
@@ -130,6 +132,30 @@
                     </span>
                 </label>
 
+                <label class="product-filter-field product-production-filter-field">
+                    <span class="sr-only">Production methods status</span>
+                    <select class="admin-input product-control product-select-control" name="production_methods">
+                        <option value="">All production method products</option>
+                        <option value="enabled" @selected(($filters['production_methods'] ?? '') === 'enabled')>Enabled production method products</option>
+                        <option value="disabled" @selected(($filters['production_methods'] ?? '') === 'disabled')>Disabled production method products</option>
+                    </select>
+                    <span class="product-filter-select-icon" aria-hidden="true">
+                        <svg viewBox="0 0 20 20" fill="none"><path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </span>
+                </label>
+
+                <label class="product-filter-field product-sort-field">
+                    <span class="sr-only">Sort products</span>
+                    <select class="admin-input product-control product-select-control" name="sort">
+                        <option value="latest" @selected(($filters['sort'] ?? 'latest') === 'latest')>Recently updated</option>
+                        <option value="production_enabled" @selected(($filters['sort'] ?? '') === 'production_enabled')>Production enabled first</option>
+                        <option value="production_disabled" @selected(($filters['sort'] ?? '') === 'production_disabled')>Production disabled first</option>
+                    </select>
+                    <span class="product-filter-select-icon" aria-hidden="true">
+                        <svg viewBox="0 0 20 20" fill="none"><path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </span>
+                </label>
+
                 <label class="product-featured-filter">
                     <input type="checkbox" name="featured" value="1" @checked($filters['featured'] ?? false)>
                     <span>Featured</span>
@@ -149,21 +175,92 @@
             </form>
         </section>
 
-        <form id="bulk-product-form" method="POST" action="{{ route('admin.products.bulk') }}" class="product-bulk-card" data-product-bulk-form>
-            @csrf
-            <strong>Selected products</strong>
-            <select class="admin-input product-control product-bulk-select" name="action" required data-product-bulk-action>
-                <option value="">Choose bulk action</option>
-                <option value="activate">Activate</option>
-                <option value="deactivate">Deactivate / Draft</option>
-                <option value="archive">Archive</option>
-                <option value="feature">Mark featured</option>
-                <option value="unfeature">Remove featured</option>
-                <option value="delete">Delete / Move to trash</option>
-            </select>
-            <button class="product-bulk-button" type="submit">Apply</button>
-            <span class="product-bulk-note">Bulk changes are validated and recorded server-side.</span>
-        </form>
+        <div class="product-bulk-actions-row">
+            <form id="bulk-product-form" method="POST" action="{{ route('admin.products.bulk') }}" class="product-bulk-card" data-product-bulk-form>
+                @csrf
+                <strong>Selected products</strong>
+                <select class="admin-input product-control product-bulk-select" name="action" required data-product-bulk-action>
+                    <option value="">Choose bulk action</option>
+                    <optgroup label="Product status">
+                        <option value="activate">Activate</option>
+                        <option value="deactivate">Deactivate / Draft</option>
+                        <option value="archive">Archive</option>
+                    </optgroup>
+                    <optgroup label="Product flags">
+                        <option value="feature">Mark featured</option>
+                        <option value="unfeature">Remove featured</option>
+                    </optgroup>
+                    <option value="delete">Delete / Move to trash</option>
+                </select>
+                <button class="product-bulk-button" type="submit">Apply</button>
+            </form>
+
+            <form id="production-bulk-product-form" method="POST" action="{{ route('admin.products.bulk') }}" class="product-bulk-card product-production-bulk-card" data-production-bulk-form>
+                @csrf
+                <div class="product-bulk-main">
+                    <strong>Production methods</strong>
+                    <select class="admin-input product-control product-bulk-select" name="action" required data-production-bulk-action>
+                        <option value="">Choose production action</option>
+                        <option value="production_enable">Enable / set production methods</option>
+                        <option value="production_disable">Disable production methods</option>
+                    </select>
+                    <button class="product-bulk-button" type="submit">Apply</button>
+                </div>
+            </form>
+        </div>
+
+        @php($activeBulkProductionMethods = ($productionMethodOptions ?? collect())->where('is_active', true)->values())
+        <dialog class="product-production-modal" data-production-method-modal aria-labelledby="production-method-modal-title">
+            <div class="product-production-modal__panel">
+                <div class="product-production-modal__header">
+                    <div>
+                        <span class="product-production-modal__eyebrow">Bulk production methods</span>
+                        <h2 id="production-method-modal-title">Enable production methods</h2>
+                        <p>Choose the exact production method(s) to enable for <strong data-production-selected-products>0</strong> selected product(s).</p>
+                    </div>
+                    <button type="button" class="product-production-modal__close" data-production-modal-close aria-label="Close production methods popup">
+                        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
+
+                <div class="product-production-modal__body">
+                    <div class="product-production-modal__summary">
+                        <strong>Production methods from Master Data</strong>
+                        <span class="product-bulk-production__count" data-product-method-count>0 selected</span>
+                    </div>
+                    <p class="product-production-modal__help">Only active production methods can be assigned. Existing product-specific charges are preserved when the same method is already assigned.</p>
+
+                    @if($activeBulkProductionMethods->isNotEmpty())
+                        <div class="product-bulk-method-grid product-bulk-method-grid--modal">
+                            @foreach($activeBulkProductionMethods as $method)
+                                <label class="product-bulk-method">
+                                    <input
+                                        type="checkbox"
+                                        name="production_method_ids[]"
+                                        value="{{ $method->id }}"
+                                        form="production-bulk-product-form"
+                                        data-product-method-checkbox
+                                    >
+                                    <span class="product-bulk-method__copy">
+                                        <span class="product-bulk-method__name">{{ $method->name }}</span>
+                                        <span class="product-bulk-method__meta">{{ $method->minimum_days }}–{{ $method->maximum_days }} days{{ $method->is_default ? ' · Default' : '' }}</span>
+                                    </span>
+                                </label>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="product-bulk-production__empty">No active production methods are available. Add or activate methods in Master Data → Production Methods first.</p>
+                    @endif
+
+                    <p class="product-production-modal__error" data-production-modal-error hidden>Please choose at least one production method.</p>
+                </div>
+
+                <div class="product-production-modal__footer">
+                    <button type="button" class="product-production-modal__cancel" data-production-modal-close>Cancel</button>
+                    <button type="button" class="product-production-modal__confirm" data-production-modal-confirm @disabled($activeBulkProductionMethods->isEmpty())>Enable selected methods</button>
+                </div>
+            </div>
+        </dialog>
 
         <section class="product-table-card">
             <div class="product-table-scroll" tabindex="0" aria-label="Products table">
@@ -176,6 +273,7 @@
                             <th>Price</th>
                             <th>Status</th>
                             <th>Flags</th>
+                            <th>Production</th>
                             <th>Last updated</th>
                             <th>What was updated</th>
                             <th class="product-actions-column"><span class="sr-only">Actions</span></th>
@@ -215,6 +313,22 @@
                                         @endif
                                         @if(! $product->is_featured && $badgeLabel === '')
                                             <span class="product-muted-placeholder">—</span>
+                                        @endif
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="product-production-cell">
+                                        <span class="product-production-status product-production-status--{{ $product->production_methods_enabled ? 'enabled' : 'disabled' }}">
+                                            {{ $product->production_methods_enabled ? 'Enabled' : 'Disabled' }}
+                                        </span>
+                                        @if($product->production_methods_enabled && $product->activeProductionMethodNames()->isNotEmpty())
+                                            <p class="product-production-methods" title="{{ $product->activeProductionMethodNames()->join(', ') }}">
+                                                {{ $product->activeProductionMethodNames()->take(2)->join(', ') }}@if($product->activeProductionMethodNames()->count() > 2) +{{ $product->activeProductionMethodNames()->count() - 2 }}@endif
+                                            </p>
+                                        @elseif($product->production_methods_enabled)
+                                            <p class="product-production-methods product-production-methods--warning">No method selected</p>
+                                        @else
+                                            <p class="product-production-methods">Hidden on storefront</p>
                                         @endif
                                     </div>
                                 </td>
@@ -271,7 +385,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="product-empty-state">No products found.</td>
+                                <td colspan="10" class="product-empty-state">No products found.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -289,7 +403,94 @@
             const checkAll = document.getElementById('product-check-all');
             const bulkForm = document.querySelector('[data-product-bulk-form]');
             const bulkAction = document.querySelector('[data-product-bulk-action]');
+            const productionBulkForm = document.querySelector('[data-production-bulk-form]');
+            const productionBulkAction = document.querySelector('[data-production-bulk-action]');
+            const productionModal = document.querySelector('[data-production-method-modal]');
+            const productionModalError = document.querySelector('[data-production-modal-error]');
+            const productionSelectedProducts = document.querySelector('[data-production-selected-products]');
+            const productionModalConfirm = document.querySelector('[data-production-modal-confirm]');
+            const productionModalCloseButtons = Array.from(document.querySelectorAll('[data-production-modal-close]'));
+            const methodChecks = () => Array.from(document.querySelectorAll('[data-product-method-checkbox]'));
+            const methodCount = document.querySelector('[data-product-method-count]');
             const rowChecks = () => Array.from(document.querySelectorAll('.product-row-check'));
+            let productionEnableConfirmed = false;
+
+            const selectedRows = () => rowChecks().filter(item => item.checked);
+
+            const syncProductionProductIds = () => {
+                if (!productionBulkForm) return;
+
+                productionBulkForm.querySelectorAll('[data-production-product-id]').forEach(input => input.remove());
+                selectedRows().forEach(checkbox => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'product_ids[]';
+                    input.value = checkbox.value;
+                    input.dataset.productionProductId = '1';
+                    productionBulkForm.appendChild(input);
+                });
+            };
+
+            const updateMethodCount = () => {
+                const checkedMethods = methodChecks().filter(item => item.checked).length;
+                if (methodCount) methodCount.textContent = `${checkedMethods} selected`;
+                if (productionModalError && checkedMethods > 0) productionModalError.hidden = true;
+            };
+
+            const openProductionModal = () => {
+                if (!productionModal) return;
+                if (productionSelectedProducts) productionSelectedProducts.textContent = String(selectedRows().length);
+                if (productionModalError) productionModalError.hidden = true;
+                updateMethodCount();
+
+                if (typeof productionModal.showModal === 'function') {
+                    productionModal.showModal();
+                } else {
+                    productionModal.setAttribute('open', '');
+                }
+            };
+
+            const closeProductionModal = () => {
+                if (!productionModal) return;
+                if (typeof productionModal.close === 'function' && productionModal.open) {
+                    productionModal.close();
+                } else {
+                    productionModal.removeAttribute('open');
+                }
+                if (productionModalError) productionModalError.hidden = true;
+            };
+
+            methodChecks().forEach(checkbox => checkbox.addEventListener('change', updateMethodCount));
+            updateMethodCount();
+
+            productionModalCloseButtons.forEach(button => button.addEventListener('click', closeProductionModal));
+
+            productionModal?.addEventListener('click', event => {
+                if (event.target === productionModal) closeProductionModal();
+            });
+
+            productionModal?.addEventListener('cancel', event => {
+                event.preventDefault();
+                closeProductionModal();
+            });
+
+            productionModalConfirm?.addEventListener('click', () => {
+                const selectedMethodCount = methodChecks().filter(item => item.checked).length;
+                if (selectedMethodCount === 0) {
+                    if (productionModalError) productionModalError.hidden = false;
+                    return;
+                }
+
+                productionEnableConfirmed = true;
+                syncProductionProductIds();
+                closeProductionModal();
+                productionBulkForm?.requestSubmit();
+            });
+
+            productionBulkAction?.addEventListener('change', () => {
+                productionEnableConfirmed = false;
+                if (productionModalError) productionModalError.hidden = true;
+            });
 
             checkAll?.addEventListener('change', event => {
                 rowChecks().forEach(checkbox => checkbox.checked = event.target.checked);
@@ -306,7 +507,7 @@
             });
 
             bulkForm?.addEventListener('submit', event => {
-                const selectedCount = rowChecks().filter(item => item.checked).length;
+                const selectedCount = selectedRows().length;
                 const action = bulkAction?.value || '';
 
                 if (selectedCount === 0) {
@@ -325,6 +526,51 @@
                     ? `Move ${selectedCount} selected product${selectedCount === 1 ? '' : 's'} to trash?`
                     : `Apply this bulk action to ${selectedCount} selected product${selectedCount === 1 ? '' : 's'}?`;
 
+                if (!confirm(message)) {
+                    event.preventDefault();
+                }
+            });
+
+            productionBulkForm?.addEventListener('submit', event => {
+                const selectedCount = selectedRows().length;
+                const action = productionBulkAction?.value || '';
+
+                if (selectedCount === 0) {
+                    event.preventDefault();
+                    productionEnableConfirmed = false;
+                    alert('Please select at least one product first.');
+                    return;
+                }
+
+                if (action === '') {
+                    event.preventDefault();
+                    productionEnableConfirmed = false;
+                    alert('Please choose a production methods action first.');
+                    return;
+                }
+
+                if (action === 'production_enable' && !productionEnableConfirmed) {
+                    event.preventDefault();
+                    openProductionModal();
+                    return;
+                }
+
+                syncProductionProductIds();
+
+                if (action === 'production_enable') {
+                    const selectedMethodCount = methodChecks().filter(item => item.checked).length;
+                    if (selectedMethodCount === 0) {
+                        event.preventDefault();
+                        productionEnableConfirmed = false;
+                        openProductionModal();
+                        if (productionModalError) productionModalError.hidden = false;
+                        return;
+                    }
+                    productionEnableConfirmed = false;
+                    return;
+                }
+
+                const message = `Disable production methods on ${selectedCount} selected product${selectedCount === 1 ? '' : 's'}? Existing method assignments will be kept.`;
                 if (!confirm(message)) {
                     event.preventDefault();
                 }

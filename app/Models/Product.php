@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection;
 
 class Product extends Model
 {
@@ -180,6 +181,24 @@ class Product extends Model
     public function productionSpeeds(): HasMany
     {
         return $this->hasMany(ProductProductionSpeed::class)->orderBy('sort_order');
+    }
+
+    /**
+     * Return the names of active production methods without creating an N+1
+     * query when the productionSpeeds relation has already been eager loaded.
+     *
+     * @return Collection<int, string>
+     */
+    public function activeProductionMethodNames(): Collection
+    {
+        $names = $this->relationLoaded('productionSpeeds')
+            ? $this->productionSpeeds->where('is_active', true)->pluck('name')
+            : $this->productionSpeeds()->where('is_active', true)->pluck('name');
+
+        return $names
+            ->map(static fn ($name): string => trim((string) $name))
+            ->filter(static fn (string $name): bool => $name !== '')
+            ->values();
     }
 
     public function shippingMethods(): HasMany
