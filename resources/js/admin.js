@@ -51,6 +51,9 @@ window.adminProductForm = (initial = {}) => ({
     subcategoryId: String(initial.subcategoryId || ''),
     subcategories: initial.subcategories || [],
     features: initial.features?.length ? initial.features : [''],
+    featureIcons: Array.isArray(initial.featureIcons) ? initial.featureIcons : [],
+    featureIconPreviews: Array.isArray(initial.featureIconPreviews) ? initial.featureIconPreviews : [],
+    featureStorefront: Array.isArray(initial.featureStorefront) ? initial.featureStorefront : [],
     imageUrls: initial.imageUrls?.length ? initial.imageUrls : [],
     newImagePreviews: [],
     productImageDragging: false,
@@ -152,6 +155,13 @@ window.adminProductForm = (initial = {}) => ({
     ],
 
     init() {
+        while (this.featureIcons.length < this.features.length) this.featureIcons.push('');
+        while (this.featureIconPreviews.length < this.features.length) this.featureIconPreviews.push('');
+        while (this.featureStorefront.length < this.features.length) this.featureStorefront.push(false);
+        this.featureIcons = this.featureIcons.slice(0, this.features.length);
+        this.featureIconPreviews = this.featureIconPreviews.slice(0, this.features.length);
+        this.featureStorefront = this.featureStorefront.slice(0, this.features.length).map(value => this.booleanValue(value, false));
+        this.normalizeFeatureStorefront();
         this.normalizePriceRows();
         this.normalizeProductionTable();
         this.optionGroups.forEach(group => {
@@ -472,7 +482,58 @@ window.adminProductForm = (initial = {}) => ({
     updateSlug() { if (!this.slugTouched) this.slug = slugify(this.productName); },
     touchSlug() { this.slugTouched = true; this.slug = slugify(this.slug); },
     visibleSubcategories() { return this.subcategories.filter(item => String(item.parent_id) === String(this.categoryId)); },
-    addFeature() { this.features.push(''); },
+    addFeature() {
+        this.features.push('');
+        this.featureIcons.push('');
+        this.featureIconPreviews.push('');
+        this.featureStorefront.push(false);
+    },
+    removeFeature(index) {
+        this.features.splice(index, 1);
+        this.featureIcons.splice(index, 1);
+        this.featureIconPreviews.splice(index, 1);
+        this.featureStorefront.splice(index, 1);
+        if (!this.features.length) {
+            this.features.push('');
+            this.featureIcons.push('');
+            this.featureIconPreviews.push('');
+            this.featureStorefront.push(false);
+        }
+        this.normalizeFeatureStorefront();
+    },
+    storefrontHighlightCount() {
+        return this.featureStorefront.reduce((count, enabled, index) => {
+            return count + (this.booleanValue(enabled, false) && String(this.features[index] || '').trim() !== '' ? 1 : 0);
+        }, 0);
+    },
+    normalizeFeatureStorefront() {
+        let selected = 0;
+        this.featureStorefront = this.featureStorefront.map((enabled, index) => {
+            const hasLabel = String(this.features[index] || '').trim() !== '';
+            const isEnabled = this.booleanValue(enabled, false) && hasLabel;
+            if (!isEnabled || selected >= 4) return false;
+            selected += 1;
+            return true;
+        });
+    },
+    featureIconPreview(index) {
+        return this.featureIconPreviews?.[index] || '';
+    },
+    setFeatureIcon(index, event) {
+        const file = event?.target?.files?.[0] || null;
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            this.featureIconPreviews[index] = String(reader.result || '');
+        };
+        reader.readAsDataURL(file);
+    },
+    clearFeatureIcon(index) {
+        this.featureIcons[index] = '';
+        this.featureIconPreviews[index] = '';
+        const input = document.getElementById(`feature-icon-${index}`);
+        if (input) input.value = '';
+    },
     addImageUrl() {
         this.imageUrls.push({ client_key: this.clientKey(), existing_id: '', media_library_image_id: '', url: '', preview: '', name: '', is_primary: false });
     },

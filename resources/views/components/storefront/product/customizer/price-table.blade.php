@@ -22,6 +22,11 @@
         </table>
     </div>
 
+    <div x-show="table().note" x-cloak class="np-proto-info-note np-proto-price-table-note">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+        <p x-text="table().note"></p>
+    </div>
+
     <div class="np-proto-info-note">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
         <p>Final pricing follows the selected fabric price table and your total quantity across all selected sizes.</p>

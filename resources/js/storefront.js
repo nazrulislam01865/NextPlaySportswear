@@ -1150,7 +1150,12 @@ window.productBuilder = (config = {}) => ({
 
     activePriceTable() {
         const fabricTable = this.selectedFabricPriceTable();
-        if (fabricTable) return fabricTable;
+        if (fabricTable) {
+            return {
+                ...fabricTable,
+                note: fabricTable.note || config.price_table?.note || '',
+            };
+        }
         return {
             ...(config.price_table || {}),
             price_tiers: config.price_table?.price_tiers || config.price_tiers || [],

@@ -1208,6 +1208,7 @@ class ProductController extends Controller
         $data = $request->validated();
         $this->syncCatalogAssignments($product, $data);
         $this->syncImages($product, $request, $data);
+        $this->syncFeatureIcons($product, $request, $data);
 
         $existingOptionMedia = $product->optionGroups()
             ->with('values:id,product_option_group_id,jersey_customization_option_id,world_cup_customization_option_id,image_path,image_url,image_gallery')
@@ -1810,6 +1811,56 @@ class ProductController extends Controller
         $product->attributeValues()->sync(
             collect($data['attribute_value_ids'] ?? [])->map(fn ($id) => (int) $id)->unique()->all()
         );
+    }
+
+    private function syncFeatureIcons(Product $product, ProductFormRequest $request, array $data): void
+    {
+        $existingIcons = collect($product->feature_icons ?? [])
+            ->map(fn ($path): string => trim((string) $path))
+            ->filter()
+            ->values();
+        $allowedExistingIcons = $existingIcons->flip();
+        $submittedIcons = collect($data['feature_icons'] ?? []);
+        $submittedStorefront = collect($data['feature_storefront'] ?? []);
+        $existingStorefront = collect($product->feature_storefront ?? []);
+        $icons = [];
+        $storefront = [];
+        $storefrontCount = 0;
+        $hasSubmittedStorefront = array_key_exists('feature_storefront', $data);
+
+        foreach (collect($data['features'] ?? []) as $index => $feature) {
+            if (! filled(trim((string) $feature))) {
+                continue;
+            }
+
+            $path = trim((string) $submittedIcons->get($index, ''));
+            if ($path === '' || ! $allowedExistingIcons->has($path)) {
+                $path = '';
+            }
+
+            $upload = $request->file("feature_icon_files.{$index}");
+            if ($upload) {
+                $path = $upload->store("products/{$product->id}/highlights", 'public');
+            }
+
+            $requestedStorefront = $hasSubmittedStorefront
+                ? filter_var($submittedStorefront->get($index, false), FILTER_VALIDATE_BOOLEAN)
+                : ($existingStorefront->has($index)
+                    ? (bool) $existingStorefront->get($index)
+                    : $storefrontCount < 4);
+            $showOnStorefront = $requestedStorefront && $storefrontCount < 4;
+            if ($showOnStorefront) {
+                $storefrontCount++;
+            }
+
+            $icons[] = $path !== '' ? $path : null;
+            $storefront[] = $showOnStorefront;
+        }
+
+        $product->forceFill([
+            'feature_icons' => $icons,
+            'feature_storefront' => $storefront,
+        ])->save();
     }
 
     private function syncImages(Product $product, ProductFormRequest $request, array $data): void

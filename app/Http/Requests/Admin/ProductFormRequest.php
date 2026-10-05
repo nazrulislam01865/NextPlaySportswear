@@ -108,6 +108,12 @@ class ProductFormRequest extends FormRequest
 
             'features' => ['nullable', 'array', 'max:50'],
             'features.*' => ['nullable', 'string', 'max:500'],
+            'feature_icons' => ['nullable', 'array', 'max:50'],
+            'feature_icons.*' => ['nullable', 'string', 'max:2048'],
+            'feature_storefront' => ['nullable', 'array', 'max:50'],
+            'feature_storefront.*' => ['nullable', 'boolean'],
+            'feature_icon_files' => ['nullable', 'array', 'max:50'],
+            'feature_icon_files.*' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,avif,svg', 'mimetypes:image/jpeg,image/png,image/webp,image/avif,image/svg+xml', 'max:2048'],
             'specifications' => ['nullable', 'array', 'max:100'],
             'specifications.*.name' => ['nullable', 'string', 'max:150'],
             'specifications.*.value' => ['nullable', 'string', 'max:1000'],
@@ -624,6 +630,23 @@ class ProductFormRequest extends FormRequest
                         'The discount unit price must be lower than the current storefront “From” price of $'.number_format((float) $originalCardPrice, 2).'.'
                     );
                 }
+            }
+
+            $submittedFeatures = collect($this->input('features', []));
+            $storefrontHighlightCount = collect($this->input('feature_storefront', []))
+                ->filter(function ($enabled, $index) use ($submittedFeatures): bool {
+                    $feature = trim((string) $submittedFeatures->get($index, ''));
+                    $isEnabled = filter_var($enabled, FILTER_VALIDATE_BOOLEAN);
+
+                    return $feature !== '' && $isEnabled;
+                })
+                ->count();
+
+            if ($storefrontHighlightCount > 4) {
+                $validator->errors()->add(
+                    'feature_storefront',
+                    'A maximum of 4 product highlights can be shown on the storefront.'
+                );
             }
 
             $submittedCategoryIds = collect([$this->input('primary_category_id')])

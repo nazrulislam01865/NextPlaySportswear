@@ -9821,3 +9821,369 @@ body.admin-ui-compact #admin-main-content .admin-code-block {
         min-width: 0;
     }
 }
+
+/* Product highlight editor --------------------------------------------------
+   Keep text, icon upload, storefront visibility and action controls on one
+   consistent grid so every row scans cleanly and the storefront choice is
+   always explicit. */
+body.admin-clean-ui .np-product-highlights-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+body.admin-clean-ui .np-highlight-count {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.5rem;
+    padding: .2rem .55rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    background: #fff;
+    color: #475569;
+    font-size: .72rem;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+body.admin-clean-ui .np-product-highlight-list {
+    overflow: hidden;
+    border: 1px solid #dbe3ee;
+    border-radius: .85rem;
+    background: #fff;
+}
+
+body.admin-clean-ui .np-product-highlight-head,
+body.admin-clean-ui .np-product-highlight-row {
+    display: grid;
+    grid-template-columns: minmax(300px, 1fr) minmax(300px, 360px) 140px 90px;
+    gap: 1rem;
+    align-items: center;
+}
+
+body.admin-clean-ui .np-product-highlight-head {
+    padding: .7rem .9rem;
+    border-bottom: 1px solid #dbe3ee;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: .68rem;
+    font-weight: 800;
+    letter-spacing: .06em;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+body.admin-clean-ui .np-product-highlight-row {
+    min-height: 82px;
+    padding: .8rem .9rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+body.admin-clean-ui .np-product-highlight-row:last-child {
+    border-bottom: 0;
+}
+
+body.admin-clean-ui .np-product-highlight-text-cell,
+body.admin-clean-ui .np-product-highlight-icon-cell,
+body.admin-clean-ui .np-product-highlight-storefront-cell,
+body.admin-clean-ui .np-product-highlight-action-cell {
+    min-width: 0;
+}
+
+body.admin-clean-ui .np-product-highlight-text-cell .admin-input {
+    width: 100%;
+}
+
+body.admin-clean-ui .np-product-highlight-icon-cell {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+    align-items: center;
+    gap: .75rem;
+}
+
+body.admin-clean-ui .np-product-highlight-icon-preview {
+    display: grid;
+    width: 52px;
+    height: 52px;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+}
+
+body.admin-clean-ui .np-product-highlight-icon-actions {
+    min-width: 0;
+}
+
+body.admin-clean-ui .np-product-highlight-icon-help {
+    margin-top: .3rem;
+    overflow: hidden;
+    color: #64748b;
+    font-size: .68rem;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body.admin-clean-ui .np-product-highlight-storefront-cell {
+    display: flex;
+    align-items: center;
+}
+
+body.admin-clean-ui .np-highlight-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    min-width: 105px;
+    cursor: pointer;
+    color: #475569;
+    font-size: .78rem;
+    font-weight: 700;
+    user-select: none;
+}
+
+body.admin-clean-ui .np-highlight-toggle.is-disabled {
+    cursor: not-allowed;
+    opacity: .5;
+}
+
+body.admin-clean-ui .np-highlight-toggle-track {
+    position: relative;
+    display: inline-flex;
+    width: 40px;
+    height: 22px;
+    flex: 0 0 auto;
+    align-items: center;
+    padding: 2px;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    background: #e2e8f0;
+    transition: background-color .16s ease, border-color .16s ease;
+}
+
+body.admin-clean-ui .np-highlight-toggle-track > span {
+    display: block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .18);
+    transform: translateX(0);
+    transition: transform .16s ease;
+}
+
+body.admin-clean-ui .np-highlight-toggle.is-active {
+    color: #0f315f;
+}
+
+body.admin-clean-ui .np-highlight-toggle.is-active .np-highlight-toggle-track {
+    border-color: #d45b37;
+    background: #d45b37;
+}
+
+body.admin-clean-ui .np-highlight-toggle.is-active .np-highlight-toggle-track > span {
+    transform: translateX(18px);
+}
+
+body.admin-clean-ui .np-product-highlight-action-cell {
+    display: flex;
+    justify-content: flex-end;
+}
+
+@media (max-width: 1279px) {
+    body.admin-clean-ui .np-product-highlight-head,
+    body.admin-clean-ui .np-product-highlight-row {
+        grid-template-columns: minmax(260px, 1fr) minmax(240px, 300px) 120px 80px;
+        gap: .75rem;
+    }
+}
+
+@media (max-width: 1023px) {
+    body.admin-clean-ui .np-product-highlight-head {
+        display: none;
+    }
+
+    body.admin-clean-ui .np-product-highlight-row {
+        grid-template-columns: minmax(0, 1fr) minmax(240px, .8fr);
+        align-items: center;
+    }
+
+    body.admin-clean-ui .np-product-highlight-storefront-cell {
+        grid-column: 1;
+    }
+
+    body.admin-clean-ui .np-product-highlight-action-cell {
+        grid-column: 2;
+    }
+}
+
+@media (max-width: 639px) {
+    body.admin-clean-ui .np-product-highlights-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    body.admin-clean-ui .np-product-highlights-header .np-secondary-button {
+        align-self: flex-start;
+    }
+
+    body.admin-clean-ui .np-product-highlight-row {
+        grid-template-columns: 1fr;
+        gap: .8rem;
+    }
+
+    body.admin-clean-ui .np-product-highlight-storefront-cell,
+    body.admin-clean-ui .np-product-highlight-action-cell {
+        grid-column: 1;
+    }
+
+    body.admin-clean-ui .np-product-highlight-action-cell {
+        justify-content: flex-start;
+    }
+
+    body.admin-clean-ui .np-product-highlight-icon-help {
+        white-space: normal;
+    }
+}
+
+/* NEXTPLAY_PRODUCT_FORM_DROPDOWN_BORDER_AND_ARROW_FIX
+   Product create/edit dropdowns use a thin border, no focus shadow, and an
+   inset custom chevron so the arrow is not pressed against the field edge. */
+body.admin-clean-ui .np-product-form select.admin-input {
+    border-width: 1px !important;
+    box-shadow: none !important;
+    outline: none !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    padding-right: 2.65rem !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23061f44' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right .9rem center !important;
+    background-size: 1rem 1rem !important;
+}
+
+body.admin-clean-ui .np-product-form select.admin-input:focus,
+body.admin-clean-ui .np-product-form select.admin-input:focus-visible {
+    border-width: 1px !important;
+    border-color: #2467b7 !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+/* NEXTPLAY_PRODUCT_HIGHLIGHT_UPLOAD_ALIGNMENT_FIX
+   Keep the highlight text input, icon preview/upload control, storefront toggle,
+   and action aligned from the same top edge. The icon help text sits below the
+   control without pulling the upload button upward. */
+body.admin-clean-ui .np-product-highlight-row {
+    align-items: start;
+}
+
+body.admin-clean-ui .np-product-highlight-text-cell,
+body.admin-clean-ui .np-product-highlight-icon-cell,
+body.admin-clean-ui .np-product-highlight-storefront-cell,
+body.admin-clean-ui .np-product-highlight-action-cell {
+    align-self: start;
+}
+
+body.admin-clean-ui .np-product-highlight-icon-cell {
+    grid-template-columns: 2.35rem minmax(0, 1fr);
+    align-items: start;
+}
+
+body.admin-clean-ui .np-product-highlight-icon-preview {
+    width: 2.35rem;
+    height: 2.35rem;
+}
+
+body.admin-clean-ui .np-product-highlight-icon-actions > .flex {
+    min-height: 2.35rem;
+    align-items: center;
+}
+
+body.admin-clean-ui .np-product-highlight-icon-actions .np-secondary-button {
+    display: inline-flex;
+    min-height: 2.35rem;
+    align-items: center;
+    justify-content: center;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+body.admin-clean-ui .np-product-highlight-icon-help {
+    margin-top: .28rem;
+}
+
+body.admin-clean-ui .np-product-highlight-storefront-cell,
+body.admin-clean-ui .np-product-highlight-action-cell {
+    min-height: 2.35rem;
+    align-items: center;
+}
+
+/* NEXTPLAY_PRODUCT_HIGHLIGHT_PRECISE_ALIGNMENT_FIX
+   Final alignment pass: all primary controls share the same top edge and
+   2.35rem control height; helper copy is intentionally smaller so it remains
+   secondary and does not disturb the row rhythm. */
+body.admin-clean-ui .np-product-highlight-row {
+    align-items: start !important;
+}
+
+body.admin-clean-ui .np-product-highlight-text-cell,
+body.admin-clean-ui .np-product-highlight-icon-cell,
+body.admin-clean-ui .np-product-highlight-storefront-cell,
+body.admin-clean-ui .np-product-highlight-action-cell {
+    align-self: start !important;
+}
+
+body.admin-clean-ui .np-product-highlight-text-cell .admin-input {
+    height: 2.35rem !important;
+    min-height: 2.35rem !important;
+    margin-top: 0 !important;
+}
+
+body.admin-clean-ui .np-product-highlight-icon-cell {
+    grid-template-columns: 2.35rem minmax(0, 1fr) !important;
+    align-items: start !important;
+    gap: .75rem !important;
+}
+
+body.admin-clean-ui .np-product-highlight-icon-preview {
+    width: 2.35rem !important;
+    height: 2.35rem !important;
+    min-width: 2.35rem !important;
+    min-height: 2.35rem !important;
+}
+
+body.admin-clean-ui .np-product-highlight-icon-actions > .flex {
+    height: 2.35rem !important;
+    min-height: 2.35rem !important;
+    align-items: stretch !important;
+}
+
+body.admin-clean-ui .np-product-highlight-icon-actions .np-secondary-button {
+    height: 2.35rem !important;
+    min-height: 2.35rem !important;
+    margin: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    align-items: center !important;
+}
+
+body.admin-clean-ui .np-product-highlight-icon-help {
+    margin-top: .18rem !important;
+    font-size: .58rem !important;
+    line-height: 1.1 !important;
+    font-weight: 500 !important;
+}
+
+body.admin-clean-ui .np-product-highlight-storefront-cell,
+body.admin-clean-ui .np-product-highlight-action-cell {
+    height: 2.35rem !important;
+    min-height: 2.35rem !important;
+    align-items: center !important;
+}
+
+body.admin-clean-ui .np-product-highlight-action-cell .np-danger-link {
+    margin: 0 !important;
+}

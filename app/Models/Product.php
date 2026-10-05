@@ -17,7 +17,7 @@ class Product extends Model
     protected $fillable = [
         'category_id', 'subcategory_id', 'name', 'slug', 'sku', 'status', 'product_type', 'gender_id', 'product_profile', 'brand',
         'badge_label', 'badge_color', 'short_description', 'description_html', 'detail_information_html',
-        'customization_artwork_html', 'fulfillment_html', 'features',
+        'customization_artwork_html', 'fulfillment_html', 'features', 'feature_icons', 'feature_storefront',
         'specifications', 'base_price', 'compare_at_price', 'cost_price', 'currency',
         'rating_average', 'reviews_count', 'recent_viewers_count', 'favorites_count', 'recent_orders_count',
         'minimum_quantity', 'maximum_quantity', 'is_featured', 'is_customizable', 'is_active',
@@ -39,6 +39,8 @@ class Product extends Model
     {
         return [
             'features' => 'array',
+            'feature_icons' => 'array',
+            'feature_storefront' => 'array',
             'specifications' => 'array',
             'dimensions' => 'array',
             'tags' => 'array',

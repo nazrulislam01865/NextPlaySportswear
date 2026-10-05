@@ -89,7 +89,7 @@ class ProductChangeSummaryService
             'Product content' => [
                 'fields' => $this->attributes($product, [
                     'description_html', 'detail_information_html', 'customization_artwork_html',
-                    'fulfillment_html', 'features', 'specifications',
+                    'fulfillment_html', 'features', 'feature_icons', 'feature_storefront', 'specifications',
                 ]),
                 'faqs' => $this->relationRows($product->faqs, [
                     'question', 'answer', 'is_active', 'sort_order',
@@ -281,6 +281,8 @@ class ProductChangeSummaryService
                 'customization_artwork_html' => ['Customization artwork content', 'content'],
                 'fulfillment_html' => ['Fulfillment content', 'content'],
                 'features' => ['Features', 'content'],
+                'feature_icons' => ['Feature icons', 'content'],
+                'feature_storefront' => ['Storefront highlights', 'content'],
                 'specifications' => ['Specifications', 'content'],
             ],
             'Roster fields' => [

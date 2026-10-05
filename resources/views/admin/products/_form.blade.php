@@ -492,11 +492,35 @@
         'depth' => (int) ($category->depth ?? 0),
         'parent_id' => $category->parent_id ? (int) $category->parent_id : null,
     ])->values()->all();
+    $featureValues = old('features', $product->features ?? []);
+    $featureIconValues = old('feature_icons', $product->feature_icons ?? []);
+    $featureStorefrontValues = session()->hasOldInput()
+        ? old('feature_storefront', [])
+        : (is_array($product->feature_storefront)
+            ? $product->feature_storefront
+            : (function () use ($featureValues) {
+                $selected = 0;
+
+                return collect($featureValues)->map(function ($feature) use (&$selected) {
+                    $show = filled(trim((string) $feature)) && $selected < 4;
+                    if ($show) {
+                        $selected++;
+                    }
+
+                    return $show;
+                })->values()->all();
+            })());
+
     $initial = [
         'productName' => old('name', $product->name),
         'productSku' => old('sku', $storedSpecificationRows->get('SKU') ?: $product->sku),
         'shortDescription' => old('short_description', $product->short_description),
-        'features' => old('features', $product->features ?? []),
+        'features' => $featureValues,
+        'featureIcons' => $featureIconValues,
+        'featureStorefront' => $featureStorefrontValues,
+        'featureIconPreviews' => collect($featureIconValues)
+            ->map(fn ($path) => filled($path) ? \App\Support\PublicMedia::url((string) $path) : '')
+            ->values()->all(),
         'descriptionHtml' => old('description_html', $product->description_html),
         'fulfillmentHtml' => old('fulfillment_html', $product->fulfillment_html),
         'slug' => old('slug', $product->slug),
@@ -1140,19 +1164,67 @@ window.productFaqSelector = function (initial = {}) {
                         <textarea class="admin-textarea np-textarea-sm" name="short_description" maxlength="1500" x-model="shortDescription" placeholder="Describe your product in a few words..."></textarea>
                     </label>
 
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <div class="flex flex-wrap items-start justify-between gap-3">
-                            <div>
-                                <label class="admin-label np-emphasis-label mb-0">Product Highlights</label>
-                                <p class="mt-1 text-xs leading-5 text-slate-500">Add product-specific selling points for the storefront. The product page shows the first 4 highlights only. These do not affect customization or pricing.</p>
+                    <div class="np-product-highlights-card rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div class="np-product-highlights-header">
+                            <div class="min-w-0">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <label class="admin-label np-emphasis-label mb-0">Product Highlights</label>
+                                    <span class="np-highlight-count" x-text="`${storefrontHighlightCount()} / 4 shown`"></span>
+                                </div>
+                                <p class="mt-1 text-xs leading-5 text-slate-500">Add selling points and choose exactly which highlights appear on the storefront. You can show up to 4.</p>
                             </div>
-                            <button type="button" class="np-secondary-button" @click="addFeature()">＋ Add highlight</button>
+                            <button type="button" class="np-secondary-button shrink-0" @click="addFeature()">＋ Add highlight</button>
                         </div>
-                        <div class="mt-4 space-y-3">
+
+                        <div class="np-product-highlight-list mt-4">
+                            <div class="np-product-highlight-head" aria-hidden="true">
+                                <span>Highlight</span>
+                                <span>Icon</span>
+                                <span>Storefront</span>
+                                <span>Action</span>
+                            </div>
+
                             <template x-for="(feature, index) in features" :key="index">
-                                <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                                    <input class="admin-input !mt-0" :name="`features[${index}]`" x-model="features[index]" maxlength="500" placeholder="e.g., Breathable mesh construction for airflow">
-                                    <button type="button" class="np-danger-link self-center px-2 py-2" @click="features.splice(index, 1); if (!features.length) features.push('')">Remove</button>
+                                <div class="np-product-highlight-row">
+                                    <div class="np-product-highlight-text-cell">
+                                        <label class="sr-only" :for="`product-highlight-${index}`">Product highlight</label>
+                                        <input class="admin-input !mt-0" :id="`product-highlight-${index}`" :name="`features[${index}]`" x-model="features[index]" maxlength="500" placeholder="e.g., Breathable mesh construction for airflow">
+                                    </div>
+
+                                    <div class="np-product-highlight-icon-cell">
+                                        <input type="hidden" :name="`feature_icons[${index}]`" :value="featureIcons[index] || ''">
+                                        <div class="np-product-highlight-icon-preview">
+                                            <img x-show="featureIconPreview(index)" :src="featureIconPreview(index)" alt="" class="h-full w-full object-contain p-1">
+                                            <span x-show="!featureIconPreview(index)" class="text-[10px] font-bold uppercase text-slate-400">Icon</span>
+                                        </div>
+                                        <div class="np-product-highlight-icon-actions">
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <label class="np-secondary-button inline-flex cursor-pointer items-center justify-center !px-3 !py-2 text-xs" :for="`feature-icon-${index}`">Upload icon</label>
+                                                <input class="sr-only" type="file" :id="`feature-icon-${index}`" :name="`feature_icon_files[${index}]`" accept=".jpg,.jpeg,.png,.webp,.avif,.svg,image/jpeg,image/png,image/webp,image/avif,image/svg+xml" @change="setFeatureIcon(index, $event)">
+                                                <button x-show="featureIconPreview(index)" type="button" class="text-xs font-bold text-slate-500 hover:text-brand-red" @click="clearFeatureIcon(index)">Clear</button>
+                                            </div>
+                                            <p class="np-product-highlight-icon-help">PNG, JPG, WebP, AVIF or SVG · max 2 MB</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="np-product-highlight-storefront-cell">
+                                        <input type="hidden" :name="`feature_storefront[${index}]`" :value="featureStorefront[index] ? 1 : 0">
+                                        <label class="np-highlight-toggle" :class="{ 'is-active': featureStorefront[index], 'is-disabled': !featureStorefront[index] && storefrontHighlightCount() >= 4 }">
+                                            <input
+                                                type="checkbox"
+                                                class="sr-only"
+                                                x-model="featureStorefront[index]"
+                                                :disabled="!featureStorefront[index] && storefrontHighlightCount() >= 4"
+                                                @change="normalizeFeatureStorefront()"
+                                            >
+                                            <span class="np-highlight-toggle-track" aria-hidden="true"><span></span></span>
+                                            <span class="np-highlight-toggle-label" x-text="featureStorefront[index] ? 'Shown' : 'Hidden'"></span>
+                                        </label>
+                                    </div>
+
+                                    <div class="np-product-highlight-action-cell">
+                                        <button type="button" class="np-danger-link px-2 py-2" @click="removeFeature(index)">Remove</button>
+                                    </div>
                                 </div>
                             </template>
                         </div>

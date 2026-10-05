@@ -10,6 +10,7 @@ use App\Services\Promotions\SaleCampaignService;
 use App\Support\PriceTableShipping;
 use App\Support\ProductRoster;
 use App\Support\ProductSizing;
+use App\Support\PublicMedia;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator as ArrayLengthAwarePaginator;
@@ -2263,6 +2264,8 @@ class ProductCatalogService
             'gallery' => $gallery,
             'tags' => $product->tags ?? [],
             'features' => $product->features ?? [],
+            'feature_icons' => collect($product->feature_icons ?? [])->map(fn ($path) => filled($path) ? PublicMedia::url((string) $path) : null)->values()->all(),
+            'feature_storefront' => is_array($product->feature_storefront) ? array_values($product->feature_storefront) : null,
             'summary_detail_information' => $summaryDetailInformation,
             'brand' => $product->brand ?: config('storefront.name'),
             'product_type' => $product->product_type,
@@ -2907,6 +2910,8 @@ class ProductCatalogService
             'gallery' => $gallery,
             'tags' => $product->tags ?? [],
             'features' => $product->features ?? [],
+            'feature_icons' => collect($product->feature_icons ?? [])->map(fn ($path) => filled($path) ? PublicMedia::url((string) $path) : null)->values()->all(),
+            'feature_storefront' => is_array($product->feature_storefront) ? array_values($product->feature_storefront) : null,
             'summary_detail_information' => $summaryDetailInformation,
             'detail_information' => $detailInformation,
             'details' => $detailInformation,

@@ -87,7 +87,11 @@
             get table() {
                 if (this.tabs.length) {
                     const selectedTab = this.tabs.find((tab) => tab.id === this.activeTab) || this.tabs[0];
-                    return selectedTab?.table || this.defaultTable;
+                    const selectedTable = selectedTab?.table || this.defaultTable;
+                    return {
+                        ...selectedTable,
+                        note: selectedTable?.note || this.defaultTable?.note || '',
+                    };
                 }
 
                 return this.runtimeTable || this.defaultTable;

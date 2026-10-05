@@ -95,9 +95,19 @@
     $enabledRosterFields = collect($roster['fields'] ?? [])->filter(fn ($field) => (bool) ($field['enabled'] ?? true))->values();
     $artworkUpload = $product['artwork_upload'] ?? ['enabled' => false];
     $sample = $product['sample'] ?? ['available' => false, 'charge' => 0, 'charge_type' => 'fixed_order'];
+    $productHighlightIcons = collect($product['feature_icons'] ?? []);
+    $featureStorefront = $product['feature_storefront'] ?? null;
+    $hasExplicitHighlightSelection = is_array($featureStorefront);
+    $productHighlightVisibility = collect($featureStorefront ?? []);
     $productHighlights = collect($product['features'] ?? [])
-        ->map(fn ($feature) => trim((string) $feature))
-        ->filter()
+        ->map(fn ($feature, $index) => [
+            'label' => trim((string) $feature),
+            'icon' => $productHighlightIcons->get($index),
+            'show' => $hasExplicitHighlightSelection
+                ? (bool) $productHighlightVisibility->get($index, false)
+                : true,
+        ])
+        ->filter(fn ($feature) => $feature['label'] !== '' && $feature['show'])
         ->take(4)
         ->values();
     $sizeRangeItems = collect($product['size_groups'] ?? [])->map(function ($group) {
@@ -435,7 +445,12 @@ window.productBuilderFabricPricing = function (config = {}) {
                 ? this.selectedFabricPriceTable()
                 : this.selectedPricedFabricValue()?.fabric_price_table;
 
-            if (fabricTable && (fabricTable.rows || []).length) return fabricTable;
+            if (fabricTable && (fabricTable.rows || []).length) {
+                return {
+                    ...fabricTable,
+                    note: fabricTable.note || config.price_table?.note || '',
+                };
+            }
             return config.price_table || null;
         },
         activePriceTiers() {
@@ -552,7 +567,9 @@ window.productBuilderFabricPricing = function (config = {}) {
                             @foreach($productHighlights as $index => $feature)
                                 <div class="np-product-feature-item">
                                     <span class="np-product-feature-icon" aria-hidden="true">
-                                        @if($index % 4 === 0)
+                                        @if(filled($feature['icon'] ?? null))
+                                            <img src="{{ $feature['icon'] }}" alt="" loading="lazy" decoding="async">
+                                        @elseif($index % 4 === 0)
                                             <svg viewBox="0 0 24 24"><path d="M4 8h16M4 16h16M8 4v16M16 4v16"/></svg>
                                         @elseif($index % 4 === 1)
                                             <svg viewBox="0 0 24 24"><path d="M12 3s6 6.4 6 11a6 6 0 0 1-12 0c0-4.6 6-11 6-11Z"/></svg>
@@ -562,7 +579,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                                             <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 3 3 0 0 0 3-3c0-1.7-1.3-3-3-3h-1a2 2 0 0 1-2-2c0-1.1.9-2 2-2h4a3 3 0 0 0 0-6h-3Z"/></svg>
                                         @endif
                                     </span>
-                                    <strong>{{ $feature }}</strong>
+                                    <strong>{{ $feature['label'] }}</strong>
                                 </div>
                             @endforeach
                         </div>
@@ -573,32 +590,38 @@ window.productBuilderFabricPricing = function (config = {}) {
                             <div class="np-product-section-label-row">
                                 <h2>Material Option</h2>
                             </div>
-                            <div class="np-product-material-grid">
-                                @foreach($materialGroup['values'] as $value)
-                                    @php
-                                        $valueImages = collect($value['images'] ?? [])->map(fn ($image) => is_array($image) ? ($image['url'] ?? null) : $image)->filter()->values();
-                                        $preview = $valueImages->first() ?: ($value['image'] ?? null);
-                                    @endphp
-                                    <button
-                                        type="button"
-                                        class="np-product-material-card"
-                                        :class="selections[@js($materialGroup['id'])] === @js($value['id']) ? 'is-selected' : ''"
-                                        @click="choose(@js($materialGroup), @js($value['id']))"
-                                    >
-                                        <span class="np-product-material-media">
-                                            @if($preview)
-                                                <img src="{{ $preview }}" alt="{{ $value['label'] }}" loading="lazy" decoding="async">
-                                            @elseif(!empty($value['color']))
-                                                <span class="np-product-material-swatch" style="background-color: {{ $value['color'] }}"></span>
-                                            @else
-                                                <span class="np-product-material-placeholder" aria-hidden="true"></span>
-                                            @endif
-                                        </span>
-                                        <strong>{{ $value['label'] }}</strong>
-                                        @if(filled($value['description'] ?? null))<small>{{ $value['description'] }}</small>@endif
-                                    </button>
-                                @endforeach
-                            </div>
+                            @if(($materialGroup['type'] ?? 'image') === 'image')
+                                <div class="np-product-material-grid">
+                                    @foreach($materialGroup['values'] as $value)
+                                        @php
+                                            $valueImages = collect($value['images'] ?? [])->map(fn ($image) => is_array($image) ? ($image['url'] ?? null) : $image)->filter()->values();
+                                            $preview = $valueImages->first() ?: ($value['image'] ?? null);
+                                        @endphp
+                                        <button
+                                            type="button"
+                                            class="np-product-material-card"
+                                            :class="selections[@js($materialGroup['id'])] === @js($value['id']) ? 'is-selected' : ''"
+                                            @click="choose(@js($materialGroup), @js($value['id']))"
+                                        >
+                                            <span class="np-product-material-media">
+                                                @if($preview)
+                                                    <img src="{{ $preview }}" alt="{{ $value['label'] }}" loading="lazy" decoding="async">
+                                                @elseif(!empty($value['color']))
+                                                    <span class="np-product-material-swatch" style="background-color: {{ $value['color'] }}"></span>
+                                                @else
+                                                    <span class="np-product-material-placeholder" aria-hidden="true"></span>
+                                                @endif
+                                            </span>
+                                            <strong>{{ $value['label'] }}</strong>
+                                            @if(filled($value['description'] ?? null))<small>{{ $value['description'] }}</small>@endif
+                                        </button>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="np-product-material-input-style">
+                                    <x-storefront.product.option-group :group="$materialGroup" :show-header="false" />
+                                </div>
+                            @endif
                         </div>
                     @endif
 
@@ -686,11 +709,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                         <div id="np-product-step-panel-1" class="np-proto-step-expanded" x-show="isCustomizerStepOpen(1)" x-cloak>
                             <div class="np-proto-step-content">
                             @if($materialGroup)
-                                <div class="np-proto-option-grid np-proto-fabric-grid" role="radiogroup" aria-label="Fabric options">
-                                    @foreach($materialGroup['values'] as $value)
-                                        <x-storefront.product.customizer.option-choice :group="$materialGroup" :value="$value" />
-                                    @endforeach
-                                </div>
+                                <x-storefront.product.option-group :group="$materialGroup" :show-header="false" />
                             @endif
 
                             @if($nonMaterialOptionGroups->isNotEmpty())
