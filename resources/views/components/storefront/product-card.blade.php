@@ -73,7 +73,12 @@
             href="{{ $productUrl }}"
             class="np-product-square-media np-product-card-media{{ $hoverImageUrl ? ' np-product-card-media--has-hover' : '' }}"
             aria-label="View {{ $product['title'] }}"
+            data-product-card-image-loader
         >
+            <span class="np-product-card-image-loader" aria-hidden="true">
+                <span class="np-product-card-image-spinner"></span>
+            </span>
+
             <img
                 src="{{ $product['image'] }}"
                 alt="{{ $product['alt'] }}"

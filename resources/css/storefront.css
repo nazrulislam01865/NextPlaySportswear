@@ -13719,6 +13719,41 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
     transition: opacity .3s ease;
 }
 
+.storefront-clean-ui .np-product-card--canonical .np-product-card-image-loader {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f3f0;
+    pointer-events: none;
+    transition: opacity .25s ease, visibility .25s ease;
+}
+
+.storefront-clean-ui .np-product-card--canonical .np-product-card-image-spinner {
+    width: 34px;
+    height: 34px;
+    border: 3px solid rgba(6, 31, 68, .14);
+    border-top-color: var(--np-color-primary);
+    border-right-color: var(--np-color-secondary);
+    border-radius: 50%;
+    animation: np-product-card-spinner-rotate .7s linear infinite;
+}
+
+@keyframes np-product-card-spinner-rotate {
+    to { transform: rotate(360deg); }
+}
+
+.storefront-clean-ui .np-product-card--canonical .np-product-card-media:not(.is-loaded) .np-product-card-image {
+    opacity: 0;
+}
+
+.storefront-clean-ui .np-product-card--canonical .np-product-card-media.is-loaded .np-product-card-image-loader {
+    opacity: 0;
+    visibility: hidden;
+}
+
 .storefront-clean-ui .np-product-card--canonical .np-product-card-image--primary {
     opacity: 1;
 }
@@ -14993,6 +15028,72 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
         min-height: 15.5rem;
         max-height: 15.5rem;
     }
+}
+
+/* NEXTPLAY_ALL_CATEGORY_CARD_IMAGE_LOADER
+   Sample #1: Soft Shimmer + Fade. Scoped only to the existing All Product
+   Categories grid, with no category-card markup or layout changes. */
+.storefront-clean-ui .np-all-categories-grid .np-category-square-media::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    background: #f0eeeb;
+    pointer-events: none;
+    transition: opacity .28s ease, visibility .28s ease;
+}
+
+.storefront-clean-ui .np-all-categories-grid .np-category-square-media::after {
+    content: "";
+    position: absolute;
+    z-index: 6;
+    top: 0;
+    bottom: 0;
+    left: -75%;
+    width: 60%;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, .18) 20%,
+        rgba(255, 255, 255, .85) 50%,
+        rgba(255, 255, 255, .18) 80%,
+        transparent 100%
+    );
+    pointer-events: none;
+    animation: np-category-card-shimmer 1.2s ease-in-out infinite;
+    transition: opacity .28s ease, visibility .28s ease;
+}
+
+@keyframes np-category-card-shimmer {
+    from { left: -75%; }
+    to { left: 125%; }
+}
+
+.storefront-clean-ui .np-all-categories-grid .np-category-square-media:not(.is-loaded) .np-category-square-image {
+    opacity: 0;
+    transform: scale(.985);
+}
+
+.storefront-clean-ui .np-all-categories-grid .np-category-square-media.is-loaded::before,
+.storefront-clean-ui .np-all-categories-grid .np-category-square-media.is-loaded::after {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.storefront-clean-ui .np-all-categories-grid .np-category-square-media.is-loaded .np-category-square-image {
+    animation:
+        np-category-card-image-fade .3s ease,
+        np-category-card-image-scale .35s ease;
+}
+
+@keyframes np-category-card-image-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes np-category-card-image-scale {
+    from { transform: scale(.985); }
+    to { transform: scale(1); }
 }
 
 /* NEXTPLAY_WISHLIST_PROTOTYPE

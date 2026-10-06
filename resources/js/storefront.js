@@ -2887,6 +2887,7 @@ const setupProductCatalogPartialUpdates = () => {
             syncCatalogSortInputs(activeSort);
             syncCatalogFilterFormsFromUrl(activeUrl);
 
+            setupProductCardImageLoaders();
             setupProductCardWishlists();
             setupProductCardActivity();
         } catch (error) {
@@ -3029,6 +3030,45 @@ const setupProductCatalogPartialUpdates = () => {
     });
 
     syncCatalogSortInputs();
+};
+
+const setupProductCardImageLoaders = () => {
+    const markLoaded = (image) => {
+        image.closest('[data-product-card-image-loader]')?.classList.add('is-loaded');
+    };
+
+    document.querySelectorAll('[data-product-card-image-loader] .np-product-card-image--primary').forEach((image) => {
+        if (image.complete && image.naturalWidth > 0) markLoaded(image);
+    });
+
+    if (document.documentElement.dataset.productCardImageLoaderReady === 'true') return;
+    document.documentElement.dataset.productCardImageLoaderReady = 'true';
+
+    document.addEventListener('load', (event) => {
+        const image = event.target;
+        if (!(image instanceof HTMLImageElement) || !image.matches('[data-product-card-image-loader] .np-product-card-image--primary')) return;
+        markLoaded(image);
+    }, true);
+};
+
+const setupCategoryCardImageLoaders = () => {
+    const selector = '.np-all-categories-grid .np-category-square-image';
+    const markLoaded = (image) => {
+        image.closest('.np-category-square-media')?.classList.add('is-loaded');
+    };
+
+    document.querySelectorAll(selector).forEach((image) => {
+        if (image.complete && image.naturalWidth > 0) markLoaded(image);
+    });
+
+    if (document.documentElement.dataset.categoryCardImageLoaderReady === 'true') return;
+    document.documentElement.dataset.categoryCardImageLoaderReady = 'true';
+
+    document.addEventListener('load', (event) => {
+        const image = event.target;
+        if (!(image instanceof HTMLImageElement) || !image.matches(selector)) return;
+        markLoaded(image);
+    }, true);
 };
 
 const updateProductCardWishlistButton = (button, wishlisted, busy = false) => {
@@ -4094,6 +4134,7 @@ const refreshLiveProductSection = async (section) => {
 
     section.replaceWith(replacement);
     setupProductCollectionSliders();
+    setupProductCardImageLoaders();
     setupProductCardWishlists();
 
     window.dispatchEvent(new CustomEvent('nextplay:latest-products-updated', {
@@ -4169,6 +4210,8 @@ const bootStorefront = () => {
     setupSingleSubmitForms();
     setupGlobalWishlistHeader();
     setupWishlistPage();
+    setupProductCardImageLoaders();
+    setupCategoryCardImageLoaders();
     setupProductCardWishlists();
     setupProductCardActivity();
     setupProductDetailActions();
