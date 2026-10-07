@@ -158,7 +158,8 @@ class ShippingMethodService
                     $amount = 0.00;
                     $priceStatus = 'contact_us';
                 } else {
-                    $amount = $perUnitRate * $quantity;
+                    $extraChargePerPiece = max(0, (float) ($method->price_adjustment ?? 0));
+                    $amount = ($perUnitRate + $extraChargePerPiece) * $quantity;
                 }
             } elseif ($method->charge_type === 'master_method') {
                 $basePrice = (float) ($method->base_price ?? $method->price_adjustment ?? 0);
@@ -239,8 +240,9 @@ class ShippingMethodService
                 ?? $product?->productionSpeeds?->where('is_active', true)->sortBy('sort_order')->first();
 
             $method = $speed?->relationLoaded('productionMethod') ? $speed?->productionMethod : null;
-            $min = max(0, (int) ($method?->minimum_days ?? $speed?->minimum_days ?? 0));
-            $max = max($min, (int) ($method?->maximum_days ?? $speed?->maximum_days ?? $min));
+            // Production timing belongs to the product quantity rule, not Master Data.
+            $min = max(0, (int) ($speed?->minimum_days ?? 0));
+            $max = max($min, (int) ($speed?->maximum_days ?? $min));
             $amount = round(max(0, (float) ($speed?->price_adjustment ?? 0)) * max(1, (int) ($item['quantity'] ?? 1)), 2);
 
             $minimumDays = max($minimumDays, $min);

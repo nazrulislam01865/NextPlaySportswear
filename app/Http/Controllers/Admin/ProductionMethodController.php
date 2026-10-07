@@ -26,8 +26,6 @@ class ProductionMethodController extends Controller
     {
         return view('admin.production-methods.create', [
             'method' => new ProductionMethod([
-                'minimum_days' => 7,
-                'maximum_days' => 10,
                 'is_active' => true,
                 'sort_order' => 0,
             ]),

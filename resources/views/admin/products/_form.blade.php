@@ -81,7 +81,9 @@
         if ($activeSpeeds->isNotEmpty()) {
             $minDays = (int) $activeSpeeds->min('minimum_days');
             $maxDays = (int) $activeSpeeds->max('maximum_days');
-            $specificationLeadTime = $minDays === $maxDays ? $minDays.' Business Days' : $minDays.'–'.$maxDays.' Business Days';
+            $specificationLeadTime = ($minDays === 0 && $maxDays === 0)
+                ? 'To be confirmed'
+                : ($minDays === $maxDays ? $minDays.' Business Days' : $minDays.'–'.$maxDays.' Business Days');
         }
     }
     $productSpecificationAutoValues = [
@@ -403,31 +405,52 @@
         ];
     })->values();
     $hasOldProductionInput = session()->hasOldInput();
+    $existingProductionSpeeds = $product->relationLoaded('productionSpeeds')
+        ? $product->productionSpeeds->values()
+        : collect();
+    $productionMethodsById = collect($productionMethodOptions ?? [])->keyBy(fn ($method) => (int) $method->id);
+    $availableProductionCodes = collect($productionMethodOptions ?? [])
+        ->pluck('code')
+        ->map(fn ($code) => \Illuminate\Support\Str::slug((string) $code))
+        ->filter()
+        ->values();
+
+    $savedSelectedProductionCodes = $existingProductionSpeeds
+        ->map(function ($speed) use ($productionMethodsById, $availableProductionCodes) {
+            $master = $productionMethodsById->get((int) ($speed->production_method_id ?? 0));
+            if ($master) {
+                return \Illuminate\Support\Str::slug((string) $master->code);
+            }
+
+            $legacyCode = \Illuminate\Support\Str::slug((string) $speed->code);
+            if ($availableProductionCodes->contains($legacyCode)) {
+                return $legacyCode;
+            }
+
+            $legacyName = \Illuminate\Support\Str::slug((string) $speed->name);
+            $legacyMaster = $productionMethodsById->first(function ($method) use ($legacyCode, $legacyName) {
+                $masterCode = \Illuminate\Support\Str::slug((string) $method->code);
+                $masterName = \Illuminate\Support\Str::slug((string) $method->name);
+
+                return ($legacyName !== '' && $legacyName === $masterName)
+                    || ($masterCode !== '' && \Illuminate\Support\Str::startsWith($legacyCode, $masterCode.'-'));
+            });
+
+            return $legacyMaster ? \Illuminate\Support\Str::slug((string) $legacyMaster->code) : null;
+        })
+        ->filter()
+        ->unique()
+        ->values();
+
     $selectedProductionCodes = collect($hasOldProductionInput
         ? old('production_method_codes', [])
-        : ($product->relationLoaded('productionSpeeds') ? $product->productionSpeeds->pluck('code')->all() : []))
+        : $savedSelectedProductionCodes)
         ->map(fn ($code) => \Illuminate\Support\Str::slug((string) $code))
         ->filter()
         ->unique()
         ->values();
-    $savedProductionMethodCharges = $product->relationLoaded('productionSpeeds')
-        ? $product->productionSpeeds
-            ->mapWithKeys(fn ($speed) => [
-                \Illuminate\Support\Str::slug((string) $speed->code) => max(0, round((float) $speed->price_adjustment, 2)),
-            ])
-            ->all()
-        : [];
-    $productionMethodChargeValues = collect(old('production_method_price_adjustments', $savedProductionMethodCharges))
-        ->mapWithKeys(fn ($value, $code) => [
-            \Illuminate\Support\Str::slug((string) $code) => max(0, round((float) $value, 2)),
-        ]);
-    if (! $hasOldProductionInput && isset($productionMethodOptions) && $productionMethodOptions->isNotEmpty()) {
-        $availableProductionCodes = $productionMethodOptions
-            ->pluck('code')
-            ->map(fn ($code) => \Illuminate\Support\Str::slug((string) $code))
-            ->filter()
-            ->values();
 
+    if (! $hasOldProductionInput && isset($productionMethodOptions) && $productionMethodOptions->isNotEmpty()) {
         $hasMatchingMasterProduction = $selectedProductionCodes
             ->intersect($availableProductionCodes)
             ->isNotEmpty();
@@ -444,6 +467,71 @@
                 : $productionMethodOptions->where('is_active', true)->take(1)->pluck('code')->map(fn ($code) => \Illuminate\Support\Str::slug((string) $code))->values();
         }
     }
+
+    $oldProductionMethodRules = collect((array) old('production_method_rules', []))
+        ->mapWithKeys(fn ($rules, $code) => [
+            \Illuminate\Support\Str::slug((string) $code) => collect((array) $rules)->values()->map(function ($rule, $index) {
+                $rule = is_array($rule) ? $rule : [];
+
+                return [
+                    '_key' => 'old-'.$index,
+                    'minimum_quantity' => $rule['minimum_quantity'] ?? 1,
+                    'maximum_quantity' => $rule['maximum_quantity'] ?? '',
+                    'minimum_days' => $rule['minimum_days'] ?? '',
+                    'maximum_days' => $rule['maximum_days'] ?? '',
+                    'price_adjustment' => $rule['price_adjustment'] ?? 0,
+                ];
+            })->all(),
+        ]);
+
+    $productionMethodRuleValues = collect($productionMethodOptions ?? [])->mapWithKeys(function ($method) use ($hasOldProductionInput, $oldProductionMethodRules, $existingProductionSpeeds) {
+        $code = \Illuminate\Support\Str::slug((string) $method->code);
+        if ($hasOldProductionInput) {
+            $rules = collect($oldProductionMethodRules->get($code, []))->values();
+        } else {
+            $rules = $existingProductionSpeeds
+                ->filter(function ($speed) use ($method, $code) {
+                    if ((int) ($speed->production_method_id ?? 0) === (int) $method->id) {
+                        return true;
+                    }
+
+                    if (! empty($speed->production_method_id)) {
+                        return false;
+                    }
+
+                    $speedCode = \Illuminate\Support\Str::slug((string) $speed->code);
+                    $speedName = \Illuminate\Support\Str::slug((string) $speed->name);
+                    $methodName = \Illuminate\Support\Str::slug((string) $method->name);
+
+                    return $speedCode === $code
+                        || ($speedName !== '' && $speedName === $methodName)
+                        || ($code !== '' && \Illuminate\Support\Str::startsWith($speedCode, $code.'-'));
+                })
+                ->sortBy(fn ($speed) => (int) ($speed->minimum_quantity ?? 1))
+                ->values()
+                ->map(fn ($speed, $index) => [
+                    '_key' => 'saved-'.$method->id.'-'.$index,
+                    'minimum_quantity' => max(1, (int) ($speed->minimum_quantity ?? 1)),
+                    'maximum_quantity' => $speed->maximum_quantity === null ? '' : (int) $speed->maximum_quantity,
+                    'minimum_days' => max(0, (int) ($speed->minimum_days ?? 0)),
+                    'maximum_days' => max(0, (int) ($speed->maximum_days ?? ($speed->minimum_days ?? 0))),
+                    'price_adjustment' => number_format(max(0, (float) ($speed->price_adjustment ?? 0)), 2, '.', ''),
+                ]);
+        }
+
+        if ($rules->isEmpty()) {
+            $rules = collect([[
+                '_key' => 'default-0',
+                'minimum_quantity' => 1,
+                'maximum_quantity' => '',
+                'minimum_days' => '',
+                'maximum_days' => '',
+                'price_adjustment' => '0.00',
+            ]]);
+        }
+
+        return [$code => $rules->values()->all()];
+    });
 
     $hasOldShippingInput = session()->hasOldInput();
     $selectedShippingCodes = collect($hasOldShippingInput
@@ -463,6 +551,20 @@
         ->map(fn ($code) => ['code' => $code, 'is_default' => $code === $defaultShippingCode])
         ->values()
         ->all();
+    $existingShippingMethodsByCode = $product->relationLoaded('shippingMethods')
+        ? $product->shippingMethods->keyBy(fn ($method) => \Illuminate\Support\Str::slug((string) $method->code))
+        : collect();
+    $oldShippingExtraCharges = collect((array) old('shipping_method_extra_charges', []))
+        ->mapWithKeys(fn ($amount, $code) => [\Illuminate\Support\Str::slug((string) $code) => $amount]);
+    $shippingExtraChargeValues = collect($shippingMethodOptions ?? [])->mapWithKeys(function ($method) use ($hasOldShippingInput, $oldShippingExtraCharges, $existingShippingMethodsByCode) {
+        $code = \Illuminate\Support\Str::slug((string) $method->code);
+        $saved = $existingShippingMethodsByCode->get($code);
+        $value = $hasOldShippingInput
+            ? $oldShippingExtraCharges->get($code, '0.00')
+            : number_format(max(0, (float) ($saved?->price_adjustment ?? 0)), 2, '.', '');
+
+        return [$code => $value];
+    });
     $defaultRosterFields = \App\Support\ProductRoster::defaultFields();
     $rosterFieldValues = old('jersey_roster_fields', $product->jersey_roster_fields ?: $defaultRosterFields);
     $selectedFaqIds = collect(session()->hasOldInput()
@@ -1650,12 +1752,12 @@ Lead Time:"></div>
                                 <input type="hidden" name="production_methods_enabled" :value="productionMethodsEnabled ? 1 : 0">
                                 <input type="checkbox" x-model="productionMethodsEnabled">
                                 <span>
-                                    <strong>Show production methods on product page</strong>
-                                    <small>Customers can choose from the production methods selected below.</small>
+                                    <strong>Enable automatic production rules</strong>
+                                    <small>The matching production rule is applied automatically from the customer's selected quantity.</small>
                                 </span>
                             </label>
                             <div class="np-production-methods-help">
-                                <p>Names, descriptions, and timelines come from <strong>Master Data → Production Methods</strong>. Only the extra charge is set for this product.</p>
+                                <p>Master Data supplies the method name, icon, and description. Set the quantity ranges, production working days, and optional extra charge for this product below. This is backend configuration only; customers do not choose a production method on the storefront.</p>
                                 <a href="{{ route('admin.production-methods.index') }}" target="_blank" class="np-production-methods-link">Manage Production Methods ↗</a>
                             </div>
                         </div>
@@ -1667,15 +1769,34 @@ Lead Time:"></div>
                                         @php
                                             $normalizedProductionCode = \Illuminate\Support\Str::slug((string) $productionMethod->code);
                                             $isSelectedProduction = $selectedProductionCodes->contains($normalizedProductionCode);
-                                            $productionMethodCharge = (float) $productionMethodChargeValues->get($normalizedProductionCode, 0);
+                                            $methodRules = collect($productionMethodRuleValues->get($normalizedProductionCode, []))->values()->all();
                                         @endphp
                                         <article
-                                            x-data="{ selected: @js($isSelectedProduction) }"
+                                            x-data="{
+                                                selected: @js($isSelectedProduction),
+                                                methodCode: @js($productionMethod->code),
+                                                rules: @js($methodRules),
+                                                nextRuleKey: {{ count($methodRules) }},
+                                                addRule() {
+                                                    this.nextRuleKey += 1;
+                                                    this.rules.push({
+                                                        _key: `new-${this.nextRuleKey}`,
+                                                        minimum_quantity: '',
+                                                        maximum_quantity: '',
+                                                        minimum_days: '',
+                                                        maximum_days: '',
+                                                        price_adjustment: '0.00',
+                                                    });
+                                                },
+                                                removeRule(index) {
+                                                    if (this.rules.length > 1) this.rules.splice(index, 1);
+                                                },
+                                            }"
                                             class="np-production-method-card"
                                             :class="selected ? 'is-selected' : ''"
                                         >
                                             <label class="np-production-method-select">
-                                                <input type="checkbox" name="production_method_codes[]" value="{{ $productionMethod->code }}" x-model="selected" @checked($isSelectedProduction)>
+                                                <input type="checkbox" name="production_method_codes[]" value="{{ $productionMethod->code }}" x-model="selected" :disabled="!productionMethodsEnabled" @checked($isSelectedProduction)>
                                                 <span class="np-production-method-copy">
                                                     <span class="np-production-method-title-row">
                                                         <strong>{{ $productionMethod->name }}</strong>
@@ -1684,34 +1805,113 @@ Lead Time:"></div>
                                                             @if($productionMethod->is_default)<span class="np-production-method-badge is-default">Default</span>@endif
                                                         </span>
                                                     </span>
-                                                    <span class="np-production-method-time">{{ $productionMethod->minimum_days }}–{{ $productionMethod->maximum_days }} working days</span>
                                                     @if($productionMethod->description)
                                                         <span class="np-production-method-description">{{ $productionMethod->description }}</span>
                                                     @endif
                                                 </span>
                                             </label>
 
-                                            <div class="np-production-charge-panel" :class="!selected && 'is-disabled'">
-                                                <div class="np-production-charge-heading">
-                                                    <span>Extra production charge</span>
-                                                    <small>Per piece</small>
+                                            <div x-show="selected" x-cloak class="np-production-rules-panel">
+                                                <div class="np-production-rules-heading">
+                                                    <div>
+                                                        <strong>Quantity-based production rules</strong>
+                                                        <small>Example: 1–49 pieces = 7–10 days, 50–300 = 10–12 days, 301+ = 12–18 days.</small>
+                                                    </div>
+                                                    <button type="button" class="np-production-rule-add" @click="addRule()">+ Add range</button>
                                                 </div>
-                                                <label class="np-production-money-field">
-                                                    <span class="np-production-money-prefix" aria-hidden="true">$</span>
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        max="999999999.99"
-                                                        step="0.01"
-                                                        inputmode="decimal"
-                                                        name="production_method_price_adjustments[{{ $productionMethod->code }}]"
-                                                        value="{{ number_format($productionMethodCharge, 2, '.', '') }}"
-                                                        :disabled="!selected"
-                                                        aria-label="Extra charge per piece for {{ $productionMethod->name }}"
-                                                    >
-                                                    <span class="np-production-money-suffix">/ piece</span>
-                                                </label>
-                                                <p>Use <strong>0.00</strong> when this method is included in the product price.</p>
+
+                                                <div class="np-production-rule-list">
+                                                    <template x-for="(rule, index) in rules" :key="rule._key || index">
+                                                        <div class="np-production-rule-row">
+                                                            <label>
+                                                                <span>Quantity from</span>
+                                                                <input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    max="1000000"
+                                                                    step="1"
+                                                                    inputmode="numeric"
+                                                                    x-model="rule.minimum_quantity"
+                                                                    :name="`production_method_rules[${methodCode}][${index}][minimum_quantity]`"
+                                                                    :disabled="!productionMethodsEnabled || !selected"
+                                                                    required
+                                                                    placeholder="1"
+                                                                >
+                                                            </label>
+                                                            <label>
+                                                                <span>Quantity to</span>
+                                                                <input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    max="1000000"
+                                                                    step="1"
+                                                                    inputmode="numeric"
+                                                                    x-model="rule.maximum_quantity"
+                                                                    :name="`production_method_rules[${methodCode}][${index}][maximum_quantity]`"
+                                                                    :disabled="!productionMethodsEnabled || !selected"
+                                                                    placeholder="No limit"
+                                                                >
+                                                            </label>
+                                                            <label>
+                                                                <span>Min working days</span>
+                                                                <input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    max="3650"
+                                                                    step="1"
+                                                                    inputmode="numeric"
+                                                                    x-model="rule.minimum_days"
+                                                                    :name="`production_method_rules[${methodCode}][${index}][minimum_days]`"
+                                                                    :disabled="!productionMethodsEnabled || !selected"
+                                                                    required
+                                                                    placeholder="3"
+                                                                >
+                                                            </label>
+                                                            <label>
+                                                                <span>Max working days</span>
+                                                                <input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    max="3650"
+                                                                    step="1"
+                                                                    inputmode="numeric"
+                                                                    x-model="rule.maximum_days"
+                                                                    :name="`production_method_rules[${methodCode}][${index}][maximum_days]`"
+                                                                    :disabled="!productionMethodsEnabled || !selected"
+                                                                    required
+                                                                    placeholder="4"
+                                                                >
+                                                            </label>
+                                                            <label class="np-production-rule-charge">
+                                                                <span>Extra charge / piece</span>
+                                                                <span class="np-production-rule-money">
+                                                                    <b aria-hidden="true">$</b>
+                                                                    <input
+                                                                        type="number"
+                                                                        min="0"
+                                                                        max="999999999.99"
+                                                                        step="0.01"
+                                                                        inputmode="decimal"
+                                                                        x-model="rule.price_adjustment"
+                                                                        :name="`production_method_rules[${methodCode}][${index}][price_adjustment]`"
+                                                                        :disabled="!productionMethodsEnabled || !selected"
+                                                                        placeholder="0.00"
+                                                                    >
+                                                                </span>
+                                                            </label>
+                                                            <button
+                                                                type="button"
+                                                                class="np-production-rule-remove"
+                                                                @click="removeRule(index)"
+                                                                :disabled="rules.length <= 1"
+                                                                :aria-label="`Remove quantity rule ${index + 1}`"
+                                                                title="Remove range"
+                                                            >×</button>
+                                                        </div>
+                                                    </template>
+                                                </div>
+
+                                                <p class="np-production-rules-note">Leave <strong>Quantity to</strong> empty for the final open-ended range. Use <strong>0.00</strong> when there is no extra production charge.</p>
                                             </div>
                                         </article>
                                     @endforeach
@@ -1732,7 +1932,7 @@ Lead Time:"></div>
                                 <input type="checkbox" x-model="shippingMethodsEnabled" class="h-4 w-4 rounded border-slate-300 text-brand-red">
                                 <span>Show shipping methods on product page</span>
                             </label>
-                            <p class="min-w-0 text-xs font-medium leading-5 text-slate-500 md:text-right">Select reusable shipping methods from Master Data. Names and days come from master data; prices come from this product price table shipping columns.</p>
+                            <p class="min-w-0 text-xs font-medium leading-5 text-slate-500 md:text-right">Select reusable shipping methods from Master Data. Names and days come from master data; the shipping price comes from this product price table and you can add an optional extra charge per piece below.</p>
                         </div>
 
                         <div x-show="shippingMethodsEnabled" class="mt-4" x-cloak>
@@ -1759,6 +1959,28 @@ Lead Time:"></div>
                                                     <input type="radio" name="shipping_method_default_code" value="{{ $shippingMethod->code }}" @checked($defaultShippingCode === $shippingMethod->code) onclick="this.closest('article').querySelector('input[type=checkbox]').checked = true" class="h-3.5 w-3.5 border-slate-300 text-brand-red">
                                                     Default
                                                 </label>
+                                            </div>
+                                            <div class="mt-4 max-w-xs">
+                                                <label class="block text-xs font-semibold text-slate-700" for="shipping-extra-{{ $shippingMethod->id }}">Extra charge / piece <span class="font-normal text-slate-400">(optional)</span></label>
+                                                <div class="mt-1 flex overflow-hidden rounded-lg border border-slate-200 bg-white focus-within:border-slate-400">
+                                                    <span class="inline-flex items-center border-r border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-500">$</span>
+                                                    <input
+                                                        id="shipping-extra-{{ $shippingMethod->id }}"
+                                                        type="number"
+                                                        name="shipping_method_extra_charges[{{ $shippingMethod->code }}]"
+                                                        value="{{ $shippingExtraChargeValues->get(\Illuminate\Support\Str::slug((string) $shippingMethod->code), '0.00') }}"
+                                                        min="0"
+                                                        max="999999999.99"
+                                                        step="0.01"
+                                                        inputmode="decimal"
+                                                        class="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-sm text-slate-900 outline-none"
+                                                        placeholder="0.00"
+                                                    >
+                                                </div>
+                                                <p class="mt-1 text-[11px] leading-4 text-slate-500">Added on top of the shipping price-table rate for each piece.</p>
+                                                @error('shipping_method_extra_charges.'.$shippingMethod->code)
+                                                    <p class="mt-1 text-xs font-medium text-red-600">{{ $message }}</p>
+                                                @enderror
                                             </div>
                                             <div class="mt-4 flex flex-wrap gap-2 text-xs font-medium">
                                                 <span class="rounded-full bg-slate-50 px-3 py-1.5 text-slate-600">{{ $shippingMethod->minimum_days }}–{{ $shippingMethod->maximum_days }} business days</span>

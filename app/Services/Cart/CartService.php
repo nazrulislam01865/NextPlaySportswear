@@ -1653,9 +1653,16 @@ class CartService
             return $productionQuantity >= $minimum
                 && ($maximum === null || $productionQuantity <= $maximum);
         })->values();
-        $requestedProductionSpeed = (string) ($raw['production_speed'] ?? '');
-        $productionSpeed = $availableProductionSpeeds->firstWhere('id', $requestedProductionSpeed)
-            ?? $availableProductionSpeeds->first();
+        // Production is backend-configured and customer-independent. Always select
+        // the quantity-matched rule on the server instead of trusting a submitted
+        // production_speed value from the storefront request.
+        $productionSpeed = $availableProductionSpeeds->first();
+
+        abort_if(
+            (bool) ($product['production_methods_enabled'] ?? false) && $productionSpeed === null,
+            422,
+            'No production rule is configured for the selected quantity. Please contact us or choose another quantity.'
+        );
         $shippingMethods = collect($product['shipping_methods'] ?? []);
         $shippingIds = $shippingMethods->pluck('id')->map(fn ($id) => (string) $id)->all();
         $defaultShipping = $shippingMethods->firstWhere('default', true)['id'] ?? ($shippingIds[0] ?? null);
@@ -2038,7 +2045,8 @@ class CartService
         $tableRate = $this->shippingPerUnitFromPriceTable($product, $customization, $shipping, $quantity);
 
         if ($tableRate !== null) {
-            $perUnit = max(0, $tableRate);
+            $extraChargePerPiece = max(0, (float) ($shipping['extra_charge_per_piece'] ?? $shipping['price_delta'] ?? 0));
+            $perUnit = max(0, $tableRate) + $extraChargePerPiece;
         } elseif (($shipping['price_source'] ?? null) === 'price_table' || ($shipping['requires_price_table'] ?? false) || ($shipping['charge_type'] ?? null) === 'price_table') {
             $priceStatus = 'contact_us';
         } elseif (($shipping['charge_type'] ?? 'per_unit') === 'master_method') {

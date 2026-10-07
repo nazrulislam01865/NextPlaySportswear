@@ -64,7 +64,7 @@
                                         {{ $item['customization']['design_option'] }} · {{ $item['customization']['size_summary'] }}
                                         @php($fulfillment = (array) ($item['customization']['fulfillment'] ?? []))
                                         @if(is_array($fulfillment['production'] ?? null))
-                                            <br>Production: {{ data_get($fulfillment, 'production.label', 'Standard production') }} · {{ data_get($fulfillment, 'production.display_amount', 'Included') }}
+                                            <br>Production charge: {{ data_get($fulfillment, 'production.display_amount', 'Included') }}
                                         @endif
                                         @if(is_array($fulfillment['shipping'] ?? null))
                                             <br>Shipping: {{ data_get($fulfillment, 'shipping.label', 'Selected shipping') }}

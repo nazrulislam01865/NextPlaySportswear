@@ -36,13 +36,13 @@
 
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                     <div class="flex items-center justify-between gap-4"><h3 class="font-black text-brand-ink">Production &amp; Shipping</h3><a class="text-sm font-black text-brand-red" href="{{ route('cart.index') }}">Edit products</a></div>
-                    <p class="mt-2 text-sm font-semibold leading-6 text-slate-600">These methods were selected while each product was configured and are carried into the saved order automatically.</p>
+                    <p class="mt-2 text-sm font-semibold leading-6 text-slate-600">Production timing and any production charge are calculated automatically from each product's quantity. Shipping is carried from the configured cart item.</p>
                     <div class="mt-4 grid gap-3">
                         @foreach(($summary['fulfillment_lines'] ?? []) as $line)
                             <div class="rounded-xl border border-slate-200 bg-white p-4">
                                 <p class="font-black text-brand-ink">{{ $line['product'] ?? 'Product' }} <span class="text-xs text-slate-400">× {{ $line['quantity'] ?? 1 }}</span></p>
                                 <div class="mt-2 grid gap-1 text-sm font-semibold leading-6 text-slate-600">
-                                    <p><strong class="text-brand-ink">Production:</strong> {{ data_get($line, 'production.label', 'Standard production') }} · {{ data_get($line, 'production.display_amount', 'Included') }}</p>
+                                    <p><strong class="text-brand-ink">Production charge:</strong> {{ data_get($line, 'production.display_amount', 'Included') }}</p>
                                     <p><strong class="text-brand-ink">Shipping:</strong> {{ data_get($line, 'shipping.label', 'Included shipping') }} · {{ data_get($line, 'shipping.display_amount', 'Included') }}</p>
                                     @if(($line['estimated_minimum_days'] ?? 0) > 0 || ($line['estimated_maximum_days'] ?? 0) > 0)
                                         <p><strong class="text-brand-ink">Estimate:</strong> {{ $line['estimated_minimum_days'] ?? 0 }}–{{ $line['estimated_maximum_days'] ?? $line['estimated_minimum_days'] ?? 0 }} business days</p>

@@ -10,7 +10,7 @@
     "isDynamicEntry": true
   },
   "resources/css/admin.css": {
-    "file": "assets/admin-B0x6MaYM.css",
+    "file": "assets/admin-ANwlLnOy.css",
     "name": "admin",
     "names": [
       "admin.css"
@@ -25,7 +25,7 @@
     ]
   },
   "resources/css/storefront.css": {
-    "file": "assets/storefront-h312j6ft.css",
+    "file": "assets/storefront-BLNBnOrf.css",
     "name": "storefront",
     "names": [
       "storefront.css"
@@ -68,7 +68,7 @@
     ]
   },
   "resources/js/storefront.js": {
-    "file": "assets/storefront-B9Uk6wuB.js",
+    "file": "assets/storefront-BPofyx9j.js",
     "name": "storefront",
     "src": "resources/js/storefront.js",
     "isEntry": true,

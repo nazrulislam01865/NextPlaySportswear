@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Admin;
 
-use App\Models\ProductionMethod;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -24,8 +23,6 @@ class ProductionMethodRequest extends FormRequest
             'code' => Str::slug($code),
             'description' => trim((string) $this->input('description')),
             'remove_image' => $this->boolean('remove_image'),
-            'minimum_days' => $this->input('minimum_days'),
-            'maximum_days' => $this->input('maximum_days'),
             'is_default' => $this->boolean('is_default'),
             'is_active' => $this->boolean('is_active'),
             'sort_order' => $this->input('sort_order') ?: 0,
@@ -44,8 +41,6 @@ class ProductionMethodRequest extends FormRequest
             'image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:3072'],
             'image_url' => ['nullable', 'url:http,https', 'max:2048'],
             'remove_image' => ['nullable', 'boolean'],
-            'minimum_days' => ['required', 'integer', 'min:0', 'max:3650'],
-            'maximum_days' => ['required', 'integer', 'gte:minimum_days', 'max:3650'],
             'is_default' => ['nullable', 'boolean'],
             'is_active' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:999999'],
@@ -56,7 +51,6 @@ class ProductionMethodRequest extends FormRequest
     {
         return [
             'code.regex' => 'Use lowercase letters, numbers, and hyphens only, for example standard-production.',
-            'maximum_days.gte' => 'Maximum working days must be greater than or equal to minimum working days.',
         ];
     }
 }

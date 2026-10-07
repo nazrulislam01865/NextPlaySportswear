@@ -8,7 +8,7 @@
     @csrf
     @if($formMethod !== 'POST') @method($formMethod) @endif
 
-    <x-admin.section-card title="Production Method" description="Create a reusable production option that can be selected in product setup.">
+    <x-admin.section-card title="Production Method" description="Create a reusable production option. Quantity ranges, production days, and charges are configured per product.">
         <div class="grid gap-5 lg:grid-cols-3">
             <label class="admin-label lg:col-span-2">
                 Method name
@@ -21,20 +21,7 @@
             </label>
             <label class="admin-label lg:col-span-3">
                 Description
-                <textarea name="description" class="admin-textarea min-h-[110px]" maxlength="2000" placeholder="Shown to customers on the product page.">{{ old('description', $method->description) }}</textarea>
-            </label>
-        </div>
-    </x-admin.section-card>
-
-    <x-admin.section-card title="Production Timeline" description="This is the production working-day range shown to customers before shipping.">
-        <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-            <label class="admin-label">
-                Minimum working days
-                <input type="number" name="minimum_days" value="{{ old('minimum_days', $method->minimum_days ?? 7) }}" class="admin-input" min="0" max="3650" required>
-            </label>
-            <label class="admin-label">
-                Maximum working days
-                <input type="number" name="maximum_days" value="{{ old('maximum_days', $method->maximum_days ?? 10) }}" class="admin-input" min="0" max="3650" required>
+                <textarea name="description" class="admin-textarea min-h-[110px]" maxlength="2000" placeholder="Internal description used while configuring product production rules.">{{ old('description', $method->description) }}</textarea>
             </label>
         </div>
     </x-admin.section-card>
@@ -42,7 +29,7 @@
 
     <x-admin.master-method-media :method="$method" />
 
-    <x-admin.section-card title="Status" description="Only active production methods are shown in product setup and on the storefront.">
+    <x-admin.section-card title="Status" description="Only active production methods are available in product setup. Production methods are not customer-selectable on the storefront.">
         <div class="grid gap-4 sm:grid-cols-2">
             <label class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
                 <input type="hidden" name="is_active" value="0">
@@ -52,7 +39,7 @@
             <label class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
                 <input type="hidden" name="is_default" value="0">
                 <input type="checkbox" name="is_default" value="1" @checked($isDefault) class="h-5 w-5 rounded border-slate-300 text-brand-red">
-                Default customer choice
+                Default for new products
             </label>
         </div>
     </x-admin.section-card>

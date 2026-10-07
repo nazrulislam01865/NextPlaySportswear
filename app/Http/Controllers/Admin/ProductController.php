@@ -112,7 +112,7 @@ class ProductController extends Controller
             'productionMethodOptions' => ProductionMethod::query()
                 ->orderBy('sort_order')
                 ->orderBy('name')
-                ->get(['id', 'name', 'code', 'minimum_days', 'maximum_days', 'is_default', 'is_active']),
+                ->get(['id', 'name', 'code', 'is_default', 'is_active']),
             'productStats' => $this->productStats(),
         ]);
     }

@@ -549,13 +549,31 @@ window.productBuilderFabricPricing = function (config = {}) {
             const value = this.inputs?.[group.id];
             return String(value || '').trim() || 'Not provided';
         },
-        shippingEstimatedAmount() {
+        shippingCombinedAmount() {
             const quantity = Math.max(0, Number(this.totalQuantity?.() || 0));
             const breakdown = this.priceAdjustments?.() || {};
             return Math.max(0, Number(breakdown.shippingPerUnit || 0) * quantity + Number(breakdown.shippingFixed || 0));
         },
+        productionExtraChargeAmount() {
+            const quantity = Math.max(0, Number(this.totalQuantity?.() || 0));
+            const speed = this.currentProductionSpeed?.();
+            return Math.max(0, Number(speed?.price_delta || 0) * quantity);
+        },
+        shippingExtraChargeAmount() {
+            const quantity = Math.max(0, Number(this.totalQuantity?.() || 0));
+            const method = (config.shipping_methods || []).find(item => item.id === this.shippingMethod);
+            return Math.max(0, Number(method?.extra_charge_per_piece || 0) * quantity);
+        },
+        shippingEstimatedAmount() {
+            return Math.max(0, this.shippingCombinedAmount() - this.shippingExtraChargeAmount());
+        },
         productPriceAmount() {
-            return Math.max(0, Number(this.totalPrice?.() || 0) - this.shippingEstimatedAmount());
+            return Math.max(
+                0,
+                Number(this.totalPrice?.() || 0)
+                    - this.shippingCombinedAmount()
+                    - this.productionExtraChargeAmount(),
+            );
         },
         remoteAreaSurchargeAmount() {
             return 0;
@@ -1013,22 +1031,6 @@ window.productBuilderFabricPricing = function (config = {}) {
 
                         <div id="np-product-step-panel-{{ $productionStep }}" class="np-proto-step-expanded" x-show="isCustomizerStepOpen({{ $productionStep }})" x-cloak>
                             <div class="np-proto-step-content">
-                            <div x-show="currentProductionOptions().length > 0" class="np-proto-choice-section">
-                                <h4 class="np-proto-section-title"><x-storefront.product.ui-icon :src="$ui['production_lead_time_icon']" name="factory" /> {{ $ui['production_lead_time_label'] }}</h4>
-                                <div class="np-proto-choice-grid">
-                                    <template x-for="option in currentProductionOptions()" :key="option.id">
-                                        <button type="button" class="np-proto-choice-card" :class="productionSpeed === option.id ? 'is-selected' : ''" @click="chooseProductionSpeed(option.id)">
-                                            <span class="np-proto-choice-radio"></span>
-                                            <span class="np-proto-choice-copy"><strong x-text="option.label"></strong><b x-text="productionDaysOnlyLabel(option)"></b><small x-text="option.description || chargeLabel(option)"></small></span>
-                                            <span class="np-proto-choice-media">
-                                                <template x-if="option.image"><img :src="option.image" :alt="option.label" loading="lazy" decoding="async"></template>
-                                                <svg x-show="!option.image" viewBox="0 0 48 48"><path d="M8 34h32M12 34V17l9 6v-9l10 7V10h5v24"/><path d="M17 39h2M29 39h2"/></svg>
-                                            </span>
-                                        </button>
-                                    </template>
-                                </div>
-                            </div>
-
                             @if(!empty($product['shipping_methods']))
                                 <div class="np-proto-choice-section">
                                     <h4 class="np-proto-section-title"><x-storefront.product.ui-icon :src="$ui['shipping_method_icon']" name="truck" /> {{ $ui['shipping_method_label'] }}</h4>
@@ -1196,7 +1198,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                                                 <button type="button" @click="openCustomizerStep({{ $productionStep }})">Edit</button>
                                             </div>
                                             <div class="np-review-detail-list">
-                                                <div x-show="currentProductionOptions().length > 0" x-cloak><span>Production</span><strong><span x-text="speedLabel()"></span> · <span x-text="productionDaysOnlyLabel()"></span></strong></div>
+                                                <div x-show="currentProductionOptions().length > 0" x-cloak><span>Production time</span><strong x-text="productionDaysOnlyLabel()"></strong></div>
                                                 <div><span>Shipping</span><strong><span x-text="shippingLabel()"></span> · <span x-text="shippingDaysOnlyLabel()"></span></strong></div>
                                                 <div><span>{{ $ui['estimated_delivery_label'] }}</span><strong x-text="totalDeliveryDaysLabel()"></strong></div>
                                             </div>
@@ -1210,6 +1212,8 @@ window.productBuilderFabricPricing = function (config = {}) {
                                         <div><span>{{ $ui['minimum_order_label'] }}</span><strong>{{ number_format((int) ($product['minimum_quantity'] ?? 1)) }} piece{{ (int) ($product['minimum_quantity'] ?? 1) === 1 ? '' : 's' }}</strong></div>
                                         <div><span>Product Price</span><strong x-text="money(productPriceAmount())"></strong></div>
                                         <div><span>Shipping (Estimated)</span><strong x-text="money(shippingEstimatedAmount())"></strong></div>
+                                        <div x-show="productionExtraChargeAmount() > 0" x-cloak><span>Production Extra Charge</span><strong x-text="money(productionExtraChargeAmount())"></strong></div>
+                                        <div x-show="shippingExtraChargeAmount() > 0" x-cloak><span>Shipping Extra Charge</span><strong x-text="money(shippingExtraChargeAmount())"></strong></div>
                                         <div><span>Remote Area Surcharge</span><strong x-text="money(remoteAreaSurchargeAmount())"></strong></div>
                                         <div class="is-total"><span>Estimated Total</span><strong x-text="money(estimatedOrderTotal())"></strong></div>
                                         <button type="submit" class="btn btn-secondary btn-xl np-review-add-to-cart" :disabled="!canAddToCart()" :aria-disabled="!canAddToCart() ? 'true' : 'false'">

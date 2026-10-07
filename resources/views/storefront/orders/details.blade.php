@@ -51,7 +51,7 @@
                                     </div>
                                     @php($fulfillment = (array) ($item['customization']['fulfillment'] ?? []))
                                     @if(is_array($fulfillment['production'] ?? null))
-                                        <p><strong class="text-slate-900">Production:</strong> {{ data_get($fulfillment, 'production.label', 'Standard production') }} · {{ data_get($fulfillment, 'production.display_amount', 'Included') }}</p>
+                                        <p><strong class="text-slate-900">Production charge:</strong> {{ data_get($fulfillment, 'production.display_amount', 'Included') }}</p>
                                     @endif
                                     @if(is_array($fulfillment['shipping'] ?? null))
                                         <p><strong class="text-slate-900">Shipping:</strong> {{ data_get($fulfillment, 'shipping.label', 'Selected shipping') }} · {{ data_get($fulfillment, 'shipping.display_amount', 'Included') }}</p>

@@ -263,14 +263,21 @@ class ProductFormRequest extends FormRequest
             'production_speeds.*.is_active' => ['nullable', 'boolean'],
 
             'production_methods_from_master' => ['nullable', 'boolean'],
-            'production_method_codes' => ['nullable', 'array', 'max:30'],
+            'production_method_codes' => ['required_if:production_methods_enabled,1', 'array', 'min:1', 'max:30'],
             'production_method_codes.*' => ['nullable', 'string', 'max:160', 'distinct', Rule::exists('production_methods', 'code')],
-            'production_method_price_adjustments' => ['nullable', 'array', 'max:30'],
-            'production_method_price_adjustments.*' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'production_method_rules' => ['nullable', 'array', 'max:30'],
+            'production_method_rules.*' => ['nullable', 'array', 'max:30'],
+            'production_method_rules.*.*.minimum_quantity' => ['required', 'integer', 'min:1', 'max:1000000'],
+            'production_method_rules.*.*.maximum_quantity' => ['nullable', 'integer', 'gte:production_method_rules.*.*.minimum_quantity', 'max:1000000'],
+            'production_method_rules.*.*.minimum_days' => ['required', 'integer', 'min:1', 'max:3650'],
+            'production_method_rules.*.*.maximum_days' => ['required', 'integer', 'gte:production_method_rules.*.*.minimum_days', 'max:3650'],
+            'production_method_rules.*.*.price_adjustment' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
 
             'shipping_method_codes' => ['nullable', 'array', 'max:30'],
             'shipping_method_codes.*' => ['nullable', 'string', 'max:160', 'distinct', Rule::exists('shipping_methods', 'code')],
             'shipping_method_default_code' => ['nullable', 'string', 'max:160', Rule::exists('shipping_methods', 'code')],
+            'shipping_method_extra_charges' => ['nullable', 'array'],
+            'shipping_method_extra_charges.*' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'shipping_methods' => ['nullable', 'array', 'max:30'],
             'shipping_methods.*.shipping_method_id' => ['nullable', 'integer', 'exists:shipping_methods,id'],
             'shipping_methods.*.name' => ['nullable', 'string', 'max:160'],
@@ -746,6 +753,124 @@ class ProductFormRequest extends FormRequest
             // The storefront price table is still preserved, and live pricing is derived
             // only from rows where a usable minimum quantity and price can be parsed.
 
+            if ($this->boolean('production_methods_enabled')) {
+                $selectedProductionCodes = collect((array) $this->input('production_method_codes', []))
+                    ->map(fn ($code) => Str::slug((string) $code))
+                    ->filter()
+                    ->unique()
+                    ->values();
+                $productionRules = collect((array) $this->input('production_method_rules', []))
+                    ->mapWithKeys(fn ($rules, $code): array => [Str::slug((string) $code) => collect((array) $rules)->values()]);
+
+                $automaticProductionRanges = collect();
+
+                foreach ($selectedProductionCodes as $code) {
+                    $rules = collect($productionRules->get($code, []))
+                        ->filter(fn ($rule): bool => is_array($rule))
+                        ->values();
+
+                    if ($rules->isEmpty()) {
+                        $validator->errors()->add(
+                            "production_method_rules.{$code}",
+                            'Add at least one quantity and production-time rule for each selected production method.'
+                        );
+                        continue;
+                    }
+
+                    foreach ($rules as $ruleIndex => $rule) {
+                        if (is_numeric($rule['minimum_quantity'] ?? null)
+                            && filled($rule['maximum_quantity'] ?? null)
+                            && is_numeric($rule['maximum_quantity'])
+                            && (int) $rule['maximum_quantity'] < (int) $rule['minimum_quantity']) {
+                            $validator->errors()->add(
+                                "production_method_rules.{$code}.{$ruleIndex}.maximum_quantity",
+                                'Ending quantity must be greater than or equal to the starting quantity.'
+                            );
+                        }
+
+                        if (is_numeric($rule['minimum_days'] ?? null)
+                            && is_numeric($rule['maximum_days'] ?? null)
+                            && (int) $rule['maximum_days'] < (int) $rule['minimum_days']) {
+                            $validator->errors()->add(
+                                "production_method_rules.{$code}.{$ruleIndex}.maximum_days",
+                                'Maximum production days must be greater than or equal to the minimum production days.'
+                            );
+                        }
+                    }
+
+                    $validRanges = $rules
+                        ->map(function (array $rule, int $index): ?array {
+                            if (! is_numeric($rule['minimum_quantity'] ?? null)) {
+                                return null;
+                            }
+
+                            $minimum = (int) $rule['minimum_quantity'];
+                            $maximum = filled($rule['maximum_quantity'] ?? null) && is_numeric($rule['maximum_quantity'])
+                                ? (int) $rule['maximum_quantity']
+                                : null;
+
+                            if ($minimum < 1 || ($maximum !== null && $maximum < $minimum)) {
+                                return null;
+                            }
+
+                            return ['index' => $index, 'minimum' => $minimum, 'maximum' => $maximum];
+                        })
+                        ->filter()
+                        ->sortBy('minimum')
+                        ->values();
+
+                    $previous = null;
+                    foreach ($validRanges as $range) {
+                        if ($previous !== null) {
+                            $previousMaximum = $previous['maximum'];
+                            if ($previousMaximum === null || $range['minimum'] <= $previousMaximum) {
+                                $validator->errors()->add(
+                                    "production_method_rules.{$code}.{$range['index']}.minimum_quantity",
+                                    'Quantity ranges for the same production method cannot overlap.'
+                                );
+                            }
+                        }
+                        $previous = $range;
+                    }
+
+                    $automaticProductionRanges = $automaticProductionRanges->concat(
+                        $validRanges->map(fn (array $range): array => array_merge($range, ['code' => $code]))
+                    );
+                }
+
+                // Customers no longer choose a production method. Quantity alone
+                // must resolve to one rule, so ranges belonging to different master
+                // methods must not overlap either.
+                $orderedAutomaticRanges = $automaticProductionRanges
+                    ->sortBy([['minimum', 'asc'], ['code', 'asc']])
+                    ->values();
+
+                foreach ($orderedAutomaticRanges as $rangeIndex => $range) {
+                    for ($compareIndex = $rangeIndex + 1; $compareIndex < $orderedAutomaticRanges->count(); $compareIndex++) {
+                        $candidate = $orderedAutomaticRanges->get($compareIndex);
+                        if (($candidate['code'] ?? null) === ($range['code'] ?? null)) {
+                            continue;
+                        }
+
+                        $rangeMaximum = $range['maximum'];
+                        if ($rangeMaximum !== null && $candidate['minimum'] > $rangeMaximum) {
+                            break;
+                        }
+
+                        $candidateMaximum = $candidate['maximum'];
+                        $overlaps = ($rangeMaximum === null || $candidate['minimum'] <= $rangeMaximum)
+                            && ($candidateMaximum === null || $range['minimum'] <= $candidateMaximum);
+
+                        if ($overlaps) {
+                            $validator->errors()->add(
+                                "production_method_rules.{$candidate['code']}.{$candidate['index']}.minimum_quantity",
+                                'Production quantity ranges cannot overlap because the storefront applies the matching rule automatically from quantity.'
+                            );
+                        }
+                    }
+                }
+            }
+
             $productionHeaders = collect($this->input('production_table_headers', []))->values();
             $productionRows = collect($this->input('production_table_rows', []))->values();
             foreach ($productionRows as $rowIndex => $row) {
@@ -795,46 +920,56 @@ class ProductFormRequest extends FormRequest
             ->take(30)
             ->values();
 
-        $priceAdjustments = collect((array) $this->input('production_method_price_adjustments', []))
-            ->mapWithKeys(function ($value, $code): array {
-                $normalizedCode = Str::slug((string) $code);
-
-                if ($normalizedCode === '') {
-                    return [];
-                }
-
-                return [$normalizedCode => max(0, round((float) $value, 2))];
-            });
-
         if ($codes->isEmpty()) {
             return [];
         }
+
+        $rulesByCode = collect((array) $this->input('production_method_rules', []))
+            ->mapWithKeys(function ($rules, $code): array {
+                $normalizedCode = Str::slug((string) $code);
+
+                return $normalizedCode === '' ? [] : [$normalizedCode => collect((array) $rules)->values()];
+            });
 
         $methods = ProductionMethod::query()
             ->whereIn('code', $codes->all())
             ->get()
             ->keyBy('code');
 
-        return $codes->map(function (string $code) use ($methods, $priceAdjustments): ?array {
+        return $codes->flatMap(function (string $code) use ($methods, $rulesByCode): array {
             /** @var ProductionMethod|null $method */
             $method = $methods->get($code);
             if (! $method instanceof ProductionMethod) {
-                return null;
+                return [];
             }
 
-            return [
-                'production_method_id' => $method->id,
-                'name' => $method->name,
-                'code' => $method->code,
-                'description' => $method->description,
-                'price_adjustment' => (float) $priceAdjustments->get($code, 0),
-                'minimum_quantity' => 1,
-                'maximum_quantity' => null,
-                'minimum_days' => (int) ($method->minimum_days ?? 1),
-                'maximum_days' => (int) ($method->maximum_days ?? ($method->minimum_days ?? 1)),
-                'is_active' => (bool) ($method->is_active ?? true),
-            ];
-        })->filter()->values()->all();
+            return collect($rulesByCode->get($code, []))
+                ->filter(fn ($rule): bool => is_array($rule))
+                ->take(30)
+                ->map(function (array $rule) use ($method): array {
+                    $minimumQuantity = max(1, (int) ($rule['minimum_quantity'] ?? 1));
+                    $maximumQuantity = filled($rule['maximum_quantity'] ?? null)
+                        ? max($minimumQuantity, (int) $rule['maximum_quantity'])
+                        : null;
+                    $minimumDays = max(1, (int) ($rule['minimum_days'] ?? 1));
+                    $maximumDays = max($minimumDays, (int) ($rule['maximum_days'] ?? $minimumDays));
+                    $rangeSuffix = $maximumQuantity === null ? 'plus' : (string) $maximumQuantity;
+
+                    return [
+                        'production_method_id' => $method->id,
+                        'name' => $method->name,
+                        'code' => 'pm-'.$method->id.'-q'.$minimumQuantity.'-'.$rangeSuffix,
+                        'description' => $method->description,
+                        'price_adjustment' => max(0, round((float) ($rule['price_adjustment'] ?? 0), 2)),
+                        'minimum_quantity' => $minimumQuantity,
+                        'maximum_quantity' => $maximumQuantity,
+                        'minimum_days' => $minimumDays,
+                        'maximum_days' => $maximumDays,
+                        'is_active' => (bool) ($method->is_active ?? true),
+                    ];
+                })
+                ->all();
+        })->values()->all();
     }
 
     private function shippingMethodsFromMaster(): array
@@ -859,23 +994,27 @@ class ProductFormRequest extends FormRequest
             ->whereIn('code', $codes->all())
             ->get()
             ->keyBy('code');
+        $extraCharges = collect((array) $this->input('shipping_method_extra_charges', []))
+            ->mapWithKeys(fn ($amount, $code) => [Str::slug((string) $code) => $amount]);
 
-        return $codes->map(function (string $code) use ($methods, $defaultCode): ?array {
+        return $codes->map(function (string $code) use ($methods, $defaultCode, $extraCharges): ?array {
             /** @var ShippingMethod|null $method */
             $method = $methods->get($code);
             if (! $method instanceof ShippingMethod) {
                 return null;
             }
 
+            $extraCharge = max(0, round((float) $extraCharges->get($code, 0), 2));
+
             return [
                 'shipping_method_id' => $method->id,
                 'name' => $method->name,
                 'code' => $method->code,
                 'description' => $method->description,
-                // Shipping master data now controls only the customer-facing method
-                // name and transit days. The live charge comes from matching product
-                // price-table columns such as Standard/Normal Shipping or Urgent/Express Shipping.
-                'price_adjustment' => 0,
+                // Shipping master data controls the reusable name and transit days.
+                // The product price table supplies the base shipping rate and this
+                // product-specific value is an optional extra charge per piece.
+                'price_adjustment' => $extraCharge,
                 'base_price' => 0,
                 'per_item_price' => 0,
                 'free_shipping_minimum' => null,
@@ -1363,6 +1502,21 @@ class ProductFormRequest extends FormRequest
             'option_groups.*.code.regex' => 'This customization feature has an invalid internal identifier. Refresh the page and try saving again.',
             'option_groups.*.code.distinct' => 'The same customization feature cannot be added more than once.',
             'option_groups.*.values.*.color_hex.regex' => 'Enter a valid HEX color such as #15345D or 15345D.',
+            'production_method_codes.required_if' => 'Choose at least one production method when production methods are enabled.',
+            'production_method_codes.min' => 'Choose at least one production method when production methods are enabled.',
+            'production_method_rules.*.*.minimum_quantity.required' => 'Enter the starting quantity for each production rule.',
+            'production_method_rules.*.*.minimum_quantity.integer' => 'Production quantity must be a whole number.',
+            'production_method_rules.*.*.minimum_quantity.min' => 'Production quantity must start at 1 or more.',
+            'production_method_rules.*.*.maximum_quantity.integer' => 'Ending quantity must be a whole number or left empty for an open-ended range.',
+            'production_method_rules.*.*.maximum_quantity.gte' => 'Ending quantity must be greater than or equal to the starting quantity.',
+            'production_method_rules.*.*.minimum_days.required' => 'Enter the minimum production working days for each quantity range.',
+            'production_method_rules.*.*.minimum_days.integer' => 'Minimum production days must be a whole number.',
+            'production_method_rules.*.*.minimum_days.min' => 'Minimum production days must be at least 1 working day.',
+            'production_method_rules.*.*.maximum_days.required' => 'Enter the maximum production working days for each quantity range.',
+            'production_method_rules.*.*.maximum_days.integer' => 'Maximum production days must be a whole number.',
+            'production_method_rules.*.*.maximum_days.gte' => 'Maximum production days must be greater than or equal to the minimum production days.',
+            'production_method_rules.*.*.price_adjustment.numeric' => 'Enter the extra production charge as a valid number.',
+            'production_method_rules.*.*.price_adjustment.min' => 'The extra production charge cannot be negative.',
             'option_groups.*.values.*.price_adjustment.numeric' => 'Enter the customization additional charge as a valid number.',
             'option_groups.*.values.*.price_adjustment.min' => 'The customization additional charge cannot be negative.',
             'size_groups.*.size_charges.*.amount.numeric' => 'Enter the size extra charge as a valid number.',
@@ -1386,6 +1540,9 @@ class ProductFormRequest extends FormRequest
             'artwork_upload_max_file_size_mb.max' => 'Artwork file size must not exceed 25 MB.',
             'shipping_method_codes.*.exists' => 'Choose a valid shipping method from Master Data.',
             'shipping_method_default_code.exists' => 'Choose a valid default shipping method from Master Data.',
+            'shipping_method_extra_charges.*.numeric' => 'Enter each shipping extra charge as a number.',
+            'shipping_method_extra_charges.*.min' => 'A shipping extra charge cannot be negative.',
+            'shipping_method_extra_charges.*.max' => 'A shipping extra charge is too large.',
             'shipping_methods.*.name.max' => 'Keep the shipping method name within 160 characters.',
             'shipping_methods.*.price_adjustment.numeric' => 'Enter the shipping charge as a number.',
             'shipping_methods.*.price_adjustment.min' => 'The shipping charge cannot be negative.',
@@ -1398,8 +1555,6 @@ class ProductFormRequest extends FormRequest
             'production_table_rows.*.range.max' => 'Keep the production quantity range within 50 characters.',
             'production_table_rows.*.cells.*.price_adjustment.numeric' => 'Enter the production charge as a number.',
             'production_table_rows.*.cells.*.price_adjustment.min' => 'The production charge cannot be negative.',
-            'production_method_price_adjustments.*.numeric' => 'Enter each production method charge as a valid number.',
-            'production_method_price_adjustments.*.min' => 'A production method charge cannot be negative.',
             'production_table_rows.*.cells.*.production_time.max' => 'Keep the production time within 60 characters, for example 5-15 days or To be confirmed.',
             'production_speeds.*.maximum_quantity.gte' => 'The production quantity maximum must be greater than or equal to the minimum quantity.',
             'production_speeds.*.maximum_days.gte' => 'The production maximum days must be greater than or equal to the minimum days.',

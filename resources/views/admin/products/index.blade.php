@@ -228,7 +228,7 @@
                         <strong>Production methods from Master Data</strong>
                         <span class="product-bulk-production__count" data-product-method-count>0 selected</span>
                     </div>
-                    <p class="product-production-modal__help">Only active production methods can be assigned. Existing product-specific charges are preserved when the same method is already assigned.</p>
+                    <p class="product-production-modal__help">Only active production methods can be assigned. Existing product-specific quantity rules, working days, and charges are preserved. New assignments use “To be confirmed” until their rules are set on the product edit page.</p>
 
                     @if($activeBulkProductionMethods->isNotEmpty())
                         <div class="product-bulk-method-grid product-bulk-method-grid--modal">
@@ -243,7 +243,7 @@
                                     >
                                     <span class="product-bulk-method__copy">
                                         <span class="product-bulk-method__name">{{ $method->name }}</span>
-                                        <span class="product-bulk-method__meta">{{ $method->minimum_days }}–{{ $method->maximum_days }} days{{ $method->is_default ? ' · Default' : '' }}</span>
+                                        <span class="product-bulk-method__meta">{{ $method->is_default ? 'Default method' : 'Configure timeline per product' }}</span>
                                     </span>
                                 </label>
                             @endforeach

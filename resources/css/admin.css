@@ -11673,3 +11673,200 @@ body.admin-clean-ui .np-product-form--compact [data-customization-extra-charge] 
     min-height: 2.35rem !important;
     margin-top: .25rem !important;
 }
+
+/* NEXTPLAY_PRODUCT_PRODUCTION_QUANTITY_RULES
+   Production method identity stays in Master Data. Product-specific quantity
+   bands, working-day ranges and optional per-piece charges are edited here. */
+body.admin-clean-ui .np-product-form .np-production-method-grid {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+body.admin-clean-ui .np-product-form .np-production-rules-panel {
+    border-top: 1px solid #e2e8f0;
+    padding-top: .8rem;
+}
+
+body.admin-clean-ui .np-product-form .np-production-rules-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .8rem;
+    margin-bottom: .65rem;
+}
+
+body.admin-clean-ui .np-product-form .np-production-rules-heading strong {
+    display: block;
+    color: #243244;
+    font-size: .72rem;
+    line-height: 1rem;
+    font-weight: 750;
+}
+
+body.admin-clean-ui .np-product-form .np-production-rules-heading small {
+    display: block;
+    margin-top: .15rem;
+    color: #718199;
+    font-size: .62rem;
+    line-height: .95rem;
+    font-weight: 500;
+}
+
+body.admin-clean-ui .np-product-form .np-production-rule-add {
+    flex: 0 0 auto;
+    min-height: 2rem;
+    border: 1px solid #b9cbe0;
+    border-radius: .55rem;
+    background: #fff;
+    padding: .35rem .65rem;
+    color: #1f5fae;
+    font-size: .64rem;
+    line-height: 1;
+    font-weight: 750;
+    cursor: pointer;
+}
+
+body.admin-clean-ui .np-product-form .np-production-rule-add:hover {
+    border-color: #8fb2da;
+    background: #f5f9ff;
+}
+
+body.admin-clean-ui .np-product-form .np-production-rule-list {
+    display: grid;
+    gap: .55rem;
+}
+
+body.admin-clean-ui .np-product-form .np-production-rule-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(110px, 1fr)) minmax(155px, 1.15fr) 2.1rem;
+    align-items: end;
+    gap: .55rem;
+    border: 1px solid #dbe4ef;
+    border-radius: .65rem;
+    background: #f8fafc;
+    padding: .65rem;
+}
+
+body.admin-clean-ui .np-product-form .np-production-rule-row > label {
+    display: block;
+    min-width: 0;
+}
+
+body.admin-clean-ui .np-product-form .np-production-rule-row > label > span:first-child {
+    display: block;
+    margin-bottom: .28rem;
+    color: #607189;
+    font-size: .59rem;
+    line-height: .85rem;
+    font-weight: 700;
+}
+
+body.admin-clean-ui .np-product-form .np-production-rule-row input[type='number'] {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    height: 2.25rem;
+    border: 1px solid #cfd9e6;
+    border-radius: .5rem;
+    background: #fff;
+    padding: 0 .55rem;
+    color: #243244;
+    font-size: .72rem;
+    outline: 0;
+}
+
+body.admin-clean-ui .np-product-form .np-production-rule-row input[type='number']:focus {
+    border-color: #2a67ad;
+    box-shadow: 0 0 0 2px rgba(42, 103, 173, .1);
+}
+
+body.admin-clean-ui .np-product-form .np-production-rule-money {
+    display: grid;
+    grid-template-columns: 1.9rem minmax(0, 1fr);
+    overflow: hidden;
+    border: 1px solid #cfd9e6;
+    border-radius: .5rem;
+    background: #fff;
+}
+
+body.admin-clean-ui .np-product-form .np-production-rule-money:focus-within {
+    border-color: #2a67ad;
+    box-shadow: 0 0 0 2px rgba(42, 103, 173, .1);
+}
+
+body.admin-clean-ui .np-product-form .np-production-rule-money > b {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid #e1e8f0;
+    background: #f8fafc;
+    color: #607189;
+    font-size: .68rem;
+    font-weight: 750;
+}
+
+body.admin-clean-ui .np-product-form .np-production-rule-money input[type='number'] {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+body.admin-clean-ui .np-product-form .np-production-rule-remove {
+    display: inline-flex;
+    width: 2.1rem;
+    height: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #f1c2c2;
+    border-radius: .5rem;
+    background: #fff;
+    color: #b42318;
+    font-size: 1rem;
+    line-height: 1;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+body.admin-clean-ui .np-product-form .np-production-rule-remove:hover:not(:disabled) {
+    background: #fff5f5;
+}
+
+body.admin-clean-ui .np-product-form .np-production-rule-remove:disabled {
+    border-color: #e2e8f0;
+    color: #a8b3c2;
+    cursor: not-allowed;
+}
+
+body.admin-clean-ui .np-product-form .np-production-rules-note {
+    margin: .55rem 0 0;
+    color: #718199;
+    font-size: .61rem;
+    line-height: .95rem;
+}
+
+@media (max-width: 1180px) {
+    body.admin-clean-ui .np-product-form .np-production-rule-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body.admin-clean-ui .np-product-form .np-production-rule-charge {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 640px) {
+    body.admin-clean-ui .np-product-form .np-production-rules-heading {
+        flex-direction: column;
+    }
+
+    body.admin-clean-ui .np-product-form .np-production-rule-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body.admin-clean-ui .np-product-form .np-production-rule-charge {
+        grid-column: auto;
+    }
+
+    body.admin-clean-ui .np-product-form .np-production-rule-remove {
+        width: 100%;
+    }
+}

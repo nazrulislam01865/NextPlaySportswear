@@ -917,23 +917,6 @@ window.productBuilder = (config = {}) => ({
         }
     },
 
-    chooseProductionSpeed(id) {
-        const option = this.productionOptionsForQuantity().find(item => item.id === id);
-        if (!option) return;
-
-        const previous = this.productionSpeed;
-        this.productionSpeed = id;
-        this.sync();
-
-        if (previous !== id) {
-            this.notifyCustomization(
-                'Added',
-                `Production option: ${option.label} has been added to your product.`,
-                'production-speed',
-            );
-        }
-    },
-
     currentProductionSpeed() {
         const options = this.productionOptionsForQuantity();
         return options.find(option => option.id === this.productionSpeed) || options[0] || null;
@@ -1381,8 +1364,10 @@ window.productBuilder = (config = {}) => ({
         if (shipping) {
             const tableRate = this.shippingTableRate(shipping);
             if (tableRate !== null) {
-                breakdown.perUnit += tableRate;
-                breakdown.shippingPerUnit += tableRate;
+                const extraCharge = Math.max(0, Number(shipping.extra_charge_per_piece ?? shipping.price_delta ?? 0));
+                const combinedRate = tableRate + extraCharge;
+                breakdown.perUnit += combinedRate;
+                breakdown.shippingPerUnit += combinedRate;
             } else if (this.shippingUsesPriceTable(shipping)) {
                 // No matching price-table column exists for this method. Master
                 // shipping methods should not fall back to stale saved prices.
@@ -1647,10 +1632,6 @@ window.productBuilder = (config = {}) => ({
         );
     },
 
-    speedLabel() {
-        return this.currentProductionSpeed()?.label || 'Standard production';
-    },
-
     productionRangeLabel() {
         const speed = this.currentProductionSpeed();
         if (!speed) return '';
@@ -1711,7 +1692,7 @@ window.productBuilder = (config = {}) => ({
 
     deliveryLabel() {
         const labels = [];
-        if (this.currentProductionSpeed()) labels.push(this.speedLabel());
+        if (this.currentProductionSpeed()) labels.push(`Production ${this.productionDaysOnlyLabel()}`);
         if ((config.shipping_methods || []).length) labels.push(this.shippingLabel());
         return labels.join(' · ') || 'Standard delivery';
     },
@@ -1729,8 +1710,10 @@ window.productBuilder = (config = {}) => ({
 
         const tableRate = this.shippingTableRate(method);
         if (tableRate !== null) {
-            if (!tableRate) return 'Included';
-            return `${tableRate > 0 ? '+' : '−'}${this.money(Math.abs(tableRate))} / piece`;
+            const extraCharge = Math.max(0, Number(method?.extra_charge_per_piece ?? method?.price_delta ?? 0));
+            const combinedRate = tableRate + extraCharge;
+            if (!combinedRate) return 'Included';
+            return `${combinedRate > 0 ? '+' : '−'}${this.money(Math.abs(combinedRate))} / piece`;
         }
 
         if (this.shippingUsesPriceTable(method)) {
