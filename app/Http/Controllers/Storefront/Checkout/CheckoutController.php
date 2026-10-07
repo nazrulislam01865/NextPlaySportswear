@@ -188,7 +188,7 @@ class CheckoutController extends Controller
 
         $this->checkout->storeBillingAddress($request->validated(), $request->user());
 
-        return redirect()->route('checkout.payment-method')->with('status', 'Billing preference saved. Your product shipping and production selections were carried forward automatically.');
+        return redirect()->route('checkout.payment-method')->with('status', 'Billing preference saved. Product production was calculated from quantity and the shipping selections were carried forward automatically.');
     }
 
     public function shippingMethod(Request $request): View|RedirectResponse
@@ -203,7 +203,7 @@ class CheckoutController extends Controller
 
         return redirect()
             ->route('checkout.payment-method')
-            ->with('status', 'Shipping and production methods were already selected for each product and do not need to be chosen again.');
+            ->with('status', 'Production is calculated automatically from each product quantity, and shipping is already configured for each item.');
     }
 
     public function storeShippingMethod(Request $request): RedirectResponse
@@ -218,7 +218,7 @@ class CheckoutController extends Controller
 
         return redirect()
             ->route('checkout.payment-method')
-            ->with('status', 'Shipping and production methods were carried from your configured cart items.');
+            ->with('status', 'Production was calculated automatically from quantity and shipping was carried from your configured cart items.');
     }
 
     public function paymentMethod(Request $request): View|RedirectResponse

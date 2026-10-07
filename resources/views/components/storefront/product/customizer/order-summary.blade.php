@@ -116,7 +116,7 @@
         <div>
             <h4>Production &amp; Shipping</h4>
             <span class="np-custom-order-method-lines">
-                <span x-show="currentProductionOptions().length > 0" x-cloak><b x-text="speedLabel()"></b><small x-text="productionDaysOnlyLabel()"></small></span>
+                <span x-show="currentProductionOptions().length > 0" x-cloak><b>Production time</b><small x-text="productionDaysOnlyLabel()"></small></span>
                 <span><b x-text="shippingLabel()"></b><small x-text="shippingDaysOnlyLabel()"></small></span>
             </span>
         </div>
@@ -136,6 +136,8 @@
             <b x-text="money(productPriceAmount())"></b>
         </div>
         <div><span>Shipping (Estimated)</span><b x-text="money(shippingEstimatedAmount())"></b></div>
+        <div x-show="productionExtraChargeAmount() > 0" x-cloak><span>Production Extra Charge</span><b x-text="money(productionExtraChargeAmount())"></b></div>
+        <div x-show="shippingExtraChargeAmount() > 0" x-cloak><span>Shipping Extra Charge</span><b x-text="money(shippingExtraChargeAmount())"></b></div>
         <div><span>Remote Area Surcharge</span><b x-text="money(remoteAreaSurchargeAmount())"></b></div>
         <div class="is-total"><span>Total <small>(Estimated)</small></span><b x-text="money(estimatedOrderTotal())"></b></div>
     </section>

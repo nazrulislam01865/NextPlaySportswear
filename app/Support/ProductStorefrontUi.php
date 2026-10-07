@@ -58,7 +58,7 @@ class ProductStorefrontUi
             'artwork_help_next_lines' => "Our design team will prepare options based on your requirements.\nWe will send the artwork to you for approval through the normal order communication process.\nYou can continue to the next step now.",
 
             'production_step_title' => 'Production & Shipping',
-            'production_step_description' => 'Choose your production timeline and shipping method based on your schedule.',
+            'production_step_description' => 'Production time is calculated automatically from your quantity. Choose the shipping method that works for your order.',
             'production_lead_time_label' => 'Production Lead Time',
             'production_lead_time_icon' => null,
             'shipping_method_label' => 'Shipping Method',

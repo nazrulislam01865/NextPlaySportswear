@@ -5,7 +5,7 @@
     @php($invoiceCustomization = (array) $item->customization)
     @php($invoiceFulfillment = (array) ($invoiceCustomization['fulfillment'] ?? []))
     @if(is_array($invoiceFulfillment['production'] ?? null))
-        <span class="mt-1 block text-xs font-semibold text-slate-500">Production: {{ data_get($invoiceFulfillment, 'production.label', 'Standard production') }} · {{ data_get($invoiceFulfillment, 'production.display_amount', 'Included') }}</span>
+        <span class="mt-1 block text-xs font-semibold text-slate-500">Production charge: {{ data_get($invoiceFulfillment, 'production.display_amount', 'Included') }}</span>
     @endif
     @if(is_array($invoiceFulfillment['shipping'] ?? null))
         <span class="mt-1 block text-xs font-semibold text-slate-500">Shipping: {{ data_get($invoiceFulfillment, 'shipping.label', 'Selected shipping') }} · {{ data_get($invoiceFulfillment, 'shipping.display_amount', 'Included') }}</span>

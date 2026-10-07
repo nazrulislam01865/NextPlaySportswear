@@ -224,7 +224,7 @@
 
         <div class="np-pdui-grid np-pdui-grid--3">
             <article class="np-pdui-control-card">
-                <div class="np-pdui-control-card__heading"><div><strong>Production lead time</strong><small>Heading above the available production methods.</small></div></div>
+                <div class="np-pdui-control-card__heading"><div><strong>Production lead time</strong><small>Heading for the automatically calculated production time.</small></div></div>
                 <label class="admin-label">Heading text
                     <input class="admin-input" name="settings[production_lead_time_label]" value="{{ $settings['production_lead_time_label'] }}" maxlength="120">
                 </label>
@@ -284,7 +284,7 @@
             </article>
 
             <article class="np-pdui-control-card">
-                <div class="np-pdui-control-card__heading"><div><strong>Worldwide shipping fallback</strong><small>Shown when shipping exists but no production method is available.</small></div></div>
+                <div class="np-pdui-control-card__heading"><div><strong>Worldwide shipping fallback</strong><small>Shown when shipping exists but no matching production rule is available.</small></div></div>
                 <label class="admin-label">Heading
                     <input class="admin-input" name="settings[worldwide_shipping_title]" value="{{ $settings['worldwide_shipping_title'] }}" maxlength="120">
                 </label>

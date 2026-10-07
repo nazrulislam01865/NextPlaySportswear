@@ -30,8 +30,7 @@ class OrderPdfService
 
             if ($production !== null) {
                 $lines[] = sprintf(
-                    '  Production: %s (%s)',
-                    (string) ($production['label'] ?? 'Standard production'),
+                    '  Production charge: %s',
                     (string) ($production['display_amount'] ?? 'Included')
                 );
             }

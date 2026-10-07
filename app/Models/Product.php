@@ -199,6 +199,7 @@ class Product extends Model
         return $names
             ->map(static fn ($name): string => trim((string) $name))
             ->filter(static fn (string $name): bool => $name !== '')
+            ->unique()
             ->values();
     }
 

@@ -1,6 +1,6 @@
-<x-layouts.admin title="Production Method Master Data" subtitle="Create reusable production timelines and assign them from the product add/edit page.">
+<x-layouts.admin title="Production Method Master Data" subtitle="Create reusable production methods and configure quantity-based timelines per product.">
     <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p class="max-w-3xl text-sm font-medium leading-6 text-slate-500">Manage the production options that products can use. Each method controls the customer-facing name, production timeline, description, and status.</p>
+        <p class="max-w-3xl text-sm font-medium leading-6 text-slate-500">Manage reusable production method records for backend product setup. Master Data stores the method name, icon, description, default assignment, and status; quantity ranges, production days, and charges are set on each product and applied automatically from quantity.</p>
         <a href="{{ route('admin.production-methods.create') }}" class="btn btn-red">+ Add Production Method</a>
     </div>
 
@@ -10,7 +10,6 @@
                 <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                     <tr>
                         <th class="px-5 py-4">Method</th>
-                        <th class="px-5 py-4">Timeline</th>
                         <th class="px-5 py-4">Status</th>
                         <th class="px-5 py-4 text-right">Actions</th>
                     </tr>
@@ -22,9 +21,6 @@
                                 <strong class="block font-semibold text-brand-ink">{{ $method->name }}</strong>
                                 <span class="text-xs font-medium text-slate-500">{{ $method->code }}</span>
                                 @if($method->description)<p class="mt-1 max-w-sm text-xs font-normal leading-5 text-slate-500">{{ $method->description }}</p>@endif
-                            </td>
-                            <td class="px-5 py-4 font-medium text-slate-700">
-                                {{ $method->minimum_days }}–{{ $method->maximum_days }} working days
                             </td>
                             <td class="px-5 py-4">
                                 <div class="flex flex-wrap gap-2">
@@ -44,7 +40,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="px-5 py-14 text-center text-slate-500">No production methods have been added yet.</td></tr>
+                        <tr><td colspan="3" class="px-5 py-14 text-center text-slate-500">No production methods have been added yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>

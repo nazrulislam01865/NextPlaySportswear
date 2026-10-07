@@ -14,8 +14,6 @@ use Illuminate\Support\Str;
     'description',
     'image_path',
     'image_url',
-    'minimum_days',
-    'maximum_days',
     'is_default',
     'is_active',
     'sort_order',
@@ -27,8 +25,6 @@ class ProductionMethod extends Model
     protected function casts(): array
     {
         return [
-            'minimum_days' => 'integer',
-            'maximum_days' => 'integer',
             'is_default' => 'boolean',
             'is_active' => 'boolean',
             'sort_order' => 'integer',

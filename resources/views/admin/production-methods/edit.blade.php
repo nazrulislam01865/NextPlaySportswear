@@ -1,4 +1,4 @@
-<x-layouts.admin title="Edit Production Method" subtitle="Update this reusable master production timeline.">
+<x-layouts.admin title="Edit Production Method" subtitle="Update this reusable production method.">
     @include('admin.production-methods._form', [
         'method' => $method,
         'action' => route('admin.production-methods.update', $method),

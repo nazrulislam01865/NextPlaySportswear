@@ -2972,8 +2972,10 @@ class ProductCatalogService
                 $method = $speed->relationLoaded('productionMethod') ? $speed->productionMethod : null;
                 $name = $method?->name ?: $speed->name;
                 $description = $method?->description ?: $speed->description;
-                $minimumDays = (int) ($method?->minimum_days ?? $speed->minimum_days);
-                $maximumDays = (int) ($method?->maximum_days ?? $speed->maximum_days);
+                // Production timing is product-specific and quantity-based.
+                // Master Data supplies only the reusable method identity/media.
+                $minimumDays = max(0, (int) $speed->minimum_days);
+                $maximumDays = max($minimumDays, (int) $speed->maximum_days);
 
                 return [
                     'id' => $speed->code,
@@ -3001,12 +3003,12 @@ class ProductCatalogService
                 $isMasterMethod = $chargeType === 'master_method';
                 $priceTableColumn = PriceTableShipping::columnIndex((array) $priceTableHeaders, (string) $label, (string) $method->code);
 
-                // Master shipping records only provide the customer-facing name and
-                // day range. Their price must come from the matching product/fabric
-                // price-table column. Older saved products may still have legacy
-                // price_adjustment values, so force master-linked methods to use the
-                // price table and never expose those stale legacy charges.
+                // Master shipping records provide the reusable name and day range.
+                // The matching product/fabric price-table column supplies the base
+                // shipping rate; price_adjustment is the product-specific optional
+                // extra charge per piece configured on the Add/Edit Product page.
                 $usesPriceTable = (bool) $method->shipping_method_id || $chargeType === 'price_table' || $priceTableColumn !== null;
+                $extraChargePerPiece = max(0, (float) ($method->price_adjustment ?? 0));
 
                 return [
                     'id' => $method->code,
@@ -3017,7 +3019,8 @@ class ProductCatalogService
                     'requires_price_table' => $usesPriceTable,
                     'price_table_column' => $priceTableColumn,
                     'price_table_header' => $priceTableColumn !== null ? ($priceTableHeaders[$priceTableColumn] ?? null) : null,
-                    'price_delta' => $usesPriceTable ? 0.0 : ($isMasterMethod ? (float) ($method->base_price ?? $method->price_adjustment) : (float) $method->price_adjustment),
+                    'price_delta' => $usesPriceTable ? $extraChargePerPiece : ($isMasterMethod ? (float) ($method->base_price ?? $method->price_adjustment) : (float) $method->price_adjustment),
+                    'extra_charge_per_piece' => $usesPriceTable ? $extraChargePerPiece : 0.0,
                     'base_price' => $usesPriceTable ? 0.0 : ($isMasterMethod ? (float) ($method->base_price ?? $method->price_adjustment) : 0.0),
                     'per_item_price' => $usesPriceTable ? 0.0 : ($isMasterMethod ? (float) ($method->per_item_price ?? 0) : 0.0),
                     'free_shipping_minimum' => $method->free_shipping_minimum !== null ? (float) $method->free_shipping_minimum : null,
