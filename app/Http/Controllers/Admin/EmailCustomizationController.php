@@ -150,7 +150,17 @@ class EmailCustomizationController extends Controller
         $emailTemplate->cta_custom_url = $request->input('cta_custom_url');
 
         if ($request->has('blocks')) {
-            $emailTemplate->blocks = $request->input('blocks');
+            $rawBlocks = $request->input('blocks');
+            if (is_array($rawBlocks)) {
+                $normalizedBlocks = [];
+                foreach ($rawBlocks as $block) {
+                    if (is_array($block)) {
+                        $block['enabled'] = filter_var($block['enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                        $normalizedBlocks[] = $block;
+                    }
+                }
+                $emailTemplate->blocks = $normalizedBlocks;
+            }
         }
 
         $emailTemplate->updated_by = $userId;
@@ -290,27 +300,52 @@ class EmailCustomizationController extends Controller
     {
         $emailTemplate = EmailTemplate::where('key', $template)->firstOrFail();
         $branding = EmailGlobalBranding::current();
+        $sampleOrders = \App\Services\Email\EmailCustomizationEngine::sampleOrders();
 
         return view('admin.email-customization.preview', [
             'template' => $emailTemplate,
             'branding' => $branding,
+            'sampleOrders' => $sampleOrders,
         ]);
     }
 
     /**
-     * Send test email (Phase 3 / Phase 4 dispatcher stub).
+     * Send test email using CentralEmailService and EmailCustomizationEngine (Phase 4).
      */
-    public function sendTest(Request $request, string $template): RedirectResponse
-    {
+    public function sendTest(
+        Request $request,
+        string $template,
+        \App\Services\Email\EmailCustomizationEngine $engine,
+        \App\Services\Email\CentralEmailService $emailService
+    ): RedirectResponse {
         $request->validate([
             'recipient_email' => ['required', 'email'],
+            'sample_order' => ['nullable', 'string'],
+            'use_sample_data' => ['nullable'],
+            'use_published_version' => ['nullable'],
         ]);
 
         $emailTemplate = EmailTemplate::where('key', $template)->firstOrFail();
-        $recipient = $request->input('recipient_email');
+        $branding = EmailGlobalBranding::current();
+
+        $sampleKey = $request->input('sample_order', 'np-12345');
+        $useSample = $request->boolean('use_sample_data', true);
+        $context = $useSample ? \App\Services\Email\EmailCustomizationEngine::sampleContext($sampleKey) : [];
+
+        $recipientEmail = (string) $request->input('recipient_email');
+        $message = $engine->buildEmailMessage($emailTemplate, $branding, $context, $recipientEmail);
+
+        try {
+            $emailService->sendNow($message);
+            $msg = "Test email for '{$emailTemplate->name}' sent successfully to {$recipientEmail}.";
+        } catch (\Throwable $e) {
+            // In environments without live outbound SMTP (e.g. local dev), queue safely and inform user
+            $emailService->queue($message);
+            $msg = "Test email for '{$emailTemplate->name}' prepared and queued for delivery to {$recipientEmail}.";
+        }
 
         return redirect()
             ->route('admin.email-customization.templates.preview', $emailTemplate->key)
-            ->with('status', "Test email for '{$emailTemplate->name}' queued to {$recipient}.");
+            ->with('status', $msg);
     }
 }

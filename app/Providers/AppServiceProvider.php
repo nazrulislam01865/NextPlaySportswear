@@ -43,6 +43,10 @@ class AppServiceProvider extends ServiceProvider
 
 
         Event::listen(Verified::class, SendWelcomeEmailAfterVerification::class);
+        Event::listen(
+            \App\Events\DeliveryEstimateUpdated::class,
+            \App\Listeners\Order\SendDeliveryEstimateUpdatedNotification::class
+        );
 
         Event::listen(Login::class, function (Login $event): void {
             if ($event->user instanceof \App\Models\User) {

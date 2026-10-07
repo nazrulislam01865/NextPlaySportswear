@@ -188,4 +188,236 @@ class EmailCustomizationAccessTest extends TestCase
         $this->assertFalse($template->visibility_settings['show_holiday_reason']);
         $this->assertTrue($template->visibility_settings['show_social_links']);
     }
+
+    public function test_engine_resolves_dynamic_variables_with_context(): void
+    {
+        $engine = new \App\Services\Email\EmailCustomizationEngine();
+        $sample = \App\Services\Email\EmailCustomizationEngine::sampleContext('np-12345');
+
+        $text = 'Hello {{customer_name}}, your order {{order_number}} will arrive on {{updated_estimate}}.';
+        $resolved = $engine->resolveVariables($text, $sample);
+
+        $this->assertSame('Hello Jordan Smith, your order #NP-12345 will arrive on Fri, Dec 27, 2026.', $resolved);
+    }
+
+    public function test_engine_builds_valid_email_message(): void
+    {
+        $engine = new \App\Services\Email\EmailCustomizationEngine();
+        $template = EmailTemplate::where('key', 'delivery-estimate-updated')->firstOrFail();
+        $branding = EmailGlobalBranding::current();
+        $context = \App\Services\Email\EmailCustomizationEngine::sampleContext('np-12345');
+
+        $message = $engine->buildEmailMessage($template, $branding, $context, 'test@example.com', 'Test User');
+
+        $this->assertInstanceOf(\App\Data\EmailMessage::class, $message);
+        $this->assertSame('test@example.com', $message->recipients[0]['email']);
+        $this->assertNotEmpty($message->subject);
+    }
+
+    public function test_admin_can_send_test_email(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+
+        $response = $this->actingAs($admin, 'admin')->post(route('admin.email-customization.templates.send-test', 'delivery-estimate-updated'), [
+            'recipient_email' => 'admin.test@nextplay.com',
+            'sample_order' => 'np-12345',
+            'use_sample_data' => '1',
+            'use_published_version' => '1',
+        ]);
+
+        $response->assertRedirect(route('admin.email-customization.templates.preview', 'delivery-estimate-updated'));
+        $response->assertSessionHas('status');
+    }
+
+    public function test_admin_can_reorder_and_persist_template_blocks(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+        $template = EmailTemplate::where('key', 'delivery-estimate-updated')->firstOrFail();
+
+        $reorderedBlocks = [
+            [
+                'id' => 'order_summary',
+                'name' => 'Order Summary First',
+                'desc' => 'Shows order summary right at top.',
+                'enabled' => '1',
+            ],
+            [
+                'id' => 'greeting',
+                'name' => 'Greeting',
+                'desc' => 'Personalized customer greeting.',
+                'enabled' => '0',
+            ],
+            [
+                'id' => 'delivery_card',
+                'name' => 'Delivery Estimate Card',
+                'desc' => 'Shows previous and updated delivery dates.',
+                'enabled' => '1',
+            ],
+        ];
+
+        $response = $this->actingAs($admin, 'admin')->put(route('admin.email-customization.templates.update', 'delivery-estimate-updated'), [
+            'subject' => $template->subject,
+            'heading' => $template->heading,
+            'cta_label' => $template->cta_label,
+            'cta_url' => $template->cta_url_type,
+            'blocks' => $reorderedBlocks,
+            'action' => 'draft',
+        ]);
+
+        $response->assertRedirect(route('admin.email-customization.templates.edit', 'delivery-estimate-updated'));
+
+        $template->refresh();
+        $this->assertCount(3, $template->blocks);
+        $this->assertSame('order_summary', $template->blocks[0]['id']);
+        $this->assertTrue($template->blocks[0]['enabled']);
+        $this->assertSame('greeting', $template->blocks[1]['id']);
+        $this->assertFalse($template->blocks[1]['enabled']);
+        $this->assertSame('delivery_card', $template->blocks[2]['id']);
+        $this->assertTrue($template->blocks[2]['enabled']);
+    }
+
+    public function test_order_placed_uses_published_custom_email_template(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        config()->set('transactional_email.delivery.mode', 'queue');
+        config()->set('transactional_email.queue.enabled', true);
+
+        $template = EmailTemplate::where('key', 'order-confirmation')->firstOrFail();
+        $template->update([
+            'status' => 'published',
+            'subject' => 'VIP Order {{order_number}} is confirmed!',
+            'heading' => 'Welcome to the Club {{customer_name}}',
+        ]);
+
+        $order = \App\Models\Order::query()->create([
+            'order_number' => 'NP-98765',
+            'status' => 'placed',
+            'payment_status' => 'paid',
+            'fulfillment_status' => 'unfulfilled',
+            'currency' => 'USD',
+            'customer_name' => 'John Doe',
+            'customer_email' => 'john.doe@example.com',
+            'subtotal' => 199.99,
+            'customization_total' => 0,
+            'discount_total' => 0,
+            'shipping_total' => 0,
+            'tax_total' => 0,
+            'grand_total' => 199.99,
+            'total_quantity' => 2,
+            'placed_at' => now(),
+        ]);
+
+        app(\App\Services\Email\TransactionalEmailManager::class)->orderPlaced($order);
+
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\SendTransactionalEmail::class, function ($job) {
+            return str_contains($job->message->subject, 'VIP Order NP-98765 is confirmed!')
+                && str_contains($job->message->heading, 'Welcome to the Club John Doe');
+        });
+    }
+
+    public function test_welcome_uses_published_welcome_template(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        config()->set('transactional_email.delivery.mode', 'queue');
+        config()->set('transactional_email.queue.enabled', true);
+
+        $template = EmailTemplate::where('key', 'welcome-email')->firstOrFail();
+        $template->update([
+            'status' => 'published',
+            'subject' => 'Welcome to the NextPlay Community, {{customer_name}}!',
+        ]);
+
+        $user = User::factory()->create([
+            'name' => 'Alice Walker',
+            'email' => 'alice@example.com',
+        ]);
+
+        app(\App\Services\Email\TransactionalEmailManager::class)->welcome($user);
+
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\SendTransactionalEmail::class, function ($job) {
+            return str_contains($job->message->subject, 'Welcome to the NextPlay Community, Alice Walker!');
+        });
+    }
+
+    public function test_delivery_estimate_updated_event_dispatches_customized_notification(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        config()->set('transactional_email.delivery.mode', 'queue');
+        config()->set('transactional_email.queue.enabled', true);
+
+        $order = \App\Models\Order::query()->create([
+            'order_number' => 'NP-55443',
+            'status' => 'in_transit',
+            'payment_status' => 'paid',
+            'fulfillment_status' => 'fulfilled',
+            'currency' => 'USD',
+            'customer_name' => 'Sam Rivers',
+            'customer_email' => 'sam@example.com',
+            'subtotal' => 100,
+            'customization_total' => 0,
+            'discount_total' => 0,
+            'shipping_total' => 0,
+            'tax_total' => 0,
+            'grand_total' => 100,
+            'total_quantity' => 1,
+            'placed_at' => now(),
+        ]);
+
+        $shipment = \App\Models\OrderShipment::query()->create([
+            'order_id' => $order->id,
+            'shipment_number' => 'SHP-998877',
+            'status' => 'in_transit',
+            'carrier' => 'UPS',
+            'service' => 'Ground',
+            'tracking_number' => '1Z111222333',
+            'estimated_delivery_at' => now()->addDays(5),
+        ]);
+
+        \App\Events\DeliveryEstimateUpdated::dispatch(
+            $shipment,
+            'Fri, Oct 24, 2026',
+            'Severe weather detour.'
+        );
+
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\SendTransactionalEmail::class, function ($job) {
+            return $job->message->key === 'shipment.delivery-estimate-updated'
+                && data_get($job->message->recipients, '0.email') === 'sam@example.com'
+                && isset($job->message->details['Delay Reason']);
+        });
+    }
+
+    public function test_draft_template_falls_back_to_default_message(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        config()->set('transactional_email.delivery.mode', 'queue');
+        config()->set('transactional_email.queue.enabled', true);
+
+        $template = EmailTemplate::where('key', 'order-confirmation')->firstOrFail();
+        $template->update(['status' => 'draft']);
+
+        $order = \App\Models\Order::query()->create([
+            'order_number' => 'NP-33221',
+            'status' => 'placed',
+            'payment_status' => 'paid',
+            'fulfillment_status' => 'unfulfilled',
+            'currency' => 'USD',
+            'customer_name' => 'Fallback User',
+            'customer_email' => 'fallback@example.com',
+            'subtotal' => 50,
+            'customization_total' => 0,
+            'discount_total' => 0,
+            'shipping_total' => 0,
+            'tax_total' => 0,
+            'grand_total' => 50,
+            'total_quantity' => 1,
+            'placed_at' => now(),
+        ]);
+
+        app(\App\Services\Email\TransactionalEmailManager::class)->orderPlaced($order);
+
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\SendTransactionalEmail::class, function ($job) {
+            return str_contains($job->message->subject, 'received')
+                && data_get($job->message->recipients, '0.email') === 'fallback@example.com';
+        });
+    }
 }

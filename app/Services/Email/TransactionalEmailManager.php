@@ -17,8 +17,13 @@ use RuntimeException;
 
 final class TransactionalEmailManager
 {
-    public function __construct(private readonly EmailService $emails)
-    {
+    private readonly EmailCustomizationEngine $customEngine;
+
+    public function __construct(
+        private readonly EmailService $emails,
+        ?EmailCustomizationEngine $customEngine = null,
+    ) {
+        $this->customEngine = $customEngine ?? app(EmailCustomizationEngine::class);
     }
 
     public function emailVerification(User $user): void
@@ -83,30 +88,65 @@ final class TransactionalEmailManager
             (int) config('auth.passwords.users.expire', 60)
         );
 
-        $message = new EmailMessage(
-            key: 'customer.password-reset',
-            recipients: $this->customerRecipient($user->email, $user->name),
-            subject: 'Reset your NextPlay Sportswear password',
-            heading: 'Reset your password',
-            introLines: [
-                'We received a request to reset the password for your NextPlay Sportswear customer account.',
-                'Use the secure button below to choose a new password. If you did not request this, you can ignore this email.',
+        $resetUrl = route('password.reset', [
+            'token' => $token,
+            'email' => $user->getEmailForPasswordReset(),
+        ]);
+
+        $customMessage = $this->customEngine->buildFromPublishedTemplate(
+            'password-reset',
+            [
+                'customer_name' => $user->name,
+                'customer_email' => $user->email,
+                'reset_url' => $resetUrl,
+                'expires_minutes' => $expiresInMinutes,
             ],
-            details: [
-                'Account Email' => (string) $user->email,
-                'Link Expires' => $expiresInMinutes.' minutes',
-            ],
-            actionText: 'Reset Password',
-            actionUrl: route('password.reset', [
-                'token' => $token,
-                'email' => $user->getEmailForPasswordReset(),
-            ]),
-            outroLines: [
-                'This reset link can only be used once.',
-                'For your security, never forward this reset link to anyone.',
-            ],
-            metadata: ['user_id' => $user->id],
+            (string) $user->email,
+            $user->name
         );
+
+        if ($customMessage !== null) {
+            $message = new EmailMessage(
+                key: 'customer.password-reset',
+                recipients: $this->customerRecipient($user->email, $user->name),
+                subject: $customMessage->subject,
+                heading: $customMessage->heading,
+                introLines: $customMessage->introLines,
+                details: [
+                    'Account Email' => (string) $user->email,
+                    'Link Expires' => $expiresInMinutes.' minutes',
+                    ...$customMessage->details,
+                ],
+                actionText: $customMessage->actionText ?: 'Reset Password',
+                actionUrl: $resetUrl,
+                outroLines: $customMessage->outroLines,
+                replyTo: $customMessage->replyTo,
+                replyToName: $customMessage->replyToName,
+                metadata: ['user_id' => $user->id, ...($customMessage->metadata ?? [])],
+            );
+        } else {
+            $message = new EmailMessage(
+                key: 'customer.password-reset',
+                recipients: $this->customerRecipient($user->email, $user->name),
+                subject: 'Reset your NextPlay Sportswear password',
+                heading: 'Reset your password',
+                introLines: [
+                    'We received a request to reset the password for your NextPlay Sportswear customer account.',
+                    'Use the secure button below to choose a new password. If you did not request this, you can ignore this email.',
+                ],
+                details: [
+                    'Account Email' => (string) $user->email,
+                    'Link Expires' => $expiresInMinutes.' minutes',
+                ],
+                actionText: 'Reset Password',
+                actionUrl: $resetUrl,
+                outroLines: [
+                    'This reset link can only be used once.',
+                    'For your security, never forward this reset link to anyone.',
+                ],
+                metadata: ['user_id' => $user->id],
+            );
+        }
 
         if ((bool) config('transactional_email.critical.password_reset_sync', true)) {
             $this->emails->sendNow($message);
@@ -119,6 +159,33 @@ final class TransactionalEmailManager
 
     public function welcome(User $user): bool
     {
+        $customMessage = $this->customEngine->buildFromPublishedTemplate(
+            'welcome-email',
+            [
+                'customer_name' => $user->name,
+                'customer_email' => $user->email,
+            ],
+            (string) $user->email,
+            $user->name
+        );
+
+        if ($customMessage !== null) {
+            return $this->emails->safelyQueue(new EmailMessage(
+                key: 'customer.welcome',
+                recipients: $this->customerRecipient($user->email, $user->name),
+                subject: $customMessage->subject,
+                heading: $customMessage->heading,
+                introLines: $customMessage->introLines,
+                details: $customMessage->details,
+                actionText: $customMessage->actionText ?: 'Open My Account',
+                actionUrl: $customMessage->actionUrl ?: route('account.dashboard'),
+                outroLines: $customMessage->outroLines,
+                replyTo: $customMessage->replyTo,
+                replyToName: $customMessage->replyToName,
+                metadata: ['user_id' => $user->id, ...($customMessage->metadata ?? [])],
+            ));
+        }
+
         return $this->emails->safelyQueue(new EmailMessage(
             key: 'customer.welcome',
             recipients: $this->customerRecipient($user->email, $user->name),
@@ -283,19 +350,55 @@ final class TransactionalEmailManager
             'Order Total' => $this->money($order->grand_total, $order->currency),
         ];
 
-        $this->emails->safelyQueue(new EmailMessage(
-            key: 'order.customer-placed',
-            recipients: $this->customerRecipient($order->customer_email, $order->customer_name),
-            subject: 'Order '.$order->order_number.' received',
-            heading: 'Your order has been received',
-            introLines: [
-                'Thanks for your order. We have saved your order securely and will keep its status updated as it moves through payment, design, production, and fulfillment.',
-            ],
-            details: $details,
-            actionText: 'View Order',
-            actionUrl: route('account.orders.show', $order),
-            metadata: ['order_id' => $order->id],
-        ));
+        $context = [
+            'customer_name' => $order->customer_name,
+            'customer_email' => $order->customer_email,
+            'order_number' => $order->order_number,
+            'order_date' => $order->created_at?->format('M j, Y') ?? now()->format('M j, Y'),
+            'order_total' => $this->money($order->grand_total, $order->currency),
+            'items_count' => (string) $order->total_quantity,
+            'status' => $order->statusLabel(),
+            'payment_status' => $order->paymentStatusLabel(),
+        ];
+
+        $customMessage = $this->customEngine->buildFromPublishedTemplate(
+            'order-confirmation',
+            $context,
+            $order->customer_email,
+            $order->customer_name
+        );
+
+        if ($customMessage !== null) {
+            $customerMsg = new EmailMessage(
+                key: 'order.customer-placed',
+                recipients: $this->customerRecipient($order->customer_email, $order->customer_name),
+                subject: $customMessage->subject,
+                heading: $customMessage->heading,
+                introLines: $customMessage->introLines,
+                details: array_merge($details, $customMessage->details),
+                actionText: $customMessage->actionText ?: 'View Order',
+                actionUrl: route('account.orders.show', $order),
+                outroLines: $customMessage->outroLines,
+                replyTo: $customMessage->replyTo,
+                replyToName: $customMessage->replyToName,
+                metadata: ['order_id' => $order->id, ...($customMessage->metadata ?? [])],
+            );
+            $this->emails->safelyQueue($customerMsg);
+        } else {
+            $this->emails->safelyQueue(new EmailMessage(
+                key: 'order.customer-placed',
+                recipients: $this->customerRecipient($order->customer_email, $order->customer_name),
+                subject: 'Order '.$order->order_number.' received',
+                heading: 'Your order has been received',
+                introLines: [
+                    'Thanks for your order. We have saved your order securely and will keep its status updated as it moves through payment, design, production, and fulfillment.',
+                ],
+                details: $details,
+                actionText: 'View Order',
+                actionUrl: route('account.orders.show', $order),
+                metadata: ['order_id' => $order->id],
+            ));
+        }
 
         $this->queueInternal(
             recipientKey: 'orders',
@@ -396,6 +499,47 @@ final class TransactionalEmailManager
                 'shipment' => $shipment,
             ]);
 
+        $context = [
+            'customer_name' => $order->customer_name,
+            'customer_email' => $order->customer_email,
+            'order_number' => $order->order_number,
+            'carrier' => $shipment->carrier,
+            'shipping_method' => $shipment->service,
+            'tracking_number' => $shipment->tracking_number,
+            'updated_estimate' => $shipment->estimated_delivery_at?->format('M j, Y'),
+            'status' => $shipment->statusLabel(),
+        ];
+
+        $customMessage = $this->customEngine->buildFromPublishedTemplate(
+            'shipment-update',
+            $context,
+            $order->customer_email,
+            $order->customer_name
+        );
+
+        if ($customMessage !== null) {
+            $this->emails->safelyQueue(new EmailMessage(
+                key: 'shipment.customer-status-updated',
+                recipients: $this->customerRecipient($order->customer_email, $order->customer_name),
+                subject: $customMessage->subject,
+                heading: $customMessage->heading,
+                introLines: $customMessage->introLines,
+                details: array_merge($details, $customMessage->details),
+                actionText: $customMessage->actionText ?: (filled($shipment->tracking_url) ? 'Track Shipment' : 'View Shipment'),
+                actionUrl: $actionUrl,
+                outroLines: $customMessage->outroLines,
+                replyTo: $customMessage->replyTo,
+                replyToName: $customMessage->replyToName,
+                metadata: [
+                    'order_id' => $order->id,
+                    'shipment_id' => $shipment->id,
+                    ...($customMessage->metadata ?? []),
+                ],
+            ));
+
+            return;
+        }
+
         $this->emails->safelyQueue(new EmailMessage(
             key: 'shipment.customer-status-updated',
             recipients: $this->customerRecipient($order->customer_email, $order->customer_name),
@@ -409,6 +553,86 @@ final class TransactionalEmailManager
                 'order_id' => $order->id,
                 'shipment_id' => $shipment->id,
             ],
+        ));
+    }
+
+    public function deliveryEstimateUpdated(
+        OrderShipment $shipment,
+        ?string $oldEstimate = null,
+        ?string $holidayReason = null
+    ): bool {
+        $shipment->loadMissing('order');
+        $order = $shipment->order;
+
+        if (! $order instanceof Order) {
+            return false;
+        }
+
+        $context = [
+            'customer_name' => $order->customer_name,
+            'customer_email' => $order->customer_email,
+            'order_number' => $order->order_number,
+            'previous_estimate' => $oldEstimate ?: ($shipment->estimated_delivery_at?->subDays(2)->format('D, M j, Y') ?? 'Previous Estimate'),
+            'updated_estimate' => $shipment->estimated_delivery_at?->format('D, M j, Y') ?? 'Updated Estimate',
+            'holiday_reason' => $holidayReason ?: 'Carrier schedule update.',
+            'carrier' => $shipment->carrier,
+            'shipping_method' => $shipment->service,
+            'tracking_number' => $shipment->tracking_number,
+            'delivery_status' => 'Updated',
+        ];
+
+        $actionUrl = route('account.orders.shipments.show', [
+            'order' => $order,
+            'shipment' => $shipment,
+        ]);
+
+        $customMessage = $this->customEngine->buildFromPublishedTemplate(
+            'delivery-estimate-updated',
+            $context,
+            $order->customer_email,
+            $order->customer_name
+        );
+
+        if ($customMessage !== null) {
+            return $this->emails->safelyQueue(new EmailMessage(
+                key: 'shipment.delivery-estimate-updated',
+                recipients: $this->customerRecipient($order->customer_email, $order->customer_name),
+                subject: $customMessage->subject,
+                heading: $customMessage->heading,
+                introLines: $customMessage->introLines,
+                details: $customMessage->details,
+                actionText: $customMessage->actionText ?: 'View Order Details',
+                actionUrl: $actionUrl,
+                outroLines: $customMessage->outroLines,
+                replyTo: $customMessage->replyTo,
+                replyToName: $customMessage->replyToName,
+                metadata: [
+                    'order_id' => $order->id,
+                    'shipment_id' => $shipment->id,
+                    ...($customMessage->metadata ?? []),
+                ],
+            ));
+        }
+
+        return $this->emails->safelyQueue(new EmailMessage(
+            key: 'shipment.delivery-estimate-updated',
+            recipients: $this->customerRecipient($order->customer_email, $order->customer_name),
+            subject: 'Delivery estimate updated for your order',
+            heading: 'Your delivery estimate has changed',
+            introLines: [
+                'We wanted to let you know that the delivery estimate for your order was updated.',
+            ],
+            details: array_filter([
+                'Order Number' => $order->order_number,
+                'Previous Estimate' => $oldEstimate,
+                'New Estimate' => $shipment->estimated_delivery_at?->format('M j, Y'),
+                'Delay Reason' => $holidayReason,
+                'Carrier' => $shipment->carrier,
+                'Tracking Number' => $shipment->tracking_number,
+            ], static fn (mixed $value): bool => filled($value)),
+            actionText: 'View Order Details',
+            actionUrl: $actionUrl,
+            metadata: ['order_id' => $order->id, 'shipment_id' => $shipment->id],
         ));
     }
 
