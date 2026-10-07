@@ -95,8 +95,25 @@
         @apply border border-slate-300 bg-slate-50 text-slate-900;
     }
 
-    .btn-navy {
+    .btn-navy,
+    .btn-primary {
         @apply bg-brand-navy text-white shadow-sm hover:bg-brand-dark;
+    }
+
+    .btn-orange {
+        background-color: #CF5D38 !important;
+        color: #ffffff !important;
+        border: 1px solid #CF5D38 !important;
+    }
+
+    .btn-orange:hover {
+        background-color: #b84f2e !important;
+        color: #ffffff !important;
+        border-color: #b84f2e !important;
+    }
+
+    .btn-orange * {
+        color: #ffffff !important;
     }
 
     .btn-white {
@@ -11673,3 +11690,27 @@ body.admin-clean-ui .np-product-form--compact [data-customization-extra-charge] 
     min-height: 2.35rem !important;
     margin-top: .25rem !important;
 }
+
+/* Email Customization branding button styles */
+.btn-orange,
+a.btn-orange,
+button.btn-orange {
+    background-color: #CF5D38 !important;
+    color: #ffffff !important;
+    border: 1px solid #CF5D38 !important;
+}
+
+.btn-orange:hover,
+a.btn-orange:hover,
+button.btn-orange:hover {
+    background-color: #b84f2e !important;
+    color: #ffffff !important;
+    border-color: #b84f2e !important;
+}
+
+.btn-orange *,
+a.btn-orange *,
+button.btn-orange * {
+    color: #ffffff !important;
+}
+

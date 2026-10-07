@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             ProductSeeder::class,
             CatalogNavigationSeeder::class,
             HomepageSlideSeeder::class,
+            EmailCustomizationSeeder::class,
         ]);
 
         // Keep demo accounts out of production and make local/testing seeding idempotent.

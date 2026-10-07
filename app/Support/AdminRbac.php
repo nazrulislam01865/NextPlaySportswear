@@ -131,6 +131,8 @@ class AdminRbac
             self::permission('payment_methods.manage', 'Storefront', 'Manage', 'Manage Payment Methods', 'Create and update payment methods.', 'admin.payment-methods.store', 211),
             self::permission('newsletters.view', 'Storefront', 'View', 'View Newsletter Subscribers', 'Open homepage newsletter subscriber emails and export filtered subscriber lists.', 'admin.newsletter-subscribers.index', 215),
             self::permission('newsletters.manage', 'Storefront', 'Manage', 'Manage Newsletter Subscribers', 'Manage newsletter subscriber records and exports.', 'admin.newsletter-subscribers.export', 216),
+            self::permission('email_customization.view', 'Storefront', 'View', 'View Email Customization', 'Open email templates and global branding settings.', 'admin.email-customization.templates.index', 220),
+            self::permission('email_customization.manage', 'Storefront', 'Manage', 'Manage Email Customization', 'Update email templates, content visibility, branding, and send test emails.', 'admin.email-customization.templates.update', 221),
 
             self::permission('users.view', 'System', 'View', 'View Admin Users', 'Open admin user records and role assignment page.', 'admin.users.index', 290),
             self::permission('users.manage', 'System', 'Manage', 'Manage Admin Users', 'Create admin users, update roles, reset passwords and deactivate admin accounts.', 'admin.users.store', 291),
@@ -179,6 +181,7 @@ class AdminRbac
             'rural_surcharges.view', 'rural_surcharges.manage',
             'payment_methods.view', 'payment_methods.manage',
             'newsletters.view', 'newsletters.manage',
+            'email_customization.view', 'email_customization.manage',
         ];
 
         $adminAllExceptProtected = collect(self::permissions())
@@ -469,6 +472,12 @@ class AdminRbac
                 : 'sustainability_page.view';
         }
 
+        if (Str::startsWith($name, 'email-customization.')) {
+            return Str::contains($name, ['.update', '.store', '.duplicate', '.send-test', '.destroy'])
+                ? 'email_customization.manage'
+                : 'email_customization.view';
+        }
+
         if (Str::startsWith($name, 'promotions.')) {
             return Str::startsWith($name, ['promotions.sales.', 'promotions.banners.'])
                 ? 'coupons.manage'
@@ -526,6 +535,15 @@ class AdminRbac
 
         if (Str::startsWith($name, 'returns.')) {
             return self::resourcePermission($name, 'returns');
+        }
+
+        if (Str::startsWith($name, 'email-customization.')) {
+            return in_array($name, [
+                'email-customization.index',
+                'email-customization.templates.index',
+                'email-customization.workflow',
+                'email-customization.templates.preview',
+            ], true) ? 'email_customization.view' : 'email_customization.manage';
         }
 
         if (Str::startsWith($name, 'role-matrix.')) {

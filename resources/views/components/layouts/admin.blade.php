@@ -368,6 +368,26 @@
                     @if($canAdmin('newsletters.view'))
                         <x-admin.sidebar-link :href="route('admin.newsletter-subscribers.index')" :active="request()->routeIs('admin.newsletter-subscribers.*')" icon="@">Newsletter Emails</x-admin.sidebar-link>
                     @endif
+                    @if($canAdmin('email_customization.view') || $canAdmin('storefront_branding.view'))
+                        <x-admin.sidebar-group
+                            label="Email Customization"
+                            icon="✉"
+                            :active="request()->routeIs('admin.email-customization.*')"
+                        >
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.email-customization.templates.index')"
+                                :active="request()->routeIs('admin.email-customization.templates.*') || request()->routeIs('admin.email-customization.index')"
+                            >Email Templates</x-admin.sidebar-sub-link>
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.email-customization.branding.edit')"
+                                :active="request()->routeIs('admin.email-customization.branding.*')"
+                            >Global Branding</x-admin.sidebar-sub-link>
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.email-customization.workflow')"
+                                :active="request()->routeIs('admin.email-customization.workflow')"
+                            >Workflow Guide</x-admin.sidebar-sub-link>
+                        </x-admin.sidebar-group>
+                    @endif
                     @if($canAdmin('rural_surcharges.view'))
                         <x-admin.sidebar-link :href="route('admin.rural-area-surcharges.index')" :active="request()->routeIs('admin.rural-area-surcharges.*')" icon="⌁">Remote Surcharges</x-admin.sidebar-link>
                     @endif
