@@ -18373,10 +18373,23 @@ html.np-catalog-filters-open body { overflow: hidden; }
     width: 2.65rem;
     height: 2.65rem;
     transform: translateY(-50%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .25s ease, visibility .25s ease, border-color .16s ease, color .16s ease, transform .16s ease;
+}
+
+.storefront-clean-ui .np-product-detail-prototype .product-gallery-frame:hover .np-product-gallery-arrow,
+.storefront-clean-ui .np-product-detail-prototype .np-product-gallery-stage:hover .np-product-gallery-arrow,
+.storefront-clean-ui .np-product-detail-prototype .np-product-gallery-main:hover .np-product-gallery-arrow,
+.storefront-clean-ui .np-product-detail-prototype .np-product-gallery-arrow:focus-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
 }
 
 .storefront-clean-ui .np-product-detail-prototype .np-product-gallery-arrow:hover {
-    transform: translateY(-50%) scale(1.02);
+    transform: translateY(-50%) scale(1.05);
 }
 
 .storefront-clean-ui .np-product-detail-prototype .np-product-gallery-arrow--previous { left: .8rem; }
@@ -18423,8 +18436,13 @@ html.np-catalog-filters-open body { overflow: hidden; }
     border: 1px solid var(--np-product-card-border) !important;
     border-radius: 0 !important;
     background: #fff !important;
-    padding: .35rem !important;
+    padding: 0 !important;
     opacity: 1 !important;
+    transition: border-color .16s ease;
+}
+
+.storefront-clean-ui .np-product-detail-prototype .np-product-gallery-thumb:hover {
+    border-color: var(--np-color-secondary) !important;
 }
 
 .storefront-clean-ui .np-product-detail-prototype .np-product-gallery-thumb.is-active,
@@ -18438,7 +18456,7 @@ html.np-catalog-filters-open body { overflow: hidden; }
     width: 100% !important;
     height: 100% !important;
     aspect-ratio: 1 / 1 !important;
-    object-fit: contain !important;
+    object-fit: cover !important;
     padding: 0 !important;
     background: transparent !important;
 }
@@ -20695,6 +20713,12 @@ html.np-product-preview-open body { overflow: hidden; }
     object-fit: cover;
     object-position: center;
     border-radius: 0;
+    transition: transform .35s ease;
+}
+
+.storefront-clean-ui .np-product-material-card:hover .np-product-material-media img,
+.storefront-clean-ui .np-product-material-media:hover img {
+    transform: scale(1.18);
 }
 
 .storefront-clean-ui .np-product-material-swatch,
@@ -20711,6 +20735,12 @@ html.np-product-preview-open body { overflow: hidden; }
 .storefront-clean-ui .np-proto-fabric-grid .np-proto-option-media img {
     object-fit: cover;
     object-position: center;
+    transition: transform .35s ease;
+}
+
+.storefront-clean-ui .np-proto-fabric-grid .np-proto-option-card:hover .np-proto-option-media img,
+.storefront-clean-ui .np-proto-fabric-grid .np-proto-option-media:hover img {
+    transform: scale(1.18);
 }
 
 /* NEXTPLAY_PRODUCT_DETAIL_RESPONSIVE_AND_MOQ
