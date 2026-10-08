@@ -122,9 +122,11 @@
                 let res = String(str);
                 for (const [key, val] of Object.entries(this.sampleData)) {
                     if (val !== undefined && val !== null) {
-                        res = res.replaceAll(`@{{${key}}}`, String(val));
-                        res = res.replaceAll(`{{${key}}}`, String(val));
-                        res = res.replaceAll(`{${key}}`, String(val));
+                        const valStr = String(val);
+                        const doubleTag = '{' + '{' + key + '}' + '}';
+                        const singleTag = '{' + key + '}';
+                        res = res.split(doubleTag).join(valStr);
+                        res = res.split(singleTag).join(valStr);
                     }
                 }
                 return res;
