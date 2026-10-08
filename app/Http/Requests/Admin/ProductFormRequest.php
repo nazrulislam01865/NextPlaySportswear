@@ -762,8 +762,6 @@ class ProductFormRequest extends FormRequest
                 $productionRules = collect((array) $this->input('production_method_rules', []))
                     ->mapWithKeys(fn ($rules, $code): array => [Str::slug((string) $code) => collect((array) $rules)->values()]);
 
-                $automaticProductionRanges = collect();
-
                 foreach ($selectedProductionCodes as $code) {
                     $rules = collect($productionRules->get($code, []))
                         ->filter(fn ($rule): bool => is_array($rule))
@@ -833,42 +831,10 @@ class ProductFormRequest extends FormRequest
                         $previous = $range;
                     }
 
-                    $automaticProductionRanges = $automaticProductionRanges->concat(
-                        $validRanges->map(fn (array $range): array => array_merge($range, ['code' => $code]))
-                    );
                 }
 
-                // Customers no longer choose a production method. Quantity alone
-                // must resolve to one rule, so ranges belonging to different master
-                // methods must not overlap either.
-                $orderedAutomaticRanges = $automaticProductionRanges
-                    ->sortBy([['minimum', 'asc'], ['code', 'asc']])
-                    ->values();
-
-                foreach ($orderedAutomaticRanges as $rangeIndex => $range) {
-                    for ($compareIndex = $rangeIndex + 1; $compareIndex < $orderedAutomaticRanges->count(); $compareIndex++) {
-                        $candidate = $orderedAutomaticRanges->get($compareIndex);
-                        if (($candidate['code'] ?? null) === ($range['code'] ?? null)) {
-                            continue;
-                        }
-
-                        $rangeMaximum = $range['maximum'];
-                        if ($rangeMaximum !== null && $candidate['minimum'] > $rangeMaximum) {
-                            break;
-                        }
-
-                        $candidateMaximum = $candidate['maximum'];
-                        $overlaps = ($rangeMaximum === null || $candidate['minimum'] <= $rangeMaximum)
-                            && ($candidateMaximum === null || $range['minimum'] <= $candidateMaximum);
-
-                        if ($overlaps) {
-                            $validator->errors()->add(
-                                "production_method_rules.{$candidate['code']}.{$candidate['index']}.minimum_quantity",
-                                'Production quantity ranges cannot overlap because the storefront applies the matching rule automatically from quantity.'
-                            );
-                        }
-                    }
-                }
+                // Different production methods may share quantity bands. The
+                // saved method priority resolves matches automatically.
             }
 
             $productionHeaders = collect($this->input('production_table_headers', []))->values();
@@ -936,14 +902,15 @@ class ProductFormRequest extends FormRequest
             ->get()
             ->keyBy('code');
 
-        return $codes->flatMap(function (string $code) use ($methods, $rulesByCode): array {
-            /** @var ProductionMethod|null $method */
-            $method = $methods->get($code);
-            if (! $method instanceof ProductionMethod) {
-                return [];
-            }
-
-            return collect($rulesByCode->get($code, []))
+        // Persist the default method first, then the master-data sort order.
+        // The storefront and cart both apply the first matching saved rule.
+        return $methods->sortBy([
+            ['is_default', 'desc'],
+            ['sort_order', 'asc'],
+            ['name', 'asc'],
+            ['id', 'asc'],
+        ])->flatMap(function (ProductionMethod $method) use ($rulesByCode): array {
+            return collect($rulesByCode->get($method->code, []))
                 ->filter(fn ($rule): bool => is_array($rule))
                 ->take(30)
                 ->map(function (array $rule) use ($method): array {

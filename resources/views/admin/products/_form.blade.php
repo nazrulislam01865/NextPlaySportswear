@@ -1757,7 +1757,7 @@ Lead Time:"></div>
                                 </span>
                             </label>
                             <div class="np-production-methods-help">
-                                <p>Master Data supplies the method name, icon, and description. Set the quantity ranges, production working days, and optional extra charge for this product below. This is backend configuration only; customers do not choose a production method on the storefront.</p>
+                                <p>Master Data supplies the method name, icon, and description. Set the quantity ranges, production working days, and optional extra charge for this product below. This is backend configuration only; customers do not choose a production method on the storefront. Different methods can share a quantity range; the default method takes priority, followed by the Master Data sort order.</p>
                                 <a href="{{ route('admin.production-methods.index') }}" target="_blank" class="np-production-methods-link">Manage Production Methods ↗</a>
                             </div>
                         </div>

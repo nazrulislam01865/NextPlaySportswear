@@ -2546,7 +2546,7 @@ window.productBuilder = (config = {}) => ({
 
     syncProductionSpeed() {
         const options = this.productionOptionsForQuantity();
-        if (!options.some(option => option.id === this.productionSpeed)) {
+        if (config.production_methods_enabled || !options.some(option => option.id === this.productionSpeed)) {
             this.productionSpeed = options[0]?.id || null;
         }
     },
@@ -2559,7 +2559,9 @@ window.productBuilder = (config = {}) => ({
 
     currentProductionSpeed() {
         const options = this.productionOptionsForQuantity();
-        return options.find(option => option.id === this.productionSpeed) || options[0] || null;
+        return config.production_methods_enabled
+            ? options[0] || null
+            : options.find(option => option.id === this.productionSpeed) || options[0] || null;
     },
 
     productionTimeLabel(option) {

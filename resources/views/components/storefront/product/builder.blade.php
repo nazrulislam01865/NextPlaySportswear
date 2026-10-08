@@ -43,6 +43,7 @@
         'option_groups' => $product['option_groups'] ?? [],
         'size_groups' => $product['size_groups'] ?? [],
         'artwork_upload' => $product['artwork_upload'] ?? ['enabled' => false],
+        'production_methods_enabled' => (bool) ($product['production_methods_enabled'] ?? false),
         'production_speeds' => $product['production_speeds'] ?? [],
         'shipping_methods' => $product['shipping_methods'] ?? [],
         'roster' => \App\Support\ProductRoster::settings($product),

@@ -56,7 +56,7 @@
     "src": "resources/fonts/expose/Expose-Regular.woff2"
   },
   "resources/js/admin.js": {
-    "file": "assets/admin-BeyAt8Wm.js",
+    "file": "assets/admin-BG0Kpog_.js",
     "name": "admin",
     "src": "resources/js/admin.js",
     "isEntry": true,
@@ -68,7 +68,7 @@
     ]
   },
   "resources/js/storefront.js": {
-    "file": "assets/storefront-BPofyx9j.js",
+    "file": "assets/storefront-DmBJsVdU.js",
     "name": "storefront",
     "src": "resources/js/storefront.js",
     "isEntry": true,
