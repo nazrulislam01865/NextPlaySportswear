@@ -66,7 +66,7 @@ class EmailCustomizationAccessTest extends TestCase
         \Illuminate\Support\Facades\Storage::fake('public');
 
         $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
-        $logo = \Illuminate\Http\UploadedFile::fake()->image('brand-logo.png', 200, 60);
+        $logo = \Illuminate\Http\UploadedFile::fake()->create('brand-logo.png', 50, 'image/png');
 
         $response = $this->actingAs($admin, 'admin')->put(route('admin.email-customization.branding.update'), [
             'header_bg_color' => '#112233',

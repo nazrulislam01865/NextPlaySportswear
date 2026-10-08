@@ -343,7 +343,7 @@
                         </div>
                     </div>
 
-                    <!-- Email Blocks Card (Exact match of pqr.png) -->
+                    <!-- Email Blocks Card (Exact match of the screenshot) -->
                     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                         <div class="flex items-center justify-between">
                             <div>
@@ -353,137 +353,209 @@
                             <button
                                 type="button"
                                 @click="showAddBlockModal = true"
-                                class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition"
+                                class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition"
                             >
-                                <span>+</span>
+                                <svg class="w-3.5 h-3.5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                                </svg>
                                 <span>Add Block</span>
                             </button>
                         </div>
 
-                        <!-- Blocks List with Drag & Drop (Exact match of pqr.png rows) -->
-                        <div class="mt-4 space-y-2">
-                            <template x-for="(block, idx) in blocks" :key="block.id">
-                                <div
-                                    draggable="true"
-                                    @dragstart="draggedIdx = idx"
-                                    @dragover.prevent
-                                    @drop.prevent="dropItem(idx)"
-                                    class="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-sm transition-all hover:border-slate-300"
-                                    :class="draggedIdx === idx ? 'opacity-50 border-brand-orange border-dashed' : ''"
-                                >
-                                    <!-- Hidden Inputs for Form Submission -->
-                                    <input type="hidden" :name="`blocks[${idx}][id]`" :value="block.id">
-                                    <input type="hidden" :name="`blocks[${idx}][name]`" :value="block.name">
-                                    <input type="hidden" :name="`blocks[${idx}][desc]`" :value="block.desc">
-                                    <input type="hidden" :name="`blocks[${idx}][enabled]`" :value="block.enabled ? '1' : '0'">
+                        <!-- Blocks List: Unified table container with rounded corners and dividing lines -->
+                        <div class="mt-4 overflow-x-auto">
+                            <div class="min-w-[780px] overflow-hidden rounded-2xl border border-slate-200/90 bg-white divide-y divide-slate-100">
+                                <template x-for="(block, idx) in blocks" :key="block.id">
+                                    <div
+                                        draggable="true"
+                                        @dragstart="draggedIdx = idx"
+                                        @dragover.prevent
+                                        @drop.prevent="dropItem(idx)"
+                                        class="bg-white transition-colors hover:bg-slate-50/60"
+                                        :class="draggedIdx === idx ? 'opacity-40 bg-slate-50' : ''"
+                                    >
+                                        <!-- Hidden Inputs for Form Submission -->
+                                        <input type="hidden" :name="`blocks[${idx}][id]`" :value="block.id">
+                                        <input type="hidden" :name="`blocks[${idx}][name]`" :value="block.name">
+                                        <input type="hidden" :name="`blocks[${idx}][desc]`" :value="block.desc">
+                                        <input type="hidden" :name="`blocks[${idx}][enabled]`" :value="block.enabled ? '1' : '0'">
 
-                                    <div class="flex flex-wrap items-center justify-between gap-3">
-                                        <!-- Left: Drag Handle, Icon, Name & Description -->
-                                        <div class="flex items-center gap-3 min-w-0 flex-1">
-                                            <!-- Drag Handle (⠿) -->
-                                            <span class="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 text-sm select-none" title="Drag to reorder">
-                                                ⠿
-                                            </span>
+                                        <!-- Row Content with Vertical Border for Actions Cell -->
+                                        <div class="flex items-stretch min-h-[58px]">
+                                            <!-- Main content: Left part -->
+                                            <div class="flex-1 flex items-center px-4 py-3 gap-3.5 min-w-0">
+                                                <!-- Col 1: Drag Handle (::) -->
+                                                <div class="w-5 shrink-0 flex items-center justify-center">
+                                                    <svg class="w-3.5 h-4 text-slate-400 cursor-grab active:cursor-grabbing hover:text-slate-600 select-none" viewBox="0 0 14 18" fill="currentColor">
+                                                        <circle cx="3" cy="3" r="1.5"/>
+                                                        <circle cx="11" cy="3" r="1.5"/>
+                                                        <circle cx="3" cy="9" r="1.5"/>
+                                                        <circle cx="11" cy="9" r="1.5"/>
+                                                        <circle cx="3" cy="15" r="1.5"/>
+                                                        <circle cx="11" cy="15" r="1.5"/>
+                                                    </svg>
+                                                </div>
 
-                                            <!-- Block Icon (Matching pqr.png) -->
-                                            <div class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-slate-50 text-slate-600 text-xs border border-slate-100">
-                                                <template x-if="block.icon === 'greeting' || block.id === 'greeting'">
-                                                    <svg class="h-4 w-4 stroke-current" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                                                </template>
-                                                <template x-if="block.icon === 'delivery_card' || block.id === 'delivery_card'">
-                                                    <svg class="h-4 w-4 stroke-current" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8h4l3 3v5a1 1 0 01-1 1h-1m-4 0h-1"/></svg>
-                                                </template>
-                                                <template x-if="block.icon === 'holiday_notice' || block.id === 'holiday_notice' || block.id === 'holiday_reason'">
-                                                    <svg class="h-4 w-4 stroke-current" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 7v5l3 3"/></svg>
-                                                </template>
-                                                <template x-if="block.icon === 'order_summary' || block.id === 'order_summary'">
-                                                    <svg class="h-4 w-4 stroke-current" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                                </template>
-                                                <template x-if="block.icon === 'cta_button' || block.id === 'cta_button'">
-                                                    <svg class="h-4 w-4 stroke-current" fill="none" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="3" stroke-width="2"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>
-                                                </template>
-                                                <template x-if="block.icon === 'support_footer' || block.id === 'support_footer'">
-                                                    <svg class="h-4 w-4 stroke-current" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11v5m0-8h.01"/></svg>
-                                                </template>
-                                                <template x-if="!['greeting','delivery_card','holiday_notice','holiday_reason','order_summary','cta_button','support_footer'].includes(block.icon) && !['greeting','delivery_card','holiday_notice','holiday_reason','order_summary','cta_button','support_footer'].includes(block.id)">
-                                                    <svg class="h-4 w-4 stroke-current" fill="none" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" stroke-width="2"/></svg>
-                                                </template>
+                                                <!-- Col 2: Standalone Outline Icon (Exact match of screenshot icons) -->
+                                                <div class="w-6 shrink-0 flex items-center justify-center text-slate-800">
+                                                    <!-- Greeting: User / Customer Waving Icon -->
+                                                    <template x-if="block.icon === 'greeting' || block.id === 'greeting'">
+                                                        <svg class="w-5 h-5 text-slate-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                            <circle cx="13" cy="8" r="3.5"/>
+                                                            <path d="M7 21v-2a4 4 0 0 1 4-4h5a4 4 0 0 1 4 4v2"/>
+                                                            <path d="M4 8l3 3"/>
+                                                            <path d="M3 11l4-2"/>
+                                                        </svg>
+                                                    </template>
+
+                                                    <!-- Delivery Estimate Card: Document with Folded Corner & Indicator -->
+                                                    <template x-if="block.icon === 'delivery_card' || block.id === 'delivery_card'">
+                                                        <svg class="w-5 h-5 text-slate-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                                            <polyline points="14 2 14 8 20 8"/>
+                                                            <line x1="12" y1="12" x2="12" y2="16"/>
+                                                            <circle cx="12" cy="17" r="0.5" fill="currentColor"/>
+                                                        </svg>
+                                                    </template>
+
+                                                    <!-- Holiday Reason Notice: Stopwatch / Clock Icon with Top Pin -->
+                                                    <template x-if="block.icon === 'holiday_notice' || block.id === 'holiday_notice' || block.id === 'holiday_reason'">
+                                                        <svg class="w-5 h-5 text-slate-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                            <line x1="10" y1="2" x2="14" y2="2"/>
+                                                            <line x1="12" y1="2" x2="12" y2="5"/>
+                                                            <circle cx="12" cy="14" r="8"/>
+                                                            <polyline points="9 11 12 14 15 11"/>
+                                                        </svg>
+                                                    </template>
+
+                                                    <!-- Order Summary: Calendar Icon -->
+                                                    <template x-if="block.icon === 'order_summary' || block.id === 'order_summary'">
+                                                        <svg class="w-5 h-5 text-slate-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                            <rect x="3" y="4" width="18" height="18" rx="3"/>
+                                                            <line x1="16" y1="2" x2="16" y2="6"/>
+                                                            <line x1="8" y1="2" x2="8" y2="6"/>
+                                                            <line x1="3" y1="10" x2="21" y2="10"/>
+                                                        </svg>
+                                                    </template>
+
+                                                    <!-- CTA Button: Card with Button Element -->
+                                                    <template x-if="block.icon === 'cta_button' || block.id === 'cta_button'">
+                                                        <svg class="w-5 h-5 text-slate-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                            <rect x="3" y="4" width="18" height="18" rx="3"/>
+                                                            <line x1="16" y1="2" x2="16" y2="6"/>
+                                                            <line x1="8" y1="2" x2="8" y2="6"/>
+                                                            <line x1="3" y1="9" x2="21" y2="9"/>
+                                                            <rect x="7" y="13" width="10" height="4" rx="2"/>
+                                                        </svg>
+                                                    </template>
+
+                                                    <!-- Support Footer: Info Circle Icon (ⓘ) -->
+                                                    <template x-if="block.icon === 'support_footer' || block.id === 'support_footer'">
+                                                        <svg class="w-5 h-5 text-slate-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                            <circle cx="12" cy="12" r="9"/>
+                                                            <circle cx="12" cy="8" r="0.8" fill="currentColor"/>
+                                                            <line x1="12" y1="11" x2="12" y2="15"/>
+                                                            <line x1="10" y1="16" x2="14" y2="16"/>
+                                                        </svg>
+                                                    </template>
+
+                                                    <!-- Fallback Custom Block Icon -->
+                                                    <template x-if="!['greeting','delivery_card','holiday_notice','holiday_reason','order_summary','cta_button','support_footer'].includes(block.icon) && !['greeting','delivery_card','holiday_notice','holiday_reason','order_summary','cta_button','support_footer'].includes(block.id)">
+                                                        <svg class="w-5 h-5 text-slate-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                            <rect x="4" y="4" width="16" height="16" rx="3"/>
+                                                        </svg>
+                                                    </template>
+                                                </div>
+
+                                                <!-- Col 3: Block Title (Bold text-slate-900) -->
+                                                <div class="w-44 shrink-0 font-bold text-slate-900 text-sm tracking-tight truncate" x-text="block.name"></div>
+
+                                                <!-- Col 4: Description (Muted slate-400 text) -->
+                                                <div class="w-72 shrink-0 text-xs text-slate-400 font-normal truncate" x-text="block.desc"></div>
+
+                                                <!-- Col 5: Variable Badges (Soft sky blue pill badges with rounded-full) -->
+                                                <div class="flex-1 min-w-[190px] flex items-center gap-1.5 flex-wrap">
+                                                    <template x-for="v in (block.variables || [])" :key="v">
+                                                        <span class="inline-flex items-center rounded-full bg-[#E0F2FE] px-3 py-1 text-xs font-mono font-medium text-[#0284C7]" x-text="v"></span>
+                                                    </template>
+                                                </div>
+
+                                                <!-- Col 6: Toggle Switch (Green #10B981) -->
+                                                <div class="w-12 shrink-0 flex justify-center">
+                                                    <button
+                                                        type="button"
+                                                        @click="toggleBlock(idx)"
+                                                        :style="block.enabled ? 'background-color: #10B981 !important;' : 'background-color: #CBD5E1 !important;'"
+                                                        class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full p-1 transition-colors duration-200 ease-in-out focus:outline-none"
+                                                        :title="block.enabled ? 'Click to disable' : 'Click to enable'"
+                                                    >
+                                                        <span
+                                                            :class="block.enabled ? 'translate-x-5' : 'translate-x-0'"
+                                                            class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out"
+                                                        ></span>
+                                                    </button>
+                                                </div>
                                             </div>
 
-                                            <div class="min-w-0">
-                                                <span class="font-extrabold text-brand-ink text-xs truncate block" x-text="block.name"></span>
-                                                <span class="text-[11px] text-slate-500 truncate block" x-text="block.desc"></span>
+                                            <!-- Col 7 & 8: Actions Cell (Separated by Vertical Dividing Line) -->
+                                            <div class="w-28 shrink-0 border-l border-slate-100 flex items-center justify-between px-4">
+                                                <button
+                                                    type="button"
+                                                    @click="editingBlockIdx = (editingBlockIdx === idx ? null : idx)"
+                                                    class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-800 hover:text-slate-950 transition"
+                                                >
+                                                    <svg class="w-3.5 h-3.5 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                                    </svg>
+                                                    <span>Edit</span>
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    @click="editingBlockIdx = (editingBlockIdx === idx ? null : idx)"
+                                                    class="text-slate-400 hover:text-slate-600 transition"
+                                                >
+                                                    <svg
+                                                        :class="editingBlockIdx === idx ? 'rotate-180' : ''"
+                                                        class="w-3.5 h-3.5 transform transition-transform duration-200 text-slate-500"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        stroke-width="2"
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                    >
+                                                        <polyline points="6 9 12 15 18 9"/>
+                                                    </svg>
+                                                </button>
                                             </div>
                                         </div>
 
-                                        <!-- Right: Variables Badges, Toggle Switch, Edit & Accordion Controls (Exact match of pqr.png) -->
-                                        <div class="flex items-center gap-3 shrink-0">
-                                            <!-- Variable Badges -->
-                                            <div class="hidden md:flex items-center gap-1.5">
-                                                <template x-for="v in (block.variables || [])" :key="v">
-                                                    <span class="inline-flex items-center rounded bg-[#EFF6FF] px-2 py-0.5 text-[11px] font-mono font-medium text-[#2563EB] border border-[#DBEAFE]" x-text="v"></span>
-                                                </template>
+                                        <!-- Inline Block Editor -->
+                                        <div x-show="editingBlockIdx === idx" x-cloak class="px-6 py-4 bg-slate-50/80 border-t border-slate-100 space-y-3">
+                                            <div class="grid gap-3 sm:grid-cols-2">
+                                                <div>
+                                                    <label class="text-[10px] font-bold uppercase text-slate-500">Block Name</label>
+                                                    <input type="text" x-model="block.name" class="admin-input text-xs mt-1">
+                                                </div>
+                                                <div>
+                                                    <label class="text-[10px] font-bold uppercase text-slate-500">Description</label>
+                                                    <input type="text" x-model="block.desc" class="admin-input text-xs mt-1">
+                                                </div>
                                             </div>
-
-                                            <!-- Active Toggle Switch (Pill toggle with #10B981 on / slate-300 off) -->
-                                            <button
-                                                type="button"
-                                                @click="toggleBlock(idx)"
-                                                :style="block.enabled ? 'background-color: #10B981 !important;' : 'background-color: #CBD5E1 !important;'"
-                                                style="position: relative; display: inline-flex; height: 22px; width: 42px; flex-shrink: 0; cursor: pointer; border-radius: 9999px; border: 2px solid transparent; transition: background-color 0.2s ease-in-out; outline: none; padding: 0;"
-                                                :title="block.enabled ? 'Click to disable' : 'Click to enable'"
-                                            >
-                                                <span
-                                                    :style="block.enabled ? 'transform: translateX(20px);' : 'transform: translateX(0px);'"
-                                                    style="pointer-events: none; display: inline-block; height: 18px; width: 18px; border-radius: 9999px; background-color: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.25); transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);"
-                                                ></span>
-                                            </button>
-
-                                            <!-- Edit Inline Toggle (✎ Edit) -->
-                                            <button
-                                                type="button"
-                                                @click="editingBlockIdx = (editingBlockIdx === idx ? null : idx)"
-                                                class="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-brand-ink px-1.5 py-1 rounded hover:bg-slate-100 transition"
-                                            >
-                                                <svg class="h-3.5 w-3.5 stroke-current" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                                                <span>Edit</span>
-                                            </button>
-
-                                            <!-- Accordion Chevron Down (▾) -->
-                                            <button
-                                                type="button"
-                                                @click="editingBlockIdx = (editingBlockIdx === idx ? null : idx)"
-                                                class="text-slate-400 hover:text-slate-700 text-xs px-1"
-                                            >
-                                                <span :class="editingBlockIdx === idx ? 'rotate-180' : ''" class="inline-block transition-transform duration-200">▾</span>
-                                            </button>
+                                            <div class="flex justify-end">
+                                                <button
+                                                    type="button"
+                                                    @click="editingBlockIdx = null"
+                                                    class="btn btn-white text-[11px] py-1 px-3"
+                                                >
+                                                    Done
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-
-                                    <!-- Inline Block Editor -->
-                                    <div x-show="editingBlockIdx === idx" x-cloak class="mt-3 border-t border-slate-100 pt-3 space-y-3 bg-slate-50/50 p-3 rounded-lg">
-                                        <div class="grid gap-3 sm:grid-cols-2">
-                                            <div>
-                                                <label class="text-[10px] font-bold uppercase text-slate-500">Block Name</label>
-                                                <input type="text" x-model="block.name" class="admin-input text-xs mt-1">
-                                            </div>
-                                            <div>
-                                                <label class="text-[10px] font-bold uppercase text-slate-500">Description</label>
-                                                <input type="text" x-model="block.desc" class="admin-input text-xs mt-1">
-                                            </div>
-                                        </div>
-                                        <div class="flex justify-end">
-                                            <button
-                                                type="button"
-                                                @click="editingBlockIdx = null"
-                                                class="btn btn-white text-[11px] py-1 px-3"
-                                            >
-                                                Done
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </template>
+                                </template>
+                            </div>
                         </div>
                     </div>
                 </div>
