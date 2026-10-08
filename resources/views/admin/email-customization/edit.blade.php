@@ -184,20 +184,28 @@
     >
         <!-- Breadcrumb & Nav (Matching pqr.png) -->
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <nav class="flex items-center gap-2 text-xs font-bold text-slate-500">
-                <a href="{{ route('admin.dashboard') }}" class="hover:text-slate-700">Home</a>
-                <span>/</span>
-                <a href="{{ route('admin.email-customization.templates.index') }}" class="hover:text-slate-700">Email Templates</a>
-                <span>/</span>
-                <span class="text-brand-ink">{{ $template->name }}</span>
-            </nav>
+            <div>
+                <nav class="flex items-center gap-1.5 text-xs text-slate-400 mb-1 font-medium">
+                    <a href="{{ route('admin.dashboard') }}" class="hover:text-slate-600 transition">⌂</a>
+                    <span>›</span>
+                    <span>Content</span>
+                    <span>›</span>
+                    <a href="{{ route('admin.email-customization.templates.index') }}" class="text-slate-500 hover:text-brand-ink transition">Email Templates</a>
+                    <span>›</span>
+                    <span class="text-slate-600 font-bold">{{ $template->name }}</span>
+                </nav>
+                <h1 class="text-2xl font-black text-brand-ink tracking-tight">Edit Email Template</h1>
+                <p class="text-xs text-slate-500 mt-1">Update the content and settings for this email template. Use variables to personalize the message.</p>
+            </div>
 
             <div class="flex items-center gap-2">
-                <a href="{{ route('admin.email-customization.templates.visibility', $template->key) }}" class="btn btn-white text-xs">
-                    Content Visibility Settings →
+                <a href="{{ route('admin.email-customization.templates.visibility', $template->key) }}" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition">
+                    <span>👁</span>
+                    <span>Visibility</span>
                 </a>
-                <a href="{{ route('admin.email-customization.templates.preview', $template->key) }}" class="btn btn-white text-xs">
-                    Preview & Test →
+                <a href="{{ route('admin.email-customization.templates.preview', $template->key) }}" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition">
+                    <span>↗</span>
+                    <span>Preview & Test</span>
                 </a>
             </div>
         </div>

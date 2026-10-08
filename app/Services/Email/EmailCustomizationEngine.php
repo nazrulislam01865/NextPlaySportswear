@@ -187,6 +187,7 @@ class EmailCustomizationEngine
 
         if (($isBlockEnabled('holiday_notice', true) || $isBlockEnabled('holiday_reason', true)) && (! empty($visibility['show_holiday_reason'] ?? true) || ! empty($visibility['show_holiday_notice'] ?? true)) && ! empty($context['holiday_reason'])) {
             $details['Reason'] = $context['holiday_reason'];
+            $details['Delay Reason'] = $context['holiday_reason'];
         }
 
         if (! empty($context['shipping_method'])) {

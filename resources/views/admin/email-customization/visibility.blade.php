@@ -1,6 +1,5 @@
 <x-layouts.admin
     title="Content Visibility Settings"
-    eyebrow="Email Customization"
     subtitle="Choose which content elements to show in the '{{ $template->name }}' email. Toggle elements on or off to customize what your customers see."
 >
     <div
@@ -19,274 +18,515 @@
             showFooterNote: {{ !empty($template->visibility_settings['show_footer_note'] ?? true) ? 'true' : 'false' }}
         }"
     >
-        <!-- Breadcrumb & Top Actions -->
+        <!-- Breadcrumb & Title (Matching mno.png) -->
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <nav class="flex items-center gap-2 text-xs font-bold text-slate-500">
-                <a href="{{ route('admin.dashboard') }}" class="hover:text-slate-700">Home</a>
-                <span>/</span>
-                <a href="{{ route('admin.email-customization.templates.index') }}" class="hover:text-slate-700">Email Templates</a>
-                <span>/</span>
-                <a href="{{ route('admin.email-customization.templates.edit', $template->key) }}" class="hover:text-slate-700">{{ $template->name }}</a>
-                <span>/</span>
-                <span class="text-brand-ink">Visibility Settings</span>
-            </nav>
-
-            <a href="{{ route('admin.email-customization.templates.edit', $template->key) }}" class="btn btn-white text-xs">
-                ← Back to Editor
-            </a>
+            <div>
+                <nav class="flex items-center gap-1.5 text-xs text-slate-400 mb-1 font-medium">
+                    <a href="{{ route('admin.dashboard') }}" class="hover:text-slate-600 transition">⌂</a>
+                    <span>›</span>
+                    <span>Content</span>
+                    <span>›</span>
+                    <a href="{{ route('admin.email-customization.templates.index') }}" class="text-slate-500 hover:text-brand-ink transition">Email Templates</a>
+                    <span>›</span>
+                    <a href="{{ route('admin.email-customization.templates.edit', $template->key) }}" class="text-slate-500 hover:text-brand-ink transition">{{ $template->name }}</a>
+                    <span>›</span>
+                    <span class="text-slate-600 font-bold">Visibility Settings</span>
+                </nav>
+                <h1 class="text-2xl font-black text-brand-ink tracking-tight">Content Visibility Settings</h1>
+                <p class="text-xs text-slate-500 mt-1">Choose which content elements to show in the "{{ $template->name }}" email. Toggle elements on or off to customize what your customers see.</p>
+            </div>
         </div>
 
-        <!-- Status & Error Alerts -->
-        @if(session('status'))
-            <div class="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-bold text-emerald-800 shadow-sm">
-                <span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-200 text-xs font-black text-emerald-800">✓</span>
-                <span>{{ session('status') }}</span>
+        <!-- Notification Banner (Matching mno.png) -->
+        <div x-data="{ dismissed: false }" x-show="!dismissed" class="flex items-start justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50/90 p-4 text-xs font-bold text-amber-950 shadow-sm">
+            <div class="flex items-start gap-3">
+                <span class="grid h-5 w-5 place-items-center rounded-full bg-[#c2410c] text-xs font-black text-white shrink-0 mt-0.5">
+                    i
+                </span>
+                <p class="leading-relaxed font-semibold text-amber-900">Saved and published visibility changes affect the next email action.</p>
             </div>
-        @endif
-
-        @if($errors->any())
-            <div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-xs font-bold text-red-800 shadow-sm space-y-1">
-                <p class="font-black">Please fix the following validation errors:</p>
-                <ul class="list-disc list-inside">
-                    @foreach($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
-        <!-- Banner -->
-        <div class="flex items-start gap-3 rounded-2xl border border-orange-200 bg-orange-50/80 p-4 text-xs font-bold text-orange-900">
-            <span class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-orange-200 text-xs font-black text-orange-800">i</span>
-            <p class="leading-relaxed">Saved and published visibility changes affect the next email action immediately.</p>
+            <button type="button" @click="dismissed = true" class="text-amber-700 hover:text-amber-950 transition text-sm font-bold">✕</button>
         </div>
 
         <form method="POST" action="{{ route('admin.email-customization.templates.visibility.update', $template->key) }}" class="space-y-6">
             @csrf
             @method('PUT')
 
-            <div class="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(340px,.8fr)] lg:items-start">
-                <!-- Left: Toggle Groups -->
-                <div class="space-y-5">
-                    <!-- Header Elements -->
-                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-card sm:p-6">
-                        <div class="flex items-center gap-2.5">
-                            <span class="text-base">🖼</span>
-                            <h3 class="text-base font-extrabold text-brand-ink">Header Elements</h3>
+            <div class="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(340px,.75fr)] lg:items-start">
+                <!-- Left: Toggle Groups (Matching mno.png) -->
+                <div class="space-y-4">
+                    <!-- 1. Header Elements -->
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div class="flex items-start gap-3 mb-4">
+                            <span class="text-xl">🖼</span>
+                            <div>
+                                <h3 class="text-sm font-extrabold text-brand-ink">Header Elements</h3>
+                                <p class="text-xs text-slate-500 mt-0.5">Branding and introduction content at the top of the email.</p>
+                            </div>
                         </div>
-                        <p class="mt-1 text-xs text-slate-500">Branding and introduction content at the top of the email.</p>
 
-                        <div class="mt-4 divide-y divide-slate-100">
-                            <div class="flex items-center justify-between py-3">
+                        <div class="space-y-3.5 pl-8">
+                            <!-- Show Logo -->
+                            <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-xs font-bold text-slate-700">Show Logo</p>
+                                    <p class="text-xs font-bold text-slate-800">Show Logo</p>
                                     <p class="text-[11px] text-slate-400">Display the NextPlay logo at the top of the email.</p>
                                 </div>
-                                <input type="checkbox" x-model="showLogo" name="show_logo" value="1" class="h-5 w-5 rounded border-slate-300 text-brand-red">
+                                <input type="hidden" name="show_logo" :value="showLogo ? 1 : 0">
+                                <button
+                                    type="button"
+                                    @click="showLogo = !showLogo"
+                                    class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="showLogo ? 'bg-blue-600' : 'bg-slate-300'"
+                                    role="switch"
+                                    :aria-checked="showLogo"
+                                >
+                                    <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" :class="showLogo ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
                             </div>
-                            <div class="flex items-center justify-between py-3">
+
+                            <!-- Show Greeting -->
+                            <div class="flex items-center justify-between border-t border-slate-100 pt-3.5">
                                 <div>
-                                    <p class="text-xs font-bold text-slate-700">Show Greeting</p>
+                                    <p class="text-xs font-bold text-slate-800">Show Greeting</p>
                                     <p class="text-[11px] text-slate-400">Display a personalized greeting (e.g., Hi {Customer Name}).</p>
                                 </div>
-                                <input type="checkbox" x-model="showGreeting" name="show_greeting" value="1" class="h-5 w-5 rounded border-slate-300 text-brand-red">
+                                <input type="hidden" name="show_greeting" :value="showGreeting ? 1 : 0">
+                                <button
+                                    type="button"
+                                    @click="showGreeting = !showGreeting"
+                                    class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="showGreeting ? 'bg-blue-600' : 'bg-slate-300'"
+                                    role="switch"
+                                    :aria-checked="showGreeting"
+                                >
+                                    <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" :class="showGreeting ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Delivery Details -->
-                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-card sm:p-6">
-                        <div class="flex items-center gap-2.5">
-                            <span class="text-base">🚚</span>
-                            <h3 class="text-base font-extrabold text-brand-ink">Delivery Details</h3>
+                    <!-- 2. Delivery Details -->
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div class="flex items-start gap-3 mb-4">
+                            <span class="text-xl">🚚</span>
+                            <div>
+                                <h3 class="text-sm font-extrabold text-brand-ink">Delivery Details</h3>
+                                <p class="text-xs text-slate-500 mt-0.5">Information about the delivery estimate and any changes.</p>
+                            </div>
                         </div>
-                        <p class="mt-1 text-xs text-slate-500">Information about the delivery estimate and any changes.</p>
 
-                        <div class="mt-4 divide-y divide-slate-100">
-                            <div class="flex items-center justify-between py-3">
+                        <div class="space-y-3.5 pl-8">
+                            <!-- Show Previous Estimate -->
+                            <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-xs font-bold text-slate-700">Show Previous Estimate</p>
+                                    <p class="text-xs font-bold text-slate-800">Show Previous Estimate</p>
                                     <p class="text-[11px] text-slate-400">Display the previous estimated delivery date.</p>
                                 </div>
-                                <input type="checkbox" x-model="showPreviousEstimate" name="show_previous_estimate" value="1" class="h-5 w-5 rounded border-slate-300 text-brand-red">
+                                <input type="hidden" name="show_previous_estimate" :value="showPreviousEstimate ? 1 : 0">
+                                <button
+                                    type="button"
+                                    @click="showPreviousEstimate = !showPreviousEstimate"
+                                    class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="showPreviousEstimate ? 'bg-blue-600' : 'bg-slate-300'"
+                                    role="switch"
+                                    :aria-checked="showPreviousEstimate"
+                                >
+                                    <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" :class="showPreviousEstimate ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
                             </div>
-                            <div class="flex items-center justify-between py-3">
+
+                            <!-- Show Updated Estimate -->
+                            <div class="flex items-center justify-between border-t border-slate-100 pt-3.5">
                                 <div>
-                                    <p class="text-xs font-bold text-slate-700">Show Updated Estimate</p>
+                                    <p class="text-xs font-bold text-slate-800">Show Updated Estimate</p>
                                     <p class="text-[11px] text-slate-400">Display the new estimated delivery date.</p>
                                 </div>
-                                <input type="checkbox" x-model="showUpdatedEstimate" name="show_updated_estimate" value="1" class="h-5 w-5 rounded border-slate-300 text-brand-red">
+                                <input type="hidden" name="show_updated_estimate" :value="showUpdatedEstimate ? 1 : 0">
+                                <button
+                                    type="button"
+                                    @click="showUpdatedEstimate = !showUpdatedEstimate"
+                                    class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="showUpdatedEstimate ? 'bg-blue-600' : 'bg-slate-300'"
+                                    role="switch"
+                                    :aria-checked="showUpdatedEstimate"
+                                >
+                                    <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" :class="showUpdatedEstimate ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
                             </div>
-                            <div class="flex items-center justify-between py-3">
+
+                            <!-- Show Holiday Reason -->
+                            <div class="flex items-center justify-between border-t border-slate-100 pt-3.5">
                                 <div>
-                                    <p class="text-xs font-bold text-slate-700">Show Holiday Reason</p>
-                                    <p class="text-[11px] text-slate-400">Display delay note if rescheduled due to holidays.</p>
+                                    <p class="text-xs font-bold text-slate-800">Show Holiday Reason</p>
+                                    <p class="text-[11px] text-slate-400">Display the reason for the delay (e.g., holiday, weather, etc.).</p>
                                 </div>
-                                <input type="checkbox" x-model="showHolidayReason" name="show_holiday_reason" value="1" class="h-5 w-5 rounded border-slate-300 text-brand-red">
+                                <input type="hidden" name="show_holiday_reason" :value="showHolidayReason ? 1 : 0">
+                                <button
+                                    type="button"
+                                    @click="showHolidayReason = !showHolidayReason"
+                                    class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="showHolidayReason ? 'bg-blue-600' : 'bg-slate-300'"
+                                    role="switch"
+                                    :aria-checked="showHolidayReason"
+                                >
+                                    <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" :class="showHolidayReason ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
                             </div>
-                            <div class="flex items-center justify-between py-3">
+
+                            <!-- Show Estimated Delivery Card -->
+                            <div class="flex items-center justify-between border-t border-slate-100 pt-3.5">
                                 <div>
-                                    <p class="text-xs font-bold text-slate-700">Show Delivery Card</p>
-                                    <p class="text-[11px] text-slate-400">Display the highlighted summary card with the date badge.</p>
+                                    <p class="text-xs font-bold text-slate-800">Show Estimated Delivery Card</p>
+                                    <p class="text-[11px] text-slate-400">Display a highlighted card with delivery information.</p>
                                 </div>
-                                <input type="checkbox" x-model="showDeliveryCard" name="show_delivery_card" value="1" class="h-5 w-5 rounded border-slate-300 text-brand-red">
+                                <input type="hidden" name="show_delivery_card" :value="showDeliveryCard ? 1 : 0">
+                                <button
+                                    type="button"
+                                    @click="showDeliveryCard = !showDeliveryCard"
+                                    class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="showDeliveryCard ? 'bg-blue-600' : 'bg-slate-300'"
+                                    role="switch"
+                                    :aria-checked="showDeliveryCard"
+                                >
+                                    <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" :class="showDeliveryCard ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Order Information -->
-                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-card sm:p-6">
-                        <div class="flex items-center gap-2.5">
-                            <span class="text-base">📋</span>
-                            <h3 class="text-base font-extrabold text-brand-ink">Order Information</h3>
+                    <!-- 3. Order Information -->
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div class="flex items-start gap-3 mb-4">
+                            <span class="text-xl">📄</span>
+                            <div>
+                                <h3 class="text-sm font-extrabold text-brand-ink">Order Information</h3>
+                                <p class="text-xs text-slate-500 mt-0.5">Order details and reference information.</p>
+                            </div>
                         </div>
-                        <p class="mt-1 text-xs text-slate-500">Order-specific identifiers and details.</p>
 
-                        <div class="mt-4 divide-y divide-slate-100">
-                            <div class="flex items-center justify-between py-3">
+                        <div class="space-y-3.5 pl-8">
+                            <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-xs font-bold text-slate-700">Show Order Number</p>
-                                    <p class="text-[11px] text-slate-400">Display the order reference number (e.g., #NP12345).</p>
+                                    <p class="text-xs font-bold text-slate-800">Show Order Number</p>
+                                    <p class="text-[11px] text-slate-400">Display the order number in the email.</p>
                                 </div>
-                                <input type="checkbox" x-model="showOrderNumber" name="show_order_number" value="1" class="h-5 w-5 rounded border-slate-300 text-brand-red">
+                                <input type="hidden" name="show_order_number" :value="showOrderNumber ? 1 : 0">
+                                <button
+                                    type="button"
+                                    @click="showOrderNumber = !showOrderNumber"
+                                    class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="showOrderNumber ? 'bg-blue-600' : 'bg-slate-300'"
+                                    role="switch"
+                                    :aria-checked="showOrderNumber"
+                                >
+                                    <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" :class="showOrderNumber ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Action Elements -->
-                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-card sm:p-6">
-                        <div class="flex items-center gap-2.5">
-                            <span class="text-base">🔘</span>
-                            <h3 class="text-base font-extrabold text-brand-ink">Action Elements</h3>
+                    <!-- 4. Action Elements -->
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div class="flex items-start gap-3 mb-4">
+                            <span class="text-xl">👆</span>
+                            <div>
+                                <h3 class="text-sm font-extrabold text-brand-ink">Action Elements</h3>
+                                <p class="text-xs text-slate-500 mt-0.5">Call-to-action buttons and next steps.</p>
+                            </div>
                         </div>
-                        <p class="mt-1 text-xs text-slate-500">Call-to-action buttons for customer interaction.</p>
 
-                        <div class="mt-4 divide-y divide-slate-100">
-                            <div class="flex items-center justify-between py-3">
+                        <div class="space-y-3.5 pl-8">
+                            <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-xs font-bold text-slate-700">Show CTA Button</p>
-                                    <p class="text-[11px] text-slate-400">Display primary action button linking to order details.</p>
+                                    <p class="text-xs font-bold text-slate-800">Show CTA Button</p>
+                                    <p class="text-[11px] text-slate-400">Display the primary call-to-action button (e.g., View Order).</p>
                                 </div>
-                                <input type="checkbox" x-model="showCtaButton" name="show_cta_button" value="1" class="h-5 w-5 rounded border-slate-300 text-brand-red">
+                                <input type="hidden" name="show_cta_button" :value="showCtaButton ? 1 : 0">
+                                <button
+                                    type="button"
+                                    @click="showCtaButton = !showCtaButton"
+                                    class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="showCtaButton ? 'bg-blue-600' : 'bg-slate-300'"
+                                    role="switch"
+                                    :aria-checked="showCtaButton"
+                                >
+                                    <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" :class="showCtaButton ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Footer Elements -->
-                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-card sm:p-6">
-                        <div class="flex items-center gap-2.5">
-                            <span class="text-base">🦶</span>
-                            <h3 class="text-base font-extrabold text-brand-ink">Footer Elements</h3>
+                    <!-- 5. Footer Elements -->
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div class="flex items-start gap-3 mb-4">
+                            <span class="text-xl">🔗</span>
+                            <div>
+                                <h3 class="text-sm font-extrabold text-brand-ink">Footer Elements</h3>
+                                <p class="text-xs text-slate-500 mt-0.5">Support and additional information at the bottom of the email.</p>
+                            </div>
                         </div>
-                        <p class="mt-1 text-xs text-slate-500">Support contact and legal notes at the bottom.</p>
 
-                        <div class="mt-4 divide-y divide-slate-100">
-                            <div class="flex items-center justify-between py-3">
+                        <div class="space-y-3.5 pl-8">
+                            <!-- Show Support Contact -->
+                            <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-xs font-bold text-slate-700">Show Support Contact</p>
-                                    <p class="text-[11px] text-slate-400">Include support email and phone number in footer.</p>
+                                    <p class="text-xs font-bold text-slate-800">Show Support Contact</p>
+                                    <p class="text-[11px] text-slate-400">Display customer support contact information.</p>
                                 </div>
-                                <input type="checkbox" x-model="showSupportContact" name="show_support_contact" value="1" class="h-5 w-5 rounded border-slate-300 text-brand-red">
+                                <input type="hidden" name="show_support_contact" :value="showSupportContact ? 1 : 0">
+                                <button
+                                    type="button"
+                                    @click="showSupportContact = !showSupportContact"
+                                    class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="showSupportContact ? 'bg-blue-600' : 'bg-slate-300'"
+                                    role="switch"
+                                    :aria-checked="showSupportContact"
+                                >
+                                    <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" :class="showSupportContact ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
                             </div>
-                            <div class="flex items-center justify-between py-3">
+
+                            <!-- Show Social Links -->
+                            <div class="flex items-center justify-between border-t border-slate-100 pt-3.5">
                                 <div>
-                                    <p class="text-xs font-bold text-slate-700">Show Social Links</p>
-                                    <p class="text-[11px] text-slate-400">Include social media icons and links configured in branding.</p>
+                                    <p class="text-xs font-bold text-slate-800">Show Social Links</p>
+                                    <p class="text-[11px] text-slate-400">Display social media links.</p>
                                 </div>
-                                <input type="checkbox" x-model="showSocialLinks" name="show_social_links" value="1" class="h-5 w-5 rounded border-slate-300 text-brand-red">
+                                <input type="hidden" name="show_social_links" :value="showSocialLinks ? 1 : 0">
+                                <button
+                                    type="button"
+                                    @click="showSocialLinks = !showSocialLinks"
+                                    class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="showSocialLinks ? 'bg-blue-600' : 'bg-slate-300'"
+                                    role="switch"
+                                    :aria-checked="showSocialLinks"
+                                >
+                                    <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" :class="showSocialLinks ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
                             </div>
-                            <div class="flex items-center justify-between py-3">
+
+                            <!-- Show Footer Note -->
+                            <div class="flex items-center justify-between border-t border-slate-100 pt-3.5">
                                 <div>
-                                    <p class="text-xs font-bold text-slate-700">Show Footer Note</p>
-                                    <p class="text-[11px] text-slate-400">Include copyright and disclaimer text in the footer.</p>
+                                    <p class="text-xs font-bold text-slate-800">Show Footer Note</p>
+                                    <p class="text-[11px] text-slate-400">Display the footer note with legal or promotional text.</p>
                                 </div>
-                                <input type="checkbox" x-model="showFooterNote" name="show_footer_note" value="1" class="h-5 w-5 rounded border-slate-300 text-brand-red">
+                                <input type="hidden" name="show_footer_note" :value="showFooterNote ? 1 : 0">
+                                <button
+                                    type="button"
+                                    @click="showFooterNote = !showFooterNote"
+                                    class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="showFooterNote ? 'bg-blue-600' : 'bg-slate-300'"
+                                    role="switch"
+                                    :aria-checked="showFooterNote"
+                                >
+                                    <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" :class="showFooterNote ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Right: Live Visibility Status Preview -->
+                <!-- Right: Email Preview with Tagged Badges (Matching mno.png) -->
                 <div class="sticky top-28 space-y-3">
-                    <div>
-                        <h3 class="text-sm font-extrabold text-brand-ink">Element Visibility Preview</h3>
-                        <p class="text-[11px] text-slate-500">Live preview of visible/hidden elements.</p>
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-extrabold text-brand-ink">Email Preview</h3>
+                        <div class="flex items-center gap-3 text-xs font-bold">
+                            <span class="flex items-center gap-1.5 text-emerald-700">
+                                <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                                <span>Visible</span>
+                            </span>
+                            <span class="flex items-center gap-1.5 text-slate-400">
+                                <span class="h-2 w-2 rounded-full border border-slate-400"></span>
+                                <span>Hidden</span>
+                            </span>
+                        </div>
                     </div>
 
-                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-card text-xs space-y-4">
-                        <!-- Header Preview -->
-                        <div class="rounded-xl p-4 text-center text-white" style="background-color: {{ $branding->header_bg_color }};">
-                            <span :class="showLogo ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/40' : 'bg-red-500/20 text-red-200 border-red-400/40'" class="inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold" x-text="showLogo ? 'Header Logo (Visible)' : 'Header Logo (Hidden)'"></span>
-                            <div class="mt-2 text-base font-black">NEXT<span style="color: {{ $branding->button_color }};">PLAY</span></div>
+                    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm text-xs space-y-4">
+                        <!-- Logo Row -->
+                        <div class="flex items-center justify-between">
+                            <div :class="showLogo ? 'opacity-100' : 'opacity-25'" class="transition-opacity">
+                                <span class="text-lg font-black tracking-wider text-brand-ink">NEXT<span style="color: {{ $branding->button_color }};">PLAY</span></span>
+                            </div>
+                            <span
+                                :class="showLogo ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-400 border-slate-200'"
+                                class="rounded-full border px-2.5 py-0.5 text-[10px] font-bold"
+                                x-text="showLogo ? 'Logo (Visible)' : 'Logo (Hidden)'"
+                            ></span>
                         </div>
 
-                        <!-- Content mock -->
-                        <div class="space-y-3 p-2">
-                            <!-- Greeting item -->
-                            <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                                <span class="font-bold text-brand-ink">Hi Jordan,</span>
-                                <span :class="showGreeting ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-400 border-slate-200'" class="rounded-full border px-2 py-0.5 text-[10px] font-bold" x-text="showGreeting ? 'Greeting (Visible)' : 'Greeting (Hidden)'"></span>
+                        <!-- Greeting Row -->
+                        <div class="flex items-center justify-between border-t border-slate-100 pt-3">
+                            <div :class="showGreeting ? 'opacity-100' : 'opacity-25'" class="transition-opacity">
+                                <h4 class="text-sm font-extrabold text-brand-ink">Hi Alex,</h4>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Your delivery estimate has been updated. Here are the latest details for your order.</p>
                             </div>
+                            <span
+                                :class="showGreeting ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-400 border-slate-200'"
+                                class="rounded-full border px-2.5 py-0.5 text-[10px] font-bold"
+                                x-text="showGreeting ? 'Greeting (Visible)' : 'Greeting (Hidden)'"
+                            ></span>
+                        </div>
 
-                            <!-- Delivery Details -->
-                            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
-                                <div class="flex items-center justify-between text-[11px]">
-                                    <span class="text-slate-500">Previous: Oct 28, 2026</span>
-                                    <span :class="showPreviousEstimate ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-400 border-slate-200'" class="rounded-full border px-2 py-0.5 text-[10px] font-bold" x-text="showPreviousEstimate ? 'Previous Date (Visible)' : 'Previous Date (Hidden)'"></span>
+                        <!-- Estimated Delivery Card -->
+                        <div
+                            :class="showDeliveryCard ? 'opacity-100' : 'opacity-25'"
+                            class="rounded-xl border border-slate-200 bg-slate-50/80 p-4 transition-opacity relative"
+                        >
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+                                    </svg>
+                                    <span class="font-extrabold text-slate-900 text-xs">Estimated Delivery Update</span>
                                 </div>
-                                <div class="flex items-center justify-between text-[11px]">
-                                    <span class="font-bold text-slate-700">Updated: Nov 2, 2026</span>
-                                    <span :class="showUpdatedEstimate ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-400 border-slate-200'" class="rounded-full border px-2 py-0.5 text-[10px] font-bold" x-text="showUpdatedEstimate ? 'Updated Date (Visible)' : 'Updated Date (Hidden)'"></span>
+                                <span
+                                    :class="showDeliveryCard ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-400 border-slate-200'"
+                                    class="rounded-full border px-2 py-0.5 text-[10px] font-bold"
+                                    x-text="showDeliveryCard ? 'Delivery Card (Visible)' : 'Delivery Card (Hidden)'"
+                                ></span>
+                            </div>
+
+                            <div class="flex items-center justify-around text-center py-1">
+                                <template x-if="showPreviousEstimate">
+                                    <div>
+                                        <span class="block text-[10px] uppercase font-bold text-slate-400">Previous Estimate</span>
+                                        <span class="text-xs font-semibold text-slate-600 line-through">Thu, Oct 17, 2024</span>
+                                    </div>
+                                </template>
+                                <template x-if="showPreviousEstimate">
+                                    <span class="text-slate-400">→</span>
+                                </template>
+                                <div>
+                                    <span class="block text-[10px] uppercase font-bold text-slate-400">Updated Estimate</span>
+                                    <span class="text-xs font-black text-brand-ink">Mon, Oct 21, 2024</span>
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- Holiday Reason item -->
-                            <div class="flex items-center justify-between rounded-lg bg-orange-50 p-2.5 text-[11px] text-orange-900">
-                                <span>Delayed due to holiday</span>
-                                <span :class="showHolidayReason ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-400 border-slate-200'" class="rounded-full border px-2 py-0.5 text-[10px] font-bold" x-text="showHolidayReason ? 'Holiday Reason (Visible)' : 'Holiday Reason (Hidden)'"></span>
+                        <!-- Holiday Reason Callout -->
+                        <div class="flex items-center justify-between gap-2">
+                            <div
+                                :class="showHolidayReason ? 'opacity-100' : 'opacity-25'"
+                                class="flex-1 rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-[11px] font-semibold text-amber-900 flex items-center gap-2 transition-opacity"
+                            >
+                                <span>📅</span>
+                                <span>Delayed due to upcoming holiday</span>
                             </div>
+                            <span
+                                :class="showHolidayReason ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-400 border-slate-200'"
+                                class="rounded-full border px-2 py-0.5 text-[10px] font-bold shrink-0"
+                                x-text="showHolidayReason ? 'Holiday Reason (Visible)' : 'Holiday Reason (Hidden)'"
+                            ></span>
+                        </div>
 
-                            <!-- Order number -->
-                            <div class="flex items-center justify-between border-t border-slate-100 pt-3">
-                                <span>Order: <strong>#NP-12345</strong></span>
-                                <span :class="showOrderNumber ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-400 border-slate-200'" class="rounded-full border px-2 py-0.5 text-[10px] font-bold" x-text="showOrderNumber ? 'Order Number (Visible)' : 'Order Number (Hidden)'"></span>
+                        <!-- Order Number -->
+                        <div class="flex items-center justify-between border-t border-slate-100 pt-3">
+                            <div :class="showOrderNumber ? 'opacity-100' : 'opacity-25'" class="transition-opacity">
+                                <span class="font-extrabold text-slate-900 text-xs">Order Number: #NP5839201</span>
                             </div>
+                            <span
+                                :class="showOrderNumber ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-400 border-slate-200'"
+                                class="rounded-full border px-2.5 py-0.5 text-[10px] font-bold"
+                                x-text="showOrderNumber ? 'Order Number (Visible)' : 'Order Number (Hidden)'"
+                            ></span>
+                        </div>
 
-                            <!-- CTA Button -->
-                            <div class="flex items-center justify-between border-t border-slate-100 pt-3">
-                                <span class="rounded-lg px-3 py-1 text-white font-bold text-[11px]" style="background-color: {{ $branding->button_color }};">View Order</span>
-                                <span :class="showCtaButton ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-400 border-slate-200'" class="rounded-full border px-2 py-0.5 text-[10px] font-bold" x-text="showCtaButton ? 'CTA Button (Visible)' : 'CTA Button (Hidden)'"></span>
+                        <!-- CTA Button -->
+                        <div class="flex items-center justify-between border-t border-slate-100 pt-3">
+                            <div :class="showCtaButton ? 'opacity-100' : 'opacity-25'" class="flex-1 transition-opacity mr-3">
+                                <button
+                                    type="button"
+                                    class="w-full rounded-xl py-2.5 text-xs font-bold text-white shadow-sm"
+                                    style="background-color: {{ $branding->button_color }};"
+                                >
+                                    View Order
+                                </button>
                             </div>
+                            <span
+                                :class="showCtaButton ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-400 border-slate-200'"
+                                class="rounded-full border px-2.5 py-0.5 text-[10px] font-bold shrink-0"
+                                x-text="showCtaButton ? 'CTA Button (Visible)' : 'CTA Button (Hidden)'"
+                            ></span>
+                        </div>
 
-                            <!-- Support Contact -->
-                            <div class="flex items-center justify-between border-t border-slate-100 pt-3 text-[11px]">
-                                <span>Support Contact</span>
-                                <span :class="showSupportContact ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-400 border-slate-200'" class="rounded-full border px-2 py-0.5 text-[10px] font-bold" x-text="showSupportContact ? 'Support Contact (Visible)' : 'Support Contact (Hidden)'"></span>
+                        <!-- Support Contact -->
+                        <div class="flex items-center justify-between border-t border-slate-100 pt-3">
+                            <div :class="showSupportContact ? 'opacity-100' : 'opacity-25'" class="transition-opacity flex items-center gap-2">
+                                <span class="text-base">🎧</span>
+                                <div>
+                                    <p class="font-bold text-slate-800 text-[11px]">Need Help?</p>
+                                    <p class="text-[10px] text-slate-500">Contact our support team at {{ $branding->support_email }} or call {{ $branding->support_phone }}</p>
+                                </div>
                             </div>
+                            <span
+                                :class="showSupportContact ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-400 border-slate-200'"
+                                class="rounded-full border px-2 py-0.5 text-[10px] font-bold shrink-0"
+                                x-text="showSupportContact ? 'Support Contact (Visible)' : 'Support Contact (Hidden)'"
+                            ></span>
+                        </div>
 
-                            <!-- Social Links -->
-                            <div class="flex items-center justify-between text-[11px]">
-                                <span>Social Links</span>
-                                <span :class="showSocialLinks ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-400 border-slate-200'" class="rounded-full border px-2 py-0.5 text-[10px] font-bold" x-text="showSocialLinks ? 'Social Links (Visible)' : 'Social Links (Hidden)'"></span>
+                        <!-- Social Links -->
+                        <div class="flex items-center justify-between border-t border-slate-100 pt-3">
+                            <div :class="showSocialLinks ? 'opacity-100' : 'opacity-30'" class="flex items-center gap-2 transition-opacity">
+                                <span class="grid h-6 w-6 place-items-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-600">f</span>
+                                <span class="grid h-6 w-6 place-items-center rounded-full bg-slate-100 text-[9px] font-bold text-slate-600">📷</span>
+                                <span class="grid h-6 w-6 place-items-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-600">𝕏</span>
+                                <span class="grid h-6 w-6 place-items-center rounded-full bg-slate-100 text-[9px] font-bold text-slate-600">▶</span>
                             </div>
+                            <span
+                                :class="showSocialLinks ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-400 border-slate-200'"
+                                class="rounded-full border px-2 py-0.5 text-[10px] font-bold"
+                                x-text="showSocialLinks ? 'Social Links (Visible)' : 'Social Links (Hidden)'"
+                            ></span>
+                        </div>
+
+                        <!-- Footer Note -->
+                        <div class="flex items-center justify-between border-t border-slate-100 pt-3">
+                            <div :class="showFooterNote ? 'opacity-100' : 'opacity-25'" class="text-[10px] text-slate-400 transition-opacity">
+                                <p>Play More. Live Better.</p>
+                                <p>© 2024 NextPlay. All rights reserved.</p>
+                            </div>
+                            <span
+                                :class="showFooterNote ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-400 border-slate-200'"
+                                class="rounded-full border px-2 py-0.5 text-[10px] font-bold"
+                                x-text="showFooterNote ? 'Footer Note (Visible)' : 'Footer Note (Hidden)'"
+                            ></span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Bottom Action Bar -->
-            <div class="flex items-center justify-end gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
-                <a href="{{ route('admin.email-customization.templates.edit', $template->key) }}" class="btn btn-white text-xs">Back</a>
-                <button type="submit" name="action" value="draft" class="btn btn-white text-xs">Save Draft</button>
-                <button
-                    type="submit"
-                    name="action"
-                    value="publish"
-                    class="btn btn-orange rounded-xl px-5 py-2.5 text-xs font-black !text-white shadow-sm transition hover:opacity-95"
-                    style="background-color: #CF5D38 !important; color: #ffffff !important; border: 1px solid #CF5D38 !important;"
+            <!-- Footer Action Buttons (Matching mno.png) -->
+            <div class="flex items-center justify-between gap-3 pt-2">
+                <a
+                    href="{{ route('admin.email-customization.templates.edit', $template->key) }}"
+                    class="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition"
                 >
-                    Save & Publish
-                </button>
+                    ← Back
+                </a>
+                <div class="flex items-center gap-3">
+                    <button
+                        type="submit"
+                        name="action"
+                        value="draft"
+                        class="rounded-xl border border-slate-300 bg-white px-6 py-2.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition"
+                    >
+                        Save Draft
+                    </button>
+                    <button
+                        type="submit"
+                        name="action"
+                        value="publish"
+                        class="rounded-xl px-6 py-2.5 text-xs font-bold text-white shadow-sm transition hover:opacity-95"
+                        style="background-color: #CF5D38 !important; color: #ffffff !important;"
+                    >
+                        Save & Publish
+                    </button>
+                </div>
             </div>
         </form>
     </div>
