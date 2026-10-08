@@ -57,17 +57,47 @@
 
         $templateBlocks = $template->blocks ?: $defaultBlocks;
 
-        // Ensure array items have all keys
+        // Ensure array items have all keys and smart icon resolution
         $initialBlocks = array_values(array_map(function($b) {
+            $id = $b['id'] ?? ('block_' . uniqid());
+            $icon = $b['icon'] ?? null;
+            if (!$icon) {
+                if (str_contains($id, 'greeting')) $icon = 'greeting';
+                elseif (str_contains($id, 'delivery')) $icon = 'delivery_card';
+                elseif (str_contains($id, 'holiday')) $icon = 'holiday_notice';
+                elseif (str_contains($id, 'tracking')) $icon = 'tracking_card';
+                elseif (str_contains($id, 'order')) $icon = 'order_summary';
+                elseif (str_contains($id, 'cta') || str_contains($id, 'button')) $icon = 'cta_button';
+                elseif (str_contains($id, 'support') || str_contains($id, 'footer')) $icon = 'support_footer';
+                elseif (str_contains($id, 'security') || str_contains($id, 'lock')) $icon = 'security_notice';
+                elseif (str_contains($id, 'reward')) $icon = 'reward_card';
+                else $icon = 'custom';
+            }
             return [
-                'id' => $b['id'] ?? ('block_' . uniqid()),
+                'id' => $id,
                 'name' => $b['name'] ?? 'Custom Block',
                 'desc' => $b['desc'] ?? 'Content section block.',
                 'enabled' => (bool) ($b['enabled'] ?? true),
                 'variables' => (array) ($b['variables'] ?? []),
-                'icon' => $b['icon'] ?? 'custom',
+                'icon' => $icon,
             ];
         }, $templateBlocks));
+
+        $defaultSampleData = [
+            'customer_name' => 'Jordan Smith',
+            'order_number' => '#NP12345678',
+            'carrier' => 'UPS Ground',
+            'tracking_number' => '1Z999AA1234567890',
+            'estimated_delivery' => 'Oct 24, 2026',
+            'previous_estimate' => 'Oct 28, 2026',
+            'updated_estimate' => 'Nov 2, 2026',
+            'holiday_reason' => 'Christmas Day affects carrier schedule and delivery volume.',
+            'items_count' => '2 items',
+            'order_total' => '$129.98',
+            'support_email' => $branding->support_email ?? 'support@nextplay.com',
+            'reward_amount' => '$25.00 Store Credit',
+        ];
+        $mergedSampleData = array_merge($defaultSampleData, (array) ($template->sample_data ?? []));
     @endphp
 
     <div
@@ -82,10 +112,23 @@
             ctaUrl: '{{ addslashes($template->cta_url_type ?? 'Order Details Page') }}',
             variables: ['@{{customer_name}}', '@{{order_number}}', '@{{previous_estimate}}', '@{{updated_estimate}}', '@{{holiday_reason}}'],
             blocks: {{ Js::from($initialBlocks) }},
+            sampleData: {{ Js::from($mergedSampleData) }},
             draggedIdx: null,
             editingBlockIdx: null,
             showAddBlockModal: false,
             newBlock: { name: '', desc: '', variables: '' },
+            resolveText(str) {
+                if (!str) return '';
+                let res = String(str);
+                for (const [key, val] of Object.entries(this.sampleData)) {
+                    if (val !== undefined && val !== null) {
+                        res = res.replaceAll(`@{{${key}}}`, String(val));
+                        res = res.replaceAll(`{{${key}}}`, String(val));
+                        res = res.replaceAll(`{${key}}`, String(val));
+                    }
+                }
+                return res;
+            },
             insertVar(v) {
                 this.intro += ' ' + v;
             },
@@ -93,21 +136,25 @@
                 if (index > 0) {
                     const item = this.blocks.splice(index, 1)[0];
                     this.blocks.splice(index - 1, 0, item);
+                    this.blocks = [...this.blocks];
                 }
             },
             moveDown(index) {
                 if (index < this.blocks.length - 1) {
                     const item = this.blocks.splice(index, 1)[0];
                     this.blocks.splice(index + 1, 0, item);
+                    this.blocks = [...this.blocks];
                 }
             },
             toggleBlock(index) {
                 this.blocks[index].enabled = !this.blocks[index].enabled;
+                this.blocks = [...this.blocks];
             },
             dropItem(targetIdx) {
                 if (this.draggedIdx !== null && this.draggedIdx !== targetIdx) {
                     const item = this.blocks.splice(this.draggedIdx, 1)[0];
                     this.blocks.splice(targetIdx, 0, item);
+                    this.blocks = [...this.blocks];
                 }
                 this.draggedIdx = null;
             },
@@ -127,6 +174,7 @@
                     variables: vars,
                     icon: 'custom',
                 });
+                this.blocks = [...this.blocks];
                 this.newBlock = { name: '', desc: '', variables: '' };
                 this.showAddBlockModal = false;
             }
@@ -348,25 +396,34 @@
 
                                             <!-- Block Icon -->
                                             <div class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-700 text-sm">
-                                                <template x-if="block.icon === 'greeting'">
+                                                <template x-if="block.icon === 'greeting' || block.id === 'greeting'">
                                                     <span>👋</span>
                                                 </template>
-                                                <template x-if="block.icon === 'delivery_card'">
+                                                <template x-if="block.icon === 'delivery_card' || block.id === 'delivery_card'">
                                                     <span>🚚</span>
                                                 </template>
-                                                <template x-if="block.icon === 'holiday_notice'">
+                                                <template x-if="block.icon === 'holiday_notice' || block.id === 'holiday_notice' || block.id === 'holiday_reason'">
                                                     <span>⏱</span>
                                                 </template>
-                                                <template x-if="block.icon === 'order_summary'">
-                                                    <span>📅</span>
+                                                <template x-if="block.icon === 'tracking_card' || block.id === 'tracking_card'">
+                                                    <span>🚚</span>
                                                 </template>
-                                                <template x-if="block.icon === 'cta_button'">
+                                                <template x-if="block.icon === 'order_summary' || block.id === 'order_summary'">
+                                                    <span>📦</span>
+                                                </template>
+                                                <template x-if="block.icon === 'security_notice' || block.id === 'security_notice'">
+                                                    <span>🔒</span>
+                                                </template>
+                                                <template x-if="block.icon === 'reward_card' || block.id === 'reward_card'">
+                                                    <span>🎁</span>
+                                                </template>
+                                                <template x-if="block.icon === 'cta_button' || block.id === 'cta_button'">
                                                     <span>🔘</span>
                                                 </template>
-                                                <template x-if="block.icon === 'support_footer'">
+                                                <template x-if="block.icon === 'support_footer' || block.id === 'support_footer'">
                                                     <span>ⓘ</span>
                                                 </template>
-                                                <template x-if="!['greeting','delivery_card','holiday_notice','order_summary','cta_button','support_footer'].includes(block.icon)">
+                                                <template x-if="!['greeting','delivery_card','holiday_notice','holiday_reason','tracking_card','order_summary','security_notice','reward_card','cta_button','support_footer'].includes(block.icon) && !['greeting','delivery_card','holiday_notice','holiday_reason','tracking_card','order_summary','security_notice','reward_card','cta_button','support_footer'].includes(block.id)">
                                                     <span>📦</span>
                                                 </template>
                                             </div>
@@ -390,13 +447,13 @@
                                             <button
                                                 type="button"
                                                 @click="toggleBlock(idx)"
-                                                :class="block.enabled ? 'bg-emerald-500' : 'bg-slate-300'"
-                                                class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none"
+                                                :style="block.enabled ? 'background-color: #10B981 !important;' : 'background-color: #CBD5E1 !important;'"
+                                                style="position: relative; display: inline-flex; height: 22px; width: 42px; flex-shrink: 0; cursor: pointer; border-radius: 9999px; border: 2px solid transparent; transition: background-color 0.2s ease-in-out; outline: none; padding: 0;"
                                                 :title="block.enabled ? 'Click to disable' : 'Click to enable'"
                                             >
                                                 <span
-                                                    :class="block.enabled ? 'translate-x-4' : 'translate-x-0.5'"
-                                                    class="inline-block h-4 w-4 transform rounded-full bg-white transition duration-200 ease-in-out mt-0.5 shadow-sm"
+                                                    :style="block.enabled ? 'transform: translateX(20px);' : 'transform: translateX(0px);'"
+                                                    style="pointer-events: none; display: inline-block; height: 18px; width: 18px; border-radius: 9999px; background-color: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.25); transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);"
                                                 ></span>
                                             </button>
 
@@ -500,18 +557,44 @@
 
                             <!-- Heading & Intro -->
                             <div class="mt-4 text-center">
-                                <h3 class="text-base font-extrabold text-brand-ink" x-text="heading"></h3>
-                                <p class="mt-2 leading-relaxed text-slate-500 text-xs" x-text="intro"></p>
+                                <h3 class="text-base font-extrabold text-brand-ink" x-text="resolveText(heading)"></h3>
+                                <p class="mt-2 leading-relaxed text-slate-500 text-xs" x-text="resolveText(intro)"></p>
                             </div>
 
                             <!-- Dynamic Ordered Blocks in Live Preview -->
                             <div class="mt-4 space-y-3.5">
                                 <template x-for="block in blocks" :key="block.id">
-                                    <div x-show="block.enabled">
+                                    <div x-show="Boolean(block.enabled)" x-transition.opacity.duration.200ms>
                                         <!-- Greeting Preview -->
                                         <template x-if="block.id === 'greeting'">
-                                            <div class="text-slate-700 font-semibold text-xs py-1">
-                                                Hi Jordan,
+                                            <div class="text-slate-700 font-semibold text-xs py-1" x-text="`Hi ${sampleData.customer_name ? sampleData.customer_name.split(' ')[0] : 'Jordan'},`">
+                                            </div>
+                                        </template>
+
+                                        <!-- Carrier Tracking Card Preview -->
+                                        <template x-if="block.id === 'tracking_card'">
+                                            <div class="rounded-xl border border-slate-200 bg-slate-50/80 p-3.5">
+                                                <div class="flex items-center justify-between mb-2">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="text-base">🚚</span>
+                                                        <span class="font-bold text-slate-700 text-xs">Carrier Tracking</span>
+                                                    </div>
+                                                    <span class="rounded-md bg-blue-100 px-2 py-0.5 font-black text-blue-800 text-[10px]">In Transit</span>
+                                                </div>
+                                                <div class="space-y-1.5 text-[11px]">
+                                                    <div class="flex justify-between">
+                                                        <span class="text-slate-500">Carrier</span>
+                                                        <span class="font-bold text-brand-ink" x-text="sampleData.carrier || 'UPS Ground'"></span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-slate-500">Tracking Number</span>
+                                                        <span class="font-mono font-bold text-slate-700" x-text="sampleData.tracking_number || '1Z999AA1234567890'"></span>
+                                                    </div>
+                                                    <div class="flex justify-between border-t border-slate-200/60 pt-1.5 mt-1 text-[11px]">
+                                                        <span class="text-slate-500">Estimated Delivery</span>
+                                                        <span class="font-bold text-brand-ink" x-text="sampleData.estimated_delivery || 'Oct 24, 2026'"></span>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </template>
 
@@ -524,28 +607,28 @@
                                                         <span class="font-bold text-slate-700 text-xs">Estimated Delivery</span>
                                                     </div>
                                                     <div class="flex items-center gap-1.5">
-                                                        <span class="line-through text-slate-400 text-[11px]">Oct 28, 2024</span>
+                                                        <span class="line-through text-slate-400 text-[11px]" x-text="sampleData.previous_estimate || 'Oct 28, 2026'"></span>
                                                         <span class="text-slate-400 text-xs">→</span>
-                                                        <span class="rounded-md bg-emerald-100 px-2 py-0.5 font-black text-emerald-800 text-[11px]">Nov 2, 2024</span>
+                                                        <span class="rounded-md bg-emerald-100 px-2 py-0.5 font-black text-emerald-800 text-[11px]" x-text="sampleData.updated_estimate || 'Nov 2, 2026'"></span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </template>
 
                                         <!-- Holiday Reason Notice Preview -->
-                                        <template x-if="block.id === 'holiday_notice'">
+                                        <template x-if="block.id === 'holiday_notice' || block.id === 'holiday_reason'">
                                             <div class="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900 flex items-start gap-2.5">
                                                 <span class="text-base leading-none">⏱</span>
                                                 <div>
                                                     <p class="font-extrabold text-[11px] text-amber-950">Delayed due to holiday</p>
-                                                    <p class="text-[10px] text-amber-800 leading-tight mt-0.5">This delay is due to the upcoming holiday and increased carrier volume.</p>
+                                                    <p class="text-[10px] text-amber-800 leading-tight mt-0.5" x-text="sampleData.holiday_reason || 'This delay is due to the upcoming holiday and increased carrier volume.'"></p>
                                                 </div>
                                             </div>
                                         </template>
 
                                         <!-- Order Summary Preview -->
                                         <template x-if="block.id === 'order_summary'">
-                                            <div class="rounded-xl border border-slate-200 bg-white p-3.5 text-xs">
+                                            <div class="rounded-xl border border-slate-200 bg-white p-3.5 text-xs shadow-sm">
                                                 <div class="flex items-center gap-2 font-extrabold text-brand-ink text-xs mb-2">
                                                     <span>📦</span>
                                                     <span>Order Summary</span>
@@ -553,17 +636,37 @@
                                                 <div class="space-y-1.5 text-[11px]">
                                                     <div class="flex justify-between">
                                                         <span class="text-slate-500">Order Number</span>
-                                                        <span class="font-bold text-brand-ink">#NP12345678</span>
+                                                        <span class="font-bold text-brand-ink" x-text="sampleData.order_number || '#NP12345678'"></span>
                                                     </div>
                                                     <div class="flex justify-between">
                                                         <span class="text-slate-500">Items</span>
-                                                        <span class="font-semibold text-slate-700">2 items</span>
+                                                        <span class="font-semibold text-slate-700" x-text="sampleData.items_count || '2 items'"></span>
                                                     </div>
                                                     <div class="flex justify-between border-t border-slate-100 pt-1.5">
                                                         <span class="font-bold text-slate-700">Total</span>
-                                                        <span class="font-extrabold text-brand-ink">$129.98</span>
+                                                        <span class="font-extrabold text-brand-ink" x-text="sampleData.order_total || '$129.98'"></span>
                                                     </div>
                                                 </div>
+                                            </div>
+                                        </template>
+
+                                        <!-- Security Notice Preview -->
+                                        <template x-if="block.id === 'security_notice'">
+                                            <div class="rounded-xl border border-blue-200 bg-blue-50/80 p-3 text-xs text-blue-900 flex items-start gap-2.5">
+                                                <span class="text-base leading-none">🔒</span>
+                                                <div>
+                                                    <p class="font-extrabold text-[11px] text-blue-950">Security Notice</p>
+                                                    <p class="text-[10px] text-blue-800 leading-tight mt-0.5">This secure link will expire in 60 minutes. If you did not request this, please contact support.</p>
+                                                </div>
+                                            </div>
+                                        </template>
+
+                                        <!-- Reward Card Preview -->
+                                        <template x-if="block.id === 'reward_card'">
+                                            <div class="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5 text-center">
+                                                <span class="text-xl">🎁</span>
+                                                <p class="font-black text-emerald-900 text-sm mt-1" x-text="sampleData.reward_amount || '$25.00 Store Credit'"></p>
+                                                <p class="text-[10px] text-emerald-700 mt-0.5">Applied directly to your NextPlay account balance.</p>
                                             </div>
                                         </template>
 
@@ -582,7 +685,18 @@
                                         <!-- Support Footer Preview -->
                                         <template x-if="block.id === 'support_footer'">
                                             <div class="pt-2 text-center text-[10px] text-slate-400">
-                                                Need help? Visit our <a href="#" class="font-bold underline" style="color: {{ $branding->button_color }};">Help Center</a> or contact our support team.
+                                                Need help? Visit our <a href="#" class="font-bold underline" style="color: {{ $branding->button_color }};">Help Center</a> or contact our support team at <span class="font-semibold text-slate-600" x-text="sampleData.support_email || '{{ $branding->support_email }}'"></span>.
+                                            </div>
+                                        </template>
+
+                                        <!-- Fallback for Custom Blocks -->
+                                        <template x-if="!['greeting','delivery_card','holiday_notice','holiday_reason','tracking_card','order_summary','security_notice','reward_card','cta_button','support_footer'].includes(block.id)">
+                                            <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50/80 p-3 text-xs">
+                                                <div class="flex items-center gap-2">
+                                                    <span>📦</span>
+                                                    <span class="font-bold text-slate-700" x-text="block.name"></span>
+                                                </div>
+                                                <p class="mt-1 text-[11px] text-slate-500" x-text="block.desc"></p>
                                             </div>
                                         </template>
                                     </div>
