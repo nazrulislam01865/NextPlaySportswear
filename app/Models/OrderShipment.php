@@ -19,6 +19,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'notes',
     'shipped_at',
     'estimated_delivery_at',
+    'old_estimated_delivery_at',
+    'holiday_reason',
     'delivered_at',
 ])]
 class OrderShipment extends Model
@@ -52,6 +54,7 @@ class OrderShipment extends Model
             'shipping_address' => 'array',
             'shipped_at' => 'datetime',
             'estimated_delivery_at' => 'datetime',
+            'old_estimated_delivery_at' => 'datetime',
             'delivered_at' => 'datetime',
         ];
     }

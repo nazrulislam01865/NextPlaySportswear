@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             CatalogNavigationSeeder::class,
             HomepageSlideSeeder::class,
             EmailCustomizationSeeder::class,
+            HolidayCalendarSeeder::class,
         ]);
 
         // Keep demo accounts out of production and make local/testing seeding idempotent.
