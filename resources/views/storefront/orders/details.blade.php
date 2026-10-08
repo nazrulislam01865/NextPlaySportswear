@@ -83,7 +83,12 @@
             </x-storefront.order.info-box>
             <x-storefront.order.info-box title="Product Fulfillment">
                 {{ $order['shipping_method']['title'] ?? 'Standard Shipping' }}<br>
-                {{ $order['shipping_method']['eta'] ?? 'Estimated after production' }}
+                Estimated: {{ $order['estimated_delivery'] ?? ($order['shipping_method']['eta'] ?? 'Estimated after production') }}
+                @if(!empty($order['holiday_adjustment_applied']))
+                    <div class="mt-2 text-xs font-bold text-amber-700">
+                        <span>ⓘ Holiday Adjusted: {{ $order['holiday_adjustment_reason'] }}</span>
+                    </div>
+                @endif
             </x-storefront.order.info-box>
             <x-storefront.order.info-box title="Payment Method">
                 {{ $order['payment_method']['label'] ?? 'Secure payment provider' }}<br>

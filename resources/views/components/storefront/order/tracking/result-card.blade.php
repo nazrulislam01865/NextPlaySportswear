@@ -6,8 +6,15 @@
     'steps' => [],
     'item' => [],
     'tracking' => [],
+    'order' => [],
     'detailsHref' => '#',
 ])
+
+@php
+    $holidayReason = $order['holiday_adjustment_reason'] ?? ($tracking['holiday_reason'] ?? null);
+    $isHolidayAdjusted = (bool) ($order['holiday_adjustment_applied'] ?? filled($holidayReason));
+    $estimatedDelivery = $order['estimated_delivery'] ?? ($tracking['estimated_delivery_at'] ?? null);
+@endphp
 
 <section class="np-track-result-card" aria-labelledby="track-result-order-number">
     <header class="np-track-result-header">
@@ -23,6 +30,26 @@
             <strong>{{ $dateLabel }}</strong>
         </div>
     </header>
+
+    @if ($isHolidayAdjusted && filled($holidayReason))
+        <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 mx-5 mt-4 flex items-start gap-3 shadow-sm">
+            <span class="grid h-5 w-5 place-items-center rounded-full bg-amber-200 text-xs font-black text-amber-900 shrink-0">ⓘ</span>
+            <div class="min-w-0">
+                <div class="flex items-center gap-2 mb-0.5">
+                    <span class="font-black uppercase tracking-wider text-[10px] bg-amber-200/90 text-amber-900 px-2 py-0.5 rounded-full">Holiday Notice</span>
+                    @if (filled($estimatedDelivery))
+                        <span class="font-extrabold text-amber-900">Estimated Delivery: {{ $estimatedDelivery }}</span>
+                    @endif
+                </div>
+                <p class="font-medium text-amber-800 leading-relaxed">{{ $holidayReason }}</p>
+            </div>
+        </div>
+    @elseif (filled($estimatedDelivery))
+        <div class="rounded-xl border border-blue-100 bg-blue-50/70 p-3 text-xs text-brand-navy mx-5 mt-4 flex items-center justify-between">
+            <span class="font-bold text-slate-600">Estimated Delivery:</span>
+            <strong class="font-extrabold text-brand-ink">{{ $estimatedDelivery }}</strong>
+        </div>
+    @endif
 
     <div class="np-track-result-body">
         <div class="np-track-result-progress">

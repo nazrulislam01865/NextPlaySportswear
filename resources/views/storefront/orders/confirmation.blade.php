@@ -27,6 +27,18 @@
             <x-storefront.order.timeline :timeline="$timeline" />
         </div>
 
+        @if(!empty($order['holiday_adjustment_applied']) || !empty($order['holiday_adjustment_reason']))
+            <div class="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-bold leading-5 text-amber-900 shadow-sm">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="inline-flex items-center rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-900">Holiday Adjusted</span>
+                    <span class="font-extrabold text-amber-900">Delivery Window Notice</span>
+                </div>
+                <p class="font-semibold text-amber-800 leading-relaxed">
+                    {{ $order['holiday_adjustment_reason'] ?? 'Delivery estimate includes extra transit time due to scheduled holiday closure dates.' }}
+                </p>
+            </div>
+        @endif
+
         <div class="mt-6 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm font-bold leading-6 text-green-800">
             Your customization details are saved. Contact support before design approval if you need to change artwork, sizes, names, numbers, or delivery notes.
         </div>

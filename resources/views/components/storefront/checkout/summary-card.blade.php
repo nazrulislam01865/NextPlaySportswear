@@ -22,6 +22,7 @@
         ruralPostalCode: @js($initialRuralPostalCode),
         total: @js($initialTotal),
         eta: @js($initialEta),
+        holidayNotice: @js((string) data_get($summary, 'shipping_method.holiday_notice', '')),
         syncShippingPreview(detail) {
             if (!detail || Object.keys(detail).length === 0) return;
             this.shippingTitle = detail.shipping_title || this.shippingTitle || 'Shipping';
@@ -31,6 +32,7 @@
             this.ruralPostalCode = detail.rural_postal_code || '';
             this.total = detail.total || this.total;
             this.eta = detail.eta || this.eta;
+            this.holidayNotice = detail.holiday_notice || this.holidayNotice;
         }
     }"
     x-on:checkout-shipping-preview.window="syncShippingPreview($event.detail)"
@@ -103,7 +105,11 @@
     </div>
 
     <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs font-bold leading-5 text-slate-600" x-show="eta" x-cloak>
-        Delivery estimate: <span class="text-brand-ink" x-text="eta">{{ $initialEta }}</span>
+        <div>Delivery estimate: <span class="text-brand-ink" x-text="eta">{{ $initialEta }}</span></div>
+        <div class="mt-2 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-2 text-xs font-semibold text-amber-900" x-show="holidayNotice" x-cloak>
+            <span class="font-bold">ⓘ</span>
+            <span x-text="holidayNotice"></span>
+        </div>
     </div>
 
     <div class="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-xs font-bold leading-5 text-brand-navy">

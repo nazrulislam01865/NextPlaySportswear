@@ -21,8 +21,11 @@ class ShippingMethodService
         $productionWindow = $this->productionWindow($cart);
         $lineCount = max(1, count((array) ($cart['items'] ?? [])));
 
+        $holidayService = app(\App\Services\Shipping\HolidayCalendarService::class);
+        $country = (string) ($shippingAddress['country'] ?? $shippingAddress['country_code'] ?? 'United Kingdom');
+
         return $this->methodRecords()
-            ->map(function (ShippingMethod $method) use ($subtotal, $discount, $quantity, $lineCount, $ruralSurcharge, $ruralAmount, $productionWindow): array {
+            ->map(function (ShippingMethod $method) use ($subtotal, $discount, $quantity, $lineCount, $ruralSurcharge, $ruralAmount, $productionWindow, $holidayService, $country): array {
                 $base = $this->methodBaseCharge($method, $quantity, $lineCount);
                 $freeMinimum = $method->free_shipping_minimum === null ? null : (float) $method->free_shipping_minimum;
 
@@ -37,14 +40,27 @@ class ShippingMethodService
                 $totalMin = (int) ($productionWindow['minimum_days'] ?? 0) + $transitMin;
                 $totalMax = (int) ($productionWindow['maximum_days'] ?? 0) + $transitMax;
 
+                $holidayWindow = $holidayService->calculateDeliveryWindow(now(), $totalMin, $totalMax, $country);
+                $isHolidayAdjusted = (bool) ($holidayWindow['is_holiday_adjusted'] ?? false);
+                $holidayNotice = $isHolidayAdjusted
+                    ? ('Includes extra time for upcoming ' . ($holidayWindow['adjustment_reason'] ?: 'holiday non-operational dates'))
+                    : null;
+
+                $eta = $isHolidayAdjusted
+                    ? 'Delivered by: ' . $holidayWindow['formatted_range']
+                    : ($method->starts_after_artwork_approval
+                        ? 'After artwork approval: ' . $totalMin . '–' . $totalMax . ' business days'
+                        : 'Estimated delivery: ' . $totalMin . '–' . $totalMax . ' business days');
+
                 return [
                     'id' => $method->id,
                     'code' => (string) $method->code,
                     'title' => (string) $method->name,
                     'description' => (string) ($method->description ?? ''),
-                    'eta' => $method->starts_after_artwork_approval
-                        ? 'After artwork approval: '.$totalMin.'–'.$totalMax.' business days'
-                        : 'Estimated delivery: '.$totalMin.'–'.$totalMax.' business days',
+                    'eta' => $eta,
+                    'holiday_adjusted' => $isHolidayAdjusted,
+                    'holiday_notice' => $holidayNotice,
+                    'holiday_delivery_range' => $holidayWindow['formatted_range'],
                     'base_price' => round($quoteBased ? 0.00 : $base, 2),
                     'price' => $price,
                     'quote_based' => $quoteBased,
@@ -64,6 +80,8 @@ class ShippingMethodService
                         'transit_maximum_days' => $transitMax,
                         'total_minimum_business_days' => $totalMin,
                         'total_maximum_business_days' => $totalMax,
+                        'holiday_adjusted' => $isHolidayAdjusted,
+                        'formatted_range' => $holidayWindow['formatted_range'],
                         'product_lines' => $productionWindow['lines'] ?? [],
                     ],
                 ];

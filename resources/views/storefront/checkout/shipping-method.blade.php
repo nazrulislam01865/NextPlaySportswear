@@ -16,6 +16,7 @@
             'total' => '$'.number_format($total, 2),
             'total_amount' => round($total, 2),
             'eta' => $method['eta'] ?? '',
+            'holiday_notice' => (string) ($method['holiday_notice'] ?? ''),
             'quote_based' => (bool) ($method['quote_based'] ?? false),
         ];
     })->keyBy('code')->all();
@@ -44,6 +45,12 @@
                                     </div>
                                     <p class="mt-1 text-sm font-semibold leading-6 text-slate-600">{{ $method['description'] }}</p>
                                     <small class="mt-2 inline-block text-xs font-black uppercase tracking-wide text-slate-500">{{ $method['eta'] }}</small>
+                                    @if(!empty($method['holiday_notice']))
+                                        <div class="mt-2 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-900">
+                                            <span class="grid h-4 w-4 place-items-center rounded-full bg-amber-200 text-[10px] font-black text-amber-900">ⓘ</span>
+                                            <span>{{ $method['holiday_notice'] }}</span>
+                                        </div>
+                                    @endif
                                     @if(!empty($method['rural_surcharge']))
                                         <span class="mt-2 block text-xs font-bold text-amber-700">Includes ${{ number_format($method['rural_surcharge']['amount'] ?? 0, 2) }} rural area surcharge for {{ $method['rural_surcharge']['postal_code'] ?? 'this ZIP' }}.</span>
                                     @endif
@@ -66,6 +73,12 @@
                     <div>
                         <span class="block text-xs uppercase tracking-wide text-blue-500">Delivery estimate</span>
                         <strong class="mt-1 block text-sm leading-5" x-text="current().eta || 'After artwork approval'"></strong>
+                        <template x-if="current().holiday_notice">
+                            <div class="mt-1.5 flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900">
+                                <span>ⓘ</span>
+                                <span x-text="current().holiday_notice"></span>
+                            </div>
+                        </template>
                     </div>
                 </div>
             @endif
