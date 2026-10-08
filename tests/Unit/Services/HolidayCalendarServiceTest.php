@@ -181,4 +181,54 @@ class HolidayCalendarServiceTest extends TestCase
         $this->assertSame(1, $summary['total_open']);
         $this->assertSame(1, $summary['updated']);
     }
+
+    public function test_holiday_on_weekend_does_not_double_count_days(): void
+    {
+        // Saturday July 4, 2026.
+        // Start on Friday July 3. Adding 1 business day without holiday -> Mon July 6.
+        // Even if July 4 is flagged as a holiday, adding 1 business day from July 3 still lands on Mon July 6!
+        $start = Carbon::parse('2026-07-03');
+        $result = $this->service->addBusinessDays($start, 1, 'United States');
+
+        $this->assertSame('2026-07-06', $result['target_date']->format('Y-m-d'));
+    }
+
+    public function test_country_normalization_matches_iso_code_and_name(): void
+    {
+        // ISO 'GB' vs 'United Kingdom' vs 'uk'
+        $byName = $this->service->getActiveHolidayDates('United Kingdom', 2026);
+        $byCode = $this->service->getActiveHolidayDates('GB', 2026);
+        $byLower = $this->service->getActiveHolidayDates('united kingdom', 2026);
+
+        $this->assertNotEmpty($byName);
+        $this->assertCount($byName->count(), $byCode);
+        $this->assertCount($byName->count(), $byLower);
+    }
+
+    public function test_cache_invalidation_updates_after_clear(): void
+    {
+        $initial = $this->service->getActiveHolidayDates('United Kingdom', 2026);
+        $this->assertNotEmpty($initial);
+
+        // Add a temporary holiday directly in DB
+        $calendar = \App\Models\HolidayCalendar::query()->where('country_code', 'GB')->first();
+        $date = \App\Models\HolidayCalendarDate::query()->create([
+            'holiday_calendar_id' => $calendar->id,
+            'date' => '2026-11-11',
+            'name' => 'Armistice Day',
+        ]);
+
+        // Prior to cache clear, cached data should not contain new date
+        $cached = $this->service->getActiveHolidayDates('United Kingdom', 2026);
+        $this->assertFalse($cached->has('2026-11-11'));
+
+        // Clear cache
+        $this->service->clearHolidayCache('United Kingdom', 2026);
+
+        // After clear, new date is loaded
+        $refreshed = $this->service->getActiveHolidayDates('United Kingdom', 2026);
+        $this->assertTrue($refreshed->has('2026-11-11'));
+        $this->assertSame('Armistice Day', $refreshed->get('2026-11-11')->name);
+    }
 }
+
