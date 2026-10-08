@@ -19,7 +19,8 @@ final class SendDeliveryEstimateUpdatedNotification
             $this->emails->deliveryEstimateUpdated(
                 $event->shipment,
                 $event->oldEstimate,
-                $event->holidayReason
+                $event->holidayReason,
+                $event->order
             );
         } catch (Throwable $exception) {
             report($exception);

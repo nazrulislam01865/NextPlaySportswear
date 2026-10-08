@@ -176,17 +176,17 @@ class EmailCustomizationEngine
         }
 
         if ($isBlockEnabled('delivery_card', true)) {
-            if (! empty($visibility['show_previous_estimate'] ?? false) && ! empty($context['previous_estimate'])) {
+            if (! empty($context['previous_estimate']) && ($visibility['show_previous_estimate'] ?? true)) {
                 $details['Previous Estimate'] = $context['previous_estimate'];
             }
 
-            if (! empty($visibility['show_updated_estimate'] ?? true) && ! empty($context['updated_estimate'])) {
+            if (! empty($context['updated_estimate']) && ($visibility['show_updated_estimate'] ?? true)) {
                 $details['Estimated Delivery'] = $context['updated_estimate'];
             }
         }
 
-        if ($isBlockEnabled('holiday_notice', true) && ! empty($visibility['show_holiday_reason'] ?? true) && ! empty($context['holiday_reason'])) {
-            $details['Delay Reason'] = $context['holiday_reason'];
+        if (($isBlockEnabled('holiday_notice', true) || $isBlockEnabled('holiday_reason', true)) && (! empty($visibility['show_holiday_reason'] ?? true) || ! empty($visibility['show_holiday_notice'] ?? true)) && ! empty($context['holiday_reason'])) {
+            $details['Reason'] = $context['holiday_reason'];
         }
 
         if (! empty($context['shipping_method'])) {

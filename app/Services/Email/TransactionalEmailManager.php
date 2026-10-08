@@ -557,34 +557,39 @@ final class TransactionalEmailManager
     }
 
     public function deliveryEstimateUpdated(
-        OrderShipment $shipment,
+        ?OrderShipment $shipment = null,
         ?string $oldEstimate = null,
-        ?string $holidayReason = null
+        ?string $holidayReason = null,
+        ?Order $order = null
     ): bool {
-        $shipment->loadMissing('order');
-        $order = $shipment->order;
+        if ($shipment instanceof OrderShipment) {
+            $shipment->loadMissing('order');
+            $order ??= $shipment->order;
+        }
 
         if (! $order instanceof Order) {
             return false;
         }
 
+        $newEstimateFormatted = $shipment?->estimated_delivery_at?->format('D, M j, Y')
+            ?: ($order->formattedEstimatedDelivery() ?: 'Updated Estimate');
+
         $context = [
             'customer_name' => $order->customer_name,
             'customer_email' => $order->customer_email,
             'order_number' => $order->order_number,
-            'previous_estimate' => $oldEstimate ?: ($shipment->estimated_delivery_at?->subDays(2)->format('D, M j, Y') ?? 'Previous Estimate'),
-            'updated_estimate' => $shipment->estimated_delivery_at?->format('D, M j, Y') ?? 'Updated Estimate',
+            'previous_estimate' => $oldEstimate ?: 'Previous Estimate',
+            'updated_estimate' => $newEstimateFormatted,
             'holiday_reason' => $holidayReason ?: 'Carrier schedule update.',
-            'carrier' => $shipment->carrier,
-            'shipping_method' => $shipment->service,
-            'tracking_number' => $shipment->tracking_number,
+            'carrier' => $shipment?->carrier ?? ($order->shipping_method_carrier ?? 'Carrier'),
+            'shipping_method' => $shipment?->service ?? ($order->shipping_method_name ?? 'Standard Delivery'),
+            'tracking_number' => $shipment?->tracking_number ?? '',
             'delivery_status' => 'Updated',
         ];
 
-        $actionUrl = route('account.orders.shipments.show', [
-            'order' => $order,
-            'shipment' => $shipment,
-        ]);
+        $actionUrl = ($order->user_id && $shipment)
+            ? route('account.orders.shipments.show', ['order' => $order, 'shipment' => $shipment])
+            : route('orders.track');
 
         $customMessage = $this->customEngine->buildFromPublishedTemplate(
             'delivery-estimate-updated',
@@ -601,38 +606,45 @@ final class TransactionalEmailManager
                 heading: $customMessage->heading,
                 introLines: $customMessage->introLines,
                 details: $customMessage->details,
-                actionText: $customMessage->actionText ?: 'View Order Details',
+                actionText: $customMessage->actionText ?: 'Track Your Order',
                 actionUrl: $actionUrl,
-                outroLines: $customMessage->outroLines,
+                outroLines: $customMessage->outroLines ?: ['Thank you for shopping with NextPlay Sportswear.'],
                 replyTo: $customMessage->replyTo,
                 replyToName: $customMessage->replyToName,
-                metadata: [
+                metadata: array_filter([
                     'order_id' => $order->id,
-                    'shipment_id' => $shipment->id,
+                    'shipment_id' => $shipment?->id,
                     ...($customMessage->metadata ?? []),
-                ],
+                ]),
             ));
         }
 
         return $this->emails->safelyQueue(new EmailMessage(
             key: 'shipment.delivery-estimate-updated',
             recipients: $this->customerRecipient($order->customer_email, $order->customer_name),
-            subject: 'Delivery estimate updated for your order',
-            heading: 'Your delivery estimate has changed',
+            subject: "Your Delivery Date Has Been Updated – Order #{$order->order_number}",
+            heading: 'Your Delivery Date Has Been Updated',
             introLines: [
-                'We wanted to let you know that the delivery estimate for your order was updated.',
+                "Hi {$order->customer_name},",
+                "Due to " . ($holidayReason ?: 'carrier holiday schedule adjustments') . ", your estimated delivery date for Order #{$order->order_number} has been updated.",
             ],
             details: array_filter([
                 'Order Number' => $order->order_number,
+                'New Estimated Delivery' => $newEstimateFormatted,
                 'Previous Estimate' => $oldEstimate,
-                'New Estimate' => $shipment->estimated_delivery_at?->format('M j, Y'),
-                'Delay Reason' => $holidayReason,
-                'Carrier' => $shipment->carrier,
-                'Tracking Number' => $shipment->tracking_number,
+                'Reason' => $holidayReason,
+                'Carrier' => $shipment?->carrier,
+                'Tracking Number' => $shipment?->tracking_number,
             ], static fn (mixed $value): bool => filled($value)),
-            actionText: 'View Order Details',
+            actionText: 'Track Your Order',
             actionUrl: $actionUrl,
-            metadata: ['order_id' => $order->id, 'shipment_id' => $shipment->id],
+            outroLines: [
+                'Thank you for shopping with NextPlay Sportswear.',
+            ],
+            metadata: array_filter([
+                'order_id' => $order->id,
+                'shipment_id' => $shipment?->id,
+            ]),
         ));
     }
 

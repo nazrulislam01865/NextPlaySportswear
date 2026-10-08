@@ -26,17 +26,26 @@ class HolidayCalendarService
     {
         $cacheKey = $this->cacheKey($country, $year);
 
-        return Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, function () use ($country, $year) {
-            return HolidayCalendarDate::query()
-                ->whereHas('calendar', function ($query) use ($country, $year) {
-                    $query->active()
-                        ->forCountry($country)
-                        ->forYear($year);
-                })
-                ->orderBy('date')
-                ->get()
-                ->keyBy(fn (HolidayCalendarDate $date) => $date->date->format('Y-m-d'));
-        });
+        $cached = Cache::get($cacheKey);
+        if ($cached instanceof Collection) {
+            return $cached;
+        }
+
+        Cache::forget($cacheKey);
+
+        $dates = HolidayCalendarDate::query()
+            ->whereHas('calendar', function ($query) use ($country, $year) {
+                $query->active()
+                    ->forCountry($country)
+                    ->forYear($year);
+            })
+            ->orderBy('date')
+            ->get()
+            ->keyBy(fn (HolidayCalendarDate $date) => $date->date->format('Y-m-d'));
+
+        Cache::put($cacheKey, $dates, self::CACHE_TTL_SECONDS);
+
+        return $dates;
     }
 
     /**
@@ -234,16 +243,26 @@ class HolidayCalendarService
         $order->loadMissing('shipments');
         $reason = $customHolidayReason ?: ($window['adjustment_reason'] ?: 'Holiday calendar delivery date adjustment.');
 
-        foreach ($order->shipments as $shipment) {
-            $shipment->old_estimated_delivery_at = $shipment->estimated_delivery_at;
-            $shipment->estimated_delivery_at = $window['end_date']->copy()->setTime(17, 0, 0);
-            $shipment->holiday_reason = $reason;
-            $shipment->save();
+        if ($order->shipments->isNotEmpty()) {
+            foreach ($order->shipments as $shipment) {
+                $shipment->old_estimated_delivery_at = $shipment->estimated_delivery_at;
+                $shipment->estimated_delivery_at = $window['end_date']->copy()->setTime(17, 0, 0);
+                $shipment->holiday_reason = $reason;
+                $shipment->save();
 
+                event(new DeliveryEstimateUpdated(
+                    shipment: $shipment,
+                    oldEstimate: $oldEstimate,
+                    holidayReason: $reason,
+                    order: $order,
+                ));
+            }
+        } else {
             event(new DeliveryEstimateUpdated(
-                shipment: $shipment,
+                shipment: null,
                 oldEstimate: $oldEstimate,
                 holidayReason: $reason,
+                order: $order,
             ));
         }
 
@@ -293,7 +312,7 @@ class HolidayCalendarService
             $wasUpdated = $this->recalculateOrderEta($order, $holidayReason);
             if ($wasUpdated) {
                 $updatedCount++;
-                $notifiedShipments += $order->shipments->count();
+                $notifiedShipments += max(1, $order->shipments->count());
             }
         }
 
@@ -333,7 +352,7 @@ class HolidayCalendarService
         return "holiday_calendar_dates:{$slug}:{$year}";
     }
 
-    private function normalizeCountry(?string $country): string
+    public function normalizeCountry(?string $country): string
     {
         $trimmed = trim((string) $country);
         if ($trimmed === '') {
@@ -354,7 +373,7 @@ class HolidayCalendarService
         return $trimmed;
     }
 
-    private function countryVariants(string $country): array
+    public function countryVariants(string $country): array
     {
         return match ($country) {
             'United Kingdom' => ['United Kingdom', 'GB', 'UK', 'Great Britain'],
@@ -364,7 +383,7 @@ class HolidayCalendarService
         };
     }
 
-    private function resolveOrderCountry(Order $order): string
+    public function resolveOrderCountry(Order $order): string
     {
         $address = (array) ($order->shipping_address ?? []);
         $nestedAddress = (array) ($address['address'] ?? []);
@@ -381,7 +400,7 @@ class HolidayCalendarService
     /**
      * @return array{0: int, 1: int}
      */
-    private function resolveOrderDays(Order $order): array
+    public function resolveOrderDays(Order $order): array
     {
         $shippingMethod = (array) ($order->shipping_method ?? []);
         $deliveryEstimate = (array) ($shippingMethod['delivery_estimate'] ?? []);
