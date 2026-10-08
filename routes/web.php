@@ -263,6 +263,11 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::resource('shipping-methods', \App\Http\Controllers\Admin\ShippingMethodController::class)
             ->parameters(['shipping-methods' => 'shippingMethod'])
             ->except('show');
+        Route::patch('holiday-calendars/{holidayCalendar}/toggle-status', [\App\Http\Controllers\Admin\HolidayCalendarController::class, 'toggleStatus'])
+            ->name('holiday-calendars.toggle-status');
+        Route::resource('holiday-calendars', \App\Http\Controllers\Admin\HolidayCalendarController::class)
+            ->parameters(['holiday-calendars' => 'holidayCalendar'])
+            ->except('show');
         Route::resource('faqs', \App\Http\Controllers\Admin\FaqController::class)
             ->except('show');
         Route::resource('genders', \App\Http\Controllers\Admin\GenderController::class)

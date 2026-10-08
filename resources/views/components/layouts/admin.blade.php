@@ -256,6 +256,10 @@
                                 :href="route('admin.shipping-methods.index')"
                                 :active="request()->routeIs('admin.shipping-methods.*')"
                             >{{ $trailingMasterDataNumbers['shipping_methods'] }} Shipping Methods</x-admin.sidebar-sub-link>
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.holiday-calendars.index')"
+                                :active="request()->routeIs('admin.holiday-calendars.*')"
+                            >Holiday Calendars</x-admin.sidebar-sub-link>
                         @endif
 
                         @if($canAdmin('customization.view'))
