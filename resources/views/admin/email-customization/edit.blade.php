@@ -80,6 +80,7 @@
                 'enabled' => (bool) ($b['enabled'] ?? true),
                 'variables' => (array) ($b['variables'] ?? []),
                 'icon' => $icon,
+                'custom_icon' => $b['custom_icon'] ?? '',
             ];
         }, $templateBlocks));
 
@@ -116,7 +117,7 @@
             draggedIdx: null,
             editingBlockIdx: null,
             showAddBlockModal: false,
-            newBlock: { name: '', desc: '', variables: '' },
+            newBlock: { name: '', desc: '', variables: '', custom_icon: '' },
             resolveText(str) {
                 if (!str) return '';
                 let res = String(str);
@@ -138,6 +139,11 @@
                 this.blocks[index].enabled = !this.blocks[index].enabled;
                 this.blocks = [...this.blocks];
             },
+            toggleAllBlocks() {
+                const shouldEnable = !this.blocks.some(b => b.enabled);
+                this.blocks.forEach(b => b.enabled = shouldEnable);
+                this.blocks = [...this.blocks];
+            },
             dropItem(targetIdx) {
                 if (this.draggedIdx !== null && this.draggedIdx !== targetIdx) {
                     const item = this.blocks.splice(this.draggedIdx, 1)[0];
@@ -150,10 +156,110 @@
                 const b = this.blocks.find(x => x.id === id);
                 return b ? Boolean(b.enabled) : true;
             },
+            onBlockIconFileSelected(event, index) {
+                const file = event.target.files && event.target.files[0];
+                if (!file) return;
+
+                if (file.type === 'image/svg+xml') {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.blocks[index].custom_icon = e.target.result;
+                        this.blocks = [...this.blocks];
+                    };
+                    reader.readAsDataURL(file);
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const maxDim = 128;
+                        let w = img.width;
+                        let h = img.height;
+                        if (w > maxDim || h > maxDim) {
+                            if (w > h) {
+                                h = Math.round((h * maxDim) / w);
+                                w = maxDim;
+                            } else {
+                                w = Math.round((w * maxDim) / h);
+                                h = maxDim;
+                            }
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = w;
+                        canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, w, h);
+                        this.blocks[index].custom_icon = canvas.toDataURL('image/png');
+                        this.blocks = [...this.blocks];
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            },
+            triggerBlockIconUpload(index) {
+                const el = document.getElementById('block_icon_file_' + index);
+                if (el) el.click();
+            },
+            removeBlockIcon(index) {
+                this.blocks[index].custom_icon = '';
+                const el = document.getElementById('block_icon_file_' + index);
+                if (el) el.value = '';
+                this.blocks = [...this.blocks];
+            },
+            onNewBlockIconSelected(event) {
+                const file = event.target.files && event.target.files[0];
+                if (!file) return;
+
+                if (file.type === 'image/svg+xml') {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.newBlock.custom_icon = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const maxDim = 128;
+                        let w = img.width;
+                        let h = img.height;
+                        if (w > maxDim || h > maxDim) {
+                            if (w > h) {
+                                h = Math.round((h * maxDim) / w);
+                                w = maxDim;
+                            } else {
+                                w = Math.round((w * maxDim) / h);
+                                h = maxDim;
+                            }
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = w;
+                        canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, w, h);
+                        this.newBlock.custom_icon = canvas.toDataURL('image/png');
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            },
             addCustomBlock() {
                 if (!this.newBlock.name.trim()) return;
                 const newId = 'custom_' + Date.now();
-                const vars = this.newBlock.variables ? this.newBlock.variables.split(',').map(s => s.trim()) : [];
+                const vars = this.newBlock.variables ? this.newBlock.variables.split(',').map(s => {
+                    let trimmed = s.trim();
+                    if (!trimmed) return '';
+                    if (!trimmed.startsWith('{{') && !trimmed.endsWith('}}')) {
+                        const slug = trimmed.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+                        return '{{' + slug + '}}';
+                    }
+                    return trimmed;
+                }).filter(Boolean) : [];
                 this.blocks.push({
                     id: newId,
                     name: this.newBlock.name.trim(),
@@ -161,26 +267,39 @@
                     enabled: true,
                     variables: vars,
                     icon: 'custom',
+                    custom_icon: this.newBlock.custom_icon || '',
                 });
                 this.blocks = [...this.blocks];
-                this.newBlock = { name: '', desc: '', variables: '' };
+                this.newBlock = { name: '', desc: '', variables: '', custom_icon: '' };
+                const newFileInput = document.getElementById('new_block_icon_file');
+                if (newFileInput) newFileInput.value = '';
                 this.showAddBlockModal = false;
             }
         }"
     >
-        <!-- Breadcrumb & Nav (Exact match of pqr.png) -->
-        <div>
-            <nav class="flex items-center gap-1.5 text-xs text-slate-400 mb-1.5 font-medium">
-                <a href="{{ route('admin.dashboard') }}" class="hover:text-slate-600 transition">⌂</a>
-                <span>›</span>
-                <span>Content</span>
-                <span>›</span>
-                <a href="{{ route('admin.email-customization.templates.index') }}" class="text-slate-500 hover:text-brand-ink transition">Email Templates</a>
-                <span>›</span>
-                <span class="text-slate-600 font-medium">{{ $template->name }}</span>
-            </nav>
-            <h1 class="text-3xl font-black text-brand-ink tracking-tight">Edit Email Template</h1>
-            <p class="text-xs text-slate-500 mt-1">Update the content and settings for this email template. Use variables to personalize the message.</p>
+        <!-- Top Action Bar -->
+        <div class="flex items-center justify-end gap-2.5">
+            <a
+                href="{{ route('admin.email-customization.templates.visibility', $template->key) }}"
+                class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition"
+                title="Configure content visibility settings"
+            >
+                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <span>Visibility Settings</span>
+            </a>
+            <a
+                href="{{ route('admin.email-customization.templates.preview', $template->key) }}"
+                class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition"
+            >
+                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <span>Preview & Send Test</span>
+            </a>
         </div>
 
         <!-- Status & Error Alerts -->
@@ -317,7 +436,7 @@
                                 </div>
                                 <div>
                                     <label class="admin-label text-xs font-bold text-slate-700">Intro Message</label>
-                                    <textarea x-model="intro" name="intro" rows="3" maxlength="500" class="admin-input text-xs"></textarea>
+                                    <textarea x-model="intro" name="intro" rows="3" maxlength="500" class="admin-input h-auto min-h-[90px] py-2.5 text-xs leading-relaxed resize-y"></textarea>
                                     <div class="mt-1 flex justify-end text-[11px] text-slate-400"><span x-text="intro.length"></span>/500</div>
                                 </div>
                             </div>
@@ -345,21 +464,23 @@
 
                     <!-- Email Blocks Card (Exact match of the screenshot) -->
                     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-                        <div class="flex items-center justify-between">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <h3 class="text-base font-extrabold text-brand-ink">Email Blocks</h3>
                                 <p class="text-xs text-slate-500 mt-0.5">Customize the content blocks, reorder them, or show/hide sections.</p>
                             </div>
-                            <button
-                                type="button"
-                                @click="showAddBlockModal = true"
-                                class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition"
-                            >
-                                <svg class="w-3.5 h-3.5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-                                </svg>
-                                <span>Add Block</span>
-                            </button>
+                            <div>
+                                <button
+                                    type="button"
+                                    @click="showAddBlockModal = true"
+                                    class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition cursor-pointer"
+                                >
+                                    <svg class="w-3.5 h-3.5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                                    </svg>
+                                    <span>Add Block</span>
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Blocks List: Unified table container with rounded corners and dividing lines -->
@@ -379,11 +500,22 @@
                                         <input type="hidden" :name="`blocks[${idx}][name]`" :value="block.name">
                                         <input type="hidden" :name="`blocks[${idx}][desc]`" :value="block.desc">
                                         <input type="hidden" :name="`blocks[${idx}][enabled]`" :value="block.enabled ? '1' : '0'">
+                                        <input type="hidden" :name="`blocks[${idx}][icon]`" :value="block.icon || ''">
+                                        <input type="hidden" :name="`blocks[${idx}][custom_icon]`" :value="block.custom_icon || ''">
+
+                                        <!-- Hidden File Input for uploading icon from desktop -->
+                                        <input
+                                            type="file"
+                                            :id="`block_icon_file_${idx}`"
+                                            accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif"
+                                            @change="onBlockIconFileSelected($event, idx)"
+                                            class="hidden"
+                                        >
 
                                         <!-- Row Content with Vertical Border for Actions Cell -->
                                         <div class="flex items-stretch min-h-[58px]">
                                             <!-- Main content: Left part -->
-                                            <div class="flex-1 flex items-center px-4 py-3 gap-3.5 min-w-0">
+                                            <div class="flex-1 flex items-center px-4 py-3 gap-4 min-w-0" style="gap: 16px;">
                                                 <!-- Col 1: Drag Handle (::) -->
                                                 <div class="w-5 shrink-0 flex items-center justify-center">
                                                     <svg class="w-3.5 h-4 text-slate-400 cursor-grab active:cursor-grabbing hover:text-slate-600 select-none" viewBox="0 0 14 18" fill="currentColor">
@@ -396,113 +528,125 @@
                                                     </svg>
                                                 </div>
 
-                                                <!-- Col 2: Standalone Outline Icon (Exact match of screenshot icons) -->
-                                                <div class="w-6 shrink-0 flex items-center justify-center text-slate-800">
-                                                    <!-- Greeting: User / Customer Waving Icon -->
-                                                    <template x-if="block.icon === 'greeting' || block.id === 'greeting'">
-                                                        <svg class="w-5 h-5 text-slate-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                            <circle cx="13" cy="8" r="3.5"/>
-                                                            <path d="M7 21v-2a4 4 0 0 1 4-4h5a4 4 0 0 1 4 4v2"/>
-                                                            <path d="M4 8l3 3"/>
-                                                            <path d="M3 11l4-2"/>
-                                                        </svg>
+                                                <!-- Col 2: Block Icon (Static display) -->
+                                                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200/80 bg-slate-50/60 overflow-hidden" style="margin-left: 4px; margin-right: 14px;">
+                                                    <!-- Custom Uploaded Icon -->
+                                                    <template x-if="block.custom_icon">
+                                                        <img :src="block.custom_icon" alt="Block icon" class="w-5 h-5 object-contain" style="width: 20px; height: 20px;">
                                                     </template>
 
-                                                    <!-- Delivery Estimate Card: Document with Folded Corner & Indicator -->
-                                                    <template x-if="block.icon === 'delivery_card' || block.id === 'delivery_card'">
-                                                        <svg class="w-5 h-5 text-slate-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                                            <polyline points="14 2 14 8 20 8"/>
-                                                            <line x1="12" y1="12" x2="12" y2="16"/>
-                                                            <circle cx="12" cy="17" r="0.5" fill="currentColor"/>
-                                                        </svg>
-                                                    </template>
+                                                    <!-- Default Built-in Icon -->
+                                                    <template x-if="!block.custom_icon">
+                                                        <div class="flex items-center justify-center text-slate-800" style="width: 20px; height: 20px;">
+                                                            <!-- Greeting: User / Customer Waving Icon -->
+                                                            <template x-if="block.icon === 'greeting' || block.id === 'greeting'">
+                                                                <svg width="20" height="20" class="w-5 h-5 text-slate-800" style="width: 20px; height: 20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                    <circle cx="13" cy="8" r="3.5"/>
+                                                                    <path d="M7 21v-2a4 4 0 0 1 4-4h5a4 4 0 0 1 4 4v2"/>
+                                                                    <path d="M4 8l3 3"/>
+                                                                    <path d="M3 11l4-2"/>
+                                                                </svg>
+                                                            </template>
 
-                                                    <!-- Holiday Reason Notice: Stopwatch / Clock Icon with Top Pin -->
-                                                    <template x-if="block.icon === 'holiday_notice' || block.id === 'holiday_notice' || block.id === 'holiday_reason'">
-                                                        <svg class="w-5 h-5 text-slate-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                            <line x1="10" y1="2" x2="14" y2="2"/>
-                                                            <line x1="12" y1="2" x2="12" y2="5"/>
-                                                            <circle cx="12" cy="14" r="8"/>
-                                                            <polyline points="9 11 12 14 15 11"/>
-                                                        </svg>
-                                                    </template>
+                                                            <!-- Delivery Estimate Card: Document with Folded Corner & Indicator -->
+                                                            <template x-if="block.icon === 'delivery_card' || block.id === 'delivery_card'">
+                                                                <svg width="20" height="20" class="w-5 h-5 text-slate-800" style="width: 20px; height: 20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                                                    <polyline points="14 2 14 8 20 8"/>
+                                                                    <line x1="12" y1="12" x2="12" y2="16"/>
+                                                                    <circle cx="12" cy="17" r="0.5" fill="currentColor"/>
+                                                                </svg>
+                                                            </template>
 
-                                                    <!-- Order Summary: Calendar Icon -->
-                                                    <template x-if="block.icon === 'order_summary' || block.id === 'order_summary'">
-                                                        <svg class="w-5 h-5 text-slate-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                            <rect x="3" y="4" width="18" height="18" rx="3"/>
-                                                            <line x1="16" y1="2" x2="16" y2="6"/>
-                                                            <line x1="8" y1="2" x2="8" y2="6"/>
-                                                            <line x1="3" y1="10" x2="21" y2="10"/>
-                                                        </svg>
-                                                    </template>
+                                                            <!-- Holiday Reason Notice: Stopwatch / Clock Icon with Top Pin -->
+                                                            <template x-if="block.icon === 'holiday_notice' || block.id === 'holiday_notice' || block.id === 'holiday_reason'">
+                                                                <svg width="20" height="20" class="w-5 h-5 text-slate-800" style="width: 20px; height: 20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                    <line x1="10" y1="2" x2="14" y2="2"/>
+                                                                    <line x1="12" y1="2" x2="12" y2="5"/>
+                                                                    <circle cx="12" cy="14" r="8"/>
+                                                                    <polyline points="9 11 12 14 15 11"/>
+                                                                </svg>
+                                                            </template>
 
-                                                    <!-- CTA Button: Card with Button Element -->
-                                                    <template x-if="block.icon === 'cta_button' || block.id === 'cta_button'">
-                                                        <svg class="w-5 h-5 text-slate-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                            <rect x="3" y="4" width="18" height="18" rx="3"/>
-                                                            <line x1="16" y1="2" x2="16" y2="6"/>
-                                                            <line x1="8" y1="2" x2="8" y2="6"/>
-                                                            <line x1="3" y1="9" x2="21" y2="9"/>
-                                                            <rect x="7" y="13" width="10" height="4" rx="2"/>
-                                                        </svg>
-                                                    </template>
+                                                            <!-- Order Summary: Calendar Icon -->
+                                                            <template x-if="block.icon === 'order_summary' || block.id === 'order_summary'">
+                                                                <svg width="20" height="20" class="w-5 h-5 text-slate-800" style="width: 20px; height: 20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                    <rect x="3" y="4" width="18" height="18" rx="3"/>
+                                                                    <line x1="16" y1="2" x2="16" y2="6"/>
+                                                                    <line x1="8" y1="2" x2="8" y2="6"/>
+                                                                    <line x1="3" y1="10" x2="21" y2="10"/>
+                                                                </svg>
+                                                            </template>
 
-                                                    <!-- Support Footer: Info Circle Icon (ⓘ) -->
-                                                    <template x-if="block.icon === 'support_footer' || block.id === 'support_footer'">
-                                                        <svg class="w-5 h-5 text-slate-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                            <circle cx="12" cy="12" r="9"/>
-                                                            <circle cx="12" cy="8" r="0.8" fill="currentColor"/>
-                                                            <line x1="12" y1="11" x2="12" y2="15"/>
-                                                            <line x1="10" y1="16" x2="14" y2="16"/>
-                                                        </svg>
-                                                    </template>
+                                                            <!-- CTA Button: Card with Button Element -->
+                                                            <template x-if="block.icon === 'cta_button' || block.id === 'cta_button'">
+                                                                <svg width="20" height="20" class="w-5 h-5 text-slate-800" style="width: 20px; height: 20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                    <rect x="3" y="4" width="18" height="18" rx="3"/>
+                                                                    <line x1="16" y1="2" x2="16" y2="6"/>
+                                                                    <line x1="8" y1="2" x2="8" y2="6"/>
+                                                                    <line x1="3" y1="9" x2="21" y2="9"/>
+                                                                    <rect x="7" y="13" width="10" height="4" rx="2"/>
+                                                                </svg>
+                                                            </template>
 
-                                                    <!-- Fallback Custom Block Icon -->
-                                                    <template x-if="!['greeting','delivery_card','holiday_notice','holiday_reason','order_summary','cta_button','support_footer'].includes(block.icon) && !['greeting','delivery_card','holiday_notice','holiday_reason','order_summary','cta_button','support_footer'].includes(block.id)">
-                                                        <svg class="w-5 h-5 text-slate-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                            <rect x="4" y="4" width="16" height="16" rx="3"/>
-                                                        </svg>
+                                                            <!-- Support Footer: Info Circle Icon (ⓘ) -->
+                                                            <template x-if="block.icon === 'support_footer' || block.id === 'support_footer'">
+                                                                <svg width="20" height="20" class="w-5 h-5 text-slate-800" style="width: 20px; height: 20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                    <circle cx="12" cy="12" r="9"/>
+                                                                    <circle cx="12" cy="8" r="0.8" fill="currentColor"/>
+                                                                    <line x1="12" y1="11" x2="12" y2="15"/>
+                                                                    <line x1="10" y1="16" x2="14" y2="16"/>
+                                                                </svg>
+                                                            </template>
+
+                                                            <!-- Fallback Custom Block Icon -->
+                                                            <template x-if="!['greeting','delivery_card','holiday_notice','holiday_reason','order_summary','cta_button','support_footer'].includes(block.icon) && !['greeting','delivery_card','holiday_notice','holiday_reason','order_summary','cta_button','support_footer'].includes(block.id)">
+                                                                <svg width="20" height="20" class="w-5 h-5 text-slate-800" style="width: 20px; height: 20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                    <rect x="4" y="4" width="16" height="16" rx="3"/>
+                                                                </svg>
+                                                            </template>
+                                                        </div>
                                                     </template>
                                                 </div>
 
                                                 <!-- Col 3: Block Title (Bold text-slate-900) -->
-                                                <div class="w-44 shrink-0 font-bold text-slate-900 text-sm tracking-tight truncate" x-text="block.name"></div>
+                                                <div class="w-40 sm:w-44 shrink-0 font-bold text-slate-900 text-sm tracking-tight truncate" style="margin-left: 2px;" x-text="block.name"></div>
 
                                                 <!-- Col 4: Description (Muted slate-400 text) -->
-                                                <div class="w-72 shrink-0 text-xs text-slate-400 font-normal truncate" x-text="block.desc"></div>
+                                                <div class="w-56 sm:w-64 shrink-0 text-xs text-slate-400 font-normal truncate" x-text="block.desc"></div>
 
                                                 <!-- Col 5: Variable Badges (Soft sky blue pill badges with rounded-full) -->
-                                                <div class="flex-1 min-w-[190px] flex items-center gap-1.5 flex-wrap">
+                                                <div class="flex-1 min-w-[80px] flex items-center gap-1.5 flex-wrap">
                                                     <template x-for="v in (block.variables || [])" :key="v">
                                                         <span class="inline-flex items-center rounded-full bg-[#E0F2FE] px-3 py-1 text-xs font-mono font-medium text-[#0284C7]" x-text="v"></span>
                                                     </template>
                                                 </div>
-
-                                                <!-- Col 6: Toggle Switch (Green #10B981) -->
-                                                <div class="w-12 shrink-0 flex justify-center">
-                                                    <button
-                                                        type="button"
-                                                        @click="toggleBlock(idx)"
-                                                        :style="block.enabled ? 'background-color: #10B981 !important;' : 'background-color: #CBD5E1 !important;'"
-                                                        class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full p-1 transition-colors duration-200 ease-in-out focus:outline-none"
-                                                        :title="block.enabled ? 'Click to disable' : 'Click to enable'"
-                                                    >
-                                                        <span
-                                                            :class="block.enabled ? 'translate-x-5' : 'translate-x-0'"
-                                                            class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out"
-                                                        ></span>
-                                                    </button>
-                                                </div>
                                             </div>
 
-                                            <!-- Col 7 & 8: Actions Cell (Separated by Vertical Dividing Line) -->
-                                            <div class="w-28 shrink-0 border-l border-slate-100 flex items-center justify-between px-4">
+                                            <!-- Actions Cell: Hide/Show Toggle Switch Button (Left side of Edit button) + Edit + Chevron -->
+                                            <div class="shrink-0 flex items-center gap-3.5 sm:gap-4 px-4 py-3">
+                                                <!-- Hide / Show Button (Green Switch on left side of Edit) -->
+                                                <button
+                                                    type="button"
+                                                    @click="toggleBlock(idx)"
+                                                    :style="block.enabled ? 'background-color: #10B981 !important;' : 'background-color: #CBD5E1 !important;'"
+                                                    class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full p-1 transition-colors duration-200 ease-in-out focus:outline-none"
+                                                    :title="block.enabled ? 'Click to hide this block' : 'Click to show this block'"
+                                                    role="switch"
+                                                    :aria-checked="block.enabled"
+                                                >
+                                                    <span
+                                                        :class="block.enabled ? 'translate-x-5' : 'translate-x-0'"
+                                                        class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out"
+                                                    ></span>
+                                                </button>
+
+                                                <!-- Edit Button -->
                                                 <button
                                                     type="button"
                                                     @click="editingBlockIdx = (editingBlockIdx === idx ? null : idx)"
-                                                    class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-800 hover:text-slate-950 transition"
+                                                    class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-800 hover:text-slate-950 transition cursor-pointer"
+                                                    title="Edit block settings"
                                                 >
                                                     <svg class="w-3.5 h-3.5 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                         <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
@@ -510,10 +654,12 @@
                                                     <span>Edit</span>
                                                 </button>
 
+                                                <!-- Chevron Arrow Button -->
                                                 <button
                                                     type="button"
                                                     @click="editingBlockIdx = (editingBlockIdx === idx ? null : idx)"
-                                                    class="text-slate-400 hover:text-slate-600 transition"
+                                                    class="text-slate-400 hover:text-slate-600 transition cursor-pointer p-0.5"
+                                                    title="Expand / collapse block details"
                                                 >
                                                     <svg
                                                         :class="editingBlockIdx === idx ? 'rotate-180' : ''"
@@ -543,6 +689,52 @@
                                                     <input type="text" x-model="block.desc" class="admin-input text-xs mt-1">
                                                 </div>
                                             </div>
+
+                                            <!-- Block Icon Management -->
+                                            <div class="rounded-xl border border-slate-200 bg-white p-3 flex flex-wrap items-center justify-between gap-3">
+                                                <div class="flex items-center gap-3">
+                                                    <!-- Icon Preview Box -->
+                                                    <div class="relative flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 shrink-0 overflow-hidden">
+                                                        <template x-if="block.custom_icon">
+                                                            <img :src="block.custom_icon" alt="Block icon" class="h-6 w-6 object-contain">
+                                                        </template>
+                                                        <template x-if="!block.custom_icon">
+                                                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Default</span>
+                                                        </template>
+                                                    </div>
+                                                    <div>
+                                                        <div class="text-xs font-bold text-slate-800">Block Icon</div>
+                                                        <div class="text-[11px] text-slate-400">
+                                                            <span x-show="block.custom_icon" class="text-emerald-600 font-semibold flex items-center gap-1">
+                                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                                                Custom icon uploaded from desktop
+                                                            </span>
+                                                            <span x-show="!block.custom_icon">Standard template icon is active</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="flex items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        @click="triggerBlockIconUpload(idx)"
+                                                        class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-xs transition cursor-pointer"
+                                                    >
+                                                        <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                                        </svg>
+                                                        <span x-text="block.custom_icon ? 'Change Icon' : 'Upload from Desktop'"></span>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        x-show="block.custom_icon"
+                                                        @click="removeBlockIcon(idx)"
+                                                        class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 transition cursor-pointer"
+                                                    >
+                                                        Reset to Default
+                                                    </button>
+                                                </div>
+                                            </div>
+
                                             <div class="flex justify-end">
                                                 <button
                                                     type="button"
@@ -620,12 +812,17 @@
                                         <template x-if="block.id === 'delivery_card'">
                                             <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
                                                 <div class="flex items-center gap-3.5">
-                                                    <!-- Round Gray Badge with Truck Icon -->
-                                                    <div class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-200/80 text-slate-700">
-                                                        <svg class="h-5 w-5 stroke-current" fill="none" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/>
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8h4l3 3v5a1 1 0 01-1 1h-1m-4 0h-1"/>
-                                                        </svg>
+                                                    <!-- Round Gray Badge with Truck Icon or Custom Icon -->
+                                                    <div class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-200/80 text-slate-700 overflow-hidden">
+                                                        <template x-if="block.custom_icon">
+                                                            <img :src="block.custom_icon" alt="Block icon" class="h-6 w-6 object-contain">
+                                                        </template>
+                                                        <template x-if="!block.custom_icon">
+                                                            <svg class="h-5 w-5 stroke-current" fill="none" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8h4l3 3v5a1 1 0 01-1 1h-1m-4 0h-1"/>
+                                                            </svg>
+                                                        </template>
                                                     </div>
                                                     <div>
                                                         <span class="block text-xs font-bold text-slate-800">Estimated Delivery</span>
@@ -642,8 +839,13 @@
                                         <!-- Holiday Reason Notice Preview (Exact match of pqr.png) -->
                                         <template x-if="block.id === 'holiday_notice' || block.id === 'holiday_reason'">
                                             <div class="rounded-2xl border border-[#FDE68A] bg-[#FEF3C7]/60 p-4 text-xs text-amber-900 flex items-start gap-3">
-                                                <div class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#FEF3C7] text-amber-700">
-                                                    <svg class="h-4 w-4 stroke-current" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                <div class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#FEF3C7] text-amber-700 overflow-hidden">
+                                                    <template x-if="block.custom_icon">
+                                                        <img :src="block.custom_icon" alt="Block icon" class="h-5 w-5 object-contain">
+                                                    </template>
+                                                    <template x-if="!block.custom_icon">
+                                                        <svg class="h-4 w-4 stroke-current" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                    </template>
                                                 </div>
                                                 <div>
                                                     <p class="font-bold text-xs text-amber-950">Delayed due to holiday</p>
@@ -656,7 +858,12 @@
                                         <template x-if="block.id === 'order_summary'">
                                             <div class="rounded-2xl border border-slate-200 bg-white p-4 text-xs shadow-sm">
                                                 <div class="flex items-center gap-2 font-bold text-slate-900 text-xs mb-3">
-                                                    <svg class="h-4 w-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                                    <template x-if="block.custom_icon">
+                                                        <img :src="block.custom_icon" alt="Block icon" class="h-4 w-4 object-contain">
+                                                    </template>
+                                                    <template x-if="!block.custom_icon">
+                                                        <svg class="h-4 w-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                                    </template>
                                                     <span>Order Summary</span>
                                                 </div>
                                                 <div class="space-y-1.5 text-xs">
@@ -700,7 +907,12 @@
                                             <div class="rounded-xl border border-slate-200 bg-slate-50/80 p-3.5">
                                                 <div class="flex items-center justify-between mb-2">
                                                     <div class="flex items-center gap-2">
-                                                        <span>🚚</span>
+                                                        <template x-if="block.custom_icon">
+                                                            <img :src="block.custom_icon" alt="Block icon" class="h-4 w-4 object-contain">
+                                                        </template>
+                                                        <template x-if="!block.custom_icon">
+                                                            <span>🚚</span>
+                                                        </template>
                                                         <span class="font-bold text-slate-700 text-xs">Carrier Tracking</span>
                                                     </div>
                                                     <span class="rounded-md bg-blue-100 px-2 py-0.5 font-bold text-blue-800 text-[10px]">In Transit</span>
@@ -722,7 +934,12 @@
                                         <template x-if="!['greeting','delivery_card','holiday_notice','holiday_reason','tracking_card','order_summary','cta_button','support_footer'].includes(block.id)">
                                             <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50/80 p-3 text-xs">
                                                 <div class="flex items-center gap-2">
-                                                    <span>📦</span>
+                                                    <template x-if="block.custom_icon">
+                                                        <img :src="block.custom_icon" alt="Block icon" class="w-4 h-4 object-contain">
+                                                    </template>
+                                                    <template x-if="!block.custom_icon">
+                                                        <span>📦</span>
+                                                    </template>
                                                     <span class="font-bold text-slate-700" x-text="block.name"></span>
                                                 </div>
                                                 <p class="mt-1 text-[11px] text-slate-500" x-text="block.desc"></p>
@@ -737,20 +954,36 @@
             </div>
 
             <!-- Bottom Actions Bar (Exact match of pqr.png) -->
-            <div class="flex items-center justify-end gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <a href="{{ route('admin.email-customization.templates.index') }}" class="rounded-xl border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition">Discard</a>
-                <button type="submit" name="action" value="draft" class="rounded-xl border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition">Save Draft</button>
-                <button
-                    type="submit"
-                    name="action"
-                    value="publish"
-                    class="rounded-xl px-5 py-2 text-xs font-bold text-white shadow-sm transition hover:opacity-95"
-                    style="background-color: #CF5D38 !important; color: #ffffff !important;"
-                >
-                    Publish Changes
-                </button>
+            <div class="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div>
+                    <a
+                        href="{{ route('admin.email-customization.templates.preview', $template->key) }}"
+                        class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition"
+                    >
+                        <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        <span>Preview & Send Test</span>
+                    </a>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="{{ route('admin.email-customization.templates.index') }}" class="rounded-xl border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition">Discard</a>
+                    <button type="submit" name="action" value="draft" class="rounded-xl border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition">Save Draft</button>
+                    <button
+                        type="submit"
+                        name="action"
+                        value="publish"
+                        class="rounded-xl px-5 py-2 text-xs font-bold text-white shadow-sm transition hover:opacity-95"
+                        style="background-color: #CF5D38 !important; color: #ffffff !important;"
+                    >
+                        Publish Changes
+                    </button>
+                </div>
             </div>
         </form>
+
+
 
         <!-- Add Custom Block Modal -->
         <div
@@ -777,8 +1010,53 @@
                         <input type="text" x-model="newBlock.desc" placeholder="Brief explanation of this block" class="admin-input text-xs">
                     </div>
                     <div>
-                        <label class="admin-label text-xs">Dynamic Variables (comma separated)</label>
-                        <input type="text" x-model="newBlock.variables" placeholder="@{{tracking_url}}, @{{policy_link}}" class="admin-input text-xs">
+                        <label class="admin-label text-xs font-bold text-slate-700">Block Icon</label>
+                        <input
+                            type="file"
+                            id="new_block_icon_file"
+                            accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif"
+                            @change="onNewBlockIconSelected($event)"
+                            class="hidden"
+                        >
+                        <div class="mt-1.5 flex items-center gap-3">
+                            <div class="relative flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 shrink-0 overflow-hidden">
+                                <template x-if="newBlock.custom_icon">
+                                    <img :src="newBlock.custom_icon" alt="New block icon" class="h-6 w-6 object-contain">
+                                </template>
+                                <template x-if="!newBlock.custom_icon">
+                                    <span class="text-base text-slate-400 select-none">📦</span>
+                                </template>
+                            </div>
+                            <button
+                                type="button"
+                                @click="document.getElementById('new_block_icon_file').click()"
+                                class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-xs transition cursor-pointer"
+                            >
+                                <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                </svg>
+                                <span x-text="newBlock.custom_icon ? 'Change Icon' : 'Choose Icon from Desktop'"></span>
+                            </button>
+                            <button
+                                type="button"
+                                x-show="newBlock.custom_icon"
+                                @click="newBlock.custom_icon = ''; document.getElementById('new_block_icon_file').value = '';"
+                                class="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 transition cursor-pointer"
+                            >
+                                Remove
+                            </button>
+                        </div>
+                        <p class="mt-1 text-[11px] text-slate-400">Upload a PNG, JPG, or SVG icon from your desktop.</p>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between">
+                            <label class="admin-label text-xs font-bold text-slate-700">Personalization Tags</label>
+                            <span class="text-[11px] text-slate-400">Optional</span>
+                        </div>
+                        <input type="text" x-model="newBlock.variables" placeholder="e.g. Tracking Link, Policy Link" class="admin-input text-xs">
+                        <p class="mt-1 text-[11px] text-slate-400">
+                            Separate tags with commas. These placeholders automatically display dynamic customer and order details.
+                        </p>
                     </div>
                 </div>
                 <div class="mt-5 flex justify-end gap-2.5 border-t border-slate-100 pt-3">

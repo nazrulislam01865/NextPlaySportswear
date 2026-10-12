@@ -18,6 +18,8 @@ class HolidayCalendarSeeder extends Seeder
                 'year' => 2026,
                 'is_active' => true,
                 'description' => 'Official UK public and bank holidays for 2026.',
+                'created_at' => '2026-01-12 10:00:00',
+                'updated_at' => '2026-01-15 14:00:00',
                 'dates' => [
                     ['date' => '2026-01-01', 'name' => "New Year's Day"],
                     ['date' => '2026-04-03', 'name' => 'Good Friday'],
@@ -36,6 +38,8 @@ class HolidayCalendarSeeder extends Seeder
                 'year' => 2026,
                 'is_active' => true,
                 'description' => 'Regional parcel carrier and postal service closure dates.',
+                'created_at' => '2026-01-10 09:30:00',
+                'updated_at' => '2026-01-12 11:20:00',
                 'dates' => [
                     ['date' => '2026-12-24', 'name' => 'Christmas Eve Carrier Half-Day'],
                     ['date' => '2026-12-29', 'name' => 'Carrier Hub Maintenance Day'],
@@ -49,6 +53,8 @@ class HolidayCalendarSeeder extends Seeder
                 'year' => 2026,
                 'is_active' => true,
                 'description' => 'Official federal holidays recognized across the United States.',
+                'created_at' => '2026-01-08 08:45:00',
+                'updated_at' => '2026-01-10 16:15:00',
                 'dates' => [
                     ['date' => '2026-01-01', 'name' => "New Year's Day"],
                     ['date' => '2026-01-19', 'name' => 'Martin Luther King Jr. Day'],
@@ -70,6 +76,8 @@ class HolidayCalendarSeeder extends Seeder
                 'year' => 2026,
                 'is_active' => false,
                 'description' => 'National statutory holidays for Canada.',
+                'created_at' => '2026-01-05 11:00:00',
+                'updated_at' => '2026-01-07 15:30:00',
                 'dates' => [
                     ['date' => '2026-01-01', 'name' => "New Year's Day"],
                     ['date' => '2026-02-16', 'name' => 'Family Day'],
@@ -80,6 +88,48 @@ class HolidayCalendarSeeder extends Seeder
                     ['date' => '2026-09-07', 'name' => 'Labour Day'],
                     ['date' => '2026-10-12', 'name' => 'Thanksgiving Day'],
                     ['date' => '2026-11-11', 'name' => 'Remembrance Day'],
+                    ['date' => '2026-12-25', 'name' => 'Christmas Day'],
+                ],
+            ],
+            [
+                'name' => 'Australia Public Holidays 2026',
+                'country_code' => 'AU',
+                'country_name' => 'Australia',
+                'year' => 2026,
+                'is_active' => true,
+                'description' => 'National public holidays for Australia.',
+                'created_at' => '2026-01-03 09:15:00',
+                'updated_at' => '2026-01-05 10:45:00',
+                'dates' => [
+                    ['date' => '2026-01-01', 'name' => "New Year's Day"],
+                    ['date' => '2026-01-26', 'name' => 'Australia Day'],
+                    ['date' => '2026-04-03', 'name' => 'Good Friday'],
+                    ['date' => '2026-04-04', 'name' => 'Easter Saturday'],
+                    ['date' => '2026-04-06', 'name' => 'Easter Monday'],
+                    ['date' => '2026-04-25', 'name' => 'Anzac Day'],
+                    ['date' => '2026-06-08', 'name' => "King's Birthday"],
+                    ['date' => '2026-12-25', 'name' => 'Christmas Day'],
+                    ['date' => '2026-12-28', 'name' => 'Boxing Day (Observed)'],
+                ],
+            ],
+            [
+                'name' => 'New Zealand Holidays 2026',
+                'country_code' => 'NZ',
+                'country_name' => 'New Zealand',
+                'year' => 2026,
+                'is_active' => true,
+                'description' => 'National public holidays for New Zealand.',
+                'created_at' => '2026-01-01 08:00:00',
+                'updated_at' => '2026-01-03 12:00:00',
+                'dates' => [
+                    ['date' => '2026-01-01', 'name' => "New Year's Day"],
+                    ['date' => '2026-01-02', 'name' => "Day after New Year's Day"],
+                    ['date' => '2026-02-06', 'name' => 'Waitangi Day'],
+                    ['date' => '2026-04-03', 'name' => 'Good Friday'],
+                    ['date' => '2026-04-06', 'name' => 'Easter Monday'],
+                    ['date' => '2026-04-25', 'name' => 'Anzac Day'],
+                    ['date' => '2026-06-01', 'name' => "King's Birthday"],
+                    ['date' => '2026-10-26', 'name' => 'Labour Day'],
                     ['date' => '2026-12-25', 'name' => 'Christmas Day'],
                 ],
             ],
@@ -97,6 +147,14 @@ class HolidayCalendarSeeder extends Seeder
                 ],
                 $data
             );
+
+            if (isset($data['created_at'])) {
+                $calendar->created_at = $data['created_at'];
+            }
+            if (isset($data['updated_at'])) {
+                $calendar->updated_at = $data['updated_at'];
+            }
+            $calendar->saveQuietly();
 
             foreach ($dates as $dateData) {
                 HolidayCalendarDate::query()->updateOrCreate(

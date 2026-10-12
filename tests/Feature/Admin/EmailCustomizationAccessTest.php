@@ -420,4 +420,78 @@ class EmailCustomizationAccessTest extends TestCase
                 && data_get($job->message->recipients, '0.email') === 'fallback@example.com';
         });
     }
+
+    public function test_edit_template_renders_email_blocks_with_individual_show_hide_toggle_buttons(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+
+        $response = $this->actingAs($admin, 'admin')->get(route('admin.email-customization.templates.edit', 'delivery-estimate-updated'));
+
+        $response->assertOk();
+        $response->assertSee('Email Blocks');
+        $response->assertSee('Click to hide this block');
+        $response->assertSee('toggleBlock(idx)');
+        $response->assertSee('Edit');
+        $response->assertSee(route('admin.email-customization.templates.visibility', 'delivery-estimate-updated'));
+    }
+
+    public function test_templates_index_renders_visibility_action_button(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+
+        $response = $this->actingAs($admin, 'admin')->get(route('admin.email-customization.templates.index'));
+
+        $response->assertOk();
+        $response->assertSee('Visibility');
+        $response->assertSee(route('admin.email-customization.templates.visibility', 'delivery-estimate-updated'));
+    }
+
+    public function test_admin_can_delete_copy_template(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+
+        // First duplicate a template
+        $this->actingAs($admin, 'admin')->post(route('admin.email-customization.templates.duplicate', 'order-confirmation'));
+
+        $copy = EmailTemplate::where('key', 'order-confirmation-copy')->firstOrFail();
+        $this->assertTrue($copy->isCopy());
+
+        // Now delete the copy
+        $response = $this->actingAs($admin, 'admin')->delete(route('admin.email-customization.templates.destroy', $copy->key));
+
+        $response->assertRedirect(route('admin.email-customization.templates.index'));
+        $response->assertSessionHas('status');
+        $this->assertDatabaseMissing('email_templates', ['key' => 'order-confirmation-copy']);
+    }
+
+    public function test_admin_cannot_delete_core_system_template(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+
+        $core = EmailTemplate::where('key', 'order-confirmation')->firstOrFail();
+        $this->assertFalse($core->isCopy());
+
+        $response = $this->actingAs($admin, 'admin')->delete(route('admin.email-customization.templates.destroy', $core->key));
+
+        $response->assertRedirect(route('admin.email-customization.templates.index'));
+        $response->assertSessionHas('error');
+        $this->assertDatabaseHas('email_templates', ['key' => 'order-confirmation']);
+    }
+
+    public function test_templates_index_renders_delete_button_only_for_copy_templates(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+
+        // Duplicate a template so there is one copy
+        $this->actingAs($admin, 'admin')->post(route('admin.email-customization.templates.duplicate', 'order-confirmation'));
+
+        $response = $this->actingAs($admin, 'admin')->get(route('admin.email-customization.templates.index'));
+
+        $response->assertOk();
+        // The delete button form action should exist for the copy
+        $response->assertSee('action="'.route('admin.email-customization.templates.destroy', 'order-confirmation-copy').'"', false);
+        // But NOT for the core template
+        $response->assertDontSee('action="'.route('admin.email-customization.templates.destroy', 'order-confirmation').'"', false);
+    }
 }
+

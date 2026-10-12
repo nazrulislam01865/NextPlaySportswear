@@ -466,10 +466,10 @@
             </header>
 
             <main id="admin-main-content" tabindex="-1" class="min-w-0 p-4 sm:p-6 lg:p-8">
-                @if (session('status'))
+                @if (session('status') && ! request()->routeIs('admin.email-customization.*', 'admin.holiday-calendars.*'))
                     <div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
                 @endif
-                @if ($errors->any() && ! request()->routeIs('admin.products.create', 'admin.products.edit', 'admin.homepage.sections.edit', 'admin.menus.create', 'admin.menus.edit'))
+                @if ($errors->any() && ! request()->routeIs('admin.products.create', 'admin.products.edit', 'admin.homepage.sections.edit', 'admin.menus.create', 'admin.menus.edit', 'admin.email-customization.*', 'admin.holiday-calendars.*'))
                     <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                         <p class="font-black">Please correct the highlighted information.</p>
                         <ul class="mt-2 list-disc space-y-1 pl-5">

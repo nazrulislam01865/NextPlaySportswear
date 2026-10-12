@@ -33,22 +33,6 @@
             }
         }"
     >
-        <!-- Breadcrumb & Title Row (Matching ghi.png) -->
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <nav class="flex items-center gap-1.5 text-xs text-slate-400 mb-1 font-medium">
-                    <a href="{{ route('admin.dashboard') }}" class="hover:text-slate-600 transition">⌂</a>
-                    <span>›</span>
-                    <span>Content</span>
-                    <span>›</span>
-                    <a href="{{ route('admin.email-customization.templates.index') }}" class="text-slate-500 hover:text-brand-ink transition">Email Templates</a>
-                    <span>›</span>
-                    <span class="text-slate-600 font-bold">Global Branding Settings</span>
-                </nav>
-                <h1 class="text-2xl font-black text-brand-ink tracking-tight">Global Branding Settings</h1>
-                <p class="text-xs text-slate-500 mt-1">Customize the global look and feel for all transactional emails. These settings will be applied to every email template.</p>
-            </div>
-        </div>
 
         <!-- Status & Error Alerts -->
         @if(session('status'))
@@ -94,7 +78,6 @@
                     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-3">
                         <div>
                             <h2 class="text-sm font-extrabold text-brand-ink">Brand Identity</h2>
-                            <p class="text-xs text-slate-500 mt-0.5">Upload your logo and set your brand basics for emails.</p>
                         </div>
 
                         <div class="flex flex-col sm:flex-row sm:items-center gap-4 pt-1">
@@ -137,7 +120,6 @@
                     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-3">
                         <div>
                             <h2 class="text-sm font-extrabold text-brand-ink">Header Style</h2>
-                            <p class="text-xs text-slate-500 mt-0.5">Set the header background color that appears at the top of your emails.</p>
                         </div>
 
                         <div class="flex flex-col sm:flex-row sm:items-center gap-4 pt-1">
@@ -156,7 +138,6 @@
                                     </div>
                                     <input type="hidden" name="header_bg_color" :value="headerBg">
                                 </div>
-                                <span class="text-[11px] text-slate-400">This color will be used for the email header behind your logo and any header content.</span>
                             </div>
                         </div>
                     </div>
@@ -165,7 +146,6 @@
                     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-3">
                         <div>
                             <h2 class="text-sm font-extrabold text-brand-ink">Button Style</h2>
-                            <p class="text-xs text-slate-500 mt-0.5">Set the accent color for buttons and primary call-to-actions.</p>
                         </div>
 
                         <div class="flex flex-col sm:flex-row sm:items-center gap-4 pt-1">
@@ -184,17 +164,15 @@
                                     </div>
                                     <input type="hidden" name="button_color" :value="buttonColor">
                                 </div>
-                                <span class="text-[11px] text-slate-400">This color will be used for buttons, links, and other accent elements.</span>
                             </div>
                         </div>
                     </div>
 
                     <!-- Font Style Card -->
                     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-3">
-                        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div class="w-48">
                                 <h2 class="text-sm font-extrabold text-brand-ink">Font Style</h2>
-                                <p class="text-xs text-slate-500 mt-0.5">Emails use a clean, modern font for the best readability across devices.</p>
                             </div>
                             <div class="flex-1 flex flex-col sm:flex-row sm:items-center gap-4">
                                 <input
@@ -204,7 +182,6 @@
                                     value="Inter (Default)"
                                     class="admin-input text-xs w-40 bg-slate-50 font-bold text-slate-700 cursor-not-allowed"
                                 >
-                                <span class="text-[11px] text-slate-400">We use Inter, a clean and modern font that works across all email clients. This cannot be changed.</span>
                             </div>
                         </div>
                     </div>
@@ -214,16 +191,15 @@
                         <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                             <div class="w-48">
                                 <h2 class="text-sm font-extrabold text-brand-ink">Footer Content</h2>
-                                <p class="text-xs text-slate-500 mt-0.5">This text will appear at the bottom of all emails.</p>
                             </div>
                             <div class="flex-1">
                                 <label class="block text-xs font-bold text-slate-700 mb-1">Footer Text</label>
                                 <textarea
                                     x-model="footerText"
                                     name="footer_text"
-                                    rows="3"
+                                    rows="4"
                                     maxlength="500"
-                                    class="admin-input text-xs w-full"
+                                    class="admin-input h-auto min-h-[105px] py-2.5 text-xs w-full leading-relaxed resize-y"
                                 ></textarea>
                                 <div class="mt-1 flex justify-end text-[10px] text-slate-400">
                                     <span x-text="footerText.length"></span>/500
@@ -237,36 +213,25 @@
                         <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                             <div class="w-48">
                                 <h2 class="text-sm font-extrabold text-brand-ink">Support Information</h2>
-                                <p class="text-xs text-slate-500 mt-0.5">This information will be included in your email footer and help customers get in touch.</p>
                             </div>
                             <div class="flex-1 grid gap-3 sm:grid-cols-2">
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 mb-1">Support Email</label>
-                                    <div class="relative">
-                                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                            ✉
-                                        </span>
-                                        <input
-                                            type="email"
-                                            x-model="supportEmail"
-                                            name="support_email"
-                                            class="admin-input text-xs pl-8 w-full"
-                                        >
-                                    </div>
+                                    <input
+                                        type="email"
+                                        x-model="supportEmail"
+                                        name="support_email"
+                                        class="admin-input text-xs w-full"
+                                    >
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 mb-1">Support Phone <span class="text-slate-400 font-normal">(Optional)</span></label>
-                                    <div class="relative">
-                                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                            📞
-                                        </span>
-                                        <input
-                                            type="text"
-                                            x-model="supportPhone"
-                                            name="support_phone"
-                                            class="admin-input text-xs pl-8 w-full"
-                                        >
-                                    </div>
+                                    <input
+                                        type="text"
+                                        x-model="supportPhone"
+                                        name="support_phone"
+                                        class="admin-input text-xs w-full"
+                                    >
                                 </div>
                             </div>
                         </div>
@@ -277,51 +242,30 @@
                         <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                             <div class="w-48">
                                 <h2 class="text-sm font-extrabold text-brand-ink">Social Links</h2>
-                                <p class="text-xs text-slate-500 mt-0.5">Add your social media links to display in the email footer.</p>
                             </div>
                             <div class="flex-1 grid gap-2 sm:grid-cols-4">
                                 <!-- Facebook -->
                                 <div>
                                     <label class="block text-[11px] font-bold text-slate-600 mb-1">Facebook</label>
-                                    <div class="relative">
-                                        <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-                                            <span class="grid h-4 w-4 place-items-center rounded-full bg-[#1877F2] text-[9px] font-black text-white">f</span>
-                                        </span>
-                                        <input type="url" x-model="socialFb" name="social_facebook" class="admin-input text-xs pl-7 w-full py-1.5" placeholder="facebook.com/...">
-                                    </div>
+                                    <input type="url" x-model="socialFb" name="social_facebook" class="admin-input text-xs w-full py-1.5" placeholder="https://facebook.com/nextplay">
                                 </div>
 
                                 <!-- Instagram -->
                                 <div>
                                     <label class="block text-[11px] font-bold text-slate-600 mb-1">Instagram</label>
-                                    <div class="relative">
-                                        <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-                                            <span class="grid h-4 w-4 place-items-center rounded-full bg-gradient-to-tr from-[#FD1D1D] to-[#833AB4] text-[8px] font-black text-white">📷</span>
-                                        </span>
-                                        <input type="url" x-model="socialIg" name="social_instagram" class="admin-input text-xs pl-7 w-full py-1.5" placeholder="instagram.com/...">
-                                    </div>
+                                    <input type="url" x-model="socialIg" name="social_instagram" class="admin-input text-xs w-full py-1.5" placeholder="https://instagram.com/nextplay">
                                 </div>
 
                                 <!-- X Twitter -->
                                 <div>
                                     <label class="block text-[11px] font-bold text-slate-600 mb-1">X (Twitter)</label>
-                                    <div class="relative">
-                                        <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-                                            <span class="grid h-4 w-4 place-items-center rounded-full bg-black text-[9px] font-black text-white">𝕏</span>
-                                        </span>
-                                        <input type="url" x-model="socialX" name="social_twitter" class="admin-input text-xs pl-7 w-full py-1.5" placeholder="x.com/...">
-                                    </div>
+                                    <input type="url" x-model="socialX" name="social_twitter" class="admin-input text-xs w-full py-1.5" placeholder="https://twitter.com/nextplay">
                                 </div>
 
                                 <!-- YouTube -->
                                 <div>
                                     <label class="block text-[11px] font-bold text-slate-600 mb-1">YouTube</label>
-                                    <div class="relative">
-                                        <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-                                            <span class="grid h-4 w-4 place-items-center rounded-full bg-[#FF0000] text-[8px] font-black text-white">▶</span>
-                                        </span>
-                                        <input type="url" x-model="socialYt" name="social_youtube" class="admin-input text-xs pl-7 w-full py-1.5" placeholder="youtube.com/...">
-                                    </div>
+                                    <input type="url" x-model="socialYt" name="social_youtube" class="admin-input text-xs w-full py-1.5" placeholder="https://youtube.com/nextplay">
                                 </div>
                             </div>
                         </div>
@@ -333,7 +277,6 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <h3 class="text-sm font-extrabold text-brand-ink">Email Preview</h3>
-                            <p class="text-[11px] text-slate-500">This is a preview of how your emails will look with the current settings.</p>
                         </div>
                         <div class="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
                             <button
@@ -393,24 +336,8 @@
                                     </button>
                                 </div>
 
-                                <!-- Social Icons (Matching ghi.png: FB, IG, X, YT) -->
-                                <div class="pt-2 flex items-center justify-center gap-2.5">
-                                    <a :href="socialFb" target="_blank" class="grid h-7 w-7 place-items-center rounded-full bg-[#1877F2] text-white text-[11px] font-bold shadow-xs">
-                                        f
-                                    </a>
-                                    <a :href="socialIg" target="_blank" class="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-tr from-[#FD1D1D] to-[#833AB4] text-white text-[10px] shadow-xs">
-                                        📷
-                                    </a>
-                                    <a :href="socialX" target="_blank" class="grid h-7 w-7 place-items-center rounded-full bg-black text-white text-[11px] font-bold shadow-xs">
-                                        𝕏
-                                    </a>
-                                    <a :href="socialYt" target="_blank" class="grid h-7 w-7 place-items-center rounded-full bg-[#FF0000] text-white text-[9px] shadow-xs">
-                                        ▶
-                                    </a>
-                                </div>
-
                                 <!-- Footer -->
-                                <div class="border-t border-slate-100 pt-3 text-center text-[10px] text-slate-400 space-y-1.5">
+                                <div class="border-t border-slate-100 pt-4 text-center text-[10px] text-slate-400 space-y-1.5">
                                     <p class="whitespace-pre-line leading-relaxed font-medium" x-text="footerText"></p>
                                     <div class="flex items-center justify-center gap-3 pt-1 text-slate-600 font-semibold">
                                         <span class="flex items-center gap-1">

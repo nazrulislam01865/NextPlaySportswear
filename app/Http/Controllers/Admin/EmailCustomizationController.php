@@ -229,6 +229,28 @@ class EmailCustomizationController extends Controller
     }
 
     /**
+     * Delete a duplicated copy template.
+     */
+    public function destroyTemplate(string $template): RedirectResponse
+    {
+        $emailTemplate = EmailTemplate::where('key', $template)->firstOrFail();
+
+        if (! $emailTemplate->isCopy()) {
+            return redirect()
+                ->route('admin.email-customization.templates.index')
+                ->with('error', 'Only copy templates can be deleted. Core system templates cannot be deleted.');
+        }
+
+        $name = $emailTemplate->name;
+        $emailTemplate->versions()->delete();
+        $emailTemplate->delete();
+
+        return redirect()
+            ->route('admin.email-customization.templates.index')
+            ->with('status', "Template '{$name}' was deleted successfully.");
+    }
+
+    /**
      * Content Visibility Toggles (Image: mno.png).
      */
     public function visibility(string $template): View

@@ -18,24 +18,37 @@
             showFooterNote: {{ !empty($template->visibility_settings['show_footer_note'] ?? true) ? 'true' : 'false' }}
         }"
     >
-        <!-- Breadcrumb & Title (Matching mno.png) -->
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <nav class="flex items-center gap-1.5 text-xs text-slate-400 mb-1 font-medium">
-                    <a href="{{ route('admin.dashboard') }}" class="hover:text-slate-600 transition">⌂</a>
-                    <span>›</span>
-                    <span>Content</span>
-                    <span>›</span>
-                    <a href="{{ route('admin.email-customization.templates.index') }}" class="text-slate-500 hover:text-brand-ink transition">Email Templates</a>
-                    <span>›</span>
-                    <a href="{{ route('admin.email-customization.templates.edit', $template->key) }}" class="text-slate-500 hover:text-brand-ink transition">{{ $template->name }}</a>
-                    <span>›</span>
-                    <span class="text-slate-600 font-bold">Visibility Settings</span>
-                </nav>
-                <h1 class="text-2xl font-black text-brand-ink tracking-tight">Content Visibility Settings</h1>
-                <p class="text-xs text-slate-500 mt-1">Choose which content elements to show in the "{{ $template->name }}" email. Toggle elements on or off to customize what your customers see.</p>
-            </div>
+        <!-- Top Action Bar -->
+        <div class="flex items-center justify-end">
+            <a
+                href="{{ route('admin.email-customization.templates.edit', $template->key) }}"
+                class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition"
+            >
+                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+                <span>Back to Template Editor</span>
+            </a>
         </div>
+
+        <!-- Status & Error Alerts -->
+        @if(session('status'))
+            <div class="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-bold text-emerald-800 shadow-sm">
+                <span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-200 text-xs font-black text-emerald-800">✓</span>
+                <span>{{ session('status') }}</span>
+            </div>
+        @endif
+
+        @if($errors->any())
+            <div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-xs font-bold text-red-800 shadow-sm space-y-1">
+                <p class="font-black">Please fix the following validation errors:</p>
+                <ul class="list-disc list-inside">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
 
         <!-- Notification Banner (Matching mno.png) -->
         <div x-data="{ dismissed: false }" x-show="!dismissed" class="flex items-start justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50/90 p-4 text-xs font-bold text-amber-950 shadow-sm">

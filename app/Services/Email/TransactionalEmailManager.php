@@ -619,24 +619,27 @@ final class TransactionalEmailManager
             ));
         }
 
+        $actionUrl = $order->user_id
+            ? route('account.orders.show', $order)
+            : route('orders.track');
+
         return $this->emails->safelyQueue(new EmailMessage(
             key: 'shipment.delivery-estimate-updated',
             recipients: $this->customerRecipient($order->customer_email, $order->customer_name),
-            subject: "Your Delivery Date Has Been Updated – Order #{$order->order_number}",
-            heading: 'Your Delivery Date Has Been Updated',
+            subject: "Delivery estimate updated for your order – Order #{$order->order_number}",
+            heading: 'Delivery estimate updated for your order',
             introLines: [
-                "Hi {$order->customer_name},",
-                "Due to " . ($holidayReason ?: 'carrier holiday schedule adjustments') . ", your estimated delivery date for Order #{$order->order_number} has been updated.",
+                "Hi " . ($order->customer_name ?: 'there') . ",",
+                "Your estimated delivery date has been updated because " . ($holidayReason ?: 'scheduled holiday dates') . " is a non-delivery date for your destination.",
             ],
             details: array_filter([
-                'Order Number' => $order->order_number,
-                'New Estimated Delivery' => $newEstimateFormatted,
-                'Previous Estimate' => $oldEstimate,
-                'Reason' => $holidayReason,
-                'Carrier' => $shipment?->carrier,
-                'Tracking Number' => $shipment?->tracking_number,
+                'Order number' => '#' . $order->order_number,
+                'Previous estimate' => $oldEstimate,
+                'Updated estimate' => $newEstimateFormatted,
+                'Holiday affecting delivery' => $holidayReason,
+                'Product shipping' => $order->shipping_method_name ?? $shipment?->service ?? 'Standard Shipping',
             ], static fn (mixed $value): bool => filled($value)),
-            actionText: 'Track Your Order',
+            actionText: 'View Order',
             actionUrl: $actionUrl,
             outroLines: [
                 'Thank you for shopping with NextPlay Sportswear.',

@@ -134,6 +134,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
             Route::get('/templates/{template}/edit', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'editTemplate'])->name('templates.edit');
             Route::put('/templates/{template}', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'updateTemplate'])->name('templates.update');
             Route::post('/templates/{template}/duplicate', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'duplicateTemplate'])->name('templates.duplicate');
+            Route::delete('/templates/{template}', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'destroyTemplate'])->name('templates.destroy');
             Route::get('/templates/{template}/visibility', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'visibility'])->name('templates.visibility');
             Route::put('/templates/{template}/visibility', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'updateVisibility'])->name('templates.visibility.update');
             Route::get('/templates/{template}/preview', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'preview'])->name('templates.preview');
@@ -266,12 +267,13 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::patch('holiday-calendars/{holidayCalendar}/toggle-status', [\App\Http\Controllers\Admin\HolidayCalendarController::class, 'toggleStatus'])
             ->name('holiday-calendars.toggle-status');
         Route::resource('holiday-calendars', \App\Http\Controllers\Admin\HolidayCalendarController::class)
-            ->parameters(['holiday-calendars' => 'holidayCalendar'])
-            ->except('show');
+            ->parameters(['holiday-calendars' => 'holidayCalendar']);
         Route::resource('faqs', \App\Http\Controllers\Admin\FaqController::class)
             ->except('show');
         Route::resource('genders', \App\Http\Controllers\Admin\GenderController::class)
             ->except('show');
+        Route::post('country-calling-codes/quick-store', [\App\Http\Controllers\Admin\CountryCallingCodeController::class, 'quickStore'])
+            ->name('country-calling-codes.quick-store');
         Route::resource('country-calling-codes', \App\Http\Controllers\Admin\CountryCallingCodeController::class)
             ->parameters(['country-calling-codes' => 'countryCallingCode'])
             ->except('show');

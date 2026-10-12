@@ -71,6 +71,24 @@
         @endforelse
     </div>
 
+    <div class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs font-bold leading-5 text-slate-600" x-show="eta" x-cloak>
+        <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">Estimated delivery</div>
+        <div class="text-xl font-extrabold text-brand-ink" x-text="eta">{{ $initialEta }}</div>
+        <p class="text-[11px] font-semibold text-slate-500 mt-0.5">Production and delivery estimate: 8–12 business days</p>
+
+        <div class="mt-3 rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 text-xs text-amber-950 shadow-sm" x-show="holidayNotice" x-cloak>
+            <div class="flex items-start gap-2.5">
+                <svg class="w-4 h-4 text-[#CF5D38] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <div class="min-w-0">
+                    <strong class="font-extrabold text-amber-950 block text-xs mb-0.5">Includes holiday adjustment</strong>
+                    <p class="font-medium text-amber-900 text-[11px] leading-relaxed" x-text="holidayNotice"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <dl class="mt-6 grid gap-3 text-sm">
         <div class="flex justify-between gap-4"><dt class="font-semibold text-slate-500">Merchandise subtotal</dt><dd class="font-black text-slate-900">${{ number_format($summary['subtotal'] ?? 0, 2) }}</dd></div>
         <div class="flex justify-between gap-4"><dt class="font-semibold text-slate-500">Customization</dt><dd class="font-black text-slate-900">${{ number_format($summary['customization_total'] ?? 0, 2) }}</dd></div>
@@ -102,14 +120,6 @@
             <span class="font-display text-4xl font-bold" x-text="total">{{ $initialTotal }}</span>
         </div>
         <p class="mt-2 text-xs font-semibold leading-5 text-blue-100">Final price is recalculated by the Laravel backend before payment.</p>
-    </div>
-
-    <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs font-bold leading-5 text-slate-600" x-show="eta" x-cloak>
-        <div>Delivery estimate: <span class="text-brand-ink" x-text="eta">{{ $initialEta }}</span></div>
-        <div class="mt-2 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-2 text-xs font-semibold text-amber-900" x-show="holidayNotice" x-cloak>
-            <span class="font-bold">ⓘ</span>
-            <span x-text="holidayNotice"></span>
-        </div>
     </div>
 
     <div class="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-xs font-bold leading-5 text-brand-navy">

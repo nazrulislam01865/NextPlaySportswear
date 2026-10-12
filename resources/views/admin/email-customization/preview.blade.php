@@ -34,50 +34,32 @@
             }
         }"
     >
-        <!-- Breadcrumb & Top Actions (Matching jkl.png) -->
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <nav class="flex items-center gap-1.5 text-xs text-slate-400 mb-1 font-medium">
-                    <a href="{{ route('admin.dashboard') }}" class="hover:text-slate-600 transition">⌂</a>
-                    <span>›</span>
-                    <span>Content</span>
-                    <span>›</span>
-                    <a href="{{ route('admin.email-customization.templates.index') }}" class="text-slate-500 hover:text-brand-ink transition">Email Templates</a>
-                    <span>›</span>
-                    <a href="{{ route('admin.email-customization.templates.edit', $template->key) }}" class="text-slate-500 hover:text-brand-ink transition">{{ $template->name }}</a>
-                    <span>›</span>
-                    <span class="text-slate-600 font-bold">Preview & Send Test Email</span>
-                </nav>
-                <h1 class="text-2xl font-black text-brand-ink tracking-tight">Preview & Send Test Email</h1>
-                <p class="text-xs text-slate-500 mt-1">Preview how this email looks and send a test to verify content, style, and personalization.</p>
-            </div>
-
-            <div class="flex items-center gap-2.5">
-                <a href="{{ route('admin.email-customization.templates.edit', $template->key) }}" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition">
-                    <span>←</span>
-                    <span>Back to Editor</span>
-                </a>
-                <button
-                    type="button"
-                    @click="showInboxModal = true"
-                    class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition"
-                    title="View simulated email client inbox"
-                >
-                    <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                    <span>Webmail Client View</span>
-                </button>
-                <button
-                    type="button"
-                    @click="$refs.testEmailForm.requestSubmit()"
-                    class="inline-flex items-center gap-2 rounded-xl px-5 py-2 text-xs font-black text-white shadow-sm transition hover:opacity-95"
-                    style="background-color: #CF5D38 !important; color: #ffffff !important;"
-                >
-                    <svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
-                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                    </svg>
-                    <span>Send Test Email</span>
-                </button>
-            </div>
+        <!-- Top Action Bar -->
+        <div class="flex items-center justify-end gap-2.5">
+            <a href="{{ route('admin.email-customization.templates.edit', $template->key) }}" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition">
+                <span>←</span>
+                <span>Back to Editor</span>
+            </a>
+            <button
+                type="button"
+                @click="showInboxModal = true"
+                class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition"
+                title="View simulated email client inbox"
+            >
+                <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                <span>Webmail Client View</span>
+            </button>
+            <button
+                type="button"
+                @click="$refs.testEmailForm.requestSubmit()"
+                class="inline-flex items-center gap-2 rounded-xl px-5 py-2 text-xs font-black !text-white shadow-sm transition hover:opacity-95"
+                style="background-color: #CF5D38 !important; color: #ffffff !important;"
+            >
+                <svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                </svg>
+                <span>Send Test Email</span>
+            </button>
         </div>
 
         <!-- Session Status Alert -->
@@ -85,6 +67,17 @@
             <div class="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-bold text-emerald-800 shadow-sm">
                 <span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-200 text-xs font-black text-emerald-800">✓</span>
                 <span>{{ session('status') }}</span>
+            </div>
+        @endif
+
+        @if($errors->any())
+            <div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-xs font-bold text-red-800 shadow-sm space-y-1">
+                <p class="font-black">Please fix the following validation errors:</p>
+                <ul class="list-disc list-inside">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
             </div>
         @endif
 
@@ -269,17 +262,14 @@
                         <!-- Recipient Email -->
                         <div>
                             <label class="admin-label text-xs font-bold text-slate-700">Recipient Email</label>
-                            <div class="relative mt-1">
-                                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-xs">👤</span>
-                                <input
-                                    type="email"
-                                    x-model="recipientEmail"
-                                    name="recipient_email"
-                                    required
-                                    class="w-full rounded-xl border border-slate-300 bg-white pl-8 pr-3 py-2 text-xs font-medium text-slate-800 shadow-sm focus:border-orange-500 focus:outline-none"
-                                    placeholder="admin@nextplay.com"
-                                >
-                            </div>
+                            <input
+                                type="email"
+                                x-model="recipientEmail"
+                                name="recipient_email"
+                                required
+                                class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 shadow-sm focus:border-orange-500 focus:outline-none"
+                                placeholder="admin@nextplay.com"
+                            >
                             <p class="mt-1.5 text-[11px] text-slate-400">Enter an email address to receive the test email.</p>
                         </div>
 

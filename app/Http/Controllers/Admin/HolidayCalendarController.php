@@ -8,6 +8,7 @@ use App\Models\CountryCallingCode;
 use App\Models\HolidayCalendar;
 use App\Models\HolidayCalendarDate;
 use App\Services\Shipping\HolidayCalendarService;
+use App\Support\CountryCatalog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -100,6 +101,7 @@ class HolidayCalendarController extends Controller
         return view('admin.holiday-calendars.create', [
             'calendar' => $calendar,
             'countries' => $this->availableCountryList(),
+            'catalogCountries' => CountryCatalog::all(),
             'dates' => [],
         ]);
     }
@@ -110,6 +112,7 @@ class HolidayCalendarController extends Controller
     public function store(HolidayCalendarRequest $request): RedirectResponse
     {
         $data = $request->validated();
+        CountryCatalog::ensureRegistered($data['country_code'], $data['country_name']);
         $datesData = (array) ($data['dates'] ?? []);
         unset($data['dates']);
 
@@ -153,6 +156,19 @@ class HolidayCalendarController extends Controller
     }
 
     /**
+     * Display Holiday Calendar Details (Screen 3 in Blueprint).
+     */
+    public function show(HolidayCalendar $holidayCalendar): View
+    {
+        $holidayCalendar->loadMissing('dates');
+
+        return view('admin.holiday-calendars.show', [
+            'calendar' => $holidayCalendar,
+            'dates' => $holidayCalendar->dates->sortBy('date'),
+        ]);
+    }
+
+    /**
      * Show form to edit an existing Holiday Calendar (Screen 2 in Blueprint).
      */
     public function edit(HolidayCalendar $holidayCalendar): View
@@ -169,6 +185,7 @@ class HolidayCalendarController extends Controller
         return view('admin.holiday-calendars.edit', [
             'calendar' => $holidayCalendar,
             'countries' => $this->availableCountryList(),
+            'catalogCountries' => CountryCatalog::all(),
             'dates' => $dates,
         ]);
     }
@@ -179,6 +196,7 @@ class HolidayCalendarController extends Controller
     public function update(HolidayCalendarRequest $request, HolidayCalendar $holidayCalendar): RedirectResponse
     {
         $data = $request->validated();
+        CountryCatalog::ensureRegistered($data['country_code'], $data['country_name']);
         $datesData = (array) ($data['dates'] ?? []);
         unset($data['dates']);
 
@@ -277,19 +295,11 @@ class HolidayCalendarController extends Controller
             return $countryModels->map(fn (CountryCallingCode $c) => [
                 'code' => $c->iso_code,
                 'name' => $c->country_name,
+                'dial' => $c->dial_code,
                 'flag' => $c->flagEmoji(),
             ])->all();
         }
 
-        return [
-            ['code' => 'GB', 'name' => 'United Kingdom', 'flag' => '🇬🇧'],
-            ['code' => 'US', 'name' => 'United States', 'flag' => '🇺🇸'],
-            ['code' => 'CA', 'name' => 'Canada', 'flag' => '🇨🇦'],
-            ['code' => 'AU', 'name' => 'Australia', 'flag' => '🇦🇺'],
-            ['code' => 'DE', 'name' => 'Germany', 'flag' => '🇩🇪'],
-            ['code' => 'FR', 'name' => 'France', 'flag' => '🇫🇷'],
-            ['code' => 'IE', 'name' => 'Ireland', 'flag' => '🇮🇪'],
-            ['code' => 'NZ', 'name' => 'New Zealand', 'flag' => '🇳🇿'],
-        ];
+        return CountryCatalog::all();
     }
 }

@@ -57,9 +57,28 @@ class EmailTemplate extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    public const CORE_KEYS = [
+        'order-confirmation',
+        'delivery-estimate-updated',
+        'shipment-update',
+        'password-reset',
+        'referral-reward',
+        'welcome-email',
+    ];
+
     public function isPublished(): bool
     {
         return strtolower((string) $this->status) === 'published';
+    }
+
+    public function isCopy(): bool
+    {
+        return !in_array($this->key, self::CORE_KEYS, true);
+    }
+
+    public function canBeDeleted(): bool
+    {
+        return $this->isCopy();
     }
 
     public function nextVersion(): string

@@ -154,6 +154,32 @@ class HolidayCalendarCrudTest extends TestCase
         $response->assertSee('Bastille Day');
     }
 
+    public function test_admin_can_view_holiday_calendar_details_page(): void
+    {
+        $calendar = HolidayCalendar::query()->create([
+            'name' => 'UK Public Holidays 2026',
+            'country_code' => 'GB',
+            'country_name' => 'United Kingdom',
+            'year' => 2026,
+            'is_active' => true,
+        ]);
+
+        HolidayCalendarDate::query()->create([
+            'holiday_calendar_id' => $calendar->id,
+            'date' => '2026-12-25',
+            'name' => 'Christmas Day',
+        ]);
+
+        $response = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.holiday-calendars.show', $calendar));
+
+        $response->assertOk();
+        $response->assertSee('UK Public Holidays 2026');
+        $response->assertSee('Christmas Day');
+        $response->assertSee('Friday');
+        $response->assertSee('Calendar Summary');
+    }
+
     public function test_admin_can_update_holiday_calendar_and_sync_dates(): void
     {
         $calendar = HolidayCalendar::query()->create([
@@ -246,5 +272,64 @@ class HolidayCalendarCrudTest extends TestCase
         $response->assertRedirect(route('admin.holiday-calendars.index'));
         $this->assertDatabaseMissing('holiday_calendars', ['id' => $calendar->id]);
         $this->assertDatabaseMissing('holiday_calendar_dates', ['holiday_calendar_id' => $calendar->id]);
+    }
+
+    public function test_admin_can_store_holiday_calendar_for_new_country_and_auto_registers_in_master_data(): void
+    {
+        $payload = [
+            'name' => 'Germany Public Holidays 2026',
+            'country' => 'DE|Germany',
+            'year' => 2026,
+            'is_active' => '1',
+            'description' => 'German national public holidays',
+            'dates' => [
+                ['date' => '2026-10-03', 'name' => 'Day of German Unity', 'notes' => 'National holiday'],
+            ],
+        ];
+
+        $response = $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.holiday-calendars.store'), $payload);
+
+        $response->assertRedirect(route('admin.holiday-calendars.index'));
+        $response->assertSessionHas('status');
+
+        $this->assertDatabaseHas('holiday_calendars', [
+            'name' => 'Germany Public Holidays 2026',
+            'country_code' => 'DE',
+            'country_name' => 'Germany',
+        ]);
+
+        $this->assertDatabaseHas('country_calling_codes', [
+            'iso_code' => 'DE',
+            'country_name' => 'Germany',
+            'dial_code' => '+49',
+            'is_active' => true,
+        ]);
+    }
+
+    public function test_admin_can_quick_store_country_calling_code_via_api(): void
+    {
+        $response = $this->actingAs($this->admin, 'admin')
+            ->postJson(route('admin.country-calling-codes.quick-store'), [
+                'iso_code' => 'JP',
+                'country_name' => 'Japan',
+            ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'success' => true,
+            'country' => [
+                'code' => 'JP',
+                'name' => 'Japan',
+                'dial' => '+81',
+            ],
+        ]);
+
+        $this->assertDatabaseHas('country_calling_codes', [
+            'iso_code' => 'JP',
+            'country_name' => 'Japan',
+            'dial_code' => '+81',
+            'is_active' => true,
+        ]);
     }
 }

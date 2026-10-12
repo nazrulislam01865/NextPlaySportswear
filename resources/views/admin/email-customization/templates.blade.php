@@ -3,40 +3,26 @@
     subtitle="Customize how transactional emails look and what content they show. Keep your messaging on-brand and your customers informed at every step."
 >
     <div class="space-y-6">
-        <!-- Top bar with Breadcrumbs & Global Branding CTA (Matching def.png) -->
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <nav class="flex items-center gap-1.5 text-xs text-slate-400 mb-1 font-medium">
-                    <a href="{{ route('admin.dashboard') }}" class="hover:text-slate-600 transition">⌂</a>
-                    <span>›</span>
-                    <span>Content</span>
-                    <span>›</span>
-                    <span class="text-slate-600 font-bold">Email Templates</span>
-                </nav>
-                <h1 class="text-2xl font-black text-brand-ink tracking-tight">Email Templates</h1>
-                <p class="text-xs text-slate-500 mt-1">Customize how transactional emails look and what content they show. Keep your messaging on-brand and your customers informed at every step.</p>
-            </div>
-
-            <div class="flex items-center gap-3">
-                <a
-                    href="{{ route('admin.email-customization.workflow') }}"
-                    class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition"
-                >
-                    <span>🧭</span>
-                    <span>Workflow Guide</span>
-                </a>
-                <a
-                    href="{{ route('admin.email-customization.branding.edit') }}"
-                    class="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold !text-white shadow-sm transition hover:opacity-95"
-                    style="background-color: #CF5D38 !important; color: #ffffff !important;"
-                >
-                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span>Global Branding Settings</span>
-                </a>
-            </div>
+        <!-- Top Action Bar (Workflow Guide & Global Branding) -->
+        <div class="flex items-center justify-end gap-3">
+            <a
+                href="{{ route('admin.email-customization.workflow') }}"
+                class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition"
+            >
+                <span>🧭</span>
+                <span>Workflow Guide</span>
+            </a>
+            <a
+                href="{{ route('admin.email-customization.branding.edit') }}"
+                class="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold !text-white shadow-sm transition hover:opacity-95"
+                style="background-color: #CF5D38 !important; color: #ffffff !important;"
+            >
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Global Branding Settings</span>
+            </a>
         </div>
 
         <!-- Status Alert -->
@@ -44,6 +30,13 @@
             <div class="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-bold text-emerald-800 shadow-sm">
                 <span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-200 text-xs font-black text-emerald-800">✓</span>
                 <span>{{ session('status') }}</span>
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-bold text-rose-800 shadow-sm">
+                <span class="grid h-5 w-5 place-items-center rounded-full bg-rose-200 text-xs font-black text-rose-800">✕</span>
+                <span>{{ session('error') }}</span>
             </div>
         @endif
 
@@ -64,20 +57,13 @@
                 <!-- Search Input -->
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1.5">Search</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                        </span>
-                        <input
-                            type="text"
-                            name="q"
-                            value="{{ $currentSearch }}"
-                            placeholder="Search templates by name or event..."
-                            class="admin-input text-xs pl-10 w-full"
-                        >
-                    </div>
+                    <input
+                        type="text"
+                        name="q"
+                        value="{{ $currentSearch }}"
+                        placeholder="Search templates by name or event..."
+                        class="admin-input text-xs w-full"
+                    >
                 </div>
 
                 <!-- Status Filter -->
@@ -171,7 +157,6 @@
                                             <a href="{{ route('admin.email-customization.templates.edit', $tmpl->key) }}" class="font-extrabold text-brand-ink hover:text-brand-red transition block text-xs">
                                                 {{ $tmpl->name }}
                                             </a>
-                                            <p class="mt-0.5 text-[11px] text-slate-400 max-w-sm">{{ $tmpl->description }}</p>
                                         </div>
                                     </div>
                                 </td>
@@ -222,6 +207,19 @@
                                             <span>Edit</span>
                                         </a>
 
+                                        <!-- Visibility Button (Choose what to show or hide) -->
+                                        <a
+                                            href="{{ route('admin.email-customization.templates.visibility', $tmpl->key) }}"
+                                            class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition"
+                                            title="Choose what to show and what to hide"
+                                        >
+                                            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            <span>Visibility</span>
+                                        </a>
+
                                         <!-- Preview Button -->
                                         <a
                                             href="{{ route('admin.email-customization.templates.preview', $tmpl->key) }}"
@@ -249,6 +247,24 @@
                                                 <span>Duplicate</span>
                                             </button>
                                         </form>
+
+                                        <!-- Delete Button (Only for copies) -->
+                                        @if($tmpl->isCopy())
+                                            <form method="POST" action="{{ route('admin.email-customization.templates.destroy', $tmpl->key) }}" class="inline" onsubmit="return confirm('Are you sure you want to delete this copied template? This action cannot be undone.');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button
+                                                    type="submit"
+                                                    class="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/70 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-100 hover:text-rose-700 shadow-sm transition"
+                                                    title="Delete copy template"
+                                                >
+                                                    <svg class="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                    <span>Delete</span>
+                                                </button>
+                                            </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>

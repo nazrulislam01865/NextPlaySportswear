@@ -32,16 +32,19 @@
     </header>
 
     @if ($isHolidayAdjusted && filled($holidayReason))
-        <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 mx-5 mt-4 flex items-start gap-3 shadow-sm">
-            <span class="grid h-5 w-5 place-items-center rounded-full bg-amber-200 text-xs font-black text-amber-900 shrink-0">ⓘ</span>
+        <div class="rounded-2xl border border-amber-300 bg-amber-50/90 p-5 text-xs text-amber-950 mx-5 mt-4 flex items-start gap-3.5 shadow-sm">
+            <svg class="w-5 h-5 text-[#CF5D38] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
             <div class="min-w-0">
-                <div class="flex items-center gap-2 mb-0.5">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="font-extrabold text-amber-950 text-xs">Delivery estimate updated</span>
                     <span class="font-black uppercase tracking-wider text-[10px] bg-amber-200/90 text-amber-900 px-2 py-0.5 rounded-full">Holiday Notice</span>
                     @if (filled($estimatedDelivery))
-                        <span class="font-extrabold text-amber-900">Estimated Delivery: {{ $estimatedDelivery }}</span>
+                        <span class="font-extrabold text-amber-900">· {{ $estimatedDelivery }}</span>
                     @endif
                 </div>
-                <p class="font-medium text-amber-800 leading-relaxed">{{ $holidayReason }}</p>
+                <p class="font-medium text-amber-900 leading-relaxed text-xs">{{ $holidayReason }}</p>
             </div>
         </div>
     @elseif (filled($estimatedDelivery))
