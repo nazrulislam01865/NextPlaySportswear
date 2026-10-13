@@ -493,5 +493,140 @@ class EmailCustomizationAccessTest extends TestCase
         // But NOT for the core template
         $response->assertDontSee('action="'.route('admin.email-customization.templates.destroy', 'order-confirmation').'"', false);
     }
+
+    public function test_templates_index_renders_create_template_options(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+
+        $response = $this->actingAs($admin, 'admin')->get(route('admin.email-customization.templates.index'));
+
+        $response->assertOk();
+        $response->assertSee('Create Template');
+        $response->assertSee(route('admin.email-customization.templates.create'));
+        $response->assertSee(route('admin.email-customization.templates.store'));
+    }
+
+    public function test_admin_can_view_create_template_page(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+
+        $response = $this->actingAs($admin, 'admin')->get(route('admin.email-customization.templates.create'));
+
+        $response->assertOk();
+        $response->assertSee('Create Email Template');
+        $response->assertSee('Blank Canvas');
+        $response->assertSee('Order Notification');
+        $response->assertSee('Shipping & Tracking');
+        $response->assertSee('Clone Existing Template');
+    }
+
+    public function test_admin_can_create_template_from_blank_preset_as_draft(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+
+        $response = $this->actingAs($admin, 'admin')->post(route('admin.email-customization.templates.store'), [
+            'name' => 'Customer Return Approved',
+            'trigger_event' => 'Return Request Approved',
+            'preset' => 'blank',
+            'action' => 'draft',
+        ]);
+
+        $template = EmailTemplate::where('key', 'customer-return-approved')->first();
+        $this->assertNotNull($template);
+        $response->assertRedirect(route('admin.email-customization.templates.edit', 'customer-return-approved'));
+        $response->assertSessionHas('status');
+
+        $this->assertSame('Customer Return Approved', $template->name);
+        $this->assertSame('draft', $template->status);
+        $this->assertSame('v1.0-draft', $template->draft_version);
+        $this->assertSame('Return Request Approved', $template->trigger_event);
+        $this->assertTrue($template->isCustom());
+        $this->assertTrue($template->canBeDeleted());
+    }
+
+    public function test_admin_can_create_template_with_custom_slug_and_publish_immediately(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+
+        $response = $this->actingAs($admin, 'admin')->post(route('admin.email-customization.templates.store'), [
+            'name' => 'VIP Black Friday Flash',
+            'key' => 'vip-black-friday-flash',
+            'trigger_event' => 'Special VIP Event',
+            'subject' => 'Exclusive VIP Offer Inside!',
+            'heading' => 'Exclusive VIP Perks',
+            'cta_label' => 'Claim Perks Now',
+            'preset' => 'reward',
+            'action' => 'publish',
+        ]);
+
+        $template = EmailTemplate::where('key', 'vip-black-friday-flash')->first();
+        $this->assertNotNull($template);
+        $response->assertRedirect(route('admin.email-customization.templates.edit', 'vip-black-friday-flash'));
+
+        $this->assertSame('published', $template->status);
+        $this->assertSame('v1.0', $template->active_version);
+        $this->assertSame('Exclusive VIP Offer Inside!', $template->subject);
+
+        // Snapshot created
+        $this->assertDatabaseHas('email_template_versions', [
+            'email_template_id' => $template->id,
+            'version' => 'v1.0',
+            'subject' => 'Exclusive VIP Offer Inside!',
+        ]);
+    }
+
+    public function test_admin_can_create_template_by_cloning_existing_template(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+
+        $response = $this->actingAs($admin, 'admin')->post(route('admin.email-customization.templates.store'), [
+            'name' => 'Wholesale Order Notice',
+            'preset' => 'clone',
+            'clone_from' => 'order-confirmation',
+            'action' => 'draft',
+        ]);
+
+        $template = EmailTemplate::where('key', 'wholesale-order-notice')->first();
+        $this->assertNotNull($template);
+        $response->assertRedirect(route('admin.email-customization.templates.edit', 'wholesale-order-notice'));
+
+        $coreSource = EmailTemplate::where('key', 'order-confirmation')->first();
+        $this->assertSame($coreSource->subject, $template->subject);
+        $this->assertSame($coreSource->heading, $template->heading);
+        $this->assertSame($coreSource->blocks, $template->blocks);
+    }
+
+    public function test_create_template_prevents_slug_collisions_by_incrementing_key(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+
+        // First creation
+        $this->actingAs($admin, 'admin')->post(route('admin.email-customization.templates.store'), [
+            'name' => 'Holiday Special Announcement',
+            'preset' => 'blank',
+            'trigger_event' => 'Holiday Promo',
+        ]);
+        $this->assertDatabaseHas('email_templates', ['key' => 'holiday-special-announcement']);
+
+        // Second creation with same name
+        $this->actingAs($admin, 'admin')->post(route('admin.email-customization.templates.store'), [
+            'name' => 'Holiday Special Announcement',
+            'preset' => 'blank',
+            'trigger_event' => 'Holiday Promo',
+        ]);
+        $this->assertDatabaseHas('email_templates', ['key' => 'holiday-special-announcement-2']);
+    }
+
+    public function test_create_template_validates_required_name_and_trigger(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+
+        $response = $this->actingAs($admin, 'admin')->post(route('admin.email-customization.templates.store'), [
+            'name' => '',
+            'trigger_event' => '',
+        ]);
+
+        $response->assertSessionHasErrors(['name', 'trigger_event']);
+    }
 }
 

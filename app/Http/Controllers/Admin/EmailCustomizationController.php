@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreEmailTemplateRequest;
 use App\Http\Requests\Admin\UpdateEmailGlobalBrandingRequest;
 use App\Http\Requests\Admin\UpdateEmailTemplateRequest;
 use App\Http\Requests\Admin\UpdateEmailVisibilityRequest;
@@ -11,6 +12,7 @@ use App\Models\EmailTemplate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class EmailCustomizationController extends Controller
@@ -50,6 +52,153 @@ class EmailCustomizationController extends Controller
             'currentStatus' => $statusFilter,
             'currentEvent' => $eventFilter,
         ]);
+    }
+
+    /**
+     * Show form to create a new email template.
+     */
+    public function createTemplate(Request $request): View
+    {
+        $presets = EmailTemplate::starterPresets();
+        $standardEvents = EmailTemplate::standardEvents();
+        $existingTemplates = EmailTemplate::query()->orderBy('name')->get();
+        $selectedPreset = $request->query('preset', 'blank');
+
+        return view('admin.email-customization.create', [
+            'presets' => $presets,
+            'standardEvents' => $standardEvents,
+            'existingTemplates' => $existingTemplates,
+            'selectedPreset' => $selectedPreset,
+        ]);
+    }
+
+    /**
+     * Store a newly created email template.
+     */
+    public function storeTemplate(StoreEmailTemplateRequest $request): RedirectResponse
+    {
+        $userId = auth('admin')->id();
+        $name = trim($request->input('name'));
+        $presetKey = $request->input('preset', 'blank');
+        $presets = EmailTemplate::starterPresets();
+
+        // If cloning from an existing template
+        $sourceTemplate = null;
+        if ($presetKey === 'clone' && $request->filled('clone_from')) {
+            $sourceTemplate = EmailTemplate::where('key', $request->input('clone_from'))->first();
+        }
+
+        // Determine base key/slug
+        $rawKey = $request->input('key');
+        if (filled($rawKey)) {
+            $baseKey = Str::slug($rawKey);
+        } else {
+            $baseKey = Str::slug($name);
+        }
+
+        if (empty($baseKey)) {
+            $baseKey = 'custom-email-template';
+        }
+
+        // Ensure key uniqueness
+        $key = $baseKey;
+        $counter = 1;
+        while (EmailTemplate::where('key', $key)->exists()) {
+            $counter++;
+            $key = "{$baseKey}-{$counter}";
+        }
+
+        // Get default preset configuration
+        $presetConfig = $presets[$presetKey] ?? $presets['blank'];
+
+        // Determine fields (request input takes precedence, then source template if cloning, then preset)
+        $triggerEvent = $request->input('trigger_event')
+            ?: ($sourceTemplate?->trigger_event ?? $presetConfig['trigger_event']);
+
+        $description = $request->input('description')
+            ?: ($sourceTemplate?->description ?? $presetConfig['description'] ?? "Custom email notification template for {$triggerEvent}.");
+
+        $icon = $request->input('icon')
+            ?: ($sourceTemplate?->icon ?? $presetConfig['icon'] ?? 'mail');
+
+        $subject = $request->input('subject')
+            ?: ($sourceTemplate?->subject ?? $presetConfig['subject']);
+
+        $heading = $request->input('heading')
+            ?: ($sourceTemplate?->heading ?? $presetConfig['heading']);
+
+        $preheader = $request->input('preheader')
+            ?: ($sourceTemplate?->preheader_text ?? $presetConfig['preheader_text'] ?? null);
+
+        $intro = $request->input('intro')
+            ?: ($sourceTemplate?->intro_message ?? $presetConfig['intro_message'] ?? null);
+
+        $ctaLabel = $request->input('cta_label')
+            ?: ($sourceTemplate?->cta_label ?? $presetConfig['cta_label'] ?? 'View Details');
+
+        $ctaUrlType = $request->input('cta_url')
+            ?: ($sourceTemplate?->cta_url_type ?? $presetConfig['cta_url_type'] ?? 'custom');
+
+        $ctaCustomUrl = $request->input('cta_custom_url')
+            ?: ($sourceTemplate?->cta_custom_url ?? ($presetConfig['cta_custom_url'] ?? null));
+
+        $visibility = $sourceTemplate?->visibility_settings
+            ?? $presetConfig['visibility_settings']
+            ?? [
+                'show_logo' => true,
+                'show_greeting' => true,
+                'show_cta_button' => true,
+                'show_support_contact' => true,
+                'show_social_links' => true,
+                'show_footer_note' => true,
+            ];
+
+        $blocks = $sourceTemplate?->blocks
+            ?? $presetConfig['blocks']
+            ?? [];
+
+        $sampleData = $sourceTemplate?->sample_data
+            ?? $presetConfig['sample_data']
+            ?? [
+                'customer_name' => 'Jordan Smith',
+                'customer_email' => 'jordan.smith@example.com',
+                'support_email' => 'support@nextplay.com',
+            ];
+
+        $action = $request->input('action', 'draft');
+        $isPublished = ($action === 'publish');
+
+        $template = new EmailTemplate();
+        $template->key = $key;
+        $template->name = $name;
+        $template->description = $description;
+        $template->trigger_event = $triggerEvent;
+        $template->icon = $icon;
+        $template->status = $isPublished ? 'published' : 'draft';
+        $template->active_version = 'v1.0';
+        $template->draft_version = $isPublished ? null : 'v1.0-draft';
+        $template->subject = $subject;
+        $template->preheader_text = $preheader;
+        $template->heading = $heading;
+        $template->intro_message = $intro;
+        $template->cta_label = $ctaLabel;
+        $template->cta_url_type = $ctaUrlType;
+        $template->cta_custom_url = $ctaCustomUrl;
+        $template->visibility_settings = $visibility;
+        $template->blocks = $blocks;
+        $template->sample_data = $sampleData;
+        $template->published_at = $isPublished ? now() : null;
+        $template->published_by = $isPublished ? $userId : null;
+        $template->updated_by = $userId;
+        $template->save();
+
+        if ($isPublished) {
+            $template->createVersionSnapshot('v1.0', $userId);
+        }
+
+        return redirect()
+            ->route('admin.email-customization.templates.edit', $template->key)
+            ->with('status', "Template '{$template->name}' created successfully. Customize its blocks and content below.");
     }
 
     /**

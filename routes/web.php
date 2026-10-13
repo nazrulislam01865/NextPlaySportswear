@@ -131,6 +131,8 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::prefix('email-customization')->name('email-customization.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'templates'])->name('index');
             Route::get('/templates', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'templates'])->name('templates.index');
+            Route::get('/templates/create', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'createTemplate'])->name('templates.create');
+            Route::post('/templates', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'storeTemplate'])->name('templates.store');
             Route::get('/templates/{template}/edit', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'editTemplate'])->name('templates.edit');
             Route::put('/templates/{template}', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'updateTemplate'])->name('templates.update');
             Route::post('/templates/{template}/duplicate', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'duplicateTemplate'])->name('templates.duplicate');
