@@ -124,10 +124,17 @@ class HomepageSliderService
     private function resolveImage(?string $path, ?string $url): ?string
     {
         if (filled($path)) {
-            return PublicMedia::url($path);
+            $normalized = PublicMedia::normalizePath((string) $path);
+            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($normalized)) {
+                return PublicMedia::url($path);
+            }
         }
 
-        return PublicUrl::isAllowed($url) ? PublicMedia::url(null, trim((string) $url)) : null;
+        if (PublicUrl::isAllowed($url)) {
+            return PublicMedia::url(null, trim((string) $url));
+        }
+
+        return filled($path) ? PublicMedia::url($path) : null;
     }
 
     private function safeUrl(?string $url): string

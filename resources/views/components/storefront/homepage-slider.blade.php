@@ -79,13 +79,13 @@
                     >
                 </picture>
                 @if($hasVisibleContent)
-                    <div class="promo-overlay" style="background: {{ $slide['overlay_rgba'] ?? 'rgba(13,37,69,.72)' }}"></div>
+                    <div class="promo-overlay" style="--slide-overlay: {{ $slide['overlay_rgba'] ?? 'rgba(13,37,69,.28)' }}"></div>
 
                     <div class="promo-content">
                         <div class="promo-copy position-{{ $contentPosition }} align-{{ $textAlignment }} theme-{{ $textTheme }}">
 
                             @if($showTitle && filled($title))
-                                <h1>{{ $title }}</h1>
+                                <h1>{!! nl2br(e($title)) !!}</h1>
                             @endif
 
                             @if($showDescription && filled($description))
