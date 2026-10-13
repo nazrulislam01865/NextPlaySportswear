@@ -974,19 +974,21 @@
 .promo-copy h2 {
     margin: 0;
     font-family: var(--np-font-heading);
-    font-size: clamp(2.6rem, 6vw, 5.25rem);
-    line-height: .92;
-    font-weight: 700;
-    letter-spacing: -.04em;
-    text-transform: uppercase;
+    font-size: clamp(2.4rem, 4.8vw, 4.25rem);
+    line-height: 1.12;
+    font-weight: 750;
+    letter-spacing: -.025em;
+    text-transform: none;
+    color: #fff;
 }
 
 .promo-copy p {
-    max-width: 610px;
-    margin-top: 1.2rem;
-    color: rgba(255, 255, 255, .86);
-    font-size: clamp(1rem, 2vw, 1.22rem);
-    line-height: 1.65;
+    max-width: 620px;
+    margin-top: 1rem;
+    color: rgba(255, 255, 255, .95);
+    font-size: clamp(1rem, 1.4vw, 1.18rem);
+    line-height: 1.55;
+    font-weight: 400;
 }
 
 .promo-copy.theme-dark p {
@@ -996,8 +998,75 @@
 .promo-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: .85rem;
-    margin-top: 1.7rem;
+    align-items: center;
+    gap: .95rem;
+    margin-top: 2rem;
+}
+
+.promo-btn-primary {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: .65rem !important;
+    background: #061F44 !important;
+    border: 1px solid #061F44 !important;
+    color: #ffffff !important;
+    padding: .78rem 1.5rem !important;
+    font-size: .95rem !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+    border-radius: 6px !important;
+    text-transform: none !important;
+    box-shadow: 0 4px 14px rgba(6, 31, 68, .35) !important;
+    transition: all .2s ease !important;
+    text-decoration: none !important;
+}
+
+.promo-btn-primary:hover {
+    background: #0d2e5e !important;
+    border-color: #0d2e5e !important;
+    color: #ffffff !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 18px rgba(6, 31, 68, .45) !important;
+}
+
+.promo-btn-primary .promo-btn-arrow {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    flex-shrink: 0;
+    transition: transform .2s ease;
+}
+
+.promo-btn-primary:hover .promo-btn-arrow {
+    transform: translateX(3px);
+}
+
+.promo-btn-secondary {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #ffffff !important;
+    border: 1px solid #ffffff !important;
+    color: #061F44 !important;
+    padding: .78rem 1.6rem !important;
+    font-size: .95rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    border-radius: 6px !important;
+    text-transform: none !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .12) !important;
+    transition: all .2s ease !important;
+    text-decoration: none !important;
+}
+
+.promo-btn-secondary:hover {
+    background: #f1f5f9 !important;
+    border-color: #f1f5f9 !important;
+    color: #061F44 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .18) !important;
 }
 
 .promo-copy.align-center .promo-actions {
@@ -1008,47 +1077,107 @@
     justify-content: flex-end;
 }
 
-.promo-arrow {
+.promo-controls {
     position: absolute;
-    top: 50%;
-    z-index: 3;
-    display: grid;
-    width: 42px;
-    height: 42px;
-    place-items: center;
-    border: 1px solid rgba(255, 255, 255, .32);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, .14);
-    color: #fff;
-    font-size: 2rem;
-    line-height: 1;
-    transform: translateY(-50%);
-    backdrop-filter: blur(8px);
+    right: max(24px, calc((100vw - 1180px) / 2 + 16px));
+    bottom: 28px;
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    gap: 22px;
+    pointer-events: auto;
 }
 
-.promo-prev { left: max(16px, calc((100vw - 1060px) / 2)); }
-.promo-next { right: max(16px, calc((100vw - 1060px) / 2)); }
-
 .promo-dots {
-    position: absolute;
-    right: max(24px, calc((100vw - 1060px) / 2));
-    bottom: 26px;
-    z-index: 4;
-    display: flex;
-    gap: .45rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
 }
 
 .promo-dot {
-    width: 10px;
-    height: 10px;
+    position: relative;
+    width: 18px;
+    height: 2.5px;
     border: 0;
     border-radius: 999px;
-    background: rgba(255, 255, 255, .48);
+    background: rgba(255, 255, 255, .45);
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    box-shadow: none;
+    transition: background-color .25s ease, opacity .25s ease;
+}
+
+.promo-dot::before {
+    content: "";
+    position: absolute;
+    inset: -10px -2px;
 }
 
 .promo-dot.active {
-    width: 28px;
-    background: var(--np-color-primary);
+    width: 18px;
+    background: #ffffff;
+    opacity: 1;
+}
+
+.promo-dot:hover:not(.active) {
+    background: rgba(255, 255, 255, .85);
+}
+
+.promo-nav-arrows {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.promo-arrow {
+    position: static;
+    transform: none;
+    top: auto;
+    left: auto;
+    right: auto;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    color: #ffffff;
+    cursor: pointer;
+    line-height: 1;
+    backdrop-filter: none;
+    box-shadow: none;
+    transition: opacity .2s ease, transform .2s ease;
+    opacity: .9;
+}
+
+.promo-arrow:hover {
+    opacity: 1;
+    color: #ffffff;
+    background: transparent;
+    border: none;
+}
+
+.promo-arrow.promo-prev:hover {
+    transform: translateX(-2px);
+}
+
+.promo-arrow.promo-next:hover {
+    transform: translateX(2px);
+}
+
+.promo-arrow svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    stroke-width: 2.2;
 }
 
 .home-bulk-section {
@@ -1115,23 +1244,38 @@
     }
 
     .promo-actions {
-        display: grid;
-        grid-template-columns: 1fr;
+        display: flex;
+        flex-wrap: wrap;
+        gap: .65rem;
+    }
+
+    .promo-controls {
+        right: 16px;
+        bottom: 16px;
+        gap: 16px;
+    }
+
+    .promo-dot {
+        width: 14px;
+        height: 2px;
+    }
+
+    .promo-dot.active {
+        width: 14px;
+    }
+
+    .promo-nav-arrows {
+        gap: 8px;
     }
 
     .promo-arrow {
-        width: 36px;
-        height: 36px;
-        font-size: 1.65rem;
+        width: 20px;
+        height: 20px;
     }
 
-    .promo-prev { left: 12px; }
-    .promo-next { right: 12px; }
-
-    .promo-dots {
-        right: 50%;
-        bottom: 20px;
-        transform: translateX(50%);
+    .promo-arrow svg {
+        width: 18px;
+        height: 18px;
     }
 }
 
@@ -2737,19 +2881,33 @@ img.np-product-square-image {
     padding: 58px 0 60px;
 }
 
-.storefront-clean-ui .home-page .hero h1,
-.storefront-clean-ui .promo-copy h1,
-.storefront-clean-ui .promo-copy h2 {
+.storefront-clean-ui .home-page .hero h1 {
     font-size: clamp(2.25rem, 4.8vw, 3.55rem);
     line-height: 1;
     font-weight: 650;
     letter-spacing: -.035em;
 }
 
-.storefront-clean-ui .home-page .hero p,
-.storefront-clean-ui .promo-copy p {
+.storefront-clean-ui .promo-copy h1,
+.storefront-clean-ui .promo-copy h2 {
+    font-size: clamp(2.4rem, 4.8vw, 4.25rem);
+    line-height: 1.12;
+    font-weight: 750;
+    letter-spacing: -.025em;
+    text-transform: none;
+    color: #ffffff;
+}
+
+.storefront-clean-ui .home-page .hero p {
     font-size: clamp(.98rem, 1.3vw, 1.08rem);
     line-height: 1.65;
+}
+
+.storefront-clean-ui .promo-copy p {
+    font-size: clamp(1rem, 1.35vw, 1.16rem);
+    line-height: 1.55;
+    font-weight: 400;
+    color: rgba(255, 255, 255, .95);
 }
 
 .storefront-clean-ui .promo-track {
@@ -4676,56 +4834,7 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     }
 }
 
-/* Slider arrow placement refinement: keep controls at the outside edges and vertically centered. */
-.promo-arrow {
-    top: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    line-height: 1;
-    transform: translateY(-50%);
-}
-
-.promo-prev {
-    left: clamp(16px, 2.75vw, 56px);
-}
-
-.promo-next {
-    right: clamp(16px, 2.75vw, 56px);
-}
-
-.promo-arrow svg,
-.promo-arrow i,
-.promo-arrow span {
-    display: block;
-    line-height: 1;
-}
-
-@media (max-width: 767px) {
-    .promo-prev {
-        left: 12px;
-    }
-
-    .promo-next {
-        right: 12px;
-    }
-}
-
-/* Keep homepage slider pagination centered across the banner. */
-.promo-dots {
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
-}
-
-@media (max-width: 639px) {
-    .promo-dots {
-        left: 50%;
-        right: auto;
-        transform: translateX(-50%);
-    }
-}
+/* Homepage slider navigation and slide counter line controls are centralized in .promo-controls. */
 
 /* Compact cart quantity control. Keep it intrinsic-width even inside a flex column. */
 .cart-quantity-block {
