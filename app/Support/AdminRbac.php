@@ -541,7 +541,6 @@ class AdminRbac
             return in_array($name, [
                 'email-customization.index',
                 'email-customization.templates.index',
-                'email-customization.workflow',
                 'email-customization.templates.preview',
             ], true) ? 'email_customization.view' : 'email_customization.manage';
         }

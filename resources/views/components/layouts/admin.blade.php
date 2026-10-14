@@ -386,10 +386,6 @@
                                 :href="route('admin.email-customization.branding.edit')"
                                 :active="request()->routeIs('admin.email-customization.branding.*')"
                             >Global Branding</x-admin.sidebar-sub-link>
-                            <x-admin.sidebar-sub-link
-                                :href="route('admin.email-customization.workflow')"
-                                :active="request()->routeIs('admin.email-customization.workflow')"
-                            >Workflow Guide</x-admin.sidebar-sub-link>
                         </x-admin.sidebar-group>
                     @endif
                     @if($canAdmin('rural_surcharges.view'))

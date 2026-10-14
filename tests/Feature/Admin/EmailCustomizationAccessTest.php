@@ -27,7 +27,6 @@ class EmailCustomizationAccessTest extends TestCase
 
         $this->actingAs($admin, 'admin')->get(route('admin.email-customization.templates.index'))->assertOk();
         $this->actingAs($admin, 'admin')->get(route('admin.email-customization.branding.edit'))->assertOk();
-        $this->actingAs($admin, 'admin')->get(route('admin.email-customization.workflow'))->assertOk();
         $this->actingAs($admin, 'admin')->get(route('admin.email-customization.templates.edit', 'delivery-estimate-updated'))->assertOk();
         $this->actingAs($admin, 'admin')->get(route('admin.email-customization.templates.visibility', 'delivery-estimate-updated'))->assertOk();
         $this->actingAs($admin, 'admin')->get(route('admin.email-customization.templates.preview', 'delivery-estimate-updated'))->assertOk();

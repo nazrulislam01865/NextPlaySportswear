@@ -82,15 +82,6 @@
                 </svg>
                 <span>Back to Templates</span>
             </a>
-            <div class="flex items-center gap-2">
-                <a
-                    href="{{ route('admin.email-customization.workflow') }}"
-                    class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition"
-                >
-                    <span>🧭</span>
-                    <span>Workflow Guide</span>
-                </a>
-            </div>
         </div>
 
         <!-- Validation Errors Alert -->

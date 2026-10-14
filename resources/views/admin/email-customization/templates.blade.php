@@ -3,7 +3,7 @@
     subtitle="Customize how transactional emails look and what content they show. Keep your messaging on-brand and your customers informed at every step."
 >
     <div class="space-y-6" x-data="{ showCreateModal: false }">
-        <!-- Top Action Bar (Create Template, Workflow Guide & Global Branding) -->
+        <!-- Top Action Bar (Create Template & Global Branding) -->
         <div class="flex items-center justify-end gap-3 flex-wrap">
             <button
                 type="button"
@@ -22,13 +22,6 @@
                 title="Open full creation wizard"
             >
                 <span>⚡ Builder</span>
-            </a>
-            <a
-                href="{{ route('admin.email-customization.workflow') }}"
-                class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition"
-            >
-                <span>🧭</span>
-                <span>Workflow Guide</span>
             </a>
             <a
                 href="{{ route('admin.email-customization.branding.edit') }}"

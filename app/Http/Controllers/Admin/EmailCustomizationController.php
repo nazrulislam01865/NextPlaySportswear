@@ -259,14 +259,6 @@ class EmailCustomizationController extends Controller
     }
 
     /**
-     * Visual 9-Step Workflow Guide (Image: abc.png).
-     */
-    public function workflow(): View
-    {
-        return view('admin.email-customization.workflow');
-    }
-
-    /**
      * Template Content & Blocks Editor (Image: pqr.png).
      */
     public function editTemplate(string $template): View

@@ -143,7 +143,6 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
             Route::post('/templates/{template}/send-test', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'sendTest'])->name('templates.send-test');
             Route::get('/branding', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'branding'])->name('branding.edit');
             Route::put('/branding', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'updateBranding'])->name('branding.update');
-            Route::get('/workflow', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'workflow'])->name('workflow');
         });
 
         Route::get('/homepage', [\App\Http\Controllers\Admin\HomepageSectionController::class, 'index'])->name('homepage.sections.index');
