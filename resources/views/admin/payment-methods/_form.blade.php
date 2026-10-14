@@ -159,8 +159,11 @@
         </div>
     </x-admin.section-card>
 
-    <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
-        <a href="{{ route('admin.payment-methods.index') }}" class="btn btn-white">Cancel</a>
-        <button type="submit" class="btn btn-red">{{ $isEdit ? 'Update Payment Method' : 'Create Payment Method' }}</button>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end pt-2">
+        <a href="{{ route('admin.payment-methods.index') }}" class="btn btn-white inline-flex items-center justify-center">Cancel</a>
+        <button type="submit" class="btn btn-red inline-flex items-center justify-center gap-2 shadow-sm font-bold">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+            {{ $isEdit ? 'Update Payment Method' : 'Create Payment Method' }}
+        </button>
     </div>
 </form>

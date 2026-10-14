@@ -11911,3 +11911,43 @@ button.btn-orange * {
     color: #ffffff !important;
 }
 
+/* ==========================================================================
+   Admin File Inputs - Choose File Button Alignment
+   Ensures the "Choose File" button is positioned upper-center inside the box.
+   ========================================================================== */
+body.admin-clean-ui input[type="file"].admin-input,
+body.admin-ui-compact input[type="file"].admin-input,
+body.admin-clean-ui input[type="file"],
+body.admin-ui-compact input[type="file"],
+.admin-input[type="file"],
+input[type="file"].admin-input {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 2.5rem !important;
+    padding-top: 0.32rem !important;
+    padding-bottom: 0.52rem !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    line-height: 1.35 !important;
+    font-size: 0.82rem !important;
+    box-sizing: border-box !important;
+    cursor: pointer;
+}
+
+body.admin-clean-ui input[type="file"]::file-selector-button,
+body.admin-clean-ui input[type="file"]::-webkit-file-upload-button,
+body.admin-ui-compact input[type="file"]::file-selector-button,
+body.admin-ui-compact input[type="file"]::-webkit-file-upload-button,
+.admin-input[type="file"]::file-selector-button,
+.admin-input[type="file"]::-webkit-file-upload-button,
+input[type="file"]::file-selector-button,
+input[type="file"]::-webkit-file-upload-button {
+    margin-top: -2px !important;
+    margin-bottom: 0 !important;
+    margin-inline-end: 0.75rem !important;
+    vertical-align: middle !important;
+    cursor: pointer;
+}
+
+
