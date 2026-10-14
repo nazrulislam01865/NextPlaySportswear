@@ -3,6 +3,90 @@
     eyebrow="Email Customization"
     subtitle="Preview how this email looks and send a test to verify content, style, and personalization."
 >
+    @php
+        $defaultBlocks = [
+            [
+                'id' => 'greeting',
+                'name' => 'Greeting',
+                'enabled' => true,
+                'desc' => 'Personalized greeting to the customer.',
+                'variables' => ['{{customer_name}}'],
+                'icon' => 'greeting',
+            ],
+            [
+                'id' => 'delivery_card',
+                'name' => 'Delivery Estimate Card',
+                'enabled' => true,
+                'desc' => 'Shows previous and updated delivery dates.',
+                'variables' => ['{{previous_estimate}}', '{{updated_estimate}}'],
+                'icon' => 'delivery_card',
+            ],
+            [
+                'id' => 'holiday_notice',
+                'name' => 'Holiday Reason Notice',
+                'enabled' => true,
+                'desc' => 'Optional notice when delay is due to a holiday.',
+                'variables' => ['{{holiday_reason}}'],
+                'icon' => 'holiday_notice',
+            ],
+            [
+                'id' => 'order_summary',
+                'name' => 'Order Summary',
+                'enabled' => true,
+                'desc' => 'Brief order information and items.',
+                'variables' => ['{{order_number}}'],
+                'icon' => 'order_summary',
+            ],
+            [
+                'id' => 'cta_button',
+                'name' => 'CTA Button',
+                'enabled' => true,
+                'desc' => 'Button linking to the order details page.',
+                'variables' => [],
+                'icon' => 'cta_button',
+            ],
+            [
+                'id' => 'support_footer',
+                'name' => 'Support Footer',
+                'enabled' => true,
+                'desc' => 'Contact information and helpful links.',
+                'variables' => [],
+                'icon' => 'support_footer',
+            ],
+        ];
+
+        $templateBlocks = $template->blocks ?: $defaultBlocks;
+        $visibility = $template->visibility_settings ?? [];
+
+        $initialBlocks = array_values(array_map(function($b) use ($visibility) {
+            $id = $b['id'] ?? ('block_' . uniqid());
+            $icon = $b['icon'] ?? null;
+            if (!$icon) {
+                if (str_contains($id, 'greeting')) $icon = 'greeting';
+                elseif (str_contains($id, 'delivery')) $icon = 'delivery_card';
+                elseif (str_contains($id, 'holiday')) $icon = 'holiday_notice';
+                elseif (str_contains($id, 'tracking')) $icon = 'tracking_card';
+                elseif (str_contains($id, 'order')) $icon = 'order_summary';
+                elseif (str_contains($id, 'cta') || str_contains($id, 'button')) $icon = 'cta_button';
+                elseif (str_contains($id, 'support') || str_contains($id, 'footer')) $icon = 'support_footer';
+                else $icon = 'custom';
+            }
+            $enabled = (bool) ($b['enabled'] ?? true);
+            if (isset($visibility['show_' . $id])) {
+                $enabled = $enabled && (bool) $visibility['show_' . $id];
+            }
+            return [
+                'id' => $id,
+                'name' => $b['name'] ?? 'Custom Block',
+                'desc' => $b['desc'] ?? 'Content section block.',
+                'enabled' => $enabled,
+                'variables' => (array) ($b['variables'] ?? []),
+                'icon' => $icon,
+                'custom_icon' => $b['custom_icon'] ?? '',
+            ];
+        }, $templateBlocks));
+    @endphp
+
     <div
         class="space-y-6"
         x-data="{
@@ -14,6 +98,7 @@
             useSampleData: true,
             usePublishedVersion: true,
             alertDismissed: false,
+            blocks: {{ Js::from($initialBlocks) }},
             samples: {{ Js::from($sampleOrders) }},
             get currentOrder() {
                 return this.samples[this.currentOrderKey] || this.samples['np-12345'];
@@ -22,15 +107,26 @@
                 if (!text) return '';
                 if (!this.useSampleData) return text;
                 const o = this.currentOrder;
-                return text
-                    .replace(/\{\{\s*customer_name\s*\}\}/g, o.customer_name)
-                    .replace(/\{\{\s*order_number\s*\}\}/g, o.order_number)
-                    .replace(/\{\{\s*order_date\s*\}\}/g, o.order_date)
-                    .replace(/\{\{\s*previous_estimate\s*\}\}/g, o.previous_estimate)
-                    .replace(/\{\{\s*updated_estimate\s*\}\}/g, o.updated_estimate)
-                    .replace(/\{\{\s*holiday_reason\s*\}\}/g, o.holiday_reason)
-                    .replace(/\{\{\s*tracking_number\s*\}\}/g, o.tracking_number)
-                    .replace(/\{\{\s*shipping_method\s*\}\}/g, o.shipping_method);
+                let res = String(text);
+                const vars = {
+                    customer_name: o.customer_name || 'Jordan Smith',
+                    order_number: o.order_number || '#NP-12345',
+                    order_date: o.order_date || 'Oct 18, 2026',
+                    previous_estimate: o.previous_estimate || 'Tue, Dec 24, 2026',
+                    updated_estimate: o.updated_estimate || 'Fri, Dec 27, 2026',
+                    holiday_reason: o.holiday_reason || 'Christmas Day affects the original delivery date.',
+                    tracking_number: o.tracking_number || '1Z999AA1234567890',
+                    shipping_method: o.shipping_method || 'Standard Ground Shipping',
+                    carrier: o.carrier || 'UPS Ground',
+                    items_count: (o.items_count || 2) + ' items',
+                    order_total: o.order_total || '$129.98',
+                };
+                for (const [k, v] of Object.entries(vars)) {
+                    res = res.split('{{' + k + '}}').join(v);
+                    res = res.split('{' + k + '}').join(v);
+                    res = res.split('{{ ' + k + ' }}').join(v);
+                }
+                return res;
             }
         }"
     >
@@ -146,10 +242,10 @@
                             <span class="h-2.5 w-2.5 rounded-full bg-[#10B981]"></span>
                         </div>
 
-                        <!-- Email Body Container -->
-                        <div class="p-8 sm:p-10 text-center">
+                        <!-- Email Body Container (Dynamic Block-based Layout matching Image 1) -->
+                        <div class="p-6 sm:p-8 text-center text-slate-700 text-xs">
                             <!-- Brand Logo -->
-                            <div class="text-xl font-black tracking-wider text-brand-ink">
+                            <div class="text-center font-black text-lg text-brand-ink tracking-wider">
                                 @if(!empty($branding->logo_url))
                                     <img src="{{ $branding->logo_url }}" alt="NextPlay" class="mx-auto h-7 object-contain">
                                 @else
@@ -157,85 +253,151 @@
                                 @endif
                             </div>
 
-                            <!-- Delivery Truck Graphic with Speed Lines (Matching jkl.png) -->
-                            <div class="my-6 flex justify-center items-center">
-                                <div class="relative w-36 h-20 flex items-center justify-center">
-                                    <svg viewBox="0 0 160 90" class="w-full h-full drop-shadow-sm" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <!-- Speed lines trailing behind truck -->
-                                        <path d="M12 36H40" stroke="#F15A2B" stroke-width="3.5" stroke-linecap="round"/>
-                                        <path d="M22 46H50" stroke="#38BDF8" stroke-width="3.5" stroke-linecap="round"/>
-                                        <path d="M6 56H36" stroke="#F15A2B" stroke-width="3.5" stroke-linecap="round"/>
-                                        
-                                        <!-- Truck Cargo Body (Orange) -->
-                                        <rect x="52" y="24" width="60" height="42" rx="4" fill="#CF5D38"/>
-                                        
-                                        <!-- Truck Cabin (Navy) -->
-                                        <path d="M112 38H132C134.5 38 137 40.5 138.5 43.5L145 54C146 55.5 146.5 57 146.5 58.5V66H112V38Z" fill="#0B2A4A"/>
-                                        
-                                        <!-- Windshield -->
-                                        <path d="M116 42H130L135 52H116V42Z" fill="#E2E8F0"/>
-                                        
-                                        <!-- Wheels -->
-                                        <circle cx="74" cy="66" r="9" fill="#1E293B"/>
-                                        <circle cx="74" cy="66" r="4.5" fill="#CBD5E1"/>
-                                        
-                                        <circle cx="132" cy="66" r="9" fill="#1E293B"/>
-                                        <circle cx="132" cy="66" r="4.5" fill="#CBD5E1"/>
-                                        
-                                        <!-- Headlight -->
-                                        <rect x="144" y="58" width="3" height="5" rx="1.5" fill="#FBBF24"/>
-                                    </svg>
-                                </div>
+                            <!-- Heading & Intro -->
+                            <div class="mt-4 text-center">
+                                <h2 class="text-base sm:text-lg font-extrabold text-brand-ink leading-tight" x-text="resolve('{{ addslashes($template->heading) }}')">
+                                    {{ $template->heading }}
+                                </h2>
+                                <p class="mt-2 text-xs text-slate-500 leading-relaxed max-w-sm mx-auto" x-text="resolve('{{ addslashes($template->intro_message ?? 'Good news! We have an updated delivery estimate for your order. You can view the latest details below.') }}')">
+                                    {{ $template->intro_message ?? 'Good news! We have an updated delivery estimate for your order. You can view the latest details below.' }}
+                                </p>
                             </div>
 
-                            <!-- Heading & Intro (Matching jkl.png) -->
-                            <h2 class="text-xl sm:text-2xl font-black text-brand-ink leading-tight" x-text="resolve('{{ addslashes($template->heading) }}')">
-                                {{ $template->heading }}
-                            </h2>
-                            <p class="mt-2.5 text-xs text-slate-500 leading-relaxed max-w-md mx-auto" x-text="resolve('{{ addslashes($template->intro_message ?? 'Good news! We have an updated delivery estimate for your order. You can view the latest details below.') }}')">
-                                {{ $template->intro_message ?? 'Good news! We have an updated delivery estimate for your order. You can view the latest details below.' }}
-                            </p>
+                            <!-- Dynamic Ordered Blocks in Live Preview (Exact match of Image 1) -->
+                            <div class="mt-5 space-y-3.5 text-left">
+                                <template x-for="block in blocks" :key="block.id">
+                                    <div x-show="Boolean(block.enabled)">
+                                        <!-- Greeting Preview -->
+                                        <template x-if="block.id === 'greeting'">
+                                            <div class="text-slate-700 font-semibold text-xs py-1" x-text="`Hi ${currentOrder.customer_name ? currentOrder.customer_name.split(' ')[0] : 'Jordan'},`">
+                                            </div>
+                                        </template>
 
-                            <!-- Order Details Box (Exact match of jkl.png) -->
-                            <div class="mt-6 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 sm:p-6 text-left text-xs max-w-lg mx-auto">
-                                <div class="grid gap-3">
-                                    <div class="flex items-center justify-between">
-                                        <span class="font-bold text-slate-500">Order Number</span>
-                                        <span class="font-extrabold text-brand-ink" x-text="currentOrder.order_number"></span>
+                                        <!-- Delivery Estimate Card Preview (Exact match of Image 1) -->
+                                        <template x-if="block.id === 'delivery_card'">
+                                            <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                                                <div class="flex items-center gap-3.5">
+                                                    <!-- Round Gray Badge with Truck Icon or Custom Icon -->
+                                                    <div class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-200/80 text-slate-700 overflow-hidden">
+                                                        <template x-if="block.custom_icon">
+                                                            <img :src="block.custom_icon" alt="Block icon" class="h-6 w-6 object-contain">
+                                                        </template>
+                                                        <template x-if="!block.custom_icon">
+                                                            <svg class="h-5 w-5 stroke-current" fill="none" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8h4l3 3v5a1 1 0 01-1 1h-1m-4 0h-1"/>
+                                                            </svg>
+                                                        </template>
+                                                    </div>
+                                                    <div>
+                                                        <span class="block text-xs font-bold text-slate-800">Estimated Delivery</span>
+                                                        <div class="flex items-center gap-2 mt-1">
+                                                            <span class="line-through text-slate-400 text-xs font-medium" x-text="currentOrder.previous_estimate || 'Tue, Dec 24, 2026'"></span>
+                                                            <span class="text-slate-400 text-xs">→</span>
+                                                            <span class="rounded-lg bg-[#DCFCE7] px-2.5 py-0.5 text-xs font-bold text-[#166534]" x-text="currentOrder.updated_estimate || 'Fri, Dec 27, 2026'"></span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+
+                                        <!-- Holiday Reason Notice Preview (Exact match of Image 1) -->
+                                        <template x-if="block.id === 'holiday_notice' || block.id === 'holiday_reason'">
+                                            <div class="rounded-2xl border border-[#FDE68A] bg-[#FEF3C7]/60 p-4 text-xs text-amber-900 flex items-start gap-3">
+                                                <div class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#FEF3C7] text-amber-700 overflow-hidden">
+                                                    <template x-if="block.custom_icon">
+                                                        <img :src="block.custom_icon" alt="Block icon" class="h-5 w-5 object-contain">
+                                                    </template>
+                                                    <template x-if="!block.custom_icon">
+                                                        <svg class="h-4 w-4 stroke-current" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                    </template>
+                                                </div>
+                                                <div>
+                                                    <p class="font-bold text-xs text-amber-950">Delayed due to holiday</p>
+                                                    <p class="text-[11px] text-amber-800 leading-snug mt-0.5" x-text="currentOrder.holiday_reason || 'Christmas Day affects the original delivery date. Carrier operations are running on a modified schedule, which may cause delays.'"></p>
+                                                </div>
+                                            </div>
+                                        </template>
+
+                                        <!-- Order Summary Preview (Exact match of Image 1) -->
+                                        <template x-if="block.id === 'order_summary'">
+                                            <div class="rounded-2xl border border-slate-200 bg-white p-4 text-xs shadow-sm">
+                                                <div class="flex items-center gap-2 font-bold text-slate-900 text-xs mb-3">
+                                                    <template x-if="block.custom_icon">
+                                                        <img :src="block.custom_icon" alt="Block icon" class="h-4 w-4 object-contain">
+                                                    </template>
+                                                    <template x-if="!block.custom_icon">
+                                                        <svg class="h-4 w-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                                    </template>
+                                                    <span>Order Summary</span>
+                                                </div>
+                                                <div class="space-y-1.5 text-xs">
+                                                    <div class="flex justify-between">
+                                                        <span class="text-slate-500">Order Number</span>
+                                                        <span class="font-bold text-slate-900" x-text="currentOrder.order_number || '#NP-12345'"></span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-slate-500">Items</span>
+                                                        <span class="text-slate-700" x-text="(currentOrder.items_count || 2) + ' items'"></span>
+                                                    </div>
+                                                    <div class="flex justify-between border-t border-slate-100 pt-1.5 mt-1">
+                                                        <span class="text-slate-500">Total</span>
+                                                        <span class="font-bold text-slate-900" x-text="currentOrder.order_total || '$129.98'"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+
+                                        <!-- CTA Button Preview (Exact match of Image 1) -->
+                                        <template x-if="block.id === 'cta_button'">
+                                            <div class="pt-2 text-center">
+                                                <button
+                                                    type="button"
+                                                    class="w-full rounded-xl py-3 text-xs font-black text-white shadow-sm transition hover:opacity-95"
+                                                    style="background-color: {{ $branding->button_color }} !important; color: #ffffff !important;"
+                                                >
+                                                    {{ $template->cta_label ?? 'View Order Details' }}
+                                                </button>
+                                            </div>
+                                        </template>
+
+                                        <!-- Support Footer Preview (Exact match of Image 1) -->
+                                        <template x-if="block.id === 'support_footer'">
+                                            <div class="pt-3 text-center text-[11px] text-slate-400">
+                                                Need help? <a href="#" class="font-bold text-brand-ink underline" style="color: {{ $branding->button_color }};">Contact our support team</a> anytime.
+                                            </div>
+                                        </template>
+
+                                        <!-- Carrier Tracking Card Preview -->
+                                        <template x-if="block.id === 'tracking_card'">
+                                            <div class="rounded-xl border border-slate-200 bg-slate-50/80 p-3.5">
+                                                <div class="flex items-center justify-between mb-2">
+                                                    <div class="flex items-center gap-2">
+                                                        <template x-if="block.custom_icon">
+                                                            <img :src="block.custom_icon" alt="Block icon" class="h-4 w-4 object-contain">
+                                                        </template>
+                                                        <template x-if="!block.custom_icon">
+                                                            <span>🚚</span>
+                                                        </template>
+                                                        <span class="font-bold text-slate-700 text-xs">Carrier Tracking</span>
+                                                    </div>
+                                                    <span class="rounded-md bg-blue-100 px-2 py-0.5 font-bold text-blue-800 text-[10px]">In Transit</span>
+                                                </div>
+                                                <div class="space-y-1.5 text-[11px]">
+                                                    <div class="flex justify-between">
+                                                        <span class="text-slate-500">Carrier</span>
+                                                        <span class="font-bold text-brand-ink" x-text="currentOrder.carrier || 'UPS Ground'"></span>
+                                                    </div>
+                                                    <div class="flex justify-between">
+                                                        <span class="text-slate-500">Tracking Number</span>
+                                                        <span class="font-mono font-bold text-slate-700" x-text="currentOrder.tracking_number || '1Z999AA1234567890'"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
                                     </div>
-                                    <div class="flex items-center justify-between">
-                                        <span class="font-bold text-slate-500">Estimated Delivery</span>
-                                        <div class="flex items-center gap-2">
-                                            <span class="font-extrabold text-brand-ink" x-text="currentOrder.updated_estimate"></span>
-                                            <span class="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-800">Updated</span>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center justify-between">
-                                        <span class="font-bold text-slate-500">Shipping Method</span>
-                                        <span class="font-semibold text-slate-700" x-text="currentOrder.shipping_method"></span>
-                                    </div>
-                                    <div class="flex items-center justify-between">
-                                        <span class="font-bold text-slate-500">Tracking Number</span>
-                                        <span class="font-mono font-bold text-slate-700" x-text="currentOrder.tracking_number"></span>
-                                    </div>
-                                </div>
+                                </template>
                             </div>
-
-                            <!-- CTA Button (Matching jkl.png) -->
-                            <div class="mt-6">
-                                <button
-                                    type="button"
-                                    class="inline-block w-full max-w-xs rounded-xl py-3 text-xs font-black text-white shadow-sm transition hover:opacity-95"
-                                    style="background-color: {{ $branding->button_color }} !important; color: #ffffff !important;"
-                                >
-                                    {{ $template->cta_label ?? 'View Order Details' }}
-                                </button>
-                            </div>
-
-                            <!-- Footer Support Link (Matching jkl.png) -->
-                            <p class="mt-5 text-[11px] text-slate-400">
-                                Need help? <a href="#" class="font-bold text-brand-ink underline" style="color: {{ $branding->button_color }};">Contact our support team</a> anytime.
-                            </p>
                         </div>
                     </div>
                 </div>

@@ -177,15 +177,18 @@ class EmailCustomizationEngine
 
         if ($isBlockEnabled('delivery_card', true)) {
             if (! empty($context['previous_estimate']) && ($visibility['show_previous_estimate'] ?? true)) {
+                $details['Previous estimate'] = $context['previous_estimate'];
                 $details['Previous Estimate'] = $context['previous_estimate'];
             }
 
             if (! empty($context['updated_estimate']) && ($visibility['show_updated_estimate'] ?? true)) {
+                $details['Updated estimate'] = $context['updated_estimate'];
                 $details['Estimated Delivery'] = $context['updated_estimate'];
             }
         }
 
         if (($isBlockEnabled('holiday_notice', true) || $isBlockEnabled('holiday_reason', true)) && (! empty($visibility['show_holiday_reason'] ?? true) || ! empty($visibility['show_holiday_notice'] ?? true)) && ! empty($context['holiday_reason'])) {
+            $details['Holiday affecting delivery'] = $context['holiday_reason'];
             $details['Reason'] = $context['holiday_reason'];
             $details['Delay Reason'] = $context['holiday_reason'];
         }
@@ -200,6 +203,16 @@ class EmailCustomizationEngine
 
         if (! empty($context['tracking_number'])) {
             $details['Tracking Number'] = $context['tracking_number'];
+        }
+
+        $introLines = [];
+        if ($isBlockEnabled('greeting', true) && ! empty($visibility['show_greeting'] ?? true)) {
+            $customerName = $recipientName ?: ($context['customer_name'] ?? 'Customer');
+            $firstName = explode(' ', trim($customerName))[0] ?: 'Customer';
+            $introLines[] = "Hi {$firstName},";
+        }
+        if (! empty($intro)) {
+            $introLines[] = $intro;
         }
 
         $outro = [];
@@ -227,7 +240,7 @@ class EmailCustomizationEngine
             ],
             subject: $subject,
             heading: $heading,
-            introLines: array_filter([$intro]),
+            introLines: $introLines,
             details: $details,
             actionText: $showCta ? $ctaLabel : null,
             actionUrl: $showCta ? $actionUrl : null,

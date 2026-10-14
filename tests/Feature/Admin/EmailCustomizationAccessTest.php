@@ -228,6 +228,20 @@ class EmailCustomizationAccessTest extends TestCase
         $response->assertSessionHas('status');
     }
 
+    public function test_preview_screen_renders_dynamic_template_blocks_and_holiday_notice(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+
+        $response = $this->actingAs($admin, 'admin')->get(route('admin.email-customization.templates.preview', 'delivery-estimate-updated'));
+
+        $response->assertOk();
+        $response->assertSee('Estimated Delivery');
+        $response->assertSee('Delayed due to holiday');
+        $response->assertSee('Order Summary');
+        $response->assertSee('View Order Details');
+        $response->assertDontSee('Truck Cargo Body');
+    }
+
     public function test_admin_can_reorder_and_persist_template_blocks(): void
     {
         $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);

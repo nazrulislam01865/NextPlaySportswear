@@ -73,6 +73,32 @@
                                         </table>
                                     </div>
                                 @endif
+
+                                @if (!empty($emailMessage->details['Items']) || !empty($emailMessage->details['Total']))
+                                    <div style="margin:16px 0 22px;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:16px 18px;">
+                                        <div style="font-size:13px;font-weight:800;color:#0b1a30;margin-bottom:10px;">Order Summary</div>
+                                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                            @if (!empty($orderRefNum))
+                                                <tr>
+                                                    <td style="padding:4px 0;font-size:12px;color:#64748b;">Order Number</td>
+                                                    <td align="right" style="padding:4px 0;font-size:12px;font-weight:700;color:#0b1a30;">{{ str_starts_with($orderRefNum, '#') ? $orderRefNum : '#' . $orderRefNum }}</td>
+                                                </tr>
+                                            @endif
+                                            @if (!empty($emailMessage->details['Items']))
+                                                <tr>
+                                                    <td style="padding:4px 0;font-size:12px;color:#64748b;">Items</td>
+                                                    <td align="right" style="padding:4px 0;font-size:12px;color:#334155;">{{ $emailMessage->details['Items'] }}</td>
+                                                </tr>
+                                            @endif
+                                            @if (!empty($emailMessage->details['Total']))
+                                                <tr>
+                                                    <td style="padding:6px 0 0;font-size:12px;font-weight:700;color:#0b1a30;border-top:1px solid #f1f5f9;">Total</td>
+                                                    <td align="right" style="padding:6px 0 0;font-size:12px;font-weight:800;color:#0b1a30;border-top:1px solid #f1f5f9;">{{ $emailMessage->details['Total'] }}</td>
+                                                </tr>
+                                            @endif
+                                        </table>
+                                    </div>
+                                @endif
                             @elseif ($emailMessage->details !== [])
                                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:22px 0;border-collapse:separate;border-spacing:0;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">
                                     @foreach ($emailMessage->details as $label => $value)
