@@ -16,6 +16,7 @@
             'total' => '$'.number_format($total, 2),
             'total_amount' => round($total, 2),
             'eta' => $method['eta'] ?? '',
+            'holiday_notice' => (string) ($method['holiday_notice'] ?? ''),
             'quote_based' => (bool) ($method['quote_based'] ?? false),
         ];
     })->keyBy('code')->all();
@@ -44,6 +45,17 @@
                                     </div>
                                     <p class="mt-1 text-sm font-semibold leading-6 text-slate-600">{{ $method['description'] }}</p>
                                     <small class="mt-2 inline-block text-xs font-black uppercase tracking-wide text-slate-500">{{ $method['eta'] }}</small>
+                                    @if(!empty($method['holiday_notice']))
+                                        <div class="mt-2 flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50/90 px-3 py-2 text-xs text-amber-950 shadow-sm">
+                                            <svg class="w-4 h-4 text-[#CF5D38] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            <div>
+                                                <strong class="font-extrabold text-amber-950 block text-[11px]">Includes holiday adjustment</strong>
+                                                <span class="text-amber-900 font-medium">{{ $method['holiday_notice'] }}</span>
+                                            </div>
+                                        </div>
+                                    @endif
                                     @if(!empty($method['rural_surcharge']))
                                         <span class="mt-2 block text-xs font-bold text-amber-700">Includes ${{ number_format($method['rural_surcharge']['amount'] ?? 0, 2) }} rural area surcharge for {{ $method['rural_surcharge']['postal_code'] ?? 'this ZIP' }}.</span>
                                     @endif
@@ -66,6 +78,12 @@
                     <div>
                         <span class="block text-xs uppercase tracking-wide text-blue-500">Delivery estimate</span>
                         <strong class="mt-1 block text-sm leading-5" x-text="current().eta || 'After artwork approval'"></strong>
+                        <template x-if="current().holiday_notice">
+                            <div class="mt-1.5 flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900">
+                                <span>ⓘ</span>
+                                <span x-text="current().holiday_notice"></span>
+                            </div>
+                        </template>
                     </div>
                 </div>
             @endif

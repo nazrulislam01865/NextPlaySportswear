@@ -424,6 +424,22 @@ class CheckoutService
                     'placed_at' => now(),
                 ]);
 
+                $holidayService = app(\App\Services\Shipping\HolidayCalendarService::class);
+                $country = $holidayService->resolveOrderCountry($order);
+                [$minDays, $maxDays] = $holidayService->resolveOrderDays($order);
+                $deliveryWindow = $holidayService->calculateDeliveryWindow(now(), $minDays, $maxDays, $country);
+
+                $order->estimated_delivery_start_at = $deliveryWindow['start_date'];
+                $order->estimated_delivery_end_at = $deliveryWindow['end_date'];
+                $order->holiday_adjustment_applied = $deliveryWindow['is_holiday_adjusted'];
+                $order->holiday_adjustment_reason = $deliveryWindow['adjustment_reason'];
+                $order->holiday_adjustment_meta = [
+                    'holidays' => $deliveryWindow['affected_holidays'],
+                    'range' => $deliveryWindow['formatted_range'],
+                    'country' => $country,
+                ];
+                $order->save();
+
                 if ($user instanceof User && $rewardDiscount > 0) {
                     $this->rewards->reserveForOrder($order, $user, $rewardDiscount);
                 }

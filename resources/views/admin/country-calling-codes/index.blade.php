@@ -37,6 +37,7 @@
                             <td class="px-5 py-4">
                                 @if($canManageBulkQuoteMasterData)
                                     <div class="admin-row-actions">
+                                        <a class="admin-row-action border-slate-200" href="{{ route('admin.holiday-calendars.index', ['country' => $code->country_name]) }}">Calendars</a>
                                         <a class="admin-row-action border-slate-200" href="{{ route('admin.country-calling-codes.edit', $code) }}">Edit</a>
                                         <form method="POST" action="{{ route('admin.country-calling-codes.destroy', $code) }}" onsubmit="return confirm('Delete this country calling code? Existing saved quotes will not be changed.');">
                                             @csrf

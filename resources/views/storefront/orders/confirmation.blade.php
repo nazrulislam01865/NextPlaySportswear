@@ -27,6 +27,26 @@
             <x-storefront.order.timeline :timeline="$timeline" />
         </div>
 
+        @if(!empty($order['holiday_adjustment_applied']) || !empty($order['holiday_adjustment_reason']))
+            <div class="mt-6 rounded-2xl border border-amber-300 bg-amber-50/90 p-5 text-xs text-amber-950 shadow-sm">
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-[#CF5D38] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="inline-flex items-center rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-900">Holiday Adjusted</span>
+                            <span class="font-extrabold text-amber-950 text-xs">Holiday adjustment applied</span>
+                            <span class="sr-only">Delivery Window Notice</span>
+                        </div>
+                        <p class="font-medium text-amber-900 leading-relaxed text-xs">
+                            {{ $order['holiday_adjustment_reason'] ?? 'Delivery estimate includes extra transit time due to scheduled holiday closure dates.' }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <div class="mt-6 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm font-bold leading-6 text-green-800">
             Your customization details are saved. Contact support before design approval if you need to change artwork, sizes, names, numbers, or delivery notes.
         </div>

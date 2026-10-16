@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'information', 'shipping_address', 'billing_address', 'shipping_method', 'payment_method',
     'customer_note', 'admin_note', 'idempotency_key', 'placed_at', 'paid_at', 'cancelled_at',
     'completed_at', 'delivered_at',
+    'estimated_delivery_start_at', 'estimated_delivery_end_at', 'holiday_adjustment_applied',
+    'holiday_adjustment_reason', 'holiday_adjustment_meta',
     'flowtrack_sync_status', 'flowtrack_sync_attempts', 'flowtrack_order_id', 'flowtrack_order_number', 'flowtrack_job_id',
     'flowtrack_last_attempt_at', 'flowtrack_synced_at', 'flowtrack_sync_error', 'flowtrack_response',
 ])]
@@ -191,6 +193,19 @@ class Order extends Model
         return max(0, round((float) $this->grand_total - $paid, 2));
     }
 
+    public function formattedEstimatedDelivery(): ?string
+    {
+        if ($this->estimated_delivery_start_at && $this->estimated_delivery_end_at) {
+            if ($this->estimated_delivery_start_at->equalTo($this->estimated_delivery_end_at)) {
+                return $this->estimated_delivery_start_at->format('d M Y');
+            }
+
+            return $this->estimated_delivery_start_at->format('d M').' – '.$this->estimated_delivery_end_at->format('d M Y');
+        }
+
+        return data_get($this->shipping_method, 'eta');
+    }
+
     protected function casts(): array
     {
         return [
@@ -213,6 +228,10 @@ class Order extends Model
             'cancelled_at' => 'datetime',
             'completed_at' => 'datetime',
             'delivered_at' => 'datetime',
+            'estimated_delivery_start_at' => 'date',
+            'estimated_delivery_end_at' => 'date',
+            'holiday_adjustment_applied' => 'boolean',
+            'holiday_adjustment_meta' => 'array',
             'flowtrack_sync_attempts' => 'integer',
             'flowtrack_order_id' => 'integer',
             'flowtrack_last_attempt_at' => 'datetime',
