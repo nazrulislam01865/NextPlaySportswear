@@ -449,7 +449,7 @@
                         name="action"
                         value="publish"
                         class="rounded-xl px-6 py-2.5 text-xs font-black !text-white shadow-sm transition hover:opacity-95"
-                        style="background-color: #CF5D38 !important; color: #ffffff !important;"
+                        style="background-color: var(--np-color-secondary) !important; color: #ffffff !important;"
                     >
                         Create & Publish v1.0
                     </button>

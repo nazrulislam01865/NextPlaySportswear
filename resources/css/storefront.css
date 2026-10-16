@@ -4825,6 +4825,22 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     max-width: min(660px, 100%);
 }
 
+/* Align only the homepage slider heading with the approved storefront title scale. */
+@media (min-width: 768px) {
+    .storefront-clean-ui .promo-copy h1,
+    .storefront-clean-ui .promo-copy h2 {
+        font-size: clamp(2.125rem, 3.5vw, var(--np-title-1-size));
+        max-width: 100%;
+    }
+}
+
+/* Use the same horizontal content container as the other storefront sections. */
+@media (min-width: 1024px) {
+    .storefront-clean-ui .home-page .promo-content {
+        width: min(var(--np-commerce-layout-max), calc(100% - var(--np-visible-page-inline-space)));
+    }
+}
+
 @media (max-width: 767px) {
     .promo-track {
         aspect-ratio: 4 / 5;
@@ -24200,4 +24216,49 @@ html.np-product-preview-open body { overflow: hidden; }
     mask-repeat: no-repeat;
     -webkit-mask-size: contain;
     mask-size: contain;
+}
+
+/* Shared My Account alignment across dashboard, orders, profile, addresses,
+   payments, rewards, referrals and order/return detail screens. */
+.storefront-clean-ui .np-account-prototype-content > .np-rewards-breadcrumb {
+    margin-bottom: 18px;
+}
+.storefront-clean-ui .np-account-rewards-badge {
+    display: inline-flex;
+    margin: 0 0 14px;
+    padding: 5px 10px;
+    border: 1px solid var(--np-color-border);
+    background: #fff;
+    color: var(--np-color-muted);
+    font-size: 12px;
+    line-height: 1.35;
+}
+.storefront-clean-ui .np-account-order-tools {
+    display: flex;
+    min-height: 42px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--np-color-border);
+    padding-bottom: 12px;
+}
+.storefront-clean-ui .np-account-order-tools__label {
+    font-size: 12px;
+    font-weight: var(--np-font-weight-bold);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--np-color-secondary);
+}
+.storefront-clean-ui .np-account-order-tools__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+@media (max-width: 640px) {
+    .storefront-clean-ui .np-account-order-tools__actions,
+    .storefront-clean-ui .np-account-order-tools__actions .btn {
+        width: 100%;
+    }
 }

@@ -5,7 +5,7 @@
             <a
                 href="{{ route('admin.holiday-calendars.edit', $calendar) }}"
                 class="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold !text-white shadow-sm transition hover:opacity-95"
-                style="background-color: #CF5D38 !important; color: #ffffff !important;"
+                style="background-color: var(--np-color-secondary) !important; color: #ffffff !important;"
             >
                 <span>Edit Calendar</span>
             </a>

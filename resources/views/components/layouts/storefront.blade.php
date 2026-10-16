@@ -71,6 +71,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>{{ $title }}</title>
+    <link rel="icon" href="{{ \App\Support\StorefrontBranding::faviconUrl() }}">
     <meta name="description" content="{{ $description }}">
     <meta name="robots" content="{{ $robots }}">
     <meta name="referrer" content="strict-origin-when-cross-origin">

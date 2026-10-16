@@ -3510,6 +3510,13 @@ const setupGlobalWishlistHeader = () => {
             }
             if (titleNode) titleNode.textContent = title;
             if (priceNode) priceNode.textContent = money(item.price, item.currency);
+            const originalNode = row.querySelector('[data-wishlist-preview-original-price]');
+            const originalPrice = Number(item.original_price || 0);
+            const currentPrice = Number(item.price || 0);
+            if (originalNode) {
+                originalNode.classList.toggle('hidden', !(originalPrice > currentPrice));
+                originalNode.textContent = originalPrice > currentPrice ? money(originalPrice, item.currency) : '';
+            }
 
             previewItems.appendChild(row);
         });
@@ -3805,6 +3812,13 @@ const setupWishlistPage = () => {
         knownPrice?.classList.toggle('hidden', !hasPrice);
         unknownPrice?.classList.toggle('hidden', hasPrice);
         if (priceNode) priceNode.textContent = hasPrice ? money(price, item?.currency) : '';
+        const originalPrice = Number(item?.original_price || 0);
+        const originalNode = card.querySelector('[data-wishlist-original-price]');
+        if (originalNode) {
+            const discounted = originalPrice > price;
+            originalNode.classList.toggle('hidden', !discounted);
+            originalNode.textContent = discounted ? money(originalPrice, item?.currency) : '';
+        }
 
         const removeButton = card.querySelector('[data-wishlist-remove]');
         if (removeButton) {

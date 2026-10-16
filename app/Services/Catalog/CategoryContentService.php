@@ -64,7 +64,7 @@ class CategoryContentService
                 ->orderBy('products.sort_order')
                 ->limit($limit)
                 ->get()
-                ->map(fn (Product $product) => $this->products->fromListingModel($product))
+                ->map(fn (Product $product): array => $this->products->applySaleCampaignPricing($this->products->fromListingModel($product)))
                 ->all();
         }
 

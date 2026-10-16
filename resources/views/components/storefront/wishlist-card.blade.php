@@ -13,6 +13,7 @@
     $alt = $isGuestTemplate ? '' : (string) ($item['alt'] ?? $title);
     $category = $isGuestTemplate ? '' : trim((string) ($item['category'] ?? ''));
     $price = $isGuestTemplate ? 0.0 : max(0, (float) ($item['price'] ?? 0));
+    $originalPrice = $isGuestTemplate ? 0.0 : max(0, (float) ($item['original_price'] ?? 0));
     $priceAvailable = ! $isGuestTemplate && (bool) ($item['price_available'] ?? ($price > 0));
     $currency = $isGuestTemplate ? 'USD' : strtoupper((string) ($item['currency'] ?? 'USD'));
     $priceLabel = $currency === 'USD'
@@ -64,6 +65,7 @@
             <span data-wishlist-price-known class="{{ $priceAvailable ? '' : 'hidden' }}">
                 <span class="np-wishlist-card-price-prefix">From</span>
                 <strong data-wishlist-product-price>{{ $priceAvailable ? $priceLabel : '' }}</strong>
+                <del data-wishlist-original-price class="text-xs text-slate-500 {{ $originalPrice > $price ? '' : 'hidden' }}">{{ $originalPrice > $price ? ($currency === 'USD' ? '$' : $currency.' ').number_format($originalPrice, 2) : '' }}</del>
                 <span class="np-wishlist-card-price-suffix">each</span>
             </span>
             <span data-wishlist-price-unknown class="{{ $priceAvailable ? 'hidden' : '' }}">

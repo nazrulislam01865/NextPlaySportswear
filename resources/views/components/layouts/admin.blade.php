@@ -7,10 +7,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="robots" content="noindex,nofollow">
     <title>{{ $title }} | NextPlay Admin</title>
+    <link rel="icon" href="{{ \App\Support\StorefrontBranding::faviconUrl() }}">
     <x-admin.sidebar-prepaint-state />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/admin.css', 'resources/js/admin.js'])
     @stack('admin-page-styles')
     @php
@@ -462,10 +460,10 @@
             </header>
 
             <main id="admin-main-content" tabindex="-1" class="min-w-0 p-4 sm:p-6 lg:p-8">
-                @if (session('status') && ! request()->routeIs('admin.email-customization.*', 'admin.holiday-calendars.*'))
+                @if (session('status') && ! request()->routeIs('admin.email-customization.*', 'admin.holiday-calendars.*', 'admin.coupons.index', 'admin.promotions.sales.index', 'admin.storefront-branding.edit', 'admin.about-page.edit', 'admin.shipping-delivery-page.edit', 'admin.sustainability-page.edit'))
                     <div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
                 @endif
-                @if ($errors->any() && ! request()->routeIs('admin.products.create', 'admin.products.edit', 'admin.homepage.sections.edit', 'admin.menus.create', 'admin.menus.edit', 'admin.email-customization.*', 'admin.holiday-calendars.*'))
+                @if ($errors->any() && ! request()->routeIs('admin.products.create', 'admin.products.edit', 'admin.homepage.sections.edit', 'admin.menus.create', 'admin.menus.edit', 'admin.email-customization.*', 'admin.holiday-calendars.*', 'admin.categories.create', 'admin.coupons.create', 'admin.coupons.edit', 'admin.storefront-branding.edit', 'admin.about-page.edit', 'admin.shipping-delivery-page.edit', 'admin.sustainability-page.edit', 'admin.users.index', 'admin.role-matrix.index', 'admin.bulk-quotes.show'))
                     <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                         <p class="font-black">Please correct the highlighted information.</p>
                         <ul class="mt-2 list-disc space-y-1 pl-5">

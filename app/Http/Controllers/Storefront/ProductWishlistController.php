@@ -243,8 +243,9 @@ class ProductWishlistController extends Controller
         ?string $savedAt = null,
         ?string $removeEndpoint = null,
     ): array {
-        $card = $catalog->fromListingModel($product);
+        $card = $catalog->applySaleCampaignPricing($catalog->fromListingModel($product));
         $displayPrice = max(0, (float) ($card['display_unit_price'] ?? 0));
+        $originalPrice = max(0, (float) ($card['original_price'] ?? 0));
         $category = trim((string) ($product->subcategory?->name ?: ($card['category'] ?? '')));
         $currency = trim((string) ($card['currency'] ?? $product->currency ?? 'USD'));
         $currency = $currency !== '' ? $currency : 'USD';
@@ -258,7 +259,9 @@ class ProductWishlistController extends Controller
             'alt' => (string) ($card['alt'] ?? $product->name),
             'category' => $category,
             'price' => $displayPrice,
-            'price_available' => $displayPrice > 0,
+            'original_price' => $originalPrice > $displayPrice ? $originalPrice : null,
+            'offer_label' => $originalPrice > $displayPrice ? 'Sale' : null,
+            'price_available' => $displayPrice >= 0,
             'currency' => $currency,
             'saved_at' => $savedAt,
             'remove_endpoint' => $removeEndpoint,

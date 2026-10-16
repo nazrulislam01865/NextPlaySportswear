@@ -149,7 +149,7 @@
                 type="button"
                 @click="$refs.testEmailForm.requestSubmit()"
                 class="inline-flex items-center gap-2 rounded-xl px-5 py-2 text-xs font-black !text-white shadow-sm transition hover:opacity-95"
-                style="background-color: #CF5D38 !important; color: #ffffff !important;"
+                style="background-color: var(--np-color-secondary) !important; color: #ffffff !important;"
             >
                 <svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
                     <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
@@ -455,7 +455,7 @@
                                 <button
                                     type="button"
                                     @click="useSampleData = !useSampleData"
-                                    :style="useSampleData ? 'background-color: #CF5D38 !important;' : 'background-color: #CBD5E1 !important;'"
+                                    :style="useSampleData ? 'background-color: var(--np-color-secondary) !important;' : 'background-color: #CBD5E1 !important;'"
                                     style="position: relative; display: inline-flex; height: 22px; width: 42px; flex-shrink: 0; cursor: pointer; border-radius: 9999px; border: 2px solid transparent; transition: background-color 0.2s ease-in-out; outline: none; padding: 0;"
                                 >
                                     <span
@@ -474,7 +474,7 @@
                                 <button
                                     type="button"
                                     @click="usePublishedVersion = !usePublishedVersion"
-                                    :style="usePublishedVersion ? 'background-color: #CF5D38 !important;' : 'background-color: #CBD5E1 !important;'"
+                                    :style="usePublishedVersion ? 'background-color: var(--np-color-secondary) !important;' : 'background-color: #CBD5E1 !important;'"
                                     style="position: relative; display: inline-flex; height: 22px; width: 42px; flex-shrink: 0; cursor: pointer; border-radius: 9999px; border: 2px solid transparent; transition: background-color 0.2s ease-in-out; outline: none; padding: 0;"
                                 >
                                     <span

@@ -33,7 +33,7 @@ $expect(str_contains($controller, "'rewards' => \$this->accountService->rewardsP
 $expect(str_contains($controller, "'referrals' => \$this->accountService->referralsPage(\$request->user())"), 'Referral controller uses the centralized account service.');
 $expect(str_contains($service, 'public function sidebarData(User $user): array'), 'Rewards and referral pages can render the shared account sidebar without loading dashboard statistics.');
 $expect(str_contains($controller, "'navigation' => \$this->accountService->accountNavigation()"), 'Rewards and referrals reuse the canonical account navigation.');
-$expect(str_contains($pageComponent, '<x-storefront.account.sidebar'), 'Rewards and referral pages reuse the canonical account sidebar component.');
+$expect(str_contains($pageComponent, '<x-storefront.account.frame'), 'Rewards and referral pages use the shared account frame and sidebar.');
 $expect(substr_count($service, "'label' => 'My Rewards'") === 1, 'My Rewards exists only in the canonical account navigation definition.');
 $expect(substr_count($service, "'label' => 'Refer a Friend'") === 1, 'Refer-a-friend exists only in the canonical account navigation definition.');
 $expect(str_contains($referralService, 'Crypt::encryptString'), 'Referral share identifier is encrypted instead of exposing the database ID.');

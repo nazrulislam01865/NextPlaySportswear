@@ -250,6 +250,24 @@ final class CentralEmailService implements EmailService
 
         $transport = strtolower(trim((string) ($mailer['transport'] ?? '')));
 
+        if ($transport === 'e2a') {
+            $sender = trim((string) ($mailer['sender'] ?? ''));
+            $apiKey = trim((string) ($mailer['api_key'] ?? ''));
+            $url = trim((string) ($mailer['api_url'] ?? ''));
+
+            if ($apiKey === '' || ! $this->validEmail($sender)) {
+                throw new RuntimeException('E2A requires E2A_API_KEY and a valid E2A_FROM_EMAIL.');
+            }
+
+            if (strcasecmp($fromAddress, $sender) !== 0) {
+                throw new RuntimeException('MAIL_FROM_ADDRESS must match E2A_FROM_EMAIL when using E2A.');
+            }
+
+            if (! str_starts_with($url, 'https://')) {
+                throw new RuntimeException('E2A_API_URL must use HTTPS.');
+            }
+        }
+
         if ($transport === 'smtp') {
             $host = trim((string) ($mailer['host'] ?? ''));
             $port = (int) ($mailer['port'] ?? 0);

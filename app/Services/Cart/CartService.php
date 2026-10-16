@@ -12,7 +12,9 @@ use App\Services\Promotions\SaleCampaignService;
 use App\Services\Referrals\ReferralOfferService;
 use App\Services\Rewards\RewardService;
 use App\Services\Storefront\ProductCatalogService;
+use App\Support\DerivedFabricPriceTable;
 use App\Support\PriceTableShipping;
+use App\Support\PriceTableUnitPrice;
 use App\Support\ProductRoster;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -944,7 +946,11 @@ class CartService
             'customization_total' => (float) ($item['customization_total'] ?? 0),
             'line_total' => (float) ($item['line_total'] ?? 0),
             'customization' => $item['customization'] ?? [],
-            'product_snapshot' => Arr::only($product, ['id', 'slug', 'title', 'short_title', 'summary', 'sku', 'category', 'sport', 'image', 'alt', 'url', 'base_price', 'price', 'sale_campaign', 'sale_campaigns', 'sale_campaign_original_price', 'sale_badge_label']),
+            'product_snapshot' => array_merge(
+                Arr::only($product, ['id', 'slug', 'title', 'short_title', 'summary', 'sku', 'category', 'sport', 'image', 'alt', 'url', 'base_price', 'price', 'sale_campaign', 'sale_campaigns', 'sale_campaign_original_price', 'sale_badge_label']),
+                ['original_unit_price' => (float) ($item['original_unit_price'] ?? $item['unit_price'] ?? 0),
+                 'offer_label' => $item['offer_label'] ?? null]
+            ),
         ]);
 
         $record->saveQuietly();
@@ -1095,11 +1101,27 @@ class CartService
         );
         $configuredQuantity = (int) collect($customization['configuration']['quantities'] ?? [])->sum();
         $quantity = $this->sanitizeQuantity($configuredQuantity > 0 ? $configuredQuantity : (int) ($item['quantity'] ?? 1), $product);
-        $unitPrice = $this->unitPriceForQuantity($product, $quantity, $customization);
-        $campaignPricing = $this->saleCampaigns->pricingForProduct($product, $unitPrice);
-        if (is_array($campaignPricing) && (float) ($campaignPricing['sale_price'] ?? $unitPrice) < $unitPrice) {
+        $originalUnitPrice = $this->unitPriceForQuantity($product, $quantity, $customization);
+        $unitPrice = $originalUnitPrice;
+        $tiers = $this->selectedFabricPriceTiers($product, $customization) ?: ($product['price_tiers'] ?? []);
+        $selectedTier = collect($tiers)->first(fn (array $tier): bool =>
+            $quantity >= (int) ($tier['min'] ?? 1)
+            && (($tier['max'] ?? null) === null || $quantity <= (int) $tier['max'])
+        );
+        // The admin's per-tier/product compare_at field is the offer PRICE,
+        // not a percentage or a conventional compare-at (original) price.
+        $tierOffer = $selectedTier['compare_at'] ?? null;
+        $nativeOffer = is_numeric($tierOffer) && (float) $tierOffer > 0 && (float) $tierOffer < $unitPrice
+            ? $tierOffer
+            : ($product['compare_at_price'] ?? null);
+        if (is_numeric($nativeOffer) && (float) $nativeOffer > 0 && (float) $nativeOffer < $unitPrice) {
+            $unitPrice = round((float) $nativeOffer, 2);
+        }
+        $campaignPricing = $this->saleCampaigns->pricingForProduct($product, $originalUnitPrice);
+        if (is_array($campaignPricing) && (float) ($campaignPricing['sale_price'] ?? $originalUnitPrice) < $unitPrice) {
             $unitPrice = max(0, (float) $campaignPricing['sale_price']);
         }
+        $offerApplied = $unitPrice < $originalUnitPrice;
         $shippingCharge = $this->productShippingCharge($product, $customization, $quantity);
         $customization = $this->withFulfillmentPricing($customization, $shippingCharge, $quantity);
         $customizationPricing = $this->customizationPricing($product, $customization, $quantity);
@@ -1116,6 +1138,9 @@ class CartService
             'quantity_max' => $this->maximumQuantityForProduct($product),
             'customization' => $customization,
             'unit_price' => $unitPrice,
+            'original_unit_price' => $originalUnitPrice,
+            'offer_savings' => $offerApplied ? round(($originalUnitPrice - $unitPrice) * $quantity, 2) : 0.0,
+            'offer_label' => $offerApplied ? 'Sale' : null,
             'customization_unit_price' => $customizationUnitPrice,
             'shipping_unit_price' => $shippingUnitPrice,
             'line_subtotal' => round($unitPrice * $quantity, 2),
@@ -1882,11 +1907,14 @@ class CartService
                 && (($tier['max'] ?? null) === null || $quantity <= (int) $tier['max']);
         });
 
-        $fallbackPrice = ! empty($product['sale_campaign'])
-            ? ($product['sale_campaign_original_price'] ?? $product['original_price'] ?? $product['base_price'] ?? 0)
-            : ($product['base_price'] ?? 0);
+        // The highlighted unit-price cell is what the buyer sees for this
+        // quantity/fabric. Saved tier amounts can be stale by a cent or more.
+        // Campaign/native offers are applied once, after this original price.
+        $table = $this->selectedFabricPriceTable($product, $customization ?? [])
+            ?? (array) ($product['price_table'] ?? []);
+        $tablePrice = PriceTableUnitPrice::forQuantity($table, $quantity);
 
-        return round((float) ($tier['unit'] ?? $fallbackPrice), 2);
+        return $tablePrice ?? round((float) ($tier['unit'] ?? $product['base_price'] ?? 0), 2);
     }
 
     /**
@@ -1911,6 +1939,10 @@ class CartService
             if (is_array($table) && (! empty($table['rows']) || ! empty($table['price_tiers']))) {
                 return $table;
             }
+            $derived = DerivedFabricPriceTable::forValue((array) ($product['price_table'] ?? []), (array) $value);
+            if ($derived !== null) {
+                return $derived;
+            }
         }
 
         foreach ((array) ($configuration['multi_selections'] ?? []) as $groupId => $valueIds) {
@@ -1919,6 +1951,10 @@ class CartService
                 $table = data_get($values->get($valueId), 'fabric_price_table');
                 if (is_array($table) && (! empty($table['rows']) || ! empty($table['price_tiers']))) {
                     return $table;
+                }
+                $derived = DerivedFabricPriceTable::forValue((array) ($product['price_table'] ?? []), (array) $values->get($valueId));
+                if ($derived !== null) {
+                    return $derived;
                 }
             }
         }

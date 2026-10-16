@@ -975,7 +975,7 @@
                         name="action"
                         value="publish"
                         class="rounded-xl px-5 py-2 text-xs font-bold text-white shadow-sm transition hover:opacity-95"
-                        style="background-color: #CF5D38 !important; color: #ffffff !important;"
+                        style="background-color: var(--np-color-secondary) !important; color: #ffffff !important;"
                     >
                         Publish Changes
                     </button>
@@ -1065,7 +1065,7 @@
                         type="button"
                         @click="addCustomBlock()"
                         class="btn btn-orange text-xs !text-white"
-                        style="background-color: #CF5D38 !important; color: #ffffff !important;"
+                        style="background-color: var(--np-color-secondary) !important; color: #ffffff !important;"
                     >
                         Add to Blocks
                     </button>

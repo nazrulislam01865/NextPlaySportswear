@@ -4,6 +4,8 @@ namespace App\Data;
 
 final class EmailMessage
 {
+    public string $deliveryId = '';
+
     /**
      * @param array<int, array{email: string, name?: string|null}> $recipients
      * @param array<int, string> $introLines
@@ -25,5 +27,7 @@ final class EmailMessage
         public ?string $replyToName = null,
         public array $metadata = [],
     ) {
+        // Generated before queue dispatch so retries carry the same ID.
+        $this->deliveryId = (string) \Illuminate\Support\Str::uuid();
     }
 }

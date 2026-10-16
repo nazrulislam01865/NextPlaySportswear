@@ -1,4 +1,5 @@
 import './bootstrap';
+import { initializeAdminContentEditors } from './admin-content-editor';
 
 import Alpine from 'alpinejs';
 window.Alpine = Alpine;
@@ -4990,3 +4991,10 @@ const initializePersistentAdminNavigation = () => {
 // every menu click and mutation; the optional soft-navigation implementation
 // remains above for future use but is intentionally not initialized.
 // initializePersistentAdminNavigation();
+
+// Upgrade only the four dedicated Storefront Content admin editors.
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeAdminContentEditors, { once: true });
+} else {
+    initializeAdminContentEditors();
+}

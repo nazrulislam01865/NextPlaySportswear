@@ -14,12 +14,11 @@ class StorefrontBrandingController extends Controller
 {
     public function edit(): View
     {
-        $branding = StorefrontBrandingSetting::query()->first();
-
         return view('admin.storefront-branding.edit', [
-            'branding' => $branding,
             'logoUrl' => StorefrontBranding::logoUrl(),
             'hasCustomLogo' => StorefrontBranding::hasCustomLogo(),
+            'faviconUrl' => StorefrontBranding::faviconUrl(),
+            'hasCustomFavicon' => StorefrontBranding::hasCustomFavicon(),
             'canManageBranding' => (bool) (auth('admin')->user()?->canAdmin('storefront_branding.manage') ?? false),
         ]);
     }
@@ -29,13 +28,29 @@ class StorefrontBrandingController extends Controller
         $branding = StorefrontBrandingSetting::query()->firstOrCreate([]);
         $previousPath = filled($branding->logo_path) ? (string) $branding->logo_path : null;
         $newPath = null;
+        $changes = [];
         $removeLogo = $request->boolean('remove_logo');
 
         if ($request->hasFile('logo')) {
             $newPath = $request->file('logo')->store('branding', 'public');
-            $branding->update(['logo_path' => $newPath]);
+            $changes['logo_path'] = $newPath;
         } elseif ($removeLogo && $previousPath !== null) {
-            $branding->update(['logo_path' => null]);
+            $changes['logo_path'] = null;
+        }
+
+        $previousFaviconPath = filled($branding->favicon_path) ? (string) $branding->favicon_path : null;
+        $newFaviconPath = null;
+        $removeFavicon = $request->boolean('remove_favicon');
+
+        if ($request->hasFile('favicon')) {
+            $newFaviconPath = $request->file('favicon')->store('branding', 'public');
+            $changes['favicon_path'] = $newFaviconPath;
+        } elseif ($removeFavicon && $previousFaviconPath !== null) {
+            $changes['favicon_path'] = null;
+        }
+
+        if ($changes !== []) {
+            $branding->update($changes);
         }
 
         $shouldDeletePrevious = $previousPath !== null
@@ -47,12 +62,19 @@ class StorefrontBrandingController extends Controller
             Storage::disk('public')->delete($previousPath);
         }
 
+        if ($previousFaviconPath !== null
+            && $previousFaviconPath !== $newFaviconPath
+            && ($newFaviconPath !== null || $removeFavicon)
+            && str_starts_with(ltrim(str_replace('\\', '/', $previousFaviconPath), '/'), 'branding/')) {
+            Storage::disk('public')->delete($previousFaviconPath);
+        }
+
         StorefrontBranding::flushCache();
 
         return redirect()
             ->route('admin.storefront-branding.edit')
-            ->with('status', $newPath !== null
-                ? 'Storefront logo updated successfully.'
-                : ($removeLogo ? 'Custom storefront logo removed. The default logo is now active.' : 'Storefront branding is unchanged.'));
+            ->with('status', ($newPath !== null || $removeLogo || $newFaviconPath !== null || $removeFavicon)
+                ? 'Storefront branding updated successfully.'
+                : 'Storefront branding is unchanged.');
     }
 }

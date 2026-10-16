@@ -8,6 +8,7 @@ $files = [
     'orders' => $root.'/resources/views/storefront/account/orders/index.blade.php',
     'page' => $root.'/resources/views/components/storefront/account/page.blade.php',
     'shell' => $root.'/resources/views/components/storefront/account/shell.blade.php',
+    'frame' => $root.'/resources/views/components/storefront/account/frame.blade.php',
     'sidebar' => $root.'/resources/views/components/storefront/account/sidebar.blade.php',
     'orderCard' => $root.'/resources/views/components/storefront/account/orders/history-card.blade.php',
     'css' => $root.'/resources/css/storefront.css',
@@ -31,10 +32,10 @@ $expect(str_contains($contents['dashboard'], 'title="MY ACCOUNT"'), 'Dashboard u
 $expect(str_contains($contents['orders'], 'title="MY ORDERS"'), 'Order history uses the approved My Orders prototype title.');
 $expect(str_contains($contents['dashboard'], '<x-storefront.account.page'), 'Dashboard uses the reusable account page shell.');
 $expect(str_contains($contents['orders'], '<x-storefront.account.page'), 'Order history uses the reusable account page shell.');
-$expect(str_contains($contents['page'], '<x-storefront.account.sidebar'), 'Prototype account page reuses the centralized sidebar component.');
-$expect(str_contains($contents['shell'], '<x-storefront.account.sidebar'), 'Legacy account pages reuse the same centralized sidebar component.');
-$expect(str_contains($contents['page'], 'np-account-square-cards'), 'Prototype account content uses the centralized square-card scope.');
-$expect(str_contains($contents['shell'], 'np-account-square-cards'), 'Legacy account content uses the centralized square-card scope.');
+$expect(str_contains($contents['page'], '<x-storefront.account.frame'), 'Prototype account page delegates to the centralized frame.');
+$expect(str_contains($contents['shell'], '<x-storefront.account.frame'), 'Other account pages delegate to the same centralized frame.');
+$expect(str_contains($contents['frame'], '<x-storefront.account.sidebar'), 'Shared frame uses the centralized sidebar component.');
+$expect(str_contains($contents['frame'], 'np-account-square-cards'), 'Shared account content uses the centralized square-card scope.');
 $expect(str_contains($contents['sidebar'], '<x-storefront.account.icon'), 'Account sidebar uses centralized account icons.');
 $expect(str_contains($contents['dashboard'], 'btn btn-secondary'), 'Dashboard primary action uses the canonical button system.');
 $expect(str_contains($contents['orders'], 'np-orders-filter-bar'), 'Order prototype filter bar is present.');

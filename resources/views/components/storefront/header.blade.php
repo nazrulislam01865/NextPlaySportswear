@@ -207,6 +207,9 @@
                                             <span class="block truncate text-sm font-black leading-5 text-brand-ink" data-wishlist-preview-title>{{ $item['title'] ?? 'Saved product' }}</span>
                                             <span class="mt-1 block text-xs font-bold text-slate-500">Saved for later</span>
                                             <span class="mt-1 block text-sm font-black text-brand-red" data-wishlist-preview-price>${{ number_format((float) ($item['price'] ?? 0), 2) }}</span>
+                                            @if ((float) ($item['original_price'] ?? 0) > (float) ($item['price'] ?? 0))
+                                                <del class="text-xs text-slate-500">${{ number_format((float) $item['original_price'], 2) }}</del>
+                                            @endif
                                         </span>
                                     </a>
                                 @endforeach
@@ -242,6 +245,7 @@
                                     <span class="block truncate text-sm font-black leading-5 text-brand-ink" data-wishlist-preview-title>Saved product</span>
                                     <span class="mt-1 block text-xs font-bold text-slate-500">Saved for later</span>
                                     <span class="mt-1 block text-sm font-black text-brand-red" data-wishlist-preview-price>$0.00</span>
+                                    <del class="hidden text-xs text-slate-500" data-wishlist-preview-original-price></del>
                                 </span>
                             </a>
                         </template>
@@ -293,6 +297,9 @@
                                         <span class="min-w-0 flex-1">
                                             <span class="block truncate text-sm font-black leading-5 text-brand-ink">{{ $previewTitle }}</span>
                                             <span class="mt-1 block text-xs font-bold text-slate-500">Qty {{ (int) ($item['quantity'] ?? 0) }} · ${{ number_format((float) ($item['display_unit_price'] ?? $item['unit_price'] ?? 0), 2) }} each</span>
+                                            @if (filled($previewProduct['offer_label'] ?? null))
+                                                <span class="text-xs font-bold text-green-700">Sale applied to product price</span>
+                                            @endif
                                             <span class="mt-1 block text-sm font-black text-brand-red">${{ number_format((float) ($item['line_total'] ?? 0), 2) }}</span>
                                         </span>
                                     </a>

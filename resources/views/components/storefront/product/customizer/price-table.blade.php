@@ -14,7 +14,11 @@
                 <template x-for="(row, rowIndex) in (table().rows || [])" :key="`price-row-${rowIndex}`">
                     <tr>
                         <template x-for="(cell, cellIndex) in row" :key="`price-cell-${rowIndex}-${cellIndex}`">
-                            <td :class="cellIndex === 1 ? 'is-price' : (cellIndex === 0 ? 'is-quantity' : '')" x-text="cell || '—'"></td>
+                            <td :class="cellIndex === Number(table().highlight_column ?? 1) ? 'is-price' : (cellIndex === 0 ? 'is-quantity' : '')"
+                                x-data="{ offer() { return priceTableCellOffer(cell, cellIndex, rowIndex); } }">
+                                <span x-text="offer().label || '—'"></span>
+                                <del x-show="offer().discounted" x-cloak class="ml-2 whitespace-nowrap text-sm font-normal text-slate-500" x-text="offer().originalLabel"></del>
+                            </td>
                         </template>
                     </tr>
                 </template>

@@ -57,6 +57,9 @@
                 <div class="min-w-0">
                     <h3 class="line-clamp-2 text-sm font-black text-brand-ink">{{ $item['product']['short_title'] ?? $item['product']['title'] ?? 'Product' }}</h3>
                     <p class="mt-1 text-xs font-semibold text-slate-500">Qty {{ $item['quantity'] ?? 1 }} · {{ $item['customization']['design_option'] ?? 'Custom design' }}</p>
+                    @if ((float) ($item['offer_savings'] ?? 0) > 0)
+                        <p class="mt-1 text-xs font-bold text-green-700">Sale: ${{ number_format((float) ($item['unit_price'] ?? 0), 2) }} per item <del class="text-slate-500">${{ number_format((float) ($item['original_unit_price'] ?? 0), 2) }}</del></p>
+                    @endif
                     @if($itemProduction)
                         <p class="mt-1 text-xs font-bold text-slate-600">Production charge: {{ $itemProduction['display_amount'] ?? 'Included' }}</p>
                     @endif

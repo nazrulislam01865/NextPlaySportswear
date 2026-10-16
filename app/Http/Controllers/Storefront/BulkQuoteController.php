@@ -64,7 +64,7 @@ class BulkQuoteController extends Controller
         FlowTrackInquirySyncManager $flowTrackSync,
     ): RedirectResponse {
         $validated = $request->validated();
-        unset($validated['company']);
+        unset($validated['company'], $validated['g-recaptcha-response']);
 
         $countryCallingCode = CountryCallingCode::query()
             ->active()

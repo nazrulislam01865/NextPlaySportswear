@@ -1,4 +1,7 @@
 <x-layouts.admin title="Categories" :compact-header="true">
+    @push('admin-page-styles')
+        <link rel="stylesheet" href="{{ asset('css/admin-category-import.css') }}?v={{ filemtime(public_path('css/admin-category-import.css')) }}">
+    @endpush
     @php
         $categoryStatuses = ['draft', 'active', 'inactive', 'archived'];
         $categoryTypes = ['standard', 'sport', 'collection', 'apparel', 'accessory', 'promotional', 'sale', 'new-arrival', 'navigation-only'];
@@ -36,15 +39,16 @@
                 </a>
 
                 <details class="category-tools-menu">
-                    <summary aria-label="Open category tools">
+                    <summary aria-label="More category tools" title="More category tools">
                         <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                             <path d="M12 5.5h.01M12 12h.01M12 18.5h.01" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" />
                         </svg>
                     </summary>
                     <div class="category-tools-panel">
                         @if(auth('admin')->user()?->canAdmin('categories.manage'))
-                            <a href="#catalog-page-banner">All Products Banner</a>
+                            <a href="#catalog-page-banner" data-category-open-panel="catalog-page-banner">All Products Banner</a>
                         @endif
+                        <a href="#category-import" data-category-open-panel="category-import">Import CSV / Excel</a>
                         <a href="{{ route('admin.categories.export') }}">Export CSV</a>
                         <a href="{{ route('admin.attributes.index') }}">Catalog Attributes</a>
                         <a href="{{ route('admin.menus.index') }}">Navigation Menus</a>
@@ -53,8 +57,387 @@
             </div>
         </section>
 
+        <section class="category-stats-grid" aria-label="Category summary">
+            @foreach($stats as $stat)
+                <article class="category-stat-card">
+                    <span class="category-stat-icon category-stat-icon-{{ $stat['tone'] }}" aria-hidden="true">
+                        @switch($stat['icon'])
+                            @case('tree')
+                                <svg viewBox="0 0 24 24" fill="none"><path d="M12 4v5m0 0H7.5A2.5 2.5 0 0 0 5 11.5V14m7-5h4.5A2.5 2.5 0 0 1 19 11.5V14M5 14v2.5h5V14H5Zm9 0v2.5h5V14h-5Zm-4-10v3h4V4h-4Z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg>
+                                @break
+                            @case('check')
+                                <svg viewBox="0 0 24 24" fill="none"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" stroke="currentColor" stroke-width="1.9" /><path d="m8.5 12.3 2.3 2.3 4.8-5.2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                                @break
+                            @case('star')
+                                <svg viewBox="0 0 24 24" fill="none"><path d="m12 3.5 2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8L12 3.5Z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg>
+                                @break
+                            @case('folder')
+                                <svg viewBox="0 0 24 24" fill="none"><path d="M3.5 7.5a2 2 0 0 1 2-2h4.4l2 2H18.5a2 2 0 0 1 2 2v7.7a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2V7.5Z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg>
+                                @break
+                            @default
+                                <svg viewBox="0 0 24 24" fill="none"><path d="M6 19V12m6 7V5m6 14v-9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
+                        @endswitch
+                    </span>
+                    <div class="min-w-0">
+                        <p class="category-stat-label">{{ $stat['label'] }}</p>
+                        <strong>{{ number_format($stat['value']) }}</strong>
+                        <span>{{ $stat['note'] }}</span>
+                    </div>
+                </article>
+            @endforeach
+        </section>
+
+        <section class="category-filter-card" aria-label="Category filters and import tools">
+            <div class="category-filter-shell">
+                <form method="GET" class="category-filter-form">
+                    <label class="category-field relative block">
+                        <span class="sr-only">Search categories</span>
+                        <span class="category-filter-leading-icon" aria-hidden="true">
+                            <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none">
+                                <path d="m21 21-4.3-4.3M10.8 18.2a7.4 7.4 0 1 1 0-14.8 7.4 7.4 0 0 1 0 14.8Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            </svg>
+                        </span>
+                        <input
+                            class="admin-input category-control pl-14"
+                            name="q"
+                            value="{{ $filters['q'] ?? '' }}"
+                            placeholder="Search name, slug or menu label"
+                            autocomplete="off"
+                            maxlength="100"
+                        >
+                    </label>
+
+                    <label class="category-field relative block">
+                        <span class="sr-only">Category status</span>
+                        <select class="admin-input category-control appearance-none pr-12" name="status">
+                            <option value="">All statuses</option>
+                            @foreach($categoryStatuses as $status)
+                                <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>
+                                    {{ ucfirst($status) }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <span class="category-filter-select-icon" aria-hidden="true">
+                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none">
+                                <path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            </svg>
+                        </span>
+                    </label>
+
+                    <label class="category-field relative block">
+                        <span class="sr-only">Category type</span>
+                        <select class="admin-input category-control appearance-none pr-12" name="type">
+                            <option value="">All types</option>
+                            @foreach($categoryTypes as $type)
+                                <option value="{{ $type }}" @selected(($filters['type'] ?? '') === $type)>
+                                    {{ ucwords(str_replace('-', ' ', $type)) }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <span class="category-filter-select-icon" aria-hidden="true">
+                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none">
+                                <path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            </svg>
+                        </span>
+                    </label>
+
+                    <label class="category-empty-filter">
+                        <input type="checkbox" name="empty" value="1" @checked($filters['empty'] ?? false)>
+                        <span>Empty only</span>
+                    </label>
+
+                    <div class="category-filter-actions">
+                        <button class="category-filter-button" type="submit">
+                            Filter
+                        </button>
+                        @if($hasActiveFilters)
+                            <a href="{{ route('admin.categories.index') }}" class="category-filter-clear">Clear</a>
+                        @endif
+                    </div>
+                </form>
+
+                <details id="category-import" class="category-import-tools scroll-mt-24" @if($errors->has('category_csv')) open @endif>
+                    <summary>
+                        <span class="category-import-summary-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </span>
+                        <span class="category-import-summary-copy">
+                            <strong>Import categories</strong>
+                            <small>Add or update categories from a spreadsheet</small>
+                        </span>
+                        <span class="category-import-format-list" aria-hidden="true">CSV · XLSX · XLS</span>
+                        <span class="category-disclosure-arrow" aria-hidden="true">⌄</span>
+                    </summary>
+                    <form
+                        method="POST"
+                        enctype="multipart/form-data"
+                        action="{{ route('admin.categories.import') }}"
+                        class="category-import-form category-upload-form"
+                    >
+                        @csrf
+                        <div class="category-import-layout">
+                            <div class="category-upload-main">
+                                <label class="category-file-picker category-upload-picker" for="category-csv-import">
+                                    <input
+                                        id="category-csv-import"
+                                        class="category-file-input"
+                                        type="file"
+                                        name="category_csv"
+                                        accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                                        required
+                                        aria-describedby="category-import-help"
+                                        aria-invalid="{{ $errors->has('category_csv') ? 'true' : 'false' }}"
+                                        data-category-file-input
+                                    >
+                                    <span class="category-upload-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" fill="none"><rect x="5" y="3.5" width="14" height="17" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 8h8m-8 4h8m-8 4h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                                    </span>
+                                    <span class="category-upload-label">
+                                        <strong data-category-file-name aria-live="polite">Choose a CSV or Excel file</strong>
+                                        <small data-category-file-hint>Click to browse your computer</small>
+                                    </span>
+                                    <span class="category-upload-browse" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" fill="none"><path d="M12 17V5m0 0L7 10m5-5 5 5M5 17v2a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                                        Browse files
+                                    </span>
+                                </label>
+                                <div class="category-import-filemeta" aria-label="Supported file formats">
+                                    <span class="category-file-chip">CSV</span>
+                                    <span class="category-file-chip">XLSX</span>
+                                    <span class="category-file-chip">XLS</span>
+                                    <span class="category-import-filelimit">Max 2 MB</span>
+                                </div>
+                                @error('category_csv')
+                                    <p id="category-import-error" class="category-upload-error" role="alert">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <aside class="category-import-guide" aria-label="Import guide">
+                                <div class="category-import-guide-title">
+                                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16v-4m0-4h.01M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                                    <strong>Before you import</strong>
+                                </div>
+                                <ol class="category-import-steps">
+                                    <li><span class="category-import-step-number">1</span><span>Use the current category columns.</span></li>
+                                    <li><span class="category-import-step-number">2</span><span>Existing categories match by <code>slug</code>. Set <code>parent_slug</code> for subcategories.</span></li>
+                                </ol>
+                                <a href="{{ route('admin.categories.export') }}" class="category-import-export-link">
+                                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v12m0 0 4-4m-4 4-4-4M5 18v2h14v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    Export existing CSV
+                                </a>
+                            </aside>
+                        </div>
+                        <div class="category-import-footer">
+                            <p id="category-import-help" class="category-upload-hint">Up to 1,000 categories · Uses the first Excel worksheet</p>
+                            <button class="category-import-button category-import-button--compact" type="submit" data-category-import-submit disabled>
+                                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V4m0 0-5 5m5-5 5 5M5 17v2a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                Import categories
+                            </button>
+                        </div>
+                    </form>
+                </details>
+            </div>
+        </section>
+
+        <form id="bulk-category-form" method="POST" action="{{ route('admin.categories.bulk') }}" class="category-bulk-card">
+            @csrf
+
+            <div class="category-selection-heading">
+                <strong>Bulk actions</strong>
+                <span data-category-selected-count role="status" aria-live="polite">0 selected</span>
+            </div>
+
+            <select class="admin-input category-control" name="action" required>
+                <option value="">Choose bulk action</option>
+                <option value="activate">Activate</option>
+                <option value="deactivate">Deactivate</option>
+                <option value="archive">Archive</option>
+                <option value="feature">Mark featured parent category</option>
+                <option value="unfeature">Remove featured</option>
+                <option value="show_in_menu">Show in menu</option>
+                <option value="hide_from_menu">Hide from menu</option>
+            </select>
+
+            <button
+                class="category-bulk-button category-bulk-button--compact"
+                type="submit"
+                data-category-bulk-submit
+                disabled
+                onclick="return confirm('Apply this action to the selected categories?')"
+            >
+                Apply
+            </button>
+
+            <span class="category-bulk-note">
+                Only parent categories can be marked featured for the homepage section.
+            </span>
+        </form>
+
+        <section class="category-table-card">
+            <header id="category-list" class="category-list-header scroll-mt-24">
+                <div>
+                    <h2>Category list</h2>
+                    <p>{{ number_format($categories->total()) }} {{ \Illuminate\Support\Str::plural('category', $categories->total()) }} found{{ $hasActiveFilters ? ' with the current filters' : '' }}</p>
+                </div>
+                <span>Manage categories, product assignments and visibility</span>
+            </header>
+            <div class="category-management-scroll" tabindex="0" aria-label="Category tree table">
+                <table class="category-management-table w-full text-sm">
+                    <thead>
+                        <tr>
+                            <th class="w-14 px-6 py-5"><input id="category-check-all" type="checkbox" aria-label="Select all categories on this page"></th>
+                            <th class="w-[330px] px-6 py-5">Category Tree</th>
+                            <th class="w-[170px] px-6 py-5">Type / Template</th>
+                            <th class="w-[105px] px-6 py-5 text-center">Products</th>
+                            <th class="w-[105px] px-6 py-5 text-center">Children</th>
+                            <th class="w-[210px] px-6 py-5">Visibility</th>
+                            <th class="w-[170px] px-6 py-5">Updated</th>
+                            <th class="w-[230px] px-6 py-5 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @forelse($categories as $category)
+                            @php
+                                $deleteImpact = $categoryDeleteImpacts[(int) $category->id] ?? [
+                                    'category_count' => 1,
+                                    'child_category_count' => 0,
+                                    'category_names' => [],
+                                    'product_count' => 0,
+                                    'product_names' => [],
+                                    'menu_item_count' => 0,
+                                ];
+                            @endphp
+                            <tr>
+                                <td class="px-6 py-5" data-label="Select">
+                                    <input class="category-row-check" type="checkbox" name="category_ids[]" value="{{ $category->id }}" form="bulk-category-form" aria-label="Select {{ $category->name }}">
+                                </td>
+
+                                <td class="px-6 py-5" data-label="Category Tree" data-card-cell="category">
+                                    <div class="category-tree-cell" style="--category-depth: {{ min($category->depth, 6) }}">
+                                        @if($category->depth > 0)
+                                            <span class="category-branch-mark" aria-hidden="true">↳</span>
+                                        @endif
+                                        @if($category->parent_id === null)
+                                            <span class="category-folder-icon" aria-hidden="true">
+                                                <img src="{{ $category->iconUrl() }}" alt="" loading="lazy">
+                                            </span>
+                                        @endif
+                                        <div class="min-w-0">
+                                            <div class="flex min-w-0 flex-wrap items-center gap-2">
+                                                <a href="{{ route('admin.categories.edit', $category) }}" class="category-name category-name-link" title="Edit {{ $category->name }}">{{ $category->name }}</a>
+                                                @if($category->is_featured)
+                                                    <span class="category-featured-pill">Featured</span>
+                                                @endif
+                                            </div>
+                                            <p class="category-slug">/category/{{ $category->slug }}</p>
+                                            @if($category->parent)
+                                                <p class="category-parent">Parent: {{ $category->parent->name }}</p>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <td class="px-6 py-5" data-label="Type / Template">
+                                    <strong class="category-type">{{ ucwords(str_replace('-', ' ', $category->category_type)) }}</strong>
+                                    <span class="category-template">{{ ucwords(str_replace('_', ' ', $category->page_template)) }}</span>
+                                </td>
+
+                                <td class="px-6 py-5 text-center" data-label="Products">
+                                    <a
+                                        href="{{ route('admin.categories.products.index', $category) }}"
+                                        class="category-products-count-link"
+                                        aria-label="View {{ number_format($category->products_count) }} {{ \Illuminate\Support\Str::plural('product', (int) $category->products_count) }} in the {{ $category->name }} category subtree"
+                                        title="{{ $category->children_count > 0 ? 'Includes unique products from every descendant leaf category.' : 'View products assigned to this leaf category.' }}"
+                                    >
+                                        <span>{{ number_format($category->products_count) }} {{ \Illuminate\Support\Str::plural('product', (int) $category->products_count) }}</span>
+                                        <small aria-hidden="true">›</small>
+                                    </a>
+                                </td>
+                                <td class="category-children-count" data-label="Children">{{ number_format($category->children_count) }}</td>
+
+                                <td class="px-6 py-5" data-label="Visibility">
+                                    <span class="category-status-pill category-status-pill--{{ $category->status }}">{{ ucfirst($category->status) }}</span>
+                                    <p class="category-visibility-meta">Catalog {{ $category->is_visible_in_catalog ? 'on' : 'off' }} · Menu {{ $category->is_visible_in_menu ? 'on' : 'off' }}</p>
+                                </td>
+
+                                <td class="category-updated-cell" data-label="Updated">
+                                    <span>{{ $category->updated_at?->format('M j, Y g:i A') }}</span>
+                                    @if($category->updater)
+                                        <small>by {{ $category->updater->name }}</small>
+                                    @endif
+                                </td>
+
+                                <td class="px-6 py-5" data-label="Actions">
+                                    <div class="category-item-actions">
+                                        <a href="{{ route('admin.categories.edit', $category) }}" class="category-row-primary-action">
+                                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 13.8V16h2.2L15 7.2 12.8 5 4 13.8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /><path d="m11.7 6.1 2.2 2.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+                                            Edit
+                                        </a>
+
+                                        <a href="{{ route('admin.categories.products.index', $category) }}" class="category-row-primary-action">
+                                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 5.5h12v9H4v-9Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /><path d="M7 8h6M7 11h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+                                            Products
+                                        </a>
+
+                                        <details class="category-row-menu">
+                                            <summary aria-label="More actions for {{ $category->name }}">
+                                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 4.5h.01M10 10h.01M10 15.5h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
+                                            </summary>
+                                            <div class="category-row-menu-panel">
+                                                @if($category->status === 'active')
+                                                    <a href="{{ route('categories.show', $category->slug) }}" target="_blank" rel="noopener">Preview storefront ↗</a>
+                                                @endif
+                                                <a href="{{ route('admin.categories.create', ['parent_id' => $category->id]) }}">Add Child</a>
+                                                <form method="POST" action="{{ route('admin.categories.duplicate', $category) }}" onsubmit="return confirm('Duplicate this category as a draft?')">
+                                                    @csrf
+                                                    <button type="submit">Duplicate</button>
+                                                </form>
+                                                <button
+                                                    type="button"
+                                                    class="category-row-danger-action"
+                                                    data-category-delete-trigger
+                                                    data-delete-url="{{ route('admin.categories.destroy', $category) }}"
+                                                    data-category-name="{{ $category->name }}"
+                                                    data-category-count="{{ (int) $deleteImpact['category_count'] }}"
+                                                    data-child-count="{{ (int) $deleteImpact['child_category_count'] }}"
+                                                    data-product-count="{{ (int) $deleteImpact['product_count'] }}"
+                                                    data-menu-count="{{ (int) $deleteImpact['menu_item_count'] }}"
+                                                    data-category-names="{{ json_encode($deleteImpact['category_names'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}"
+                                                    data-product-names="{{ json_encode($deleteImpact['product_names'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </details>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="8" class="px-8 py-16 text-center">
+                                    <p class="category-empty-title">No categories found</p>
+                                    <p class="category-empty-copy">Try another keyword, status, type, or empty-category filter.</p>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="category-table-footer">
+                <div class="admin-pagination">{{ $categories->links('pagination.nextplay', ['itemName' => 'category']) }}</div>
+            </div>
+        </section>
+
         @if(auth('admin')->user()?->canAdmin('categories.manage'))
-            <section id="catalog-page-banner" class="scroll-mt-24 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-labelledby="catalog-page-banner-title">
+            <details id="catalog-page-banner" class="category-secondary-panel scroll-mt-24" @if($errors->has('products_banner_file') || $errors->has('products_banner_color')) open @endif>
+                <summary class="category-secondary-trigger">
+                    <span class="category-secondary-trigger-copy">
+                        <strong>All Products page banner</strong>
+                        <small>Set the banner image and background color shown on the storefront.</small>
+                    </span>
+                    <span class="category-secondary-trigger-action">Configure <span aria-hidden="true">⌄</span></span>
+                </summary>
+                <section class="category-banner-settings-body" aria-labelledby="catalog-page-banner-title">
                 <form
                     method="POST"
                     action="{{ route('admin.categories.catalog-banner.update') }}"
@@ -82,7 +465,7 @@
                         <p class="mt-2 max-w-xl text-sm leading-6 text-slate-500">Upload a banner image, choose a background color, or use both. When an image is present it is displayed over the selected color.</p>
 
                         <div
-                            class="relative mt-5 grid min-h-48 place-items-center overflow-hidden rounded-2xl border border-slate-200 text-white"
+                            class="category-banner-preview relative mt-5 grid min-h-48 place-items-center overflow-hidden rounded-2xl border border-slate-200 text-white"
                             x-bind:style="catalogBannerColor ? 'background-color: ' + catalogBannerColor : 'background: linear-gradient(135deg, #15345d 0%, #0d2545 58%, #071a31 100%)'"
                         >
                             <template x-if="catalogBannerPreview">
@@ -150,331 +533,9 @@
                         </div>
                     </div>
                 </form>
-            </section>
+                </section>
+            </details>
         @endif
-
-        <section class="category-stats-grid" aria-label="Category summary">
-            @foreach($stats as $stat)
-                <article class="category-stat-card">
-                    <span class="category-stat-icon category-stat-icon-{{ $stat['tone'] }}" aria-hidden="true">
-                        @switch($stat['icon'])
-                            @case('tree')
-                                <svg viewBox="0 0 24 24" fill="none"><path d="M12 4v5m0 0H7.5A2.5 2.5 0 0 0 5 11.5V14m7-5h4.5A2.5 2.5 0 0 1 19 11.5V14M5 14v2.5h5V14H5Zm9 0v2.5h5V14h-5Zm-4-10v3h4V4h-4Z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg>
-                                @break
-                            @case('check')
-                                <svg viewBox="0 0 24 24" fill="none"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" stroke="currentColor" stroke-width="1.9" /><path d="m8.5 12.3 2.3 2.3 4.8-5.2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                                @break
-                            @case('star')
-                                <svg viewBox="0 0 24 24" fill="none"><path d="m12 3.5 2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8L12 3.5Z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg>
-                                @break
-                            @case('folder')
-                                <svg viewBox="0 0 24 24" fill="none"><path d="M3.5 7.5a2 2 0 0 1 2-2h4.4l2 2H18.5a2 2 0 0 1 2 2v7.7a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2V7.5Z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg>
-                                @break
-                            @default
-                                <svg viewBox="0 0 24 24" fill="none"><path d="M6 19V12m6 7V5m6 14v-9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
-                        @endswitch
-                    </span>
-                    <div class="min-w-0">
-                        <p class="category-stat-label">{{ $stat['label'] }}</p>
-                        <strong>{{ number_format($stat['value']) }}</strong>
-                        <span>{{ $stat['note'] }}</span>
-                    </div>
-                </article>
-            @endforeach
-        </section>
-
-        <section class="category-filter-card" aria-label="Category filters and import tools">
-            <div class="category-filter-shell">
-                <form method="GET" class="category-filter-form">
-                    <label class="category-field relative block">
-                        <span class="sr-only">Search categories</span>
-                        <span class="category-filter-leading-icon" aria-hidden="true">
-                            <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none">
-                                <path d="m21 21-4.3-4.3M10.8 18.2a7.4 7.4 0 1 1 0-14.8 7.4 7.4 0 0 1 0 14.8Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                            </svg>
-                        </span>
-                        <input
-                            class="admin-input category-control pl-14"
-                            name="q"
-                            value="{{ $filters['q'] ?? '' }}"
-                            placeholder="Search categories"
-                            autocomplete="off"
-                            maxlength="100"
-                        >
-                    </label>
-
-                    <label class="category-field relative block">
-                        <span class="sr-only">Category status</span>
-                        <select class="admin-input category-control appearance-none pr-12" name="status">
-                            <option value="">All statuses</option>
-                            @foreach($categoryStatuses as $status)
-                                <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>
-                                    {{ ucfirst($status) }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <span class="category-filter-select-icon" aria-hidden="true">
-                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none">
-                                <path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                            </svg>
-                        </span>
-                    </label>
-
-                    <label class="category-field relative block">
-                        <span class="sr-only">Category type</span>
-                        <select class="admin-input category-control appearance-none pr-12" name="type">
-                            <option value="">All types</option>
-                            @foreach($categoryTypes as $type)
-                                <option value="{{ $type }}" @selected(($filters['type'] ?? '') === $type)>
-                                    {{ ucwords(str_replace('-', ' ', $type)) }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <span class="category-filter-select-icon" aria-hidden="true">
-                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none">
-                                <path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                            </svg>
-                        </span>
-                    </label>
-
-                    <label class="category-empty-filter">
-                        <input type="checkbox" name="empty" value="1" @checked($filters['empty'] ?? false)>
-                        <span>Empty only</span>
-                    </label>
-
-                    <div class="category-filter-actions">
-                        <button class="category-filter-button" type="submit">
-                            Filter
-                        </button>
-                        @if($hasActiveFilters)
-                            <a href="{{ route('admin.categories.index') }}" class="category-filter-clear">Clear</a>
-                        @endif
-                    </div>
-                </form>
-
-                <form
-                    method="POST"
-                    enctype="multipart/form-data"
-                    action="{{ route('admin.categories.import') }}"
-                    class="category-import-form"
-                >
-                    @csrf
-
-                    <div class="category-import-field">
-                        <label class="category-import-label" for="category-csv-import">
-                            Import category CSV
-                        </label>
-
-                        <label class="category-file-picker" for="category-csv-import">
-                            <input
-                                id="category-csv-import"
-                                class="category-file-input"
-                                type="file"
-                                name="category_csv"
-                                accept=".csv,text/csv"
-                                required
-                                data-category-file-input
-                            >
-                            <span class="category-file-trigger">Choose file</span>
-                            <span class="category-file-name" data-category-file-name>No file chosen</span>
-                        </label>
-                    </div>
-
-                    <button class="category-import-button category-import-button--compact" type="submit">
-                        Import
-                    </button>
-                </form>
-
-            </div>
-        </section>
-
-        <form id="bulk-category-form" method="POST" action="{{ route('admin.categories.bulk') }}" class="category-bulk-card">
-            @csrf
-
-            <strong>Selected categories</strong>
-
-            <select class="admin-input category-control" name="action" required>
-                <option value="">Choose bulk action</option>
-                <option value="activate">Activate</option>
-                <option value="deactivate">Deactivate</option>
-                <option value="archive">Archive</option>
-                <option value="feature">Mark featured parent category</option>
-                <option value="unfeature">Remove featured</option>
-                <option value="show_in_menu">Show in menu</option>
-                <option value="hide_from_menu">Hide from menu</option>
-            </select>
-
-            <button
-                class="category-bulk-button category-bulk-button--compact"
-                type="submit"
-                onclick="return confirm('Apply this action to the selected categories?')"
-            >
-                Apply
-            </button>
-
-            <span class="category-bulk-note">
-                Only parent categories can be marked featured for the homepage section.
-            </span>
-        </form>
-
-        <section class="category-table-card">
-            <div class="category-management-scroll" tabindex="0" aria-label="Category tree table">
-                <table class="category-management-table w-full text-sm">
-                    <thead>
-                        <tr>
-                            <th class="w-14 px-6 py-5"><input id="category-check-all" type="checkbox" aria-label="Select all categories on this page"></th>
-                            <th class="w-[330px] px-6 py-5">Category Tree</th>
-                            <th class="w-[170px] px-6 py-5">Type / Template</th>
-                            <th class="w-[105px] px-6 py-5 text-center">Products</th>
-                            <th class="w-[105px] px-6 py-5 text-center">Children</th>
-                            <th class="w-[210px] px-6 py-5">Visibility</th>
-                            <th class="w-[170px] px-6 py-5">Updated</th>
-                            <th class="w-[360px] px-6 py-5 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @forelse($categories as $category)
-                            @php
-                                $deleteImpact = $categoryDeleteImpacts[(int) $category->id] ?? [
-                                    'category_count' => 1,
-                                    'child_category_count' => 0,
-                                    'category_names' => [],
-                                    'product_count' => 0,
-                                    'product_names' => [],
-                                    'menu_item_count' => 0,
-                                ];
-                            @endphp
-                            <tr>
-                                <td class="px-6 py-5" data-label="Select">
-                                    <input class="category-row-check" type="checkbox" name="category_ids[]" value="{{ $category->id }}" form="bulk-category-form" aria-label="Select {{ $category->name }}">
-                                </td>
-
-                                <td class="px-6 py-5" data-label="Category Tree" data-card-cell="category">
-                                    <div class="category-tree-cell" style="--category-depth: {{ min($category->depth, 6) }}">
-                                        @if($category->depth > 0)
-                                            <span class="category-branch-mark" aria-hidden="true">↳</span>
-                                        @endif
-                                        @if($category->parent_id === null)
-                                            <span class="category-folder-icon" aria-hidden="true">
-                                                <img src="{{ $category->iconUrl() }}" alt="" loading="lazy">
-                                            </span>
-                                        @endif
-                                        <div class="min-w-0">
-                                            <div class="flex min-w-0 flex-wrap items-center gap-2">
-                                                <strong class="category-name truncate">{{ $category->name }}</strong>
-                                                @if($category->is_featured)
-                                                    <span class="category-featured-pill">Featured</span>
-                                                @endif
-                                            </div>
-                                            <p class="category-slug">/category/{{ $category->slug }}</p>
-                                            @if($category->parent)
-                                                <p class="category-parent">Parent: {{ $category->parent->name }}</p>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </td>
-
-                                <td class="px-6 py-5" data-label="Type / Template">
-                                    <strong class="category-type">{{ ucwords(str_replace('-', ' ', $category->category_type)) }}</strong>
-                                    <span class="category-template">{{ ucwords(str_replace('_', ' ', $category->page_template)) }}</span>
-                                </td>
-
-                                <td class="px-6 py-5 text-center" data-label="Products">
-                                    <a
-                                        href="{{ route('admin.categories.products.index', $category) }}"
-                                        class="category-products-count-link"
-                                        aria-label="View {{ number_format($category->products_count) }} {{ \Illuminate\Support\Str::plural('product', (int) $category->products_count) }} in the {{ $category->name }} category subtree"
-                                        title="{{ $category->children_count > 0 ? 'Includes unique products from every descendant leaf category.' : 'View products assigned to this leaf category.' }}"
-                                    >
-                                        <span>{{ number_format($category->products_count) }} {{ \Illuminate\Support\Str::plural('product', (int) $category->products_count) }}</span>
-                                        <small aria-hidden="true">›</small>
-                                    </a>
-                                </td>
-                                <td class="category-children-count" data-label="Children">{{ number_format($category->children_count) }}</td>
-
-                                <td class="px-6 py-5" data-label="Visibility">
-                                    <span class="category-status-pill category-status-pill--{{ $category->status }}">{{ ucfirst($category->status) }}</span>
-                                    <p class="category-visibility-meta">Catalog {{ $category->is_visible_in_catalog ? 'on' : 'off' }} · Menu {{ $category->is_visible_in_menu ? 'on' : 'off' }}</p>
-                                </td>
-
-                                <td class="category-updated-cell" data-label="Updated">
-                                    <span>{{ $category->updated_at?->format('M j, Y g:i A') }}</span>
-                                    @if($category->updater)
-                                        <small>by {{ $category->updater->name }}</small>
-                                    @endif
-                                </td>
-
-                                <td class="px-6 py-5" data-label="Actions">
-                                    <div class="category-item-actions">
-                                        @if($category->status === 'active')
-                                            <a href="{{ route('categories.show', $category->slug) }}" target="_blank" rel="noopener" class="category-row-primary-action">
-                                                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M2.5 10s2.8-5 7.5-5 7.5 5 7.5 5-2.8 5-7.5 5-7.5-5-7.5-5Z" stroke="currentColor" stroke-width="1.7" /><path d="M10 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" stroke="currentColor" stroke-width="1.7" /></svg>
-                                                Preview
-                                            </a>
-                                        @else
-                                            <span class="category-row-primary-action opacity-50" aria-disabled="true">
-                                                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M2.5 10s2.8-5 7.5-5 7.5 5 7.5 5-2.8 5-7.5 5-7.5-5-7.5-5Z" stroke="currentColor" stroke-width="1.7" /><path d="M10 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" stroke="currentColor" stroke-width="1.7" /></svg>
-                                                Preview
-                                            </span>
-                                        @endif
-
-                                        <a href="{{ route('admin.categories.products.index', $category) }}" class="category-row-primary-action">
-                                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 5.5h12v9H4v-9Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /><path d="M7 8h6M7 11h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
-                                            Products
-                                        </a>
-
-                                        <a href="{{ route('admin.categories.edit', $category) }}" class="category-row-primary-action">
-                                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 13.8V16h2.2L15 7.2 12.8 5 4 13.8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /><path d="m11.7 6.1 2.2 2.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
-                                            Edit
-                                        </a>
-
-                                        <details class="category-row-menu">
-                                            <summary aria-label="More actions for {{ $category->name }}">
-                                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 4.5h.01M10 10h.01M10 15.5h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
-                                            </summary>
-                                            <div class="category-row-menu-panel">
-                                                <a href="{{ route('admin.categories.create', ['parent_id' => $category->id]) }}">Add Child</a>
-                                                <a href="{{ route('admin.categories.products.index', $category) }}">Products</a>
-                                                <form method="POST" action="{{ route('admin.categories.duplicate', $category) }}" onsubmit="return confirm('Duplicate this category as a draft?')">
-                                                    @csrf
-                                                    <button type="submit">Duplicate</button>
-                                                </form>
-                                                <button
-                                                    type="button"
-                                                    class="category-row-danger-action"
-                                                    data-category-delete-trigger
-                                                    data-delete-url="{{ route('admin.categories.destroy', $category) }}"
-                                                    data-category-name="{{ $category->name }}"
-                                                    data-category-count="{{ (int) $deleteImpact['category_count'] }}"
-                                                    data-child-count="{{ (int) $deleteImpact['child_category_count'] }}"
-                                                    data-product-count="{{ (int) $deleteImpact['product_count'] }}"
-                                                    data-menu-count="{{ (int) $deleteImpact['menu_item_count'] }}"
-                                                    data-category-names="{{ json_encode($deleteImpact['category_names'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}"
-                                                    data-product-names="{{ json_encode($deleteImpact['product_names'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}"
-                                                >
-                                                    Delete
-                                                </button>
-                                            </div>
-                                        </details>
-                                    </div>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="8" class="px-8 py-16 text-center">
-                                    <p class="category-empty-title">No categories found</p>
-                                    <p class="category-empty-copy">Try another keyword, status, type, or empty-category filter.</p>
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="category-table-footer">
-                <div class="admin-pagination">{{ $categories->links('pagination.nextplay', ['itemName' => 'category']) }}</div>
-            </div>
-        </section>
     </div>
 
     <dialog id="category-delete-dialog" class="category-delete-dialog">
@@ -531,15 +592,65 @@
 
     @once
         <script>
-            document.getElementById('category-check-all')?.addEventListener('change', event => {
-                document.querySelectorAll('.category-row-check').forEach(checkbox => checkbox.checked = event.target.checked);
+            const categoryCheckAll = document.getElementById('category-check-all');
+            const categoryRowChecks = [...document.querySelectorAll('.category-row-check')];
+            const categorySelectionCount = document.querySelector('[data-category-selected-count]');
+            const categoryBulkSubmit = document.querySelector('[data-category-bulk-submit]');
+
+            const updateCategorySelection = () => {
+                const selectedCount = categoryRowChecks.filter(input => input.checked).length;
+                if (categorySelectionCount) categorySelectionCount.textContent = `${selectedCount} selected`;
+                if (categoryBulkSubmit) categoryBulkSubmit.disabled = selectedCount === 0;
+                if (categoryCheckAll) {
+                    categoryCheckAll.checked = categoryRowChecks.length > 0 && selectedCount === categoryRowChecks.length;
+                    categoryCheckAll.indeterminate = selectedCount > 0 && selectedCount < categoryRowChecks.length;
+                }
+            };
+            categoryCheckAll?.addEventListener('change', event => {
+                categoryRowChecks.forEach(input => { input.checked = event.target.checked; });
+                updateCategorySelection();
             });
+            categoryRowChecks.forEach(input => input.addEventListener('change', updateCategorySelection));
+            updateCategorySelection();
+
+            // Open collapsed secondary tools when navigating from the top actions.
+            document.querySelectorAll('[data-category-open-panel]').forEach(link => {
+                link.addEventListener('click', () => {
+                    const target = document.getElementById(link.dataset.categoryOpenPanel);
+                    if (target) target.open = true;
+                    link.closest('.category-tools-menu')?.removeAttribute('open');
+                });
+            });
+            const categoryHashPanel = document.getElementById(window.location.hash.slice(1));
+            if (categoryHashPanel?.matches('.category-secondary-panel, .category-import-tools')) {
+                categoryHashPanel.open = true;
+            }
 
             document.querySelectorAll('[data-category-file-input]').forEach(input => {
-                input.addEventListener('change', () => {
-                    const name = input.files?.[0]?.name || 'No file chosen';
-                    input.closest('.category-file-picker')?.querySelector('[data-category-file-name]')?.replaceChildren(document.createTextNode(name));
-                });
+                const form = input.closest('form');
+                const submit = form?.querySelector('[data-category-import-submit]');
+                const fileName = form?.querySelector('[data-category-file-name]');
+                const fileHint = form?.querySelector('[data-category-file-hint]');
+                const updateFile = () => {
+                    const file = input.files?.[0];
+                    if (fileName) fileName.textContent = file?.name || 'Choose a CSV or Excel file';
+                    const validType = !file || /\.(csv|xlsx|xls)$/i.test(file.name);
+                    const validSize = !file || file.size <= 2 * 1024 * 1024;
+                    const validFile = Boolean(file && validType && validSize);
+                    if (fileHint) fileHint.textContent = !file
+                        ? 'Click to browse your computer'
+                        : !validType
+                            ? 'Choose a CSV, XLSX or XLS file'
+                            : !validSize
+                                ? 'File exceeds the 2 MB limit'
+                                : `${(file.size / 1024).toFixed(0)} KB · Ready to import`;
+                    const picker = input.closest('.category-upload-picker');
+                    picker?.classList.toggle('has-file', validFile);
+                    picker?.classList.toggle('has-error', Boolean(file && !validFile));
+                    if (submit) submit.disabled = !validFile;
+                };
+                input.addEventListener('change', updateFile);
+                updateFile();
             });
 
             const categoryDeleteDialog = document.getElementById('category-delete-dialog');

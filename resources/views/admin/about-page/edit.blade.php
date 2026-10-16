@@ -1,18 +1,25 @@
 <x-layouts.admin
     title="About Page"
-    eyebrow="Storefront Content"
-    subtitle="Manage every About NextPlay text, link, image and icon. The approved section order and storefront layout stay fixed."
     :storefront-url="route('about')"
 >
     @php
         $fieldClass = 'admin-input';
-        $textareaClass = 'admin-input min-h-28 py-3';
+        $textareaClass = 'admin-input np-content-textarea';
         $imageAccept = 'image/jpeg,image/png,image/webp,image/avif';
     @endphp
 
-    <form method="POST" action="{{ route('admin.about-page.update') }}" enctype="multipart/form-data" class="mx-auto max-w-6xl space-y-6">
+    <form method="POST" action="{{ route('admin.about-page.update') }}" enctype="multipart/form-data" class="np-storefront-editor space-y-4">
         @csrf
         @method('PUT')
+
+
+        <x-admin.storefront-editor-toolbar
+            description="Manage every About NextPlay text, link, image and icon. The approved section order and storefront layout stay fixed."
+            :preview-url="route('about')"
+            preview-label="Preview About Page"
+            save-label="Save About Page"
+            :can-manage="$canManageAboutPage"
+        />
 
         @if(session('status'))
             <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
@@ -75,7 +82,7 @@
                     </div>
                     <div>
                         <label class="admin-label" for="about-intro-image">Upload / replace image</label>
-                        <input id="about-intro-image" type="file" name="introduction_image" accept="{{ $imageAccept }}" class="admin-input h-auto py-3" @disabled(! $canManageAboutPage)>
+                        <input id="about-intro-image" type="file" name="introduction_image" accept="{{ $imageAccept }}" class="admin-input h-auto py-3" data-content-file @disabled(! $canManageAboutPage)>
                         <p class="mt-2 text-xs font-semibold text-slate-500">JPG, PNG, WebP or AVIF. Maximum 10 MB.</p>
                         @error('introduction_image')<p class="mt-2 text-xs font-bold text-red-600">{{ $message }}</p>@enderror
                     </div>
@@ -132,7 +139,7 @@
                                 </div>
                                 <div>
                                     <label class="admin-label">Upload / replace icon</label>
-                                    <input type="file" name="service_icon_{{ $index }}" accept="{{ $imageAccept }}" class="admin-input h-auto py-3" @disabled(! $canManageAboutPage)>
+                                    <input type="file" name="service_icon_{{ $index }}" accept="{{ $imageAccept }}" class="admin-input h-auto py-3" data-content-file @disabled(! $canManageAboutPage)>
                                     <p class="mt-2 text-xs font-semibold text-slate-500">JPG, PNG, WebP or AVIF. Maximum 2 MB. Transparent PNG/WebP works well.</p>
                                     @error('service_icon_'.$index)<p class="mt-2 text-xs font-bold text-red-600">{{ $message }}</p>@enderror
                                 </div>
@@ -192,7 +199,7 @@
                                 </div>
                                 <div>
                                     <label class="admin-label">Upload / replace icon</label>
-                                    <input type="file" name="process_icon_{{ $index }}" accept="{{ $imageAccept }}" class="admin-input h-auto py-3" @disabled(! $canManageAboutPage)>
+                                    <input type="file" name="process_icon_{{ $index }}" accept="{{ $imageAccept }}" class="admin-input h-auto py-3" data-content-file @disabled(! $canManageAboutPage)>
                                     <p class="mt-2 text-xs font-semibold text-slate-500">JPG, PNG, WebP or AVIF. Maximum 2 MB.</p>
                                     @error('process_icon_'.$index)<p class="mt-2 text-xs font-bold text-red-600">{{ $message }}</p>@enderror
                                 </div>
@@ -229,7 +236,7 @@
                             </div>
                             <div>
                                 <label class="admin-label">Upload / replace image</label>
-                                <input type="file" name="gallery_image_{{ $index }}" accept="{{ $imageAccept }}" class="admin-input h-auto py-3" @disabled(! $canManageAboutPage)>
+                                <input type="file" name="gallery_image_{{ $index }}" accept="{{ $imageAccept }}" class="admin-input h-auto py-3" data-content-file @disabled(! $canManageAboutPage)>
                                 <p class="mt-2 text-xs font-semibold text-slate-500">JPG, PNG, WebP or AVIF. Maximum 10 MB.</p>
                                 @error('gallery_image_'.$index)<p class="mt-2 text-xs font-bold text-red-600">{{ $message }}</p>@enderror
                             </div>
@@ -298,7 +305,7 @@
                     </div>
                     <div class="lg:col-span-2">
                         <label class="admin-label">Upload / replace help icon</label>
-                        <input type="file" name="help_icon" accept="{{ $imageAccept }}" class="admin-input h-auto py-3" @disabled(! $canManageAboutPage)>
+                        <input type="file" name="help_icon" accept="{{ $imageAccept }}" class="admin-input h-auto py-3" data-content-file @disabled(! $canManageAboutPage)>
                         <p class="mt-2 text-xs font-semibold text-slate-500">JPG, PNG, WebP or AVIF. Maximum 2 MB.</p>
                         @error('help_icon')<p class="mt-2 text-xs font-bold text-red-600">{{ $message }}</p>@enderror
                     </div>
@@ -342,7 +349,7 @@
             <div class="flex gap-3">
                 <a href="{{ route('about') }}" target="_blank" rel="noopener" class="btn btn-white">Preview About Page</a>
                 @if($canManageAboutPage)
-                    <button type="submit" class="btn btn-primary">Save About Page</button>
+                    <button type="submit" class="btn btn-red">Save About Page</button>
                 @endif
             </div>
         </div>

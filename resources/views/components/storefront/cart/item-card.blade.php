@@ -36,6 +36,11 @@
     <div class="np-cart-item-details">
         <h2><a href="{{ $product['url'] }}">{{ $product['title'] }}</a></h2>
         <p class="np-cart-item-unit">From ${{ number_format($unitDisplayPrice, 2) }} each</p>
+        @if ((float) ($item['offer_savings'] ?? 0) > 0)
+            <p class="text-xs font-bold text-green-700">Sale applied: save ${{ number_format((float) $item['offer_savings'], 2) }} on the product price
+                <span class="text-slate-500">(${{ number_format((float) $item['original_unit_price'], 2) }} before offer / ${{ number_format((float) $item['unit_price'], 2) }} after offer)</span>
+            </p>
+        @endif
         <div class="np-cart-item-saved">
             <span class="np-cart-item-check" aria-hidden="true">
                 <svg viewBox="0 0 20 20" fill="none">

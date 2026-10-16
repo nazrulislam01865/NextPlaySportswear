@@ -7,7 +7,9 @@ use App\Models\Gender;
 use App\Models\Product;
 use App\Models\ProductFabricPriceTable;
 use App\Services\Promotions\SaleCampaignService;
+use App\Support\DerivedFabricPriceTable;
 use App\Support\PriceTableShipping;
+use App\Support\PriceTableUnitPrice;
 use App\Support\ProductRoster;
 use App\Support\ProductSizing;
 use App\Support\ProductStorefrontUi;
@@ -2010,7 +2012,9 @@ class ProductCatalogService
         $product['sale_page_eligible'] = (bool) ($context['sale_page_eligible'] ?? false);
         $product['sale_campaign'] = $best;
         $product['sale_campaign_original_price'] = $originalPrice;
-        $product['sale_badge_label'] = null;
+        // An admin-entered product/tier discount is also a genuine offer.
+        // Do not hide it when there is no eligible live campaign.
+        $product['sale_badge_label'] = $originalPrice > $existingPrice ? 'Sale' : null;
 
         if (! is_array($best) || (float) ($best['sale_price'] ?? $originalPrice) >= $existingPrice) {
             return $product;
@@ -2025,7 +2029,7 @@ class ProductCatalogService
         $product['compare_at_price_label'] = '$'.number_format($originalPrice, 2);
         $product['discount_percentage'] = (int) ($best['discount_percentage'] ?? 0);
         $product['price'] = $this->formatDisplayPrice($salePrice);
-        $product['sale_badge_label'] = ! empty($best['show_sale_badge']) ? 'Sale' : null;
+        $product['sale_badge_label'] = 'Sale';
 
         return $product;
     }
@@ -2303,6 +2307,16 @@ class ProductCatalogService
 
     private function displayUnitPrice(Product $product, ?array $priceTiers = null): float
     {
+        // Keep catalog cards consistent with the visible highlighted product
+        // price column, even if independently stored price tiers have drifted.
+        $tablePrice = PriceTableUnitPrice::startingPrice([
+            'rows' => (array) ($product->price_table_rows ?? []),
+            'highlight_column' => $product->price_table_highlight_column ?? 1,
+        ]);
+        if ($tablePrice !== null) {
+            return $tablePrice;
+        }
+
         if ($priceTiers !== null) {
             $lastTier = collect($priceTiers)
                 ->filter(fn (array $tier): bool => is_numeric($tier['unit'] ?? null))
@@ -2853,6 +2867,31 @@ class ProductCatalogService
         $productProfile = $product->product_profile ?: 'standard';
         $supportsSizeOptions = ProductSizing::supports($productProfile);
         $displayUnitPrice = $this->displayUnitPrice($product, $priceTiers);
+        // The builder initially selects the default (or first) fabric. Its
+        // selected table must also determine the product detail's "From" price.
+        $materialGroup = collect($optionGroups)->first(function (array $group): bool {
+            if (! in_array($group['type'] ?? '', ['image', 'swatch', 'buttons', 'select'], true)) {
+                return false;
+            }
+            $label = Str::lower((string) ($group['label'] ?? ''));
+
+            return collect($group['values'] ?? [])->contains(fn (array $value): bool => is_array($value['fabric_price_table'] ?? null))
+                || str_contains($label, 'fabric') || str_contains($label, 'material');
+        });
+        if (is_array($materialGroup)) {
+            $values = collect($materialGroup['values'] ?? []);
+            $defaultValue = $values->firstWhere('id', $materialGroup['fixed_value_code'] ?? null)
+                ?? $values->firstWhere('default', true)
+                ?? $values->first();
+            $initialFabricTable = (array) ($defaultValue['fabric_price_table'] ?? []);
+            if ($initialFabricTable === []) {
+                $initialFabricTable = DerivedFabricPriceTable::forValue($priceTablePayload, (array) $defaultValue) ?? [];
+            }
+            $initialFabricPrice = PriceTableUnitPrice::startingPrice($initialFabricTable);
+            if ($initialFabricPrice !== null) {
+                $displayUnitPrice = $initialFabricPrice;
+            }
+        }
         $cardPricing = $this->productCardPricing($product, $displayUnitPrice);
         $rating = $this->genuineProductRating($product);
         $reviewsCount = $this->genuineProductReviewsCount($product);

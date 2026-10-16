@@ -226,7 +226,7 @@
                 <button
                     type="submit"
                     class="rounded-xl px-6 py-2.5 text-xs font-bold text-white shadow-sm transition hover:opacity-95"
-                    style="background-color: #CF5D38 !important; color: #ffffff !important;"
+                    style="background-color: var(--np-color-secondary) !important; color: #ffffff !important;"
                 >
                     Save Calendar
                 </button>
