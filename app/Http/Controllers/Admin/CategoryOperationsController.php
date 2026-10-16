@@ -184,9 +184,14 @@ class CategoryOperationsController extends Controller
 
     public function import(CategoryImportRequest $request): RedirectResponse
     {
-        $records = $this->readCsv($request->file('category_csv')->getRealPath());
+        $file = $request->file('category_csv');
+        $extension = strtolower($file->getClientOriginalExtension());
+        $records = $extension === 'csv'
+            ? $this->readCsv($file->getRealPath())
+            : $this->readSpreadsheet($file->getRealPath());
+
         if ($records === []) {
-            throw ValidationException::withMessages(['category_csv' => 'The CSV file does not contain any category rows.']);
+            throw ValidationException::withMessages(['category_csv' => 'The file does not contain any category rows.']);
         }
 
         DB::transaction(function () use ($records): void {
@@ -319,6 +324,103 @@ class CategoryOperationsController extends Controller
         fclose($handle);
 
         return $records;
+    }
+
+    /**
+     * Import the first worksheet, preserving CSV field names and row-numbered
+     * validation. The optional spreadsheet reader is installed with Composer;
+     * never execute formulas from an uploaded workbook.
+     *
+     * @return array<int, array<string, string|null>>
+     */
+    private function readSpreadsheet(string $path): array
+    {
+        if (! class_exists(\PhpOffice\PhpSpreadsheet\IOFactory::class)) {
+            throw ValidationException::withMessages([
+                'category_csv' => 'Excel imports require the PhpSpreadsheet package. Run composer require phpoffice/phpspreadsheet to enable them.',
+            ]);
+        }
+
+        $workbook = null;
+
+        try {
+            $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($path);
+            $information = $reader->listWorksheetInfo($path);
+            $firstSheet = $information[0] ?? null;
+
+            if (! $firstSheet) {
+                throw ValidationException::withMessages(['category_csv' => 'The Excel file has no worksheets.']);
+            }
+
+            // Limit the worksheet before loading to avoid excessive memory use
+            // from malformed or unexpectedly large uploads.
+            if ($firstSheet['totalRows'] > 1001) {
+                throw ValidationException::withMessages(['category_csv' => 'A maximum of 1,000 category rows can be imported at once.']);
+            }
+            if ($firstSheet['totalColumns'] > 40) {
+                throw ValidationException::withMessages(['category_csv' => 'The Excel worksheet has too many columns (maximum 40).']);
+            }
+
+            $reader->setReadDataOnly(true);
+            $reader->setLoadSheetsOnly([$firstSheet['worksheetName']]);
+            $workbook = $reader->load($path);
+            $sheet = $workbook->getSheet(0);
+            $columnCount = (int) $firstSheet['totalColumns'];
+            $rowCount = (int) $firstSheet['totalRows'];
+
+            $headers = [];
+            for ($column = 1; $column <= $columnCount; $column++) {
+                $value = trim((string) $sheet->getCell([$column, 1])->getValue());
+                $headers[] = \Illuminate\Support\Str::snake(preg_replace('/^\xEF\xBB\xBF/', '', $value) ?? $value);
+            }
+
+            foreach (['name', 'slug'] as $required) {
+                if (! in_array($required, $headers, true)) {
+                    throw ValidationException::withMessages([
+                        'category_csv' => "The file must contain a '{$required}' column in the first row.",
+                    ]);
+                }
+            }
+
+            $records = [];
+            for ($line = 2; $line <= $rowCount; $line++) {
+                $record = [];
+                for ($column = 1; $column <= $columnCount; $column++) {
+                    $header = $headers[$column - 1];
+                    if ($header === '') {
+                        continue;
+                    }
+
+                    $cell = $sheet->getCell([$column, $line]);
+                    if ($cell->getDataType() === \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_FORMULA) {
+                        throw ValidationException::withMessages([
+                            'category_csv' => "Row {$line}: spreadsheet formulas are not supported. Use values only.",
+                        ]);
+                    }
+
+                    $value = $cell->getValue();
+                    $record[$header] = $value === null ? null : (
+                        is_bool($value) ? ($value ? '1' : '0') : trim((string) (
+                            is_numeric($value) ? $cell->getFormattedValue() : $value
+                        ))
+                    );
+                }
+
+                if (collect($record)->filter(fn ($value) => filled($value))->isNotEmpty()) {
+                    $records[$line] = $record;
+                }
+            }
+
+            return $records;
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (\Throwable $exception) {
+            throw ValidationException::withMessages([
+                'category_csv' => 'The Excel file could not be read. Upload a valid .xlsx or .xls file with the category headers in row 1.',
+            ]);
+        } finally {
+            $workbook?->disconnectWorksheets();
+        }
     }
 
     private function enumValue(mixed $value, array $allowed, string $default, int $line, string $field): string

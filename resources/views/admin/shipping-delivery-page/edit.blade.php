@@ -1,18 +1,25 @@
 <x-layouts.admin
     title="Shipping & Delivery Page"
-    eyebrow="Storefront Content"
-    subtitle="Manage every Delivery-tab text, link, SEO field and content icon. The approved section order and layout stay fixed."
     :storefront-url="route('shipping')"
 >
     @php
         $fieldClass = 'admin-input';
-        $textareaClass = 'admin-input min-h-28 py-3';
+        $textareaClass = 'admin-input np-content-textarea';
         $imageAccept = 'image/jpeg,image/png,image/webp,image/avif';
     @endphp
 
-    <form method="POST" action="{{ route('admin.shipping-delivery-page.update') }}" enctype="multipart/form-data" class="mx-auto max-w-6xl space-y-6">
+    <form method="POST" action="{{ route('admin.shipping-delivery-page.update') }}" enctype="multipart/form-data" class="np-storefront-editor space-y-4">
         @csrf
         @method('PUT')
+
+
+        <x-admin.storefront-editor-toolbar
+            description="Manage every Delivery-tab text, link, SEO field and content icon. The approved section order and layout stay fixed."
+            :preview-url="route('shipping')"
+            preview-label="Preview Shipping & Delivery"
+            save-label="Save Shipping & Delivery Page"
+            :can-manage="$canManageShippingDeliveryPage"
+        />
 
         @if(session('status'))
             <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
@@ -96,7 +103,7 @@
                                 <div><label class="admin-label">Icon alt text</label><input class="{{ $fieldClass }}" name="info_cards[cards][{{ $index }}][icon_alt]" value="{{ old($base.'.icon_alt', data_get($card, 'icon_alt')) }}" maxlength="255" required @disabled(! $canManageShippingDeliveryPage)></div>
                                 <div data-shipping-delivery-upload-slot>
                                     <label class="admin-label">Upload / replace icon</label>
-                                    <input type="file" name="info_card_icon_{{ $index }}" accept="{{ $imageAccept }}" class="admin-input h-auto py-3" @disabled(! $canManageShippingDeliveryPage)>
+                                    <input type="file" name="info_card_icon_{{ $index }}" accept="{{ $imageAccept }}" class="admin-input h-auto py-3" data-content-file @disabled(! $canManageShippingDeliveryPage)>
                                     <p class="mt-2 text-xs font-semibold text-slate-500">JPG, PNG, WebP or AVIF. Maximum 2 MB.</p>
                                 </div>
                                 @if(data_get($card, 'has_custom_icon'))
@@ -139,7 +146,7 @@
                 <div class="space-y-4">
                     <div><label class="admin-label">Notice text</label><textarea class="{{ $textareaClass }}" name="notice[text]" maxlength="1000" required @disabled(! $canManageShippingDeliveryPage)>{{ old('notice.text', data_get($shippingDelivery, 'notice.text')) }}</textarea></div>
                     <div><label class="admin-label">Icon alt text</label><input class="{{ $fieldClass }}" name="notice[icon_alt]" value="{{ old('notice.icon_alt', data_get($shippingDelivery, 'notice.icon_alt')) }}" maxlength="255" required @disabled(! $canManageShippingDeliveryPage)></div>
-                    <div data-shipping-delivery-upload-slot><label class="admin-label">Upload / replace icon</label><input type="file" name="notice_icon" accept="{{ $imageAccept }}" class="admin-input h-auto py-3" @disabled(! $canManageShippingDeliveryPage)><p class="mt-2 text-xs font-semibold text-slate-500">JPG, PNG, WebP or AVIF. Maximum 2 MB.</p></div>
+                    <div data-shipping-delivery-upload-slot><label class="admin-label">Upload / replace icon</label><input type="file" name="notice_icon" accept="{{ $imageAccept }}" class="admin-input h-auto py-3" data-content-file @disabled(! $canManageShippingDeliveryPage)><p class="mt-2 text-xs font-semibold text-slate-500">JPG, PNG, WebP or AVIF. Maximum 2 MB.</p></div>
                     @if(data_get($shippingDelivery, 'notice.has_custom_icon'))
                         <label class="flex gap-3 text-sm font-bold text-slate-700"><input type="hidden" name="remove_notice_icon" value="0"><input type="checkbox" name="remove_notice_icon" value="1" class="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-red focus:ring-brand-red" @disabled(! $canManageShippingDeliveryPage)><span>Remove custom icon and restore the built-in icon</span></label>
                     @endif
@@ -171,7 +178,7 @@
                 <div class="grid gap-5 md:grid-cols-2">
                     @foreach(data_get($shippingDelivery, 'address_checklist.items', []) as $index => $item)
                         @php($base = "address_checklist.items.$index")
-                        <article class="rounded-2xl border border-slate-200 bg-slate-50 p-5"><input type="hidden" name="address_checklist[items][{{ $index }}][id]" value="{{ data_get($item, 'id') }}"><div class="mb-4 flex min-h-20 items-center justify-center rounded-xl border border-slate-200 bg-white p-3"><x-storefront.shipping-delivery.icon :icon-url="data_get($item, 'icon_url')" :fallback="data_get($item, 'fallback_icon')" :alt="data_get($item, 'icon_alt')" :size="42" /></div><div class="space-y-4"><div><label class="admin-label">Item title</label><input class="{{ $fieldClass }}" name="address_checklist[items][{{ $index }}][title]" value="{{ old($base.'.title', data_get($item, 'title')) }}" maxlength="255" required @disabled(! $canManageShippingDeliveryPage)></div><div><label class="admin-label">Description</label><textarea class="{{ $textareaClass }}" name="address_checklist[items][{{ $index }}][description]" maxlength="1000" required @disabled(! $canManageShippingDeliveryPage)>{{ old($base.'.description', data_get($item, 'description')) }}</textarea></div><div><label class="admin-label">Icon alt text</label><input class="{{ $fieldClass }}" name="address_checklist[items][{{ $index }}][icon_alt]" value="{{ old($base.'.icon_alt', data_get($item, 'icon_alt')) }}" maxlength="255" required @disabled(! $canManageShippingDeliveryPage)></div><div data-shipping-delivery-upload-slot><label class="admin-label">Upload / replace icon</label><input type="file" name="checklist_icon_{{ $index }}" accept="{{ $imageAccept }}" class="admin-input h-auto py-3" @disabled(! $canManageShippingDeliveryPage)><p class="mt-2 text-xs font-semibold text-slate-500">JPG, PNG, WebP or AVIF. Maximum 2 MB.</p></div>@if(data_get($item, 'has_custom_icon'))<label class="flex gap-3 text-sm font-bold text-slate-700"><input type="hidden" name="remove_checklist_icon_{{ $index }}" value="0"><input type="checkbox" name="remove_checklist_icon_{{ $index }}" value="1" class="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-red focus:ring-brand-red" @disabled(! $canManageShippingDeliveryPage)><span>Remove custom icon and restore the built-in icon</span></label>@endif</div></article>
+                        <article class="rounded-2xl border border-slate-200 bg-slate-50 p-5"><input type="hidden" name="address_checklist[items][{{ $index }}][id]" value="{{ data_get($item, 'id') }}"><div class="mb-4 flex min-h-20 items-center justify-center rounded-xl border border-slate-200 bg-white p-3"><x-storefront.shipping-delivery.icon :icon-url="data_get($item, 'icon_url')" :fallback="data_get($item, 'fallback_icon')" :alt="data_get($item, 'icon_alt')" :size="42" /></div><div class="space-y-4"><div><label class="admin-label">Item title</label><input class="{{ $fieldClass }}" name="address_checklist[items][{{ $index }}][title]" value="{{ old($base.'.title', data_get($item, 'title')) }}" maxlength="255" required @disabled(! $canManageShippingDeliveryPage)></div><div><label class="admin-label">Description</label><textarea class="{{ $textareaClass }}" name="address_checklist[items][{{ $index }}][description]" maxlength="1000" required @disabled(! $canManageShippingDeliveryPage)>{{ old($base.'.description', data_get($item, 'description')) }}</textarea></div><div><label class="admin-label">Icon alt text</label><input class="{{ $fieldClass }}" name="address_checklist[items][{{ $index }}][icon_alt]" value="{{ old($base.'.icon_alt', data_get($item, 'icon_alt')) }}" maxlength="255" required @disabled(! $canManageShippingDeliveryPage)></div><div data-shipping-delivery-upload-slot><label class="admin-label">Upload / replace icon</label><input type="file" name="checklist_icon_{{ $index }}" accept="{{ $imageAccept }}" class="admin-input h-auto py-3" data-content-file @disabled(! $canManageShippingDeliveryPage)><p class="mt-2 text-xs font-semibold text-slate-500">JPG, PNG, WebP or AVIF. Maximum 2 MB.</p></div>@if(data_get($item, 'has_custom_icon'))<label class="flex gap-3 text-sm font-bold text-slate-700"><input type="hidden" name="remove_checklist_icon_{{ $index }}" value="0"><input type="checkbox" name="remove_checklist_icon_{{ $index }}" value="1" class="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-red focus:ring-brand-red" @disabled(! $canManageShippingDeliveryPage)><span>Remove custom icon and restore the built-in icon</span></label>@endif</div></article>
                     @endforeach
                 </div>
             </div>
@@ -200,7 +207,7 @@
 
         <div class="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-soft backdrop-blur">
             <a href="{{ route('shipping') }}" target="_blank" rel="noopener" class="btn btn-secondary">Preview Shipping & Delivery</a>
-            <button type="submit" class="btn btn-primary" @disabled(! $canManageShippingDeliveryPage)>Save Shipping & Delivery Page</button>
+            <button type="submit" class="btn btn-red" @disabled(! $canManageShippingDeliveryPage)>Save Shipping & Delivery Page</button>
         </div>
     </form>
 </x-layouts.admin>

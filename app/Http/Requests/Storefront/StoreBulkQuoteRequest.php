@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Storefront;
 
+use App\Rules\VerifiedRecaptcha;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -79,6 +80,8 @@ class StoreBulkQuoteRequest extends FormRequest
             'attachment' => ['nullable', 'file', 'max:10240'],
             'additional_notes' => ['nullable', 'string', 'max:5000'],
 
+            'g-recaptcha-response' => ['bail', 'required', 'string', 'max:4096', new VerifiedRecaptcha()],
+
             // Invisible honeypot field. Real visitors leave it empty.
             'company' => ['nullable', 'max:0'],
         ];
@@ -90,6 +93,7 @@ class StoreBulkQuoteRequest extends FormRequest
             'company.max' => 'Your request could not be submitted. Please try again.',
             'phone.regex' => 'Please enter a valid phone or WhatsApp number.',
             'attachment.max' => 'The attachment may not be larger than 10MB.',
+            'g-recaptcha-response.required' => 'Please confirm that you are not a robot.',
         ];
     }
 
@@ -112,6 +116,7 @@ class StoreBulkQuoteRequest extends FormRequest
             'needed_by' => 'needed by / delivery date',
             'event_date' => 'event date',
             'additional_notes' => 'additional notes',
+            'g-recaptcha-response' => 'CAPTCHA verification',
         ];
     }
 }

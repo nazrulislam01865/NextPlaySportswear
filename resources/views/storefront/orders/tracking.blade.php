@@ -64,6 +64,7 @@
                         :steps="$trackingTimeline"
                         :item="$summaryItem"
                         :tracking="$tracking"
+                        :order="$order"
                         :details-href="route('orders.details', ['orderNumber' => $displayOrderNumber])"
                     />
                 @endif

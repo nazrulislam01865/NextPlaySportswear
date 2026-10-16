@@ -21,15 +21,15 @@ class HomepageSlideSeeder extends Seeder
 
         $slides = [
             [
-                'title' => 'Build Your Team Jersey with Name, Number, and Logo',
-                'eyebrow' => 'Custom jerseys USA',
-                'description' => 'Choose colors, add player details, upload your artwork, and prepare your order for teams, schools, clubs, and fans.',
+                'title' => 'Made for the Beautiful Game.',
+                'eyebrow' => 'Personalised Kits',
+                'description' => 'Personalised football kits for clubs and teams.',
                 'image_url' => 'https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=2048&q=80',
-                'image_alt' => 'Custom jerseys and sportswear for team order',
-                'primary_label' => 'Shop Custom Jerseys',
-                'primary_url' => '#products',
-                'secondary_label' => 'Request Team Quote',
-                'secondary_url' => '#bulk',
+                'image_alt' => 'Custom football kits and team sportswear',
+                'primary_label' => 'Shop Football Kits',
+                'primary_url' => '/products',
+                'secondary_label' => 'View Shop',
+                'secondary_url' => '/products',
                 'show_secondary_button' => true,
                 'sort_order' => 10,
             ],

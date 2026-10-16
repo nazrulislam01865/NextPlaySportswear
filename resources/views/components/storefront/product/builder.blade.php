@@ -53,6 +53,7 @@
         'price_table' => $product['price_table'] ?? [],
         'fabric_price_tables' => $product['fabric_price_tables'] ?? [],
         'sale_campaigns' => $product['sale_campaigns'] ?? [],
+        'compare_at_price' => $product['compare_at_price'] ?? null,
         'social' => $social,
         'edit_mode' => $isEditing,
         'edit_item_key' => $isEditing ? (string) $editItem['key'] : null,
@@ -526,12 +527,92 @@ window.productBuilderFabricPricing = function (config = {}) {
             }
             return Number(bestPrice.toFixed(2));
         },
+        effectiveProductPrice(original, tier = null) {
+            const originalPrice = Math.max(0, Number(original || 0));
+            const tierOffer = Number(tier?.compare_at ?? 0);
+            const nativeOffer = tierOffer > 0 && tierOffer < originalPrice ? tierOffer : Number(config.compare_at_price ?? 0);
+            const discounted = nativeOffer > 0 && nativeOffer < originalPrice ? nativeOffer : originalPrice;
+            // Use cents for the offer comparison, matching the server and cart.
+            // Native product discounts and live campaigns compete; they never stack.
+            return Math.min(Math.round((discounted + Number.EPSILON) * 100) / 100, this.campaignPrice(originalPrice));
+        },
         tierPrice() {
             const quantity = Math.max(this.totalQuantity ? this.totalQuantity() : 1, Number(config.minimum_quantity || 1));
-            const tier = (this.activePriceTiers() || []).find((candidate) => {
+            const table = this.activePriceTable();
+            const rowIndex = this.priceTableRowIndexForQuantity(table, quantity);
+            const tier = rowIndex >= 0 ? (this.activePriceTiers() || [])[rowIndex] : null;
+            const matchingTier = tier || (this.activePriceTiers() || []).find((candidate) => {
                 return quantity >= Number(candidate.min || 1) && (candidate.max === null || candidate.max === undefined || quantity <= Number(candidate.max));
             });
-            return this.campaignPrice(Number(tier?.unit ?? config.base_price ?? 0));
+            const column = Number(table?.highlight_column ?? 1);
+            const cell = rowIndex >= 0 && column >= 1 ? table?.rows?.[rowIndex]?.[column] : null;
+            const tablePrice = this.parseUnitPriceCell(cell);
+            const original = tablePrice !== null && Number.isFinite(tablePrice) && tablePrice >= 0
+                ? tablePrice
+                : Number(matchingTier?.unit ?? config.base_price ?? 0);
+            return this.effectiveProductPrice(original, matchingTier);
+        },
+        // Each visible product-price cell carries the exact source price and its
+        // non-stacking campaign/native offer. Non-price columns stay untouched.
+        priceTableCellOffer(cell, columnIndex, rowIndex) {
+            const input = String(cell ?? '').trim();
+            const unchanged = { label: cell ?? '—', originalLabel: '', discounted: false };
+            const table = this.activePriceTable() || {};
+            if (columnIndex !== Number(table.highlight_column ?? 1)) return unchanged;
+            // Mirror PriceTableUnitPrice::priceInRow(), used by the server cart.
+            const match = input.match(/^(USD\s*|US\$\s*|[$£€]\s*)?(\d[\d,]*(?:\.\d+)?)(\s*(?:\/|per)\s*(?:pc|pcs|piece|pieces|unit|item))?$/i);
+            if (!match) return unchanged;
+            const original = this.parseUnitPriceCell(cell);
+            if (original === null || original <= 0) return unchanged;
+            const prefix = match[1] || '';
+            const suffix = match[3] || '';
+            const tier = (this.activePriceTiers() || [])[rowIndex] || null;
+            const offered = this.effectiveProductPrice(original, tier);
+            if (offered >= original) return unchanged;
+            return {
+                label: `${prefix}${offered.toFixed(2)}${suffix}`,
+                originalLabel: `${prefix}${original.toFixed(2)}${suffix}`,
+                discounted: true,
+            };
+        },
+        offeredTableCell(cell, columnIndex, rowIndex) {
+            return this.priceTableCellOffer(cell, columnIndex, rowIndex).label;
+        },
+        // The "from" price is the highest-quantity table bracket for the
+        // currently selected fabric (not the product's saved base/tier price).
+        startingPriceOffer() {
+            const table = this.activePriceTable() || {};
+            const column = Number(table.highlight_column ?? 1);
+            const rows = Array.isArray(table.rows) ? table.rows : [];
+            for (let index = rows.length - 1; index >= 0; index -= 1) {
+                const raw = rows[index]?.[column];
+                const original = this.parseUnitPriceCell(raw);
+                if (original !== null) {
+                    const offered = this.effectiveProductPrice(original, this.activePriceTiers()?.[index]);
+                    return {
+                        saleLabel: `$${offered.toFixed(2)}`,
+                        originalLabel: `$${original.toFixed(2)}`,
+                        discounted: offered < original,
+                    };
+                }
+            }
+            const tiers = this.activePriceTiers() || [];
+            const lastTier = [...tiers].filter((tier) => tier?.unit !== null && tier?.unit !== undefined
+                && tier?.unit !== '' && Number.isFinite(Number(tier.unit)))
+                .sort((a, b) => Number(a.min || 0) - Number(b.min || 0)).at(-1);
+            const original = Math.max(0, Number(lastTier?.unit ?? config.base_price ?? 0));
+            const offered = this.effectiveProductPrice(original, lastTier);
+            return {
+                saleLabel: `$${offered.toFixed(2)}`,
+                originalLabel: `$${original.toFixed(2)}`,
+                discounted: offered < original,
+            };
+        },
+        parseUnitPriceCell(cell) {
+            const match = String(cell ?? '').trim().match(/^(?:USD\s*|US\$\s*|[$£€]\s*)?(\d[\d,]*(?:\.\d+)?)(?:\s*(?:\/|per)\s*(?:pc|pcs|piece|pieces|unit|item))?$/i);
+            if (!match) return null;
+            const price = Number(match[1].replace(/,/g, ''));
+            return Number.isFinite(price) && price >= 0 ? Math.round((price + Number.EPSILON) * 100) / 100 : null;
         },
         canAddToCart() {
             return this.activeCustomizerStep === 6;
@@ -605,6 +686,10 @@ window.productBuilderFabricPricing = function (config = {}) {
                     </div>
 
                     <h1 id="product-detail-title" class="np-product-title">{{ $product['title'] }}</h1>
+                    <p x-show="startingPriceOffer().discounted" x-cloak class="mt-2 text-sm font-bold text-green-700">
+                        Sale price from <span x-text="startingPriceOffer().saleLabel"></span>
+                        <del class="ml-2 text-slate-500" x-text="startingPriceOffer().originalLabel"></del>
+                    </p>
 
                     <div class="np-product-title-meta">
                         <x-storefront.product.purchase-signals :product="$product" />

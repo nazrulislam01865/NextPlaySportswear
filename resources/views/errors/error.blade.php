@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="{{ \App\Support\StorefrontBranding::faviconUrl() }}">
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#061F44">
     <title>{{ $code }} — {{ $title }} | {{ config('storefront.name', 'NextPlay Sportswear') }}</title>

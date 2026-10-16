@@ -313,6 +313,11 @@ class OrderExperienceService
         $estimatedStart = $placedAt->copy()->addWeekdays($estimatedMinimumDays)->format('M d');
         $estimatedEnd = $placedAt->copy()->addWeekdays($estimatedMaximumDays)->format('M d');
 
+        $defaultEstimatedRange = $estimatedStart . '–' . $estimatedEnd;
+        $finalEstimatedDelivery = ! empty($order['estimated_delivery'])
+            ? (string) $order['estimated_delivery']
+            : $defaultEstimatedRange;
+
         $status = Str::lower(trim((string) ($order['status'] ?? 'design_review')));
         $status = $status !== '' ? $status : 'design_review';
 
@@ -324,7 +329,9 @@ class OrderExperienceService
             'customer_email' => (string) ($order['customer_email'] ?? Arr::get($order, 'information.email', 'customer@example.com')),
             'customer_name' => trim((string) ($order['customer_name'] ?? '')) ?: trim((Arr::get($order, 'information.first_name', 'NextPlay') . ' ' . Arr::get($order, 'information.last_name', 'Customer'))),
             'placed_display' => $placedAt->format('M d, Y · g:i A'),
-            'estimated_delivery' => $estimatedStart . '–' . $estimatedEnd,
+            'estimated_delivery' => $finalEstimatedDelivery,
+            'holiday_adjustment_applied' => (bool) ($order['holiday_adjustment_applied'] ?? false),
+            'holiday_adjustment_reason' => $order['holiday_adjustment_reason'] ?? null,
             'items' => $items,
             'totals' => [
                 'subtotal' => round((float) ($totals['subtotal'] ?? collect($items)->sum('line_total')), 2),
@@ -545,7 +552,7 @@ class OrderExperienceService
         ]);
     }
 
-    private function orderSnapshot(Order $order): array
+    public function orderSnapshot(Order $order): array
     {
         $order->loadMissing(['items', 'histories', 'shipments']);
 
@@ -557,6 +564,12 @@ class OrderExperienceService
             'fulfillment_status' => $order->fulfillment_status,
             'customer_email' => $order->customer_email,
             'customer_name' => $order->customer_name,
+            'estimated_delivery' => $order->formattedEstimatedDelivery(),
+            'estimated_delivery_start_at' => $order->estimated_delivery_start_at?->toIso8601String(),
+            'estimated_delivery_end_at' => $order->estimated_delivery_end_at?->toIso8601String(),
+            'holiday_adjustment_applied' => (bool) $order->holiday_adjustment_applied,
+            'holiday_adjustment_reason' => $order->holiday_adjustment_reason,
+            'holiday_adjustment_meta' => $order->holiday_adjustment_meta,
             'items' => $order->items->map(fn ($item): array => [
                 'product' => [
                     'title' => $item->product_name,
@@ -608,6 +621,8 @@ class OrderExperienceService
                 'tracking_url' => (string) ($shipment->tracking_url ?? ''),
                 'shipped_at' => $shipment->shipped_at?->toIso8601String(),
                 'estimated_delivery_at' => $shipment->estimated_delivery_at?->toIso8601String(),
+                'old_estimated_delivery_at' => $shipment->old_estimated_delivery_at?->toIso8601String(),
+                'holiday_reason' => $shipment->holiday_reason,
                 'delivered_at' => $shipment->delivered_at?->toIso8601String(),
             ])->values()->all(),
             'is_demo' => false,

@@ -13,7 +13,7 @@
     $sku = trim((string) ($product['sku'] ?? ''));
     $displayUnitPrice = (float) ($product['display_unit_price'] ?? $product['base_price'] ?? 0);
     $originalPrice = (float) ($product['original_price'] ?? $product['display_compare_at_price'] ?? 0);
-    $hasDiscount = $displayUnitPrice > 0 && $originalPrice > $displayUnitPrice;
+    $hasDiscount = $displayUnitPrice >= 0 && $originalPrice > $displayUnitPrice;
     $discountPercentage = $hasDiscount
         ? (int) ($product['discount_percentage'] ?? round((1 - ($displayUnitPrice / $originalPrice)) * 100))
         : null;

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 #[Fillable([
     'logo_path',
+    'favicon_path',
 ])]
 class StorefrontBrandingSetting extends Model
 {

@@ -28,21 +28,31 @@ class SecurityHeaders
         // Production assets are local. The explicit external hosts below are
         // limited to local scripts/fonts and HTTPS product imagery selected by administrators.
         if (app()->environment('production')) {
+            // Google's checkbox loads external scripts and frames only on this form.
+            $recaptchaPage = $request->isMethod('GET')
+                && $request->is('bulk-quote')
+                && filled(config('services.recaptcha.site_key'))
+                && filled(config('services.recaptcha.secret_key'));
+
             $policy = [
                 "default-src 'self'",
                 "base-uri 'self'",
                 "form-action 'self'",
                 "frame-ancestors 'none'",
                 "object-src 'none'",
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval'".($recaptchaPage ? ' https://www.google.com https://www.gstatic.com' : ''),
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
                 "font-src 'self' data: https://fonts.gstatic.com",
                 "img-src 'self' data: blob: https:",
-                "connect-src 'self'",
+                "connect-src 'self'".($recaptchaPage ? ' https://www.google.com https://recaptcha.google.com' : ''),
                 "media-src 'self'",
                 "worker-src 'self' blob:",
                 'upgrade-insecure-requests',
             ];
+
+            if ($recaptchaPage) {
+                $policy[] = 'frame-src https://www.google.com https://recaptcha.google.com';
+            }
 
             $headers->set('Content-Security-Policy', implode('; ', $policy));
 

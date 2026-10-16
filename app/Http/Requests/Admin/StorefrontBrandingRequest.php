@@ -23,6 +23,14 @@ class StorefrontBrandingRequest extends FormRequest
                 'max:5120',
             ],
             'remove_logo' => ['nullable', 'boolean'],
+            'favicon' => [
+                'nullable',
+                'file',
+                'mimes:ico,png,jpg,jpeg,webp,avif',
+                'mimetypes:image/x-icon,image/vnd.microsoft.icon,image/png,image/jpeg,image/webp,image/avif',
+                'max:2048',
+            ],
+            'remove_favicon' => ['nullable', 'boolean'],
         ];
     }
 }

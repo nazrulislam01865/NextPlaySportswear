@@ -128,6 +128,23 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::get('/sustainability-page', [\App\Http\Controllers\Admin\SustainabilityPageController::class, 'edit'])->name('sustainability-page.edit');
         Route::put('/sustainability-page', [\App\Http\Controllers\Admin\SustainabilityPageController::class, 'update'])->name('sustainability-page.update');
 
+        Route::prefix('email-customization')->name('email-customization.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'templates'])->name('index');
+            Route::get('/templates', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'templates'])->name('templates.index');
+            Route::get('/templates/create', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'createTemplate'])->name('templates.create');
+            Route::post('/templates', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'storeTemplate'])->name('templates.store');
+            Route::get('/templates/{template}/edit', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'editTemplate'])->name('templates.edit');
+            Route::put('/templates/{template}', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'updateTemplate'])->name('templates.update');
+            Route::post('/templates/{template}/duplicate', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'duplicateTemplate'])->name('templates.duplicate');
+            Route::delete('/templates/{template}', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'destroyTemplate'])->name('templates.destroy');
+            Route::get('/templates/{template}/visibility', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'visibility'])->name('templates.visibility');
+            Route::put('/templates/{template}/visibility', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'updateVisibility'])->name('templates.visibility.update');
+            Route::get('/templates/{template}/preview', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'preview'])->name('templates.preview');
+            Route::post('/templates/{template}/send-test', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'sendTest'])->name('templates.send-test');
+            Route::get('/branding', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'branding'])->name('branding.edit');
+            Route::put('/branding', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'updateBranding'])->name('branding.update');
+        });
+
         Route::get('/homepage', [\App\Http\Controllers\Admin\HomepageSectionController::class, 'index'])->name('homepage.sections.index');
         Route::get('/homepage/sections/{key}', [\App\Http\Controllers\Admin\HomepageSectionController::class, 'edit'])->name('homepage.sections.edit');
         Route::patch('/homepage/sections/{key}', [\App\Http\Controllers\Admin\HomepageSectionController::class, 'update'])->name('homepage.sections.update');
@@ -248,10 +265,16 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::resource('shipping-methods', \App\Http\Controllers\Admin\ShippingMethodController::class)
             ->parameters(['shipping-methods' => 'shippingMethod'])
             ->except('show');
+        Route::patch('holiday-calendars/{holidayCalendar}/toggle-status', [\App\Http\Controllers\Admin\HolidayCalendarController::class, 'toggleStatus'])
+            ->name('holiday-calendars.toggle-status');
+        Route::resource('holiday-calendars', \App\Http\Controllers\Admin\HolidayCalendarController::class)
+            ->parameters(['holiday-calendars' => 'holidayCalendar']);
         Route::resource('faqs', \App\Http\Controllers\Admin\FaqController::class)
             ->except('show');
         Route::resource('genders', \App\Http\Controllers\Admin\GenderController::class)
             ->except('show');
+        Route::post('country-calling-codes/quick-store', [\App\Http\Controllers\Admin\CountryCallingCodeController::class, 'quickStore'])
+            ->name('country-calling-codes.quick-store');
         Route::resource('country-calling-codes', \App\Http\Controllers\Admin\CountryCallingCodeController::class)
             ->parameters(['country-calling-codes' => 'countryCallingCode'])
             ->except('show');

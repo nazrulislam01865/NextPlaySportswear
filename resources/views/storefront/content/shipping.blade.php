@@ -1,9 +1,9 @@
 <x-layouts.storefront :seo="$seo">
     <main class="np-shipping-delivery-page">
-        <section class="np-shipping-delivery-hero">
+        <section class="np-shipping-delivery-hero" aria-labelledby="shipping-delivery-hero-title">
             <div class="np-shipping-delivery-container">
                 <p class="np-shipping-delivery-eyebrow">{{ data_get($shippingDelivery, 'hero.eyebrow') }}</p>
-                <h1>{{ data_get($shippingDelivery, 'hero.title') }}</h1>
+                <h1 id="shipping-delivery-hero-title">{{ data_get($shippingDelivery, 'hero.title') }}</h1>
                 <p class="np-shipping-delivery-hero__subtitle">{{ data_get($shippingDelivery, 'hero.subtitle') }}</p>
             </div>
         </section>
@@ -59,14 +59,18 @@
                     </section>
                 </div>
 
-                <section class="np-shipping-delivery-cta">
+                <section class="np-shipping-delivery-cta" aria-labelledby="shipping-delivery-cta-title">
                     <div class="np-shipping-delivery-cta__copy">
-                        <h2>{{ data_get($shippingDelivery, 'cta.title') }}</h2>
+                        <h2 id="shipping-delivery-cta-title">{{ data_get($shippingDelivery, 'cta.title') }}</h2>
                         <p>{{ data_get($shippingDelivery, 'cta.description') }}</p>
                     </div>
                     <div class="np-shipping-delivery-cta__actions">
-                        <a href="{{ data_get($shippingDelivery, 'cta.primary_url') }}" class="btn btn-primary np-shipping-delivery-cta__button">{{ data_get($shippingDelivery, 'cta.primary_label') }}</a>
-                        <a href="{{ data_get($shippingDelivery, 'cta.policy_url') }}" class="np-shipping-delivery-cta__policy">{{ data_get($shippingDelivery, 'cta.policy_label') }}</a>
+                        <a href="{{ data_get($shippingDelivery, 'cta.primary_url') }}" class="btn btn-secondary btn-lg np-shipping-delivery-cta__button">
+                            <span>{{ data_get($shippingDelivery, 'cta.primary_label') }}</span><span aria-hidden="true">›</span>
+                        </a>
+                        <a href="{{ data_get($shippingDelivery, 'cta.policy_url') }}" class="btn btn-outline btn-lg np-shipping-delivery-cta__policy">
+                            <span>{{ data_get($shippingDelivery, 'cta.policy_label') }}</span><span aria-hidden="true">›</span>
+                        </a>
                     </div>
                 </section>
             </div>

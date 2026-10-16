@@ -301,6 +301,10 @@
                     </div>
                 </x-storefront.bulk-quote.section>
 
+                @php
+                    $recaptchaConfigured = filled(config('services.recaptcha.site_key'))
+                        && filled(config('services.recaptcha.secret_key'));
+                @endphp
                 <x-storefront.bulk-quote.section
                     number="4"
                     title="Attachments & Notes"
@@ -343,6 +347,15 @@
                             </div>
                             <x-storefront.bulk-quote.field-error name="additional_notes" />
                         </div>
+                        <div class="bulk-quote-field">
+                            <p class="bulk-quote-label">Security Verification <span class="bulk-quote-req">*</span></p>
+                            @if($recaptchaConfigured)
+                                <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
+                            @else
+                                <p class="bulk-quote-field-error" role="alert">Quote requests are temporarily unavailable. Please try again later.</p>
+                            @endif
+                            <x-storefront.bulk-quote.field-error name="g-recaptcha-response" />
+                        </div>
                     </div>
                 </x-storefront.bulk-quote.section>
 
@@ -351,12 +364,24 @@
                         <span class="bulk-quote-privacy-icon" aria-hidden="true"><x-storefront.bulk-quote.icon name="shield-check" :size="17" /></span>
                         Your information is used only to prepare your quote and will not be shared.
                     </p>
-                    <button class="btn btn-secondary btn-sm bulk-quote-submit" type="submit">
+                    <button class="btn btn-secondary btn-sm bulk-quote-submit" type="submit" @disabled(! $recaptchaConfigured)>
                         <span>REQUEST BULK QUOTE</span>
                         <x-storefront.bulk-quote.icon name="arrow-right" :size="16" />
                     </button>
                 </div>
             </form>
+            @if($recaptchaConfigured)
+                <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+                <style>
+                    @media (max-width: 360px) {
+                        .bulk-quote-page .g-recaptcha {
+                            transform: scale(.8);
+                            transform-origin: top left;
+                            margin-bottom: -16px;
+                        }
+                    }
+                </style>
+            @endif
         </div>
     </div>
 </x-layouts.storefront>

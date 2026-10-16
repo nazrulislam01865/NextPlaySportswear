@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Http\Requests\Storefront\AddCartItemRequest;
 use App\Services\Cart\CartService;
 use App\Services\Discounts\CouponService;
+use App\Services\Promotions\SaleCampaignService;
 use App\Services\Storefront\ProductCatalogService;
 use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
@@ -1176,6 +1177,71 @@ class ProductConfigurationBackendTest extends TestCase
         $this->assertStringContainsString('Sample Available', $storefrontSample);
         $this->assertStringContainsString('sample_requested', $storefrontJs);
         $this->assertStringContainsString("data_get(\$product, 'sample.charge'", $cartService);
+    }
+
+    public function test_live_sale_is_subtracted_from_the_exact_quantity_table_price_when_added_to_cart(): void
+    {
+        $product = $this->jerseyFixture();
+        $product['slug'] = 'sale-table-jersey';
+        $product['option_groups'] = [];
+        $product['size_groups'] = [];
+        $product['shipping_methods'] = [];
+        $product['jersey_roster']['enabled'] = false;
+        $product['price_tiers'] = [
+            ['min' => 1, 'max' => 9, 'unit' => 5.05],
+            ['min' => 10, 'max' => null, 'unit' => 4.05],
+        ];
+        $product['price_table'] = [
+            'headers' => ['Quantity', 'Product Price'],
+            'rows' => [['1-9', '$5.06'], ['10+', '$4.06']],
+            'highlight_column' => 1,
+            'price_tiers' => $product['price_tiers'],
+        ];
+
+        $catalog = new class($product) extends ProductCatalogService
+        {
+            public function __construct(private readonly array $fixture) {}
+
+            public function findBySlug(string $slug): ?array
+            {
+                return $slug === $this->fixture['slug'] ? $this->fixture : null;
+            }
+        };
+        // The actual sale service calculates this price against whichever
+        // quantity bracket is selected, not the product card's starting price.
+        $campaigns = new class extends SaleCampaignService
+        {
+            public function __construct() {}
+
+            public function pricingForProduct(array $product, float $originalPrice): ?array
+            {
+                $salePrice = round($originalPrice * 0.8, 2);
+
+                return ['sale_price' => $salePrice, 'discount_amount' => round($originalPrice - $salePrice, 2), 'discount_percentage' => 20];
+            }
+        };
+        $cart = new CartService($catalog, new CouponService, $campaigns);
+        $result = $cart->store([
+            'product_slug' => 'sale-table-jersey',
+            'quantity' => 10,
+            'configuration_json' => json_encode(['order_quantity' => 10], JSON_THROW_ON_ERROR),
+        ]);
+
+        $item = $result['items'][0];
+        $this->assertSame(4.06, $item['original_unit_price']);
+        $this->assertSame(3.25, $item['unit_price']);
+        $this->assertSame(32.50, $item['line_subtotal']);
+        $this->assertSame(8.10, $item['offer_savings']);
+        $this->assertSame('Sale', $item['offer_label']);
+
+        $otherBracket = $cart->store([
+            'product_slug' => 'sale-table-jersey',
+            'quantity' => 5,
+            'configuration_json' => json_encode(['order_quantity' => 5], JSON_THROW_ON_ERROR),
+        ]);
+        $fivePieces = collect($otherBracket['items'])->firstWhere('quantity', 5);
+        $this->assertSame(5.06, $fivePieces['original_unit_price']);
+        $this->assertSame(4.05, $fivePieces['unit_price']);
     }
 
     private function jerseyFixture(): array

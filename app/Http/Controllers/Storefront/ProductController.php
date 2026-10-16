@@ -316,7 +316,7 @@ class ProductController extends Controller
             'url' => $canonicalUrl,
             'image' => $productImage,
             'summary' => (string) ($product['summary'] ?? ''),
-            'price' => (float) ($product['base_price'] ?? 0),
+            'price' => (float) ($product['display_unit_price'] ?? $product['base_price'] ?? 0),
             'currency' => (string) ($product['currency'] ?? 'USD'),
             'favorites_count' => max(0, (int) ($product['favorites_count'] ?? 0)),
             'authenticated' => $isAuthenticatedCustomer,

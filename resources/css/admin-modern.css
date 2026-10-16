@@ -53,9 +53,9 @@
         border-radius: var(--admin-modern-button-radius);
         padding: 0 var(--np-button-padding-x);
         font-family: var(--np-font-body);
-        font-size: 12px;
-        font-weight: 700;
-        line-height: 1;
+        font-size: var(--np-button-font-size-sm);
+        font-weight: var(--np-button-font-weight);
+        line-height: var(--np-button-line-height);
         cursor: pointer;
         transition: transform .15s ease, background-color .15s ease, box-shadow .15s ease;
     }

@@ -14,7 +14,7 @@ class CategoryImportRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'category_csv' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
+            'category_csv' => ['required', 'file', 'extensions:csv,xlsx,xls', 'mimes:csv,txt,xlsx,xls', 'max:2048'],
         ];
     }
 }

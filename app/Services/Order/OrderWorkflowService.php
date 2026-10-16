@@ -491,6 +491,7 @@ class OrderWorkflowService
         $oldStatus = (string) $shipment->status;
         $oldTrackingNumber = (string) ($shipment->tracking_number ?? '');
         $oldTrackingUrl = (string) ($shipment->tracking_url ?? '');
+        $oldEstimatedDelivery = $shipment->estimated_delivery_at?->format('D, M j, Y');
 
         $updated = DB::transaction(function () use ($shipment, $admin, $payload): OrderShipment {
             $locked = OrderShipment::query()
@@ -543,6 +544,15 @@ class OrderWorkflowService
         });
 
         $this->emails->shipmentUpdated($updated, $oldStatus, $oldTrackingNumber, $oldTrackingUrl);
+
+        $newEstimatedDelivery = $updated->estimated_delivery_at?->format('D, M j, Y');
+        if ($newEstimatedDelivery !== null && $oldEstimatedDelivery !== $newEstimatedDelivery) {
+            \App\Events\DeliveryEstimateUpdated::dispatch(
+                $updated,
+                $oldEstimatedDelivery,
+                $payload['delay_reason'] ?? $payload['notes'] ?? null
+            );
+        }
 
         return $updated;
     }

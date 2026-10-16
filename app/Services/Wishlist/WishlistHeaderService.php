@@ -5,9 +5,14 @@ namespace App\Services\Wishlist;
 use App\Models\Product;
 use App\Models\ProductWishlist;
 use App\Models\User;
+use App\Services\Storefront\ProductCatalogService;
 
 class WishlistHeaderService
 {
+    public function __construct(private readonly ProductCatalogService $catalog)
+    {
+    }
+
     /**
      * Build the compact, read-only wishlist data used by the global header.
      *
@@ -35,9 +40,7 @@ class WishlistHeaderService
         $items = $baseQuery
             ->with([
                 'product' => fn ($query) => $query
-                    ->select(['id', 'name', 'slug', 'base_price', 'currency'])
-                    ->published(),
-                'product.images',
+                    ->published()->with(['category', 'subcategory', 'categories', 'images', 'priceTiers']),
             ])
             ->latest()
             ->limit($limit)
@@ -62,15 +65,16 @@ class WishlistHeaderService
     /** @return array<string, mixed> */
     private function productItem(Product $product): array
     {
-        $image = $product->images->firstWhere('is_primary', true) ?? $product->images->first();
+        $card = $this->catalog->applySaleCampaignPricing($this->catalog->fromListingModel($product));
 
         return [
             'id' => (int) $product->getKey(),
             'title' => (string) $product->name,
             'url' => route('products.show', ['slug' => $product->slug]),
-            'image' => $image?->publicUrl() ?: asset('images/product-placeholder.svg'),
-            'alt' => $image?->alt_text ?: $product->name,
-            'price' => (float) $product->base_price,
+            'image' => (string) ($card['image'] ?? asset('images/product-placeholder.svg')),
+            'alt' => (string) ($card['alt'] ?? $product->name),
+            'price' => (float) ($card['display_unit_price'] ?? 0),
+            'original_price' => (float) ($card['original_price'] ?? 0),
             'currency' => (string) ($product->currency ?: 'USD'),
         ];
     }

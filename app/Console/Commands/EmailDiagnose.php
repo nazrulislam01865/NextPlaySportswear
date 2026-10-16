@@ -46,6 +46,9 @@ final class EmailDiagnose extends Command
             ['SMTP scheme', $transport === 'smtp' ? ((string) ($mailer['scheme'] ?? '') ?: 'auto') : '-'],
             ['SMTP username configured', $transport === 'smtp' && filled($mailer['username'] ?? null) ? 'yes' : ($transport === 'smtp' ? 'no' : '-')],
             ['SMTP password configured', $transport === 'smtp' && filled($mailer['password'] ?? null) ? 'yes' : ($transport === 'smtp' ? 'no' : '-')],
+            ['E2A sender', $transport === 'e2a' ? (string) ($mailer['sender'] ?? '') : '-'],
+            ['E2A API key configured', $transport === 'e2a' ? (filled($mailer['api_key'] ?? null) ? 'yes' : 'no') : '-'],
+            ['E2A API URL', $transport === 'e2a' ? (string) ($mailer['api_url'] ?? '') : '-'],
             ['Queue connection', (string) config('transactional_email.queue.connection', config('queue.default', ''))],
             ['Queue name', (string) config('transactional_email.queue.name', '') ?: 'default'],
             ['Pending jobs', $this->tableCount('jobs')],
@@ -149,6 +152,21 @@ final class EmailDiagnose extends Command
             && in_array($transport, ['log', 'array', 'null'], true)
         ) {
             $problems[] = 'The selected mailer does not deliver email. Configure SMTP or another real provider.';
+        }
+
+        if ($transport === 'e2a') {
+            if (! filled($mailer['api_key'] ?? null)) {
+                $problems[] = 'E2A_API_KEY is missing.';
+            }
+            if (filter_var((string) ($mailer['sender'] ?? ''), FILTER_VALIDATE_EMAIL) === false) {
+                $problems[] = 'E2A_FROM_EMAIL is invalid.';
+            }
+            if (strcasecmp((string) config('mail.from.address', ''), (string) ($mailer['sender'] ?? '')) !== 0) {
+                $problems[] = 'MAIL_FROM_ADDRESS must match E2A_FROM_EMAIL.';
+            }
+            if (! str_starts_with((string) ($mailer['api_url'] ?? ''), 'https://')) {
+                $problems[] = 'E2A_API_URL must use HTTPS.';
+            }
         }
 
         if ($transport === 'smtp') {

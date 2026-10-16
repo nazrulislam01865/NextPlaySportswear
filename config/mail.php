@@ -46,6 +46,15 @@ return [
 
     'mailers' => [
 
+        // Select MAIL_MAILER=e2a to send through the e2a HTTPS API.
+        'e2a' => [
+            'transport' => 'e2a',
+            'api_key' => env('E2A_API_KEY'),
+            'sender' => env('E2A_FROM_EMAIL'),
+            'api_url' => env('E2A_API_URL', 'https://api.e2a.dev/v1'),
+            'timeout' => (int) env('E2A_TIMEOUT', 20),
+        ],
+
         'smtp' => [
             'transport' => 'smtp',
             'scheme' => env('MAIL_SCHEME'),

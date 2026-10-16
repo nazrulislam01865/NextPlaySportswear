@@ -36,6 +36,8 @@ MAIL_FROM_NAME="NextPlay Sportswear"
 
 This lets you move from one SMTP-capable provider to another without changing PHP application code.
 
+NextPlay also includes the E2A HTTPS API transport. Set `MAIL_MAILER=e2a` and `TRANSACTIONAL_EMAIL_MAILER=e2a` and follow `docs/E2A_EMAIL_PROVIDER_SETUP.md` to configure the agent sender and API key. To switch back to SMTP, change both values to `smtp`, restore SMTP credentials and the matching verified `MAIL_FROM_ADDRESS`, then clear/rebuild config and restart workers. No email-template or controller changes are needed.
+
 Laravel also already contains mailer entries for `ses`, `postmark`, and `resend` in `config/mail.php`. If you choose a native API transport instead of SMTP, install the transport/package required by the Laravel version deployed on the server, set its credentials, and change only `TRANSACTIONAL_EMAIL_MAILER`.
 
 ## Central service settings

@@ -9,9 +9,9 @@ use Throwable;
 
 final class StorefrontBranding
 {
-    private const CACHE_KEY = 'storefront.branding.logo.v1';
+    private const CACHE_KEY = 'storefront.branding.assets.v2';
 
-    /** @var array{logo_path:?string}|null */
+    /** @var array{logo_path:?string,favicon_path:?string}|null */
     private static ?array $memoized = null;
 
     public static function logoUrl(): string
@@ -27,6 +27,26 @@ final class StorefrontBranding
         }
 
         return self::configuredFallbackLogoUrl();
+    }
+
+    public static function faviconUrl(): string
+    {
+        $storedPath = self::settings()['favicon_path'];
+
+        if (filled($storedPath)) {
+            $url = PublicMedia::url($storedPath);
+            if (filled($url)) {
+                return (string) $url;
+            }
+        }
+
+        // The existing public/favicon.ico is empty; use the shipped square brand mark.
+        return asset('images/logo.png');
+    }
+
+    public static function hasCustomFavicon(): bool
+    {
+        return filled(self::settings()['favicon_path']);
     }
 
     public static function hasCustomLogo(): bool
@@ -45,7 +65,7 @@ final class StorefrontBranding
         Cache::forget(self::CACHE_KEY);
     }
 
-    /** @return array{logo_path:?string} */
+    /** @return array{logo_path:?string,favicon_path:?string} */
     private static function settings(): array
     {
         if (self::$memoized !== null) {
@@ -55,15 +75,18 @@ final class StorefrontBranding
         try {
             return self::$memoized = Cache::rememberForever(self::CACHE_KEY, static function (): array {
                 if (! Schema::hasTable('storefront_branding_settings')) {
-                    return ['logo_path' => null];
+                    return ['logo_path' => null, 'favicon_path' => null];
                 }
 
                 $setting = StorefrontBrandingSetting::query()->first();
 
-                return ['logo_path' => filled($setting?->logo_path) ? (string) $setting->logo_path : null];
+                return [
+                    'logo_path' => filled($setting?->logo_path) ? (string) $setting->logo_path : null,
+                    'favicon_path' => filled($setting?->favicon_path) ? (string) $setting->favicon_path : null,
+                ];
             });
         } catch (Throwable) {
-            return self::$memoized = ['logo_path' => null];
+            return self::$memoized = ['logo_path' => null, 'favicon_path' => null];
         }
     }
 

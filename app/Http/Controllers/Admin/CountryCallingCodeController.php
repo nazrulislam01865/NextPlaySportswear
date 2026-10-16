@@ -63,4 +63,25 @@ class CountryCallingCodeController extends Controller
         return redirect()->route('admin.country-calling-codes.index')
             ->with('status', 'Country calling code removed from Master Data. Existing quote phone numbers remain unchanged.');
     }
+
+    public function quickStore(\Illuminate\Http\Request $request): \Illuminate\Http\JsonResponse
+    {
+        $validated = $request->validate([
+            'iso_code' => ['required', 'string', 'size:2'],
+            'country_name' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $record = \App\Support\CountryCatalog::ensureRegistered($validated['iso_code'], $validated['country_name'] ?? null);
+
+        return response()->json([
+            'success' => true,
+            'country' => [
+                'code' => $record->iso_code,
+                'name' => $record->country_name,
+                'dial' => $record->dial_code,
+                'flag' => $record->flagEmoji(),
+            ],
+            'message' => "'{$record->country_name}' added to Master Data.",
+        ]);
+    }
 }
