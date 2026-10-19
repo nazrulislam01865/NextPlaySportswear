@@ -4,13 +4,15 @@ namespace App\Http\Controllers\Payments;
 
 use App\Http\Controllers\Controller;
 use App\Models\OrderPayment;
+use App\Payments\Exceptions\PaymentGatewayException;
+use App\Services\Payments\PaymentOrchestrator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 final class PaymentReturnController extends Controller
 {
-    public function __invoke(Request $request, string $provider): RedirectResponse|View
+    public function __invoke(Request $request, string $provider, PaymentOrchestrator $payments): RedirectResponse|View
     {
         $sessionId = trim((string) $request->query('session_id', ''));
 
@@ -25,9 +27,20 @@ final class PaymentReturnController extends Controller
             ->first();
 
         if ($payment?->order && $request->user()?->id === $payment->order->user_id) {
-            $message = $payment->status === 'paid'
+            // A redirect proves nothing about payment success. For this authenticated
+            // customer's own Stripe session, ask Stripe directly; webhooks remain primary.
+            if ($provider === 'stripe' && in_array($payment->status, ['pending', 'processing'], true)) {
+                try {
+                    $payments->reconcile($payment);
+                } catch (PaymentGatewayException $exception) {
+                    // Network/provider problems must not produce a false paid state.
+                    report($exception);
+                }
+            }
+
+            $message = $payment->order->fresh()->payment_status === 'paid'
                 ? 'Payment confirmed successfully.'
-                : 'Stripe returned successfully. Payment status is being verified from the signed provider webhook.';
+                : 'Your payment is being verified with the provider. The order will update once payment is confirmed.';
 
             return redirect()->route('account.orders.show', $payment->order)->with('status', $message);
         }

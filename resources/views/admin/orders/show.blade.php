@@ -20,6 +20,8 @@
         </div>
     </div>
 
+    @include('admin.orders.partials.artwork-proofs')
+
     @if($hasFlowTrackSync)
         <div class="mb-6">
             <x-admin.integration-sync-panel

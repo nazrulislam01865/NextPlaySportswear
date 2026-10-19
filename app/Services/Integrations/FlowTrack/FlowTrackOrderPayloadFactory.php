@@ -156,6 +156,7 @@ final class FlowTrackOrderPayloadFactory
                     'original_name' => (string) ($file['original_name'] ?? 'Artwork file'),
                     'size' => max(0, (int) ($file['size'] ?? 0)),
                     'mime_type' => (string) ($file['mime_type'] ?? 'application/octet-stream'),
+                    'purpose' => ($file['purpose'] ?? 'artwork') === 'reference' ? 'reference' : 'artwork',
                     'checksum_sha256' => $checksum,
                 ];
             })
@@ -195,6 +196,7 @@ final class FlowTrackOrderPayloadFactory
             'roster_rows' => $item->rosterRows(),
             'artwork_status' => data_get($customization, 'artwork_status'),
             'artwork_files' => $artworkFiles,
+            'artwork_help' => (array) data_get($customization, 'configuration.artwork_help', []),
             'customization_notes' => data_get($customization, 'notes'),
             'configuration' => (array) data_get($customization, 'configuration', []),
             'sample' => (array) data_get($customization, 'sample', []),

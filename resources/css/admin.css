@@ -12695,3 +12695,41 @@ body.admin-ui-compact #admin-main-content .category-upload-note code {
     }
     body.admin-ui-compact #admin-main-content .category-upload-browse { display: none; }
 }
+
+/* Shared customization Master Data search/filter alignment.
+   Admin inputs have a default top margin, even when a template uses mt-0.
+   Keep inputs, selects and action buttons on the same baseline and height. */
+#admin-main-content .np-master-search-controls {
+    align-items: center;
+}
+#admin-main-content .np-master-search-controls .admin-input,
+#admin-main-content .np-master-search-controls select.admin-input {
+    margin-top: 0 !important;
+    height: var(--np-button-height, 36px) !important;
+    min-height: var(--np-button-height, 36px) !important;
+}
+#admin-main-content .np-master-search-controls .btn {
+    height: var(--np-button-height, 36px) !important;
+    min-height: var(--np-button-height, 36px) !important;
+    flex-shrink: 0;
+}
+
+/* Admin dropdown chevron spacing: keep the arrow away from the right border.
+   Product/category filters already render their own chevrons. */
+body.admin-ui-compact #admin-main-content select:not([multiple]):not([size]):not(.category-control):not(.product-select-control):not(.product-bulk-select) {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    padding-right: 2.5rem !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23061f44' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+    background-position: right 1rem center !important;
+    background-repeat: no-repeat !important;
+    background-size: 1rem 1rem !important;
+}
+
+@media (forced-colors: active) {
+    body.admin-ui-compact #admin-main-content select:not([multiple]):not([size]):not(.category-control):not(.product-select-control):not(.product-bulk-select) {
+        appearance: auto !important;
+        -webkit-appearance: auto !important;
+        background-image: none !important;
+    }
+}

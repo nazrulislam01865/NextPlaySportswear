@@ -200,6 +200,7 @@ class CustomerAccountService
             ['label' => 'Profile & Security', 'href' => route('account.profile.edit'), 'route' => 'account.profile.edit', 'icon' => 'profile'],
             ['label' => 'Order Center', 'href' => route('account.orders.dashboard'), 'route' => 'account.orders.dashboard', 'icon' => 'order-center'],
             ['label' => 'Order History', 'href' => route('account.orders.index'), 'route' => 'account.orders.index', 'icon' => 'order-history'],
+            ['label' => 'Artwork Approvals', 'href' => route('account.artwork.index'), 'route' => 'account.artwork.*', 'icon' => 'artwork'],
             ['label' => 'My Rewards', 'href' => route('account.rewards'), 'route' => 'account.rewards', 'icon' => 'rewards'],
             ['label' => 'Refer a Friend', 'href' => route('account.referrals'), 'route' => 'account.referrals', 'icon' => 'referral'],
             ['label' => 'Returns & Exchanges', 'href' => route('account.returns.index'), 'route' => 'account.returns.index', 'icon' => 'returns'],

@@ -4,6 +4,7 @@ namespace App\Services\Email;
 
 use App\Contracts\EmailService;
 use App\Data\EmailMessage;
+use App\Models\ArtworkProof;
 use App\Models\BulkQuoteRequest;
 use App\Models\ContactMessage;
 use App\Models\Order;
@@ -452,6 +453,88 @@ final class TransactionalEmailManager
             actionUrl: route('account.orders.show', $order),
             metadata: ['order_id' => $order->id],
         ));
+    }
+
+    /** Notify the customer when an admin publishes a new or updated artwork proof. */
+    public function artworkProofPublished(ArtworkProof $proof): void
+    {
+        $proof->loadMissing('order');
+        $order = $proof->order;
+        if (! $order instanceof Order || blank($order->customer_email)) {
+            return;
+        }
+
+        $this->emails->safelyQueue(new EmailMessage(
+            key: 'artwork.customer-proof-ready',
+            recipients: $this->customerRecipient($order->customer_email, $order->customer_name),
+            subject: 'Artwork proof v'.$proof->version.' ready for order '.$order->order_number,
+            heading: 'Your artwork proof is ready',
+            introLines: ['Your NextPlay design proof is ready for review. Please approve it or request revisions before production.'],
+            details: [
+                'Order Number' => $order->order_number,
+                'Design' => (string) ($proof->design_name ?: 'Custom artwork'),
+                'Proof Version' => 'v'.$proof->version,
+            ],
+            actionText: 'Review Artwork Proof',
+            actionUrl: route('account.artwork.show', $proof),
+            metadata: ['order_id' => $order->id, 'artwork_proof_id' => $proof->id],
+        ));
+    }
+
+    /** Tell the order team about customer decisions without blocking their save. */
+    public function artworkProofReviewed(ArtworkProof $proof): void
+    {
+        $proof->loadMissing('order');
+        $order = $proof->order;
+        if (! $order instanceof Order) {
+            return;
+        }
+
+        $this->queueInternal('orders', new EmailMessage(
+            key: 'artwork.internal-proof-reviewed',
+            recipients: [],
+            subject: 'Artwork '.$proof->statusLabel().' for '.$order->order_number,
+            heading: 'Customer reviewed an artwork proof',
+            introLines: ['A customer has submitted a decision for their artwork proof.'],
+            details: [
+                'Order Number' => $order->order_number,
+                'Proof Version' => 'v'.$proof->version,
+                'Decision' => $proof->statusLabel(),
+                'Customer Feedback' => (string) ($proof->customer_feedback ?: 'None'),
+            ],
+            actionText: 'View Admin Order',
+            actionUrl: route('admin.orders.show', $order).'#order-artwork-proofs',
+            metadata: ['order_id' => $order->id, 'artwork_proof_id' => $proof->id],
+        ));
+    }
+
+    public function artworkProofMessage(ArtworkProof $proof, bool $fromCustomer): void
+    {
+        $proof->loadMissing('order');
+        $order = $proof->order;
+        if (! $order instanceof Order) {
+            return;
+        }
+
+        $message = new EmailMessage(
+            key: $fromCustomer ? 'artwork.internal-customer-message' : 'artwork.customer-designer-reply',
+            recipients: [],
+            subject: 'New artwork message for order '.$order->order_number,
+            heading: $fromCustomer ? 'Customer message about artwork' : 'Your designer replied',
+            introLines: ['There is a new message about artwork proof v'.$proof->version.'.'],
+            details: ['Order Number' => $order->order_number, 'Proof Version' => 'v'.$proof->version],
+            actionText: $fromCustomer ? 'View Admin Order' : 'Read Designer Reply',
+            actionUrl: $fromCustomer
+                ? route('admin.orders.show', $order).'#order-artwork-proofs'
+                : route('account.artwork.show', $proof).'?message=1#designer-messages',
+            metadata: ['order_id' => $order->id, 'artwork_proof_id' => $proof->id],
+        );
+        if ($fromCustomer) {
+            $this->queueInternal('orders', $message);
+        } elseif (filled($order->customer_email)) {
+            $message->recipients = $this->customerRecipient($order->customer_email, $order->customer_name);
+            $this->emails->safelyQueue($message);
+        }
     }
 
     public function shipmentUpdated(

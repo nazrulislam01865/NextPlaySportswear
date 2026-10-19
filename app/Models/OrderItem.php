@@ -26,6 +26,11 @@ class OrderItem extends Model
         return $this->belongsTo(Product::class);
     }
 
+    public function artworkProofs(): HasMany
+    {
+        return $this->hasMany(ArtworkProof::class);
+    }
+
     public function shipmentItems(): HasMany
     {
         return $this->hasMany(OrderShipmentItem::class);
@@ -59,6 +64,7 @@ class OrderItem extends Model
                 'original_name' => basename((string) ($file['original_name'] ?? 'Artwork file')),
                 'size' => max(0, (int) ($file['size'] ?? 0)),
                 'mime_type' => (string) ($file['mime_type'] ?? 'application/octet-stream'),
+                'purpose' => ($file['purpose'] ?? 'artwork') === 'reference' ? 'reference' : 'artwork',
             ])
             ->values();
 

@@ -16,10 +16,16 @@ final class FakeStripeGateway implements PaymentGateway
 
     public static string $refundStatus = 'succeeded';
 
+    public static string $paymentStatus = 'paid';
+
+    public static int $retrieveCalls = 0;
+
     public static function reset(): void
     {
         self::$refundCalls = [];
         self::$refundStatus = 'succeeded';
+        self::$paymentStatus = 'paid';
+        self::$retrieveCalls = 0;
     }
 
     public function code(): string
@@ -50,7 +56,8 @@ final class FakeStripeGateway implements PaymentGateway
 
     public function retrievePayment(OrderPayment $payment): GatewayPaymentStatus
     {
-        return new GatewayPaymentStatus('paid', $payment->provider_reference, $payment->provider_session_id, $payment->provider_payment_id);
+        self::$retrieveCalls++;
+        return new GatewayPaymentStatus(self::$paymentStatus, $payment->provider_reference, $payment->provider_session_id, $payment->provider_payment_id);
     }
 
     public function refund(

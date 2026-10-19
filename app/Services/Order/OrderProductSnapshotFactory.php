@@ -88,6 +88,7 @@ final class OrderProductSnapshotFactory
                     'status' => $customization['artwork_status'] ?? null,
                     'settings' => [],
                     'files' => (array) ($customization['artwork_files'] ?? []),
+                    'help' => (array) data_get($customization, 'configuration.artwork_help', []),
                 ],
                 'production_speed' => null,
                 'shipping_method' => null,
@@ -119,6 +120,7 @@ final class OrderProductSnapshotFactory
             'priceTiers',
             'fabricPriceTables.jerseyCustomizationOption',
             'fabricPriceTables.tiers',
+            'artworkPreferences',
             'artworkMethods',
             'productionSpeeds.productionMethod',
             'shippingMethods.shippingMethod',
@@ -174,6 +176,7 @@ final class OrderProductSnapshotFactory
                     'tiers' => $table->tiers->map(fn (Model $tier): array => $this->modelSnapshot($tier))->values()->all(),
                 ],
             ))->values()->all(),
+            'artwork_preferences' => $product->artworkPreferences->map(fn (Model $preference): array => $this->modelSnapshot($preference))->values()->all(),
             'artwork_methods' => $product->artworkMethods->map(fn (Model $method): array => $this->modelSnapshot($method))->values()->all(),
             'production_speeds' => $product->productionSpeeds->map(fn (Model $speed): array => array_merge(
                 $this->modelSnapshot($speed),
@@ -310,6 +313,7 @@ final class OrderProductSnapshotFactory
                 'status' => $customization['artwork_status'] ?? null,
                 'settings' => (array) ($product['artwork_upload'] ?? []),
                 'files' => (array) ($customization['artwork_files'] ?? []),
+                'help' => (array) data_get($customization, 'configuration.artwork_help', []),
             ],
             'production_speed' => collect((array) ($product['production_speeds'] ?? []))
                 ->firstWhere('id', $productionCode),

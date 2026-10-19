@@ -1734,7 +1734,63 @@ Lead Time:"></div>
             </section>
 
 
-            <section id="artwork" class="np-card"><header class="np-card__header"><div><h2>4. Custom Artwork Upload</h2><p>Allow customers to upload custom artwork for this product.</p></div></header><div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,.7fr)]"><div class="np-field-stack"><div class="grid gap-4 sm:grid-cols-2"><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4"><input type="hidden" name="artwork_upload_enabled" :value="artworkUploadEnabled ? 1 : 0"><input type="checkbox" x-model="artworkUploadEnabled"><span><strong class="block text-sm">Show artwork upload step</strong><small class="text-xs text-slate-500">The section disappears when disabled.</small></span></label><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4" :class="!artworkUploadEnabled && 'opacity-50'"><input type="hidden" name="artwork_upload_required" :value="artworkUploadRequired ? 1 : 0"><input type="checkbox" x-model="artworkUploadRequired" :disabled="!artworkUploadEnabled"><span><strong class="block text-sm">Artwork is required</strong><small class="text-xs text-slate-500">At least one file must be selected.</small></span></label></div><div x-show="artworkUploadEnabled" class="grid gap-4 sm:grid-cols-2"><label class="admin-label np-emphasis-label sm:col-span-2">Section title<input class="admin-input" name="artwork_upload_title" x-model="artworkUploadTitle" maxlength="180"></label><label class="admin-label np-emphasis-label sm:col-span-2">Upload instructions<textarea class="admin-textarea np-textarea-sm" name="artwork_upload_description" x-model="artworkUploadDescription" maxlength="3000"></textarea></label><label class="admin-label np-emphasis-label">Accepted extensions<input class="admin-input font-mono" name="artwork_upload_accepted_types" x-model="artworkUploadAcceptedTypes" placeholder="pdf,ai,png,jpg,jpeg,eps"></label><label class="admin-label">Maximum file size (MB)<input class="admin-input" type="number" min="1" max="25" name="artwork_upload_max_file_size_mb" x-model.number="artworkUploadMaxFileSizeMb"></label><label class="admin-label sm:col-span-2">Maximum files<input class="admin-input" type="number" min="1" max="12" name="artwork_upload_max_files" x-model.number="artworkUploadMaxFiles"></label></div></div><div x-show="artworkUploadEnabled" class="np-artwork-preview"><span>☁</span><strong>Upload area will appear on product page</strong><small>Drag &amp; drop or click to upload</small></div></div></section>
+            <section id="artwork" class="np-card"><header class="np-card__header"><div><h2>4. Custom Artwork Upload</h2><p>Allow customers to upload custom artwork for this product.</p></div></header>
+                <div id="artwork-preferences" class="mb-5 rounded-xl border border-slate-200 bg-slate-50/50 p-4" aria-labelledby="artwork-preference-heading">
+                    <div class="mb-4">
+                        <h3 id="artwork-preference-heading" class="text-base font-bold text-brand-ink">Pantone Colors &amp; Design Styles</h3>
+                        <p class="mt-1 text-sm text-slate-500">Select the choices customers can request for this product when they need artwork help. Leave either selection empty to hide those choices.</p>
+                    </div>
+                    @php
+                        $selectedArtworkPreferences = collect(old('artwork_preference_ids', $product->relationLoaded('artworkPreferences') ? $product->artworkPreferences->pluck('id')->all() : []))->map(fn ($id) => (int) $id)->all();
+                        $canViewArtworkMaster = auth('admin')->user()?->canAdmin('customization.view') ?? false;
+                    @endphp
+                    <div class="grid gap-4 lg:grid-cols-2">
+                        @foreach(['pantone' => 'Pantone Colors', 'style' => 'Design Styles'] as $type => $label)
+                            @php
+                                $availablePreferenceOptions = $artworkPreferenceOptions->where('type', $type);
+                            @endphp
+                            <fieldset class="min-w-0 rounded-xl border border-slate-200 bg-white p-4">
+                                <legend class="sr-only">{{ $label }}</legend>
+                                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                    <h4 class="text-sm font-bold text-brand-ink">{{ $label }} <span class="font-normal text-slate-500">(Optional)</span></h4>
+                                    @if($canViewArtworkMaster)
+                                        <a class="text-xs font-semibold text-brand-red hover:underline" href="{{ route('admin.artwork-preferences.index', $type) }}" target="_blank" rel="noopener">Manage in Master Data ↗</a>
+                                    @endif
+                                </div>
+                                @if($availablePreferenceOptions->isNotEmpty())
+                                    <p class="mb-3 text-xs text-slate-500">{{ $type === 'pantone' ? 'Choose the colors customers may request. Colors are previews; codes are production references.' : 'Choose which design directions are available for this product.' }}</p>
+                                    <div class="grid max-h-64 grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2" aria-label="Available {{ strtolower($label) }}">
+                                        @foreach($availablePreferenceOptions as $preference)
+                                            <label class="relative flex min-w-0 cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition hover:border-slate-400 has-[:checked]:border-brand-red has-[:checked]:bg-orange-50 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-red">
+                                                <input type="checkbox" class="h-4 w-4 shrink-0 accent-orange-600" name="artwork_preference_ids[]" value="{{ $preference->id }}" @checked(in_array((int) $preference->id, $selectedArtworkPreferences, true))>
+                                                @if($type === 'pantone')
+                                                    <span class="h-9 w-9 shrink-0 rounded-lg border border-slate-300 shadow-sm" style="background-color: {{ $preference->hex_color }}" role="img" aria-label="Color {{ $preference->hex_color }}"></span>
+                                                @endif
+                                                <span class="min-w-0">
+                                                    <span class="block break-words font-semibold leading-5 text-brand-ink">{{ $preference->name }}</span>
+                                                    @if($type === 'pantone')
+                                                        <span class="block text-xs text-slate-500">{{ $preference->code }} · {{ $preference->hex_color }}</span>
+                                                    @else
+                                                        <span class="block text-xs text-slate-500">{{ $preference->code }}</span>
+                                                    @endif
+                                                </span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <p class="text-sm text-slate-500">No active {{ strtolower($label) }} have been configured yet.
+                                        @if($canViewArtworkMaster)
+                                            <a class="font-semibold text-brand-red hover:underline" href="{{ route('admin.artwork-preferences.create', $type) }}" target="_blank" rel="noopener">Add {{ $label }} in Master Data ↗</a>
+                                        @else
+                                            Ask an administrator to configure them in Master Data.
+                                        @endif
+                                    </p>
+                                @endif
+                            </fieldset>
+                        @endforeach
+                    </div>
+                </div>
+                <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,.7fr)]"><div class="np-field-stack"><div class="grid gap-4 sm:grid-cols-2"><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4"><input type="hidden" name="artwork_upload_enabled" :value="artworkUploadEnabled ? 1 : 0"><input type="checkbox" x-model="artworkUploadEnabled"><span><strong class="block text-sm">Show artwork upload step</strong><small class="text-xs text-slate-500">The section disappears when disabled.</small></span></label><label class="flex items-center gap-3 rounded-2xl border border-slate-200 p-4" :class="!artworkUploadEnabled && 'opacity-50'"><input type="hidden" name="artwork_upload_required" :value="artworkUploadRequired ? 1 : 0"><input type="checkbox" x-model="artworkUploadRequired" :disabled="!artworkUploadEnabled"><span><strong class="block text-sm">Artwork is required</strong><small class="text-xs text-slate-500">At least one file must be selected.</small></span></label></div><div x-show="artworkUploadEnabled" class="grid gap-4 sm:grid-cols-2"><label class="admin-label np-emphasis-label sm:col-span-2">Section title<input class="admin-input" name="artwork_upload_title" x-model="artworkUploadTitle" maxlength="180"></label><label class="admin-label np-emphasis-label sm:col-span-2">Upload instructions<textarea class="admin-textarea np-textarea-sm" name="artwork_upload_description" x-model="artworkUploadDescription" maxlength="3000"></textarea></label><label class="admin-label np-emphasis-label">Accepted extensions<input class="admin-input font-mono" name="artwork_upload_accepted_types" x-model="artworkUploadAcceptedTypes" placeholder="pdf,ai,png,jpg,jpeg,eps"></label><label class="admin-label">Maximum file size (MB)<input class="admin-input" type="number" min="1" max="25" name="artwork_upload_max_file_size_mb" x-model.number="artworkUploadMaxFileSizeMb"></label><label class="admin-label sm:col-span-2">Maximum files<input class="admin-input" type="number" min="1" max="12" name="artwork_upload_max_files" x-model.number="artworkUploadMaxFiles"></label></div></div><div x-show="artworkUploadEnabled" class="np-artwork-preview"><span>☁</span><strong>Upload area will appear on product page</strong><small>Drag &amp; drop or click to upload</small></div></div></section>
 
             <section id="fulfillment" class="np-card">
                 <header class="np-card__header">

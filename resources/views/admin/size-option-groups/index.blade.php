@@ -12,7 +12,7 @@
         <a href="{{ route('admin.size-option-groups.create', $sizeRouteQuery) }}" class="btn btn-red">+ Add Size Group</a>
     </div>
 
-    <form class="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card md:grid-cols-[minmax(0,1fr)_240px_auto]" method="GET">
+    <form class="np-master-search-controls mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card md:grid-cols-[minmax(0,1fr)_240px_auto]" method="GET">
         <input type="hidden" name="customization" value="{{ $sizeRouteContext }}">
         <input class="admin-input mt-0" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Search size group">
         <select class="admin-input mt-0" name="audience">

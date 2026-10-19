@@ -33,6 +33,11 @@ return [
 
     'slider_cache_seconds' => (int) env('STOREFRONT_SLIDER_CACHE_SECONDS', 600),
 
+    'artwork' => [
+        // Set to 0 for unlimited included revisions.
+        'max_revisions' => (int) env('STOREFRONT_ARTWORK_MAX_REVISIONS', 2),
+    ],
+
     'product_cards' => [
         // Used only when a product has no product-level rating/review value yet.
         // Set STOREFRONT_PRODUCT_CARD_SHOW_DEFAULT_RATING=false to hide this fallback.

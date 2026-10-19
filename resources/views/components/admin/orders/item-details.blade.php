@@ -8,6 +8,7 @@
     $rosterFields = collect($item->rosterFields());
     $hasRosterSizes = $rosterRows->contains(fn (array $row): bool => filled($row['size_label'] ?? null) || filled($row['size_group_label'] ?? null));
     $artworkFiles = collect($item->artworkFiles());
+    $artworkHelp = (array) data_get($customization, 'configuration.artwork_help', []);
     $rosterEnabled = (bool) data_get($customization, 'configuration.roster_enabled', false);
 @endphp
 
@@ -40,6 +41,14 @@
                 @endif
             </div>
 
+            @if(($artworkHelp['mode'] ?? null) === 'help')
+                <div class="mt-3 rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-slate-700">
+                    <strong class="text-slate-900">Artwork design assistance requested</strong>
+                    @if(!empty($artworkHelp['notes']))<p class="mt-1">{{ $artworkHelp['notes'] }}</p>@endif
+                    @if(!empty($artworkHelp['pantone']['code']))<p>Pantone: {{ $artworkHelp['pantone']['code'] }} — {{ $artworkHelp['pantone']['name'] ?? '' }}</p>@endif
+                    @if(!empty($artworkHelp['style']['name']))<p>Style: {{ $artworkHelp['style']['name'] }}</p>@endif
+                </div>
+            @endif
             @if(!empty($customization['notes']))
                 <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600"><b class="text-slate-900">Customer notes:</b> {{ $customization['notes'] }}</p>
             @endif
@@ -99,7 +108,7 @@
                             @endif
                             <div class="min-w-0 flex-1">
                                 <p class="truncate text-sm font-black text-slate-900">{{ data_get($artwork, 'original_name', 'Artwork file') }}</p>
-                                <p class="mt-0.5 text-xs text-slate-500">{{ $extension ? strtoupper($extension) : ($mimeType ?: 'File') }} · {{ $sizeLabel }}</p>
+                                <p class="mt-0.5 text-xs text-slate-500">{{ ($artwork['purpose'] ?? 'artwork') === 'reference' ? 'Reference image · ' : 'Artwork · ' }}{{ $extension ? strtoupper($extension) : ($mimeType ?: 'File') }} · {{ $sizeLabel }}</p>
                                 <div class="mt-2 flex flex-wrap gap-2">
                                     <a href="{{ $viewUrl }}" target="_blank" rel="noopener" class="text-xs font-black text-brand-red hover:underline">View</a>
                                     <a href="{{ $viewUrl }}?download=1" class="text-xs font-black text-slate-700 hover:underline">Download</a>

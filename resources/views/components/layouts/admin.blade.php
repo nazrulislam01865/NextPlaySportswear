@@ -164,7 +164,7 @@
                     <x-admin.sidebar-group
                         label="Master Data"
                         icon="◈"
-                        :active="$isCustomizationActive || $isSizeOptionActive || $isTrainingVestCustomizationActive || $isWorldCupCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*') || request()->routeIs('admin.faqs.*') || request()->routeIs('admin.genders.*') || request()->routeIs('admin.time-zones.*') || request()->routeIs('admin.country-calling-codes.*') || request()->routeIs('admin.bulk-quote-budget-ranges.*')"
+                        :active="$isCustomizationActive || $isSizeOptionActive || $isTrainingVestCustomizationActive || $isWorldCupCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*') || request()->routeIs('admin.faqs.*') || request()->routeIs('admin.genders.*') || request()->routeIs('admin.time-zones.*') || request()->routeIs('admin.country-calling-codes.*') || request()->routeIs('admin.bulk-quote-budget-ranges.*') || request()->routeIs('admin.artwork-preferences.*')"
                     >
                         @if($canAdmin('customization.view'))
                         @foreach($primaryCustomizationMenuGroups as $groupKey => $customizationGroup)
@@ -257,7 +257,7 @@
                             <x-admin.sidebar-sub-link
                                 :href="route('admin.holiday-calendars.index')"
                                 :active="request()->routeIs('admin.holiday-calendars.*')"
-                            >Holiday Calendars</x-admin.sidebar-sub-link>
+                            >{{ $trailingMasterDataNumbers['holiday_calendars'] }} Holiday Calendars</x-admin.sidebar-sub-link>
                         @endif
 
                         @if($canAdmin('customization.view'))
@@ -290,6 +290,16 @@
                                 :href="route('admin.bulk-quote-budget-ranges.index')"
                                 :active="request()->routeIs('admin.bulk-quote-budget-ranges.*')"
                             >{{ $trailingMasterDataNumbers['bulk_quote_budget_ranges'] }} Bulk Quote Budget Ranges</x-admin.sidebar-sub-link>
+                        @endif
+                        @if($canAdmin('customization.view'))
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.artwork-preferences.index', 'pantone')"
+                                :active="request()->routeIs('admin.artwork-preferences.*') && request()->route('type') === 'pantone'"
+                            >{{ $trailingMasterDataNumbers['pantone_colors'] }} Pantone Colors</x-admin.sidebar-sub-link>
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.artwork-preferences.index', 'style')"
+                                :active="request()->routeIs('admin.artwork-preferences.*') && request()->route('type') === 'style'"
+                            >{{ $trailingMasterDataNumbers['design_styles'] }} Design Styles</x-admin.sidebar-sub-link>
                         @endif
                     </x-admin.sidebar-group>
                 @endif

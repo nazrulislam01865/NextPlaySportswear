@@ -76,6 +76,8 @@ class OrderController extends Controller
                 'returnRequests.items.orderItem',
                 'returnRequests.refunds.creditNote',
                 'downloads',
+                'artworkProofs.orderItem',
+                'artworkProofs.messages',
             ]),
             'orderStatuses' => config('commerce.order_statuses', []),
             'paymentStatuses' => config('commerce.payment_statuses', []),

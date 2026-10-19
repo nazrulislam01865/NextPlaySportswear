@@ -20,14 +20,14 @@
     $columnCount = 4 + ($isColor ? 1 : 0) + ($showsDescription ? 1 : 0);
 @endphp
 
-<div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
-    <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
+<div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
+    <section class="min-w-0 self-start overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
         <div class="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
             <div>
                 <p class="text-xs font-black uppercase tracking-[.22em] text-brand-blue">Already Added</p>
                 <h2 class="mt-1 text-2xl font-black text-brand-ink">{{ $typeLabel }} List</h2>
             </div>
-            <form method="GET" class="flex w-full gap-2 sm:w-auto">
+            <form method="GET" class="np-master-search-controls flex w-full gap-2 sm:w-auto">
                 <input
                     class="admin-input mt-0 min-w-0 sm:w-72"
                     name="q"
@@ -146,7 +146,7 @@
         <div class="border-t border-slate-100 p-5">{{ $options->links('pagination.nextplay') }}</div>
     </section>
 
-    <aside class="rounded-3xl border border-slate-200 bg-white p-5 shadow-card sm:p-6 xl:sticky xl:top-36 xl:self-start">
+    <aside class="min-w-0 self-start rounded-3xl border border-slate-200 bg-white p-5 shadow-card sm:p-6 xl:sticky xl:top-36">
         <p class="text-xs font-black uppercase tracking-[.22em] text-brand-red">Add New Item</p>
         <h2 class="mt-1 text-2xl font-black text-brand-ink">Add {{ $typeLabel }}</h2>
         <p class="mt-2 text-sm font-semibold leading-6 text-slate-500">Only the necessary fields are shown for this option type.</p>

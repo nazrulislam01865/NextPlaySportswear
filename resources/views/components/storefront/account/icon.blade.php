@@ -32,6 +32,36 @@
     @case('orders')
         <svg {{ $attributes->merge($attrs) }}><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
         @break
+    @case('artwork')
+        <svg {{ $attributes->merge($attrs) }}><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="1.5"/><path d="m3 17 5-5 4 3 3-4 6 6"/></svg>
+        @break
+    @case('clock')
+        <svg {{ $attributes->merge($attrs) }}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        @break
+    @case('check-circle')
+        <svg {{ $attributes->merge($attrs) }}><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>
+        @break
+    @case('refresh')
+        <svg {{ $attributes->merge($attrs) }}><path d="M20 8a8 8 0 0 0-14-2L3 9m0-5v5h5M4 16a8 8 0 0 0 14 2l3-3m0 5v-5h-5"/></svg>
+        @break
+    @case('message')
+        <svg {{ $attributes->merge($attrs) }}><path d="M4 4h16v13H9l-5 4z"/><path d="M8 9h8M8 13h5"/></svg>
+        @break
+    @case('zoom-in')
+        <svg {{ $attributes->merge($attrs) }}><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6M7 10h6M10 7v6"/></svg>
+        @break
+    @case('expand')
+        <svg {{ $attributes->merge($attrs) }}><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+        @break
+    @case('info')
+        <svg {{ $attributes->merge($attrs) }}><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg>
+        @break
+    @case('arrow-left')
+        <svg {{ $attributes->merge($attrs) }}><path d="M19 12H5M10 7l-5 5 5 5"/></svg>
+        @break
+    @case('alert')
+        <svg {{ $attributes->merge($attrs) }}><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/></svg>
+        @break
     @case('rewards')
         <svg {{ $attributes->merge($attrs) }}><rect x="3" y="8" width="18" height="13" rx="1.5"/><path d="M12 8v13M3 12h18"/><path d="M12 8H8.5A2.5 2.5 0 1 1 11 5.5V8Zm0 0h3.5A2.5 2.5 0 1 0 13 5.5V8Z"/></svg>
         @break

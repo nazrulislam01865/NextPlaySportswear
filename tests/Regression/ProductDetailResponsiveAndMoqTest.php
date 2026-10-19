@@ -15,7 +15,7 @@ $expect = static function (bool $condition, string $message) use (&$failures): v
 $expect(str_contains($js, 'orderQuantity: 0'), 'Products without size groups start with zero quantity.');
 $expect(str_contains($js, 'Math.max(0, Math.min(maximum, Number(amount || 0)))'), 'Single quantity selector allows zero instead of snapping to MOQ.');
 $expect(str_contains($js, 'Minimum order quantity is'), 'Add-to-cart validation explains the minimum order quantity.');
-$expect(str_contains($builder, 'canAddToCart()') && str_contains($builder, 'return this.activeCustomizerStep === 6;'), 'Add to Cart becomes clickable on the review step so validation can notify the customer.');
+$expect(str_contains($builder, 'canAddToCart()') && str_contains($builder, 'Number(this.activeCustomizerStep) === Number(this.maxCustomizerStep)') && str_contains($builder, '|| this.validationIssue() === null'), 'Add to Cart handles 5/6 review steps, completed configurations, and review-step validation feedback.');
 $expect(str_contains($orderSummary, 'Minimum order'), 'Custom Order summary displays the minimum order quantity.');
 $expect(str_contains($cartService, "abort_if(\$quantity < \$minimum"), 'Server rejects quantities below MOQ instead of silently increasing them.');
 $expect(str_contains($css, 'NEXTPLAY_PRODUCT_DETAIL_RESPONSIVE_AND_MOQ'), 'Responsive/MOQ CSS refinement marker exists.');

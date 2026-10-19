@@ -1206,6 +1206,7 @@ class CartService
                 'original_name' => Str::limit((string) ($file['original_name'] ?? 'Artwork file'), 255, ''),
                 'size' => max(0, (int) ($file['size'] ?? 0)),
                 'mime_type' => Str::limit((string) ($file['mime_type'] ?? 'application/octet-stream'), 120, ''),
+                'purpose' => ($file['purpose'] ?? 'artwork') === 'reference' ? 'reference' : 'artwork',
             ])
             ->take(12)
             ->values();
@@ -1230,9 +1231,11 @@ class CartService
             'size_summary' => $normalizedSizeSummary,
             'size_breakdown' => $sizeBreakdown,
             'roster_fields' => $rosterFields,
-            'artwork_status' => $artworkFiles->isNotEmpty()
-                ? $artworkFiles->count().' artwork file'.($artworkFiles->count() === 1 ? '' : 's').' uploaded'
-                : ($artworkStatus === '' ? 'No artwork uploaded' : $artworkStatus),
+            'artwork_status' => data_get($configuration, 'artwork_help.mode') === 'help'
+                ? 'Design assistance requested'
+                : ($artworkFiles->isNotEmpty()
+                    ? $artworkFiles->count().' artwork file'.($artworkFiles->count() === 1 ? '' : 's').' uploaded'
+                    : ($artworkStatus === '' ? 'No artwork uploaded' : $artworkStatus)),
             'notes' => $notes,
             'configuration' => $configuration,
             'sample' => [
@@ -1750,11 +1753,26 @@ class CartService
             }
         }
 
+        $helpMode = ($raw['artwork_mode'] ?? ($raw['artwork_help']['mode'] ?? null)) === 'help';
+        $chosen = [];
+        foreach (['pantone' => 'artwork_help_color_id', 'style' => 'artwork_help_style_id'] as $type => $key) {
+            $requestedId = (string) ($raw[$key] ?? data_get($raw, 'artwork_help.'.$type.'.id', ''));
+            $match = collect(data_get($product, 'artwork_preferences.'.$type, []))
+                ->first(fn (array $item): bool => (string) $item['id'] === $requestedId);
+            $chosen[$type] = $helpMode && $match ? $match : null;
+        }
+
         return [
             'selections' => $selections,
             'multi_selections' => $multiSelections,
             'inputs' => $inputs,
             'quantities' => $quantities,
+            'artwork_help' => [
+                'mode' => $helpMode ? 'help' : 'upload',
+                'notes' => $helpMode ? Str::limit(trim((string) ($raw['artwork_help_notes'] ?? data_get($raw, 'artwork_help.notes', ''))), 500, '') : '',
+                'pantone' => $chosen['pantone'],
+                'style' => $chosen['style'],
+            ],
             'production_speed' => filled($productionSpeed['id'] ?? null) ? (string) $productionSpeed['id'] : null,
             'shipping_method' => in_array((string) ($raw['shipping_method'] ?? ''), $shippingIds, true) ? (string) $raw['shipping_method'] : $defaultShipping,
             'roster_enabled' => $rosterEnabled,
@@ -1790,10 +1808,14 @@ class CartService
 
         $artworkSettings = $product['artwork_upload'] ?? ['enabled' => false];
         $artworkFiles = collect($customization['artwork_files'] ?? []);
-        if (($artworkSettings['enabled'] ?? false) && ($artworkSettings['required'] ?? false)) {
-            abort_unless($artworkFiles->isNotEmpty(), 422, 'Upload at least one custom artwork file.');
+        $helpRequested = data_get($configuration, 'artwork_help.mode') === 'help';
+        if ($helpRequested) {
+            abort_unless(filled(data_get($configuration, 'artwork_help.notes')), 422, 'Describe your design ideas to request artwork help.');
         }
-        if ($artworkFiles->count() > max(1, min(12, (int) ($artworkSettings['max_files'] ?? 5)))) {
+        if (($artworkSettings['enabled'] ?? false) && ($artworkSettings['required'] ?? false) && ! $helpRequested) {
+            abort_unless($artworkFiles->where('purpose', '!=', 'reference')->isNotEmpty(), 422, 'Upload at least one custom artwork file.');
+        }
+        if ($artworkFiles->count() > 12 || $artworkFiles->where('purpose', 'reference')->count() > 5 || $artworkFiles->where('purpose', '!=', 'reference')->count() > max(1, min(12, (int) ($artworkSettings['max_files'] ?? 5)))) {
             abort(422, 'Too many custom artwork files were uploaded.');
         }
 

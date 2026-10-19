@@ -41,6 +41,11 @@ class Order extends Model
         return $this->belongsTo(Coupon::class);
     }
 
+    public function artworkProofs(): HasMany
+    {
+        return $this->hasMany(ArtworkProof::class);
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);

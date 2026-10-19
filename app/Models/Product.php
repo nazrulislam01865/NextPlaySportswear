@@ -174,6 +174,11 @@ class Product extends Model
         return $this->hasMany(ProductFabricPriceTable::class)->orderBy('sort_order')->orderBy('fabric_label');
     }
 
+    public function artworkPreferences(): BelongsToMany
+    {
+        return $this->belongsToMany(ArtworkPreference::class, 'artwork_preference_product');
+    }
+
     public function artworkMethods(): HasMany
     {
         return $this->hasMany(ProductArtworkMethod::class)->orderBy('sort_order');

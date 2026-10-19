@@ -570,6 +570,16 @@ window.productBuilder = (config = {}) => ({
     activeSizeGroup: config.size_groups?.[0]?.id || null,
     artworkFiles: [],
     artworkSequence: 0,
+    artworkMode: 'upload',
+    artworkHelpNotes: '',
+    artworkHelpColor: null,
+    artworkHelpStyle: null,
+    selectedArtworkColor() {
+        return (config.artwork_preferences?.pantone || []).find(item => String(item.id) === String(this.artworkHelpColor)) || null;
+    },
+    selectedArtworkStyle() {
+        return (config.artwork_preferences?.style || []).find(item => String(item.id) === String(this.artworkHelpStyle)) || null;
+    },
     productionSpeed: null,
     shippingMethod: config.shipping_methods?.find(method => method.default)?.id || config.shipping_methods?.[0]?.id || null,
     rosterEnabled: Boolean(productRosterSettings(config).enabled && !productRosterSettings(config).optional),
@@ -675,6 +685,11 @@ window.productBuilder = (config = {}) => ({
                     values: { ...this.blankRosterValues(), ...(row?.values || {}) },
                 }))
                 : [];
+            const help = initial.artwork_help || {};
+            this.artworkMode = help.mode === 'help' ? 'help' : 'upload';
+            this.artworkHelpNotes = String(help.notes || '');
+            this.artworkHelpColor = help.pantone?.id ?? null;
+            this.artworkHelpStyle = help.style?.id ?? null;
             this.artworkFiles = Array.isArray(initial.artwork_files)
                 ? initial.artwork_files
                     .filter(file => file && file.path)
@@ -685,6 +700,7 @@ window.productBuilder = (config = {}) => ({
                         size: Math.max(0, Number(file.size || 0)),
                         sizeLabel: String(file.sizeLabel || this.formatFileSize(file.size)),
                         existing: true,
+                        purpose: file.purpose === 'reference' ? 'reference' : 'artwork',
                         rawFile: null,
                         extension: String(file.extension || this.fileExtension(file.name)),
                         previewable: Boolean(file.previewable ?? this.isArtworkImage(file.name)),
@@ -1530,9 +1546,11 @@ window.productBuilder = (config = {}) => ({
     },
 
     artworkLabel() {
+        if (this.artworkMode === 'help') return 'Design assistance requested';
         if (!config.artwork_upload?.enabled) return 'Not requested';
-        if (!this.artworkFiles.length) return config.artwork_upload?.required ? 'Artwork required' : 'No artwork selected';
-        return `${this.artworkFiles.length} artwork file${this.artworkFiles.length === 1 ? '' : 's'} selected`;
+        const count = this.artworkFiles.filter(file => file.purpose !== 'reference').length;
+        if (!count) return config.artwork_upload?.required ? 'Artwork required' : 'No artwork selected';
+        return `${count} artwork file${count === 1 ? '' : 's'} selected`;
     },
 
     retainedArtworkJson() {
@@ -1541,97 +1559,95 @@ window.productBuilder = (config = {}) => ({
             .map(file => file.path));
     },
 
-    handleArtworkFiles(event) {
+    dropArtworkFiles(event, purpose = 'artwork') {
+        const input = purpose === 'reference' ? this.$refs.referenceInput : this.$refs.artworkInput;
+        if (!input || typeof DataTransfer === 'undefined') return;
+        const transfer = new DataTransfer();
+        Array.from(event.dataTransfer?.files || []).forEach(file => transfer.items.add(file));
+        if (!transfer.files.length) return;
+        input.files = transfer.files;
+        this.handleArtworkFiles({ target: input }, purpose);
+    },
+
+    handleArtworkFiles(event, purpose = 'artwork') {
         const files = Array.from(event.target.files || []);
-        const retainedFiles = this.artworkFiles.filter(file => file.existing);
+        const reference = purpose === 'reference';
+        const current = [...this.artworkFiles];
         const maximumFiles = Math.max(1, Math.min(12, Number(config.artwork_upload?.max_files || 5)));
-        const maximumBytes = Math.max(1, Math.min(25, Number(config.artwork_upload?.max_file_size_mb || 15))) * 1024 * 1024;
-        const allowed = (config.artwork_upload?.accepted_types || ['pdf', 'svg', 'png', 'jpg', 'jpeg', 'webp'])
-            .map(type => String(type).toLowerCase().replace(/^\./, ''));
-
-        const invalid = files.find(file => {
-            const extension = String(file.name || '').split('.').pop().toLowerCase();
-            return !allowed.includes(extension) || file.size > maximumBytes;
-        });
-
-        if (retainedFiles.length + files.length > maximumFiles || invalid) {
-            event.target.value = '';
-            this.artworkFiles = retainedFiles;
-            window.alert(`Choose no more than ${maximumFiles} approved artwork files in total, each no larger than ${config.artwork_upload?.max_file_size_mb || 15} MB.`);
-            this.sync();
+        const maximumBytes = (reference ? 10 : Math.max(1, Math.min(25, Number(config.artwork_upload?.max_file_size_mb || 15)))) * 1024 * 1024;
+        const allowed = reference ? ['png', 'jpg', 'jpeg', 'webp'] :
+            (config.artwork_upload?.accepted_types || ['pdf', 'svg', 'png', 'jpg', 'jpeg', 'webp'])
+                .map(type => String(type).toLowerCase().replace(/^\./, ''));
+        const invalid = files.find(file => !allowed.includes(this.fileExtension(file.name)) || file.size > maximumBytes);
+        const otherCount = current.filter(file => file.purpose === 'reference').length;
+        if (current.length + files.length > 12 || (reference && otherCount + files.length > 5) ||
+            (!reference && current.filter(file => file.purpose !== 'reference').length + files.length > maximumFiles) || invalid) {
+            if (typeof DataTransfer !== 'undefined') {
+                const transfer = new DataTransfer();
+                current.filter(file => !file.existing && file.purpose === purpose && file.rawFile).forEach(file => {
+                    transfer.items.add(window.Alpine?.raw ? window.Alpine.raw(file.rawFile) : file.rawFile);
+                });
+                event.target.files = transfer.files;
+            } else {
+                event.target.value = '';
+                this.artworkFiles = current.filter(file => file.existing || file.purpose !== purpose);
+            }
+            window.alert(reference ? 'Choose up to 5 PNG, JPEG or WebP references, each no larger than 10 MB (12 files total).' :
+                `Choose no more than ${maximumFiles} approved artwork files, each no larger than ${config.artwork_upload?.max_file_size_mb || 15} MB (12 files total).`);
             return;
         }
-
-        const selectedFiles = files.map(file => {
-            const name = String(file.name || '').slice(0, 255);
-            const extension = this.fileExtension(name);
-            const previewable = this.isArtworkImage(name);
-            const previewUrl = typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function'
-                ? URL.createObjectURL(file)
-                : null;
-
-            return {
-                key: `new:${++this.artworkSequence}:${file.name}:${file.size}:${file.lastModified}`,
-                path: null,
-                name,
-                size: Number(file.size || 0),
-                sizeLabel: this.formatFileSize(file.size),
-                existing: false,
-                rawFile: file,
-                extension,
-                previewable,
-                url: null,
-                previewUrl,
-            };
-        });
-
-        this.artworkFiles = [...retainedFiles, ...selectedFiles];
-        this.sync();
-
-        if (selectedFiles.length > 0) {
-            this.notifyCustomization(
-                'Added',
-                `${selectedFiles.length} new artwork file${selectedFiles.length === 1 ? '' : 's'} has been selected.`,
-                'artwork-files',
-            );
+        const selectedFiles = files.map(file => ({
+            key: `new:${++this.artworkSequence}:${file.name}:${file.size}:${file.lastModified}`,
+            path: null,
+            name: String(file.name || '').slice(0, 255),
+            size: Number(file.size || 0),
+            sizeLabel: this.formatFileSize(file.size),
+            existing: false,
+            purpose,
+            rawFile: file,
+            extension: this.fileExtension(file.name),
+            previewable: this.isArtworkImage(file.name),
+            url: null,
+            previewUrl: typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function' ? URL.createObjectURL(file) : null,
+        }));
+        if (typeof DataTransfer !== 'undefined') {
+            const transfer = new DataTransfer();
+            current.filter(file => !file.existing && file.purpose === purpose && file.rawFile).forEach(file => {
+                transfer.items.add(window.Alpine?.raw ? window.Alpine.raw(file.rawFile) : file.rawFile);
+            });
+            files.forEach(file => transfer.items.add(file));
+            event.target.files = transfer.files;
+            this.artworkFiles = [...current, ...selectedFiles];
+        } else {
+            // Without a transferable FileList the browser can submit only its latest selection.
+            this.artworkFiles = [...current.filter(file => file.existing || file.purpose !== purpose), ...selectedFiles];
         }
+        this.sync();
+        if (selectedFiles.length) this.notifyCustomization('Added', `${selectedFiles.length} ${reference ? 'reference image' : 'artwork file'}(s) selected.`, 'artwork-files');
     },
 
     removeArtworkFile(index) {
         const target = this.artworkFiles[index];
         if (!target) return;
-
         this.artworkFiles.splice(index, 1);
-
         if (target.previewUrl && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
             URL.revokeObjectURL(target.previewUrl);
         }
-
-        if (!target.existing && this.$refs.artworkInput) {
-            const remainingNewFiles = this.artworkFiles
-                .filter(file => !file.existing && file.rawFile)
-                .map(file => file.rawFile);
-
-            if (typeof DataTransfer !== 'undefined') {
+        if (!target.existing) {
+            const input = target.purpose === 'reference' ? this.$refs.referenceInput : this.$refs.artworkInput;
+            if (input && typeof DataTransfer !== 'undefined') {
                 const transfer = new DataTransfer();
-                remainingNewFiles.forEach(file => {
-                    const rawFile = window.Alpine?.raw ? window.Alpine.raw(file) : file;
-                    transfer.items.add(rawFile);
+                this.artworkFiles.filter(file => !file.existing && file.purpose === target.purpose && file.rawFile).forEach(file => {
+                    transfer.items.add(window.Alpine?.raw ? window.Alpine.raw(file.rawFile) : file.rawFile);
                 });
-                this.$refs.artworkInput.files = transfer.files;
-            } else {
-                this.$refs.artworkInput.value = '';
-                this.artworkFiles = this.artworkFiles.filter(file => file.existing);
+                input.files = transfer.files;
+            } else if (input) {
+                input.value = '';
+                this.artworkFiles = this.artworkFiles.filter(file => file.existing || file.purpose !== target.purpose);
             }
         }
-
         this.sync();
-        this.notifyCustomization(
-            'Removed',
-            `${target.name || 'Artwork file'} has been removed from this cart configuration.`,
-            `artwork-remove:${target.key || index}`,
-            'info',
-        );
+        this.notifyCustomization('Removed', `${target.name || 'Artwork file'} removed.`, `artwork-remove:${target.key || index}`, 'info');
     },
 
     productionRangeLabel() {
@@ -1884,7 +1900,11 @@ window.productBuilder = (config = {}) => ({
             multi_selections: this.multiSelections,
             inputs: this.inputs,
             quantities: this.quantities,
-            artwork_files: this.artworkFiles.map(file => ({ name: file.name, size: file.size })),
+            artwork_files: this.artworkFiles.map(file => ({ name: file.name, size: file.size, purpose: file.purpose || 'artwork' })),
+            artwork_mode: this.artworkMode,
+            artwork_help_notes: this.artworkMode === 'help' ? this.artworkHelpNotes : '',
+            artwork_help_color_id: this.artworkMode === 'help' ? this.artworkHelpColor : null,
+            artwork_help_style_id: this.artworkMode === 'help' ? this.artworkHelpStyle : null,
             production_speed: this.productionSpeed,
             shipping_method: this.shippingMethod,
             roster_enabled: this.rosterEnabled,
@@ -1928,16 +1948,26 @@ window.productBuilder = (config = {}) => ({
             }
         }
 
+        if (this.artworkMode === 'help' && !this.artworkHelpNotes.trim()) {
+            return { message: 'Please describe your artwork design ideas.', targetId: 'artwork-upload' };
+        }
+        if (this.artworkMode !== 'help' && this.artworkFiles.some(file => file.purpose === 'reference')) {
+            return { message: 'Remove reference images or select Need Help with Artwork.', targetId: 'artwork-upload' };
+        }
         if (config.artwork_upload?.enabled) {
             const maximumFiles = Math.max(1, Math.min(12, Number(config.artwork_upload?.max_files || 5)));
-            if (config.artwork_upload?.required && this.artworkFiles.length === 0) {
+            if (config.artwork_upload?.required && this.artworkMode !== 'help' && !this.artworkFiles.some(file => file.purpose !== 'reference')) {
                 return { message: 'Please upload the required custom artwork.', targetId: 'artwork-upload' };
             }
-            if (this.artworkFiles.length > maximumFiles) {
+            if (this.artworkFiles.filter(file => file.purpose !== 'reference').length > maximumFiles) {
                 return { message: `You can upload a maximum of ${maximumFiles} artwork files.`, targetId: 'artwork-upload' };
             }
         }
 
+        // Match the server-side quantity-based production rule requirement.
+        if (config.production_methods_enabled && !this.currentProductionOptions().length) {
+            return { message: 'No production rule is configured for the selected quantity. Please contact us or choose another quantity.', targetId: 'production-shipping' };
+        }
         if (this.currentProductionOptions().length && !this.productionSpeed) {
             return { message: 'Please choose a production option.', targetId: 'production-shipping' };
         }

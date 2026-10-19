@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ProductBulkRequest;
 use App\Http\Requests\Admin\ProductFormRequest;
 use App\Models\CatalogAttribute;
+use App\Models\ArtworkPreference;
 use App\Models\Category;
 use App\Models\Faq;
 use App\Models\Gender;
@@ -500,6 +501,7 @@ class ProductController extends Controller
                     $copy->{$relation}()->create(Arr::except($item->toArray(), ['id', 'product_id', 'created_at', 'updated_at']));
                 }
             }
+            $copy->artworkPreferences()->sync($product->artworkPreferences->pluck('id')->all());
             $copy->faqs()->sync(
                 $product->faqs
                     ->mapWithKeys(fn (Faq $faq, int $index): array => [$faq->id => [
@@ -690,6 +692,7 @@ class ProductController extends Controller
             'productionMethodOptions' => $productionMethodOptions,
             'shippingMethodOptions' => $shippingMethodOptions,
             'faqOptions' => $faqOptions,
+            'artworkPreferenceOptions' => ArtworkPreference::query()->active()->ordered()->get(),
             'genderOptions' => $genderOptions,
         ]);
     }
@@ -698,7 +701,7 @@ class ProductController extends Controller
     {
         return [
             'category', 'subcategory', 'gender', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'sizeGroups.masterGroup',
-            'priceTiers', 'fabricPriceTables.tiers', 'artworkMethods', 'productionSpeeds.productionMethod', 'shippingMethods', 'faqs',
+            'priceTiers', 'fabricPriceTables.tiers', 'artworkPreferences', 'artworkMethods', 'productionSpeeds.productionMethod', 'shippingMethods', 'faqs',
         ];
     }
 
@@ -1287,6 +1290,7 @@ class ProductController extends Controller
     {
         $data = $request->validated();
         $this->syncCatalogAssignments($product, $data);
+        $product->artworkPreferences()->sync($data['artwork_preference_ids'] ?? []);
         $this->syncImages($product, $request, $data);
         $this->syncFeatureIcons($product, $request, $data);
 

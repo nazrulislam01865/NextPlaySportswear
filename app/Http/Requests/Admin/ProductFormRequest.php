@@ -40,6 +40,8 @@ class ProductFormRequest extends FormRequest
             'show_in_category_page' => ['nullable', 'boolean'],
             'attribute_value_ids' => ['nullable', 'array', 'max:500'],
             'attribute_value_ids.*' => ['integer', 'distinct', 'exists:attribute_values,id'],
+            'artwork_preference_ids' => ['nullable', 'array', 'max:200'],
+            'artwork_preference_ids.*' => ['integer', 'distinct', Rule::exists('artwork_preferences', 'id')->where('is_active', true)],
             // Legacy columns remain supported during the compatibility period.
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'subcategory_id' => ['nullable', 'integer', 'exists:categories,id', 'different:category_id'],

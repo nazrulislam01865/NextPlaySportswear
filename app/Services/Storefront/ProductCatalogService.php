@@ -1671,6 +1671,7 @@ class ProductCatalogService
             'sizeGroups.sizes',
             'priceTiers',
             'fabricPriceTables.tiers',
+            'artworkPreferences',
             'artworkMethods',
             'productionSpeeds.productionMethod',
             'shippingMethods.shippingMethod',
@@ -2948,6 +2949,15 @@ class ProductCatalogService
             'shopper_activity' => $this->productShopperActivity($product),
             'image' => $gallery[0]['url'],
             'alt' => $gallery[0]['alt'],
+            'artwork_preferences' => $product->relationLoaded('artworkPreferences')
+                ? $product->artworkPreferences->where('is_active', true)
+                    ->groupBy('type')->map(fn ($items) => $items->sortBy([['sort_order', 'asc'], ['name', 'asc']])->map(fn ($item) => [
+                        'id' => (int) $item->id,
+                        'name' => $item->name,
+                        'code' => $item->code,
+                        'hex_color' => $item->hex_color,
+                    ])->values()->all())->all()
+                : [],
             'gallery' => $gallery,
             'tags' => $product->tags ?? [],
             'features' => $product->features ?? [],

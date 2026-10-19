@@ -171,6 +171,12 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::delete('/categories/{category}/products/{product}', [\App\Http\Controllers\Admin\CategoryProductController::class, 'destroy'])->name('categories.products.destroy');
         Route::resource('categories', \App\Http\Controllers\Admin\CategoryController::class)->except('show');
         Route::resource('attributes', \App\Http\Controllers\Admin\AttributeController::class)->except('show');
+        Route::get('/artwork-preferences/{type}', [\App\Http\Controllers\Admin\ArtworkPreferenceController::class, 'index'])->name('artwork-preferences.index');
+        Route::get('/artwork-preferences/{type}/create', [\App\Http\Controllers\Admin\ArtworkPreferenceController::class, 'create'])->name('artwork-preferences.create');
+        Route::post('/artwork-preferences/{type}', [\App\Http\Controllers\Admin\ArtworkPreferenceController::class, 'store'])->name('artwork-preferences.store');
+        Route::get('/artwork-preferences/{type}/{preference}/edit', [\App\Http\Controllers\Admin\ArtworkPreferenceController::class, 'edit'])->name('artwork-preferences.edit');
+        Route::put('/artwork-preferences/{type}/{preference}', [\App\Http\Controllers\Admin\ArtworkPreferenceController::class, 'update'])->name('artwork-preferences.update');
+        Route::delete('/artwork-preferences/{type}/{preference}', [\App\Http\Controllers\Admin\ArtworkPreferenceController::class, 'destroy'])->name('artwork-preferences.destroy');
         Route::get(
             '/jersey-customization-options/type/{type}',
             [\App\Http\Controllers\Admin\JerseyCustomizationOptionController::class, 'typeIndex']
@@ -331,8 +337,16 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
                 ->middleware('throttle:6,1')
                 ->name('bulk-quotes.retry-sync');
 
+            Route::get('/artwork-approvals', [\App\Http\Controllers\Admin\ArtworkProofController::class, 'index'])
+                ->name('artwork-approvals.index');
             Route::get('/orders', [\App\Http\Controllers\Admin\OrderController::class, 'index'])->name('orders.index');
             Route::get('/orders/{order}', [\App\Http\Controllers\Admin\OrderController::class, 'show'])->name('orders.show');
+            Route::post('/orders/{order}/artwork-proofs', [\App\Http\Controllers\Admin\ArtworkProofController::class, 'store'])
+                ->middleware('throttle:10,1')->name('orders.artwork-proofs.store');
+            Route::get('/orders/{order}/artwork-proofs/{proof}/file', [\App\Http\Controllers\Admin\ArtworkProofController::class, 'file'])
+                ->name('orders.artwork-proofs.file');
+            Route::post('/orders/{order}/artwork-proofs/{proof}/reply', [\App\Http\Controllers\Admin\ArtworkProofController::class, 'reply'])
+                ->middleware('throttle:10,1')->name('orders.artwork-proofs.reply');
             Route::get('/orders/{order}/items/{orderItem}/artwork/{artworkIndex}', [\App\Http\Controllers\Admin\OrderController::class, 'artwork'])
                 ->whereNumber('artworkIndex')
                 ->name('orders.artwork.show');
@@ -430,6 +444,20 @@ Route::middleware(['not.admin', 'auth:web', 'customer', 'verified'])->prefix('ac
     Route::patch('/payment-methods/{paymentMethod}/default', [PaymentMethodController::class, 'makeDefault'])->name('payment-methods.default');
     Route::delete('/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'destroy'])->name('payment-methods.destroy');
 
+
+    Route::get('/artwork-approvals', [\App\Http\Controllers\Storefront\Account\ArtworkApprovalController::class, 'index'])->name('artwork.index');
+    Route::get('/artwork-approvals/{proof}', [\App\Http\Controllers\Storefront\Account\ArtworkApprovalController::class, 'show'])->name('artwork.show');
+    Route::get('/artwork-approvals/{proof}/request-changes', [\App\Http\Controllers\Storefront\Account\ArtworkApprovalController::class, 'changes'])->name('artwork.changes');
+    Route::post('/artwork-approvals/{proof}/request-changes', [\App\Http\Controllers\Storefront\Account\ArtworkApprovalController::class, 'requestChanges'])
+        ->middleware('throttle:5,1')->name('artwork.changes.store');
+    Route::post('/artwork-approvals/{proof}/approve', [\App\Http\Controllers\Storefront\Account\ArtworkApprovalController::class, 'approve'])
+        ->middleware('throttle:5,1')->name('artwork.approve');
+    Route::post('/artwork-approvals/{proof}/reject', [\App\Http\Controllers\Storefront\Account\ArtworkApprovalController::class, 'reject'])
+        ->middleware('throttle:5,1')->name('artwork.reject');
+    Route::post('/artwork-approvals/{proof}/message', [\App\Http\Controllers\Storefront\Account\ArtworkApprovalController::class, 'message'])
+        ->middleware('throttle:10,1')->name('artwork.message');
+    Route::get('/artwork-approvals/{proof}/approved', [\App\Http\Controllers\Storefront\Account\ArtworkApprovalController::class, 'approved'])->name('artwork.approved');
+    Route::get('/artwork-approvals/{proof}/file', [\App\Http\Controllers\Storefront\Account\ArtworkApprovalController::class, 'file'])->name('artwork.file');
 
     Route::get('/orders', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'dashboard'])->name('orders.dashboard');
     Route::get('/orders/history', [\App\Http\Controllers\Storefront\Account\OrderCenterController::class, 'index'])->name('orders.index');

@@ -52,8 +52,14 @@ class ProductCustomizationMenuRegistryTest extends TestCase
         $this->assertSame([
             'production_methods' => '1.30',
             'shipping_methods' => '1.31',
-            'faqs' => '1.32',
-            'genders' => '1.33',
+            'holiday_calendars' => '1.32',
+            'faqs' => '1.33',
+            'genders' => '1.34',
+            'time_zones' => '1.35',
+            'country_calling_codes' => '1.36',
+            'bulk_quote_budget_ranges' => '1.37',
+            'pantone_colors' => '1.38',
+            'design_styles' => '1.39',
         ], ProductCustomizationMenuRegistry::trailingMasterDataNumbers());
     }
 }

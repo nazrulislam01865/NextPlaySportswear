@@ -493,6 +493,7 @@ class AdminRbac
             'production-methods' => 'shipping',
             'shipping-methods' => 'shipping',
             'faqs' => 'customization',
+            'artwork-preferences' => 'customization',
             'genders' => 'products',
             'country-calling-codes' => 'orders',
             'bulk-quote-budget-ranges' => 'orders',
@@ -527,6 +528,14 @@ class AdminRbac
         // gain read access without introducing a migration-only permission gap.
         if (Str::startsWith($name, 'bulk-quotes.')) {
             return self::resourcePermission($name, 'orders');
+        }
+
+        if ($name === 'artwork-approvals.index') {
+            return 'orders.view';
+        }
+
+        if ($name === 'orders.artwork-proofs.reply') {
+            return 'orders.manage';
         }
 
         if (Str::startsWith($name, 'orders.')) {

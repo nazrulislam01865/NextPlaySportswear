@@ -112,6 +112,50 @@ class StripePaymentArchitectureTest extends TestCase
             ->assertDontSee('NP-DEMO-10482');
     }
 
+    public function test_payment_return_verifies_the_authenticated_customers_own_stripe_session(): void
+    {
+        $customer = User::factory()->create(['role' => 'customer', 'is_active' => true]);
+        $order = $this->pendingStripeOrder($customer);
+        $payment = $this->processingStripePayment($order);
+
+        $this->actingAs($customer, 'web')->get(route('payments.return', ['provider' => 'stripe']).'?session_id='.$payment->provider_session_id)
+            ->assertRedirect(route('account.orders.show', $order));
+
+        $this->assertSame(1, FakeStripeGateway::$retrieveCalls);
+        $this->assertSame('paid', $payment->fresh()->status);
+        $this->assertSame('paid', $order->fresh()->payment_status);
+        $this->assertSame('design_review', $order->fresh()->status);
+    }
+
+    public function test_payment_return_does_not_verify_another_customers_session(): void
+    {
+        $owner = User::factory()->create(['role' => 'customer', 'is_active' => true]);
+        $other = User::factory()->create(['role' => 'customer', 'is_active' => true]);
+        $order = $this->pendingStripeOrder($owner);
+        $payment = $this->processingStripePayment($order);
+
+        $this->actingAs($other, 'web')->get(route('payments.return', ['provider' => 'stripe']).'?session_id='.$payment->provider_session_id)
+            ->assertOk()->assertSee('Payment verification in progress');
+
+        $this->assertSame(0, FakeStripeGateway::$retrieveCalls);
+        $this->assertSame('processing', $order->fresh()->payment_status);
+    }
+
+    public function test_payment_return_does_not_mark_unverified_provider_payment_as_paid(): void
+    {
+        FakeStripeGateway::$paymentStatus = 'processing';
+        $customer = User::factory()->create(['role' => 'customer', 'is_active' => true]);
+        $order = $this->pendingStripeOrder($customer);
+        $payment = $this->processingStripePayment($order);
+
+        $this->actingAs($customer, 'web')->get(route('payments.return', ['provider' => 'stripe']).'?session_id='.$payment->provider_session_id)
+            ->assertRedirect(route('account.orders.show', $order));
+
+        $this->assertSame(1, FakeStripeGateway::$retrieveCalls);
+        $this->assertSame('processing', $payment->fresh()->status);
+        $this->assertSame('processing', $order->fresh()->payment_status);
+    }
+
     public function test_verified_stripe_payment_advances_order_directly_to_design_review(): void
     {
         $customer = User::factory()->create(['role' => 'customer', 'is_active' => true]);

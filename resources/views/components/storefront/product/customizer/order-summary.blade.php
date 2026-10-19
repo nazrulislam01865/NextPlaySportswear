@@ -1,4 +1,4 @@
-@props(['product', 'materialGroup' => null, 'sizeRangeLabel' => 'Configured sizes', 'isEditing' => false])
+@props(['product', 'materialGroup' => null, 'sizeRangeLabel' => 'Configured sizes', 'isEditing' => false, 'rosterStep' => null, 'artworkStep' => 4, 'productionStep' => 5])
 
 <aside class="np-custom-order-card" :class="mobileOrderSummaryOpen ? 'is-mobile-open' : ''" aria-label="Your Custom Order">
     <div class="np-custom-order-mobile-capsule">
@@ -81,6 +81,7 @@
         </div>
     </section>
 
+    @if($rosterStep)
     <section class="np-custom-order-section np-custom-order-compact-row">
         <div class="np-custom-order-icon">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4 4 7l3 4v9h10v-9l3-4-4-3-2 3h-4L8 4Z"/><path d="M10 11h4M12 9v4"/></svg>
@@ -94,8 +95,9 @@
             @endif
             <small x-text="rosterEnabled ? 'Names & numbers added' : 'Complete player details if required'"></small>
         </div>
-        <button type="button" @click="openCustomizerStep(3)">Change <span aria-hidden="true">›</span></button>
+        <button type="button" @click="openCustomizerStep({{ $rosterStep }})">Change <span aria-hidden="true">›</span></button>
     </section>
+    @endif
 
     <section class="np-custom-order-section np-custom-order-compact-row">
         <div class="np-custom-order-icon">
@@ -104,9 +106,9 @@
         <div>
             <h4>Artwork</h4>
             <strong x-text="artworkFiles.length ? `${artworkFiles.length} file${artworkFiles.length === 1 ? '' : 's'} uploaded` : 'Not selected yet'"></strong>
-            <small x-text="artworkFiles.length ? 'Design ready for production review' : 'Add artwork in Step 4'"></small>
+            <small x-text="artworkFiles.length ? 'Design ready for production review' : 'Add artwork in Step {{ $artworkStep }}'"></small>
         </div>
-        <button type="button" @click="openCustomizerStep(4)">Change <span aria-hidden="true">›</span></button>
+        <button type="button" @click="openCustomizerStep({{ $artworkStep }})">Change <span aria-hidden="true">›</span></button>
     </section>
 
     <section class="np-custom-order-section np-custom-order-compact-row">
@@ -120,7 +122,7 @@
                 <span><b x-text="shippingLabel()"></b><small x-text="shippingDaysOnlyLabel()"></small></span>
             </span>
         </div>
-        <button type="button" @click="openCustomizerStep(5)">Change <span aria-hidden="true">›</span></button>
+        <button type="button" @click="openCustomizerStep({{ $productionStep }})">Change <span aria-hidden="true">›</span></button>
     </section>
 
     <section class="np-custom-order-pricing" aria-label="Estimated pricing">
@@ -149,7 +151,7 @@
             class="btn btn-secondary btn-xl np-custom-order-add-to-cart"
             :disabled="!canAddToCart()"
             :aria-disabled="!canAddToCart() ? 'true' : 'false'"
-            :title="canAddToCart() ? 'Add configured product to cart' : 'Complete all required customization steps first'"
+            :title="canAddToCart() ? 'Add configured product to cart' : (validationIssue()?.message || 'Complete all required customization steps first')"
         >
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2 11h10l3-7H7"/><circle cx="10" cy="19" r="1.5"/><circle cx="18" cy="19" r="1.5"/></svg>
             {{ $isEditing ? 'Update Cart Item' : 'Add to Cart' }}
@@ -158,7 +160,7 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6V3Z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg>
             Save as Quote
         </a>
-        <p class="np-custom-order-disabled-note" x-show="!canAddToCart()" x-cloak>Complete all required steps to enable Add to Cart.</p>
+        <p class="np-custom-order-disabled-note" x-show="!canAddToCart()" x-cloak x-text="validationIssue()?.message || 'Complete all required steps to enable Add to Cart.'"></p>
     </div>
     </div>
 </aside>

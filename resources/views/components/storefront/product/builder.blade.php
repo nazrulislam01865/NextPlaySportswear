@@ -24,6 +24,7 @@
                 'existing' => true,
                 'extension' => $extension,
                 'previewable' => $previewable,
+                'purpose' => ($file['purpose'] ?? 'artwork') === 'reference' ? 'reference' : 'artwork',
                 'url' => route('cart.items.artwork.show', [
                     'cartItem' => (string) ($editItem['key'] ?? ''),
                     'artworkIndex' => $index,
@@ -43,6 +44,7 @@
         'option_groups' => $product['option_groups'] ?? [],
         'size_groups' => $product['size_groups'] ?? [],
         'artwork_upload' => $product['artwork_upload'] ?? ['enabled' => false],
+        'artwork_preferences' => $product['artwork_preferences'] ?? [],
         'production_methods_enabled' => (bool) ($product['production_methods_enabled'] ?? false),
         'production_speeds' => $product['production_speeds'] ?? [],
         'shipping_methods' => $product['shipping_methods'] ?? [],
@@ -69,6 +71,7 @@
             'roster' => array_values((array) ($editConfiguration['roster'] ?? [])),
             'sample_requested' => (bool) ($editConfiguration['sample_requested'] ?? false),
             'artwork_files' => $existingArtwork,
+            'artwork_help' => (array) ($editConfiguration['artwork_help'] ?? []),
         ] : null,
     ];
 
@@ -218,10 +221,8 @@ window.productBuilderFabricPricing = function (config = {}) {
                 });
             }
         },
-        artworkMode: 'upload',
-        artworkHelpNotes: '',
-        artworkHelpStyle: 'modern',
-        artworkHelpColor: '',
+        // Artwork mode and help selections belong to the shared builder state in storefront.js.
+
         scrollCustomizerStepIntoView(step, behavior = 'smooth') {
             const next = Math.max(1, Math.min(Number(this.maxCustomizerStep || 1), Number(step || 1)));
             requestAnimationFrame(() => {
@@ -277,6 +278,7 @@ window.productBuilderFabricPricing = function (config = {}) {
         setArtworkMode(mode) {
             if (!['upload', 'existing', 'help'].includes(mode)) return;
             this.artworkMode = mode;
+            this.sync();
         },
         clearRosterRow(rowIndex) {
             const row = this.rosterRows?.[Number(rowIndex)];
@@ -615,7 +617,12 @@ window.productBuilderFabricPricing = function (config = {}) {
             return Number.isFinite(price) && price >= 0 ? Math.round((price + Number.EPSILON) * 100) / 100 : null;
         },
         canAddToCart() {
-            return this.activeCustomizerStep === 6;
+            // The review step can be 5 or 6, and all panels start expanded.
+            // Valid configurations must not depend on which accordion was last clicked.
+            // On the review step, still allow a submit attempt so validate() can
+            // explain any missing fields and navigate to the relevant section.
+            return Number(this.activeCustomizerStep) === Number(this.maxCustomizerStep)
+                || this.validationIssue() === null;
         },
         optionGroupSummary(group) {
             if (!group) return 'Not selected';
@@ -832,7 +839,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                     <input type="hidden" name="delivery_preference" :value="deliveryLabel()">
                     <input type="hidden" name="size_summary" :value="sizeSummary()">
                     <input type="hidden" name="artwork_status" :value="artworkLabel()">
-                    <input type="hidden" name="notes" :value="`${selectionSummary()}${artworkMode === 'help' && artworkHelpNotes ? ` | Artwork help: ${artworkHelpNotes}` : ''}${artworkMode === 'help' ? ` | Design style: ${artworkHelpStyle}` : ''}${artworkMode === 'help' && artworkHelpColor ? ` | Color preference: ${artworkHelpColor}` : ''}`.slice(0, 1000)">
+                    <input type="hidden" name="notes" :value="`${selectionSummary()}${artworkMode === 'help' && artworkHelpNotes ? ` | Artwork help: ${artworkHelpNotes}` : ''}${artworkMode === 'help' && selectedArtworkStyle() ? ` | Design style: ${selectedArtworkStyle().name}` : ''}${artworkMode === 'help' && selectedArtworkColor() ? ` | Pantone: ${selectedArtworkColor().code}` : ''}`.slice(0, 1000)">
                     <input type="hidden" name="configuration_json" :value="configurationJson">
 
                     {{-- STEP 1: PRICE & FABRIC --}}
@@ -1044,14 +1051,14 @@ window.productBuilderFabricPricing = function (config = {}) {
                                             <x-storefront.product.ui-icon :src="$ui['artwork_drop_icon']" name="upload" />
                                             <strong>{{ $ui['artwork_drop_title'] }}</strong>
                                             <span>{{ $ui['artwork_browse_text'] }}</span>
-                                            <input x-ref="artworkInput" type="file" name="artwork_files[]" multiple accept="{{ collect($artworkUpload['accepted_types'] ?? [])->map(fn ($type) => '.'.ltrim($type, '.'))->implode(',') }}" @change="handleArtworkFiles($event)" @if(($artworkUpload['required'] ?? false) && empty($existingArtwork)) required @endif>
+                                            <input x-ref="artworkInput" type="file" name="artwork_files[]" multiple accept="{{ collect($artworkUpload['accepted_types'] ?? [])->map(fn ($type) => '.'.ltrim($type, '.'))->implode(',') }}" @change="handleArtworkFiles($event, 'artwork')">
                                         </label>
                                         <div class="np-proto-upload-specs"><strong>{{ $ui['artwork_formats_label'] }}</strong><span>{{ collect($artworkUpload['accepted_types'] ?? [])->map(fn ($type) => strtoupper($type))->implode(', ') ?: 'PDF, SVG, PNG, JPG' }}</span><strong>{{ $ui['artwork_max_size_label'] }}</strong><span>{{ (int) ($artworkUpload['max_file_size_mb'] ?? 15) }} MB per file</span><small>{{ $ui['artwork_multiple_files_text'] }}</small></div>
                                     </div>
 
-                                    <div class="np-proto-uploaded-files" x-show="artworkFiles.length" x-cloak>
-                                        <div class="np-proto-uploaded-files__head"><h4>Uploaded Files (<span x-text="artworkFiles.length"></span>)</h4><button type="button" @click="while(artworkFiles.length) removeArtworkFile(artworkFiles.length - 1)">Remove All</button></div>
-                                        <template x-for="(file, fileIndex) in artworkFiles" :key="file.key">
+                                    <div class="np-proto-uploaded-files" x-show="artworkFiles.some(file => file.purpose !== 'reference')" x-cloak>
+                                        <div class="np-proto-uploaded-files__head"><h4>Uploaded Files (<span x-text="artworkFiles.filter(file => file.purpose !== 'reference').length"></span>)</h4><button type="button" @click="artworkFiles.filter(file => file.purpose !== 'reference').forEach(file => removeArtworkFile(artworkFiles.findIndex(item => item.key === file.key)))">Remove All</button></div>
+                                        <template x-for="file in artworkFiles.filter(file => file.purpose !== 'reference')" :key="file.key">
                                             <div class="np-proto-file-row">
                                                 <span class="np-proto-file-thumb"><img x-show="file.previewUrl || file.url" :src="file.previewUrl || file.url" alt=""><svg x-show="!file.previewUrl && !file.url" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6V3Z"/><path d="M9 12h6M9 16h6"/></svg></span>
                                                 <strong x-text="file.name"></strong>
@@ -1059,7 +1066,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                                                 <span class="np-proto-file-status">● <span>Uploaded</span></span>
                                                 <a class="np-proto-icon-button" :href="file.previewUrl || file.url || null" target="_blank" rel="noopener" aria-label="Preview artwork"><svg viewBox="0 0 24 24"><path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></a>
                                                 <a class="np-proto-icon-button" :href="file.previewUrl || file.url || null" :download="file.name" aria-label="Download artwork"><svg viewBox="0 0 24 24"><path d="M12 4v11M8 11l4 4 4-4"/><path d="M5 19h14"/></svg></a>
-                                                <button type="button" class="np-proto-icon-button" @click="removeArtworkFile(fileIndex)" aria-label="Remove artwork file"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13"/></svg></button>
+                                                <button type="button" class="np-proto-icon-button" @click="removeArtworkFile(artworkFiles.findIndex(item => item.key === file.key))" aria-label="Remove artwork file"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13"/></svg></button>
                                             </div>
                                         </template>
                                     </div>
@@ -1072,26 +1079,39 @@ window.productBuilderFabricPricing = function (config = {}) {
 
                             <div x-show="artworkMode === 'existing'" x-cloak>
                                 <div class="np-proto-existing-header"><div><h4>My Designs</h4><p>Choose from designs already attached to this saved order.</p></div></div>
-                                <div class="np-proto-design-grid" x-show="artworkFiles.filter(file => file.existing).length">
-                                    <template x-for="file in artworkFiles.filter(file => file.existing)" :key="file.key">
+                                <div class="np-proto-design-grid" x-show="artworkFiles.filter(file => file.existing && file.purpose !== 'reference').length">
+                                    <template x-for="file in artworkFiles.filter(file => file.existing && file.purpose !== 'reference')" :key="file.key">
                                         <article class="np-proto-design-card is-selected"><span class="np-proto-design-check">✓</span><div class="np-proto-design-media"><img x-show="file.url" :src="file.url" alt=""></div><strong x-text="file.name"></strong><small>Saved artwork</small></article>
                                     </template>
                                 </div>
-                                <div class="np-proto-empty-state" x-show="!artworkFiles.filter(file => file.existing).length"><strong>No saved designs are attached to this order yet.</strong><span>Upload artwork to make it available here while editing the cart item.</span></div>
+                                <div class="np-proto-empty-state" x-show="!artworkFiles.filter(file => file.existing && file.purpose !== 'reference').length"><strong>No saved designs are attached to this order yet.</strong><span>Upload artwork to make it available here while editing the cart item.</span></div>
                             </div>
 
                             <div x-show="artworkMode === 'help'" x-cloak>
                                 <div class="np-proto-help-grid">
                                     <div class="np-proto-help-form">
-                                        <h4>Share Your Design Ideas</h4><p>Tell us what you have in mind. Our professional design team will create the artwork for your approval.</p>
-                                        <label><strong>Describe Your Ideas <span class="np-required">*</span></strong><textarea maxlength="500" x-model="artworkHelpNotes" placeholder="Example: I want a design similar to this image, with our logo and player numbers."></textarea><small><span x-text="artworkHelpNotes.length"></span>/500</small></label>
-                                        <div class="np-proto-help-upload"><strong>Reference Images <span>(Optional)</span></strong><label class="np-proto-upload-dropzone is-compact"><svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M5 14a4 4 0 0 0 1 8h12a4 4 0 0 0 1-8"/></svg><strong>Drag &amp; drop images here</strong><span>or click to browse</span><input type="file" name="artwork_files[]" multiple accept="image/png,image/jpeg,image/webp" @change="handleArtworkFiles($event)"></label></div>
+                                        <label><strong>Describe Your Ideas <span class="np-required">*</span></strong><textarea maxlength="500" x-model="artworkHelpNotes" @input="sync()" placeholder="Example: I want a design similar to this image, with our logo and player numbers."></textarea><small><span x-text="artworkHelpNotes.length"></span>/500</small></label>
+                                        <div class="np-proto-help-upload"><strong>Reference Images <span>(Optional)</span></strong><label class="np-proto-upload-dropzone is-compact" @dragover.prevent @drop.prevent="dropArtworkFiles($event, 'reference')"><svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M5 14a4 4 0 0 0 1 8h12a4 4 0 0 0 1-8"/></svg><strong>Drag &amp; drop images here</strong><span>or click to browse</span><input x-ref="referenceInput" type="file" name="artwork_reference_files[]" multiple accept="image/png,image/jpeg,image/webp" @change="handleArtworkFiles($event, 'reference')"></label>
+                                        <div class="np-proto-uploaded-files" x-show="artworkFiles.some(file => file.purpose === 'reference')" x-cloak>
+                                            <div class="np-proto-uploaded-files__head"><h4>Reference Images (<span x-text="artworkFiles.filter(file => file.purpose === 'reference').length"></span>)</h4></div>
+                                            <template x-for="file in artworkFiles.filter(file => file.purpose === 'reference')" :key="file.key"><div class="np-proto-file-row"><span class="np-proto-file-thumb"><img :src="file.previewUrl || file.url" :alt="file.name"></span><strong x-text="file.name"></strong><small x-text="file.sizeLabel"></small><button type="button" class="np-proto-icon-button" @click="removeArtworkFile(artworkFiles.findIndex(item => item.key === file.key))" aria-label="Remove reference image">×</button></div></template>
+                                        </div>
+                                        </div>
                                         <div class="np-proto-help-preferences">
-                                            <div class="np-proto-color-picker"><strong>Color Preference <span>(Optional)</span></strong><div><template x-for="color in ['#082b63','#ef233c','#111827','#ffffff','#f5c518','#0f9f8f','#1665d8','#ef70a1','#ff6b1a']"><button type="button" :class="artworkHelpColor === color ? 'is-selected' : ''" :style="`--swatch:${color}`" @click="artworkHelpColor = color" :aria-label="`Choose ${color} color preference`"></button></template><button type="button" class="is-more" @click="artworkHelpColor = ''" aria-label="Clear color preference">+</button></div></div>
-                                            <div class="np-proto-style-picker"><strong>Design Style <span>(Optional)</span></strong><div><template x-for="style in ['modern','classic','bold','minimal','other']"><button type="button" :class="artworkHelpStyle === style ? 'is-selected' : ''" @click="artworkHelpStyle = style" x-text="style.charAt(0).toUpperCase()+style.slice(1)"></button></template></div></div>
+                                            <div class="np-proto-color-picker"><strong>Color Preference <span>(Optional)</span></strong>
+                                                <div x-show="(config.artwork_preferences?.pantone || []).length">
+                                                    <template x-for="color in (config.artwork_preferences?.pantone || [])" :key="color.id"><button type="button" :class="String(artworkHelpColor) === String(color.id) ? 'is-selected' : ''" :aria-pressed="String(artworkHelpColor) === String(color.id)" :style="`--swatch:${color.hex_color}`" @click="artworkHelpColor = String(artworkHelpColor) === String(color.id) ? null : color.id; sync()" :title="`${color.name} (${color.code})`" :aria-label="`Pantone ${color.code} — ${color.name}`"></button></template>
+                                                    <button type="button" class="is-more" x-show="artworkHelpColor !== null && artworkHelpColor !== ''" x-cloak @click="artworkHelpColor = null; sync()" aria-label="Clear Pantone color preference">Clear</button>
+                                                </div><p x-show="!(config.artwork_preferences?.pantone || []).length" class="text-sm text-slate-500">No Pantone colors configured for this product.</p>
+                                                <small x-show="selectedArtworkColor()" x-text="selectedArtworkColor() ? `${selectedArtworkColor().name} — Pantone ${selectedArtworkColor().code}` : ''"></small>
+                                            </div>
+                                            <div class="np-proto-style-picker"><strong>Design Style <span>(Optional)</span></strong><div>
+                                                <template x-for="style in (config.artwork_preferences?.style || [])" :key="style.id"><button type="button" :class="String(artworkHelpStyle) === String(style.id) ? 'is-selected' : ''" :aria-pressed="String(artworkHelpStyle) === String(style.id)" @click="artworkHelpStyle = String(artworkHelpStyle) === String(style.id) ? null : style.id; sync()" x-text="style.name"></button></template>
+                                                <span x-show="!(config.artwork_preferences?.style || []).length" class="text-sm text-slate-500">No styles configured for this product.</span>
+                                                </div></div>
                                         </div>
                                     </div>
-                                    <aside class="np-proto-inspiration"><h4>Design Inspiration</h4><p>Use your product images as references while describing the design direction.</p><div class="np-proto-inspiration-grid">@foreach(collect($product['gallery'] ?? [])->take(6) as $image)<figure><img src="{{ $image['url'] ?? '' }}" alt=""><figcaption>Style Example {{ $loop->iteration }}</figcaption></figure>@endforeach</div></aside>
+                                    <aside class="np-proto-inspiration"><h4>Design Inspiration</h4><p>Images from this product, for reference when describing your ideas.</p><div class="np-proto-inspiration-grid">@forelse(collect($product['gallery'] ?? [])->filter(fn ($image) => filled($image['url'] ?? null) && !str_contains($image['url'], 'product-placeholder.svg'))->take(6) as $image)<figure><img src="{{ $image['url'] }}" alt="{{ $image['alt'] ?? $product['title'] }}" loading="lazy"></figure>@empty<p>No design images available for this product yet.</p>@endforelse</div></aside>
                                 </div>
                                 <div class="np-proto-info-panel"><x-storefront.product.ui-icon :src="$ui['artwork_info_icon']" name="info" /><div><strong>{{ $ui['artwork_help_next_title'] }}</strong><ul>@foreach(\App\Support\ProductStorefrontUi::lines($ui['artwork_help_next_lines']) as $line)<li>{{ $line }}</li>@endforeach</ul></div></div>
                             </div>
@@ -1269,7 +1289,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                                                 <button type="button" @click="openCustomizerStep({{ $artworkStep }})">Edit</button>
                                             </div>
                                             <div class="np-review-detail-list">
-                                                <div><span>Status</span><strong x-text="artworkFiles.length ? `${artworkFiles.length} file${artworkFiles.length === 1 ? '' : 's'} uploaded` : 'Not selected yet'"></strong></div>
+                                                <div><span>Status</span><strong x-text="artworkMode === 'help' ? 'Design help requested' : artworkLabel()"></strong></div>
                                             </div>
                                             <div class="np-review-artwork-list" x-show="artworkFiles.length" x-cloak>
                                                 <template x-for="file in artworkFiles" :key="file.key || file.name">
@@ -1321,7 +1341,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                     </section>
                 </form>
 
-                <x-storefront.product.customizer.order-summary :product="$product" :material-group="$materialGroup" :size-range-label="$sizeRangeLabel" :is-editing="$isEditing" />
+                <x-storefront.product.customizer.order-summary :product="$product" :material-group="$materialGroup" :size-range-label="$sizeRangeLabel" :is-editing="$isEditing" :roster-step="$rosterStep" :artwork-step="$artworkStep" :production-step="$productionStep" />
             </div>
         </section>
 

@@ -28,6 +28,8 @@ class AddCartItemRequest extends FormRequest
             'configuration_json' => ['nullable', 'json', 'max:1000000'],
             'artwork_files' => ['nullable', 'array', 'max:12'],
             'artwork_files.*' => ['file', 'mimes:pdf,svg,png,jpg,jpeg,webp', 'max:25600'],
+            'artwork_reference_files' => ['nullable', 'array', 'max:5'],
+            'artwork_reference_files.*' => ['file', 'mimes:png,jpg,jpeg,webp', 'max:10240'],
             // Kept for backward compatibility with older cached product forms.
             'artwork_file' => ['nullable', 'file', 'mimes:pdf,svg,png,jpg,jpeg,webp', 'max:25600'],
         ];

@@ -102,6 +102,7 @@ class CartController extends Controller
 
         abort_if($product === null, 404);
 
+        $this->validateArtworkHelp($payload, $product);
         $artwork = $this->prepareArtworkPayload($request, $product);
         $payload['artwork_files'] = $artwork['files'];
         $payload['artwork_path'] = $artwork['files'][0]['path'] ?? null;
@@ -140,6 +141,7 @@ class CartController extends Controller
         abort_if($product === null, 404);
 
         $existingArtwork = (array) data_get($existingItem, 'customization.artwork_files', []);
+        $this->validateArtworkHelp($payload, $product);
         $artwork = $this->prepareArtworkPayload($request, $product, $existingArtwork);
         $payload['artwork_files'] = $artwork['files'];
         $payload['artwork_path'] = $artwork['files'][0]['path'] ?? null;
@@ -279,6 +281,31 @@ class CartController extends Controller
      * @param  array<int, array<string, mixed>>  $existingArtwork
      * @return array{files: array<int, array<string, mixed>>, new_paths: array<int, string>}
      */
+    private function validateArtworkHelp(array $payload, array $product): void
+    {
+        $raw = json_decode((string) ($payload['configuration_json'] ?? '{}'), true);
+        if (! is_array($raw) || ($raw['artwork_mode'] ?? null) !== 'help') {
+            return;
+        }
+
+        $notes = trim((string) ($raw['artwork_help_notes'] ?? ''));
+        if ($notes === '' || mb_strlen($notes) > 500) {
+            throw ValidationException::withMessages([
+                'artwork_help_notes' => 'Describe your design ideas (maximum 500 characters) before requesting artwork help.',
+            ]);
+        }
+
+        foreach (['pantone' => 'artwork_help_color_id', 'style' => 'artwork_help_style_id'] as $type => $key) {
+            if (blank($raw[$key] ?? null)) {
+                continue;
+            }
+            $assigned = collect(data_get($product, 'artwork_preferences.'.$type, []))->pluck('id')->map(fn ($id) => (string) $id)->all();
+            if (! in_array((string) $raw[$key], $assigned, true)) {
+                throw ValidationException::withMessages([$key => 'This artwork preference is not available for the selected product.']);
+            }
+        }
+    }
+
     private function prepareArtworkPayload(Request $request, array $product, array $existingArtwork = []): array
     {
         $settings = $product['artwork_upload'] ?? ['enabled' => false];
@@ -298,6 +325,7 @@ class CartController extends Controller
                 'original_name' => mb_substr((string) ($file['original_name'] ?? 'Artwork file'), 0, 255),
                 'size' => max(0, (int) ($file['size'] ?? 0)),
                 'mime_type' => mb_substr((string) ($file['mime_type'] ?? 'application/octet-stream'), 0, 120),
+                'purpose' => ($file['purpose'] ?? 'artwork') === 'reference' ? 'reference' : 'artwork',
             ])
             ->keyBy('path');
 
@@ -319,52 +347,53 @@ class CartController extends Controller
             $uploads->push($request->file('artwork_file'));
         }
         $uploads = $uploads->filter()->values();
+        $references = collect((array) $request->file('artwork_reference_files', []))->filter()->values();
+        $helpMode = data_get(json_decode((string) $request->input('configuration_json', '{}'), true), 'artwork_mode') === 'help';
 
-        if (! $enabled && $uploads->isNotEmpty()) {
-            throw ValidationException::withMessages([
-                'artwork_files' => 'Custom artwork uploads are not enabled for this product.',
-            ]);
+        if (! $enabled && ($uploads->isNotEmpty() || $references->isNotEmpty())) {
+            throw ValidationException::withMessages(['artwork_files' => 'Artwork uploads are not enabled for this product.']);
         }
 
-        if ($retainedArtwork->count() + $uploads->count() > $maximumFiles) {
+        $allArtworkCount = $retainedArtwork->where('purpose', 'artwork')->count() + $uploads->count();
+        $allReferenceCount = $retainedArtwork->where('purpose', 'reference')->count() + $references->count();
+        if (! $helpMode && $allReferenceCount > 0) {
+            throw ValidationException::withMessages(['artwork_reference_files' => 'Remove reference images or choose Need Help with Artwork.']);
+        }
+        if ($allArtworkCount > $maximumFiles || $allReferenceCount > 5 || $allArtworkCount + $allReferenceCount > 12) {
             throw ValidationException::withMessages([
-                'artwork_files' => "You may keep or upload a maximum of {$maximumFiles} artwork files for this product.",
+                'artwork_files' => 'Too many artwork or reference files were selected (maximum 5 references and 12 files total).',
             ]);
         }
 
         foreach ($uploads as $file) {
             $extension = strtolower((string) $file->getClientOriginalExtension());
             if (! $acceptedTypes->contains($extension)) {
-                throw ValidationException::withMessages([
-                    'artwork_files' => 'One or more artwork files use an unsupported file type.',
-                ]);
+                throw ValidationException::withMessages(['artwork_files' => 'One or more artwork files use an unsupported file type.']);
             }
             if ((int) $file->getSize() > ($maximumSizeMb * 1024 * 1024)) {
-                throw ValidationException::withMessages([
-                    'artwork_files' => "Each artwork file must be no larger than {$maximumSizeMb} MB.",
-                ]);
+                throw ValidationException::withMessages(['artwork_files' => "Each artwork file must be no larger than {$maximumSizeMb} MB."]);
             }
         }
 
-        if ($enabled && ($settings['required'] ?? false) && $retainedArtwork->isEmpty() && $uploads->isEmpty()) {
-            throw ValidationException::withMessages([
-                'artwork_files' => 'Upload or retain at least one custom artwork file for this product.',
-            ]);
+        if ($enabled && ($settings['required'] ?? false) && ! $helpMode && $allArtworkCount === 0) {
+            throw ValidationException::withMessages(['artwork_files' => 'Upload or retain at least one custom artwork file for this product.']);
         }
 
-        $storedArtwork = $uploads->map(function ($file) use ($request): array {
-            $path = $file->store(
-                'customer-artwork/'.hash('sha256', $request->session()->getId()),
-                'local'
-            );
-
-            return [
-                'path' => $path,
-                'original_name' => mb_substr(basename((string) $file->getClientOriginalName()), 0, 255),
-                'size' => (int) $file->getSize(),
-                'mime_type' => mb_substr((string) ($file->getMimeType() ?: 'application/octet-stream'), 0, 120),
-            ];
-        })->values();
+        // Store reference images on the same private disk as artwork, but tag them
+        // so downstream order/FlowTrack consumers can distinguish the two.
+        $storedArtwork = $uploads->map(fn ($file): array => [$file, 'artwork'])
+            ->concat($references->map(fn ($file): array => [$file, 'reference']))
+            ->map(function (array $upload) use ($request): array {
+                [$file, $purpose] = $upload;
+                $path = $file->store('customer-artwork/'.hash('sha256', $request->session()->getId()), 'local');
+                return [
+                    'path' => $path,
+                    'original_name' => mb_substr(basename((string) $file->getClientOriginalName()), 0, 255),
+                    'size' => (int) $file->getSize(),
+                    'mime_type' => mb_substr((string) ($file->getMimeType() ?: 'application/octet-stream'), 0, 120),
+                    'purpose' => $purpose,
+                ];
+            })->values();
 
         $files = $retainedArtwork->concat($storedArtwork)->values()->all();
 
