@@ -69,11 +69,11 @@
             </label>
             <label class="admin-label">
                 Starts at
-                <input type="datetime-local" name="starts_at" value="{{ old('starts_at', $coupon->starts_at?->format('Y-m-d\TH:i')) }}" class="admin-input">
+                <input type="datetime-local" data-np-utc-input name="starts_at" value="{{ old('starts_at', $coupon->starts_at?->format('Y-m-d\TH:i')) }}" class="admin-input">
             </label>
             <label class="admin-label">
                 Expires at
-                <input type="datetime-local" name="expires_at" value="{{ old('expires_at', $coupon->expires_at?->format('Y-m-d\TH:i')) }}" class="admin-input">
+                <input type="datetime-local" data-np-utc-input name="expires_at" value="{{ old('expires_at', $coupon->expires_at?->format('Y-m-d\TH:i')) }}" class="admin-input">
             </label>
             <label class="flex items-center gap-3 self-end rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-800">
                 <input type="hidden" name="is_active" value="0">

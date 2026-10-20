@@ -1,5 +1,13 @@
 # Bulk Quote form: Google reCAPTCHA v2 setup
 
+## Local development (CAPTCHA disabled)
+
+For development on your own computer, set `APP_ENV=local` in the existing `.env`, then run `php artisan optimize:clear`. With this setting, the bulk quote form hides the Google CAPTCHA widget, does not load the CAPTCHA script, keeps the submit button available, and omits CAPTCHA verification on the server. **You do not need `RECAPTCHA_SITE_KEY` or `RECAPTCHA_SECRET_KEY` locally.** Other form validation, the honeypot, CSRF token, and request throttling still apply.
+
+Do not set `APP_ENV=local` on any public-facing server. `APP_ENV=production`, `testing`, `staging`, and any other value still require valid Google keys and successful server-side CAPTCHA verification (fail closed). If your application configuration is cached after a change to `.env`, clear or rebuild that cache before testing.
+
+## Hosted environments (CAPTCHA required)
+
 This integration protects **only** the public `/bulk-quote` POST form. It uses Google's **reCAPTCHA v2 checkbox**, verified server-side before any quote data is saved, file uploaded, email sent, or integration dispatched. Existing form throttling and the honeypot remain in place.
 
 1. Register your website in Google's reCAPTCHA admin console: https://www.google.com/recaptcha/admin/create. Select **reCAPTCHA v2** and **"I'm not a robot" Checkbox**. Add your real site domain(s), e.g., `nextplay.com` and `www.nextplay.com` if both are used. For local testing, separately register `localhost` as appropriate. Do not use v3 or Enterprise keys with this widget.

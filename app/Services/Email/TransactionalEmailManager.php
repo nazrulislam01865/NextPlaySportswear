@@ -292,7 +292,43 @@ final class TransactionalEmailManager
         );
     }
 
-    public function bulkQuoteReceived(BulkQuoteRequest $quote): void
+    public function bulkQuoteGuestFeedback(BulkQuoteRequest $quote, string $heading, string $body): void
+    {
+        $this->queueInternal(
+            recipientKey: 'sales',
+            message: new EmailMessage(
+                key: 'quote.internal-feedback',
+                recipients: [],
+                subject: $heading.' - '.$quote->reference,
+                heading: 'Quotation: '.$heading,
+                introLines: [$body],
+                details: [
+                    'Quote reference' => $quote->reference,
+                    'Customer email' => $quote->email,
+                ],
+                actionText: 'Open Quote in Admin',
+                actionUrl: route('admin.bulk-quotes.show', $quote),
+                metadata: ['bulk_quote_request_id' => $quote->id],
+            ),
+        );
+    }
+
+    public function bulkQuoteUpdate(BulkQuoteRequest $quote, string $heading, string $message): void
+    {
+        $this->emails->safelyQueue(new EmailMessage(
+            key: 'quote.customer-update',
+            recipients: $this->customerRecipient($quote->email, $quote->full_name),
+            subject: $heading.' - '.$quote->reference,
+            heading: $heading,
+            introLines: [$message, $quote->user_id ? 'Sign in to My Account → Bulk Quotes to review this update.' : 'Open your original secure tracking link from the confirmation email to review this update.'],
+            details: ['Quote request' => $quote->reference, 'Status' => BulkQuoteRequest::statuses()[$quote->status] ?? $quote->status],
+            actionText: $quote->user_id ? 'View Quotation in My Account' : 'Track Quote',
+            actionUrl: $quote->user_id ? route('account.bulk-quotes.show', $quote->reference) : route('quote.guest.track'),
+            metadata: ['bulk_quote_request_id' => $quote->id],
+        ));
+    }
+
+    public function bulkQuoteReceived(BulkQuoteRequest $quote, ?string $guestToken = null): void
     {
         $this->emails->safelyQueue(new EmailMessage(
             key: 'quote.customer-confirmation',
@@ -308,8 +344,8 @@ final class TransactionalEmailManager
                 'Estimated Quantity' => $quote->estimated_quantity,
                 'Needed By' => $quote->needed_by?->format('M j, Y'),
             ], static fn (mixed $value): bool => filled($value)),
-            actionText: 'Visit NextPlay Sportswear',
-            actionUrl: route('home'),
+            actionText: $guestToken !== null ? 'Track Your Quote' : ($quote->user_id ? 'View My Bulk Quotes' : 'Visit NextPlay Sportswear'),
+            actionUrl: $guestToken !== null ? route('quote.guest.show', ['reference' => $quote->reference, 'token' => $guestToken]) : ($quote->user_id ? route('account.bulk-quotes.show', $quote->reference) : route('home')),
             metadata: ['bulk_quote_request_id' => $quote->id],
         ));
 

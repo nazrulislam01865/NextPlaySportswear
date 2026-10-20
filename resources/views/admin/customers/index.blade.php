@@ -88,7 +88,7 @@
                             <td class="px-5 py-4">
                                 <a href="{{ route('admin.customers.show', $customer) }}" class="font-black text-brand-blue">{{ $customer->name }}</a>
                                 <p class="mt-1 text-xs text-slate-500">{{ $customer->email }}</p>
-                                <p class="mt-1 text-[11px] font-semibold text-slate-400">Joined {{ $customer->created_at?->format('M d, Y') }}</p>
+                                <p class="mt-1 text-[11px] font-semibold text-slate-400">Joined {{ \App\Support\ViewerTime::render($customer->created_at, 'M d, Y') }}</p>
                             </td>
                             <td class="px-5 py-4">
                                 <p class="font-bold text-slate-700">{{ $customer->company_name ?: 'No company' }}</p>
@@ -108,9 +108,9 @@
                             <td class="px-5 py-4 text-center font-black text-brand-ink">{{ number_format($customer->orders_count) }}</td>
                             <td class="px-5 py-4 text-center font-black text-brand-ink">{{ number_format($customer->order_return_requests_count) }}</td>
                             <td class="px-5 py-4 text-slate-600">
-                                {{ $customer->last_order_at ? \Illuminate\Support\Carbon::parse($customer->last_order_at)->format('M d, Y') : 'Never' }}
+                                {{ $customer->last_order_at ? \App\Support\ViewerTime::render($customer->last_order_at, 'M d, Y') : 'Never' }}
                             </td>
-                            <td class="px-5 py-4 text-slate-600">{{ $customer->last_login_at?->format('M d, Y') ?: 'Never' }}</td>
+                            <td class="px-5 py-4 text-slate-600">{{ \App\Support\ViewerTime::render($customer->last_login_at, 'M d, Y') ?: 'Never' }}</td>
                             <td class="px-5 py-4 text-right">
                                 <a class="btn btn-white" href="{{ route('admin.customers.show', $customer) }}">View</a>
                             </td>

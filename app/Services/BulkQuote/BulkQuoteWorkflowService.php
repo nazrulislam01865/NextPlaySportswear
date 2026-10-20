@@ -29,6 +29,21 @@ final class BulkQuoteWorkflowService
             ]);
 
             $newStatus = (string) $data['status'];
+            // Guest quote pricing and publication are controlled exclusively by
+            // the versioned Publish Quotation action, never by the workflow form.
+            if ($quote->user_id === null && $quote->quotation_version > 0 &&
+                array_key_exists('quoted_amount', $data) && $data['quoted_amount'] !== null &&
+                round((float) $data['quoted_amount'], 2) !== round((float) $quote->quoted_amount, 2)) {
+                throw ValidationException::withMessages([
+                    'quoted_amount' => 'To change a published quotation price, publish a new quotation version with updated files.',
+                ]);
+            }
+            if ($quote->user_id === null && $newStatus === BulkQuoteRequest::STATUS_QUOTATION_SENT && ! $quote->quotation_version) {
+                throw ValidationException::withMessages([
+                    'status' => 'Upload and publish the guest quotation first to mark it as sent.',
+                ]);
+            }
+
             $isClosed = in_array($newStatus, [
                 BulkQuoteRequest::STATUS_REJECTED,
                 BulkQuoteRequest::STATUS_CONVERTED,
@@ -39,7 +54,7 @@ final class BulkQuoteWorkflowService
                 'status' => $newStatus,
                 'priority' => (string) $data['priority'],
                 'assigned_to' => $assigneeId,
-                'quoted_amount' => $data['quoted_amount'] ?? null,
+                'quoted_amount' => $quote->user_id === null && $quote->quotation_version > 0 ? $quote->quoted_amount : ($data['quoted_amount'] ?? null),
                 'quote_currency' => strtoupper((string) $data['quote_currency']),
                 'admin_note' => $data['admin_note'] ?? null,
                 'last_contacted_at' => $data['last_contacted_at'] ?? null,

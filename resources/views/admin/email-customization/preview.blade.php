@@ -497,7 +497,7 @@
                 <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-card sm:p-6">
                     <div class="flex items-center justify-between">
                         <h3 class="text-xs font-black uppercase tracking-wider text-slate-400">Publish Status</h3>
-                        <span class="text-[11px] text-slate-400">Last updated {{ $template->updated_at?->format('M d, Y') ?? 'Oct 22, 2024' }} by {{ $template->publishedBy?->name ?? 'Admin' }}</span>
+                        <span class="text-[11px] text-slate-400">Last updated {{ \App\Support\ViewerTime::render($template->updated_at, 'M d, Y') ?? 'Oct 22, 2024' }} by {{ $template->publishedBy?->name ?? 'Admin' }}</span>
                     </div>
 
                     <div class="mt-3 flex items-center gap-2">
@@ -543,7 +543,7 @@
                             </h2>
                             <span class="rounded bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-700">Inbox ×</span>
                         </div>
-                        <span class="text-xs text-slate-400 whitespace-nowrap">{{ now()->format('M d, Y, g:i A') }}</span>
+                        <span class="text-xs text-slate-400 whitespace-nowrap">{{ \App\Support\ViewerTime::render(now(), 'M d, Y, g:i A') }}</span>
                     </div>
 
                     <!-- Sender line -->

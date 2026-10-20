@@ -99,12 +99,12 @@
                             </td>
                             <td class="px-5 py-4 text-slate-600">{{ $subscriber->source ?: '—' }}</td>
                             <td class="px-5 py-4 text-slate-600">
-                                <strong class="block text-brand-ink">{{ $subscriber->subscribed_at?->format('M d, Y') ?: '—' }}</strong>
-                                <span class="text-xs text-slate-500">{{ $subscriber->subscribed_at?->format('H:i') }}</span>
+                                <strong class="block text-brand-ink">{{ \App\Support\ViewerTime::render($subscriber->subscribed_at, 'M d, Y') ?: '—' }}</strong>
+                                <span class="text-xs text-slate-500">{{ \App\Support\ViewerTime::render($subscriber->subscribed_at, 'H:i') }}</span>
                             </td>
                             <td class="px-5 py-4 text-slate-600">
-                                <strong class="block text-brand-ink">{{ $subscriber->updated_at?->format('M d, Y') ?: '—' }}</strong>
-                                <span class="text-xs text-slate-500">{{ $subscriber->updated_at?->format('H:i') }}</span>
+                                <strong class="block text-brand-ink">{{ \App\Support\ViewerTime::render($subscriber->updated_at, 'M d, Y') ?: '—' }}</strong>
+                                <span class="text-xs text-slate-500">{{ \App\Support\ViewerTime::render($subscriber->updated_at, 'H:i') }}</span>
                             </td>
                         </tr>
                     @empty

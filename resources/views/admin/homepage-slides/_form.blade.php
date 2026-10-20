@@ -223,8 +223,8 @@
     <x-admin.section-card title="Publishing" description="Set display order, active status, and an optional publication window.">
         <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
             <label class="admin-label">Sort order<input type="number" name="sort_order" value="{{ old('sort_order', $slide->sort_order ?? 0) }}" class="admin-input" min="0" max="1000000"></label>
-            <label class="admin-label">Starts at<input type="datetime-local" name="starts_at" value="{{ old('starts_at', $slide->starts_at?->format('Y-m-d\TH:i')) }}" class="admin-input"></label>
-            <label class="admin-label">Ends at<input type="datetime-local" name="ends_at" value="{{ old('ends_at', $slide->ends_at?->format('Y-m-d\TH:i')) }}" class="admin-input"></label>
+            <label class="admin-label">Starts at<input type="datetime-local" data-np-utc-input name="starts_at" value="{{ old('starts_at', $slide->starts_at?->format('Y-m-d\TH:i')) }}" class="admin-input"></label>
+            <label class="admin-label">Ends at<input type="datetime-local" data-np-utc-input name="ends_at" value="{{ old('ends_at', $slide->ends_at?->format('Y-m-d\TH:i')) }}" class="admin-input"></label>
             <label class="flex items-center gap-3 self-end rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-800">
                 <input type="hidden" name="is_active" value="0">
                 <input type="checkbox" name="is_active" value="1" @checked($checked('is_active', true)) class="h-5 w-5 rounded border-emerald-300 text-emerald-600">

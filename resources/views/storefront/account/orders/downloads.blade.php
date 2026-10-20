@@ -27,7 +27,7 @@
                         <p class="mt-1 text-sm text-slate-500">
                             Order {{ $download->order->order_number }} · {{ $download->original_name }}
                             @if($download->expires_at)
-                                · Expires {{ $download->expires_at->format('M d, Y') }}
+                                · Expires {{ \App\Support\ViewerTime::render($download->expires_at, 'M d, Y') }}
                             @endif
                             @if($download->remainingDownloads() !== null)
                                 · {{ $download->remainingDownloads() }} downloads remaining

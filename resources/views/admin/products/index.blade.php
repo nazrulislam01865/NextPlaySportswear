@@ -333,8 +333,8 @@
                                     </div>
                                 </td>
                                 <td class="product-updated-cell">
-                                    <p class="product-updated-date">{{ $product->updated_at?->format('M d, Y') ?? '—' }}</p>
-                                    <p class="product-updated-meta">{{ $product->updated_at?->format('h:i A') ?? 'Time unavailable' }} · {{ $product->updater?->name ?: $product->updater?->email ?: 'System / import' }}</p>
+                                    <p class="product-updated-date">{{ \App\Support\ViewerTime::render($product->updated_at, 'M d, Y') ?? '—' }}</p>
+                                    <p class="product-updated-meta">{{ \App\Support\ViewerTime::render($product->updated_at, 'h:i A') ?? 'Time unavailable' }} · {{ $product->updater?->name ?: $product->updater?->email ?: 'System / import' }}</p>
                                 </td>
                                 <td>
                                     @php($updateSummary = trim((string) $product->last_update_summary))

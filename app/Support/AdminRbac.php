@@ -527,6 +527,9 @@ class AdminRbac
         // existing Orders permission so current Order Manager and Support roles
         // gain read access without introducing a migration-only permission gap.
         if (Str::startsWith($name, 'bulk-quotes.')) {
+            if (in_array($name, ['bulk-quotes.publish', 'bulk-quotes.message'], true)) {
+                return 'orders.manage';
+            }
             return self::resourcePermission($name, 'orders');
         }
 

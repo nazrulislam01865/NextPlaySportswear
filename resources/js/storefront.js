@@ -4341,3 +4341,20 @@ window.referralShareActions = (config = {}) => ({
 });
 
 Alpine.start();
+
+// Copy the guest's secure quotation URL only on explicit user interaction.
+document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-quote-copy-link]');
+    if (!button) return;
+    const field = document.getElementById('np-quote-link');
+    if (!field?.value) return;
+    try {
+        if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+        await navigator.clipboard.writeText(field.value);
+        button.textContent = 'Copied';
+    } catch {
+        field.focus();
+        field.select();
+        button.textContent = 'Select & Copy';
+    }
+});

@@ -69,7 +69,7 @@
                                     <p class="mt-2 max-w-xs break-words text-xs leading-5 text-slate-600">{{ \Illuminate\Support\Str::limit($proof->customer_feedback, 130) }}</p>
                                 @endif
                             </td>
-                            <td class="px-4 py-4 text-xs text-slate-600">{{ $proof->updated_at?->format('M j, Y · g:i A') }}</td>
+                            <td class="px-4 py-4 text-xs text-slate-600">{{ \App\Support\ViewerTime::render($proof->updated_at, 'M j, Y · g:i A') }}</td>
                             <td class="px-4 py-4">
                                 <div class="flex flex-wrap justify-end gap-2">
                                     @if($proof->order)

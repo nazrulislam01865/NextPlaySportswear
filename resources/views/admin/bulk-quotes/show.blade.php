@@ -76,7 +76,7 @@
 
                         <label>
                             <span class="admin-label">Last Contacted</span>
-                            <input class="admin-input" type="datetime-local" name="last_contacted_at" value="{{ old('last_contacted_at', $bulkQuote->last_contacted_at?->format('Y-m-d\TH:i')) }}">
+                            <input class="admin-input" type="datetime-local" data-np-utc-input name="last_contacted_at" value="{{ old('last_contacted_at', $bulkQuote->last_contacted_at?->format('Y-m-d\TH:i')) }}">
                         </label>
 
                         <label>
@@ -108,19 +108,99 @@
                     <x-admin.detail-field label="Priority"><x-admin.status-pill :status="$bulkQuote->priority" /></x-admin.detail-field>
                     <x-admin.detail-field label="Assigned To">{{ $bulkQuote->assignedAdmin?->name ?: 'Unassigned' }}</x-admin.detail-field>
                     <x-admin.detail-field label="Quoted Amount">{{ $bulkQuote->quoted_amount !== null ? $bulkQuote->quote_currency.' '.number_format((float) $bulkQuote->quoted_amount, 2) : '—' }}</x-admin.detail-field>
-                    <x-admin.detail-field label="Last Contacted">{{ $bulkQuote->last_contacted_at?->format('M d, Y · g:i A') ?: '—' }}</x-admin.detail-field>
-                    <x-admin.detail-field label="Closed At">{{ $bulkQuote->closed_at?->format('M d, Y · g:i A') ?: '—' }}</x-admin.detail-field>
+                    <x-admin.detail-field label="Last Contacted">{{ \App\Support\ViewerTime::render($bulkQuote->last_contacted_at, 'M d, Y · g:i A') ?: '—' }}</x-admin.detail-field>
+                    <x-admin.detail-field label="Closed At">{{ \App\Support\ViewerTime::render($bulkQuote->closed_at, 'M d, Y · g:i A') ?: '—' }}</x-admin.detail-field>
                     <x-admin.detail-field label="Internal Note" :wide="true"><div class="whitespace-pre-line">{{ $bulkQuote->admin_note ?: '—' }}</div></x-admin.detail-field>
                 </dl>
             </x-admin.section-card>
         @endif
 
+            @if($bulkQuote->guest_decision)
+                <x-admin.section-card title="Customer Decision" description="The customer's latest response to your published quotation.">
+                    <p class="text-sm font-semibold text-brand-dark">{{ str($bulkQuote->guest_decision)->headline() }}</p>
+                    @if($bulkQuote->converted_order_id)
+                        <a class="btn btn-white mt-3" href="{{ route('admin.orders.show', $bulkQuote->convertedOrder) }}">View Created Order {{ $bulkQuote->convertedOrder?->order_number }}</a>
+                        <p class="mt-2 text-xs text-slate-500">This is a manual quotation invoice order. Payment has not been collected yet.</p>
+                    @endif
+                </x-admin.section-card>
+            @endif
+            @if($canManage)
+                <x-admin.section-card title="Prepare & Send Quotation" description="Upload your finalized quotation and publish it to the customer quote pages. Each publication creates a new version; previous files remain in the admin history.">
+                    <form action="{{ route('admin.bulk-quotes.publish', $bulkQuote) }}" method="POST" enctype="multipart/form-data">
+                        @csrf
+                        @php($quoteDetails = (array) $bulkQuote->quotation_details)
+                        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                            <label><span class="admin-label">Final quantity *</span><input class="admin-input" type="number" min="1" name="quantity" required value="{{ old('quantity', $quoteDetails['quantity'] ?? '') }}"></label>
+                            <label><span class="admin-label">Subtotal (USD) *</span><input class="admin-input" type="number" step="0.01" min="0" name="subtotal" required value="{{ old('subtotal', $quoteDetails['subtotal'] ?? '') }}"></label>
+                            <label><span class="admin-label">Customization (USD) *</span><input class="admin-input" type="number" step="0.01" min="0" name="customization" required value="{{ old('customization', $quoteDetails['customization'] ?? '0') }}"></label>
+                            <label><span class="admin-label">Shipping (USD) *</span><input class="admin-input" type="number" step="0.01" min="0" name="shipping" required value="{{ old('shipping', $quoteDetails['shipping'] ?? '0') }}"></label>
+                            <label><span class="admin-label">Valid Until *</span><input class="admin-input" type="date" name="valid_until" required min="{{ now()->toDateString() }}" value="{{ old('valid_until', $bulkQuote->quotation_valid_until?->toDateString() ?? now()->addDays(30)->toDateString()) }}"></label>
+                            <label><span class="admin-label">Shipping Method</span><input class="admin-input" name="shipping_method" maxlength="160" value="{{ old('shipping_method', $quoteDetails['shipping_method'] ?? '') }}"></label>
+                            <label class="md:col-span-2"><span class="admin-label">Payment Terms *</span><input class="admin-input" name="payment_terms" required maxlength="1000" value="{{ old('payment_terms', $quoteDetails['payment_terms'] ?? '') }}" placeholder="Example: 50% deposit; balance before dispatch"></label>
+                            <label class="md:col-span-2"><span class="admin-label">Quotation Notes</span><textarea class="admin-textarea min-h-[74px]" name="quotation_notes" maxlength="2500">{{ old('quotation_notes', $quoteDetails['quotation_notes'] ?? '') }}</textarea></label>
+                            <label class="md:col-span-2"><span class="admin-label">Quotation Files * (1–8 PDF, images or Excel files, 10 MB each)</span><input class="admin-input" type="file" name="files[]" accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx" multiple required></label>
+                        </div>
+                        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4"><p class="text-xs text-slate-500">Current version: {{ $bulkQuote->quotation_version }} · New version: {{ $bulkQuote->quotation_version + 1 }} · Publish notifies the customer's original email.</p><button class="btn btn-red" type="submit">Publish Quotation & Notify Customer</button></div>
+                    </form>
+                </x-admin.section-card>
+            @endif
+            <x-admin.section-card title="Quotation Documents & Customer Messages" description="Private quotation files and customer feedback are linked to this request, visible to authorized administrators only.">
+                <div class="grid gap-5 lg:grid-cols-2">
+                    <div>
+                        <h3 class="mb-2 font-semibold text-brand-dark">Documents</h3>
+                        <div class="space-y-2">
+                            @forelse($guestFiles as $file)
+                                <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 p-3 text-sm">
+                                    <div>
+                                        <p class="font-medium">{{ $file->original_name }}</p>
+                                        <small class="text-slate-500">{{ ucfirst($file->category) }} · Version {{ $file->version }} · {{ number_format($file->size / 1024) }} KB</small>
+                                    </div>
+                                    <a class="btn btn-white" href="{{ route('admin.bulk-quotes.file', [$bulkQuote, $file]) }}">Download</a>
+                                </div>
+                            @empty
+                                <p class="text-sm text-slate-500">No quotation files have been uploaded.</p>
+                            @endforelse
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="mb-2 font-semibold text-brand-dark">Conversation</h3>
+                        <div class="max-h-96 space-y-2 overflow-y-auto">
+                            @forelse($guestMessages as $message)
+                                <div class="rounded-lg border border-slate-200 p-3 text-sm">
+                                    <strong>{{ $message->sender === 'admin' ? ($message->actor?->name ?: 'NextPlay Sales') : ($message->actor?->name ?: ($bulkQuote->user_id ? 'Registered Customer' : 'Guest Customer')) }}</strong>
+                                    <small class="ml-2 text-slate-500">{{ \App\Support\ViewerTime::render($message->created_at, 'M j, Y · g:i A') }}</small>
+                                    <p class="mt-1 whitespace-pre-line">{{ $message->body }}</p>
+                                    @if($message->change_types)
+                                        <p class="mt-1 text-slate-500">Change types: {{ implode(', ', $message->change_types) }}</p>
+                                    @endif
+                                    @foreach($message->files as $file)
+                                        <a class="mt-1 block text-blue-700 underline" href="{{ route('admin.bulk-quotes.file', [$bulkQuote, $file]) }}">{{ $file->original_name }}</a>
+                                    @endforeach
+                                </div>
+                            @empty
+                                <p class="text-sm text-slate-500">No messages yet.</p>
+                            @endforelse
+                        </div>
+                        @if($canManage)
+                            <form class="mt-3" method="POST" action="{{ route('admin.bulk-quotes.message', $bulkQuote) }}">
+                                @csrf
+                                <label>
+                                    <span class="admin-label">Reply to Customer</span>
+                                    <textarea class="admin-textarea min-h-[86px]" name="body" maxlength="3000" required placeholder="Your message will appear in the customer's quote history and trigger an email notification."></textarea>
+                                </label>
+                                <button class="btn btn-red mt-2" type="submit">Send Message</button>
+                            </form>
+                        @endif
+                    </div>
+                </div>
+            </x-admin.section-card>
+
         <x-admin.section-card title="Request Summary" description="Primary identifiers and timing for this bulk quotation request.">
             <dl class="admin-detail-grid">
                 <x-admin.detail-field label="Reference">{{ $bulkQuote->reference }}</x-admin.detail-field>
                 <x-admin.detail-field label="Request Status"><x-admin.status-pill :status="$bulkQuote->status" /></x-admin.detail-field>
-                <x-admin.detail-field label="Submitted">{{ $bulkQuote->created_at?->format('M d, Y · g:i A') ?: '—' }}</x-admin.detail-field>
-                <x-admin.detail-field label="Last Updated">{{ $bulkQuote->updated_at?->format('M d, Y · g:i A') ?: '—' }}</x-admin.detail-field>
+                <x-admin.detail-field label="Submitted">{{ \App\Support\ViewerTime::render($bulkQuote->created_at, 'M d, Y · g:i A') ?: '—' }}</x-admin.detail-field>
+                <x-admin.detail-field label="Last Updated">{{ \App\Support\ViewerTime::render($bulkQuote->updated_at, 'M d, Y · g:i A') ?: '—' }}</x-admin.detail-field>
             </dl>
         </x-admin.section-card>
 
@@ -223,7 +303,7 @@
                         <div class="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
                             <div>
                                 <p class="font-black text-brand-dark">{{ str($activity->action)->headline() }}</p>
-                                <p class="mt-1 text-xs text-slate-500">{{ $activity->actor?->name ?: 'System' }} · {{ $activity->occurred_at?->format('M d, Y · g:i A') }}</p>
+                                <p class="mt-1 text-xs text-slate-500">{{ $activity->actor?->name ?: 'System' }} · {{ \App\Support\ViewerTime::render($activity->occurred_at, 'M d, Y · g:i A') }}</p>
                             </div>
                             @if($activity->to_status)
                                 <x-admin.status-pill :status="$activity->to_status" />

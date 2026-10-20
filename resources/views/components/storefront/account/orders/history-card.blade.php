@@ -18,7 +18,7 @@
 
     <div class="np-order-history-card__identity">
         <a href="{{ route('account.orders.show', $order) }}">Order {{ $order->order_number }}</a>
-        <p>Placed {{ $order->placed_at?->format('M d, Y') ?? $order->created_at?->format('M d, Y') }} <span>•</span> {{ $order->total_quantity }} item{{ (int) $order->total_quantity === 1 ? '' : 's' }}</p>
+        <p>Placed {{ \App\Support\ViewerTime::render($order->placed_at, 'M d, Y') ?? \App\Support\ViewerTime::render($order->created_at, 'M d, Y') }} <span>•</span> {{ $order->total_quantity }} item{{ (int) $order->total_quantity === 1 ? '' : 's' }}</p>
     </div>
 
     <div class="np-order-history-card__statuses">

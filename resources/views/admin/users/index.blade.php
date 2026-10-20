@@ -119,7 +119,7 @@
                                     @endif
                                 </td>
                                 <td class="px-5 py-4 align-top text-sm text-slate-500">
-                                    {{ $user->last_login_at?->format('M d, Y · g:i A') ?: 'Never' }}
+                                    {{ \App\Support\ViewerTime::render($user->last_login_at, 'M d, Y · g:i A') ?: 'Never' }}
                                 </td>
                                 <td class="px-5 py-4 text-right align-top">
                                     @if($canManageUsers)

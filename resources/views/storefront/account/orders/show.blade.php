@@ -4,7 +4,11 @@
     <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_330px] lg:items-start">
         <div class="space-y-6">
             <section class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-card md:p-7">
-                <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-start"><div><p class="text-xs font-black uppercase tracking-wide text-slate-400">Placed {{ $order->placed_at?->format('M d, Y · g:i A') }}</p><h3 class="mt-2 text-2xl font-black">{{ $order->statusLabel() }}</h3><p class="mt-1 text-sm text-slate-500">Payment: {{ $order->paymentStatusLabel() }} · Fulfillment: {{ $order->fulfillmentStatusLabel() }}</p></div><x-storefront.account.orders.status-pill :status="$order->status" /></div>
+                <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-start"><div><p class="text-xs font-black uppercase tracking-wide text-slate-400">Placed {{ \App\Support\ViewerTime::render($order->placed_at, 'M d, Y · g:i A') }}</p>@php($showOperationalStatus = $order->flowtrack_operational_status && ! in_array($order->status, ['cancelled', 'refunded', 'delivered', 'completed'], true))
+                    <h3 class="mt-2 text-2xl font-black">{{ $showOperationalStatus ? (($order->flowtrack_operational_stage ?: 'Production').' · '.str($order->flowtrack_operational_status)->headline()) : $order->statusLabel() }}</h3>
+                    @if($showOperationalStatus)
+                        <p class="mt-2 text-xs text-slate-500">Storefront order status: {{ $order->statusLabel() }}</p>
+                    @endif<p class="mt-1 text-sm text-slate-500">Payment: {{ $order->paymentStatusLabel() }} · Fulfillment: {{ $order->fulfillmentStatusLabel() }}</p></div><x-storefront.account.orders.status-pill :status="$order->status" /></div>
                 <div class="mt-5 flex flex-wrap gap-2">
                     @if($order->canPay())<a class="btn btn-primary" href="{{ route('account.orders.pay',$order) }}">Pay for Order</a>@endif
                     @if($order->payment_status==='failed')<a class="btn btn-primary" href="{{ route('account.orders.payment.retry',$order) }}">Retry Payment</a>@endif
@@ -15,6 +19,17 @@
                     @if($order->canRequestExchange())<a class="btn btn-light" href="{{ route('account.orders.exchanges.create',$order) }}">Start Exchange</a>@endif
                 </div>
             </section>
+
+            @if($order->flowtrack_operational_status)
+                <section class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-card md:p-7" aria-label="Production progress">
+                    <h3 class="text-lg font-black text-brand-ink">Production progress</h3>
+                    <p class="mt-2 text-sm text-slate-700">{{ $order->flowtrack_operational_stage ?: str($order->flowtrack_operational_status)->headline() }}</p>
+                    @if($order->flowtrack_operational_progress !== null)
+                        <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-valuenow="{{ $order->flowtrack_operational_progress }}" aria-valuemin="0" aria-valuemax="100"><div class="h-full bg-brand-red" style="width: {{ $order->flowtrack_operational_progress }}%"></div></div>
+                    @endif
+                    <p class="mt-2 text-xs text-slate-500">Updated from production workflow.</p>
+                </section>
+            @endif
 
             <section class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-card md:p-7"><h3 class="text-xl font-black">Order Items</h3><div class="mt-5 grid gap-4">@foreach($order->items as $item)<x-storefront.account.orders.item-row :item="$item" />@endforeach</div></section>
 

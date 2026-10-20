@@ -425,6 +425,28 @@ class OrderExperienceService
 
         $currentIndex = $this->progressIndexForStatus($status);
 
+        // FlowTracker owns production progress, not payments. Advance the visible
+        // production milestones only after the order is paid, while preserving
+        // NextPlay's checkout, shipping and cancellation status rules.
+        $stage = Str::lower(trim((string) ($order['flowtrack_operational_stage'] ?? '')));
+        $operational = Str::headline((string) ($order['flowtrack_operational_status'] ?? ''));
+        $productionIndex = match (true) {
+            str_contains($stage, 'ship') => 5,
+            str_contains($stage, 'production'), str_contains($stage, 'quality'), $stage === 'qc' => 4,
+            str_contains($stage, 'proof'), str_contains($stage, 'approval') => 3,
+            str_contains($stage, 'artwork'), str_contains($stage, 'design') => 2,
+            default => null,
+        };
+        if ($productionIndex !== null && in_array($paymentStatus, ['paid', 'verified'], true)
+            && ! in_array($status, ['cancelled', 'on_hold', 'payment_failed', 'refunded'], true)) {
+            $currentIndex = max($currentIndex, $productionIndex);
+        }
+        if ($productionIndex !== null && $operational !== '') {
+            $steps[$productionIndex]['description'] = 'Production update: '
+                .($order['flowtrack_operational_stage'] ?? 'Production').' — '.$operational
+                .(isset($order['flowtrack_operational_progress']) ? ' ('.(int) $order['flowtrack_operational_progress'].'% complete)' : '').'.';
+        }
+
         if (in_array($status, ['cancelled', 'on_hold'], true)) {
             $furthestIndex = $this->furthestProgressIndex($order);
             $completedThrough = max(0, $furthestIndex - 1);
@@ -562,6 +584,9 @@ class OrderExperienceService
             'status' => $order->status,
             'payment_status' => $order->payment_status,
             'fulfillment_status' => $order->fulfillment_status,
+            'flowtrack_operational_stage' => $order->flowtrack_operational_stage,
+            'flowtrack_operational_status' => $order->flowtrack_operational_status,
+            'flowtrack_operational_progress' => $order->flowtrack_operational_progress,
             'customer_email' => $order->customer_email,
             'customer_name' => $order->customer_name,
             'estimated_delivery' => $order->formattedEstimatedDelivery(),

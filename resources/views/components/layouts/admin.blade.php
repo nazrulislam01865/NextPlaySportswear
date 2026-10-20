@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script defer src="{{ asset('js/viewer-time.js') }}?v=20261020a"></script>
     <meta name="robots" content="noindex,nofollow">
     <title>{{ $title }} | NextPlay Admin</title>
     <link rel="icon" href="{{ \App\Support\StorefrontBranding::faviconUrl() }}">

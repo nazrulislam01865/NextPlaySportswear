@@ -6,7 +6,7 @@
             <div class="np-artwork-changes-preview">
                 <div class="np-artwork-changes-proof-heading"><h2>Current Proof v{{ $proof->version }}</h2><x-storefront.account.artwork.status :status="$proof->status" /></div>
                 <p><strong>Order #{{ $proof->order->order_number }}</strong> <span>·</span> {{ $proof->orderItem->product_name }}</p>
-                <p class="np-artwork-muted">Uploaded {{ $proof->created_at?->format('M j, Y') }}</p>
+                <p class="np-artwork-muted">Uploaded {{ \App\Support\ViewerTime::render($proof->created_at, 'M j, Y') }}</p>
                 <x-storefront.account.artwork.preview :proof="$proof" class="np-artwork-changes-image" />
                 <div class="np-artwork-thumbnails"><a class="is-active" href="{{ route('account.artwork.file', $proof) }}" target="_blank" rel="noopener"><x-storefront.account.artwork.preview :proof="$proof" compact /></a><a href="{{ route('account.artwork.file', $proof) }}" target="_blank" rel="noopener" aria-label="Zoom into full-resolution proof"><x-storefront.account.artwork.preview :proof="$proof" compact /></a></div>
             </div>

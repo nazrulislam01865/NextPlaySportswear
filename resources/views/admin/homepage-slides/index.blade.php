@@ -25,7 +25,7 @@
                                 </div>
                             </td>
                             <td class="px-5 py-4"><span class="admin-status-pill px-2.5 py-1 text-xs font-black {{ $slide->show_content ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600' }}">{{ $slide->show_content ? 'Text visible' : 'Image only' }}</span><p class="mt-2 max-w-xs line-clamp-2 text-xs text-slate-500">{{ $slide->description }}</p></td>
-                            <td class="px-5 py-4 text-xs leading-6 text-slate-600"><div>Start: {{ $slide->starts_at?->format('M j, Y g:i A') ?? 'Immediately' }}</div><div>End: {{ $slide->ends_at?->format('M j, Y g:i A') ?? 'No end date' }}</div></td>
+                            <td class="px-5 py-4 text-xs leading-6 text-slate-600"><div>Start: {{ \App\Support\ViewerTime::render($slide->starts_at, 'M j, Y g:i A') ?? 'Immediately' }}</div><div>End: {{ \App\Support\ViewerTime::render($slide->ends_at, 'M j, Y g:i A') ?? 'No end date' }}</div></td>
                             <td class="px-5 py-4 font-black">{{ number_format($slide->sort_order) }}</td>
                             <td class="px-5 py-4"><span class="admin-status-pill px-2.5 py-1 text-xs font-black {{ $slide->is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700' }}">{{ $slide->is_active ? 'Active' : 'Inactive' }}</span></td>
                             <td class="px-5 py-4">

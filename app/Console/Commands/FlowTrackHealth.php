@@ -27,6 +27,11 @@ final class FlowTrackHealth extends Command
         $this->line('Complete product capture: '.((bool) ($response['complete_product_capture_ready'] ?? false) ? 'yes' : 'no'));
         $this->line('Artwork transfer ready: '.((bool) ($response['artwork_transfer_ready'] ?? false) ? 'yes' : 'no'));
         $this->line('Receiver user ID: '.(string) ($response['receiver_user_id'] ?? 'n/a'));
+        $progressReady = (bool) ($response['progress_callback_ready'] ?? false);
+        $this->line('Reverse progress callbacks: '.($progressReady ? 'ready' : 'NOT READY'));
+        if (! $progressReady) {
+            $this->warn('In StepPromo .env, enable NEXTPLAY_ORDER_PROGRESS_ENABLED=true and set NEXTPLAY_SOURCE_BASE_URL; restart its integration worker.');
+        }
 
         return self::SUCCESS;
     }

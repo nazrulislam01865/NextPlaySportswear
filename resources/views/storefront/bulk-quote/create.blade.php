@@ -302,6 +302,8 @@
                 </x-storefront.bulk-quote.section>
 
                 @php
+                    // CAPTCHA is disabled only for local development.
+                    $recaptchaRequired = ! app()->environment('local');
                     $recaptchaConfigured = filled(config('services.recaptcha.site_key'))
                         && filled(config('services.recaptcha.secret_key'));
                 @endphp
@@ -347,15 +349,17 @@
                             </div>
                             <x-storefront.bulk-quote.field-error name="additional_notes" />
                         </div>
-                        <div class="bulk-quote-field">
-                            <p class="bulk-quote-label">Security Verification <span class="bulk-quote-req">*</span></p>
-                            @if($recaptchaConfigured)
-                                <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
-                            @else
-                                <p class="bulk-quote-field-error" role="alert">Quote requests are temporarily unavailable. Please try again later.</p>
-                            @endif
-                            <x-storefront.bulk-quote.field-error name="g-recaptcha-response" />
-                        </div>
+                        @if($recaptchaRequired)
+                            <div class="bulk-quote-field">
+                                <p class="bulk-quote-label">Security Verification <span class="bulk-quote-req">*</span></p>
+                                @if($recaptchaConfigured)
+                                    <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
+                                @else
+                                    <p class="bulk-quote-field-error" role="alert">Quote requests are temporarily unavailable. Please try again later.</p>
+                                @endif
+                                <x-storefront.bulk-quote.field-error name="g-recaptcha-response" />
+                            </div>
+                        @endif
                     </div>
                 </x-storefront.bulk-quote.section>
 
@@ -364,13 +368,13 @@
                         <span class="bulk-quote-privacy-icon" aria-hidden="true"><x-storefront.bulk-quote.icon name="shield-check" :size="17" /></span>
                         Your information is used only to prepare your quote and will not be shared.
                     </p>
-                    <button class="btn btn-secondary btn-sm bulk-quote-submit" type="submit" @disabled(! $recaptchaConfigured)>
+                    <button class="btn btn-secondary btn-sm bulk-quote-submit" type="submit" @disabled($recaptchaRequired && ! $recaptchaConfigured)>
                         <span>REQUEST BULK QUOTE</span>
                         <x-storefront.bulk-quote.icon name="arrow-right" :size="16" />
                     </button>
                 </div>
             </form>
-            @if($recaptchaConfigured)
+            @if($recaptchaRequired && $recaptchaConfigured)
                 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
                 <style>
                     @media (max-width: 360px) {

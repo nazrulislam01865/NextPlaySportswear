@@ -349,7 +349,7 @@
                         <span class="rounded-full bg-[#FEF3C7] px-2.5 py-0.5 text-xs font-medium text-[#92400E]">Draft {{ $template->draft_version ?: 'v1.5' }}</span>
                         <span class="rounded-full bg-[#DCFCE7] px-2.5 py-0.5 text-xs font-medium text-[#166534]">Published {{ $template->active_version ?: 'v1.4' }}</span>
                     </div>
-                    <span class="block text-[11px] text-slate-400 mt-0.5">Last published {{ $template->published_at?->format('M d, Y') ?? 'Oct 21, 2024' }} by {{ $template->publishedBy?->name ?? 'System' }}</span>
+                    <span class="block text-[11px] text-slate-400 mt-0.5">Last published {{ \App\Support\ViewerTime::render($template->published_at, 'M d, Y') ?? 'Oct 21, 2024' }} by {{ $template->publishedBy?->name ?? 'System' }}</span>
                 </div>
             </div>
         </div>

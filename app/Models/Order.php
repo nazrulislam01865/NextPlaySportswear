@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'holiday_adjustment_reason', 'holiday_adjustment_meta',
     'flowtrack_sync_status', 'flowtrack_sync_attempts', 'flowtrack_order_id', 'flowtrack_order_number', 'flowtrack_job_id',
     'flowtrack_last_attempt_at', 'flowtrack_synced_at', 'flowtrack_sync_error', 'flowtrack_response',
+    'flowtrack_operational_status', 'flowtrack_operational_stage', 'flowtrack_operational_progress', 'flowtrack_operational_updated_at',
 ])]
 class Order extends Model
 {
@@ -241,6 +242,8 @@ class Order extends Model
             'flowtrack_order_id' => 'integer',
             'flowtrack_last_attempt_at' => 'datetime',
             'flowtrack_synced_at' => 'datetime',
+            'flowtrack_operational_updated_at' => 'datetime',
+            'flowtrack_operational_progress' => 'integer',
             'flowtrack_response' => 'array',
         ];
     }

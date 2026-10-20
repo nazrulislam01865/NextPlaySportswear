@@ -70,7 +70,7 @@
                         <tr class="hover:bg-slate-50">
                             <td class="px-5 py-4">
                                 <a class="font-black text-brand-blue" href="{{ route('admin.orders.show', $order) }}">{{ $order->order_number }}</a>
-                                <p class="text-xs text-slate-400">{{ $order->placed_at?->format('M d, Y · g:i A') }}</p>
+                                <p class="text-xs text-slate-400">{{ \App\Support\ViewerTime::render($order->placed_at, 'M d, Y · g:i A') }}</p>
                             </td>
                             <td class="px-5 py-4">
                                 <p class="font-black">{{ $order->customer_name }}</p>

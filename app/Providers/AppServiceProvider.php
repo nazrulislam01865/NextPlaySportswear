@@ -32,6 +32,22 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        \App\Models\Product::observe(\App\Observers\FlowTrackCatalogObserver::class);
+        \App\Models\User::observe(\App\Observers\FlowTrackCatalogObserver::class);
+        foreach ([
+            \App\Models\ProductOptionGroup::class,
+            \App\Models\ProductOptionValue::class,
+            \App\Models\ProductSizeGroup::class,
+            \App\Models\ProductSize::class,
+            \App\Models\ProductImage::class,
+            \App\Models\ProductPriceTier::class,
+            \App\Models\ProductFabricPriceTable::class,
+            \App\Models\ProductFabricPriceTier::class,
+        ] as $productConfigurationModel) {
+            $productConfigurationModel::observe(\App\Observers\FlowTrackProductConfigurationObserver::class);
+        }
+
+
         Paginator::defaultView('pagination.nextplay');
         Paginator::defaultSimpleView('pagination.nextplay-simple');
 
@@ -213,6 +229,30 @@ class AppServiceProvider extends ServiceProvider
             return $limits;
         });
 
+
+        // Guest quotation acceptance is an authenticated-session action, not a
+        // general form submission. Do not share a 5/minute IP bucket across
+        // all customers/quotes (e.g. during local testing or behind one NAT).
+        RateLimiter::for('guest-quote-decision', function (Request $request): array {
+            $ip = (string) ($request->ip() ?: 'unknown');
+            $reference = (string) ($request->route('reference') ?: 'unknown');
+            $friendlyResponse = static function (Request $request): \Illuminate\Http\RedirectResponse {
+                return redirect()->back()->withErrors([
+                    'quote' => 'Too many confirmation attempts. Please wait a moment, refresh the quotation status, and try again if it is not already confirmed.',
+                ]);
+            };
+
+            return [
+                Limit::perMinute(12)
+                    ->by('guest-quote-decision:'.hash('sha256', $reference).':'.$ip)
+                    ->response($friendlyResponse),
+                // An independent IP cap still protects against trying many
+                // arbitrary references to evade the per-quote limit.
+                Limit::perHour(60)
+                    ->by('guest-quote-decision-ip:'.$ip)
+                    ->response($friendlyResponse),
+            ];
+        });
 
         RateLimiter::for('checkout-step', function (Request $request): Limit {
             $identity = (string) ($request->user('web')?->getAuthIdentifier() ?: $request->ip() ?: 'guest');

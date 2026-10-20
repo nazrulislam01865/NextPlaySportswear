@@ -54,8 +54,8 @@
                                 <span class="block text-xs text-slate-500">Per customer: {{ $coupon->usage_limit_per_customer ?: 'Unlimited' }}</span>
                             </td>
                             <td class="px-5 py-4 text-xs leading-5 text-slate-600">
-                                <span class="block">Start: {{ $coupon->starts_at?->format('M d, Y H:i') ?: 'Now' }}</span>
-                                <span class="block">End: {{ $coupon->expires_at?->format('M d, Y H:i') ?: 'No expiry' }}</span>
+                                <span class="block">Start: {{ \App\Support\ViewerTime::render($coupon->starts_at, 'M d, Y H:i') ?: 'Now' }}</span>
+                                <span class="block">End: {{ \App\Support\ViewerTime::render($coupon->expires_at, 'M d, Y H:i') ?: 'No expiry' }}</span>
                             </td>
                             <td class="px-5 py-4">
                                 @php($status = $coupon->statusLabel())

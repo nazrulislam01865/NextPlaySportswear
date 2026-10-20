@@ -34,7 +34,7 @@
                                     <div class="flex flex-wrap items-start justify-between gap-3 py-3 text-sm">
                                         <div>
                                             <p class="font-semibold text-slate-800">Version {{ $previous->version }} · {{ $previous->statusLabel() }}</p>
-                                            <p class="mt-1 text-xs text-slate-500">{{ $previous->created_at?->format('M j, Y · g:i A') }}</p>
+                                            <p class="mt-1 text-xs text-slate-500">{{ \App\Support\ViewerTime::render($previous->created_at, 'M j, Y · g:i A') }}</p>
                                             @if($previous->customer_feedback)<p class="mt-2 max-w-xl whitespace-pre-wrap break-words text-slate-700"><strong>Customer feedback:</strong> {{ $previous->customer_feedback }}</p>@endif
                                             @foreach($previous->messages as $message)
                                                 <p class="mt-1 max-w-xl whitespace-pre-wrap break-words text-slate-600"><strong>{{ $message->sender_role === 'designer' ? 'Design Team' : 'Customer' }}:</strong> {{ $message->message }}</p>

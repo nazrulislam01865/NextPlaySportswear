@@ -128,10 +128,10 @@
                                     @endif
                                 </td>
                                 <td class="px-5 py-4 text-slate-500 font-medium whitespace-nowrap">
-                                    {{ $calendar->created_at?->format('d M') ?? '—' }}
+                                    {{ \App\Support\ViewerTime::render($calendar->created_at, 'd M') ?? '—' }}
                                 </td>
                                 <td class="px-5 py-4 text-slate-500 font-medium whitespace-nowrap">
-                                    {{ $calendar->updated_at?->format('d M') ?? '—' }}
+                                    {{ \App\Support\ViewerTime::render($calendar->updated_at, 'd M') ?? '—' }}
                                 </td>
                                 <td class="px-5 py-4 text-right">
                                     <div class="flex items-center justify-end gap-2">

@@ -36,6 +36,13 @@ class BulkQuoteRequest extends Model
 
     protected $fillable = [
         'reference',
+        'guest_access_hash',
+        'quotation_version',
+        'quotation_details',
+        'quotation_valid_until',
+        'quotation_sent_at',
+        'guest_decision',
+        'converted_order_id',
         'user_id',
         'full_name',
         'organization',
@@ -74,6 +81,7 @@ class BulkQuoteRequest extends Model
         'flowtrack_synced_at',
         'flowtrack_sync_error',
         'flowtrack_response',
+        'guest_access_hash',
         'ip_hash',
         'user_agent_hash',
     ];
@@ -124,6 +132,21 @@ class BulkQuoteRequest extends Model
     public function closedByAdmin(): BelongsTo
     {
         return $this->belongsTo(User::class, 'closed_by');
+    }
+
+    public function quoteFiles(): HasMany
+    {
+        return $this->hasMany(BulkQuoteFile::class, 'bulk_quote_request_id');
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(BulkQuoteMessage::class, 'bulk_quote_request_id')->oldest();
+    }
+
+    public function convertedOrder(): BelongsTo
+    {
+        return $this->belongsTo(Order::class, 'converted_order_id');
     }
 
     public function activities(): HasMany
@@ -196,6 +219,10 @@ class BulkQuoteRequest extends Model
     protected function casts(): array
     {
         return [
+            'quotation_version' => 'integer',
+            'quotation_details' => 'array',
+            'quotation_valid_until' => 'date',
+            'quotation_sent_at' => 'datetime',
             'customer_account' => 'array',
             'customization_types' => 'array',
             'attachment' => 'array',

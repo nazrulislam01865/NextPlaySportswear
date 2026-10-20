@@ -360,7 +360,7 @@
                                 </td>
 
                                 <td class="category-updated-cell" data-label="Updated">
-                                    <span>{{ $category->updated_at?->format('M j, Y g:i A') }}</span>
+                                    <span>{{ \App\Support\ViewerTime::render($category->updated_at, 'M j, Y g:i A') }}</span>
                                     @if($category->updater)
                                         <small>by {{ $category->updater->name }}</small>
                                     @endif

@@ -15,7 +15,7 @@
                                 <details class="np-artwork-version-menu"><summary>Previous Versions ({{ $versions->count() - 1 }})</summary>
                                     <div class="np-artwork-version-menu__list">
                                         @foreach($versions as $version)
-                                            @if($version->id !== $proof->id)<a href="{{ route('account.artwork.show', $version) }}">Version v{{ $version->version }} · {{ $version->created_at?->format('M j, Y') }}</a>@endif
+                                            @if($version->id !== $proof->id)<a href="{{ route('account.artwork.show', $version) }}">Version v{{ $version->version }} · {{ \App\Support\ViewerTime::render($version->created_at, 'M j, Y') }}</a>@endif
                                         @endforeach
                                     </div>
                                 </details>
@@ -34,7 +34,7 @@
                     </div>
                 </section>
                 <section class="np-artwork-panel np-artwork-note-panel">
-                    <div class="np-artwork-panel-title"><x-storefront.account.icon name="message" :size="24" /><h2>Designer Notes</h2><span>{{ $proof->created_at?->format('M j, Y') }}</span><b>v{{ $proof->version }}</b></div>
+                    <div class="np-artwork-panel-title"><x-storefront.account.icon name="message" :size="24" /><h2>Designer Notes</h2><span>{{ \App\Support\ViewerTime::render($proof->created_at, 'M j, Y') }}</span><b>v{{ $proof->version }}</b></div>
                     <p>{{ $proof->designer_notes ?: 'Please review the attached artwork proof and let us know if any adjustments are needed.' }}</p>
                 </section>
                 <section class="np-artwork-panel np-artwork-history-panel">
@@ -44,7 +44,7 @@
                             <li class="{{ $version->id === $proof->id ? 'is-current' : '' }}">
                                 <span class="np-artwork-history-dot"></span>
                                 <b>v{{ $version->version }}</b>
-                                <div><span>{{ $version->created_at?->format('M j, Y · g:i A') }}</span><p>{{ $version->designer_notes ?: 'Artwork proof uploaded for review.' }}</p></div>
+                                <div><span>{{ \App\Support\ViewerTime::render($version->created_at, 'M j, Y · g:i A') }}</span><p>{{ $version->designer_notes ?: 'Artwork proof uploaded for review.' }}</p></div>
                                 @if($version->id === $versions->first()->id)<small>Current Version</small>@endif
                             </li>
                         @endforeach
@@ -66,7 +66,7 @@
                     <div class="np-artwork-messages__body">
                         @forelse($messages as $message)
                             <div class="np-artwork-message {{ $message->sender_role === 'designer' ? 'is-designer' : 'is-customer' }}">
-                                <div class="np-artwork-message__meta"><strong>{{ $message->sender_role === 'designer' ? 'Design Team' : 'You' }}</strong><small>{{ $message->created_at?->format('M j, Y · g:i A') }}</small></div>
+                                <div class="np-artwork-message__meta"><strong>{{ $message->sender_role === 'designer' ? 'Design Team' : 'You' }}</strong><small>{{ \App\Support\ViewerTime::render($message->created_at, 'M j, Y · g:i A') }}</small></div>
                                 <p>{{ $message->message }}</p>
                             </div>
                         @empty
@@ -85,7 +85,7 @@
                 <section class="np-artwork-panel np-artwork-order-summary">
                     <div class="np-artwork-order-summary__head"><h2>Order #{{ $proof->order->order_number }}</h2><x-storefront.account.artwork.status :status="$proof->status" /></div>
                     <div class="np-artwork-order-summary__product"><x-storefront.account.artwork.preview :proof="$proof" compact /><strong>{{ $proof->orderItem->product_name }}</strong></div>
-                    <dl class="np-artwork-definition"><dt>Quantity</dt><dd>{{ $proof->quantityLabel() }}</dd><dt>Submitted Date</dt><dd>{{ $proof->created_at?->format('M j, Y') }}</dd><dt>Design Name</dt><dd>{{ $proof->design_name }}</dd><dt>Current Version</dt><dd>v{{ $versions->first()->version }}</dd></dl>
+                    <dl class="np-artwork-definition"><dt>Quantity</dt><dd>{{ $proof->quantityLabel() }}</dd><dt>Submitted Date</dt><dd>{{ \App\Support\ViewerTime::render($proof->created_at, 'M j, Y') }}</dd><dt>Design Name</dt><dd>{{ $proof->design_name }}</dd><dt>Current Version</dt><dd>v{{ $versions->first()->version }}</dd></dl>
                 </section>
                 <section class="np-artwork-panel np-artwork-review-checklist">
                     <h2>Review Checklist</h2><p>Please review the following details to ensure everything is correct.</p>

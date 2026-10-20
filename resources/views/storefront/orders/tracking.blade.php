@@ -6,6 +6,16 @@
         ? (string) ($order['status_label'] ?? 'Order Update')
         : '';
 
+    // FlowTracker owns production progress, but not NextPlay's payment/refund state.
+    if ($hasTrackingResult && filled($order['flowtrack_operational_status'] ?? null)
+        && ! in_array($order['status'] ?? '', ['cancelled', 'refunded', 'delivered', 'completed'], true)) {
+        $operationalStage = (string) ($order['flowtrack_operational_stage'] ?? '');
+        $operationalState = (string) str($order['flowtrack_operational_status'])->headline();
+        $statusLabel = $operationalStage !== ''
+            ? $operationalStage.' · '.$operationalState
+            : $operationalState;
+    }
+
     $displayOrderNumber = $hasTrackingResult ? (string) $order['order_number'] : '';
     $dateLabel = $hasTrackingResult
         ? \Illuminate\Support\Str::before((string) ($order['placed_display'] ?? ''), ' ·')
@@ -55,6 +65,16 @@
                         <h2>Tracking Result</h2>
                         <p>Here is the latest information available for your verified order.</p>
                     </div>
+
+                    @if(filled($order['flowtrack_operational_status'] ?? null))
+                        <div class="mb-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-brand-ink">
+                            <strong>Production update:</strong>
+                            {{ $order['flowtrack_operational_stage'] ?: str($order['flowtrack_operational_status'])->headline() }}
+                            @if(isset($order['flowtrack_operational_progress']))
+                                · {{ (int) $order['flowtrack_operational_progress'] }}% complete
+                            @endif
+                        </div>
+                    @endif
 
                     <x-storefront.order.tracking.result-card
                         :display-order-number="$displayOrderNumber"

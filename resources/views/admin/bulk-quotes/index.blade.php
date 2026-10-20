@@ -95,7 +95,7 @@
                         <tr class="hover:bg-slate-50">
                             <td class="px-5 py-4 align-top">
                                 <a class="font-black text-brand-blue hover:underline" href="{{ route('admin.bulk-quotes.show', $quote) }}">{{ $quote->reference }}</a>
-                                <p class="mt-1 text-xs text-slate-400">{{ $quote->created_at?->format('M d, Y · g:i A') }}</p>
+                                <p class="mt-1 text-xs text-slate-400">{{ \App\Support\ViewerTime::render($quote->created_at, 'M d, Y · g:i A') }}</p>
                             </td>
                             <td class="px-5 py-4 align-top">
                                 <p class="font-black text-brand-dark">{{ $quote->full_name }}</p>

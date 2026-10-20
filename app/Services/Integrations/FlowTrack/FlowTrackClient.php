@@ -126,6 +126,11 @@ final class FlowTrackClient
             throw new FlowTrackIntegrationException('FlowTrack integration is disabled in NextPlay.');
         }
 
+        if (app()->environment('production')
+            && ! str_starts_with(strtolower((string) config('flowtrack.base_url')), 'https://')) {
+            throw new FlowTrackIntegrationException('FlowTrack must use HTTPS in production.');
+        }
+
         if (trim((string) config('flowtrack.base_url')) === '') {
             throw new FlowTrackIntegrationException('FLOWTRACK_BASE_URL is not configured.');
         }

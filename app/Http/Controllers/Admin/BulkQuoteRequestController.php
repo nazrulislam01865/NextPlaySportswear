@@ -109,6 +109,8 @@ class BulkQuoteRequestController extends Controller
     public function show(BulkQuoteRequest $bulkQuote): View
     {
         $bulkQuote->loadMissing(['user', 'assignedAdmin', 'closedByAdmin']);
+        $guestFiles = $bulkQuote->quoteFiles()->latest()->limit(40)->get();
+        $guestMessages = $bulkQuote->messages()->with(['actor:id,name', 'files'])->latest()->limit(50)->get();
         $activities = $bulkQuote->activities()
             ->with('actor:id,name')
             ->limit(50)
@@ -116,6 +118,8 @@ class BulkQuoteRequestController extends Controller
 
         return view('admin.bulk-quotes.show', [
             'bulkQuote' => $bulkQuote,
+            'guestFiles' => $guestFiles,
+            'guestMessages' => $guestMessages,
             'activities' => $activities,
             'statusOptions' => BulkQuoteRequest::statuses(),
             'priorityOptions' => BulkQuoteRequest::priorities(),

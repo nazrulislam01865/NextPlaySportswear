@@ -12,6 +12,7 @@
                 src="{{ $item['image'] ?? asset('images/product-placeholder.svg') }}"
                 alt="{{ $item['alt'] ?? ($item['title'] ?? 'Order item') }}"
                 class="np-track-summary-image"
+                onerror="this.onerror=null;this.src='{{ asset('images/product-placeholder.svg') }}'"
             >
         </div>
         <div class="np-track-summary-copy">

@@ -31,7 +31,7 @@
                     <div class="min-w-0">
                         <p class="text-xs font-semibold leading-4 text-slate-600">Latest Upload</p>
                         <p class="mt-1 truncate text-lg font-black leading-tight text-brand-ink">{{ $latestImage?->name ?? 'No media uploaded yet' }}</p>
-                        <p class="mt-1 truncate text-[11px] font-medium text-slate-400">{{ $latestImage?->created_at?->format('M j, Y g:i A') ?? 'Upload media files below to start the gallery.' }}</p>
+                        <p class="mt-1 truncate text-[11px] font-medium text-slate-400">{{ \App\Support\ViewerTime::render($latestImage?->created_at, 'M j, Y g:i A') ?? 'Upload media files below to start the gallery.' }}</p>
                     </div>
                 </div>
             </article>

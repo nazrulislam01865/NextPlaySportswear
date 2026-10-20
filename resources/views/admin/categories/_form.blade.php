@@ -490,7 +490,7 @@
 
                             <label class="admin-label">
                                 Publish date
-                                <input class="admin-input" type="datetime-local" name="published_at" value="{{ old('published_at', optional($category->published_at)->format('Y-m-d\TH:i')) }}">
+                                <input class="admin-input" type="datetime-local" data-np-utc-input name="published_at" value="{{ old('published_at', optional($category->published_at)->format('Y-m-d\TH:i')) }}">
                             </label>
 
                             <label class="admin-label">

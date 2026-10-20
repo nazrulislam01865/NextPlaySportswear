@@ -31,7 +31,7 @@
                         <dl class="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
                             <div>
                                 <dt class="text-[10px] font-black uppercase tracking-[.14em] text-slate-400">Last suspended</dt>
-                                <dd class="mt-1 text-sm font-bold text-slate-800">{{ $customer->suspended_at->format('M d, Y - g:i A') }}</dd>
+                                <dd class="mt-1 text-sm font-bold text-slate-800">{{ \App\Support\ViewerTime::render($customer->suspended_at, 'M d, Y - g:i A') }}</dd>
                             </div>
                             <div>
                                 <dt class="text-[10px] font-black uppercase tracking-[.14em] text-slate-400">Suspended by</dt>
@@ -44,7 +44,7 @@
                             @if($customer->reactivated_at)
                                 <div>
                                     <dt class="text-[10px] font-black uppercase tracking-[.14em] text-slate-400">Last reactivated</dt>
-                                    <dd class="mt-1 text-sm font-bold text-slate-800">{{ $customer->reactivated_at->format('M d, Y - g:i A') }}</dd>
+                                    <dd class="mt-1 text-sm font-bold text-slate-800">{{ \App\Support\ViewerTime::render($customer->reactivated_at, 'M d, Y - g:i A') }}</dd>
                                 </div>
                                 <div>
                                     <dt class="text-[10px] font-black uppercase tracking-[.14em] text-slate-400">Reactivated by</dt>
@@ -189,7 +189,7 @@
                     <tbody class="divide-y divide-slate-100">
                     @forelse($rewardTransactions as $transaction)
                         <tr>
-                            <td class="px-4 py-3 text-slate-500">{{ $transaction->created_at?->format('M d, Y - g:i A') }}</td>
+                            <td class="px-4 py-3 text-slate-500">{{ \App\Support\ViewerTime::render($transaction->created_at, 'M d, Y - g:i A') }}</td>
                             <td class="px-4 py-3 font-bold text-slate-700">{{ $transaction->description ?: str($transaction->type)->headline() }}</td>
                             <td class="px-4 py-3"><span class="admin-status-pill border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase text-slate-600">{{ $transaction->status }}</span></td>
                             <td class="px-4 py-3 text-slate-500">{{ $transaction->order?->order_number ?: '—' }}</td>
@@ -217,10 +217,10 @@
                 <div><dt class="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">Company</dt><dd class="mt-1 font-bold text-slate-800">{{ $customer->company_name ?: 'Not provided' }}</dd></div>
                 <div><dt class="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">Preferred sport</dt><dd class="mt-1 font-bold text-slate-800">{{ $customer->preferred_sport ?: 'Not provided' }}</dd></div>
                 <div><dt class="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">Marketing consent</dt><dd class="mt-1 font-bold text-slate-800">{{ $customer->marketing_consent ? 'Opted in' : 'Not opted in' }}</dd></div>
-                <div><dt class="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">Joined</dt><dd class="mt-1 font-bold text-slate-800">{{ $customer->created_at?->format('M d, Y - g:i A') }}</dd></div>
-                <div><dt class="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">Last login</dt><dd class="mt-1 font-bold text-slate-800">{{ $customer->last_login_at?->format('M d, Y - g:i A') ?: 'Never' }}</dd></div>
-                <div><dt class="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">Email verified</dt><dd class="mt-1 font-bold text-slate-800">{{ $customer->email_verified_at?->format('M d, Y - g:i A') ?: 'Not verified' }}</dd></div>
-                <div><dt class="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">Welcome email</dt><dd class="mt-1 font-bold text-slate-800">{{ $customer->welcome_email_sent_at?->format('M d, Y - g:i A') ?: 'Not sent' }}</dd></div>
+                <div><dt class="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">Joined</dt><dd class="mt-1 font-bold text-slate-800">{{ \App\Support\ViewerTime::render($customer->created_at, 'M d, Y - g:i A') }}</dd></div>
+                <div><dt class="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">Last login</dt><dd class="mt-1 font-bold text-slate-800">{{ \App\Support\ViewerTime::render($customer->last_login_at, 'M d, Y - g:i A') ?: 'Never' }}</dd></div>
+                <div><dt class="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">Email verified</dt><dd class="mt-1 font-bold text-slate-800">{{ \App\Support\ViewerTime::render($customer->email_verified_at, 'M d, Y - g:i A') ?: 'Not verified' }}</dd></div>
+                <div><dt class="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">Welcome email</dt><dd class="mt-1 font-bold text-slate-800">{{ \App\Support\ViewerTime::render($customer->welcome_email_sent_at, 'M d, Y - g:i A') ?: 'Not sent' }}</dd></div>
             </dl>
         </section>
 
@@ -313,7 +313,7 @@
                             <td class="px-5 py-4"><x-storefront.account.orders.status-pill :status="$order->status" /></td>
                             <td class="px-5 py-4"><x-storefront.account.orders.status-pill :status="$order->payment_status" /></td>
                             <td class="px-5 py-4 font-semibold text-slate-600">{{ $order->fulfillmentStatusLabel() }}</td>
-                            <td class="px-5 py-4 text-slate-600">{{ $order->placed_at?->format('M d, Y - g:i A') ?: 'Not recorded' }}</td>
+                            <td class="px-5 py-4 text-slate-600">{{ \App\Support\ViewerTime::render($order->placed_at, 'M d, Y - g:i A') ?: 'Not recorded' }}</td>
                             <td class="px-5 py-4 text-right font-black text-brand-ink">{{ strtoupper($order->currency) }} {{ number_format((float) $order->grand_total, 2) }}</td>
                         </tr>
                     @empty
@@ -354,7 +354,7 @@
                             </td>
                             <td class="px-5 py-4 font-bold text-slate-700">{{ ucfirst($return->type) }}</td>
                             <td class="px-5 py-4"><x-storefront.account.orders.status-pill :status="$return->status" /></td>
-                            <td class="px-5 py-4 text-slate-600">{{ $return->requested_at?->format('M d, Y') ?: 'Not recorded' }}</td>
+                            <td class="px-5 py-4 text-slate-600">{{ \App\Support\ViewerTime::render($return->requested_at, 'M d, Y') ?: 'Not recorded' }}</td>
                         </tr>
                     @empty
                         <tr><td colspan="5" class="px-5 py-12 text-center text-slate-500">No return or exchange requests.</td></tr>

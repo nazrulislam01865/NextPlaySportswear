@@ -4,7 +4,7 @@
         <div>
             <a href="{{ route('account.orders.show', $order) }}" class="text-lg font-black text-brand-blue hover:text-brand-red">Order {{ $order->order_number }}</a>
             <div class="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold text-slate-500">
-                <span>Placed {{ $order->placed_at?->format('M d, Y') }}</span>
+                <span>Placed {{ \App\Support\ViewerTime::render($order->placed_at, 'M d, Y') }}</span>
                 <span>{{ $order->total_quantity }} item{{ $order->total_quantity === 1 ? '' : 's' }}</span>
                 <span>{{ $order->paymentStatusLabel() }}</span>
             </div>

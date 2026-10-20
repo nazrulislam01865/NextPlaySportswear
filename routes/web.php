@@ -66,6 +66,19 @@ Route::get('/bulk-quote', [BulkQuoteController::class, 'create'])->name('quote.r
 Route::post('/bulk-quote', [BulkQuoteController::class, 'store'])
     ->middleware('throttle:bulk-quote')
     ->name('quote.request.store');
+// Guest-only bulk quotation journey. All file requests are checked again server-side.
+Route::middleware(\App\Http\Middleware\PrivateGuestQuoteResponse::class)->group(function (): void {
+    Route::get('/bulk-quote/track', [\App\Http\Controllers\Storefront\GuestBulkQuoteController::class, 'track'])->name('quote.guest.track');
+    Route::post('/bulk-quote/track', [\App\Http\Controllers\Storefront\GuestBulkQuoteController::class, 'lookup'])->middleware('throttle:10,1')->name('quote.guest.lookup');
+    Route::get('/bulk-quote/track/{reference}/submitted', [\App\Http\Controllers\Storefront\GuestBulkQuoteController::class, 'success'])->middleware('throttle:60,1')->name('quote.guest.success');
+    Route::get('/bulk-quote/track/{reference}', [\App\Http\Controllers\Storefront\GuestBulkQuoteController::class, 'show'])->middleware('throttle:60,1')->name('quote.guest.show');
+    Route::get('/bulk-quote/track/{reference}/review', [\App\Http\Controllers\Storefront\GuestBulkQuoteController::class, 'review'])->middleware('throttle:60,1')->name('quote.guest.review');
+    Route::get('/bulk-quote/track/{reference}/changes', [\App\Http\Controllers\Storefront\GuestBulkQuoteController::class, 'changes'])->middleware('throttle:60,1')->name('quote.guest.changes');
+    Route::post('/bulk-quote/track/{reference}/changes', [\App\Http\Controllers\Storefront\GuestBulkQuoteController::class, 'sendChanges'])->middleware('throttle:6,1')->name('quote.guest.changes.send');
+    Route::post('/bulk-quote/track/{reference}/message', [\App\Http\Controllers\Storefront\GuestBulkQuoteController::class, 'sendMessage'])->middleware('throttle:10,1')->name('quote.guest.message');
+    Route::post('/bulk-quote/track/{reference}/decision', [\App\Http\Controllers\Storefront\GuestBulkQuoteController::class, 'decision'])->middleware('throttle:guest-quote-decision')->name('quote.guest.decision');
+    Route::get('/bulk-quote/track/{reference}/file/{file}', [\App\Http\Controllers\Storefront\GuestBulkQuoteController::class, 'file'])->middleware('throttle:30,1')->name('quote.guest.file');
+});
 Route::get('/shipping-delivery', [ContentPageController::class, 'shipping'])->name('shipping');
 Route::get('/sustainability', [ContentPageController::class, 'sustainability'])->name('sustainability');
 Route::get('/returns-refunds-exchanges', [ContentPageController::class, 'returns'])->name('returns');
@@ -337,6 +350,9 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
                 ->middleware('throttle:6,1')
                 ->name('bulk-quotes.retry-sync');
 
+            Route::post('/bulk-quotes/{bulkQuote}/publish', [\App\Http\Controllers\Admin\BulkQuoteGuestAdminController::class, 'publish'])->middleware('throttle:10,1')->name('bulk-quotes.publish');
+            Route::post('/bulk-quotes/{bulkQuote}/message', [\App\Http\Controllers\Admin\BulkQuoteGuestAdminController::class, 'message'])->middleware('throttle:15,1')->name('bulk-quotes.message');
+            Route::get('/bulk-quotes/{bulkQuote}/file/{file}', [\App\Http\Controllers\Admin\BulkQuoteGuestAdminController::class, 'file'])->name('bulk-quotes.file');
             Route::get('/artwork-approvals', [\App\Http\Controllers\Admin\ArtworkProofController::class, 'index'])
                 ->name('artwork-approvals.index');
             Route::get('/orders', [\App\Http\Controllers\Admin\OrderController::class, 'index'])->name('orders.index');
@@ -444,6 +460,15 @@ Route::middleware(['not.admin', 'auth:web', 'customer', 'verified'])->prefix('ac
     Route::patch('/payment-methods/{paymentMethod}/default', [PaymentMethodController::class, 'makeDefault'])->name('payment-methods.default');
     Route::delete('/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'destroy'])->name('payment-methods.destroy');
 
+
+    // Authenticated customer quote center: all records and files are owner-scoped.
+    Route::get('/bulk-quotes', [\App\Http\Controllers\Storefront\Account\BulkQuoteCenterController::class, 'index'])->name('bulk-quotes.index');
+    Route::get('/bulk-quotes/{reference}', [\App\Http\Controllers\Storefront\Account\BulkQuoteCenterController::class, 'show'])->name('bulk-quotes.show');
+    Route::get('/bulk-quotes/{reference}/changes', [\App\Http\Controllers\Storefront\Account\BulkQuoteCenterController::class, 'changes'])->name('bulk-quotes.changes');
+    Route::post('/bulk-quotes/{reference}/changes', [\App\Http\Controllers\Storefront\Account\BulkQuoteCenterController::class, 'sendChanges'])->middleware('throttle:6,1')->name('bulk-quotes.changes.send');
+    Route::post('/bulk-quotes/{reference}/message', [\App\Http\Controllers\Storefront\Account\BulkQuoteCenterController::class, 'sendMessage'])->middleware('throttle:10,1')->name('bulk-quotes.message');
+    Route::post('/bulk-quotes/{reference}/decision', [\App\Http\Controllers\Storefront\Account\BulkQuoteCenterController::class, 'decision'])->middleware('throttle:guest-quote-decision')->name('bulk-quotes.decision');
+    Route::get('/bulk-quotes/{reference}/file/{file}', [\App\Http\Controllers\Storefront\Account\BulkQuoteCenterController::class, 'file'])->middleware('throttle:30,1')->name('bulk-quotes.file');
 
     Route::get('/artwork-approvals', [\App\Http\Controllers\Storefront\Account\ArtworkApprovalController::class, 'index'])->name('artwork.index');
     Route::get('/artwork-approvals/{proof}', [\App\Http\Controllers\Storefront\Account\ArtworkApprovalController::class, 'show'])->name('artwork.show');

@@ -207,7 +207,7 @@
 
                                 <!-- Last Updated -->
                                 <td class="px-5 py-4 text-slate-500 font-medium whitespace-nowrap">
-                                    <div>{{ $tmpl->updated_at?->format('M d, Y') ?? 'Oct 21, 2024' }}</div>
+                                    <div>{{ \App\Support\ViewerTime::render($tmpl->updated_at, 'M d, Y') ?? 'Oct 21, 2024' }}</div>
                                     <div class="text-[11px] text-slate-400">by {{ $tmpl->publisher?->name ?? 'Admin' }}</div>
                                 </td>
 

@@ -11,6 +11,7 @@ return [
     |
     */
     'enabled' => filter_var(env('FLOWTRACK_INTEGRATION_ENABLED', false), FILTER_VALIDATE_BOOL),
+    'catalog_events_enabled' => filter_var(env('FLOWTRACK_CATALOG_EVENTS_ENABLED', false), FILTER_VALIDATE_BOOL),
 
     'base_url' => rtrim((string) env('FLOWTRACK_BASE_URL', 'http://127.0.0.1:8001'), '/'),
     'token' => env('FLOWTRACK_INTEGRATION_TOKEN'),
@@ -39,7 +40,7 @@ return [
         'timeout' => max(10, (int) env('FLOWTRACK_QUEUE_TIMEOUT', 30)),
         'backoff' => array_values(array_filter(array_map(
             static fn (string $seconds): int => max(1, (int) trim($seconds)),
-            explode(',', (string) env('FLOWTRACK_QUEUE_BACKOFF', '10,60,300,900,1800')),
+            explode(',', (string) env('FLOWTRACK_QUEUE_BACKOFF', '1,3,10,30,90')),
         ))),
     ],
 ];

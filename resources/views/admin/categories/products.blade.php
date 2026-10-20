@@ -347,7 +347,7 @@
                                     </td>
 
                                     <td class="px-6 py-6 text-sm text-slate-500" data-label="Updated">
-                                        <span class="whitespace-nowrap">{{ $product->updated_at?->format('M j, Y g:i A') }}</span>
+                                        <span class="whitespace-nowrap">{{ \App\Support\ViewerTime::render($product->updated_at, 'M j, Y g:i A') }}</span>
                                         @if($product->updater)
                                             <span class="mt-1 block text-xs">by {{ $product->updater->name }}</span>
                                         @endif

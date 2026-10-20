@@ -20,7 +20,7 @@ class SecurityHeaders
 
         $headers->set('X-Content-Type-Options', 'nosniff');
         $headers->set('X-Frame-Options', 'DENY');
-        $headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
+        $headers->set('Referrer-Policy', $request->is('bulk-quote/track', 'bulk-quote/track/*') ? 'no-referrer' : 'strict-origin-when-cross-origin');
         $headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), browsing-topics=(), payment=(self)');
         $headers->set('X-Permitted-Cross-Domain-Policies', 'none');
         $headers->set('X-Download-Options', 'noopen');
@@ -54,7 +54,9 @@ class SecurityHeaders
                 $policy[] = 'frame-src https://www.google.com https://recaptcha.google.com';
             }
 
-            $headers->set('Content-Security-Policy', implode('; ', $policy));
+            if (! $request->routeIs('quote.guest.file', 'admin.bulk-quotes.file')) {
+                $headers->set('Content-Security-Policy', implode('; ', $policy));
+            }
 
             if ($request->isSecure()) {
                 $headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');

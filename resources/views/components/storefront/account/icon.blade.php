@@ -32,6 +32,9 @@
     @case('orders')
         <svg {{ $attributes->merge($attrs) }}><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
         @break
+    @case('quote')
+        <svg {{ $attributes->merge($attrs) }}><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/><path d="M16 17h2"/></svg>
+        @break
     @case('artwork')
         <svg {{ $attributes->merge($attrs) }}><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="1.5"/><path d="m3 17 5-5 4 3 3-4 6 6"/></svg>
         @break

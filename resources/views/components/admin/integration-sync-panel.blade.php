@@ -29,8 +29,8 @@
             @if($jobId)
                 <x-admin.detail-field label="FlowTrack Job ID">{{ $jobId }}</x-admin.detail-field>
             @endif
-            <x-admin.detail-field label="Last Attempt">{{ $lastAttemptAt?->format('M d, Y · g:i A') ?: '—' }}</x-admin.detail-field>
-            <x-admin.detail-field label="Synced At">{{ $syncedAt?->format('M d, Y · g:i A') ?: '—' }}</x-admin.detail-field>
+            <x-admin.detail-field label="Last Attempt">{{ \App\Support\ViewerTime::render($lastAttemptAt, 'M d, Y · g:i A') ?: '—' }}</x-admin.detail-field>
+            <x-admin.detail-field label="Synced At">{{ \App\Support\ViewerTime::render($syncedAt, 'M d, Y · g:i A') ?: '—' }}</x-admin.detail-field>
             <x-admin.detail-field label="Last Sync Error" :wide="true">
                 <div class="whitespace-pre-line {{ $error ? 'text-red-700' : 'text-slate-600' }}">{{ $error ?: 'No sync error.' }}</div>
             </x-admin.detail-field>

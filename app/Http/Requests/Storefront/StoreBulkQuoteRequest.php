@@ -48,7 +48,7 @@ class StoreBulkQuoteRequest extends FormRequest
         return [
             'full_name' => ['bail', 'required', 'string', 'min:2', 'max:120'],
             'organization' => ['bail', 'required', 'string', 'min:2', 'max:160'],
-            'email' => ['bail', 'required', 'email:rfc', 'max:190'],
+            'email' => ['bail', 'required', 'email:rfc', 'max:190', ...($this->user()?->isCustomer() ? [Rule::in([strtolower($this->user()->email)])] : [])],
             'phone_country_code_id' => [
                 'required',
                 'integer',
@@ -80,7 +80,11 @@ class StoreBulkQuoteRequest extends FormRequest
             'attachment' => ['nullable', 'file', 'max:10240'],
             'additional_notes' => ['nullable', 'string', 'max:5000'],
 
-            'g-recaptcha-response' => ['bail', 'required', 'string', 'max:4096', new VerifiedRecaptcha()],
+            // Local development can submit without Google's CAPTCHA service.
+            // All other environments continue to require server-side verification.
+            'g-recaptcha-response' => app()->environment('local')
+                ? ['exclude']
+                : ['bail', 'required', 'string', 'max:4096', new VerifiedRecaptcha()],
 
             // Invisible honeypot field. Real visitors leave it empty.
             'company' => ['nullable', 'max:0'],

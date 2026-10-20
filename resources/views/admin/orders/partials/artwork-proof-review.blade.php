@@ -2,7 +2,7 @@
     <div class="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
             <h4 class="text-sm font-semibold text-brand-ink">Latest proof · v{{ $proof->version }}</h4>
-            <span class="text-xs text-slate-500">{{ $proof->created_at?->format('M j, Y · g:i A') }}</span>
+            <span class="text-xs text-slate-500">{{ \App\Support\ViewerTime::render($proof->created_at, 'M j, Y · g:i A') }}</span>
         </div>
         <div class="mt-2 flex flex-wrap gap-2">
             <a class="btn btn-white" href="{{ route('admin.orders.artwork-proofs.file', [$order, $proof]) }}" target="_blank" rel="noopener noreferrer">View Proof</a>
@@ -46,7 +46,7 @@
                 ])>
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <strong class="text-xs text-brand-ink">{{ $message->sender_role === 'designer' ? 'Design Team' : 'Customer' }}</strong>
-                        <span class="text-xs text-slate-500">{{ $message->created_at?->format('M j, Y · g:i A') }}</span>
+                        <span class="text-xs text-slate-500">{{ \App\Support\ViewerTime::render($message->created_at, 'M j, Y · g:i A') }}</span>
                     </div>
                     <p class="mt-1 whitespace-pre-wrap break-words leading-5 text-slate-700">{{ $message->message }}</p>
                 </div>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Storefront\StoreBulkQuoteRequest;
+use App\Services\BulkQuote\BulkQuoteGuestService;
 use App\Models\BulkQuoteBudgetRange;
 use App\Models\BulkQuoteRequest;
 use App\Models\CountryCallingCode;
@@ -62,6 +63,7 @@ class BulkQuoteController extends Controller
         StoreBulkQuoteRequest $request,
         AdminNotificationService $notifications,
         FlowTrackInquirySyncManager $flowTrackSync,
+        BulkQuoteGuestService $guest,
     ): RedirectResponse {
         $validated = $request->validated();
         unset($validated['company'], $validated['g-recaptcha-response']);
@@ -94,7 +96,9 @@ class BulkQuoteController extends Controller
         $user = $request->user();
         $customer = $user instanceof User ? $user : null;
 
+        $accessToken = $customer === null ? $guest->newToken() : null;
         $quote = BulkQuoteRequest::create([
+            'guest_access_hash' => $accessToken !== null ? hash('sha256', $accessToken) : null,
             ...$validated,
             'reference' => $this->makeReference(),
             'user_id' => $customer?->id,
@@ -123,11 +127,21 @@ class BulkQuoteController extends Controller
             ]);
         }
 
-        $this->emails->bulkQuoteReceived($quote);
+        $this->emails->bulkQuoteReceived($quote, $accessToken);
 
         // The request has already been safely stored in NextPlay. FlowTrack
         // availability must never roll back or falsify a successful submission.
         $flowTrackSync->dispatch($quote);
+
+        if ($accessToken !== null) {
+            return redirect()->route('quote.guest.success', ['reference' => $quote->reference, 'token' => $accessToken])
+                ->withHeaders(['Cache-Control' => 'no-store, private']);
+        }
+
+        if ($customer !== null) {
+            return redirect()->route('account.bulk-quotes.show', $quote->reference)
+                ->with('status', 'Your bulk quote request has been submitted. We will notify you when your quotation is ready.');
+        }
 
         return redirect()
             ->route('quote.request')

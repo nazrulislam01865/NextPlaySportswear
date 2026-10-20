@@ -93,11 +93,11 @@ final class FlowTrackOrderPayloadFactory
             'deleted_at' => $order->deleted_at?->toIso8601String(),
 
             // Future-proof copy of every persisted orders-table attribute.
-            'source_order_attributes' => $order->attributesToArray(),
+            'source_order_attributes' => $this->safeSourceAttributes($order),
 
             // Current order-management records. These can be empty at initial
             // checkout, but a manual resend still preserves what exists then.
-            'source_related_data' => $this->relatedData($order),
+            'source_related_data' => $this->stripSecretFields($this->relatedData($order)),
 
             'items' => $order->items
                 ->map(fn (OrderItem $item): array => $this->itemPayload($item))
@@ -218,7 +218,7 @@ final class FlowTrackOrderPayloadFactory
 
             // Every persisted order_items-table attribute, including any future
             // columns added before FlowTrack is upgraded again.
-            'source_item_attributes' => $item->attributesToArray(),
+            'source_item_attributes' => $this->safeSourceAttributes($item),
         ];
     }
 
@@ -302,6 +302,36 @@ final class FlowTrackOrderPayloadFactory
             'credit_notes' => $order->creditNotes->map(fn (Model $model): array => $model->attributesToArray())->values()->all(),
             'downloads' => $order->downloads->map(fn (Model $model): array => $model->attributesToArray())->values()->all(),
         ];
+    }
+
+    /**
+     * Only data needed to fulfill purchased orders is exported. In particular,
+     * never forward FlowTracker callback/diagnostic internals or payment-provider
+     * secrets hidden inside the source models' arbitrary metadata JSON.
+     * This does not alter the NextPlay database or the immutable product details.
+     *
+     * @return array<string,mixed>
+     */
+    private function safeSourceAttributes(Model $model): array
+    {
+        return $this->stripSecretFields(array_filter(
+            $model->attributesToArray(),
+            static fn (string $key): bool => ! str_starts_with($key, 'flowtrack_'),
+            ARRAY_FILTER_USE_KEY,
+        ));
+    }
+
+    /** @return array<mixed> */
+    private function stripSecretFields(array $data): array
+    {
+        $safe = [];
+        foreach ($data as $key => $value) {
+            if (is_string($key) && preg_match('/(?:password|secret|access_token|refresh_token|authorization|api[_-]?key|private[_-]?key|session[_-]?id|card[_-]?number|cvv|cvc)/i', $key)) {
+                continue;
+            }
+            $safe[$key] = is_array($value) ? $this->stripSecretFields($value) : $value;
+        }
+        return $safe;
     }
 
     private function absoluteUrl(?string $value): ?string

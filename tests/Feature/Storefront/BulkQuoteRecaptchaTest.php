@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Storefront;
 
+use App\Http\Requests\Storefront\StoreBulkQuoteRequest;
 use App\Rules\VerifiedRecaptcha;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
@@ -78,6 +79,28 @@ class BulkQuoteRecaptchaTest extends TestCase
 
         $this->assertFalse($this->isValid('token'));
         Http::assertNothingSent();
+    }
+
+    public function test_bulk_quote_captcha_is_excluded_only_in_local_environment(): void
+    {
+        $originalEnvironment = app()->environment();
+
+        try {
+            app()->instance('env', 'local');
+            $localRule = (new StoreBulkQuoteRequest())->rules()['g-recaptcha-response'];
+            $this->assertSame(['exclude'], $localRule);
+            $this->assertTrue(Validator::make([], ['g-recaptcha-response' => $localRule])->passes());
+
+            foreach (['testing', 'production', 'staging'] as $environment) {
+                app()->instance('env', $environment);
+                $rules = (new StoreBulkQuoteRequest())->rules()['g-recaptcha-response'];
+                $this->assertContains('required', $rules);
+                $this->assertInstanceOf(VerifiedRecaptcha::class, $rules[array_key_last($rules)]);
+                $this->assertFalse(Validator::make([], ['g-recaptcha-response' => $rules])->passes());
+            }
+        } finally {
+            app()->instance('env', $originalEnvironment);
+        }
     }
 
     private function isValid(?string $token): bool

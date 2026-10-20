@@ -83,6 +83,41 @@ class BulkQuoteRequestAdminTest extends TestCase
             ->assertSee('Please confirm production timing');
     }
 
+    public function test_guest_bulk_quote_detail_renders_empty_and_populated_conversation(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $quote = $this->quote(['user_id' => null]);
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.bulk-quotes.show', $quote))
+            ->assertOk()
+            ->assertSee('No messages yet.')
+            ->assertSee('No quotation files have been uploaded.');
+
+        $message = $quote->messages()->create([
+            'sender' => 'guest',
+            'kind' => 'change_request',
+            'body' => 'Please adjust the jersey quantities.',
+            'change_types' => ['pricing', 'products'],
+        ]);
+        $quote->quoteFiles()->create([
+            'bulk_quote_message_id' => $message->id,
+            'version' => 1,
+            'category' => 'support',
+            'path' => 'bulk-quotes/guest/sample.pdf',
+            'original_name' => 'sample.pdf',
+            'mime_type' => 'application/pdf',
+            'size' => 1024,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.bulk-quotes.show', $quote))
+            ->assertOk()
+            ->assertSee('Please adjust the jersey quantities.')
+            ->assertSee('Change types: pricing, products')
+            ->assertSee('sample.pdf');
+    }
+
     public function test_admin_can_manage_bulk_quote_workflow_with_assignment_and_activity_history(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);

@@ -53,7 +53,7 @@
                                     @endforeach
                                 </div>
                             @endif
-                            <small>{{ optional($notification->created_at)->format('d M Y, h:i A') }}</small>
+                            <small>{{ \App\Support\ViewerTime::render($notification->created_at, 'd M Y, h:i A') }}</small>
                         </div>
                         <div class="admin-notification-page-actions">
                             @if(!empty($data['url']))

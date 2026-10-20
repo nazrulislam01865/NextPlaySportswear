@@ -79,7 +79,7 @@
                                     @endif
                                 </div>
                             @endif
-                            <p class="mt-1 text-xs font-semibold text-slate-400">{{ optional($notification->created_at)->format('M d, Y · g:i A') }}</p>
+                            <p class="mt-1 text-xs font-semibold text-slate-400">{{ \App\Support\ViewerTime::render($notification->created_at, 'M d, Y · g:i A') }}</p>
                         </div>
                         <div class="flex flex-wrap gap-2 lg:justify-end">
                             @if(!empty($data['url']))
@@ -113,7 +113,7 @@
                     <article class="grid gap-4 p-5 lg:grid-cols-[1fr_1fr_auto] lg:items-center">
                         <div class="min-w-0">
                             <a class="font-black text-brand-blue" href="{{ route('admin.orders.show', $order) }}">{{ $order->order_number }}</a>
-                            <p class="mt-1 text-xs font-semibold text-slate-400">{{ $order->placed_at?->format('M d, Y · g:i A') }}</p>
+                            <p class="mt-1 text-xs font-semibold text-slate-400">{{ \App\Support\ViewerTime::render($order->placed_at, 'M d, Y · g:i A') }}</p>
                         </div>
                         <div class="min-w-0">
                             <p class="font-bold text-brand-dark">{{ $order->customer_name }}</p>
