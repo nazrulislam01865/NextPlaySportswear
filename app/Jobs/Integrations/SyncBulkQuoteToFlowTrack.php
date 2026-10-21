@@ -8,6 +8,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -36,6 +37,12 @@ final class SyncBulkQuoteToFlowTrack implements ShouldQueue
         }
 
         $sync->syncNow($quote, false);
+    }
+
+    public function middleware(): array
+    {
+        return [(new WithoutOverlapping('nextplay-bulk-out-'.$this->bulkQuoteId))
+            ->releaseAfter(2)->expireAfter($this->timeout + 15)];
     }
 
     /** @return array<int, int> */

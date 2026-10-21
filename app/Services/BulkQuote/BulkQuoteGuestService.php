@@ -35,7 +35,7 @@ final class BulkQuoteGuestService
         if (! $path) {
             throw ValidationException::withMessages(['files' => 'The file could not be saved. Please try again.']);
         }
-        return $quote->quoteFiles()->create([
+        $storedFile = $quote->quoteFiles()->create([
             'bulk_quote_message_id' => $messageId,
             'uploaded_by' => $actorId,
             'version' => $version,
@@ -45,6 +45,7 @@ final class BulkQuoteGuestService
             'mime_type' => $upload->getMimeType() ?: 'application/octet-stream',
             'size' => $upload->getSize() ?: 0,
         ]);
+        return $storedFile;
     }
 
     public function deleteFiles(array $files): void
@@ -70,10 +71,14 @@ final class BulkQuoteGuestService
                 if ($customerId !== null && (int) $quote->user_id !== $customerId) {
                     abort(404);
                 }
-                if (! $quote->quotation_sent_at || $quote->quotation_version < 1 ||
+                $revisionPending = $quote->guest_decision === 'changes_requested';
+                if ((! $quote->quotation_sent_at && ! ($kind === 'message' && $revisionPending)) || $quote->quotation_version < 1 ||
                     in_array($quote->status, [BulkQuoteRequest::STATUS_ACCEPTED, BulkQuoteRequest::STATUS_CONVERTED,
                         BulkQuoteRequest::STATUS_CLOSED, BulkQuoteRequest::STATUS_REJECTED], true)) {
                     throw ValidationException::withMessages(['body' => 'This quotation is not available for feedback. Please contact sales.']);
+                }
+                if ($kind === 'change_request' && $revisionPending) {
+                    throw ValidationException::withMessages(['body' => 'A quotation revision is already in progress. You can still send a message.']);
                 }
                 $message = $quote->messages()->create([
                     'sender' => 'guest',
@@ -85,10 +90,28 @@ final class BulkQuoteGuestService
                 foreach ($uploads as $upload) {
                     $created[] = $this->storeFile($quote, $upload, 'feedback', $quote->quotation_version, $customerId, $message->id);
                 }
+                if ($kind === 'change_request') {
+                    // Keep prior quotation bytes for history, never publish an old
+                    // price or offer as the new version after a change request.
+                    $quote->quoteFiles()->where('category', 'quotation')->update(['category' => 'quotation_archived']);
+                    $quote->quoteFiles()->where('category', 'flowtrack_offer')->update(['category' => 'offer_archived']);
+                    $quote->forceFill([
+                        'last_change_request_id' => $message->id,
+                        'quotation_details' => null,
+                        'quotation_sent_at' => null,
+                        'quotation_valid_until' => null,
+                        'quoted_amount' => null,
+                        'flowtrack_offer_manifest_hash' => null,
+                        'flowtrack_offer_ready_hash' => null,
+                        'flowtrack_offer_file_count' => 0,
+                        'flowtrack_task_progress' => [],
+                    ]);
+                }
                 $quote->forceFill([
                     'status' => BulkQuoteRequest::STATUS_CUSTOMER_RESPONDED,
                     'guest_decision' => $kind === 'change_request' ? 'changes_requested' : $quote->guest_decision,
-                ])->save();
+                ])->saveQuietly(); // the message observer dispatches one complete post-commit sync
+
             });
         } catch (\Throwable $exception) {
             $this->deleteFiles($created);

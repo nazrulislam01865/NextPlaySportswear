@@ -149,6 +149,22 @@ class Product extends Model
         return $this->hasMany(ProductWishlist::class);
     }
 
+    /** Fingerprint the saved gallery so a stale edit form cannot remove newer images. */
+    public function imageGalleryRevision(): string
+    {
+        $images = $this->relationLoaded('images') ? $this->images : $this->images()->get();
+        $rows = $images->sortBy('id')->values()->map(static fn ($image): array => [
+            (int) $image->id,
+            (string) ($image->path ?? ''),
+            (string) ($image->url ?? ''),
+            (int) ($image->media_library_image_id ?? 0),
+            (int) ($image->sort_order ?? 0),
+            (int) (bool) $image->is_primary,
+        ])->all();
+
+        return hash('sha256', json_encode($rows, JSON_THROW_ON_ERROR));
+    }
+
     public function images(): HasMany
     {
         return $this->hasMany(ProductImage::class)->orderByDesc('is_primary')->orderBy('sort_order');

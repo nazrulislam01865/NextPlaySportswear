@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\JerseyCustomizationType;
 use App\Enums\WorldCupCustomizationType;
 use App\Http\Controllers\Controller;
+use App\Services\Catalog\StoredPublicImage;
 use App\Http\Requests\Admin\ProductBulkRequest;
 use App\Http\Requests\Admin\ProductFormRequest;
 use App\Models\CatalogAttribute;
@@ -419,6 +420,18 @@ class ProductController extends Controller
         $changeDetails = [];
 
         DB::transaction(function () use ($request, $product, $before, &$changeDetails): void {
+            if ($request->filled('image_gallery_revision')) {
+                // Lock before comparing. Another editor may have replaced gallery images
+                // while this form was open; never delete those new rows as "unselected".
+                $latestProduct = Product::query()->whereKey($product->getKey())->lockForUpdate()->firstOrFail();
+                $latestProduct->load('images');
+                if (! hash_equals($latestProduct->imageGalleryRevision(), (string) $request->input('image_gallery_revision'))) {
+                    throw ValidationException::withMessages([
+                        'image_gallery_revision' => 'Product images changed since this page was opened. Reload the page before saving so newer images are not overwritten.',
+                    ]);
+                }
+            }
+
             $product->update($this->productPayload($request, $product));
             $this->syncRelations($product, $request);
             $product->load($this->relations());
@@ -1447,7 +1460,7 @@ class ProductController extends Controller
 
                     foreach ($uploads as $uploadedImage) {
                         $gallery[] = [
-                            'path' => $uploadedImage->store("products/{$product->id}/options", 'public'),
+                            'path' => StoredPublicImage::replace($uploadedImage, "products/{$product->id}/options", null),
                             'url' => null,
                             'alt' => $label,
                         ];
@@ -1554,7 +1567,7 @@ class ProductController extends Controller
                 $chartImageUrl = null;
             }
             if ($chartImage = $request->file("size_groups.{$groupInputIndex}.chart_image")) {
-                $chartImagePath = $chartImage->store("products/{$product->id}/size-charts", 'public');
+                $chartImagePath = StoredPublicImage::replace($chartImage, "products/{$product->id}/size-charts", $existingMedia['path'] ?? null);
                 $chartImageUrl = null;
             } elseif (! $chartImageUrl && ! $chartImagePath && filled($existingMedia['url'] ?? null)) {
                 $chartImageUrl = $existingMedia['url'];
@@ -1847,8 +1860,16 @@ class ProductController extends Controller
     {
         $showInCategoryPage = (bool) ($data['show_in_category_page'] ?? true);
         $primaryId = isset($data['primary_category_id']) ? (int) $data['primary_category_id'] : null;
+        // This product editor exposes only the primary category. Other category
+        // placements are managed in Category > Products and must survive an
+        // otherwise unrelated product edit (e.g. changing its price or image).
+        $existing = DB::table('category_product')
+            ->where('product_id', $product->id)
+            ->get()
+            ->keyBy('category_id');
         $requestedCategoryIds = collect($data['category_assignments'] ?? [])
             ->push($primaryId)
+            ->when($showInCategoryPage, fn ($ids) => $ids->merge($existing->keys()))
             ->map(fn ($id) => (int) $id)
             ->filter()
             ->unique()
@@ -1860,7 +1881,9 @@ class ProductController extends Controller
             ->map(fn ($id): int => (int) $id)
             ->flip();
         $categoryIds = $requestedCategoryIds
-            ->filter(fn (int $id): bool => $leafCategoryIdSet->has($id))
+            // New placements are leaf-only, but preserve pre-existing parent
+            // links that were created before that restriction was introduced.
+            ->filter(fn (int $id): bool => $leafCategoryIdSet->has($id) || $existing->has($id))
             ->values();
         $primaryId = $primaryId && $leafCategoryIdSet->has($primaryId) ? $primaryId : null;
 
@@ -1872,14 +1895,7 @@ class ProductController extends Controller
             $categoryIds = collect();
         }
 
-        // Product editing must not erase category-specific merchandising choices
-        // managed from the category product-assignment screen. Preserve existing
-        // featured flags and ordering for retained category assignments.
-        $existing = DB::table('category_product')
-            ->where('product_id', $product->id)
-            ->get()
-            ->keyBy('category_id');
-
+        // Preserve category-specific featured flags and ordering as well.
         $sync = $categoryIds->mapWithKeys(function (int $categoryId, int $index) use ($existing, $primaryId): array {
             $pivot = $existing->get($categoryId);
 
@@ -1924,7 +1940,7 @@ class ProductController extends Controller
 
             $upload = $request->file("feature_icon_files.{$index}");
             if ($upload) {
-                $path = $upload->store("products/{$product->id}/highlights", 'public');
+                $path = StoredPublicImage::replace($upload, "products/{$product->id}/highlights", null);
             }
 
             $requestedStorefront = $hasSubmittedStorefront
@@ -2052,7 +2068,7 @@ class ProductController extends Controller
         }
 
         foreach ($uploadedImages as $index => $uploadedImage) {
-            $path = $uploadedImage->store('media-library/'.now()->format('Y/m'), 'public');
+            $path = StoredPublicImage::replace($uploadedImage, 'media-library/'.now()->format('Y/m'), null);
             $originalName = pathinfo($uploadedImage->getClientOriginalName(), PATHINFO_FILENAME) ?: $product->name;
             $dimensions = @getimagesize($uploadedImage->getRealPath()) ?: [];
             $mediaImage = MediaLibraryImage::query()->create([
@@ -2105,9 +2121,7 @@ class ProductController extends Controller
 
     private function deletePublicImage(?string $path): void
     {
-        if (filled($path) && Storage::disk('public')->exists($path)) {
-            Storage::disk('public')->delete($path);
-        }
+        StoredPublicImage::retire($path);
     }
 
     private function replaceSimpleRelation(Product $product, string $relation, array $rows, array $required, array $columns): void

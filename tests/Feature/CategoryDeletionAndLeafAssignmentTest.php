@@ -114,7 +114,7 @@ class CategoryDeletionAndLeafAssignmentTest extends TestCase
         $this->assertTrue($directLeaf->fresh()->isLeaf());
     }
 
-    public function test_turning_a_leaf_into_a_parent_removes_its_direct_product_assignments(): void
+    public function test_turning_a_leaf_into_a_parent_preserves_its_direct_product_assignments(): void
     {
         $formerLeaf = $this->category('Warmups');
         $otherLeaf = $this->category('Accessories');
@@ -130,23 +130,24 @@ class CategoryDeletionAndLeafAssignmentTest extends TestCase
 
         $normalized = app(LeafCategoryAssignmentService::class)->enforce();
 
-        $this->assertSame(1, $normalized);
-        $this->assertDatabaseMissing('category_product', [
+        $this->assertSame(0, $normalized);
+        $this->assertDatabaseHas('category_product', [
             'product_id' => $product->id,
             'category_id' => $formerLeaf->id,
+            'is_primary' => true,
         ]);
         $this->assertDatabaseHas('category_product', [
             'product_id' => $product->id,
             'category_id' => $otherLeaf->id,
-            'is_primary' => true,
+            'is_primary' => false,
         ]);
 
         $product->refresh();
-        $this->assertSame($otherLeaf->id, $product->category_id);
+        $this->assertSame($formerLeaf->id, $product->category_id);
         $this->assertNull($product->subcategory_id);
     }
 
-    public function test_hierarchy_normalization_clears_legacy_only_parent_assignments(): void
+    public function test_hierarchy_normalization_preserves_legacy_only_parent_assignments(): void
     {
         $formerLeaf = $this->category('Legacy Teamwear');
         app(CategoryTreeService::class)->rebuildClosure();
@@ -157,9 +158,9 @@ class CategoryDeletionAndLeafAssignmentTest extends TestCase
 
         $normalized = app(LeafCategoryAssignmentService::class)->enforce();
 
-        $this->assertSame(1, $normalized);
+        $this->assertSame(0, $normalized);
         $product->refresh();
-        $this->assertNull($product->category_id);
+        $this->assertSame($formerLeaf->id, $product->category_id);
         $this->assertNull($product->subcategory_id);
         $this->assertSame(0, $product->categories()->count());
     }

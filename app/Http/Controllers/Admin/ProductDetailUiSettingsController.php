@@ -8,7 +8,8 @@ use App\Models\ProductDetailUiSetting;
 use App\Services\Storefront\ProductCatalogCacheService;
 use App\Support\ProductStorefrontUi;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Storage;
+use App\Services\Catalog\StoredPublicImage;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ProductDetailUiSettingsController extends Controller
@@ -55,35 +56,37 @@ class ProductDetailUiSettingsController extends Controller
             $settings[$key] = $value !== '' ? $value : $default;
         }
 
-        foreach ($iconKeys as $key) {
-            $existingPath = trim((string) ($current[$key] ?? ''));
-            $path = $existingPath;
-            $clear = filter_var(data_get($validated, "clear_icons.{$key}", false), FILTER_VALIDATE_BOOLEAN);
-            $upload = $request->file("icon_files.{$key}");
+        DB::transaction(function () use ($iconKeys, $current, $validated, $request, &$settings): void {
+            foreach ($iconKeys as $key) {
+                $existingPath = trim((string) ($current[$key] ?? ''));
+                $path = $existingPath;
+                $clear = filter_var(data_get($validated, "clear_icons.{$key}", false), FILTER_VALIDATE_BOOLEAN);
+                $upload = $request->file("icon_files.{$key}");
 
-            if ($clear) {
-                $path = '';
+                if ($clear) {
+                    $path = '';
+                }
+
+                if ($upload) {
+                    $path = StoredPublicImage::replace($upload, 'storefront/product-detail-ui', $existingPath);
+                }
+
+                if (
+                    $existingPath !== ''
+                    && $existingPath !== $path
+                    && str_starts_with(ltrim(str_replace('\\', '/', $existingPath), '/'), 'storefront/product-detail-ui/')
+                ) {
+                    StoredPublicImage::retire($existingPath);
+                }
+
+                $settings[$key] = $path !== '' ? $path : null;
             }
 
-            if ($upload) {
-                $path = $upload->store('storefront/product-detail-ui', 'public');
-            }
-
-            if (
-                $existingPath !== ''
-                && $existingPath !== $path
-                && str_starts_with(ltrim(str_replace('\\', '/', $existingPath), '/'), 'storefront/product-detail-ui/')
-            ) {
-                Storage::disk('public')->delete($existingPath);
-            }
-
-            $settings[$key] = $path !== '' ? $path : null;
-        }
-
-        ProductDetailUiSetting::query()->updateOrCreate(
-            ['id' => 1],
-            ['settings' => $settings]
-        );
+            ProductDetailUiSetting::query()->updateOrCreate(
+                ['id' => 1],
+                ['settings' => $settings]
+            );
+        });
 
         ProductStorefrontUi::flushCache();
         $this->productCatalogCache->flush();

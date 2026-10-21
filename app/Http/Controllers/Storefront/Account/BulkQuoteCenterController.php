@@ -42,6 +42,11 @@ class BulkQuoteCenterController extends Controller
 
     private function files(BulkQuoteRequest $quote)
     {
+        if (! \App\Support\FlowTrackQuoteCustomerProgress::published($quote)
+            && ! \App\Support\FlowTrackQuoteCustomerProgress::verifiedOffer($quote)) return collect();
+        if (\App\Support\FlowTrackQuoteCustomerProgress::verifiedOffer($quote)) {
+            return $quote->quoteFiles()->where('category', 'flowtrack_offer')->oldest()->get();
+        }
         return $quote->quoteFiles()->where('category', 'quotation')
             ->where('version', $quote->quotation_version)->oldest()->get();
     }
@@ -88,14 +93,14 @@ class BulkQuoteCenterController extends Controller
         return $this->page('show', $request, [
             'quote' => $quote,
             'files' => $this->files($quote),
-            'messages' => $quote->messages()->with('files')->oldest()->limit(100)->get(),
+            'messages' => $quote->messages()->with('files')->latest('id')->limit(100)->get()->sortBy('id')->values(),
         ]);
     }
 
     public function changes(Request $request, string $reference): View|RedirectResponse
     {
         $quote = $this->mine($request, $reference);
-        if (! $this->canRespond($quote)) {
+        if (! $this->canRespond($quote) || $quote->guest_decision === 'changes_requested') {
             return redirect()->route('account.bulk-quotes.show', $reference)
                 ->withErrors(['quote' => 'This quotation is not available for changes. Contact sales if you need assistance.']);
         }
@@ -108,7 +113,7 @@ class BulkQuoteCenterController extends Controller
 
     private function canRespond(BulkQuoteRequest $quote): bool
     {
-        return $quote->quotation_version > 0 && $quote->quotation_sent_at !== null &&
+        return $quote->quotation_version > 0 && ($quote->quotation_sent_at !== null || $quote->guest_decision === 'changes_requested') &&
             ! in_array($quote->status, [BulkQuoteRequest::STATUS_ACCEPTED, BulkQuoteRequest::STATUS_CONVERTED,
                 BulkQuoteRequest::STATUS_CLOSED, BulkQuoteRequest::STATUS_REJECTED], true);
     }
@@ -116,7 +121,7 @@ class BulkQuoteCenterController extends Controller
     public function sendChanges(Request $request, string $reference): RedirectResponse
     {
         $quote = $this->mine($request, $reference);
-        abort_unless($this->canRespond($quote), 404);
+        abort_unless($this->canRespond($quote) && $quote->guest_decision !== 'changes_requested', 404);
         $data = $request->validate([
             'change_types' => ['required', 'array', 'min:1', 'max:6'],
             'change_types.*' => [Rule::in(['pricing', 'delivery', 'products', 'customization', 'payment', 'other'])],
@@ -184,7 +189,8 @@ class BulkQuoteCenterController extends Controller
     {
         $quote = $this->mine($request, $reference);
         abort_unless((int) $file->bulk_quote_request_id === (int) $quote->id &&
-            ($file->category === 'quotation' && (int) $file->version === (int) $quote->quotation_version ||
+            ($file->category === 'quotation' && (int) $file->version === (int) $quote->quotation_version && \App\Support\FlowTrackQuoteCustomerProgress::published($quote) ||
+             $file->category === 'flowtrack_offer' && \App\Support\FlowTrackQuoteCustomerProgress::verifiedOffer($quote) ||
              $file->category === 'feedback' && $file->bulk_quote_message_id !== null), 404);
         return GuestBulkQuoteController::download($file, $request->boolean('view'));
     }

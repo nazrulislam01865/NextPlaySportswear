@@ -26,21 +26,12 @@ return new class extends Migration
             ->map(fn ($id): int => (int) $id)
             ->values();
 
+        // This historical migration may still be pending on an installation.
+        // A category becoming a parent is not permission to remove its existing
+        // product placements or clear legacy references.
         if ($leafIds->isEmpty()) {
-            DB::table('category_product')->delete();
-            DB::table('products')->update([
-                'category_id' => null,
-                'subcategory_id' => null,
-            ]);
-
             return;
         }
-
-        // Parent and intermediate categories are grouping nodes only. Existing
-        // direct assignments to those nodes are removed while leaf assignments remain.
-        DB::table('category_product')
-            ->whereNotIn('category_id', $leafIds->all())
-            ->delete();
 
         $leafSet = array_fill_keys($leafIds->all(), true);
 
@@ -60,18 +51,17 @@ return new class extends Migration
                     }
 
                     if ($legacyLeafId) {
-                        DB::table('category_product')->updateOrInsert(
-                            [
-                                'category_id' => $legacyLeafId,
-                                'product_id' => $product->id,
-                            ],
-                            [
-                                'is_featured' => false,
-                                'sort_order' => (int) ($product->sort_order ?? 0),
-                                'updated_at' => now(),
-                                'created_at' => now(),
-                            ]
-                        );
+                        // Insert only if absent; never overwrite a category's
+                        // existing featured flag, sorting or primary assignment.
+                        DB::table('category_product')->insertOrIgnore([
+                            'category_id' => $legacyLeafId,
+                            'product_id' => $product->id,
+                            'is_primary' => false,
+                            'is_featured' => false,
+                            'sort_order' => (int) ($product->sort_order ?? 0),
+                            'updated_at' => now(),
+                            'created_at' => now(),
+                        ]);
                     }
 
                     $assignments = DB::table('category_product as cp')
@@ -91,20 +81,19 @@ return new class extends Migration
                         ->get();
 
                     if ($assignments->isEmpty()) {
-                        DB::table('products')->where('id', $product->id)->update([
-                            'category_id' => null,
-                            'subcategory_id' => null,
-                        ]);
-
+                        // The legacy fields may be the only remaining link.
                         continue;
                     }
 
                     $assignmentIds = $assignments
                         ->pluck('category_id')
                         ->map(fn ($id): int => (int) $id);
-                    $primaryLeafId = $legacyLeafId && $assignmentIds->contains($legacyLeafId)
-                        ? $legacyLeafId
-                        : (int) $assignments->first()->category_id;
+                    $existingPrimary = $assignments->firstWhere('is_primary', true);
+                    $primaryLeafId = $existingPrimary
+                        ? (int) $existingPrimary->category_id
+                        : ($legacyLeafId && $assignmentIds->contains($legacyLeafId)
+                            ? $legacyLeafId
+                            : (int) $assignments->first()->category_id);
 
                     DB::table('category_product')
                         ->where('product_id', $product->id)

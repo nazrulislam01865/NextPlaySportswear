@@ -1465,6 +1465,9 @@ Lead Time:"></div>
                         <input class="admin-input" name="badge_label" value="{{ old('badge_label',$product->badge_label) }}" maxlength="80" placeholder="New, Offer, Popular">
                     </label>
 
+                    @if($isEdit)
+                        <input type="hidden" name="image_gallery_revision" value="{{ old('image_gallery_revision', $product->imageGalleryRevision()) }}">
+                    @endif
                     <input type="hidden" name="new_image_primary_index" :value="newImagePrimaryIndex()">
                     <div>
                         <div class="mb-3 flex flex-wrap items-center justify-between gap-3">

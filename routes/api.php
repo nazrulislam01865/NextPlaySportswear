@@ -20,6 +20,9 @@ Route::prefix('integrations/flowtrack')
             ->whereNumber('index')
             ->name('api.flowtrack.order-items.artwork');
 
+        Route::get('/bulk-quotes/{bulkQuote}/files/{file}', [FlowTrackBulkQuoteAttachmentController::class, 'clientFile'])
+            ->whereNumber('bulkQuote')->whereNumber('file');
+
         Route::get('/bulk-quotes/{bulkQuote}/attachment', [FlowTrackBulkQuoteAttachmentController::class, 'show'])
             ->whereNumber('bulkQuote')
             ->name('api.flowtrack.bulk-quotes.attachment');
@@ -34,5 +37,14 @@ Route::prefix('integrations/flowtrack')->middleware([VerifyFlowTrackIntegration:
     Route::get('/catalog/customers', [\App\Http\Controllers\Api\FlowTrackCatalogController::class, 'customers']);
     Route::get('/catalog/customers/{customer}', [\App\Http\Controllers\Api\FlowTrackCatalogController::class, 'customer'])->whereNumber('customer');
     Route::patch('/catalog/customers/{customer}', [\App\Http\Controllers\Api\FlowTrackCatalogController::class, 'updateCustomer'])->whereNumber('customer');
+    Route::get('/bulk-quotes/{bulkQuote}/published-files/{file}', \App\Http\Controllers\Api\FlowTrackPublishedQuotationFileController::class)
+        ->whereNumber('bulkQuote')->whereNumber('file');
+    Route::post('/bulk-quotes/{bulkQuote}/offer-files', \App\Http\Controllers\Api\FlowTrackBulkQuoteOfferController::class)
+        ->whereNumber('bulkQuote');
+    Route::post('/bulk-quotes/{bulkQuote}/messages', \App\Http\Controllers\Api\FlowTrackBulkQuoteMessageController::class)
+        ->whereNumber('bulkQuote');
+    Route::post('/bulk-quotes/{bulkQuote}/task-progress', \App\Http\Controllers\Api\FlowTrackBulkQuoteTaskProgressController::class)
+        ->whereNumber('bulkQuote');
+    Route::post('/bulk-orders', [\App\Http\Controllers\Api\FlowTrackBulkOrderController::class, 'store']);
     Route::post('/orders/from-flowtrack', [\App\Http\Controllers\Api\FlowTrackCreatedOrderController::class, 'store']);
 });

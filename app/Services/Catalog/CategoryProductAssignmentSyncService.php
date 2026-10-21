@@ -18,22 +18,16 @@ class CategoryProductAssignmentSyncService
     }
 
     /**
-     * Rebuild the storefront category assignment table from trusted product data.
-     *
-     * The previous broad text matcher could assign every product to unrelated
-     * categories such as Bags or Fan Gear because words like "sports", "team",
-     * or "jersey" appeared in many products. This repair is intentionally more
-     * strict:
-     * - optionally clears the existing category_product rows first;
-     * - rebuilds from products.category_id and products.subcategory_id;
-     * - stores direct assignments only on last-level (leaf) categories;
-     * - adds only safe rule-based categories from explicit category match_rules;
-     * - never changes the trusted leaf category primary unless a product has no
-     *   legacy category at all.
+     * Recover missing assignments from legacy category fields and explicit rules.
+     * Existing category_product rows are authoritative, including additional
+     * placements managed through Category > Products. Never delete or rebuild
+     * them from the single legacy primary category: doing so loses assignments.
+     * The boolean parameter is retained for compatibility, but no destructive
+     * reset is permitted by this repair.
      *
      * @return array<string, int>
      */
-    public function syncAllProductCategoryAssignments(bool $resetExisting = true): array
+    public function syncAllProductCategoryAssignments(bool $resetExisting = false): array
     {
         $this->treeService->rebuildClosure();
 
@@ -55,19 +49,9 @@ class CategoryProductAssignmentSyncService
             'products_without_category' => 0,
         ];
 
-        DB::transaction(function () use (&$stats, $resetExisting): void {
-            if ($resetExisting) {
-                $stats['assignments_deleted'] = (int) DB::table('category_product')->count();
-                DB::table('category_product')->delete();
-            } else {
-                $leafIds = Category::query()->leaf()->pluck('id');
-                $deleteQuery = DB::table('category_product');
-                if ($leafIds->isNotEmpty()) {
-                    $deleteQuery->whereNotIn('category_id', $leafIds->all());
-                }
-                $stats['assignments_deleted'] += (int) $deleteQuery->delete();
-            }
-
+        DB::transaction(function () use (&$stats): void {
+            // Add missing links only. Never truncate category_product or remove
+            // non-leaf historical assignments during an automatic repair.
             $this->syncFromLegacyProductCategories($stats);
             $this->syncFromTrustedMatchRules($stats);
             $this->ensureSinglePrimaryPerProduct($stats);
@@ -417,10 +401,8 @@ class CategoryProductAssignmentSyncService
                         ->get();
 
                     if ($assignments->isEmpty()) {
-                        Product::withTrashed()->whereKey($product->id)->update([
-                            'category_id' => null,
-                            'subcategory_id' => null,
-                        ]);
+                        // A missing pivot does not mean a product's legacy category
+                        // has been removed. Do not erase the only remaining link.
                         continue;
                     }
 

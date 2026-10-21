@@ -8,7 +8,6 @@
         'mobile_image' => asset('storage/storefront/home/hero.webp'),
         'alt' => 'Custom sportswear and team uniforms',
         'image_focal_position' => 'center',
-        'overlay_rgba' => 'rgba(13,37,69,.72)',
         'show_content' => true,
         'show_title' => true,
         'title' => 'Made for the Beautiful Game.',
@@ -79,8 +78,6 @@
                     >
                 </picture>
                 @if($hasVisibleContent)
-                    <div class="promo-overlay" style="--slide-overlay: {{ $slide['overlay_rgba'] ?? 'rgba(13,37,69,.28)' }}"></div>
-
                     <div class="promo-content">
                         <div class="promo-copy position-{{ $contentPosition }} align-{{ $textAlignment }} theme-{{ $textTheme }}">
 

@@ -59,7 +59,7 @@ class HomepageSliderService
             'show_title', 'show_description', 'show_primary_button', 'primary_label',
             'primary_url', 'primary_target', 'show_secondary_button', 'secondary_label',
             'secondary_url', 'secondary_target', 'content_position', 'text_alignment',
-            'text_theme', 'overlay_color', 'overlay_opacity',
+            'text_theme',
         ];
 
         if (Schema::hasColumn('homepage_slides', 'mobile_image_path')) {
@@ -112,7 +112,6 @@ class HomepageSliderService
                     'content_position' => $this->enumValue($slide->content_position, ['left', 'center', 'right'], 'left'),
                     'text_alignment' => $this->enumValue($slide->text_alignment, ['left', 'center', 'right'], 'left'),
                     'text_theme' => $slide->text_theme === 'dark' ? 'dark' : 'light',
-                    'overlay_rgba' => $this->rgba((string) $slide->overlay_color, (int) $slide->overlay_opacity),
                     'has_visible_content' => $hasVisibleContent,
                 ];
             })
@@ -147,24 +146,6 @@ class HomepageSliderService
         return in_array($value, $allowed, true) ? (string) $value : $fallback;
     }
 
-    private function rgba(string $hex, int $opacity): string
-    {
-        if (preg_match('/^#([0-9A-Fa-f]{6})$/', $hex, $matches) !== 1) {
-            $matches[1] = '0D2545';
-        }
-
-        $value = $matches[1];
-        $alpha = max(0, min(100, $opacity)) / 100;
-
-        return sprintf(
-            'rgba(%d,%d,%d,%.2F)',
-            hexdec(substr($value, 0, 2)),
-            hexdec(substr($value, 2, 2)),
-            hexdec(substr($value, 4, 2)),
-            $alpha
-        );
-    }
-
     /** @return array<int, array<string, mixed>> */
     private function legacySlides(): array
     {
@@ -182,7 +163,6 @@ class HomepageSliderService
             'content_position' => 'left',
             'text_alignment' => 'left',
             'text_theme' => 'light',
-            'overlay_rgba' => 'rgba(13,37,69,0.72)',
             'has_visible_content' => true,
         ];
 

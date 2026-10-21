@@ -327,6 +327,12 @@ final class HomepageSectionRegistry
         $definition = self::definition($key) ?? [];
         $values = $section ? $section->toArray() : [];
         $merged = array_merge($definition, array_filter($values, static fn ($value): bool => $value !== null));
+        // Null media values are deliberate admin removals, not missing defaults.
+        foreach (['image_path', 'image_url', 'mobile_image_path', 'mobile_image_url'] as $mediaKey) {
+            if (array_key_exists($mediaKey, $values)) {
+                $merged[$mediaKey] = $values[$mediaKey];
+            }
+        }
         unset($merged['eyebrow']);
 
         // Not every homepage section needs headings, buttons, or media. Keep a

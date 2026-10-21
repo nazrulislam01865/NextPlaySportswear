@@ -11,6 +11,9 @@
         $customerAccount = is_array($bulkQuote->customer_account) ? $bulkQuote->customer_account : [];
         $attachment = is_array($bulkQuote->attachment) ? $bulkQuote->attachment : [];
         $flowTrackResponse = $canManage && is_array($bulkQuote->flowtrack_response) ? $bulkQuote->flowtrack_response : [];
+        $offerReady = $canManage && filled($bulkQuote->flowtrack_offer_manifest_hash)
+            && hash_equals((string) $bulkQuote->flowtrack_offer_manifest_hash, (string) $bulkQuote->flowtrack_offer_ready_hash);
+        $transferredOffers = $offerReady ? $guestFiles->where('category', 'flowtrack_offer') : collect();
     @endphp
 
     <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -138,7 +141,27 @@
                             <label><span class="admin-label">Shipping Method</span><input class="admin-input" name="shipping_method" maxlength="160" value="{{ old('shipping_method', $quoteDetails['shipping_method'] ?? '') }}"></label>
                             <label class="md:col-span-2"><span class="admin-label">Payment Terms *</span><input class="admin-input" name="payment_terms" required maxlength="1000" value="{{ old('payment_terms', $quoteDetails['payment_terms'] ?? '') }}" placeholder="Example: 50% deposit; balance before dispatch"></label>
                             <label class="md:col-span-2"><span class="admin-label">Quotation Notes</span><textarea class="admin-textarea min-h-[74px]" name="quotation_notes" maxlength="2500">{{ old('quotation_notes', $quoteDetails['quotation_notes'] ?? '') }}</textarea></label>
-                            <label class="md:col-span-2"><span class="admin-label">Quotation Files * (1–8 PDF, images or Excel files, 10 MB each)</span><input class="admin-input" type="file" name="files[]" accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx" multiple required></label>
+                            <div class="md:col-span-2 space-y-2">
+                                @if($canManage && filled($bulkQuote->flowtrack_offer_manifest_hash) && ! $offerReady)
+                                    <p class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">FlowTracker quotation files are being transferred. You can publish after all files arrive, or upload a quotation manually.</p>
+                                @endif
+                                @if($transferredOffers->isNotEmpty())
+                                    <label class="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-brand-dark">
+                                        <input type="checkbox" name="use_flowtrack_offer" value="1" @checked(old('use_flowtrack_offer', '1') === '1')>
+                                        <span><strong>Use offer files received from FlowTracker ({{ $transferredOffers->count() }})</strong>
+                                            <span class="mt-1 block text-xs text-slate-600">These private files came from the completed “Send Offer to Client” task. They will be copied into the quotation when you publish, without another upload.</span>
+                                        </span>
+                                    </label>
+                                    <div class="space-y-1 pl-3 text-xs text-slate-600">
+                                        @foreach($transferredOffers as $offer)
+                                            <a class="block underline" href="{{ route('admin.bulk-quotes.file', [$bulkQuote, $offer]) }}">{{ $offer->original_name }}</a>
+                                        @endforeach
+                                    </div>
+                                @endif
+                                <label><span class="admin-label">{{ $transferredOffers->isNotEmpty() ? 'Optional additional quotation files' : 'Quotation Files *' }} (1–8 PDF, images or Excel files, 10 MB each)</span>
+                                    <input class="admin-input" type="file" name="files[]" accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx" multiple @if($transferredOffers->isEmpty()) required @endif>
+                                </label>
+                            </div>
                         </div>
                         <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4"><p class="text-xs text-slate-500">Current version: {{ $bulkQuote->quotation_version }} · New version: {{ $bulkQuote->quotation_version + 1 }} · Publish notifies the customer's original email.</p><button class="btn btn-red" type="submit">Publish Quotation & Notify Customer</button></div>
                     </form>

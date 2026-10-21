@@ -75,7 +75,7 @@ Route::middleware(\App\Http\Middleware\PrivateGuestQuoteResponse::class)->group(
     Route::get('/bulk-quote/track/{reference}/review', [\App\Http\Controllers\Storefront\GuestBulkQuoteController::class, 'review'])->middleware('throttle:60,1')->name('quote.guest.review');
     Route::get('/bulk-quote/track/{reference}/changes', [\App\Http\Controllers\Storefront\GuestBulkQuoteController::class, 'changes'])->middleware('throttle:60,1')->name('quote.guest.changes');
     Route::post('/bulk-quote/track/{reference}/changes', [\App\Http\Controllers\Storefront\GuestBulkQuoteController::class, 'sendChanges'])->middleware('throttle:6,1')->name('quote.guest.changes.send');
-    Route::post('/bulk-quote/track/{reference}/message', [\App\Http\Controllers\Storefront\GuestBulkQuoteController::class, 'sendMessage'])->middleware('throttle:10,1')->name('quote.guest.message');
+    Route::post('/bulk-quote/track/{reference}/message', [\App\Http\Controllers\Storefront\GuestBulkQuoteController::class, 'sendMessage'])->middleware('throttle:quote-message')->name('quote.guest.message');
     Route::post('/bulk-quote/track/{reference}/decision', [\App\Http\Controllers\Storefront\GuestBulkQuoteController::class, 'decision'])->middleware('throttle:guest-quote-decision')->name('quote.guest.decision');
     Route::get('/bulk-quote/track/{reference}/file/{file}', [\App\Http\Controllers\Storefront\GuestBulkQuoteController::class, 'file'])->middleware('throttle:30,1')->name('quote.guest.file');
 });
@@ -466,7 +466,7 @@ Route::middleware(['not.admin', 'auth:web', 'customer', 'verified'])->prefix('ac
     Route::get('/bulk-quotes/{reference}', [\App\Http\Controllers\Storefront\Account\BulkQuoteCenterController::class, 'show'])->name('bulk-quotes.show');
     Route::get('/bulk-quotes/{reference}/changes', [\App\Http\Controllers\Storefront\Account\BulkQuoteCenterController::class, 'changes'])->name('bulk-quotes.changes');
     Route::post('/bulk-quotes/{reference}/changes', [\App\Http\Controllers\Storefront\Account\BulkQuoteCenterController::class, 'sendChanges'])->middleware('throttle:6,1')->name('bulk-quotes.changes.send');
-    Route::post('/bulk-quotes/{reference}/message', [\App\Http\Controllers\Storefront\Account\BulkQuoteCenterController::class, 'sendMessage'])->middleware('throttle:10,1')->name('bulk-quotes.message');
+    Route::post('/bulk-quotes/{reference}/message', [\App\Http\Controllers\Storefront\Account\BulkQuoteCenterController::class, 'sendMessage'])->middleware('throttle:quote-message')->name('bulk-quotes.message');
     Route::post('/bulk-quotes/{reference}/decision', [\App\Http\Controllers\Storefront\Account\BulkQuoteCenterController::class, 'decision'])->middleware('throttle:guest-quote-decision')->name('bulk-quotes.decision');
     Route::get('/bulk-quotes/{reference}/file/{file}', [\App\Http\Controllers\Storefront\Account\BulkQuoteCenterController::class, 'file'])->middleware('throttle:30,1')->name('bulk-quotes.file');
 

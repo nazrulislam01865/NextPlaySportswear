@@ -233,6 +233,32 @@ class GuestBulkQuoteJourneyTest extends TestCase
         $this->assertNull($quote->fresh()->converted_order_id);
     }
 
+    public function test_guest_message_can_be_sent_repeatedly_without_raw_rate_limit_page_and_is_still_rate_limited(): void
+    {
+        $quote = $this->publishedQuote();
+        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.241']);
+        $this->post(route('quote.guest.lookup'), ['reference' => $quote->reference, 'email' => $quote->email]);
+        $this->post(route('quote.guest.changes.send', $quote->reference), [
+            'change_types' => ['pricing'],
+            'body' => 'Please revise the pricing in the quotation.',
+        ])->assertRedirect();
+        $show = route('quote.guest.show', $quote->reference);
+        $send = route('quote.guest.message', $quote->reference);
+
+        for ($i = 1; $i <= 24; $i++) {
+            $this->from($show)->post($send, ['body' => 'Customer quotation message '.$i])
+                ->assertRedirect($show);
+        }
+        $this->assertSame(24, $quote->messages()->where('kind', 'message')->count());
+
+        // Reaching the limit must not create a message or return the unhelpful 429 screen.
+        $this->from($show)->post($send, ['body' => 'An extra message'])
+            ->assertRedirect($show)
+            ->assertSessionHasErrors('body');
+        $this->assertSame(24, $quote->messages()->where('kind', 'message')->count());
+        $this->get($show)->assertOk()->assertSee('Please wait a moment before sending another message.');
+    }
+
     public function test_guest_cannot_accept_quote_before_admin_publishes(): void
     {
         $quote = $this->quote();

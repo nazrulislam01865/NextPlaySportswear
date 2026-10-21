@@ -61,21 +61,19 @@ class CatalogNavigationSeeder extends Seeder
 
         Product::query()->with('categories')->chunkById(100, function ($products) use ($leafIdSet): void {
             foreach ($products as $product) {
-                $existingLeafIds = $product->categories
+                // Existing placements are authoritative, including categories that
+                // gained children after the product was assigned. Never detach
+                // an existing pivot merely because the category is now a parent.
+                $existingIds = $product->categories
                     ->pluck('id')
                     ->map(fn ($id): int => (int) $id)
-                    ->filter(fn (int $id): bool => $leafIdSet->has($id))
                     ->unique()
                     ->values();
-                $nonLeafIds = $product->categories
+                $existingPrimaryIds = $product->categories
+                    ->filter(fn (Category $category): bool => (bool) $category->pivot->is_primary)
                     ->pluck('id')
                     ->map(fn ($id): int => (int) $id)
-                    ->reject(fn (int $id): bool => $leafIdSet->has($id))
                     ->values();
-
-                if ($nonLeafIds->isNotEmpty()) {
-                    $product->categories()->detach($nonLeafIds->all());
-                }
 
                 $legacyLeafIds = collect([$product->subcategory_id, $product->category_id])
                     ->filter()
@@ -83,49 +81,55 @@ class CatalogNavigationSeeder extends Seeder
                     ->filter(fn (int $id): bool => $leafIdSet->has($id))
                     ->unique()
                     ->values();
-                $missingIds = $legacyLeafIds->diff($existingLeafIds)->values();
+                $missingIds = $legacyLeafIds->diff($existingIds)->values();
 
                 if ($missingIds->isNotEmpty()) {
                     $product->categories()->attach($missingIds->mapWithKeys(fn (int $id, int $index): array => [
                         $id => [
                             'is_primary' => false,
                             'is_featured' => false,
-                            'sort_order' => (int) $product->sort_order + $existingLeafIds->count() + $index,
+                            'sort_order' => (int) $product->sort_order + $existingIds->count() + $index,
                         ],
                     ])->all());
                 }
 
-                $assignmentIds = $existingLeafIds->merge($missingIds)->unique()->values();
+                $assignmentIds = $existingIds->merge($missingIds)->unique()->values();
                 $preferredId = (int) ($product->subcategory_id ?: $product->category_id ?: 0);
-                $primaryId = $assignmentIds->contains($preferredId)
-                    ? $preferredId
-                    : (int) ($assignmentIds->first() ?: 0);
-
-                DB::table('category_product')
-                    ->where('product_id', $product->id)
-                    ->update(['is_primary' => false, 'updated_at' => now()]);
+                // Preserve the administrator-selected primary assignment. The
+                // legacy columns are a fallback, not a reason to replace it.
+                $primaryId = $existingPrimaryIds->count() === 1
+                    ? (int) $existingPrimaryIds->first()
+                    : ($assignmentIds->contains($preferredId)
+                        ? $preferredId
+                        : (int) ($assignmentIds->first() ?: 0));
 
                 if ($primaryId > 0) {
-                    DB::table('category_product')
-                        ->where('product_id', $product->id)
-                        ->where('category_id', $primaryId)
-                        ->update(['is_primary' => true, 'updated_at' => now()]);
+                    if ($existingPrimaryIds->count() !== 1 || (int) $existingPrimaryIds->first() !== $primaryId) {
+                        DB::table('category_product')
+                            ->where('product_id', $product->id)
+                            ->update(['is_primary' => false, 'updated_at' => now()]);
+                        DB::table('category_product')
+                            ->where('product_id', $product->id)
+                            ->where('category_id', $primaryId)
+                            ->update(['is_primary' => true, 'updated_at' => now()]);
+                    }
 
                     $rootId = (int) (DB::table('category_closure')
                         ->where('descendant_id', $primaryId)
                         ->orderByDesc('depth')
                         ->value('ancestor_id') ?: $primaryId);
 
-                    $product->forceFill([
-                        'category_id' => $rootId,
-                        'subcategory_id' => $rootId === $primaryId ? null : $primaryId,
-                    ])->saveQuietly();
-                } else {
-                    $product->forceFill([
-                        'category_id' => null,
-                        'subcategory_id' => null,
-                    ])->saveQuietly();
+                    $subcategoryId = $rootId === $primaryId ? null : $primaryId;
+                    if ((int) $product->category_id !== $rootId
+                        || ($product->subcategory_id === null ? null : (int) $product->subcategory_id) !== $subcategoryId) {
+                        $product->forceFill([
+                            'category_id' => $rootId,
+                            'subcategory_id' => $subcategoryId,
+                        ])->saveQuietly();
+                    }
                 }
+                // No usable pivot: retain legacy fields instead of silently
+                // clearing the product's only remaining category reference.
             }
         });
     }

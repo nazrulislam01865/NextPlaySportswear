@@ -74,8 +74,6 @@ class HomepageSlideSeeder extends Seeder
                 'content_position' => 'left',
                 'text_alignment' => 'left',
                 'text_theme' => 'light',
-                'overlay_color' => '#0D2545',
-                'overlay_opacity' => 72,
                 'is_active' => true,
             ], $slide));
         }

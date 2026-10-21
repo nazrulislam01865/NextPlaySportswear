@@ -42,6 +42,7 @@ class BulkQuoteRequest extends Model
         'quotation_valid_until',
         'quotation_sent_at',
         'guest_decision',
+        'last_change_request_id',
         'converted_order_id',
         'user_id',
         'full_name',
@@ -76,6 +77,8 @@ class BulkQuoteRequest extends Model
         'flowtrack_sync_status',
         'flowtrack_sync_attempts',
         'flowtrack_inquiry_id',
+        'flowtrack_source_inquiry_id',
+        'flowtrack_manifest_hash',
         'flowtrack_inquiry_number',
         'flowtrack_last_attempt_at',
         'flowtrack_synced_at',
@@ -220,6 +223,7 @@ class BulkQuoteRequest extends Model
     {
         return [
             'quotation_version' => 'integer',
+            'last_change_request_id' => 'integer',
             'quotation_details' => 'array',
             'quotation_valid_until' => 'date',
             'quotation_sent_at' => 'datetime',
@@ -235,6 +239,7 @@ class BulkQuoteRequest extends Model
             'flowtrack_last_attempt_at' => 'datetime',
             'flowtrack_synced_at' => 'datetime',
             'flowtrack_response' => 'array',
+            'flowtrack_task_progress' => 'array',
         ];
     }
 }

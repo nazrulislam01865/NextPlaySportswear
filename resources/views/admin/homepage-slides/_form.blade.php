@@ -149,7 +149,7 @@
         </div>
     </x-admin.section-card>
 
-    <x-admin.section-card title="Text Content" description="Customize every line or turn the complete text overlay off for an image-only slide.">
+    <x-admin.section-card title="Text Content" description="Customize slide text or turn it off to display only the image.">
         <div class="mb-5 rounded-2xl border border-blue-200 bg-blue-50 p-4">
             <label class="flex items-start gap-3 text-sm font-black text-brand-dark">
                 <input type="hidden" name="show_content" value="0">
@@ -210,13 +210,11 @@
         </div>
     </x-admin.section-card>
 
-    <x-admin.section-card title="Appearance" description="Control where the text appears and how strongly the image is shaded behind it.">
-        <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
+    <x-admin.section-card title="Appearance" description="Control the position, alignment, and theme of slide text.">
+        <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
             <label class="admin-label">Content position<select name="content_position" class="admin-input">@foreach(['left' => 'Left', 'center' => 'Center', 'right' => 'Right'] as $value => $label)<option value="{{ $value }}" @selected(old('content_position', $slide->content_position ?: 'left') === $value)>{{ $label }}</option>@endforeach</select></label>
             <label class="admin-label">Text alignment<select name="text_alignment" class="admin-input">@foreach(['left' => 'Left', 'center' => 'Center', 'right' => 'Right'] as $value => $label)<option value="{{ $value }}" @selected(old('text_alignment', $slide->text_alignment ?: 'left') === $value)>{{ $label }}</option>@endforeach</select></label>
             <label class="admin-label">Text theme<select name="text_theme" class="admin-input"><option value="light" @selected(old('text_theme', $slide->text_theme ?: 'light') === 'light')>Light text</option><option value="dark" @selected(old('text_theme', $slide->text_theme) === 'dark')>Dark text</option></select></label>
-            <label class="admin-label">Overlay color<div class="mt-2 flex h-12 overflow-hidden rounded-xl border border-slate-300 bg-white"><input type="color" value="{{ old('overlay_color', $slide->overlay_color ?: '#0D2545') }}" class="h-full w-14 border-0 p-1" oninput="this.nextElementSibling.value=this.value.toUpperCase()"><input type="text" name="overlay_color" value="{{ old('overlay_color', $slide->overlay_color ?: '#0D2545') }}" class="min-w-0 flex-1 border-0 px-3 text-sm font-bold uppercase outline-none" maxlength="7" pattern="#[0-9A-Fa-f]{6}"></div></label>
-            <label class="admin-label">Overlay opacity<input type="number" name="overlay_opacity" value="{{ old('overlay_opacity', $slide->overlay_opacity ?? 72) }}" class="admin-input" min="0" max="100" step="1"><span class="mt-2 block text-xs font-medium text-slate-500">0 = none, 100 = solid</span></label>
         </div>
     </x-admin.section-card>
 

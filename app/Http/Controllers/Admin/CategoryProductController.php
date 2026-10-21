@@ -195,13 +195,12 @@ class CategoryProductController extends Controller
 
     public function syncLegacyAssignments(): RedirectResponse
     {
-        $stats = $this->assignmentSyncService->syncAllProductCategoryAssignments(resetExisting: true);
+        $stats = $this->assignmentSyncService->syncAllProductCategoryAssignments(resetExisting: false);
 
         return back()->with(
             'status',
             sprintf(
-                'Leaf-only category assignments rebuilt. %d old rows removed, %d trusted leaf assignments created, %d products checked.',
-                $stats['assignments_deleted'],
+                'Missing category assignments recovered without removing existing links. %d trusted assignments added, %d products checked.',
                 $stats['legacy_assignments_created'] + $stats['trusted_rule_assignments_created'],
                 $stats['products_scanned']
             )
@@ -511,22 +510,8 @@ class CategoryProductController extends Controller
 
     private function normalizePrimaryCategory(int $productId): void
     {
-        $leafCategoryIds = Category::query()
-            ->leaf()
-            ->whereIn('id', DB::table('category_product')->where('product_id', $productId)->select('category_id'))
-            ->pluck('id')
-            ->map(fn ($id): int => (int) $id)
-            ->all();
-
-        DB::table('category_product')
-            ->where('product_id', $productId)
-            ->when(
-                $leafCategoryIds === [],
-                fn ($query) => $query,
-                fn ($query) => $query->whereNotIn('category_id', $leafCategoryIds)
-            )
-            ->delete();
-
+        // Normalizing the primary category must not drop other assignments.
+        // Only explicit Remove actions may detach existing category products.
         $assignments = DB::table('category_product')
             ->where('product_id', $productId)
             ->orderByDesc('is_primary')

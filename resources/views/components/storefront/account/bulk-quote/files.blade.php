@@ -1,6 +1,6 @@
 @props(['quote','files','mode' => 'full'])
 @if($files->isEmpty())
-    <p class="np-rq-muted">No quotation files have been published yet. You'll be able to download them here when NextPlay sends your quote.</p>
+    <p class="np-rq-muted">No offer files have been shared yet. Files will be available here after FlowTracker sends them or NextPlay publishes your quotation.</p>
 @else
     <div class="np-rq-file-list {{ $mode === 'small' ? 'np-rq-file-list--small' : '' }}">
         @foreach($files as $file)

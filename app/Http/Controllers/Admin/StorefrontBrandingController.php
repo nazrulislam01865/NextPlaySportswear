@@ -7,7 +7,7 @@ use App\Http\Requests\Admin\StorefrontBrandingRequest;
 use App\Models\StorefrontBrandingSetting;
 use App\Support\StorefrontBranding;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Storage;
+use App\Services\Catalog\StoredPublicImage;
 use Illuminate\View\View;
 
 class StorefrontBrandingController extends Controller
@@ -32,7 +32,7 @@ class StorefrontBrandingController extends Controller
         $removeLogo = $request->boolean('remove_logo');
 
         if ($request->hasFile('logo')) {
-            $newPath = $request->file('logo')->store('branding', 'public');
+            $newPath = StoredPublicImage::replace($request->file('logo'), 'branding', null);
             $changes['logo_path'] = $newPath;
         } elseif ($removeLogo && $previousPath !== null) {
             $changes['logo_path'] = null;
@@ -43,7 +43,7 @@ class StorefrontBrandingController extends Controller
         $removeFavicon = $request->boolean('remove_favicon');
 
         if ($request->hasFile('favicon')) {
-            $newFaviconPath = $request->file('favicon')->store('branding', 'public');
+            $newFaviconPath = StoredPublicImage::replace($request->file('favicon'), 'branding', null);
             $changes['favicon_path'] = $newFaviconPath;
         } elseif ($removeFavicon && $previousFaviconPath !== null) {
             $changes['favicon_path'] = null;
@@ -59,14 +59,14 @@ class StorefrontBrandingController extends Controller
             && str_starts_with(ltrim(str_replace('\\', '/', $previousPath), '/'), 'branding/');
 
         if ($shouldDeletePrevious) {
-            Storage::disk('public')->delete($previousPath);
+            StoredPublicImage::retire($previousPath);
         }
 
         if ($previousFaviconPath !== null
             && $previousFaviconPath !== $newFaviconPath
             && ($newFaviconPath !== null || $removeFavicon)
             && str_starts_with(ltrim(str_replace('\\', '/', $previousFaviconPath), '/'), 'branding/')) {
-            Storage::disk('public')->delete($previousFaviconPath);
+            StoredPublicImage::retire($previousFaviconPath);
         }
 
         StorefrontBranding::flushCache();

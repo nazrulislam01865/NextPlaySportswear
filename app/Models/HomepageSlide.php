@@ -18,7 +18,7 @@ class HomepageSlide extends Model
         'show_description', 'show_primary_button', 'primary_label', 'primary_url',
         'primary_target', 'show_secondary_button', 'secondary_label', 'secondary_url',
         'secondary_target', 'content_position', 'text_alignment', 'text_theme',
-        'overlay_color', 'overlay_opacity', 'is_active', 'sort_order', 'starts_at',
+        'is_active', 'sort_order', 'starts_at',
         'ends_at', 'created_by', 'updated_by',
     ];
 
@@ -32,7 +32,6 @@ class HomepageSlide extends Model
             'show_primary_button' => 'boolean',
             'show_secondary_button' => 'boolean',
             'is_active' => 'boolean',
-            'overlay_opacity' => 'integer',
             'sort_order' => 'integer',
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',

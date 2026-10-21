@@ -10,6 +10,7 @@ use App\Models\Category;
 use App\Models\UrlRedirect;
 use App\Services\Catalog\CategoryDeletionService;
 use App\Services\Catalog\CategoryMediaService;
+use App\Services\Catalog\StoredPublicImage;
 use App\Services\Catalog\CategoryProductCountService;
 use App\Services\Catalog\CategoryTreeService;
 use App\Services\Catalog\LeafCategoryAssignmentService;
@@ -21,7 +22,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -132,27 +132,26 @@ class CategoryController extends Controller
             'remove_products_banner' => ['nullable', 'boolean'],
         ]);
 
-        $settings = CatalogPageSetting::query()->first() ?? new CatalogPageSetting();
-        $uploaded = $request->file('products_banner_file');
+        DB::transaction(function () use ($request, $validated): void {
+            $settings = CatalogPageSetting::query()->first() ?? new CatalogPageSetting();
+            $uploaded = $request->file('products_banner_file');
 
-        if ($uploaded) {
-            if (filled($settings->products_banner_path)) {
-                Storage::disk('public')->delete((string) $settings->products_banner_path);
+            if ($uploaded) {
+                $settings->products_banner_path = StoredPublicImage::replace(
+                    $uploaded,
+                    'catalog/banners',
+                    $settings->products_banner_path,
+                );
+            } elseif ($request->boolean('remove_products_banner')) {
+                StoredPublicImage::retire($settings->products_banner_path);
+                $settings->products_banner_path = null;
             }
 
-            $settings->products_banner_path = $uploaded->store('catalog/banners', 'public');
-        } elseif ($request->boolean('remove_products_banner')) {
-            if (filled($settings->products_banner_path)) {
-                Storage::disk('public')->delete((string) $settings->products_banner_path);
-            }
-
-            $settings->products_banner_path = null;
-        }
-
-        $settings->products_banner_color = filled($validated['products_banner_color'] ?? null)
-            ? strtolower((string) $validated['products_banner_color'])
-            : null;
-        $settings->save();
+            $settings->products_banner_color = filled($validated['products_banner_color'] ?? null)
+                ? strtolower((string) $validated['products_banner_color'])
+                : null;
+            $settings->save();
+        });
 
         CatalogPageAppearance::flush();
 
@@ -468,15 +467,14 @@ class CategoryController extends Controller
             $uploaded = $request->file("content_blocks.{$index}.image_file");
 
             if ($uploaded) {
-                if ($imagePath) {
-                    Storage::disk('public')->delete($imagePath);
-                }
-                $imagePath = $uploaded->store("categories/{$category->id}/blocks", 'public');
+                $imagePath = StoredPublicImage::replace(
+                    $uploaded,
+                    "categories/{$category->id}/blocks",
+                    $imagePath,
+                );
                 $imageUrl = null;
             } elseif ($imageUrl !== null) {
-                if ($imagePath) {
-                    Storage::disk('public')->delete($imagePath);
-                }
+                StoredPublicImage::retire($imagePath);
                 $imagePath = null;
             }
 
@@ -503,7 +501,7 @@ class CategoryController extends Controller
         }
 
         foreach (array_diff($existingPaths, $retainedPaths) as $path) {
-            Storage::disk('public')->delete($path);
+            StoredPublicImage::retire($path);
         }
     }
 

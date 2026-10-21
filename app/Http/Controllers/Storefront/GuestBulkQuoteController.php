@@ -98,7 +98,7 @@ class GuestBulkQuoteController extends Controller
     public function changes(Request $request, string $reference): View
     {
         $quote = $this->authorized($request, $reference);
-        abort_unless($quote->quotation_version > 0 && $quote->quotation_sent_at, 404);
+        abort_unless($quote->quotation_version > 0 && $quote->quotation_sent_at && $quote->guest_decision !== 'changes_requested', 404);
         return $this->render('changes', $quote);
     }
 
@@ -109,15 +109,18 @@ class GuestBulkQuoteController extends Controller
         }
         return view('storefront.bulk-quote.guest.'.$view, array_merge([
             'quote' => $quote,
-            'files' => $quote->quoteFiles()->where('category', 'quotation')->where('version', $quote->quotation_version)->oldest()->get(),
-            'messages' => $quote->messages()->with('files')->oldest()->limit(100)->get(),
+            'files' => ! \App\Support\FlowTrackQuoteCustomerProgress::published($quote)
+                && ! \App\Support\FlowTrackQuoteCustomerProgress::verifiedOffer($quote) ? collect() : (\App\Support\FlowTrackQuoteCustomerProgress::verifiedOffer($quote)
+                ? $quote->quoteFiles()->where('category', 'flowtrack_offer')->oldest()->get()
+                : $quote->quoteFiles()->where('category', 'quotation')->where('version', $quote->quotation_version)->oldest()->get()),
+            'messages' => $quote->messages()->with('files')->latest('id')->limit(100)->get()->sortBy('id')->values(),
         ], $extra));
     }
 
     public function sendChanges(Request $request, string $reference): RedirectResponse
     {
         $quote = $this->forPost($request, $reference);
-        abort_unless($quote->quotation_sent_at && $quote->quotation_version, 404);
+        abort_unless($quote->quotation_sent_at && $quote->quotation_version && $quote->guest_decision !== 'changes_requested', 404);
         $data = $request->validate([
             'change_types' => ['required', 'array', 'min:1', 'max:6'],
             'change_types.*' => [Rule::in(['pricing', 'delivery', 'products', 'customization', 'payment', 'other'])],
@@ -133,7 +136,7 @@ class GuestBulkQuoteController extends Controller
     public function sendMessage(Request $request, string $reference): RedirectResponse
     {
         $quote = $this->forPost($request, $reference);
-        abort_unless($quote->quotation_sent_at && $quote->quotation_version, 404);
+        abort_unless(($quote->quotation_sent_at || $quote->guest_decision === 'changes_requested') && $quote->quotation_version, 404);
         $data = $request->validate([
             'body' => ['required', 'string', 'min:2', 'max:3000'],
             'files' => ['nullable', 'array', 'max:4'],
@@ -216,7 +219,8 @@ class GuestBulkQuoteController extends Controller
     {
         $quote = $this->authorized($request, $reference);
         abort_unless($file->bulk_quote_request_id === $quote->id &&
-            ($file->category === 'quotation' && $file->version === $quote->quotation_version ||
+            ($file->category === 'quotation' && $file->version === $quote->quotation_version && \App\Support\FlowTrackQuoteCustomerProgress::published($quote) ||
+            $file->category === 'flowtrack_offer' && \App\Support\FlowTrackQuoteCustomerProgress::verifiedOffer($quote) ||
             $file->category === 'feedback' && $file->bulk_quote_message_id !== null), 404);
         return $this->download($file, $request->boolean('view'));
     }

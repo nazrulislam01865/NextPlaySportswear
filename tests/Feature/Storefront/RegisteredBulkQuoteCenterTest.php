@@ -74,6 +74,22 @@ class RegisteredBulkQuoteCenterTest extends TestCase
         $this->post(route('account.bulk-quotes.message', $quote->reference), ['body' => 'Unauthorized'])->assertNotFound();
     }
 
+    public function test_account_customer_can_send_multiple_quote_messages_without_unrelated_guest_limits(): void
+    {
+        $customer = $this->customer();
+        $quote = $this->published($customer);
+        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.242']);
+        $this->actingAs($customer, 'web');
+        $show = route('account.bulk-quotes.show', $quote->reference);
+        $send = route('account.bulk-quotes.message', $quote->reference);
+
+        for ($i = 1; $i <= 12; $i++) {
+            $this->from($show)->post($send, ['body' => 'Account quotation message '.$i])
+                ->assertRedirect($show);
+        }
+        $this->assertSame(12, $quote->messages()->where('kind', 'message')->count());
+    }
+
     public function test_quote_list_filters_and_review_render_real_data(): void
     {
         $owner = $this->customer();

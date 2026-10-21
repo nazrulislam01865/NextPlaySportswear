@@ -916,18 +916,6 @@
     object-fit: cover;
 }
 
-.promo-overlay {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    /* Directional gradient: ensures high-contrast readability for white copy and white button
-       at the bottom-left, while preserving full photographic vibrancy and warm sunlight across
-       the athletes, jerseys, and field */
-    background:
-        linear-gradient(to top, rgba(4, 18, 42, 0.68) 0%, rgba(4, 18, 42, 0.38) 38%, rgba(4, 18, 42, 0.06) 68%, transparent 100%),
-        linear-gradient(to right, rgba(4, 18, 42, 0.6) 0%, rgba(4, 18, 42, 0.28) 45%, transparent 75%);
-}
-
 .promo-content {
     position: absolute;
     inset: 0;

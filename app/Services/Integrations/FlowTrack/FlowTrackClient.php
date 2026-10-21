@@ -67,12 +67,15 @@ final class FlowTrackClient
             ->findOrFail($quote->id);
 
         $payload = $this->inquiryPayloadFactory->make($freshQuote);
+        if ($freshQuote->flowtrack_source_inquiry_id !== null) {
+            $payload['flowtrack_inquiry_id'] = (int) $freshQuote->flowtrack_source_inquiry_id;
+        }
         $idempotencyKey = $this->inquiryPayloadFactory->idempotencyKey($freshQuote);
 
         try {
             $response = $this->request()
                 ->withHeaders(['Idempotency-Key' => $idempotencyKey])
-                ->post($this->endpoint('inquiries'), $payload);
+                ->post($this->endpoint($freshQuote->flowtrack_source_inquiry_id !== null ? 'reverse_bulk_updates' : 'inquiries'), $payload);
         } catch (ConnectionException $exception) {
             throw new FlowTrackIntegrationException(
                 'Could not connect to FlowTrack while sending bulk quote '.$freshQuote->reference.'.',

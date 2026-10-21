@@ -170,7 +170,7 @@ class BulkQuoteRequestController extends Controller
         $path = trim((string) ($attachment['path'] ?? ''));
         abort_if($path === '', 404, 'This bulk quote does not have an attachment.');
 
-        $disk = Storage::disk('public');
+        $disk = Storage::disk(($attachment['disk'] ?? '') === 'local' ? 'local' : 'public');
         abort_unless($disk->exists($path), 404, 'The bulk quote attachment could not be found.');
 
         $stream = $disk->readStream($path);

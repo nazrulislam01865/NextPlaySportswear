@@ -44,8 +44,6 @@ class HomepageSlideController extends Controller
                 'content_position' => 'left',
                 'text_alignment' => 'left',
                 'text_theme' => 'light',
-                'overlay_color' => '#0D2545',
-                'overlay_opacity' => 72,
                 'is_active' => true,
                 'sort_order' => (int) HomepageSlide::query()->max('sort_order') + 10,
                 'primary_target' => '_self',

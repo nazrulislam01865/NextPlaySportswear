@@ -24,7 +24,7 @@ class CategoryMediaService
             $urlColumn = $columns['url'];
 
             if ($input === 'icon' && $category->parent_id !== null) {
-                $this->deletePath($category->{$pathColumn});
+                StoredPublicImage::retire($category->{$pathColumn});
                 $category->{$pathColumn} = null;
                 $category->{$urlColumn} = null;
                 continue;
@@ -34,22 +34,26 @@ class CategoryMediaService
             $url = trim((string) $request->input($input.'_url', ''));
             $remove = $request->boolean('remove_'.$input);
 
-            if ($remove) {
-                $this->deletePath($category->{$pathColumn});
-                $category->{$pathColumn} = null;
-                $category->{$urlColumn} = $url !== '' ? $url : ($urlColumn === 'image_url' ? '' : null);
+            // A newly selected upload takes precedence over a stale remove checkbox.
+            if ($uploaded) {
+                $category->{$pathColumn} = StoredPublicImage::replace(
+                    $uploaded,
+                    "categories/{$category->id}",
+                    $category->{$pathColumn},
+                );
+                $category->{$urlColumn} = $urlColumn === 'image_url' ? '' : null;
                 continue;
             }
 
-            if ($uploaded) {
-                $this->deletePath($category->{$pathColumn});
-                $category->{$pathColumn} = $uploaded->store("categories/{$category->id}", 'public');
+            if ($remove) {
+                StoredPublicImage::retire($category->{$pathColumn});
+                $category->{$pathColumn} = null;
                 $category->{$urlColumn} = $urlColumn === 'image_url' ? '' : null;
                 continue;
             }
 
             if ($url !== '') {
-                $this->deletePath($category->{$pathColumn});
+                StoredPublicImage::retire($category->{$pathColumn});
                 $category->{$pathColumn} = null;
                 $category->{$urlColumn} = $url;
             } elseif (! $category->exists && $urlColumn === 'image_url') {
@@ -89,21 +93,15 @@ class CategoryMediaService
     public function deleteAll(Category $category): void
     {
         foreach (self::FIELDS as $columns) {
-            $this->deletePath($category->{$columns['path']});
+            StoredPublicImage::retire($category->{$columns['path']});
         }
 
         $category->contentBlocks()
             ->pluck('image_path')
             ->filter()
-            ->each(fn (string $path): bool => Storage::disk('public')->delete($path));
+            ->each(fn (string $path) => StoredPublicImage::retire($path));
 
-        Storage::disk('public')->deleteDirectory("categories/{$category->id}");
+        StoredPublicImage::retireDirectory("categories/{$category->id}");
     }
 
-    private function deletePath(?string $path): void
-    {
-        if (filled($path) && Storage::disk('public')->exists($path)) {
-            Storage::disk('public')->delete($path);
-        }
-    }
 }

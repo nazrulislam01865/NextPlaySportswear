@@ -42,7 +42,12 @@ final class FlowTrackCreatedOrderController extends Controller
         $key = 'flowtrack:'.(int) $data['flow_job_id'];
         // A source job maps to exactly one NextPlay order, including after retries.
         $existing = Order::query()->where('idempotency_key', $key)->first();
-        if ($existing && empty($data['dry_run'])) return response()->json(['order' => $this->result($existing), 'replayed' => true]);
+        if ($existing && empty($data['dry_run'])) {
+            abort_unless((int) $existing->user_id === (int) $data['customer_id']
+                && (int) $existing->flowtrack_job_id === (int) $data['flow_job_id'], 409,
+                'The source order reference is already linked to a different customer.');
+            return response()->json(['order' => $this->result($existing), 'replayed' => true]);
+        }
 
         $customer = User::query()->whereKey($data['customer_id'])->where('role', 'customer')->where('is_active', true)->first();
         if (! $customer || ! hash_equals(mb_strtolower($customer->email), mb_strtolower($data['customer_email']))) {
@@ -169,7 +174,12 @@ final class FlowTrackCreatedOrderController extends Controller
                 return $order;
             });
         } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            // A parallel retry must never claim an order owned by another buyer.
             $order = Order::query()->where('idempotency_key', $key)->firstOrFail();
+            abort_unless((int) $order->user_id === (int) $data['customer_id']
+                && (int) $order->flowtrack_job_id === (int) $data['flow_job_id'], 409,
+                'The source order reference is already linked to a different customer.');
+            return response()->json(['order' => $this->result($order), 'replayed' => true]);
         }
         return response()->json(['order' => $this->result($order), 'replayed' => false], 201);
     }

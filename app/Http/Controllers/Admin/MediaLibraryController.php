@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Support\PublicMedia;
+use App\Services\Catalog\StoredPublicImage;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -66,7 +67,7 @@ class MediaLibraryController extends Controller
         ]);
 
         $images = collect($request->file('images', []))->map(function ($uploadedImage): array {
-            $path = $uploadedImage->store('media-library/'.now()->format('Y/m'), 'public');
+            $path = StoredPublicImage::replace($uploadedImage, 'media-library/'.now()->format('Y/m'), null);
             $originalName = pathinfo($uploadedImage->getClientOriginalName(), PATHINFO_FILENAME) ?: 'Gallery image';
             $dimensions = @getimagesize($uploadedImage->getRealPath()) ?: [];
 

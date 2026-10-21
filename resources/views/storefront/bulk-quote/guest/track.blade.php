@@ -58,17 +58,17 @@
         @if(session('status'))<div class="np-gq-alert" role="status">{{ session('status') }}</div>@endif
         @if($quote)
             @php
-                $ready = $quote->quotation_version > 0 && $quote->quotation_sent_at;
+                $ready = \App\Support\FlowTrackQuoteCustomerProgress::published($quote);
+                $offerVisible = \App\Support\FlowTrackQuoteCustomerProgress::verifiedOffer($quote);
                 $accepted = in_array($quote->status, [\App\Models\BulkQuoteRequest::STATUS_ACCEPTED, \App\Models\BulkQuoteRequest::STATUS_CONVERTED], true);
-                $responded = $quote->status === \App\Models\BulkQuoteRequest::STATUS_CUSTOMER_RESPONDED;
-                $statusTitle = $accepted ? 'Quotation Confirmed' : ($quote->guest_decision === 'changes_requested' ? 'Changes Requested' : ($ready ? 'Quotation Ready' : (\App\Models\BulkQuoteRequest::statuses()[$quote->status] ?? 'Under Review')));
+                $statusTitle = \App\Support\FlowTrackQuoteCustomerProgress::title($quote);
             @endphp
             <div class="np-gq-track-grid">
                 <div class="np-gq-main-column">
                     <div class="np-gq-status np-gq-panel">
-                        <span class="np-gq-success-check"><x-storefront.bulk-quote.guest.icon :name="$ready ? 'check' : 'clock'" size="43" /></span>
-                        <div class="np-gq-status-text"><small>CURRENT STATUS</small><h2>{{ $statusTitle }}</h2><p>{{ $accepted ? 'Thank you. Your quotation has been confirmed.' : ($quote->guest_decision === 'changes_requested' ? 'Our team will review your requested changes.' : ($ready ? 'Your bulk quote has been prepared and is ready for review.' : 'Our team is preparing your custom quotation.')) }}</p></div>
-                        @if($ready)<div class="np-gq-status-notice"><strong><x-storefront.bulk-quote.guest.icon name="bell" size="19" /> New Update</strong><p>Quotation files are available.</p><small>{{ \App\Support\ViewerTime::render($quote->quotation_sent_at, 'M j · g:i A') }}</small></div>@endif
+                        <span class="np-gq-success-check"><x-storefront.bulk-quote.guest.icon :name="($ready || $offerVisible) ? 'check' : 'clock'" size="43" /></span>
+                        <div class="np-gq-status-text"><small>CURRENT STATUS</small><h2>{{ $statusTitle }}</h2><p>{{ \App\Support\FlowTrackQuoteCustomerProgress::description($quote) }}</p></div>
+                        @if($ready || $offerVisible)<div class="np-gq-status-notice"><strong><x-storefront.bulk-quote.guest.icon name="bell" size="19" /> New Update</strong><p>{{ $ready ? 'Quotation files are available.' : 'Offer file available for download.' }}</p><small>{{ \App\Support\ViewerTime::render($quote->quotation_sent_at ?? $quote->updated_at, 'M j · g:i A') }}</small></div>@endif
                     </div>
                     <x-storefront.bulk-quote.guest.panel title="Quote Details">
                         <div class="np-gq-detail-grid">
@@ -79,10 +79,21 @@
                         </div>
                     </x-storefront.bulk-quote.guest.panel>
                     <x-storefront.bulk-quote.guest.panel title="Quotation Files" subtitle="Download and review the files shared by our team.">
-                        @if($ready)<div class="np-gq-file-info"><x-storefront.bulk-quote.guest.icon name="shield" size="19" /><span>These files have been prepared by NextPlay Sportswear based on your request. Please review and let us know if you have any questions or need revisions.</span></div>@endif
+                        @if($ready || $offerVisible)<div class="np-gq-file-info"><x-storefront.bulk-quote.guest.icon name="shield" size="19" /><span>{{ $ready ? 'These are your published quotation files. Please review and let us know if you need revisions.' : 'Your offer is being verified for publication. Review and confirmation will be available as soon as verification completes.' }}</span></div>@endif
                         <x-storefront.bulk-quote.guest.files :quote="$quote" :files="$files" />
                     </x-storefront.bulk-quote.guest.panel>
                     <x-storefront.bulk-quote.guest.messages :messages="$messages" :quote="$quote" />
+                    @if($quote->guest_decision === 'changes_requested' && !$accepted)
+                        <x-storefront.bulk-quote.guest.panel title="Send a message" subtitle="Your requested revision is being prepared. You can continue the conversation here.">
+                            <form method="POST" action="{{ route('quote.guest.message', $quote->reference) }}" class="np-gq-change-form" enctype="multipart/form-data" data-single-submit>
+                                @csrf
+                                <label class="np-gq-change-description">Your message<textarea name="body" rows="3" minlength="2" maxlength="3000" required placeholder="Write your message...">{{ old('body') }}</textarea></label>
+                                @error('body')<p class="np-gq-alert np-gq-alert--error" role="alert">{{ $message }}</p>@enderror
+                                @error('body')<p class="np-gq-alert np-gq-alert--error">{{ $message }}</p>@enderror
+                                <div class="np-gq-form-actions np-gq-form-actions--end"><button class="btn btn-red" type="submit">Send Message</button></div>
+                            </form>
+                        </x-storefront.bulk-quote.guest.panel>
+                    @endif
                 </div>
                 <aside class="np-gq-aside">
                     <x-storefront.bulk-quote.guest.panel title="Quote Timeline"><x-storefront.bulk-quote.guest.timeline :quote="$quote" /></x-storefront.bulk-quote.guest.panel>

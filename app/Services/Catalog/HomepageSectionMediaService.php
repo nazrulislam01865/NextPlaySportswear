@@ -4,7 +4,6 @@ namespace App\Services\Catalog;
 
 use App\Models\HomepageSection;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class HomepageSectionMediaService
@@ -19,34 +18,28 @@ class HomepageSectionMediaService
         $mobileUploaded = $request->file('mobile_image_file');
         $mobileImageUrl = trim((string) $request->input('mobile_image_url', ''));
 
-        if ($request->boolean('remove_image')) {
-            $this->deletePath($section->image_path);
+        if ($uploaded) {
+            $section->image_path = StoredPublicImage::replace($uploaded, "homepage/sections/{$section->key}", $section->image_path);
+            $section->image_url = null;
+        } elseif ($request->boolean('remove_image')) {
+            StoredPublicImage::retire($section->image_path);
             $section->image_path = null;
             $section->image_url = null;
-        }
-
-        if ($uploaded) {
-            $this->deletePath($section->image_path);
-            $section->image_path = $uploaded->store("homepage/sections/{$section->key}", 'public');
-            $section->image_url = null;
         } elseif ($imageUrl !== '') {
-            $this->deletePath($section->image_path);
+            StoredPublicImage::retire($section->image_path);
             $section->image_path = null;
             $section->image_url = $imageUrl;
         }
 
-        if ($request->boolean('remove_mobile_image')) {
-            $this->deletePath($section->mobile_image_path);
+        if ($mobileUploaded) {
+            $section->mobile_image_path = StoredPublicImage::replace($mobileUploaded, "homepage/sections/{$section->key}/mobile", $section->mobile_image_path);
+            $section->mobile_image_url = null;
+        } elseif ($request->boolean('remove_mobile_image')) {
+            StoredPublicImage::retire($section->mobile_image_path);
             $section->mobile_image_path = null;
             $section->mobile_image_url = null;
-        }
-
-        if ($mobileUploaded) {
-            $this->deletePath($section->mobile_image_path);
-            $section->mobile_image_path = $mobileUploaded->store("homepage/sections/{$section->key}/mobile", 'public');
-            $section->mobile_image_url = null;
         } elseif ($mobileImageUrl !== '') {
-            $this->deletePath($section->mobile_image_path);
+            StoredPublicImage::retire($section->mobile_image_path);
             $section->mobile_image_path = null;
             $section->mobile_image_url = $mobileImageUrl;
         }
@@ -120,9 +113,7 @@ class HomepageSectionMediaService
             }
 
             $existingPath = trim((string) ($item['image_path'] ?? '')) ?: null;
-            $this->deletePath($existingPath);
-
-            $item['image_path'] = $uploaded->store("homepage/sections/{$section->key}/items", 'public');
+            $item['image_path'] = StoredPublicImage::replace($uploaded, "homepage/sections/{$section->key}/items", $existingPath);
             unset($item['image_url']);
         }
         unset($item);
@@ -137,7 +128,7 @@ class HomepageSectionMediaService
             ->filter(fn ($item): bool => is_array($item))
             ->pluck('image_path')
             ->filter(fn ($path): bool => filled($path) && ! in_array((string) $path, $referencedPaths, true))
-            ->each(fn ($path) => $this->deletePath((string) $path));
+            ->each(fn ($path) => StoredPublicImage::retire((string) $path));
 
         $section->items = array_values($items);
     }
@@ -177,12 +168,11 @@ class HomepageSectionMediaService
             $imageUrl = $existingUrl;
 
             if ($uploaded) {
-                $this->deletePath($existingPath);
-                $imagePath = $uploaded->store('homepage/sections/hero/slides', 'public');
+                $imagePath = StoredPublicImage::replace($uploaded, 'homepage/sections/hero/slides', $existingPath);
                 $imageUrl = null;
             } elseif ($submittedUrl !== null) {
                 if ($submittedUrl !== $existingUrl) {
-                    $this->deletePath($existingPath);
+                    StoredPublicImage::retire($existingPath);
                     $imagePath = null;
                 }
                 $imageUrl = $submittedUrl;
@@ -207,15 +197,9 @@ class HomepageSectionMediaService
 
         $existingSlides
             ->reject(fn (array $slide, string $id): bool => isset($seenIds[$id]))
-            ->each(fn (array $slide) => $this->deletePath(trim((string) ($slide['image_path'] ?? '')) ?: null));
+            ->each(fn (array $slide) => StoredPublicImage::retire(trim((string) ($slide['image_path'] ?? '')) ?: null));
 
         $section->hero_slides = array_values($savedSlides);
     }
 
-    private function deletePath(?string $path): void
-    {
-        if (filled($path) && Storage::disk('public')->exists($path)) {
-            Storage::disk('public')->delete($path);
-        }
-    }
 }

@@ -48,8 +48,6 @@ class HomepageSlideRequest extends FormRequest
             'content_position' => ['required', Rule::in(['left', 'center', 'right'])],
             'text_alignment' => ['required', Rule::in(['left', 'center', 'right'])],
             'text_theme' => ['required', Rule::in(['light', 'dark'])],
-            'overlay_color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'overlay_opacity' => ['required', 'integer', 'min:0', 'max:100'],
 
             'is_active' => ['nullable', 'boolean'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:1000000'],
@@ -70,7 +68,6 @@ class HomepageSlideRequest extends FormRequest
             $payload[$field] = $this->boolean($field);
         }
 
-        $payload['overlay_color'] = strtoupper(trim((string) $this->input('overlay_color', '#0D2545')));
         $payload['image_url'] = trim((string) $this->input('image_url', '')) ?: null;
         $payload['mobile_image_url'] = trim((string) $this->input('mobile_image_url', '')) ?: null;
         $payload['primary_url'] = trim((string) $this->input('primary_url', '')) ?: null;

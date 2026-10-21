@@ -32,6 +32,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        \App\Models\BulkQuoteRequest::observe(\App\Observers\BulkQuoteFlowTrackObserver::class);
+        \App\Models\BulkQuoteMessage::observe(\App\Observers\BulkQuoteMessageFlowTrackObserver::class);
         \App\Models\Product::observe(\App\Observers\FlowTrackCatalogObserver::class);
         \App\Models\User::observe(\App\Observers\FlowTrackCatalogObserver::class);
         foreach ([
@@ -229,6 +231,32 @@ class AppServiceProvider extends ServiceProvider
             return $limits;
         });
 
+
+        // Keep quotation conversations independent of unrelated guest forms and
+        // other customers sharing an IP address. Preserve anti-spam limits, but
+        // return a usable form error rather than a raw Laravel 429 page.
+        RateLimiter::for('quote-message', function (Request $request): array {
+            $reference = (string) ($request->route('reference') ?: 'unknown');
+            $ip = (string) ($request->ip() ?: 'unknown');
+            $customerId = $request->user('web')?->getAuthIdentifier();
+            $sessionId = $request->hasSession() ? (string) $request->session()->getId() : '';
+            $sender = $customerId !== null
+                ? 'customer:'.$customerId
+                : 'session:'.($sessionId !== '' ? $sessionId : $ip);
+            $conversationKey = hash('sha256', $reference.'|'.$sender);
+
+            $friendlyResponse = static function (Request $request): \Illuminate\Http\RedirectResponse {
+                return redirect()->back()
+                    ->withInput($request->except(['_token', 'files']))
+                    ->withErrors(['body' => 'You have sent several messages in a short time. Please wait a moment before sending another message.']);
+            };
+
+            return [
+                Limit::perMinute(24)->by('quote-message-minute:'.$conversationKey)->response($friendlyResponse),
+                Limit::perHour(120)->by('quote-message-hour:'.$conversationKey)->response($friendlyResponse),
+                Limit::perHour(240)->by('quote-message-ip-hour:'.$ip)->response($friendlyResponse),
+            ];
+        });
 
         // Guest quotation acceptance is an authenticated-session action, not a
         // general form submission. Do not share a 5/minute IP bucket across

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BulkQuoteFile extends Model
 {
-    protected $fillable = ['bulk_quote_request_id', 'bulk_quote_message_id', 'uploaded_by', 'version', 'category', 'path', 'original_name', 'mime_type', 'size'];
+    protected $fillable = ['bulk_quote_request_id', 'bulk_quote_message_id', 'uploaded_by', 'version', 'category', 'path', 'original_name', 'mime_type', 'size', 'source_key'];
 
     public function quote(): BelongsTo
     {

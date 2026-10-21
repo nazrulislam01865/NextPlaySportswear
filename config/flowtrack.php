@@ -21,6 +21,7 @@ return [
         'orders' => '/api/integrations/nextplay/orders',
         'inquiry_health' => '/api/integrations/nextplay/inquiries/health',
         'inquiries' => '/api/integrations/nextplay/inquiries',
+        'reverse_bulk_updates' => '/api/integrations/nextplay/bulk-orders/source-updates',
     ],
 
     'http' => [

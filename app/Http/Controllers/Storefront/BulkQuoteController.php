@@ -80,10 +80,11 @@ class BulkQuoteController extends Controller
         $attachment = null;
         if ($request->hasFile('attachment')) {
             $file = $request->file('attachment');
-            $path = $file->store('bulk-quotes', 'public');
+            $path = $file->store('bulk-quotes', 'local');
 
             $attachment = [
                 'path' => $path,
+                'disk' => 'local',
                 'original_name' => Str::limit($file->getClientOriginalName(), 190, ''),
                 'mime_type' => $file->getClientMimeType(),
                 'size' => $file->getSize(),

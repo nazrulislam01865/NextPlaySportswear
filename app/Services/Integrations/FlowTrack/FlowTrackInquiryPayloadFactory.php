@@ -44,11 +44,45 @@ final class FlowTrackInquiryPayloadFactory
             'event_date' => $quote->event_date?->toDateString(),
 
             'attachment' => $this->attachment($quote),
+            'client_files' => $this->clientFiles($quote),
+            'customer_messages' => $quote->messages()->where('sender', 'guest')->orderByDesc('id')->limit(100)
+                ->get(['id', 'kind', 'body', 'change_types', 'created_at'])->sortBy('id')
+                ->map(fn ($message): array => [
+                    'id' => $message->id, 'kind' => $message->kind,
+                    'body' => $message->body, 'change_types' => $message->change_types,
+                    'created_at' => $message->created_at?->toIso8601String(),
+                ])->values()->all(),
+            'guest_decision' => $quote->guest_decision,
             'additional_notes' => $quote->additional_notes,
             'idempotency_key' => $this->idempotencyKey($quote),
             'created_at' => $quote->created_at?->toIso8601String(),
             'updated_at' => $quote->updated_at?->toIso8601String(),
         ];
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function clientFiles(BulkQuoteRequest $quote): array
+    {
+        // Feedback files are customer-origin files; never expose private quotations.
+        return $quote->quoteFiles()->where('category', 'feedback')->whereNotNull('bulk_quote_message_id')
+            ->orderByDesc('id')->limit(25)->get()->sortBy('id')->map(function ($file) use ($quote): array {
+                $disk = Storage::disk('local');
+                $path = (string) $file->path;
+                $hash = $disk->exists($path) && is_file($disk->path($path))
+                    ? hash_file('sha256', $disk->path($path)) : false;
+                if (! is_string($hash) || ! preg_match('/^[a-f0-9]{64}$/', $hash)) {
+                    throw new \RuntimeException('NextPlay feedback file '.$file->id.' is missing or unreadable.');
+                }
+                return [
+                    'id' => (int) $file->id,
+                    'message_id' => (int) $file->bulk_quote_message_id,
+                    'name' => (string) $file->original_name,
+                    'size' => (int) $file->size,
+                    'mime_type' => (string) $file->mime_type,
+                    'checksum_sha256' => $hash,
+                    'download_path' => '/api/integrations/flowtrack/bulk-quotes/'.$quote->id.'/files/'.$file->id,
+                ];
+            })->values()->all();
     }
 
     public function idempotencyKey(BulkQuoteRequest $quote): string
@@ -87,8 +121,9 @@ final class FlowTrackInquiryPayloadFactory
         }
 
         $checksum = null;
-        if (Storage::disk('public')->exists($path)) {
-            $absolutePath = Storage::disk('public')->path($path);
+        $disk = ($attachment['disk'] ?? '') === 'local' ? 'local' : 'public';
+        if (Storage::disk($disk)->exists($path)) {
+            $absolutePath = Storage::disk($disk)->path($path);
             $hash = is_file($absolutePath) ? hash_file('sha256', $absolutePath) : false;
             $checksum = is_string($hash) ? $hash : null;
         }

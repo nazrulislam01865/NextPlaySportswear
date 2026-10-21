@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BulkQuoteMessage extends Model
 {
-    protected $fillable = ['bulk_quote_request_id', 'actor_id', 'sender', 'kind', 'body', 'change_types'];
+    protected $fillable = ['bulk_quote_request_id', 'actor_id', 'sender', 'kind', 'body', 'change_types', 'flowtrack_message_id'];
 
     protected function casts(): array
     {
