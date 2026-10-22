@@ -17,7 +17,7 @@
     method="POST"
     enctype="multipart/form-data"
     action="{{ $isEdit ? route('admin.categories.update', $category) : route('admin.categories.store') }}"
-    class="space-y-6"
+    class="np-editor space-y-6"
     x-data="categoryAdminForm(@js([
         'name' => old('name', $category->name),
         'slug' => old('slug', $category->slug),
@@ -34,7 +34,12 @@
         @method('PUT')
     @endif
 
-    <nav class="sticky top-20 z-20 -mx-4 overflow-x-auto border-y border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+    <x-admin.editor-guide
+        heading="Edit category"
+        note="Update the category details and images, then review storefront placement and assigned products. All settings below remain editable."
+:items="[]"
+    />
+    <nav class="np-editor-category-nav sticky top-20 z-20 -mx-4 overflow-x-auto border-y border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" aria-label="Category sections">
         <div class="flex min-w-max gap-2 text-sm font-bold">
             @foreach([
                 ['basic', 'Basic Info'],
@@ -653,7 +658,8 @@
         </aside>
     </div>
 
-    <div class="sticky bottom-3 z-30 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-soft backdrop-blur sm:bottom-4 sm:flex-row sm:flex-wrap sm:justify-end">
+    <div class="np-editor-savebar">
+        <span class="np-editor-savehint">Saving updates this category's existing storefront settings.</span>
         <a href="{{ route('admin.categories.index') }}" class="btn btn-white">Cancel</a>
         @if($isEdit && $category->status === 'active')
             <a href="{{ route('categories.show', $category->slug) }}" target="_blank" rel="noopener" class="btn btn-white">Preview Storefront</a>

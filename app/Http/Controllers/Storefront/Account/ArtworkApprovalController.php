@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Storefront\Account;
 
 use App\Http\Controllers\Controller;
 use App\Models\ArtworkProof;
+use App\Jobs\Integrations\SyncArtworkReviewToFlowTrack;
 use App\Services\Artwork\ArtworkProofService;
 use App\Services\Email\TransactionalEmailManager;
 use App\Services\Storefront\CustomerAccountService;
@@ -45,6 +46,7 @@ class ArtworkApprovalController extends Controller
         $this->assertOwner($request, $proof);
         $proof->load(['order', 'orderItem']);
         $versions = ArtworkProof::query()->where('order_item_id', $proof->order_item_id)
+            ->where('flowtrack_slot', $proof->flowtrack_slot)
             ->with('messages')->latest('version')->get();
         $isCurrent = $versions->first()?->id === $proof->id;
         // Replies belong to a proof version; retain the conversation when a newer proof is published.
@@ -73,7 +75,8 @@ class ArtworkApprovalController extends Controller
         $this->assertOwner($request, $proof);
         $request->validate(['confirm' => ['required', 'accepted']]);
         $updated = $this->proofs->decide($proof, ArtworkProof::APPROVED);
-        $this->emails->artworkProofReviewed($updated);
+        $this->forwardFlowTrack($updated, 'decision');
+        $this->sendReviewEmailWithoutBlocking($updated);
 
         return redirect()->route('account.artwork.approved', $proof)->with('status', 'Artwork approved successfully.');
     }
@@ -89,7 +92,8 @@ class ArtworkApprovalController extends Controller
             'reference_file' => ['nullable', 'file', 'mimes:jpeg,jpg,png,webp,pdf', 'max:10240'],
         ]);
         $updated = $this->proofs->decide($proof, ArtworkProof::REVISION, $validated, $request->file('reference_file'));
-        $this->emails->artworkProofReviewed($updated);
+        $this->forwardFlowTrack($updated, 'decision');
+        $this->sendReviewEmailWithoutBlocking($updated);
 
         return redirect()->route('account.artwork.show', $proof)->with('status', 'Your revision request was sent to the design team.');
     }
@@ -99,7 +103,8 @@ class ArtworkApprovalController extends Controller
         $this->assertOwner($request, $proof);
         $validated = $request->validate(['feedback' => ['required', 'string', 'min:10', 'max:500']]);
         $updated = $this->proofs->decide($proof, ArtworkProof::REJECTED, $validated);
-        $this->emails->artworkProofReviewed($updated);
+        $this->forwardFlowTrack($updated, 'decision');
+        $this->sendReviewEmailWithoutBlocking($updated);
 
         return redirect()->route('account.artwork.show', $proof)->with('status', 'Proof rejected. Your feedback is saved.');
     }
@@ -108,8 +113,15 @@ class ArtworkApprovalController extends Controller
     {
         $this->assertOwner($request, $proof);
         $validated = $request->validate(['message' => ['required', 'string', 'min:5', 'max:2000']]);
-        $proof->messages()->create(['sender_role' => 'customer', 'message' => $validated['message']]);
-        $this->emails->artworkProofMessage($proof, true);
+        $message = $proof->messages()->create(['sender_role' => 'customer', 'message' => $validated['message']]);
+        $this->forwardFlowTrack($proof, 'message', $message->id);
+        try {
+            $this->emails->artworkProofMessage($proof, true);
+        } catch (\Throwable $exception) {
+            \Illuminate\Support\Facades\Log::warning('nextplay.artwork_message_email_failed', [
+                'proof_id' => $proof->id, 'error' => $exception->getMessage(),
+            ]);
+        }
 
         return redirect()->to(route('account.artwork.show', $proof).'?message=1#designer-messages')->with('status', 'Message sent to the design team.');
     }
@@ -136,6 +148,37 @@ class ArtworkApprovalController extends Controller
         return $this->proofs->stream($proof, $type, $request->boolean('download'));
     }
 
+    private function forwardFlowTrack(ArtworkProof $proof, string $kind, ?int $messageId = null): void
+    {
+        if (! $proof->flowtrack_job_id) return;
+        $job = new SyncArtworkReviewToFlowTrack((int) $proof->id, $kind, $messageId);
+        // A FlowTracker revision may request its private attachment back from
+        // this NPS server. Always use the configured persistent queue when one
+        // exists: executing the callback inside the NPS web request can
+        // deadlock the single-worker local PHP server during that download.
+        // The queued job retries network failures without losing the decision.
+        $connection = config('flowtrack.queue.connection', config('queue.default'));
+        if ($connection !== 'sync') {
+            dispatch($job);
+            return;
+        }
+
+        // Sync-only installations have no persistent worker; keep the original
+        // immediate behavior rather than silently losing customer decisions.
+        dispatch_sync($job);
+    }
+
+    private function sendReviewEmailWithoutBlocking(ArtworkProof $proof): void
+    {
+        try {
+            $this->emails->artworkProofReviewed($proof);
+        } catch (\Throwable $exception) {
+            \Illuminate\Support\Facades\Log::warning('nextplay.artwork_review_email_failed', [
+                'proof_id' => $proof->id, 'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
     private function assertOwner(Request $request, ArtworkProof $proof): void
     {
         $proof->loadMissing('order');
@@ -145,7 +188,7 @@ class ArtworkApprovalController extends Controller
     private function canReview(ArtworkProof $proof): bool
     {
         return $proof->status === ArtworkProof::PENDING
-            && $proof->version === (int) ArtworkProof::query()->where('order_item_id', $proof->order_item_id)->max('version');
+            && $proof->version === (int) ArtworkProof::query()->where('order_item_id', $proof->order_item_id)->where('flowtrack_slot', $proof->flowtrack_slot)->max('version');
     }
 
     private function remainingRevisions(ArtworkProof $proof): ?int
@@ -155,6 +198,7 @@ class ArtworkApprovalController extends Controller
             return null;
         }
         $used = ArtworkProof::query()->where('order_item_id', $proof->order_item_id)
+            ->where('flowtrack_slot', $proof->flowtrack_slot)
             ->where('status', ArtworkProof::REVISION)->count();
         return max(0, $max - $used);
     }

@@ -1,0 +1,121 @@
+/* Only the six selected NextPlay storefront content editors. Uses existing brand colors and font. */
+.np-editor { --np-editor-ink: var(--color-brand-dark, #061f44); --np-editor-accent: var(--color-brand-red, #cf5d38); }
+.np-editor-guide { display:grid; gap:16px; padding:20px 22px; background:linear-gradient(125deg,#fff 0%,#fbf8f5 100%); border:1px solid #e2e8f0; border-radius:18px; }
+.np-editor-guide__eyebrow { color:#c45331; display:block; font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+.np-editor-guide__intro h2 { margin:5px 0 0; color:#061f44; font-size:19px; font-weight:800; line-height:1.3; }
+.np-editor-guide__intro p { margin:6px 0 0; color:#64748b; font-size:13px; line-height:1.65; }
+.np-editor-guide__steps { display:flex; gap:8px; flex-wrap:wrap; }
+.np-editor-guide__step { display:inline-flex; align-items:center; gap:8px; text-decoration:none; border:1px solid #dce3ed; border-radius:10px; background:#fff; color:#203650; padding:9px 12px; font-size:12px; font-weight:750; transition:background .15s, border-color .15s; }
+.np-editor-guide__step:hover { border-color:#cf5d38; background:#fff8f5; color:#933c22; }
+.np-editor-guide__step:focus-visible { outline:3px solid #fb9d78; outline-offset:2px; }
+.np-editor-guide__number { color:#b94e2c; font-size:10px; font-weight:850; font-variant-numeric:tabular-nums; }
+.np-editor .admin-section-card { scroll-margin-top:115px; border-radius:18px; box-shadow:0 3px 14px rgba(6,31,68,.035); }
+.np-editor .admin-section-card__header { margin-bottom:18px; padding-bottom:15px; }
+.np-editor .admin-section-card__title { font-size:18px; line-height:1.35; }
+.np-editor .admin-section-card__description { max-width:880px; color:#60738b; font-size:13px; line-height:1.6; }
+.np-editor .admin-label { color:#263850; font-weight:700; gap:7px; }
+.np-editor .admin-label small { font-size:12px; line-height:1.5; }
+.np-editor .admin-input:focus-visible, .np-editor .admin-textarea:focus-visible { outline:2px solid rgba(207,93,56,.4); outline-offset:2px; border-color:#cf5d38; }
+/* Explicit file-picker presentation: native controls are retained for form upload
+   and accessibility, but their browser-dependent buttons are not used for layout. */
+.np-editor .np-editor-file-picker {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
+    min-height: 60px;
+    padding: 10px 12px;
+    margin-top: 6px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 10px;
+    background: #fff;
+    color: var(--np-editor-ink);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+.np-editor .np-editor-file-picker__choose {
+    box-sizing: border-box;
+    display: inline-flex;
+    flex: 0 0 auto;
+    justify-content: center;
+    align-items: center;
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 7px;
+    background: var(--np-editor-ink);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+    pointer-events: none;
+}
+.np-editor .np-editor-file-picker__name {
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    color: #475569;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 500;
+    pointer-events: none;
+}
+/* The original input is still the label's real control. It remains focusable,
+   accessible, valid for multipart submission, and drives the existing previews. */
+body.admin-ui-compact #admin-main-content .np-editor input[type="file"].np-editor-file-picker__native,
+body.admin-clean-ui #admin-main-content .np-editor input[type="file"].np-editor-file-picker__native,
+.np-editor input[type="file"].np-editor-file-picker__native {
+    position: absolute !important;
+    display: block !important;
+    width: 1px !important;
+    min-width: 0 !important;
+    height: 1px !important;
+    min-height: 0 !important;
+    max-height: 1px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    opacity: 0 !important;
+    overflow: hidden !important;
+    clip-path: inset(50%) !important;
+}
+.np-editor .np-editor-file-picker__native:focus-visible + .np-editor-file-picker {
+    outline: 2px solid var(--np-editor-accent);
+    outline-offset: 2px;
+}
+.np-editor label:hover > .np-editor-file-picker {
+    border-color: var(--np-editor-accent);
+}
+.np-editor .np-editor-file-picker__native:disabled + .np-editor-file-picker {
+    opacity: .6;
+    cursor: not-allowed;
+}
+@media (max-width: 520px) {
+    .np-editor .np-editor-file-picker { gap: 10px; min-height: 56px; padding: 8px; }
+    .np-editor .np-editor-file-picker__choose { padding-inline: 11px; font-size: 12px; }
+    .np-editor .np-editor-file-picker__name { font-size: 12px; }
+}
+.np-editor .np-editor-optional { border:1px solid #e2e8f0; border-radius:12px; background:#fff; padding:12px 14px; }
+.np-editor .np-editor-optional > summary { list-style-position:outside; color:#304862; cursor:pointer; font-size:12px; font-weight:750; }
+.np-editor .np-editor-optional[open] > summary { margin-bottom:13px; }
+.np-editor .np-editor-help { color:#64748b; font-size:12px; line-height:1.6; }
+.np-editor .np-editor-savebar { position:sticky; bottom:10px; z-index:28; display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-end; align-items:center; background:rgba(255,255,255,.98); border:1px solid #dce3ed; border-radius:14px; padding:13px 16px; box-shadow:0 8px 32px rgba(6,31,68,.1); backdrop-filter:blur(12px); }
+.np-editor .np-editor-savebar .btn { min-height:42px; }
+.np-editor .np-editor-savebar .np-editor-savehint { margin-right:auto; color:#64748b; font-size:12px; line-height:1.5; }
+.np-editor .np-editor-category-nav { z-index:20; top:72px; }
+.np-editor .np-editor-category-nav a { white-space:nowrap; transition:color .15s,background .15s; }
+.np-editor .np-editor-category-nav a:focus-visible { outline:2px solid #cf5d38; outline-offset:2px; }
+.np-editor #hero-content, .np-editor #hero-buttons, .np-editor #hero-highlights, .np-editor #hero-images, .np-editor #hero-items, .np-editor #best-background, .np-editor #best-items, .np-editor #editor-publishing { scroll-margin-top:114px; }
+@media (max-width:640px) {
+ .np-editor-guide { padding:16px; gap:12px; }
+ .np-editor-guide__steps { flex-wrap:nowrap; overflow-x:auto; margin:0 -2px; padding:2px 2px 8px; scrollbar-width:thin; }
+ .np-editor-guide__step { flex:0 0 auto; }
+ .np-editor .np-editor-savebar { bottom:0; border-radius:12px 12px 0 0; margin:0 -8px; }
+ .np-editor .np-editor-savebar .np-editor-savehint { flex-basis:100%; }
+}

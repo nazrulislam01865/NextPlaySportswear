@@ -35,6 +35,7 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\BulkQuoteRequest::observe(\App\Observers\BulkQuoteFlowTrackObserver::class);
         \App\Models\BulkQuoteMessage::observe(\App\Observers\BulkQuoteMessageFlowTrackObserver::class);
         \App\Models\Product::observe(\App\Observers\FlowTrackCatalogObserver::class);
+        \App\Models\Category::observe(\App\Observers\FlowTrackCategoryObserver::class);
         \App\Models\User::observe(\App\Observers\FlowTrackCatalogObserver::class);
         foreach ([
             \App\Models\ProductOptionGroup::class,

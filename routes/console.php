@@ -32,3 +32,9 @@ Artisan::command('catalog:sync-category-products {--keep-existing : Legacy flag;
 
 // Webhooks are primary; reconciliation is the safety net for delayed or missed provider events.
 Schedule::command('payments:reconcile')->everyFifteenMinutes()->withoutOverlapping();
+
+// Sync branding changes caused by deployments/configuration updates, not only admin uploads.
+// NPS is authoritative; these are rare background requests, never storefront queries.
+if (config('flowtrack.enabled')) {
+    Schedule::command('flowtrack:push-branding')->hourly()->withoutOverlapping();
+}

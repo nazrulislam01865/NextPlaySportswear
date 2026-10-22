@@ -11,11 +11,23 @@
     method="POST"
     enctype="multipart/form-data"
     action="{{ route('admin.categories.store') }}"
-    class="space-y-6"
+    class="np-editor space-y-6"
     x-data="categoryCreateForm(@js(['name' => $initialName, 'preview' => $initialPreview, 'iconPreview' => $initialIconPreview, 'bannerColor' => $initialBannerColor, 'parentId' => $initialParentId, 'isFeatured' => $initialIsFeatured]))"
 >
     @csrf
 
+    <x-admin.editor-guide
+        heading="Add category"
+        note="Enter the name and parent first, then choose its images and storefront visibility. Save the category when the preview is ready."
+        :items="[
+            ['id' => 'create-category-basics', 'label' => 'Details'],
+            ['id' => 'create-category-image', 'label' => 'Thumbnail'],
+            ['id' => 'create-category-banner', 'label' => 'Banner'],
+            ['id' => 'create-category-icon', 'label' => 'Icon'],
+            ['id' => 'create-category-visibility', 'label' => 'Visibility'],
+            ['id' => 'create-category-publish', 'label' => 'Publish'],
+        ]"
+    />
     @if($errors->any())
         <div class="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-800" role="alert">
             <strong class="block font-black">Please correct the following fields:</strong>
@@ -30,6 +42,7 @@
     <div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div class="space-y-6">
             <x-admin.section-card
+                id="create-category-basics"
                 title="Add New Category"
                 description="Create the category with only the essential storefront information. Only the most important fields are shown. The slug is generated automatically from the category name."
             >
@@ -95,6 +108,7 @@
             </x-admin.section-card>
 
             <x-admin.section-card
+                id="create-category-image"
                 title="Category Thumbnail"
                 description="Upload the main image used on category cards and other category-driven homepage sections."
             >
@@ -139,6 +153,7 @@
             </x-admin.section-card>
 
             <x-admin.section-card
+                id="create-category-banner"
                 title="Category Page Banner"
                 description="Choose a banner image, a background color, or both. The color can also be used by itself when no banner image is uploaded."
             >
@@ -211,6 +226,7 @@
 
             <div x-show="parentId === ''" x-transition>
             <x-admin.section-card
+                id="create-category-icon"
                 title="Parent Category Icon"
                 description="Set the small image icon used with top-level parent categories in storefront filters and the Shop Products menu."
             >
@@ -266,6 +282,7 @@
 
         <aside class="space-y-6 xl:sticky xl:top-24">
             <x-admin.section-card
+                id="create-category-visibility"
                 title="Where Should It Appear?"
                 description="Choose the storefront placements for this category."
             >
@@ -302,6 +319,7 @@
             </x-admin.section-card>
 
             <x-admin.section-card
+                id="create-category-publish"
                 title="Publish"
                 description="Save it publicly now or keep it as a draft for later editing."
             >
@@ -321,7 +339,8 @@
         </aside>
     </div>
 
-    <div class="sticky bottom-3 z-30 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-soft backdrop-blur sm:bottom-4 sm:flex-row sm:justify-end">
+    <div class="np-editor-savebar">
+        <span class="np-editor-savehint">The category URL is generated automatically from the name.</span>
         <a href="{{ route('admin.categories.index') }}" class="btn btn-white">Cancel</a>
         <button class="btn btn-red">Add New Category</button>
     </div>

@@ -77,6 +77,14 @@
     ];
 @endphp
 
+@if(in_array($section->key, ['hero', 'best_selling_gear'], true))
+    @push('admin-page-styles')
+        <link rel="stylesheet" href="{{ asset('css/nps-content-editor.css') }}?v=20261022c">
+    @endpush
+    @push('admin-page-scripts')
+        <script src="{{ asset('js/nps-editor-file-picker.js') }}?v=20261022c" defer></script>
+    @endpush
+@endif
 <x-layouts.admin
     :title="$section->name"
     eyebrow="Homepage Section"
@@ -87,7 +95,7 @@
         method="POST"
         action="{{ route('admin.homepage.sections.update', $section->key) }}"
         enctype="multipart/form-data"
-        class="space-y-6"
+        class="space-y-6 @if(in_array($section->key, ['hero', 'best_selling_gear'], true)) np-editor @endif"
         x-data="{
             imagePreview: @js($currentImage),
             mobileImagePreview: @js($currentMobileImage),
@@ -518,6 +526,30 @@
         @csrf
         @method('PATCH')
 
+        @if(in_array($section->key, ['hero', 'best_selling_gear'], true))
+            <x-admin.editor-guide
+                :heading="$section->key === 'hero' ? 'Edit Hero Banner' : 'Edit Best-Selling Gear'"
+                :note="$section->key === 'hero'
+                    ? 'Review your headline and buttons, then arrange hero images and supporting highlights before saving.'
+                    : 'Update the heading, background and displayed categories. Image changes are previewed here before saving.'"
+                :items="$section->key === 'hero'
+                    ? [
+                        ['id' => 'hero-content', 'label' => 'Text'],
+                        ['id' => 'hero-buttons', 'label' => 'Buttons'],
+                        ['id' => 'hero-highlights', 'label' => 'Highlights'],
+                        ['id' => 'hero-images', 'label' => 'Images'],
+                        ['id' => 'hero-items', 'label' => 'Checklist'],
+                        ['id' => 'editor-publishing', 'label' => 'Publishing'],
+                    ]
+                    : [
+                        ['id' => 'hero-content', 'label' => 'Text'],
+                        ['id' => 'best-background', 'label' => 'Background'],
+                        ['id' => 'best-items', 'label' => 'Categories'],
+                        ['id' => 'editor-publishing', 'label' => 'Publishing'],
+                    ]"
+            />
+        @endif
+
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <a href="{{ route('admin.homepage.sections.index') }}" class="btn btn-white">← All Sections</a>
             @if($section->key === 'slider' && (auth('admin')->user()?->canAdmin('homepage_slides.view') ?? false))
@@ -534,7 +566,7 @@
         @endif
 
         @if($hasText)
-            <x-admin.section-card title="Section Text" description="Only the basic text needed for this section.">
+            <x-admin.section-card :id="in_array($section->key, ['hero', 'best_selling_gear'], true) ? 'hero-content' : null" title="Section Text" description="Only the basic text needed for this section.">
                 <div class="grid gap-5">
                     <label class="admin-label">Title
                         <input type="text" name="title" value="{{ old('title', $section->title) }}" class="admin-input @error('title') border-red-400 @enderror" maxlength="255" placeholder="Section title">
@@ -549,7 +581,7 @@
         @endif
 
         @if($hasButtons)
-            <x-admin.section-card title="Buttons" description="Use internal paths like /products, anchors like #bulk, or secure external URLs.">
+            <x-admin.section-card :id="$section->key === 'hero' ? 'hero-buttons' : null" title="Buttons" description="Use internal paths like /products, anchors like #bulk, or secure external URLs.">
                 <div class="grid gap-5 lg:grid-cols-2">
                     <div class="rounded-2xl border border-slate-200 p-5">
                         <h3 class="mb-4 text-sm font-black text-brand-ink">Primary Button</h3>
@@ -572,7 +604,7 @@
         @endif
 
         @if($section->key === 'hero')
-            <x-admin.section-card title="Trust & Highlights" description="Manage the supporting text and trust indicators shown below the hero buttons and over the hero image. Leave any optional field blank to hide that item on the storefront.">
+            <x-admin.section-card id="hero-highlights" title="Trust & Highlights" description="Manage the supporting text and trust indicators shown below the hero buttons and over the hero image. Leave any optional field blank to hide that item on the storefront.">
                 <div class="grid gap-5">
                     <label class="admin-label">Trust line below buttons
                         <input type="text" name="settings[trustline]" value="{{ old('settings.trustline', data_get($viewSection, 'settings.trustline')) }}" class="admin-input @error('settings.trustline') border-red-400 @enderror" maxlength="500" placeholder="Serving teams, clubs, businesses...">
@@ -609,7 +641,7 @@
         @endif
 
         @if($hasHeroSlides)
-            <x-admin.section-card title="Hero Image Slider" description="Upload and order the images shown inside the homepage hero card.">
+            <x-admin.section-card id="hero-images" title="Hero Image Slider" description="Upload and order the images shown inside the homepage hero card.">
                 <div class="space-y-5">
                     <div class="admin-hero-slide-guidelines grid gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-brand-dark">
                         <div><span class="block text-xs font-black uppercase tracking-[.12em] text-blue-700">Recommended size</span><strong>1200 × 820 px</strong></div>
@@ -676,7 +708,7 @@
         @endif
 
         @if($section->key === 'best_selling_gear')
-            <x-admin.section-card title="Section Background" description="Use either a background image or a solid color. A selected image takes priority, while the color remains the fallback behind it. Leave both empty to keep the built-in sporty background.">
+            <x-admin.section-card id="best-background" title="Section Background" description="Use either a background image or a solid color. A selected image takes priority, while the color remains the fallback behind it. Leave both empty to keep the built-in sporty background.">
                 <div class="grid gap-5 lg:grid-cols-[320px_1fr]">
                     <div class="space-y-3">
                         <div
@@ -802,7 +834,7 @@
         @endif
 
         @if($hasItems)
-            <x-admin.section-card :title="$definition['item_label'] ?? 'Items'" description="Use one form to add or edit an item. Saved items stay in the compact list below instead of opening every item at once.">
+            <x-admin.section-card :id="$section->key === 'hero' ? 'hero-items' : ($section->key === 'best_selling_gear' ? 'best-items' : null)" :title="$definition['item_label'] ?? 'Items'" description="Use one form to add or edit an item. Saved items stay in the compact list below instead of opening every item at once.">
                 <div class="space-y-5">
                     @php
                         $itemErrorMessages = collect($errors->messages())
@@ -1181,7 +1213,7 @@
             </div>
         @endif
 
-        <x-admin.section-card title="Publishing" description="Hide a section without deleting its content. Lower sort order appears first.">
+        <x-admin.section-card :id="in_array($section->key, ['hero', 'best_selling_gear'], true) ? 'editor-publishing' : null" title="Publishing" description="Hide a section without deleting its content. Lower sort order appears first.">
             <div class="grid gap-5 sm:grid-cols-2">
                 <label class="admin-label">Sort order
                     <input type="number" name="sort_order" value="{{ old('sort_order', $section->sort_order ?? 0) }}" class="admin-input @error('sort_order') border-red-400 @enderror" min="0" max="1000000">
@@ -1195,7 +1227,8 @@
             </div>
         </x-admin.section-card>
 
-        <div class="sticky bottom-3 z-30 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-soft backdrop-blur sm:bottom-4 sm:flex-row sm:flex-wrap sm:justify-end">
+        <div class="{{ in_array($section->key, ['hero', 'best_selling_gear'], true) ? 'np-editor-savebar' : 'sticky bottom-3 z-30 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-soft backdrop-blur sm:bottom-4 sm:flex-row sm:flex-wrap sm:justify-end' }}">
+            @if(in_array($section->key, ['hero', 'best_selling_gear'], true))<span class="np-editor-savehint">Preview changes above, then save to update the homepage.</span>@endif
             <a href="{{ route('admin.homepage.sections.index') }}" class="btn btn-white">Cancel</a>
             <button type="submit" class="btn btn-red">Update Section</button>
         </div>

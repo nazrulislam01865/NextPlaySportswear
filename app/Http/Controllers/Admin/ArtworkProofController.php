@@ -68,6 +68,7 @@ class ArtworkProofController extends Controller
             'designer_notes' => ['nullable', 'string', 'max:3000'],
             'proof_file' => ['required', 'file', 'mimes:jpeg,jpg,png,webp,pdf', 'max:20480'],
         ]);
+        abort_if(filled($order->flowtrack_job_id), 422, 'Publish artwork from FlowTracker for linked orders.');
         $item = OrderItem::query()->where('order_id', $order->id)->findOrFail($data['order_item_id']);
         $proof = $this->proofs->publish($order, $item, $request->file('proof_file'), $data['design_name'] ?? null, $data['designer_notes'] ?? null);
 
@@ -87,6 +88,7 @@ class ArtworkProofController extends Controller
     {
         $this->checkPermission($request);
         abort_unless($proof->order_id === $order->id, 404);
+        abort_if(filled($order->flowtrack_job_id), 422, 'Reply from FlowTracker for linked orders.');
         $data = $request->validate(['message' => ['required', 'string', 'min:5', 'max:2000']]);
         $proof->messages()->create(['sender_role' => 'designer', 'message' => $data['message']]);
         $this->emails->artworkProofMessage($proof, false);

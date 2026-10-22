@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\Category;
 use App\Models\User;
 use App\Services\Storefront\ProductCatalogService;
 use Illuminate\Http\JsonResponse;
@@ -18,9 +19,38 @@ final class FlowTrackCatalogController extends Controller
     {
         $input = $request->validate(['after' => ['sometimes', 'integer', 'min:0'], 'limit' => ['sometimes', 'integer', 'between:1,100']]);
         $limit = (int) ($input['limit'] ?? 100);
-        $products = Product::query()->withTrashed()->with('images')->where('id', '>', (int) ($input['after'] ?? 0))
-            ->orderBy('id')->limit($limit)->get(['id', 'name', 'sku', 'slug', 'category_id', 'status', 'is_active', 'base_price', 'currency', 'updated_at', 'deleted_at']);
+        $products = Product::query()->withTrashed()->with(['images', 'categories:id'])->where('id', '>', (int) ($input['after'] ?? 0))
+            ->orderBy('id')->limit($limit)->get(['id', 'name', 'sku', 'slug', 'category_id', 'subcategory_id', 'status', 'is_active', 'base_price', 'currency', 'updated_at', 'deleted_at']);
         return response()->json(['data' => $products->map(fn (Product $p) => $this->summary($p)), 'next_after' => $products->count() === $limit ? $products->last()->id : null]);
+    }
+
+    /** Compact, cursor-paginated category tree for the existing FlowTracker catalog. */
+    public function categories(Request $request): JsonResponse
+    {
+        $input = $request->validate(['after' => ['sometimes', 'integer', 'min:0'], 'limit' => ['sometimes', 'integer', 'between:1,100']]);
+        $limit = (int) ($input['limit'] ?? 100);
+        $rows = Category::query()->withTrashed()->where('id', '>', (int) ($input['after'] ?? 0))
+            ->orderBy('id')->limit($limit)->get(['id', 'parent_id', 'name', 'slug', 'sort_order', 'is_active', 'status', 'deleted_at']);
+        return response()->json(['data' => $rows->map(fn (Category $c) => $this->categorySummary($c)),
+            'next_after' => $rows->count() === $limit ? $rows->last()->id : null]);
+    }
+
+    public function category(int $category): JsonResponse
+    {
+        $row = Category::query()->withTrashed()->findOrFail($category);
+        return response()->json(['category' => $this->categorySummary($row)]);
+    }
+
+    private function categorySummary(Category $category): array
+    {
+        return [
+            'id' => (int) $category->id,
+            'parent_id' => $category->parent_id ? (int) $category->parent_id : null,
+            'name' => (string) $category->name,
+            'slug' => (string) $category->slug,
+            'sort_order' => (int) $category->sort_order,
+            'active' => (bool) $category->is_active && $category->status === 'active' && $category->deleted_at === null,
+        ];
     }
 
     public function customers(Request $request): JsonResponse
@@ -78,15 +108,23 @@ final class FlowTrackCatalogController extends Controller
     public function product(int $product): JsonResponse
     {
         $p = Product::query()->withTrashed()->with([
-            'category:id,name', 'images', 'optionGroups.values', 'sizeGroups.sizes',
+            'category:id,name', 'categories:id,parent_id,name', 'images', 'optionGroups.values', 'sizeGroups.sizes',
             'priceTiers', 'fabricPriceTables.tiers', 'artworkMethods',
             'productionSpeeds', 'shippingMethods',
         ])->findOrFail($product);
         return response()->json(['product' => $this->summary($p), 'details' => [
+            'currency' => (string) ($p->currency ?: 'USD'),
             'minimum_quantity' => (int) $p->minimum_quantity,
             'maximum_quantity' => $p->maximum_quantity,
             'is_customizable' => (bool) $p->is_customizable,
             'description' => (string) ($p->short_description ?? ''),
+            'detail_description' => trim(strip_tags((string) ($p->description_html ?? ''))),
+            'product_type' => (string) ($p->product_type ?? ''),
+            'brand' => (string) ($p->brand ?? ''),
+            'features' => $p->features ?? [],
+            'tags' => $p->tags ?? [],
+            'production_speeds' => $p->productionSpeeds->map(fn ($v) => ['name' => $v->name ?? $v->label ?? 'Production', 'days' => $v->days ?? null])->values(),
+            'category_path' => $p->category?->name ?? '',
             'specifications' => $p->specifications ?? [],
             'image_urls' => $p->images->map(fn ($img) => ['id' => $img->id, 'url' => $img->publicUrl()])->values(),
             'option_groups' => $p->optionGroups->where('is_active', true)->map(fn ($g) => [
@@ -147,6 +185,9 @@ final class FlowTrackCatalogController extends Controller
         return [
             'id' => $p->id, 'sku' => $p->sku, 'name' => $p->name,
             'slug' => $p->slug, 'category_id' => $p->category_id,
+            'subcategory_id' => $p->subcategory_id,
+            'primary_category_id' => $p->relationLoaded('categories') ? $p->categories->first(fn ($c) => (bool) ($c->pivot?->is_primary ?? false))?->id : null,
+            'category_ids' => $p->relationLoaded('categories') ? $p->categories->pluck('id')->map(fn ($id) => (int) $id)->values()->all() : [],
             'active' => $p->status === 'active' && (bool) $p->is_active && $p->deleted_at === null,
             'currency' => $p->currency ?: 'USD', 'base_price' => (float) $p->base_price,
             'thumbnail_url' => $p->primaryImageUrl(),

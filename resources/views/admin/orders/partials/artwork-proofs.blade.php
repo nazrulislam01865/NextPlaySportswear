@@ -3,7 +3,7 @@
     <div class="border-b border-slate-200 pb-3">
         <div>
             <h2 id="artwork-management-heading" class="text-base font-semibold text-brand-ink">Customer Artwork Approvals</h2>
-            <p class="mt-1 text-xs text-slate-500">Review customer feedback, reply to the customer, and publish updated artwork versions.</p>
+            <p class="mt-1 text-xs text-slate-500">Review customer feedback and artwork versions. Linked FlowTracker orders are published and replied to from FlowTracker.</p>
         </div>
     </div>
 
@@ -50,7 +50,7 @@
                     <p class="mb-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">No designer proof published yet. Review the customer's submitted artwork in Order Items below before uploading.</p>
                 @endif
 
-                @if($canManageOrders && !in_array($order->status, ['cancelled', 'completed'], true))
+                @if($canManageOrders && blank($order->flowtrack_job_id) && !in_array($order->status, ['cancelled', 'completed'], true))
                     @include('admin.orders.partials.artwork-proof-upload', ['currentProof' => $currentProof])
                 @endif
             </section>

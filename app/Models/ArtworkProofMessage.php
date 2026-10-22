@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['artwork_proof_id', 'sender_role', 'message'])]
+#[Fillable(['artwork_proof_id', 'sender_role', 'message', 'flowtrack_activity_id'])]
 class ArtworkProofMessage extends Model
 {
     public function proof(): BelongsTo

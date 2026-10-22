@@ -31,6 +31,8 @@ Route::prefix('integrations/flowtrack')
 // Server-to-server catalog and reverse order creation. Same private bearer token
 // as the existing progress callback; no browser/CORS access.
 Route::prefix('integrations/flowtrack')->middleware([VerifyFlowTrackIntegration::class, 'throttle:120,1'])->group(function (): void {
+    Route::get('/catalog/categories', [\App\Http\Controllers\Api\FlowTrackCatalogController::class, 'categories']);
+    Route::get('/catalog/categories/{category}', [\App\Http\Controllers\Api\FlowTrackCatalogController::class, 'category'])->whereNumber('category');
     Route::get('/catalog/products', [\App\Http\Controllers\Api\FlowTrackCatalogController::class, 'products']);
     Route::get('/catalog/products/{product}', [\App\Http\Controllers\Api\FlowTrackCatalogController::class, 'product'])->whereNumber('product');
     Route::patch('/catalog/products/{product}', [\App\Http\Controllers\Api\FlowTrackCatalogController::class, 'update'])->whereNumber('product');
@@ -47,4 +49,15 @@ Route::prefix('integrations/flowtrack')->middleware([VerifyFlowTrackIntegration:
         ->whereNumber('bulkQuote');
     Route::post('/bulk-orders', [\App\Http\Controllers\Api\FlowTrackBulkOrderController::class, 'store']);
     Route::post('/orders/from-flowtrack', [\App\Http\Controllers\Api\FlowTrackCreatedOrderController::class, 'store']);
+});
+
+// Read-only brand snapshot over the existing authenticated integration.
+Route::get('/integrations/flowtrack/branding', \App\Http\Controllers\Api\FlowTrackBrandingController::class)
+    ->middleware([VerifyFlowTrackIntegration::class, 'throttle:60,1']);
+
+// Artwork proof files, replies and reference attachments never use public URLs.
+Route::prefix('integrations/flowtrack')->middleware([VerifyFlowTrackIntegration::class, 'throttle:120,1'])->group(function (): void {
+    Route::post('/artwork-proofs', [\App\Http\Controllers\Api\FlowTrackArtworkReviewController::class, 'publish']);
+    Route::post('/artwork-proofs/{proof}/staff-messages', [\App\Http\Controllers\Api\FlowTrackArtworkReviewController::class, 'staffMessage'])->whereNumber('proof');
+    Route::get('/artwork-proofs/{proof}/reference', [\App\Http\Controllers\Api\FlowTrackArtworkReviewController::class, 'reference'])->whereNumber('proof');
 });

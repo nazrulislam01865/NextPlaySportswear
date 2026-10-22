@@ -87,6 +87,21 @@ final class FlowTrackClient
     }
 
     /** @return array<string, mixed> */
+    public function sendArtworkReview(array $payload): array
+    {
+        $this->assertConfigured();
+        try {
+            $response = $this->request()->post(
+                rtrim((string) config('flowtrack.base_url'), '/').'/api/integrations/nextplay/artwork-reviews',
+                $payload,
+            );
+        } catch (ConnectionException $exception) {
+            throw new FlowTrackIntegrationException('Could not deliver artwork review to FlowTracker.', previous: $exception);
+        }
+        return $this->validatedJsonResponse($response, 'FlowTracker artwork review');
+    }
+
+    /** @return array<string, mixed> */
     private function healthAt(string $endpoint, string $context): array
     {
         $this->assertConfigured();

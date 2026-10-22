@@ -24,7 +24,7 @@
     @endphp
 
     <section
-        class="relative isolate overflow-hidden text-white {{ filled($categoryBannerImage) ? '' : 'bg-brand-dark' }}"
+        class="np-category-hero relative isolate overflow-hidden text-white {{ filled($categoryBannerImage) ? '' : 'bg-brand-dark' }}"
         @if(blank($categoryBannerImage) && filled($categoryBannerColor)) style="background-color: {{ $categoryBannerColor }};" @endif
     >
         @if(filled($categoryBannerImage))
@@ -41,25 +41,30 @@
             </picture>
         @endif
 
-        <div class="site-container py-12 sm:py-16">
-            <nav aria-label="Breadcrumb" class="flex flex-wrap gap-2 text-xs font-bold text-blue-100">
+        @if(filled($categoryBannerImage))
+            <div class="np-category-hero__shade absolute inset-0 -z-10" aria-hidden="true"></div>
+        @endif
+
+        <div class="np-category-hero__inner site-container py-12 sm:py-16">
+            <nav aria-label="Breadcrumb" class="np-category-hero__breadcrumb flex flex-wrap gap-2 text-xs font-bold text-blue-100">
                 <a href="{{ route('home') }}">Home</a>
-                <span>/</span>
+                <span class="np-category-hero__breadcrumb-divider">/</span>
                 <a href="{{ route('categories.index') }}">Categories</a>
                 @foreach($breadcrumbs as $crumb)
-                    <span>/</span>
                     @if($loop->last)
-                        <span class="text-white" aria-current="page">{{ $crumb->name }}</span>
+                        <span class="np-category-hero__breadcrumb-divider">/</span>
+                        <span class="np-category-hero__breadcrumb-current text-white" aria-current="page" title="{{ $crumb->name }}">{{ $crumb->name }}</span>
                     @else
-                        <a href="{{ route('categories.show', $crumb->slug) }}">{{ $crumb->name }}</a>
+                        <span class="np-category-hero__breadcrumb-intermediate">/</span>
+                        <a class="np-category-hero__breadcrumb-intermediate" href="{{ route('categories.show', $crumb->slug) }}">{{ $crumb->name }}</a>
                     @endif
                 @endforeach
             </nav>
 
-            <div class="mt-8 max-w-3xl">
-                <h1 class="font-display text-4xl font-bold uppercase leading-tight sm:text-6xl lg:text-7xl">{{ $category['title'] }}</h1>
-                <p class="mt-5 text-lg leading-8 text-blue-50">{{ $category['description'] }}</p>
-                <div class="mt-7 flex flex-wrap gap-3">
+            <div class="np-category-hero__content mt-8 max-w-3xl">
+                <h1 class="np-category-hero__title font-display text-4xl font-bold uppercase leading-tight sm:text-6xl lg:text-7xl">{{ $category['title'] }}</h1>
+                <p class="np-category-hero__description mt-5 text-lg leading-8 text-blue-50">{{ html_entity_decode((string) ($category['description'] ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8') }}</p>
+                <div class="np-category-hero__actions mt-7 flex flex-wrap gap-3">
                     @if($showsProducts)
                         <a href="#category-products" class="btn btn-primary">Shop products</a>
                     @else
@@ -82,13 +87,17 @@
 
             <div class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach($categoryModel->children as $child)
-                    <a href="{{ route('categories.show', $child->slug) }}" class="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
-                        <img
-                            src="{{ $child->thumbnailUrl() }}"
-                            alt="{{ $child->thumbnail_alt ?: $child->name }}"
-                            class="np-category-square-image transition duration-300 group-hover:scale-105"
-                            loading="lazy"
-                        >
+                    <a href="{{ route('categories.show', $child->slug) }}" class="np-square-card group overflow-hidden border border-slate-200 bg-white shadow-card">
+                        <div class="np-category-square-media relative overflow-hidden">
+                            <img
+                                src="{{ $child->thumbnailUrl() }}"
+                                alt="{{ $child->thumbnail_alt ?: $child->name }}"
+                                class="np-category-square-image transition duration-300 group-hover:scale-105"
+                                loading="lazy"
+                                width="800"
+                                height="800"
+                            >
+                        </div>
                         <div class="p-4">
                             <strong class="text-brand-ink">{{ $child->name }}</strong>
                             <p class="mt-1 text-xs text-slate-500">{{ $child->products_count }} products</p>

@@ -11,7 +11,7 @@
     method="POST"
     action="{{ $action }}"
     enctype="multipart/form-data"
-    class="space-y-6"
+    class="np-editor space-y-6"
     x-data="{
         imageUrl: @js(old('image_url', $slide->image_url)),
         imagePreview: @js($currentImage),
@@ -53,7 +53,27 @@
     @csrf
     @if($method !== 'POST') @method($method) @endif
 
-    <x-admin.section-card title="Responsive Banner Images" description="Desktop/tablet banners should use an 8:3 ratio. Recommended: 2560×960 px. Alternative: 1920×720 px. Add a separate mobile image so important content is not cropped on small screens.">
+    <x-admin.editor-guide
+        :heading="$isEdit ? 'Edit homepage slide' : 'Add homepage slide'"
+        note="Start with your images, then review text, buttons, appearance and publishing. Both desktop and mobile previews update as you choose files."
+        :items="[
+            ['id' => 'slide-images', 'label' => 'Images'],
+            ['id' => 'slide-content', 'label' => 'Text'],
+            ['id' => 'slide-buttons', 'label' => 'Buttons'],
+            ['id' => 'slide-appearance', 'label' => 'Appearance'],
+            ['id' => 'slide-publishing', 'label' => 'Publishing'],
+        ]"
+    />
+    @if($errors->any())
+        <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
+            <strong class="block font-black">Please review the highlighted fields.</strong>
+            <ul class="mt-2 list-disc pl-5">
+                @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+            </ul>
+        </div>
+    @endif
+
+    <x-admin.section-card id="slide-images" title="Responsive Banner Images" description="Desktop/tablet banners should use an 8:3 ratio. Recommended: 2560×960 px. Alternative: 1920×720 px. Add a separate mobile image so important content is not cropped on small screens.">
         <div class="grid gap-6 xl:grid-cols-[1fr_360px]">
             <div class="space-y-6">
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
@@ -65,10 +85,12 @@
                             <input type="file" name="image_file" accept=".jpg,.jpeg,.png,.webp,.avif,image/jpeg,image/png,image/webp,image/avif" class="admin-input h-auto py-3" x-on:change="previewFile($event, 'desktop')">
                         </label>
 
-                        <label class="admin-label sm:col-span-2">
-                            Or desktop image URL
-                            <input type="url" name="image_url" x-model="imageUrl" x-on:input.debounce.400ms="previewUrl('desktop')" value="{{ old('image_url', $slide->image_url) }}" class="admin-input" placeholder="https://example.com/banner-2560x960.webp" maxlength="2048">
-                        </label>
+                        <details class="np-editor-optional sm:col-span-2" @if(filled(old('image_url', $slide->image_url))) open @endif>
+                            <summary>Use a hosted desktop image URL instead of uploading</summary>
+                            <label class="admin-label">Desktop image URL
+                                <input type="url" name="image_url" x-model="imageUrl" x-on:input.debounce.400ms="previewUrl('desktop')" class="admin-input" placeholder="https://example.com/banner-2560x960.webp" maxlength="2048">
+                            </label>
+                        </details>
 
                         <label class="admin-label sm:col-span-2">
                             Desktop image alt text
@@ -105,10 +127,12 @@
                             <input type="file" name="mobile_image_file" accept=".jpg,.jpeg,.png,.webp,.avif,image/jpeg,image/png,image/webp,image/avif" class="admin-input h-auto py-3" x-on:change="previewFile($event, 'mobile')">
                         </label>
 
-                        <label class="admin-label sm:col-span-2">
-                            Or mobile image URL
-                            <input type="url" name="mobile_image_url" x-model="mobileImageUrl" x-on:input.debounce.400ms="previewUrl('mobile')" value="{{ old('mobile_image_url', $slide->mobile_image_url) }}" class="admin-input" placeholder="https://example.com/banner-mobile.webp" maxlength="2048">
-                        </label>
+                        <details class="np-editor-optional sm:col-span-2" @if(filled(old('mobile_image_url', $slide->mobile_image_url))) open @endif>
+                            <summary>Use a hosted mobile image URL instead of uploading</summary>
+                            <label class="admin-label">Mobile image URL
+                                <input type="url" name="mobile_image_url" x-model="mobileImageUrl" x-on:input.debounce.400ms="previewUrl('mobile')" class="admin-input" placeholder="https://example.com/banner-mobile.webp" maxlength="2048">
+                            </label>
+                        </details>
 
                         <label class="admin-label sm:col-span-2">
                             Mobile image alt text
@@ -149,7 +173,7 @@
         </div>
     </x-admin.section-card>
 
-    <x-admin.section-card title="Text Content" description="Customize slide text or turn it off to display only the image.">
+    <x-admin.section-card id="slide-content" title="Text Content" description="Customize slide text or turn it off to display only the image.">
         <div class="mb-5 rounded-2xl border border-blue-200 bg-blue-50 p-4">
             <label class="flex items-start gap-3 text-sm font-black text-brand-dark">
                 <input type="hidden" name="show_content" value="0">
@@ -180,7 +204,7 @@
         </div>
     </x-admin.section-card>
 
-    <x-admin.section-card title="Slider Buttons" description="Each button can link to an internal page, section anchor, or secure external URL.">
+    <x-admin.section-card id="slide-buttons" title="Slider Buttons" description="Each button can link to an internal page, section anchor, or secure external URL.">
         <div class="grid gap-6 xl:grid-cols-2">
             <div class="rounded-2xl border border-slate-200 p-5">
                 <label class="mb-4 flex items-center gap-3 text-sm font-black">
@@ -210,7 +234,7 @@
         </div>
     </x-admin.section-card>
 
-    <x-admin.section-card title="Appearance" description="Control the position, alignment, and theme of slide text.">
+    <x-admin.section-card id="slide-appearance" title="Appearance" description="Control the position, alignment, and theme of slide text.">
         <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
             <label class="admin-label">Content position<select name="content_position" class="admin-input">@foreach(['left' => 'Left', 'center' => 'Center', 'right' => 'Right'] as $value => $label)<option value="{{ $value }}" @selected(old('content_position', $slide->content_position ?: 'left') === $value)>{{ $label }}</option>@endforeach</select></label>
             <label class="admin-label">Text alignment<select name="text_alignment" class="admin-input">@foreach(['left' => 'Left', 'center' => 'Center', 'right' => 'Right'] as $value => $label)<option value="{{ $value }}" @selected(old('text_alignment', $slide->text_alignment ?: 'left') === $value)>{{ $label }}</option>@endforeach</select></label>
@@ -218,7 +242,7 @@
         </div>
     </x-admin.section-card>
 
-    <x-admin.section-card title="Publishing" description="Set display order, active status, and an optional publication window.">
+    <x-admin.section-card id="slide-publishing" title="Publishing" description="Set display order, active status, and an optional publication window.">
         <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
             <label class="admin-label">Sort order<input type="number" name="sort_order" value="{{ old('sort_order', $slide->sort_order ?? 0) }}" class="admin-input" min="0" max="1000000"></label>
             <label class="admin-label">Starts at<input type="datetime-local" data-np-utc-input name="starts_at" value="{{ old('starts_at', $slide->starts_at?->format('Y-m-d\TH:i')) }}" class="admin-input"></label>
@@ -231,7 +255,8 @@
         </div>
     </x-admin.section-card>
 
-    <div class="sticky bottom-3 z-30 flex flex-col gap-3 sm:bottom-4 sm:flex-row sm:flex-wrap sm:justify-end rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-soft backdrop-blur">
+    <div class="np-editor-savebar">
+        <span class="np-editor-savehint">Changes take effect according to the slide's publishing settings.</span>
         <a href="{{ route('admin.homepage-slides.index') }}" class="btn btn-white">Cancel</a>
         <button type="submit" class="btn btn-red">{{ $isEdit ? 'Update Slide' : 'Create Slide' }}</button>
     </div>

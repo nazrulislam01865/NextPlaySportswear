@@ -70,6 +70,10 @@ class StorefrontBrandingController extends Controller
         }
 
         StorefrontBranding::flushCache();
+        // Branding changes are rare: publish only on update, never on storefront page loads.
+        if ($changes !== []) {
+            app(\App\Services\FlowTrackBrandingPublisher::class)->publish();
+        }
 
         return redirect()
             ->route('admin.storefront-branding.edit')
