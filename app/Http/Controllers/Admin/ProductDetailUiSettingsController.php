@@ -9,6 +9,8 @@ use App\Services\Storefront\ProductCatalogCacheService;
 use App\Support\ProductStorefrontUi;
 use Illuminate\Http\RedirectResponse;
 use App\Services\Catalog\StoredPublicImage;
+use App\Services\Catalog\ProductDetailIconNormalizer;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -68,7 +70,11 @@ class ProductDetailUiSettingsController extends Controller
                 }
 
                 if ($upload) {
-                    $path = StoredPublicImage::replace($upload, 'storefront/product-detail-ui', $existingPath);
+                    $uploadedPath = StoredPublicImage::replace($upload, 'storefront/product-detail-ui', $existingPath);
+                    $path = ProductDetailIconNormalizer::normalize($uploadedPath);
+                    if ($path !== $uploadedPath) {
+                        Storage::disk('public')->delete($uploadedPath);
+                    }
                 }
 
                 if (
