@@ -23,7 +23,10 @@ class PublicMediaController extends Controller
         }
 
         $extension = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
-        if (! in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'], true)) {
+        $isProductDetailSvg = $extension === 'svg'
+            && str_starts_with($path, 'storefront/product-detail-ui/');
+
+        if (! $isProductDetailSvg && ! in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'], true)) {
             abort(404);
         }
 
@@ -42,11 +45,19 @@ class PublicMediaController extends Controller
             abort(404);
         }
 
-        return response()->file($absolutePath, [
+        $headers = [
             'Content-Type' => $mimeType,
             'Cache-Control' => 'public, max-age=31536000, immutable',
             'X-Content-Type-Options' => 'nosniff',
-        ]);
+        ];
+
+        if ($isProductDetailSvg) {
+            // SVG can be viewed as a standalone document. Sandbox it so a
+            // customer-facing icon cannot execute script or access the site.
+            $headers['Content-Security-Policy'] = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
+        }
+
+        return response()->file($absolutePath, $headers);
     }
 
     private function normalizePath(string $path): string
@@ -74,6 +85,10 @@ class PublicMediaController extends Controller
 
     private function safeMimeType(string $path, string $extension): string
     {
+        if ($extension === 'svg') {
+            return 'image/svg+xml';
+        }
+
         $mimeType = Storage::disk('public')->mimeType($path) ?: '';
 
         if (str_starts_with($mimeType, 'image/')) {

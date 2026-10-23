@@ -54,7 +54,7 @@ class SecurityHeaders
                 $policy[] = 'frame-src https://www.google.com https://recaptcha.google.com';
             }
 
-            if (! $request->routeIs('quote.guest.file', 'admin.bulk-quotes.file')) {
+            if (! $headers->has('Content-Security-Policy') && ! $request->routeIs('quote.guest.file', 'admin.bulk-quotes.file')) {
                 $headers->set('Content-Security-Policy', implode('; ', $policy));
             }
 

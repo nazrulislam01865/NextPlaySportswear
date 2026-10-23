@@ -218,6 +218,10 @@
                 <div class="np-pdui-control-card__heading"><div><strong>Artwork</strong><small>Document icon in the order summary.</small></div></div>
                 <x-admin.product-storefront-ui-icon-field :settings="$settings" setting-key="order_summary_artwork_icon" label="Artwork summary icon" />
             </article>
+            <article class="np-pdui-control-card">
+                <div class="np-pdui-control-card__heading"><div><strong>Production &amp; Shipping</strong><small>Truck icon in the order summary. Shipping method card images remain managed in Master Data.</small></div></div>
+                <x-admin.product-storefront-ui-icon-field :settings="$settings" setting-key="order_summary_shipping_icon" label="Production &amp; Shipping summary icon" />
+            </article>
         </div>
     </section>
 

@@ -4,13 +4,10 @@
 ])
 
 @if(filled($src))
-    <span
-        {{ $attributes->class(['np-configurable-ui-icon']) }}
-        style="--np-configurable-icon: url('{{ $src }}')"
-        aria-hidden="true"
-    ></span>
-@else
-    <svg {{ $attributes->merge(['viewBox' => '0 0 24 24', 'aria-hidden' => 'true']) }}>
+    <span {{ $attributes->class(['np-configurable-ui-icon']) }} aria-hidden="true">
+        <img src="{{ $src }}" alt="" decoding="async" onerror="this.hidden=true; this.nextElementSibling.hidden=false;">
+@endif
+    <svg @if(filled($src)) viewBox="0 0 24 24" aria-hidden="true" hidden @else {{ $attributes->merge(['viewBox' => '0 0 24 24', 'aria-hidden' => 'true']) }} @endif>
         @switch($name)
             @case('heart')
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z" />
@@ -55,6 +52,8 @@
                 <circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>
         @endswitch
     </svg>
+@if(filled($src))
+    </span>
 @endif
 
 @once
@@ -64,10 +63,22 @@
             width: 1.35rem;
             height: 1.35rem;
             flex: 0 0 auto;
-            background: currentColor;
-            -webkit-mask: var(--np-configurable-icon) center / contain no-repeat;
-            mask: var(--np-configurable-icon) center / contain no-repeat;
+            vertical-align: middle;
         }
+        .np-configurable-ui-icon > img,
+        .np-configurable-ui-icon > svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .np-configurable-ui-icon > [hidden] {
+            display: none !important;
+        }
+        .storefront-clean-ui .np-configurable-ui-icon > svg { width: 100%; height: 100%; }
+        .np-custom-order-icon .np-configurable-ui-icon { width: 31px; height: 31px; }
         .np-product-signal-button .np-configurable-ui-icon { width: 1.2rem; height: 1.2rem; }
         .np-product-order-facts .np-configurable-ui-icon,
         .np-proto-size-summary-fact .np-configurable-ui-icon,

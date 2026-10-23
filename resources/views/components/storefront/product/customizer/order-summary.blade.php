@@ -119,7 +119,7 @@
 
     <section class="np-custom-order-section np-custom-order-compact-row">
         <div class="np-custom-order-icon">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h12v10H3z"/><path d="M15 10h4l2 3v3h-6z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>
+            <x-storefront.product.ui-icon :src="$ui['order_summary_shipping_icon'] ?? null" name="truck" />
         </div>
         <div>
             <h4>Production &amp; Shipping</h4>
