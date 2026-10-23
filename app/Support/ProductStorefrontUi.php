@@ -33,6 +33,8 @@ class ProductStorefrontUi
             'size_guide_icon' => null,
             'multiple_sizes_note' => 'You can add multiple sizes. Final price will be calculated based on total quantity.',
             'multiple_sizes_note_icon' => null,
+            'order_summary_player_icon' => null,
+            'order_summary_artwork_icon' => null,
 
             'artwork_step_title' => 'Upload Artwork',
             'artwork_step_description' => 'Add your design files, choose from existing designs, or request our design support.',
@@ -88,6 +90,7 @@ class ProductStorefrontUi
         return [
             'save_icon', 'share_icon', 'sample_icon',
             'sizes_icon', 'minimum_order_icon', 'size_guide_icon', 'multiple_sizes_note_icon',
+            'order_summary_player_icon', 'order_summary_artwork_icon',
             'artwork_upload_tab_icon', 'artwork_existing_tab_icon', 'artwork_help_tab_icon',
             'artwork_drop_icon', 'artwork_info_icon',
             'production_lead_time_icon', 'shipping_method_icon', 'shipping_method_card_icon',

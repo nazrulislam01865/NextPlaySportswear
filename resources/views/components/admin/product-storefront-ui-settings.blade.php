@@ -203,6 +203,27 @@
     <section class="np-pdui-section">
         <header class="np-pdui-section__header">
             <div>
+                <p class="np-pdui-eyebrow">Your Custom Order</p>
+                <h2>Order summary icons</h2>
+                <p>Icons in the product customizer's right-side order summary. Without an upload, the original icons remain in place.</p>
+            </div>
+        </header>
+
+        <div class="np-pdui-grid np-pdui-grid--2">
+            <article class="np-pdui-control-card">
+                <div class="np-pdui-control-card__heading"><div><strong>Player Names &amp; Numbers</strong><small>Shirt icon in the order summary (when player details are enabled).</small></div></div>
+                <x-admin.product-storefront-ui-icon-field :settings="$settings" setting-key="order_summary_player_icon" label="Player Names &amp; Numbers icon" />
+            </article>
+            <article class="np-pdui-control-card">
+                <div class="np-pdui-control-card__heading"><div><strong>Artwork</strong><small>Document icon in the order summary.</small></div></div>
+                <x-admin.product-storefront-ui-icon-field :settings="$settings" setting-key="order_summary_artwork_icon" label="Artwork summary icon" />
+            </article>
+        </div>
+    </section>
+
+    <section class="np-pdui-section">
+        <header class="np-pdui-section__header">
+            <div>
                 <p class="np-pdui-eyebrow">Production &amp; shipping</p>
                 <h2>Shipping, delivery estimate and customer notes</h2>
                 <p>Control the shared labels, helper copy and fallback icons used in the Production &amp; Shipping step.</p>

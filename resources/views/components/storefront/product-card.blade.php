@@ -75,9 +75,7 @@
             aria-label="View {{ $product['title'] }}"
             data-product-card-image-loader
         >
-            <span class="np-product-card-image-loader" aria-hidden="true">
-                <span class="np-product-card-image-spinner"></span>
-            </span>
+            <span class="np-product-card-image-loader" aria-hidden="true"></span>
 
             <img
                 src="{{ $product['image'] }}"

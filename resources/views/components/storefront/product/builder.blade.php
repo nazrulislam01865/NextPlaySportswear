@@ -1341,7 +1341,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                     </section>
                 </form>
 
-                <x-storefront.product.customizer.order-summary :product="$product" :material-group="$materialGroup" :size-range-label="$sizeRangeLabel" :is-editing="$isEditing" :roster-step="$rosterStep" :artwork-step="$artworkStep" :production-step="$productionStep" />
+                <x-storefront.product.customizer.order-summary :product="$product" :material-group="$materialGroup" :size-range-label="$sizeRangeLabel" :is-editing="$isEditing" :roster-step="$rosterStep" :artwork-step="$artworkStep" :production-step="$productionStep" :ui="$ui" />
             </div>
         </section>
 
