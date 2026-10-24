@@ -221,6 +221,7 @@ class CatalogNavigationSeeder extends Seeder
             $this->menuItem($header, null, 'All Products', 'route', routeName: 'products.index', sort: 20);
             $this->menuItem($header, null, 'How It Works', 'route', routeName: 'how-to-order', sort: 30);
             $this->menuItem($header, null, 'Bulk Quote', 'route', routeName: 'quote.request', sort: 40, cssClass: 'text-brand-red');
+            $this->menuItem($header, null, 'USA SHIPPING', 'route', routeName: 'shipping', sort: 50, cssClass: 'np-shipping-action');
         }
 
         $this->seedFooterMenu('Footer Shop', 'footer-shop', ['team-uniforms', 'custom-jerseys', 'apparel', 'accessories', 'promotional-products']);

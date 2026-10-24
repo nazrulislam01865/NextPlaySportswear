@@ -112,7 +112,7 @@
         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
                 <p class="text-sm font-extrabold text-slate-900">Live header structure</p>
-                <p class="mt-1 text-xs leading-5 text-slate-600">Top-level items appear left-to-right in this order on both desktop and mobile. “Shop Products” automatically uses the live category tree for its mega menu.</p>
+                <p class="mt-1 text-xs leading-5 text-slate-600">Top-level links use the same order on desktop and mobile. The marked shipping item is displayed separately as the right-hand button. “Shop Products” uses the live category tree.</p>
             </div>
             <a class="btn btn-white shrink-0" href="{{ route('admin.categories.index') }}">Manage Shop Categories</a>
         </div>
@@ -124,6 +124,7 @@
                 >
                     <span x-text="item.label || 'Untitled item'"></span>
                     <span x-show="hasChildren(item) || isAutoShop(item)" class="text-slate-400">▾</span>
+                    <span x-show="isShippingAction(item)" class="text-orange-700">· Shipping action</span>
                 </span>
             </template>
             <span x-show="rootItems.length === 0" class="text-xs text-slate-500">No top-level header items yet.</span>
@@ -179,6 +180,7 @@
                                     <span class="text-sm font-extrabold text-slate-900" x-text="item.label || 'Untitled menu item'"></span>
                                     <span class="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500" x-text="levelLabel(item)"></span>
                                     <span x-show="isHeader && isAutoShop(item)" class="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700">Category mega menu</span>
+                                    <span x-show="isHeader && isShippingAction(item)" class="rounded-full bg-orange-50 px-2 py-1 text-[11px] font-semibold text-orange-700">Header shipping button</span>
                                     <span x-show="!item.is_active" class="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500">Hidden</span>
                                 </span>
                                 <span class="mt-1 block truncate text-xs font-normal text-slate-500" x-text="destinationLabel(item)"></span>
@@ -267,6 +269,11 @@
                             <div x-show="isHeader && isAutoShop(item)" x-cloak class="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs leading-5 text-blue-800">
                                 The Shop Products dropdown is automatically built from active menu-visible categories. Change its label, position, visibility, or destination here; manage the dropdown categories in Category Manager.
                             </div>
+
+                            <label x-show="isHeader && !item.parent_key" x-cloak class="mt-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+                                <input type="checkbox" :checked="isShippingAction(item)" x-on:change="setShippingAction(item, $event.target.checked)" class="h-4 w-4">
+                                <span class="text-sm font-semibold text-slate-700">Display as the header shipping button <small class="block text-xs font-normal text-slate-500">Uses this item's label, destination and visibility. Only one button appears.</small></span>
+                            </label>
 
                             <details class="mt-4 rounded-xl border border-slate-200 bg-white p-3">
                                 <summary class="cursor-pointer text-xs font-bold text-slate-600">Advanced item styling</summary>
@@ -370,6 +377,18 @@ function menuAdminForm(initial, initialLocation) {
 
         hasChildren(item) {
             return this.items.some((candidate) => candidate.parent_key === item.key);
+        },
+
+        isShippingAction(item) {
+            return String(item.css_class || '').split(/\s+/).includes('np-shipping-action');
+        },
+
+        setShippingAction(item, enabled) {
+            this.items.forEach((candidate) => {
+                const classes = String(candidate.css_class || '').split(/\s+/).filter((value) => value && value !== 'np-shipping-action');
+                if (enabled && candidate.key === item.key) classes.push('np-shipping-action');
+                candidate.css_class = classes.join(' ');
+            });
         },
 
         depth(item) {

@@ -60,10 +60,15 @@
     <style>
         .np-configurable-ui-icon {
             display: inline-block;
-            width: 1.35rem;
-            height: 1.35rem;
+            width: 2.25rem;
+            height: 2.25rem;
             flex: 0 0 auto;
             vertical-align: middle;
+            background: transparent;
+            border: 0;
+            border-radius: 0;
+            box-shadow: none;
+            padding: 0;
         }
         .np-configurable-ui-icon > img,
         .np-configurable-ui-icon > svg {
@@ -73,24 +78,43 @@
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
+            /* The uploaded file provides the artwork; the UI adds no tile. */
+            background: transparent;
+            border: 0;
+            border-radius: 0;
+            box-shadow: none;
+            padding: 0;
         }
         .np-configurable-ui-icon > [hidden] {
             display: none !important;
         }
         .storefront-clean-ui .np-configurable-ui-icon > svg { width: 100%; height: 100%; }
-        .np-custom-order-icon .np-configurable-ui-icon { width: 31px; height: 31px; }
+        .np-custom-order-icon .np-configurable-ui-icon { width: 46px; height: 46px; }
+        /* Uploaded icons are normalized to one transparent square canvas.
+           Keep all three product-summary artwork slots identical. */
+        .np-proto-size-summary-fact .np-configurable-ui-icon,
+        .np-proto-size-summary-note .np-configurable-ui-icon {
+            width: 64px;
+            height: 56px;
+        }
+        .np-proto-size-summary-fact .np-configurable-ui-icon > svg,
+        .np-proto-size-summary-note .np-configurable-ui-icon > svg {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+        }
         .np-product-signal-button .np-configurable-ui-icon { width: 1.2rem; height: 1.2rem; }
         .np-product-order-facts .np-configurable-ui-icon,
         .np-proto-size-summary-fact .np-configurable-ui-icon,
         .np-proto-size-summary-note .np-configurable-ui-icon { color: #cf5d38; }
-        .np-proto-artwork-methods .np-configurable-ui-icon { width: 1.7rem; height: 1.7rem; }
+        .np-proto-artwork-methods .np-configurable-ui-icon { width: 2.65rem; height: 2.65rem; }
         .np-proto-upload-dropzone .np-configurable-ui-icon { width: 2.5rem; height: 2.5rem; }
         .np-proto-info-panel .np-configurable-ui-icon { width: 1.35rem; height: 1.35rem; color: #cf5d38; }
-        .np-proto-section-title .np-configurable-ui-icon { width: 22px; height: 22px; }
-        .np-proto-choice-media .np-configurable-ui-icon { width: 52px; height: 52px; color: var(--np-color-secondary); }
-        .np-proto-delivery-equation .np-configurable-ui-icon { width: 30px; height: 30px; color: var(--np-color-primary); }
+        .np-proto-section-title .np-configurable-ui-icon { width: 38px; height: 38px; }
+        .np-proto-choice-media .np-configurable-ui-icon { width: 64px; height: 64px; color: var(--np-color-secondary); }
+        .np-proto-delivery-equation .np-configurable-ui-icon { width: 52px; height: 52px; color: var(--np-color-primary); }
         .np-proto-delivery-equation .is-estimate .np-configurable-ui-icon { color: var(--np-color-secondary); }
-        .np-proto-worldwide-panel .np-configurable-ui-icon { width: 34px; height: 34px; color: var(--np-color-primary); }
-        .np-proto-important-notes > .np-configurable-ui-icon { width: 26px; height: 26px; color: var(--np-color-secondary); }
+        .np-proto-worldwide-panel .np-configurable-ui-icon { width: 50px; height: 50px; color: var(--np-color-primary); }
+        .np-proto-important-notes > .np-configurable-ui-icon { width: 48px; height: 48px; color: var(--np-color-secondary); }
     </style>
 @endonce

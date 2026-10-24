@@ -1175,6 +1175,82 @@
             </x-admin.section-card>
         @endif
 
+        @if($section->key === 'faq')
+            @php
+                $quickHelp = old('settings', data_get($viewSection, 'settings', []));
+                $quickHelpDefaults = data_get($definition, 'settings.quick_help_cards', []);
+                $quickHelpCards = $quickHelp['quick_help_cards'] ?? $quickHelpDefaults;
+            @endphp
+            <x-admin.section-card title="Quick Help" description="Manage the four linked cards displayed to the right of Common Questions. The storefront card layout and colors are fixed by the theme.">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="admin-label">Heading
+                        <input class="admin-input" type="text" name="settings[quick_help_title]" value="{{ $quickHelp['quick_help_title'] ?? 'Quick Help' }}" maxlength="120" required>
+                    </label>
+                    <label class="admin-label">Short description
+                        <input class="admin-input" type="text" name="settings[quick_help_description]" value="{{ $quickHelp['quick_help_description'] ?? 'Find what you need.' }}" maxlength="255">
+                    </label>
+                </div>
+                <label class="mt-4 flex items-center gap-3 text-sm font-semibold text-brand-ink">
+                    <input type="hidden" name="settings[show_quick_help]" value="0">
+                    <input type="checkbox" name="settings[show_quick_help]" value="1" @checked((bool)($quickHelp['show_quick_help'] ?? true)) class="h-5 w-5 rounded border-slate-300 text-brand-red">
+                    Show Quick Help beside Common Questions
+                </label>
+                <div class="mt-5 grid gap-4 lg:grid-cols-2">
+                    @foreach($quickHelpDefaults as $index => $defaultCard)
+                        @php
+                            $card = array_replace($defaultCard, is_array($quickHelpCards[$index] ?? null) ? $quickHelpCards[$index] : []);
+                            $storedIconPath = data_get($viewSection, "settings.quick_help_cards.{$index}.icon_path");
+                            $storedIconUrl = filled($storedIconPath) ? \App\Support\PublicMedia::url((string) $storedIconPath) : null;
+                        @endphp
+                        <div class="rounded-xl border border-slate-200 bg-white p-4">
+                            <div class="mb-3 flex items-center justify-between gap-3">
+                                <h3 class="text-sm font-black text-brand-ink">Card {{ $index + 1 }}</h3>
+                                <label class="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                                    <input type="hidden" name="settings[quick_help_cards][{{ $index }}][enabled]" value="0">
+                                    <input type="checkbox" name="settings[quick_help_cards][{{ $index }}][enabled]" value="1" @checked((bool)($card['enabled'] ?? true)) class="h-4 w-4 rounded border-slate-300 text-brand-red">
+                                    Visible
+                                </label>
+                            </div>
+                            <div class="grid gap-3">
+                                <label class="admin-label">Card title
+                                    <input class="admin-input" name="settings[quick_help_cards][{{ $index }}][title]" value="{{ $card['title'] ?? '' }}" maxlength="100" required>
+                                </label>
+                                <label class="admin-label">Supporting text
+                                    <input class="admin-input" name="settings[quick_help_cards][{{ $index }}][description]" value="{{ $card['description'] ?? '' }}" maxlength="180" required>
+                                </label>
+                                <label class="admin-label">Destination URL
+                                    <input class="admin-input" name="settings[quick_help_cards][{{ $index }}][url]" value="{{ $card['url'] ?? '' }}" maxlength="2048" required placeholder="/size-guide">
+                                </label>
+                                <label class="admin-label">Standard icon
+                                    <select class="admin-input" name="settings[quick_help_cards][{{ $index }}][icon]">
+                                        @foreach(['ruler' => 'Ruler (Size Guide)', 'artwork' => 'Document & pencil (Artwork)', 'package' => 'Package (Order Tracking)', 'chat' => 'Chat bubble (Contact)'] as $icon => $iconLabel)
+                                            <option value="{{ $icon }}" @selected(($card['icon'] ?? '') === $icon)>{{ $iconLabel }}</option>
+                                        @endforeach
+                                    </select>
+                                </label>
+                                <label class="admin-label">Custom icon (optional)
+                                    <input class="admin-input" type="file" accept="image/png,image/webp,image/jpeg" name="settings[quick_help_cards][{{ $index }}][icon_file]">
+                                    <span class="mt-1 block text-xs font-normal text-slate-500">Transparent PNG or WebP, ideally 256 × 256 px. Replaces the standard icon only on this card.</span>
+                                </label>
+                                @if($storedIconUrl)
+                                    <div class="flex items-center gap-3">
+                                        <img src="{{ $storedIconUrl }}" alt="Saved card icon" width="48" height="48" class="h-12 w-12 object-contain">
+                                        <label class="flex items-center gap-2 text-xs text-slate-600">
+                                            <input type="checkbox" name="settings[quick_help_cards][{{ $index }}][remove_icon]" value="1" class="h-4 w-4 rounded border-slate-300 text-brand-red">
+                                            Remove uploaded icon and use standard icon
+                                        </label>
+                                    </div>
+                                @endif
+                                @error("settings.quick_help_cards.{$index}.url")<p class="text-xs font-bold text-red-600">{{ $message }}</p>@enderror
+                                @error("settings.quick_help_cards.{$index}.icon_file")<p class="text-xs font-bold text-red-600">{{ $message }}</p>@enderror
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+                @error('settings.quick_help_cards')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
+            </x-admin.section-card>
+        @endif
+
         @if($section->key === 'testimonials')
             <div id="storefront-display-controls" class="scroll-mt-24">
                 <x-admin.section-card title="Storefront Display Controls" description="Control whether testimonial statistics and fallback product ratings are visible to storefront customers.">

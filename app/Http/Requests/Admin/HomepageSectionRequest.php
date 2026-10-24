@@ -64,6 +64,17 @@ class HomepageSectionRequest extends FormRequest
             'settings.stat_value' => ['nullable', 'string', 'max:80'],
             'settings.stat_subtitle' => ['nullable', 'string', 'max:160'],
             'settings.background_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'settings.show_quick_help' => ['nullable', 'boolean'],
+            'settings.quick_help_title' => ['nullable', 'string', 'max:120'],
+            'settings.quick_help_description' => ['nullable', 'string', 'max:255'],
+            'settings.quick_help_cards' => ['sometimes', 'array', 'size:4'],
+            'settings.quick_help_cards.*.title' => ['required', 'string', 'max:100'],
+            'settings.quick_help_cards.*.description' => ['required', 'string', 'max:180'],
+            'settings.quick_help_cards.*.url' => ['required', 'string', 'max:2048', new SafePublicUrl()],
+            'settings.quick_help_cards.*.icon' => ['required', 'in:ruler,artwork,package,chat'],
+            'settings.quick_help_cards.*.enabled' => ['required', 'boolean'],
+            'settings.quick_help_cards.*.remove_icon' => ['nullable', 'boolean'],
+            'settings.quick_help_cards.*.icon_file' => ['nullable', 'image', 'mimes:png,webp,jpg,jpeg', 'max:2048'],
             'is_active' => ['nullable', 'boolean'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:1000000'],
         ];
@@ -91,6 +102,9 @@ class HomepageSectionRequest extends FormRequest
             'items.*.image_file.mimes' => 'Process step images must be JPG, PNG, WebP, or AVIF files.',
             'items.*.image_file.max' => 'Each process step image must be no larger than 10 MB.',
             'settings.background_color.regex' => 'Choose a valid 6-digit hex background color such as #06152C.',
+            'settings.quick_help_cards.size' => 'Exactly four Quick Help cards are required to preserve the homepage design.',
+            'settings.quick_help_cards.*.url.required' => 'Each Quick Help card needs a destination link.',
+            'settings.quick_help_cards.*.icon_file' => 'Choose a PNG, WebP, or JPEG icon under 2 MB.',
         ];
     }
 
@@ -121,6 +135,8 @@ class HomepageSectionRequest extends FormRequest
             'settings.stat_value' => 'hero statistic value',
             'settings.stat_subtitle' => 'hero statistic subtitle',
             'settings.background_color' => 'Best-Selling Gear background color',
+            'settings.quick_help_cards.*.url' => 'Quick Help card link',
+            'settings.quick_help_cards.*.icon_file' => 'Quick Help card icon',
         ];
     }
 
@@ -147,6 +163,8 @@ class HomepageSectionRequest extends FormRequest
             $payload['settings'] = $this->normalizedHeroSettings();
         } elseif ($sectionKey === 'best_selling_gear' && $this->has('settings')) {
             $payload['settings'] = $this->normalizedBestSellingGearSettings();
+        } elseif ($sectionKey === 'faq' && $this->has('settings')) {
+            $payload['settings'] = $this->normalizedQuickHelpSettings();
         }
 
         $this->merge($payload);
@@ -199,6 +217,7 @@ class HomepageSectionRequest extends FormRequest
                     'show_default_product_ratings' => $this->boolean('settings.show_default_product_ratings'),
                 ],
                 'best_selling_gear' => $this->normalizedBestSellingGearSettings(),
+                'faq' => $this->normalizedQuickHelpSettings(),
                 default => [],
             };
         } else {
@@ -233,6 +252,30 @@ class HomepageSectionRequest extends FormRequest
     {
         return [
             'background_color' => strtoupper(trim((string) $this->input('settings.background_color', ''))),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function normalizedQuickHelpSettings(): array
+    {
+        $cards = array_values((array) $this->input('settings.quick_help_cards', []));
+
+        return [
+            'show_quick_help' => $this->boolean('settings.show_quick_help'),
+            'quick_help_title' => trim(strip_tags((string) $this->input('settings.quick_help_title', ''))),
+            'quick_help_description' => trim(strip_tags((string) $this->input('settings.quick_help_description', ''))),
+            'quick_help_cards' => array_map(static function ($card): array {
+                $card = is_array($card) ? $card : [];
+
+                return [
+                    'title' => trim(strip_tags((string) ($card['title'] ?? ''))),
+                    'description' => trim(strip_tags((string) ($card['description'] ?? ''))),
+                    'url' => trim((string) ($card['url'] ?? '')),
+                    'icon' => trim((string) ($card['icon'] ?? '')),
+                    'enabled' => filter_var($card['enabled'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                    'remove_icon' => filter_var($card['remove_icon'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                ];
+            }, $cards),
         ];
     }
 

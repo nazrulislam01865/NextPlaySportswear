@@ -157,6 +157,7 @@ class MenuFormRequest extends FormRequest
         $seenRootSignatures = [];
         $duplicateKeys = [];
         $normalized = [];
+        $hasShippingAction = false;
 
         foreach ($rows as $item) {
             if (filled($item['parent_key'] ?? null)) {
@@ -173,6 +174,15 @@ class MenuFormRequest extends FormRequest
             }
 
             $key = filled($item['key'] ?? null) ? (string) $item['key'] : '';
+            $classes = preg_split('/\s+/', trim((string) ($item['css_class'] ?? ''))) ?: [];
+            if (in_array('np-shipping-action', $classes, true)) {
+                if ($hasShippingAction) {
+                    // At most one dedicated CTA. Keep extra links as regular links.
+                    $item['css_class'] = trim(implode(' ', array_diff($classes, ['np-shipping-action'])));
+                } else {
+                    $hasShippingAction = true;
+                }
+            }
             $seenRootSignatures[$signature] = $key;
             $normalized[] = $item;
         }
@@ -223,9 +233,6 @@ class MenuFormRequest extends FormRequest
             Str::of((string) ($item['label'] ?? ''))->lower()->squish()->toString(),
             $type,
             $destination,
-            (string) ($item['target'] ?? '_self'),
-            trim((string) ($item['css_class'] ?? '')),
-            filter_var($item['is_active'] ?? false, FILTER_VALIDATE_BOOL) ? '1' : '0',
         ]);
     }
 }

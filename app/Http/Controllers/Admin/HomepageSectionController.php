@@ -57,6 +57,7 @@ class HomepageSectionController extends Controller
 
         DB::transaction(function () use ($request, $homepageSection): void {
             $existingItems = is_array($homepageSection->items) ? $homepageSection->items : [];
+            $existingSettings = is_array($homepageSection->settings) ? $homepageSection->settings : [];
             $payload = $request->payload();
             $payload['updated_by'] = $request->user()->id;
 
@@ -69,7 +70,7 @@ class HomepageSectionController extends Controller
             }
 
             $homepageSection->update($payload);
-            $this->media->sync($homepageSection, $request, $existingItems);
+            $this->media->sync($homepageSection, $request, $existingItems, $existingSettings);
         });
 
         $this->sections->flushCache();

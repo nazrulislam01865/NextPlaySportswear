@@ -2251,9 +2251,7 @@
     color: var(--np-color-muted);
 }
 
-/* Homepage FAQ is intentionally a two-column desktop shell.
-   The FAQ occupies the left column and the right column stays reserved for
-   future content, while mobile/tablet keep the existing full-width flow. */
+/* Homepage FAQ and Quick Help share the existing section and theme. */
 .home-page .np-home-faq-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -2273,20 +2271,113 @@
 }
 
 .home-page .np-home-faq-aside {
-    display: none;
+    display: block;
+    min-width: 0;
+    width: 100%;
+    max-width: 436px;
+}
+
+.home-page .np-home-quick-help-heading {
+    margin-bottom: 16px;
+}
+
+.home-page .np-home-quick-help-heading .np-home-section-description {
+    margin-top: 5px;
+}
+
+.home-page .np-home-quick-help-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.home-page .np-home-quick-help-card {
+    display: flex;
+    min-width: 0;
+    min-height: 196px;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 22px 23px 17px;
+    border: 1px solid var(--np-color-border);
+    border-radius: 9px;
+    background: #fff;
+    color: var(--np-color-heading);
+    text-decoration: none;
+    transition: border-color .18s ease;
+}
+
+.home-page .np-home-quick-help-card:hover,
+.home-page .np-home-quick-help-card:focus-visible {
+    border-color: var(--np-color-primary);
+}
+
+.home-page .np-home-quick-help-icon {
+    display: block;
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    flex-shrink: 0;
+    margin: 0 0 19px;
+    color: var(--np-color-heading);
+    background: transparent;
+}
+
+.home-page .np-home-quick-help-card-title {
+    display: block;
+    font-size: 17px;
+    font-weight: 800;
+    line-height: 1.25;
+    color: var(--np-color-heading);
+}
+
+.home-page .np-home-quick-help-card-description {
+    display: block;
+    margin-top: 4px;
+    font-size: 14px;
+    line-height: 1.35;
+    color: var(--np-color-muted);
+}
+
+.home-page .np-home-quick-help-arrow {
+    align-self: flex-end;
+    width: 23px;
+    height: 23px;
+    margin-top: auto;
+    color: var(--np-color-secondary);
 }
 
 @media (min-width: 1024px) {
-    .home-page .np-home-faq-layout {
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: clamp(40px, 4vw, 88px);
+    .home-page .np-home-faq-layout:not(.np-home-faq-layout--single) {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 436px);
+        gap: clamp(34px, 4vw, 58px);
         align-items: start;
     }
 
+    /* Keep Quick Help unchanged; make the adjacent FAQ list slightly narrower. */
+    .home-page .np-home-faq-layout:not(.np-home-faq-layout--single) .np-home-faq-column {
+        width: 94%;
+    }
+}
+
+@media (max-width: 1023px) {
     .home-page .np-home-faq-aside {
-        display: block;
-        min-width: 0;
-        min-height: 1px;
+        margin-top: 34px;
+    }
+}
+
+@media (max-width: 470px) {
+    .home-page .np-home-quick-help-grid {
+        gap: 10px;
+    }
+    .home-page .np-home-quick-help-card {
+        min-height: 170px;
+        padding: 17px 14px 13px;
+    }
+    .home-page .np-home-quick-help-card-title {
+        font-size: 15px;
+    }
+    .home-page .np-home-quick-help-card-description {
+        font-size: 12px;
     }
 }
 
@@ -19580,11 +19671,11 @@ html.np-product-preview-open body { overflow: hidden; }
 .storefront-clean-ui .np-proto-size-summary-fabric strong,
 .storefront-clean-ui .np-proto-size-summary-fact strong { color: var(--np-color-primary); font-size: 10px; }
 .storefront-clean-ui .np-proto-size-summary-fabric button { border: 1px solid #dbe2ea; border-radius: 4px; background: #fff; padding: 7px 10px; color: var(--np-color-secondary); font-size: 9px; font-weight: 900; }
-.storefront-clean-ui .np-proto-size-summary-fact { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; align-items: center; }
+.storefront-clean-ui .np-proto-size-summary-fact { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 10px; align-items: center; }
 .storefront-clean-ui .np-proto-size-summary-fact svg,
 .storefront-clean-ui .np-proto-size-summary-note svg { width: 24px; height: 24px; fill: none; stroke: var(--np-color-primary); stroke-width: 1.7; }
 .storefront-clean-ui .np-proto-size-summary-fact span { display: grid; gap: 2px; }
-.storefront-clean-ui .np-proto-size-summary-note { display: grid; grid-template-columns: 23px minmax(0, 1fr); gap: 8px; align-items: center; color: var(--np-color-text); font-size: 9px; line-height: 1.35; }
+.storefront-clean-ui .np-proto-size-summary-note { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 10px; align-items: center; color: var(--np-color-text); font-size: 9px; line-height: 1.35; }
 .storefront-clean-ui .np-proto-size-summary-note svg { stroke: var(--np-color-secondary); }
 .storefront-clean-ui .np-proto-size-table-wrap + .np-proto-size-table-wrap { margin-top: 12px; }
 .storefront-clean-ui .np-proto-subsection-title { margin: 0 0 7px; color: var(--np-color-primary); font-size: 12px; }
@@ -25444,5 +25535,121 @@ html.np-product-preview-open body { overflow: hidden; }
 @media (max-width: 420px) {
     .np-category-hero__actions {
         grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* Editable header shipping action: prevent custom long labels from overlapping menu links. */
+.np-usa-shipping > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+
+/* Product customizer: evenly sized summary cells, driven by available panel
+   width rather than the viewport (the customizer also has a sidebar). */
+.storefront-clean-ui .np-proto-size-summary-layout {
+    container: np-size-summary / inline-size;
+}
+.storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-row--no-fabric {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-row > div {
+    min-width: 0;
+}
+.storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-fabric.is-image-empty {
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+.storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-fact > span,
+.storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-note > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+/* Uploaded icon artwork should sit directly on the white summary surface,
+   without an additional CSS background, border, padding or frame. */
+.storefront-clean-ui .np-proto-size-summary-layout .np-configurable-ui-icon,
+.storefront-clean-ui .np-proto-size-summary-layout .np-configurable-ui-icon > img,
+.storefront-clean-ui .np-proto-size-summary-layout .np-configurable-ui-icon > svg {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+}
+@container np-size-summary (max-width: 860px) {
+    .storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-row,
+    .storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-row--no-fabric {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-row > div {
+        min-height: 80px;
+        border-bottom: 1px solid #e6ebf1;
+    }
+    .storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-row > div:nth-child(2n) {
+        border-right: 0;
+    }
+    .storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-row > div:nth-last-child(-n+2) {
+        border-bottom: 0;
+    }
+    .storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-row--no-fabric > div:nth-child(2) {
+        border-bottom: 1px solid #e6ebf1;
+    }
+    .storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-row--no-fabric > div:last-child {
+        grid-column: 1 / -1;
+    }
+}
+@container np-size-summary (max-width: 520px) {
+    .storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-row,
+    .storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-row--no-fabric {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-row > div {
+        min-height: 0;
+        border-right: 0;
+        border-bottom: 1px solid #e6ebf1;
+    }
+    .storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-row > div:last-child {
+        grid-column: auto;
+        border-bottom: 0;
+    }
+}
+
+/* Shipping-method image/icon previews use the uploaded artwork, not a tinted tile. */
+.storefront-clean-ui .np-proto-choice-media {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}
+
+/* 2026-10-24: Four even desktop cells and identical fabric/icon media footprints.
+   The smaller container breakpoints are based on available customizer panel width. */
+.storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-fact,
+.storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-note {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 10px;
+}
+.storefront-clean-ui .np-proto-size-summary-layout .np-configurable-ui-icon {
+    display: block;
+    width: 64px;
+    height: 56px;
+    max-width: 100%;
+    background: transparent;
+}
+.storefront-clean-ui .np-proto-size-summary-layout .np-configurable-ui-icon > img,
+.storefront-clean-ui .np-proto-size-summary-layout .np-configurable-ui-icon > svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    object-fit: contain;
+    background: transparent;
+}
+@media (max-width: 767px) {
+    .storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-fact,
+    .storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-note {
+        grid-template-columns: 56px minmax(0, 1fr);
+    }
+    .storefront-clean-ui .np-proto-size-summary-layout .np-configurable-ui-icon {
+        width: 56px;
+        height: 50px;
     }
 }

@@ -11234,7 +11234,7 @@ body.admin-clean-ui .np-product-form .np-roster-empty-state .np-secondary-button
 
 .np-pdui-icon-field {
     display: grid;
-    grid-template-columns: 3rem minmax(0, 1fr);
+    grid-template-columns: 3.75rem minmax(0, 1fr);
     gap: .75rem;
     margin-top: auto;
     padding: .75rem;
@@ -11245,8 +11245,8 @@ body.admin-clean-ui .np-product-form .np-roster-empty-state .np-secondary-button
 
 .np-pdui-icon-preview {
     display: flex;
-    width: 3rem;
-    height: 3rem;
+    width: 3.75rem;
+    height: 3.75rem;
     align-items: center;
     justify-content: center;
     overflow: hidden;
@@ -11259,8 +11259,8 @@ body.admin-clean-ui .np-product-form .np-roster-empty-state .np-secondary-button
 }
 
 .np-pdui-icon-preview__image {
-    width: 1.55rem;
-    height: 1.55rem;
+    width: 100%;
+    height: 100%;
     object-fit: contain;
 }
 

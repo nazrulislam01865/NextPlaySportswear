@@ -20,8 +20,12 @@
     $wishlistAuthenticated = (bool) ($wishlistAuthenticated ?? false);
 
     $headerMenu = collect($storefrontMenus['header'] ?? []);
+    // The shipping action is an ordinary admin-managed header item with a
+    // presentation class. Keep it outside the regular links, on both devices.
+    $shippingMenuItem = $headerMenu->first(fn ($item) => in_array('np-shipping-action', preg_split('/\s+/', trim((string) $item->css_class)) ?: [], true));
+    $headerMenu = $headerMenu->reject(fn ($item) => $item === $shippingMenuItem)->values();
     $headerMenuCount = max(1, $headerMenu->count());
-    $shippingActive = request()->routeIs('shipping');
+    $shippingActive = $shippingMenuItem && (($shippingMenuItem->route_name === 'shipping' && request()->routeIs('shipping')) || request()->url() === $shippingMenuItem->resolvedUrl());
     $cartActive = request()->routeIs('cart.*');
     $wishlistActive = request()->routeIs('wishlist.*');
     $contactActive = request()->routeIs('contact') || request()->routeIs('contact.store');
@@ -360,15 +364,17 @@
                 @endforeach
             </nav>
 
-            <a href="{{ route('shipping') }}" class="np-usa-shipping {{ $shippingActive ? 'is-active' : '' }}" @if($shippingActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="usa_shipping">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M3 7h11v10H3z" />
-                    <path d="M14 10h3.6l2.4 3v4h-6" />
-                    <circle cx="7" cy="18" r="2" />
-                    <circle cx="17" cy="18" r="2" />
-                </svg>
-                <span>USA SHIPPING</span>
-            </a>
+            @if($shippingMenuItem)
+                <a href="{{ $shippingMenuItem->resolvedUrl() }}" target="{{ $shippingMenuItem->target }}" @if($shippingMenuItem->target === '_blank') rel="noopener noreferrer" @endif class="np-usa-shipping {{ $shippingActive ? 'is-active' : '' }}" @if($shippingActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="usa_shipping">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M3 7h11v10H3z" />
+                        <path d="M14 10h3.6l2.4 3v4h-6" />
+                        <circle cx="7" cy="18" r="2" />
+                        <circle cx="17" cy="18" r="2" />
+                    </svg>
+                    <span title="{{ $shippingMenuItem->label }}">{{ $shippingMenuItem->label }}</span>
+                </a>
+            @endif
         </div>
 
         <nav
@@ -410,7 +416,9 @@
                         <x-storefront.menu.mobile-item :item="$item" />
                     @endforeach
 
-                    <a href="{{ route('shipping') }}" class="np-mobile-nav-link np-mobile-shipping-link {{ $shippingActive ? 'is-active' : '' }}" @if($shippingActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_usa_shipping">USA Shipping</a>
+                    @if($shippingMenuItem)
+                        <a href="{{ $shippingMenuItem->resolvedUrl() }}" target="{{ $shippingMenuItem->target }}" @if($shippingMenuItem->target === '_blank') rel="noopener noreferrer" @endif class="np-mobile-nav-link np-mobile-shipping-link {{ $shippingActive ? 'is-active' : '' }}" @if($shippingActive) aria-current="page" @endif data-header-analytics="header_navigation_click" data-header-analytics-label="mobile_usa_shipping">{{ $shippingMenuItem->label }}</a>
+                    @endif
                 </div>
 
                 <div class="np-mobile-utility-list" @click="if ($event.target.closest('a, button')) open = false">

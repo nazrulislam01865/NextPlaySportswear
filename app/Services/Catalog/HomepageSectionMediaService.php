@@ -11,7 +11,7 @@ class HomepageSectionMediaService
     /**
      * @param array<int, array<string, mixed>> $originalItems
      */
-    public function sync(HomepageSection $section, Request $request, array $originalItems = []): void
+    public function sync(HomepageSection $section, Request $request, array $originalItems = [], array $originalSettings = []): void
     {
         $uploaded = $request->file('image_file');
         $imageUrl = trim((string) $request->input('image_url', ''));
@@ -50,6 +50,10 @@ class HomepageSectionMediaService
 
         if ((string) $section->key === 'process') {
             $this->syncItemImages($section, $request, $originalItems);
+        }
+
+        if ((string) $section->key === 'faq') {
+            $this->syncQuickHelpIcons($section, $request, $originalSettings);
         }
 
         $section->save();
@@ -131,6 +135,37 @@ class HomepageSectionMediaService
             ->each(fn ($path) => StoredPublicImage::retire((string) $path));
 
         $section->items = array_values($items);
+    }
+
+    /** @param array<string, mixed> $originalSettings */
+    private function syncQuickHelpIcons(HomepageSection $section, Request $request, array $originalSettings): void
+    {
+        $settings = is_array($section->settings) ? $section->settings : [];
+        $cards = is_array($settings['quick_help_cards'] ?? null) ? $settings['quick_help_cards'] : [];
+        $previousCards = is_array($originalSettings['quick_help_cards'] ?? null) ? $originalSettings['quick_help_cards'] : [];
+
+        foreach ($cards as $index => &$card) {
+            if (! is_array($card)) {
+                continue;
+            }
+
+            $previous = is_array($previousCards[$index] ?? null) ? $previousCards[$index] : [];
+            $previousPath = trim((string) ($previous['icon_path'] ?? '')) ?: null;
+            $uploaded = $request->file("settings.quick_help_cards.{$index}.icon_file");
+
+            if ($uploaded) {
+                $card['icon_path'] = StoredPublicImage::replace($uploaded, 'homepage/sections/faq/quick-help', $previousPath);
+            } elseif ($request->boolean("settings.quick_help_cards.{$index}.remove_icon")) {
+                StoredPublicImage::retire($previousPath);
+            } elseif ($previousPath !== null) {
+                $card['icon_path'] = $previousPath;
+            }
+            unset($card['remove_icon']);
+        }
+        unset($card);
+
+        $settings['quick_help_cards'] = $cards;
+        $section->settings = $settings;
     }
 
     private function syncHeroSlides(HomepageSection $section, Request $request): void

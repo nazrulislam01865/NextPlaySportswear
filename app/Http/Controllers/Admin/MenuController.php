@@ -67,6 +67,31 @@ class MenuController extends Controller
         $menu = DB::transaction(function () use ($request): Menu {
             $menu = Menu::query()->create(Arr::only($request->validated(), ['name', 'slug', 'location', 'is_active']));
             $this->syncItems($menu, $request->validated('items', []));
+            // A new header retains the existing shipping CTA without requiring
+            // the admin to know its internal styling class. Updates can remove it.
+            if ($menu->location === 'header-primary') {
+                $shippingAction = $menu->allItems()->whereNull('parent_id')
+                    ->where('css_class', 'like', '%np-shipping-action%')->first();
+                if (! $shippingAction) {
+                    $existingShippingLink = $menu->allItems()->whereNull('parent_id')
+                        ->where('link_type', 'route')->where('route_name', 'shipping')->first();
+                    if ($existingShippingLink) {
+                        $existingShippingLink->update([
+                            'css_class' => trim($existingShippingLink->css_class.' np-shipping-action'),
+                        ]);
+                    } else {
+                        $menu->allItems()->create([
+                            'label' => 'USA SHIPPING',
+                            'link_type' => 'route',
+                            'route_name' => 'shipping',
+                            'target' => '_self',
+                            'css_class' => 'np-shipping-action',
+                            'is_active' => true,
+                            'sort_order' => ((int) $menu->allItems()->whereNull('parent_id')->max('sort_order')) + 10,
+                        ]);
+                    }
+                }
+            }
             return $menu;
         });
         $this->navigationService->flushCache();

@@ -5,12 +5,15 @@ namespace App\Services\Catalog;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Crop empty canvas from centralized product-detail UI icon uploads.
- * Only application-owned icons are considered; other product images are untouched.
- * If GD is unavailable, the original upload is safely retained.
+ * Give uploaded product-detail icons a common transparent square canvas.
+ * Artwork keeps its original proportions, without backgrounds or frames.
+ * Product photographs and files outside the dedicated icon directory are untouched.
  */
 final class ProductDetailIconNormalizer
 {
+    private const CANVAS = 256;
+    private const ARTWORK = 208;
+
     public static function available(): bool
     {
         return function_exists('imagecreatetruecolor') && function_exists('imagepng');
@@ -32,6 +35,7 @@ final class ProductDetailIconNormalizer
             default => null,
         };
 
+        // SVGs remain untouched (including their viewBox and embedded artwork).
         if ($decoder === null || ! function_exists($decoder)) {
             return $path;
         }
@@ -42,44 +46,53 @@ final class ProductDetailIconNormalizer
         }
 
         $source = null;
-        $cropped = null;
+        $canvas = null;
         try {
-            $absolute = $disk->path($path);
-            $dimensions = @getimagesize($absolute);
+            $file = $disk->path($path);
+            $dimensions = @getimagesize($file);
             if (! $dimensions) {
                 return $path;
             }
-
             [$width, $height] = $dimensions;
             if ($width < 24 || $height < 24 || $width * $height > 6000000) {
                 return $path;
             }
 
-            $source = @$decoder($absolute);
+            $source = @$decoder($file);
             if (! $source) {
                 return $path;
             }
-
             if (function_exists('imagepalettetotruecolor') && ! imageistruecolor($source)) {
                 imagepalettetotruecolor($source);
             }
 
-            $corners = [[0, 0], [$width - 1, 0], [0, $height - 1], [$width - 1, $height - 1]];
-            $transparent = true;
-            $white = true;
-            foreach ($corners as [$x, $y]) {
-                $pixel = imagecolorat($source, $x, $y);
-                $alpha = ($pixel >> 24) & 127;
-                $transparent = $transparent && $alpha >= 110;
-                $white = $white && ($alpha >= 110 || (
-                    (($pixel >> 16) & 255) >= 246 && (($pixel >> 8) & 255) >= 246 && ($pixel & 255) >= 246
-                ));
+            $opaquePixels = 0;
+            $whitePixels = 0;
+            $darkPixels = 0;
+            for ($y = 0; $y < $height; $y++) {
+                for ($x = 0; $x < $width; $x++) {
+                    $pixel = imagecolorat($source, $x, $y);
+                    if ((($pixel >> 24) & 127) > 20) {
+                        continue;
+                    }
+                    $opaquePixels++;
+                    $r = ($pixel >> 16) & 255;
+                    $g = ($pixel >> 8) & 255;
+                    $b = $pixel & 255;
+                    if (min($r, $g, $b) >= 246) {
+                        $whitePixels++;
+                    }
+                    if (min($r, $g, $b) < 220) {
+                        $darkPixels++;
+                    }
+                }
             }
 
-            // Do not crop photographs, filled-background icons, or graphics with artwork at the edges.
-            if (! $transparent && ! $white) {
-                return $path;
-            }
+            // Remove an embedded white tile only when the image is clearly
+            // dark icon artwork on white, not a photo or a white-colored logo.
+            $hasWhiteTile = $opaquePixels > 0
+                && $whitePixels / $opaquePixels > 0.65
+                && $darkPixels / $opaquePixels > 0.01;
 
             $left = $width;
             $top = $height;
@@ -88,13 +101,9 @@ final class ProductDetailIconNormalizer
             for ($y = 0; $y < $height; $y++) {
                 for ($x = 0; $x < $width; $x++) {
                     $pixel = imagecolorat($source, $x, $y);
-                    $alpha = ($pixel >> 24) & 127;
-                    $visible = $transparent
-                        ? $alpha < 110
-                        : $alpha < 110 && (
-                            (($pixel >> 16) & 255) < 238 || (($pixel >> 8) & 255) < 238 || ($pixel & 255) < 238
-                        );
-                    if (! $visible) {
+                    $originalOpacity = 1 - ((($pixel >> 24) & 127) / 127);
+                    $opacity = self::iconOpacity($pixel, $originalOpacity, $hasWhiteTile);
+                    if ($opacity < 0.12) {
                         continue;
                     }
                     $left = min($left, $x);
@@ -108,66 +117,84 @@ final class ProductDetailIconNormalizer
                 return $path;
             }
 
-            $contentSize = max($right - $left + 1, $bottom - $top + 1);
-            $padding = max(2, (int) round($contentSize * 0.06));
-            $left = max(0, $left - $padding);
-            $top = max(0, $top - $padding);
-            $right = min($width - 1, $right + $padding);
-            $bottom = min($height - 1, $bottom + $padding);
-            $newWidth = $right - $left + 1;
-            $newHeight = $bottom - $top + 1;
+            $artWidth = $right - $left + 1;
+            $artHeight = $bottom - $top + 1;
+            $artSize = max($artWidth, $artHeight);
+            $centerX = ($left + $right) / 2;
+            $centerY = ($top + $bottom) / 2;
 
-            // An almost full-bleed image needs no new file (or unnecessary recompression).
-            if ($newWidth >= $width * 0.93 && $newHeight >= $height * 0.93) {
+            // An already standardized icon must not be recompressed with every
+            // admin save or repair command. This also makes the command rerunnable.
+            if (! $hasWhiteTile && $width === self::CANVAS && $height === self::CANVAS
+                && abs($artSize - self::ARTWORK) <= 3
+                && abs($centerX - (self::CANVAS - 1) / 2) <= 3
+                && abs($centerY - (self::CANVAS - 1) / 2) <= 3) {
                 return $path;
             }
 
-            $cropped = imagecreatetruecolor($newWidth, $newHeight);
-            imagealphablending($cropped, false);
-            imagesavealpha($cropped, true);
-            imagefill($cropped, 0, 0, imagecolorallocatealpha($cropped, 0, 0, 0, 127));
-            imagecopy($cropped, $source, 0, 0, $left, $top, $newWidth, $newHeight);
+            $canvas = imagecreatetruecolor(self::CANVAS, self::CANVAS);
+            imagealphablending($canvas, false);
+            imagesavealpha($canvas, true);
+            imagefill($canvas, 0, 0, imagecolorallocatealpha($canvas, 0, 0, 0, 127));
 
-            // White-background icons (including the supplied 800x800 PNGs) should
-            // not show an opaque white square against tinted storefront panels.
-            if (! $transparent) {
-                for ($y = 0; $y < $newHeight; $y++) {
-                    for ($x = 0; $x < $newWidth; $x++) {
-                        $pixel = imagecolorat($cropped, $x, $y);
-                        $r = ($pixel >> 16) & 255;
-                        $g = ($pixel >> 8) & 255;
-                        $b = $pixel & 255;
-                        $contrast = 255 - min($r, $g, $b);
-                        $opacity = max(0, min(1, ($contrast - 6) / 32));
-                        $alpha = max(($pixel >> 24) & 127, (int) round(127 * (1 - $opacity)));
-                        imagesetpixel($cropped, $x, $y, ($alpha << 24) | ($r << 16) | ($g << 8) | $b);
+            $scale = self::ARTWORK / $artSize;
+            $scaledWidth = max(1, (int) round($artWidth * $scale));
+            $scaledHeight = max(1, (int) round($artHeight * $scale));
+            $offsetX = (int) floor((self::CANVAS - $scaledWidth) / 2);
+            $offsetY = (int) floor((self::CANVAS - $scaledHeight) / 2);
+
+            // Resample onto a separate transparent source only when needed.
+            // This preserves anti-aliased edges and the uploaded navy artwork.
+            if ($hasWhiteTile) {
+                for ($y = $top; $y <= $bottom; $y++) {
+                    for ($x = $left; $x <= $right; $x++) {
+                        $pixel = imagecolorat($source, $x, $y);
+                        $originalOpacity = 1 - ((($pixel >> 24) & 127) / 127);
+                        $opacity = self::iconOpacity($pixel, $originalOpacity, true);
+                        $alpha = (int) round(127 * (1 - $opacity));
+                        imagesetpixel($source, $x, $y, ($alpha << 24) | ($pixel & 0xffffff));
                     }
                 }
             }
 
+            imagecopyresampled(
+                $canvas, $source,
+                $offsetX, $offsetY, $left, $top,
+                $scaledWidth, $scaledHeight, $artWidth, $artHeight
+            );
+
             ob_start();
-            $written = imagepng($cropped, null, 6);
+            $success = imagepng($canvas, null, 6);
             $bytes = ob_get_clean();
-            if (! $written || ! is_string($bytes) || $bytes === '') {
+            if (! $success || ! is_string($bytes) || $bytes === '') {
                 return $path;
             }
 
             $newPath = 'storefront/product-detail-ui/'.bin2hex(random_bytes(20)).'.png';
-            if (! $disk->put($newPath, $bytes)) {
-                return $path;
-            }
-
-            return $newPath;
+            return $disk->put($newPath, $bytes) ? $newPath : $path;
         } catch (\Throwable $exception) {
             report($exception);
             return $path;
         } finally {
-            if ($cropped instanceof \GdImage) {
-                imagedestroy($cropped);
+            if ($canvas instanceof \GdImage) {
+                imagedestroy($canvas);
             }
             if ($source instanceof \GdImage) {
                 imagedestroy($source);
             }
         }
+    }
+
+    private static function iconOpacity(int $pixel, float $originalOpacity, bool $hasWhiteTile): float
+    {
+        if (! $hasWhiteTile) {
+            return $originalOpacity;
+        }
+
+        $r = ($pixel >> 16) & 255;
+        $g = ($pixel >> 8) & 255;
+        $b = $pixel & 255;
+        $contrast = 255 - min($r, $g, $b);
+        return $originalOpacity * max(0, min(1, ($contrast - 6) / 32));
     }
 }

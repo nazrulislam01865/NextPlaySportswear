@@ -894,17 +894,19 @@ window.productBuilderFabricPricing = function (config = {}) {
 
                         <div id="np-product-step-panel-2" class="np-proto-step-expanded" x-show="isCustomizerStepOpen(2)" x-cloak>
                             <div class="np-proto-step-content">
-                            <div class="np-proto-size-summary-row">
-                                @if($materialGroup)
-                                    <div class="np-proto-size-summary-fabric">
-                                        <span class="np-custom-order-fabric-preview"><img x-show="optionValue(@js($materialGroup), selections[@js($materialGroup['id'])])?.image" :src="optionValue(@js($materialGroup), selections[@js($materialGroup['id'])])?.image" alt=""></span>
-                                        <span><small>Selected Fabric</small><strong x-text="optionValue(@js($materialGroup), selections[@js($materialGroup['id'])])?.label || 'Configured fabric'"></strong></span>
-                                        <button type="button" @click="openCustomizerStep(1)">Change</button>
-                                    </div>
-                                @endif
-                                <div class="np-proto-size-summary-fact"><x-storefront.product.ui-icon :src="$ui['sizes_icon']" name="sizes" /><span><small>{{ $ui['sizes_available_label'] }}</small><strong>{{ $sizeRangeLabel }}</strong></span></div>
-                                <div class="np-proto-size-summary-fact"><x-storefront.product.ui-icon :src="$ui['minimum_order_icon']" name="box" /><span><small>{{ $ui['minimum_order_label'] }}</small><strong>{{ number_format((int) ($product['minimum_quantity'] ?? 1)) }} Piece{{ (int) ($product['minimum_quantity'] ?? 1) === 1 ? '' : 's' }}</strong></span></div>
-                                <div class="np-proto-size-summary-note"><x-storefront.product.ui-icon :src="$ui['multiple_sizes_note_icon']" name="info" /><span>{{ $ui['multiple_sizes_note'] }}</span></div>
+                            <div class="np-proto-size-summary-layout">
+                                <div class="np-proto-size-summary-row{{ $materialGroup ? '' : ' np-proto-size-summary-row--no-fabric' }}">
+                                    @if($materialGroup)
+                                        <div class="np-proto-size-summary-fabric" :class="{ 'is-image-empty': !optionValue(@js($materialGroup), selections[@js($materialGroup['id'])])?.image }">
+                                            <span class="np-custom-order-fabric-preview" x-show="optionValue(@js($materialGroup), selections[@js($materialGroup['id'])])?.image" x-cloak><img :src="optionValue(@js($materialGroup), selections[@js($materialGroup['id'])])?.image" alt=""></span>
+                                            <span><small>Selected Fabric</small><strong x-text="optionValue(@js($materialGroup), selections[@js($materialGroup['id'])])?.label || 'Configured fabric'"></strong></span>
+                                            <button type="button" @click="openCustomizerStep(1)">Change</button>
+                                        </div>
+                                    @endif
+                                    <div class="np-proto-size-summary-fact"><x-storefront.product.ui-icon :src="$ui['sizes_icon']" name="sizes" /><span><small>{{ $ui['sizes_available_label'] }}</small><strong>{{ $sizeRangeLabel }}</strong></span></div>
+                                    <div class="np-proto-size-summary-fact"><x-storefront.product.ui-icon :src="$ui['minimum_order_icon']" name="box" /><span><small>{{ $ui['minimum_order_label'] }}</small><strong>{{ number_format((int) ($product['minimum_quantity'] ?? 1)) }} Piece{{ (int) ($product['minimum_quantity'] ?? 1) === 1 ? '' : 's' }}</strong></span></div>
+                                    <div class="np-proto-size-summary-note"><x-storefront.product.ui-icon :src="$ui['multiple_sizes_note_icon']" name="info" /><span>{{ $ui['multiple_sizes_note'] }}</span></div>
+                                </div>
                             </div>
 
                             @if(!empty($product['size_groups']))

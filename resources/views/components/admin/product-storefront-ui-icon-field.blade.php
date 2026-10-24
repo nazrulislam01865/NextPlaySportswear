@@ -48,3 +48,16 @@
         @endif
     </div>
 </div>
+
+@once
+    <style>
+        /* Uploaded artwork must remain unframed in the admin preview too. */
+        .np-pdui-icon-preview:has(.np-pdui-icon-preview__image) {
+            background: transparent; border: 0; box-shadow: none; padding: 0;
+        }
+        .np-pdui-icon-preview__image {
+            background: transparent; border: 0; box-shadow: none; padding: 0;
+            object-fit: contain;
+        }
+    </style>
+@endonce

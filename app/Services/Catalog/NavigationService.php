@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Cache;
 
 class NavigationService
 {
-    private const CACHE_VERSION = 'v10';
+    private const CACHE_VERSION = 'v11';
 
     /** @var array<string, Collection<int, NavigationItem>> */
     private array $runtimeItems = [];
@@ -202,12 +202,12 @@ class NavigationService
                     default => '',
                 };
 
+                // Styling or target changes do not make the same menu link a
+                // different destination. Prefer the first configured row.
                 return implode('|', [
                     str($item['label'] ?? '')->lower()->squish()->toString(),
                     $type,
                     $destination,
-                    (string) ($item['target'] ?? '_self'),
-                    trim((string) ($item['css_class'] ?? '')),
                 ]);
             })
             ->values();
@@ -344,6 +344,17 @@ class NavigationService
                 'url' => null,
                 'target' => '_self',
                 'css_class' => 'text-brand-red',
+                'children' => [],
+            ],
+            [
+                'label' => 'USA SHIPPING',
+                'link_type' => 'route',
+                'category_slug' => null,
+                'icon_url' => null,
+                'route_name' => 'shipping',
+                'url' => null,
+                'target' => '_self',
+                'css_class' => 'np-shipping-action',
                 'children' => [],
             ],
         ]);
