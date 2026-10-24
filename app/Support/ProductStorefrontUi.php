@@ -29,10 +29,12 @@ class ProductStorefrontUi
             'sizes_icon' => null,
             'minimum_order_label' => 'Minimum Order Quantity',
             'minimum_order_icon' => null,
-            'size_guide_label' => 'View Size Guide',
+            'size_guide_label' => 'View Size Chart',
             'size_guide_icon' => null,
             'multiple_sizes_note' => 'You can add multiple sizes. Final price will be calculated based on total quantity.',
             'multiple_sizes_note_icon' => null,
+            'roster_total_pieces_icon' => null,
+            'roster_players_icon' => null,
             'order_summary_player_icon' => null,
             'order_summary_artwork_icon' => null,
             'order_summary_shipping_icon' => null,
@@ -91,6 +93,7 @@ class ProductStorefrontUi
         return [
             'save_icon', 'share_icon', 'sample_icon',
             'sizes_icon', 'minimum_order_icon', 'size_guide_icon', 'multiple_sizes_note_icon',
+            'roster_total_pieces_icon', 'roster_players_icon',
             'order_summary_player_icon', 'order_summary_artwork_icon', 'order_summary_shipping_icon',
             'artwork_upload_tab_icon', 'artwork_existing_tab_icon', 'artwork_help_tab_icon',
             'artwork_drop_icon', 'artwork_info_icon',
@@ -185,6 +188,12 @@ class ProductStorefrontUi
 
         foreach (self::booleanKeys() as $key) {
             $settings[$key] = filter_var($settings[$key], FILTER_VALIDATE_BOOLEAN);
+        }
+
+        // Existing installations may have saved the previous default label.
+        // Migrate only that old default at read-time; retain customized labels.
+        if (trim((string) $settings['size_guide_label']) === 'View Size Guide') {
+            $settings['size_guide_label'] = 'View Size Chart';
         }
 
         return $settings;

@@ -120,6 +120,26 @@
     <section class="np-pdui-section">
         <header class="np-pdui-section__header">
             <div>
+                <p class="np-pdui-eyebrow">Player names &amp; numbers</p>
+                <h2>Player quantity summary icons</h2>
+                <p>Upload the two icons beside Total Pieces and Players in the player details step. They appear only on products with player details enabled.</p>
+            </div>
+        </header>
+        <div class="np-pdui-grid np-pdui-grid--2">
+            <article class="np-pdui-control-card">
+                <div class="np-pdui-control-card__heading"><div><strong>Total Pieces</strong><small>Shown beside the number of selected pieces.</small></div></div>
+                <x-admin.product-storefront-ui-icon-field :settings="$settings" setting-key="roster_total_pieces_icon" label="Total Pieces icon" />
+            </article>
+            <article class="np-pdui-control-card">
+                <div class="np-pdui-control-card__heading"><div><strong>Players</strong><small>Shown beside the required player entries.</small></div></div>
+                <x-admin.product-storefront-ui-icon-field :settings="$settings" setting-key="roster_players_icon" label="Players icon" />
+            </article>
+        </div>
+    </section>
+
+    <section class="np-pdui-section">
+        <header class="np-pdui-section__header">
+            <div>
                 <p class="np-pdui-eyebrow">Artwork step</p>
                 <h2>Artwork labels, instructions and icons</h2>
                 <p>These values are reused on every product that has the artwork step enabled.</p>
@@ -195,32 +215,7 @@
                 <label class="admin-label">Help mode lines
                     <textarea class="admin-textarea np-pdui-lines" name="settings[artwork_help_next_lines]" maxlength="1200">{{ $settings['artwork_help_next_lines'] }}</textarea>
                 </label>
-                <x-admin.product-storefront-ui-icon-field :settings="$settings" setting-key="artwork_info_icon" label="Information icon" />
-            </article>
-        </div>
-    </section>
-
-    <section class="np-pdui-section">
-        <header class="np-pdui-section__header">
-            <div>
-                <p class="np-pdui-eyebrow">Your Custom Order</p>
-                <h2>Order summary icons</h2>
-                <p>Icons in the product customizer's right-side order summary. Without an upload, the original icons remain in place.</p>
-            </div>
-        </header>
-
-        <div class="np-pdui-grid np-pdui-grid--2">
-            <article class="np-pdui-control-card">
-                <div class="np-pdui-control-card__heading"><div><strong>Player Names &amp; Numbers</strong><small>Shirt icon in the order summary (when player details are enabled).</small></div></div>
-                <x-admin.product-storefront-ui-icon-field :settings="$settings" setting-key="order_summary_player_icon" label="Player Names &amp; Numbers icon" />
-            </article>
-            <article class="np-pdui-control-card">
-                <div class="np-pdui-control-card__heading"><div><strong>Artwork</strong><small>Document icon in the order summary.</small></div></div>
-                <x-admin.product-storefront-ui-icon-field :settings="$settings" setting-key="order_summary_artwork_icon" label="Artwork summary icon" />
-            </article>
-            <article class="np-pdui-control-card">
-                <div class="np-pdui-control-card__heading"><div><strong>Production &amp; Shipping</strong><small>Truck icon in the order summary. Shipping method card images remain managed in Master Data.</small></div></div>
-                <x-admin.product-storefront-ui-icon-field :settings="$settings" setting-key="order_summary_shipping_icon" label="Production &amp; Shipping summary icon" />
+                <x-admin.product-storefront-ui-icon-field :settings="$settings" setting-key="artwork_info_icon" label="What happens next icon (both artwork modes)" />
             </article>
         </div>
     </section>
@@ -261,7 +256,6 @@
                 <label class="admin-label">Heading text
                     <input class="admin-input" name="settings[shipping_method_label]" value="{{ $settings['shipping_method_label'] }}" maxlength="120">
                 </label>
-                <x-admin.product-storefront-ui-icon-field :settings="$settings" setting-key="shipping_method_icon" label="Shipping heading icon" />
             </article>
 
             <article class="np-pdui-control-card">
@@ -276,11 +270,10 @@
                 <label class="admin-label">Heading text
                     <input class="admin-input" name="settings[estimated_delivery_title]" value="{{ $settings['estimated_delivery_title'] }}" maxlength="120">
                 </label>
-                <x-admin.product-storefront-ui-icon-field :settings="$settings" setting-key="estimated_delivery_title_icon" label="Estimated Delivery heading icon" />
             </article>
 
             <article class="np-pdui-control-card">
-                <div class="np-pdui-control-card__heading"><div><strong>Production time</strong><small>First item in the delivery calculation.</small></div></div>
+                <div class="np-pdui-control-card__heading"><div><strong>Production time</strong><small>First item in the delivery calculation. Upload an icon below.</small></div></div>
                 <label class="admin-label">Label
                     <input class="admin-input" name="settings[production_time_label]" value="{{ $settings['production_time_label'] }}" maxlength="120">
                 </label>
@@ -288,7 +281,7 @@
             </article>
 
             <article class="np-pdui-control-card">
-                <div class="np-pdui-control-card__heading"><div><strong>Shipping time</strong><small>Second item in the delivery calculation.</small></div></div>
+                <div class="np-pdui-control-card__heading"><div><strong>Shipping time</strong><small>Second item in the delivery calculation. Upload an icon below.</small></div></div>
                 <label class="admin-label">Label
                     <input class="admin-input" name="settings[shipping_time_label]" value="{{ $settings['shipping_time_label'] }}" maxlength="120">
                 </label>
@@ -298,7 +291,7 @@
 
         <div class="np-pdui-grid np-pdui-grid--3">
             <article class="np-pdui-control-card">
-                <div class="np-pdui-control-card__heading"><div><strong>Estimated delivery result</strong><small>Final item in the delivery calculation.</small></div></div>
+                <div class="np-pdui-control-card__heading"><div><strong>Estimated delivery result</strong><small>Final item in the delivery calculation. Upload an icon below.</small></div></div>
                 <label class="admin-label">Label
                     <input class="admin-input" name="settings[estimated_delivery_label]" value="{{ $settings['estimated_delivery_label'] }}" maxlength="120">
                 </label>

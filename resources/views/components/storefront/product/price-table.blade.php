@@ -212,7 +212,7 @@
 
         @if($embedded)
             <div class="grid gap-3 border-t border-slate-200 p-4 sm:grid-cols-2 sm:p-5">
-                <a href="#configure-product" class="btn btn-primary btn-xl">Start Customizing ↓</a>
+                <a href="#configure-product" class="btn btn-primary btn-xl">Start Customizing</a>
                 <a href="{{ route('quote.request') }}" class="btn btn-outline btn-xl">Request Bulk Quote</a>
             </div>
         @endif

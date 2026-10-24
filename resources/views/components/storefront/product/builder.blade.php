@@ -788,12 +788,9 @@ window.productBuilderFabricPricing = function (config = {}) {
 
                     <div class="np-product-hero-actions">
                         <button type="button" class="btn btn-secondary btn-xl" @click="startCustomizing()">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 4 6 6-10 10H4v-6L14 4Z"/><path d="m12 6 6 6"/></svg>
                             Start Customizing
-                            <span aria-hidden="true">›</span>
                         </button>
                         <a class="btn btn-outline btn-xl" href="{{ route('quote.request', ['product' => $product['slug']]) }}">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6V3Z"/><path d="M9 10h6M9 14h6"/></svg>
                             Request Bulk Quote
                         </a>
                     </div>
@@ -1000,8 +997,8 @@ window.productBuilderFabricPricing = function (config = {}) {
                                     </div>
                                     <div class="np-proto-player-summary-row">
                                         <div class="np-proto-player-product"><img src="{{ $product['image'] }}" alt=""><span><small>Selected Fabric</small>@if($materialGroup)<strong x-text="optionValue(@js($materialGroup), selections[@js($materialGroup['id'])])?.label || 'Configured fabric'"></strong>@else<strong>Configured fabric</strong>@endif</span><button type="button" @click="openCustomizerStep(1)">Change</button></div>
-                                        <div class="np-proto-player-stat"><svg viewBox="0 0 24 24"><path d="M8 4 4 7l3 4v9h10v-9l3-4-4-3-2 3h-4L8 4Z"/></svg><span><small>Total Pieces</small><strong x-text="totalQuantity()"></strong></span></div>
-                                        <div class="np-proto-player-stat"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span><small>Players</small><strong><span x-text="rosterRows.length"></span> entries required</strong></span></div>
+                                        <div class="np-proto-player-stat"><x-storefront.product.ui-icon :src="$ui['roster_total_pieces_icon']" name="sizes" /><span class="np-proto-player-stat-copy"><small>Total Pieces</small><strong x-text="totalQuantity()"></strong></span></div>
+                                        <div class="np-proto-player-stat"><x-storefront.product.ui-icon :src="$ui['roster_players_icon']" name="player" /><span class="np-proto-player-stat-copy"><small>Players</small><strong><span x-text="rosterRows.length"></span> entries required</strong></span></div>
                                     </div>
 
                                     <div class="touch-scroll-x np-proto-roster-table-wrap">
@@ -1141,7 +1138,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                             <div class="np-proto-step-content">
                             @if(!empty($product['shipping_methods']))
                                 <div class="np-proto-choice-section">
-                                    <h4 class="np-proto-section-title"><x-storefront.product.ui-icon :src="$ui['shipping_method_icon']" name="truck" /> {{ $ui['shipping_method_label'] }}</h4>
+                                    <h4 class="np-proto-section-title">{{ $ui['shipping_method_label'] }}</h4>
                                     <div class="np-proto-choice-grid">
                                         @foreach($product['shipping_methods'] as $method)
                                             @php $methodJson = json_encode($method, JSON_THROW_ON_ERROR); @endphp
@@ -1162,7 +1159,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                             @endif
 
                             <div class="np-proto-delivery-panel" x-show="currentProductionOptions().length > 0 && (config.shipping_methods || []).length > 0" x-cloak>
-                                <h4 class="np-proto-section-title"><x-storefront.product.ui-icon :src="$ui['estimated_delivery_title_icon']" name="calendar" /> {{ $ui['estimated_delivery_title'] }}</h4>
+                                <h4 class="np-proto-section-title">{{ $ui['estimated_delivery_title'] }}</h4>
                                 <div class="np-proto-delivery-equation"><div><x-storefront.product.ui-icon :src="$ui['production_time_icon']" name="factory" /><span><small>{{ $ui['production_time_label'] }}</small><strong x-text="productionDaysOnlyLabel()"></strong></span></div><b>+</b><div><x-storefront.product.ui-icon :src="$ui['shipping_time_icon']" name="truck" /><span><small>{{ $ui['shipping_time_label'] }}</small><strong x-text="shippingDaysOnlyLabel()"></strong></span></div><b>=</b><div class="is-estimate"><x-storefront.product.ui-icon :src="$ui['estimated_delivery_icon']" name="calendar" /><span><small>{{ $ui['estimated_delivery_label'] }}</small><strong x-text="totalDeliveryDaysLabel()"></strong><em>{{ $ui['estimated_delivery_note'] }}</em></span></div></div>
                             </div>
 
@@ -1184,7 +1181,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                         />
                         <div id="np-product-step-panel-{{ $reviewStep }}" class="np-proto-step-expanded" x-show="isCustomizerStepOpen({{ $reviewStep }})" x-cloak>
                             <div class="np-proto-step-content">
-                                <div class="np-product-review-card">
+                                <div class="np-product-review-card np-product-review-card--single">
                                     <div class="np-product-review-summary">
                                         <div class="np-product-review-card-title">
                                             <h3>Order Summary</h3>
@@ -1313,30 +1310,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                                         </div>
                                     </div>
 
-                                    <aside class="np-product-review-pricing" aria-label="Order pricing">
-                                        <h3>Pricing</h3>
-                                        <div><span>Unit Price</span><strong x-text="money(unitPrice())"></strong></div>
-                                        <div><span>Total Pieces</span><strong x-text="totalQuantity()"></strong></div>
-                                        <div><span>{{ $ui['minimum_order_label'] }}</span><strong>{{ number_format((int) ($product['minimum_quantity'] ?? 1)) }} piece{{ (int) ($product['minimum_quantity'] ?? 1) === 1 ? '' : 's' }}</strong></div>
-                                        <div><span>Product Price</span><strong x-text="money(productPriceAmount())"></strong></div>
-                                        <div><span>Shipping (Estimated)</span><strong x-text="money(shippingEstimatedAmount())"></strong></div>
-                                        <div x-show="productionExtraChargeAmount() > 0" x-cloak><span>Production Extra Charge</span><strong x-text="money(productionExtraChargeAmount())"></strong></div>
-                                        <div x-show="shippingExtraChargeAmount() > 0" x-cloak><span>Shipping Extra Charge</span><strong x-text="money(shippingExtraChargeAmount())"></strong></div>
-                                        <div><span>Remote Area Surcharge</span><strong x-text="money(remoteAreaSurchargeAmount())"></strong></div>
-                                        <div class="is-total"><span>Estimated Total</span><strong x-text="money(estimatedOrderTotal())"></strong></div>
-                                        <button type="submit" class="btn btn-secondary btn-xl np-review-add-to-cart" :disabled="!canAddToCart()" :aria-disabled="!canAddToCart() ? 'true' : 'false'">
-                                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2 11h10l3-7H7"/><circle cx="10" cy="19" r="1.5"/><circle cx="18" cy="19" r="1.5"/></svg>
-                                            {{ $isEditing ? 'Update Cart Item' : 'Add to Cart' }}
-                                        </button>
-                                        <button type="button" class="btn btn-outline btn-xl np-review-save-later" @click="toggleWishlist()" :aria-pressed="wishlisted ? 'true' : 'false'">
-                                            <span aria-hidden="true">♡</span><span x-text="wishlisted ? 'Saved for Later' : 'Save for Later'"></span>
-                                        </button>
-                                        <div class="np-product-review-trust">
-                                            <div><span>✓</span><p><strong>Free design review</strong><small>We’ll check your artwork for best results</small></p></div>
-                                            <div><span>♙</span><p><strong>Secure checkout</strong><small>Your information is safe with us</small></p></div>
-                                            <div><span>◎</span><p><strong>Worldwide shipping</strong><small>Delivering to 100+ countries</small></p></div>
-                                        </div>
-                                    </aside>
+
                                 </div>
                             </div>
                         </div>

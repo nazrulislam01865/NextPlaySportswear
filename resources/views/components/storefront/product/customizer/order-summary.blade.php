@@ -83,12 +83,6 @@
 
     @if($rosterStep)
     <section class="np-custom-order-section np-custom-order-compact-row">
-        <div class="np-custom-order-icon">
-            @if(filled($ui['order_summary_player_icon'] ?? null))
-                <img src="{{ $ui['order_summary_player_icon'] }}" alt="" onerror="this.hidden=true; this.nextElementSibling.hidden=false;">
-            @endif
-            <svg viewBox="0 0 24 24" aria-hidden="true" @if(filled($ui['order_summary_player_icon'] ?? null)) hidden @endif><path d="M8 4 4 7l3 4v9h10v-9l3-4-4-3-2 3h-4L8 4Z"/><path d="M10 11h4M12 9v4"/></svg>
-        </div>
         <div>
             <h4>Player Names &amp; Numbers</h4>
             @if($attributes->has('playerActionLabel'))
@@ -103,12 +97,6 @@
     @endif
 
     <section class="np-custom-order-section np-custom-order-compact-row">
-        <div class="np-custom-order-icon">
-            @if(filled($ui['order_summary_artwork_icon'] ?? null))
-                <img src="{{ $ui['order_summary_artwork_icon'] }}" alt="" onerror="this.hidden=true; this.nextElementSibling.hidden=false;">
-            @endif
-            <svg viewBox="0 0 24 24" aria-hidden="true" @if(filled($ui['order_summary_artwork_icon'] ?? null)) hidden @endif><path d="M6 3h9l3 3v15H6V3Z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg>
-        </div>
         <div>
             <h4>Artwork</h4>
             <strong x-text="artworkFiles.length ? `${artworkFiles.length} file${artworkFiles.length === 1 ? '' : 's'} uploaded` : 'Not selected yet'"></strong>
@@ -118,9 +106,6 @@
     </section>
 
     <section class="np-custom-order-section np-custom-order-compact-row">
-        <div class="np-custom-order-icon">
-            <x-storefront.product.ui-icon :src="$ui['order_summary_shipping_icon'] ?? null" name="truck" />
-        </div>
         <div>
             <h4>Production &amp; Shipping</h4>
             <span class="np-custom-order-method-lines">
@@ -132,6 +117,7 @@
     </section>
 
     <section class="np-custom-order-pricing" aria-label="Estimated pricing">
+        <div><span>Unit Price</span><b x-text="money(unitPrice())"></b></div>
         <div>
             <span>
                 <strong>Product Price (<span x-text="totalQuantity()"></span> pcs)</strong>
@@ -166,6 +152,9 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6V3Z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg>
             Save as Quote
         </a>
+        <button type="button" class="btn btn-outline btn-xl np-custom-order-save-later" @click="toggleWishlist()" :aria-pressed="wishlisted ? 'true' : 'false'" :disabled="wishlistBusy">
+            <span aria-hidden="true">♡</span><span x-text="wishlisted ? 'Saved for Later' : 'Save for Later'"></span>
+        </button>
         <p class="np-custom-order-disabled-note" x-show="!canAddToCart()" x-cloak x-text="validationIssue()?.message || 'Complete all required steps to enable Add to Cart.'"></p>
     </div>
     </div>
