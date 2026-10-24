@@ -3,6 +3,7 @@
 namespace App\Services\Catalog;
 
 use App\Support\PublicMedia;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +30,13 @@ final class MasterMethodMediaService
 
             if ($request->hasFile('image_file')) {
                 $imagePath = StoredPublicImage::replace($request->file('image_file'), $directory, $currentPath);
+                if ($directory === 'master-data/shipping-methods') {
+                    $cleanedPath = ProductDetailIconNormalizer::normalize($imagePath);
+                    if ($cleanedPath !== $imagePath) {
+                        Storage::disk('public')->delete($imagePath);
+                        $imagePath = $cleanedPath;
+                    }
+                }
                 $imageUrl = null;
             } elseif ($request->boolean('remove_image')) {
                 $this->deleteOwned($currentPath, $directory);

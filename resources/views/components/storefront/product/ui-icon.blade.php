@@ -94,8 +94,8 @@
            Keep all three product-summary artwork slots identical. */
         .np-proto-size-summary-fact .np-configurable-ui-icon,
         .np-proto-size-summary-note .np-configurable-ui-icon {
-            width: 64px;
-            height: 56px;
+            width: 48px;
+            height: 48px;
         }
         .np-proto-size-summary-fact .np-configurable-ui-icon > svg,
         .np-proto-size-summary-note .np-configurable-ui-icon > svg {
@@ -107,7 +107,7 @@
         .np-product-order-facts .np-configurable-ui-icon,
         .np-proto-size-summary-fact .np-configurable-ui-icon,
         .np-proto-size-summary-note .np-configurable-ui-icon { color: #cf5d38; }
-        .np-proto-artwork-methods .np-configurable-ui-icon { width: 2.65rem; height: 2.65rem; }
+        .np-proto-artwork-methods .np-configurable-ui-icon { width: 48px; height: 48px; }
         .np-proto-upload-dropzone .np-configurable-ui-icon { width: 2.5rem; height: 2.5rem; }
         .np-proto-info-panel .np-configurable-ui-icon { width: 1.35rem; height: 1.35rem; color: #cf5d38; }
         .np-proto-section-title .np-configurable-ui-icon { width: 38px; height: 38px; }

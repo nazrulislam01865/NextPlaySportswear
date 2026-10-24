@@ -25982,3 +25982,144 @@ html.np-product-preview-open body { overflow: hidden; }
         padding-right: 54px;
     }
 }
+
+/* NEXTPLAY_2026_10_24_REMOVE_SHIPPING_AND_SUMMARY_ICON_TILES
+   Shipping preview and order-summary media render without tinted icon frames.
+   These rules don't affect selected-card backgrounds or other product images. */
+.storefront-clean-ui .np-product-detail-prototype .np-proto-choice-card .np-proto-choice-media,
+.storefront-clean-ui .np-product-detail-prototype .np-custom-order-compact-row .np-custom-order-icon {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-choice-media > img,
+.storefront-clean-ui .np-product-detail-prototype .np-custom-order-icon > img,
+.storefront-clean-ui .np-product-detail-prototype .np-custom-order-icon .np-configurable-ui-icon,
+.storefront-clean-ui .np-product-detail-prototype .np-custom-order-icon .np-configurable-ui-icon > img {
+    display: block;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+}
+
+
+/* NEXTPLAY_DELIVERY_VISUAL_ICON_MATCH_2026_10_24
+   The uploaded plane artwork is wider than the square Production Time icon,
+   so equal 52px boxes do not look equal. Match the first icon's visible height
+   without stretching or changing uploaded files; keep this scoped to the
+   product builder's three-icon delivery calculation. */
+.storefront-clean-ui .np-product-detail-prototype .np-proto-delivery-equation > div:nth-of-type(2) > .np-configurable-ui-icon > img {
+    transform: scale(1.31);
+    transform-origin: center center;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-delivery-equation > div.is-estimate > .np-configurable-ui-icon > img {
+    transform: scale(1.77);
+    transform-origin: center center;
+}
+
+
+/* NEXTPLAY_PRODUCT_DETAIL_UNIFORM_ICON_SCALE_2026_10_24
+   Match the Upload New Artwork tab's existing 2.25rem (36px) icon box
+   in size/order facts, size summary cards and compact order review cards.
+   Keep the original icon tracks, alignment, colors and uploaded files unchanged. */
+.storefront-clean-ui .np-product-detail-prototype {
+    --np-product-ui-icon-size: 36px;
+    --np-product-ui-icon-track: 52px;
+    --np-product-compact-icon-size: 36px;
+    --np-product-compact-icon-track: 52px;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-artwork-methods .np-configurable-ui-icon,
+.storefront-clean-ui .np-product-detail-prototype .np-product-order-facts > div > .np-configurable-ui-icon,
+.storefront-clean-ui .np-product-detail-prototype .np-product-order-facts > button > .np-configurable-ui-icon,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-size-summary-layout .np-proto-size-summary-fact > .np-configurable-ui-icon,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-size-summary-layout .np-proto-size-summary-note > .np-configurable-ui-icon,
+.storefront-clean-ui .np-product-detail-prototype .np-custom-order-compact-row .np-custom-order-icon,
+.storefront-clean-ui .np-product-detail-prototype .np-custom-order-compact-row .np-custom-order-icon .np-configurable-ui-icon {
+    display: grid;
+    place-items: center;
+    width: var(--np-product-ui-icon-size);
+    height: var(--np-product-ui-icon-size);
+    min-width: var(--np-product-ui-icon-size);
+    min-height: var(--np-product-ui-icon-size);
+    max-width: 100%;
+    max-height: 100%;
+    flex: 0 0 var(--np-product-ui-icon-size);
+    justify-self: center;
+    align-self: center;
+    overflow: visible;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-artwork-methods .np-configurable-ui-icon > img,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-artwork-methods .np-configurable-ui-icon > svg,
+.storefront-clean-ui .np-product-detail-prototype .np-product-order-facts > div > .np-configurable-ui-icon > img,
+.storefront-clean-ui .np-product-detail-prototype .np-product-order-facts > div > .np-configurable-ui-icon > svg,
+.storefront-clean-ui .np-product-detail-prototype .np-product-order-facts > button > .np-configurable-ui-icon > img,
+.storefront-clean-ui .np-product-detail-prototype .np-product-order-facts > button > .np-configurable-ui-icon > svg,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-size-summary-layout .np-proto-size-summary-fact > .np-configurable-ui-icon > img,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-size-summary-layout .np-proto-size-summary-fact > .np-configurable-ui-icon > svg,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-size-summary-layout .np-proto-size-summary-note > .np-configurable-ui-icon > img,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-size-summary-layout .np-proto-size-summary-note > .np-configurable-ui-icon > svg,
+.storefront-clean-ui .np-product-detail-prototype .np-custom-order-compact-row .np-custom-order-icon > img,
+.storefront-clean-ui .np-product-detail-prototype .np-custom-order-compact-row .np-custom-order-icon > svg,
+.storefront-clean-ui .np-product-detail-prototype .np-custom-order-compact-row .np-custom-order-icon .np-configurable-ui-icon > img,
+.storefront-clean-ui .np-product-detail-prototype .np-custom-order-compact-row .np-custom-order-icon .np-configurable-ui-icon > svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    object-position: center;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-custom-order-compact-row {
+    grid-template-columns: var(--np-product-compact-icon-track) minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-product-order-facts > div,
+.storefront-clean-ui .np-product-detail-prototype .np-product-order-facts > button {
+    grid-template-columns: var(--np-product-ui-icon-track) minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-size-summary-layout .np-proto-size-summary-fact,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-size-summary-layout .np-proto-size-summary-note {
+    grid-template-columns: var(--np-product-ui-icon-track) minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-custom-order-compact-row strong,
+.storefront-clean-ui .np-product-detail-prototype .np-product-order-facts strong,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-size-summary-layout .np-proto-size-summary-fact strong {
+    line-height: 1.35;
+}
+@media (max-width: 767px) {
+    .storefront-clean-ui .np-product-detail-prototype {
+        --np-product-ui-icon-size: 36px;
+        --np-product-ui-icon-track: 48px;
+        --np-product-compact-icon-size: 36px;
+        --np-product-compact-icon-track: 48px;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-custom-order-compact-row {
+        grid-template-columns: var(--np-product-compact-icon-track) minmax(0, 1fr);
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-product-order-facts > div,
+    .storefront-clean-ui .np-product-detail-prototype .np-product-order-facts > button,
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-size-summary-layout .np-proto-size-summary-fact,
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-size-summary-layout .np-proto-size-summary-note {
+        gap: 10px;
+    }
+}

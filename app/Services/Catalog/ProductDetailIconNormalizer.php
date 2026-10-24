@@ -22,7 +22,7 @@ final class ProductDetailIconNormalizer
     public static function normalize(string $path): string
     {
         $path = ltrim(str_replace('\\', '/', $path), '/');
-        if (! self::available() || ! str_starts_with($path, 'storefront/product-detail-ui/')) {
+        if (! self::available() || ! self::isIconDirectory($path)) {
             return $path;
         }
 
@@ -66,34 +66,8 @@ final class ProductDetailIconNormalizer
                 imagepalettetotruecolor($source);
             }
 
-            $opaquePixels = 0;
-            $whitePixels = 0;
-            $darkPixels = 0;
-            for ($y = 0; $y < $height; $y++) {
-                for ($x = 0; $x < $width; $x++) {
-                    $pixel = imagecolorat($source, $x, $y);
-                    if ((($pixel >> 24) & 127) > 20) {
-                        continue;
-                    }
-                    $opaquePixels++;
-                    $r = ($pixel >> 16) & 255;
-                    $g = ($pixel >> 8) & 255;
-                    $b = $pixel & 255;
-                    if (min($r, $g, $b) >= 246) {
-                        $whitePixels++;
-                    }
-                    if (min($r, $g, $b) < 220) {
-                        $darkPixels++;
-                    }
-                }
-            }
-
-            // Remove an embedded white tile only when the image is clearly
-            // dark icon artwork on white, not a photo or a white-colored logo.
-            $hasWhiteTile = $opaquePixels > 0
-                && $whitePixels / $opaquePixels > 0.65
-                && $darkPixels / $opaquePixels > 0.01;
-
+            // Inspect the visible bounds first: older normalized uploads may
+            // have an opaque light tile *inside* a transparent square canvas.
             $left = $width;
             $top = $height;
             $right = -1;
@@ -101,15 +75,38 @@ final class ProductDetailIconNormalizer
             for ($y = 0; $y < $height; $y++) {
                 for ($x = 0; $x < $width; $x++) {
                     $pixel = imagecolorat($source, $x, $y);
-                    $originalOpacity = 1 - ((($pixel >> 24) & 127) / 127);
-                    $opacity = self::iconOpacity($pixel, $originalOpacity, $hasWhiteTile);
-                    if ($opacity < 0.12) {
+                    if (self::originalOpacity($pixel) < 0.12) {
                         continue;
                     }
                     $left = min($left, $x);
                     $right = max($right, $x);
                     $top = min($top, $y);
                     $bottom = max($bottom, $y);
+                }
+            }
+            if ($right < $left || $bottom < $top) {
+                return $path;
+            }
+
+            $tileColor = self::flatLightBackground($source, $left, $top, $right, $bottom);
+            $hasFlatTile = $tileColor !== null;
+            if ($hasFlatTile) {
+                // Ignore uniform background while finding real artwork bounds.
+                $left = $width;
+                $top = $height;
+                $right = -1;
+                $bottom = -1;
+                for ($y = 0; $y < $height; $y++) {
+                    for ($x = 0; $x < $width; $x++) {
+                        $pixel = imagecolorat($source, $x, $y);
+                        if (self::iconOpacity($pixel, self::originalOpacity($pixel), $tileColor) < 0.12) {
+                            continue;
+                        }
+                        $left = min($left, $x);
+                        $right = max($right, $x);
+                        $top = min($top, $y);
+                        $bottom = max($bottom, $y);
+                    }
                 }
             }
 
@@ -125,7 +122,7 @@ final class ProductDetailIconNormalizer
 
             // An already standardized icon must not be recompressed with every
             // admin save or repair command. This also makes the command rerunnable.
-            if (! $hasWhiteTile && $width === self::CANVAS && $height === self::CANVAS
+            if (! $hasFlatTile && $width === self::CANVAS && $height === self::CANVAS
                 && abs($artSize - self::ARTWORK) <= 3
                 && abs($centerX - (self::CANVAS - 1) / 2) <= 3
                 && abs($centerY - (self::CANVAS - 1) / 2) <= 3) {
@@ -145,12 +142,11 @@ final class ProductDetailIconNormalizer
 
             // Resample onto a separate transparent source only when needed.
             // This preserves anti-aliased edges and the uploaded navy artwork.
-            if ($hasWhiteTile) {
+            if ($hasFlatTile) {
                 for ($y = $top; $y <= $bottom; $y++) {
                     for ($x = $left; $x <= $right; $x++) {
                         $pixel = imagecolorat($source, $x, $y);
-                        $originalOpacity = 1 - ((($pixel >> 24) & 127) / 127);
-                        $opacity = self::iconOpacity($pixel, $originalOpacity, true);
+                        $opacity = self::iconOpacity($pixel, self::originalOpacity($pixel), $tileColor);
                         $alpha = (int) round(127 * (1 - $opacity));
                         imagesetpixel($source, $x, $y, ($alpha << 24) | ($pixel & 0xffffff));
                     }
@@ -170,7 +166,7 @@ final class ProductDetailIconNormalizer
                 return $path;
             }
 
-            $newPath = 'storefront/product-detail-ui/'.bin2hex(random_bytes(20)).'.png';
+            $newPath = dirname($path).'/'.bin2hex(random_bytes(20)).'.png';
             return $disk->put($newPath, $bytes) ? $newPath : $path;
         } catch (\Throwable $exception) {
             report($exception);
@@ -185,16 +181,109 @@ final class ProductDetailIconNormalizer
         }
     }
 
-    private static function iconOpacity(int $pixel, float $originalOpacity, bool $hasWhiteTile): float
+    private static function isIconDirectory(string $path): bool
     {
-        if (! $hasWhiteTile) {
-            return $originalOpacity;
+        return str_starts_with($path, 'storefront/product-detail-ui/')
+            || str_starts_with($path, 'master-data/shipping-methods/');
+    }
+
+    private static function originalOpacity(int $pixel): float
+    {
+        return 1 - ((($pixel >> 24) & 127) / 127);
+    }
+
+    /** @return array{int, int, int}|null */
+    private static function flatLightBackground(\GdImage $source, int $left, int $top, int $right, int $bottom): ?array
+    {
+        if (($right - $left) < 24 || ($bottom - $top) < 24) {
+            return null;
         }
 
-        $r = ($pixel >> 16) & 255;
-        $g = ($pixel >> 8) & 255;
-        $b = $pixel & 255;
-        $contrast = 255 - min($r, $g, $b);
-        return $originalOpacity * max(0, min(1, ($contrast - 6) / 32));
+        $corners = [
+            imagecolorat($source, $left, $top),
+            imagecolorat($source, $right, $top),
+            imagecolorat($source, $left, $bottom),
+            imagecolorat($source, $right, $bottom),
+        ];
+        $colors = [];
+        foreach ($corners as $pixel) {
+            if (self::originalOpacity($pixel) < 0.9) {
+                return null;
+            }
+            $rgb = [($pixel >> 16) & 255, ($pixel >> 8) & 255, $pixel & 255];
+            if (min($rgb) < 215 || max($rgb) - min($rgb) > 32) {
+                return null;
+            }
+            $colors[] = $rgb;
+        }
+        $color = [
+            (int) round(array_sum(array_column($colors, 0)) / 4),
+            (int) round(array_sum(array_column($colors, 1)) / 4),
+            (int) round(array_sum(array_column($colors, 2)) / 4),
+        ];
+        foreach ($colors as $rgb) {
+            if (self::distance($rgb, $color) > 16) {
+                return null;
+            }
+        }
+
+        // A uniform light border distinguishes an icon tile from a photo or
+        // an icon whose artwork genuinely reaches the outer edge.
+        $edge = 0;
+        $matches = 0;
+        for ($x = $left; $x <= $right; $x += max(1, intdiv($right - $left, 64))) {
+            foreach ([$top, $bottom] as $y) {
+                $edge++;
+                $pixel = imagecolorat($source, $x, $y);
+                if (self::originalOpacity($pixel) > 0.9 && self::distance(self::rgb($pixel), $color) <= 24) {
+                    $matches++;
+                }
+            }
+        }
+        for ($y = $top; $y <= $bottom; $y += max(1, intdiv($bottom - $top, 64))) {
+            foreach ([$left, $right] as $x) {
+                $edge++;
+                $pixel = imagecolorat($source, $x, $y);
+                if (self::originalOpacity($pixel) > 0.9 && self::distance(self::rgb($pixel), $color) <= 24) {
+                    $matches++;
+                }
+            }
+        }
+        if ($edge === 0 || $matches / $edge < 0.85) {
+            return null;
+        }
+
+        $contrast = 0;
+        for ($y = $top; $y <= $bottom; $y += max(1, intdiv($bottom - $top, 18))) {
+            for ($x = $left; $x <= $right; $x += max(1, intdiv($right - $left, 18))) {
+                $pixel = imagecolorat($source, $x, $y);
+                if (self::originalOpacity($pixel) > 0.5 && self::distance(self::rgb($pixel), $color) > 80) {
+                    $contrast++;
+                }
+            }
+        }
+        return $contrast >= 8 ? $color : null;
+    }
+
+    /** @return array{int, int, int} */
+    private static function rgb(int $pixel): array
+    {
+        return [($pixel >> 16) & 255, ($pixel >> 8) & 255, $pixel & 255];
+    }
+
+    /** @param array{int, int, int} $a @param array{int, int, int} $b */
+    private static function distance(array $a, array $b): int
+    {
+        return max(abs($a[0] - $b[0]), abs($a[1] - $b[1]), abs($a[2] - $b[2]));
+    }
+
+    /** @param array{int, int, int}|null $tileColor */
+    private static function iconOpacity(int $pixel, float $originalOpacity, ?array $tileColor): float
+    {
+        if ($tileColor === null) {
+            return $originalOpacity;
+        }
+        $distance = self::distance(self::rgb($pixel), $tileColor);
+        return $originalOpacity * max(0, min(1, ($distance - 7) / 30));
     }
 }
