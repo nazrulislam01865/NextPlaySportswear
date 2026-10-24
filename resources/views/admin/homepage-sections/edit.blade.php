@@ -28,11 +28,21 @@
                     $item[$mediaField] = $stored[$mediaField];
                 }
             }
-            $item['image'] = \App\Support\PublicMedia::url(
-                filled($item['image_path'] ?? null) ? (string) $item['image_path'] : null,
-                filled($item['image_url'] ?? null) ? (string) $item['image_url'] : null,
-                null,
-            );
+            $defaultStepImage = asset(sprintf('images/ordering-process/step-%02d.webp', min($index + 1, 5)));
+            $genericPlaceholder = blank($item['image_path'] ?? null)
+                && parse_url((string) ($item['image_url'] ?? ''), PHP_URL_PATH) === '/images/product-placeholder.svg';
+            $item['image'] = $genericPlaceholder
+                ? $defaultStepImage
+                : \App\Support\PublicMedia::url(
+                    filled($item['image_path'] ?? null) ? (string) $item['image_path'] : null,
+                    filled($item['image_url'] ?? null) ? (string) $item['image_url'] : null,
+                    $defaultStepImage,
+                );
+            $item['image_is_default'] = blank($item['image_path'] ?? null)
+                && (blank($item['image_url'] ?? null)
+                    || $genericPlaceholder
+                    || str_starts_with((string) $item['image_url'], '/images/ordering-process/'));
+            $item['remove_image'] = false;
             return $item;
         })->values()->all();
     }
@@ -147,6 +157,8 @@
                     normalized.image_url = String(item?.image_url ?? '').trim();
                     normalized.image_alt = String(item?.image_alt ?? '').trim();
                     normalized.image = String(item?.image ?? '').trim();
+                    normalized.image_is_default = Boolean(item?.image_is_default);
+                    normalized.remove_image = Boolean(item?.remove_image);
                 }
 
                 return normalized;
@@ -301,6 +313,24 @@
                 item.id = (window.crypto?.randomUUID?.() ?? fallback).replace(/[^A-Za-z0-9_-]/g, '-');
                 return item;
             },
+            resetProcessImage(index) {
+                const item = this.items[index];
+                if (!item) return;
+                const match = String(item.id || '').match(/^process-item-([1-5])$/);
+                const defaultNumber = match ? Number(match[1]) : index + 1;
+                const fileInput = document.getElementById(`process-image-${index}`);
+                if (fileInput) fileInput.value = '';
+                if (String(item.image || '').startsWith('blob:')) URL.revokeObjectURL(item.image);
+                item.image = @js(asset('images/ordering-process')) + `/step-${String(defaultNumber).padStart(2, '0')}.webp`;
+                item.image_path = '';
+                item.image_url = '';
+                item.image_alt = '';
+                item.image_is_default = true;
+                item.remove_image = true;
+                item.image_pending = false;
+                item.upload_name = '';
+                item.upload_error = '';
+            },
             previewItemImage(index, event) {
                 const file = event?.target?.files?.[0];
                 const item = this.items[index];
@@ -327,6 +357,8 @@
                 if (previous.startsWith('blob:')) URL.revokeObjectURL(previous);
 
                 item.image = URL.createObjectURL(file);
+                item.image_is_default = false;
+                item.remove_image = false;
                 item.upload_name = file.name;
                 item.image_pending = true;
             },
@@ -1067,11 +1099,11 @@
                         <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
                             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div class="min-w-0">
-                                    <h3 class="text-sm font-black text-brand-ink">Process step images</h3>
-                                    <p class="mt-1 text-xs font-medium leading-5 text-slate-500">Add an image to replace the default tick on each storefront card. Images are always displayed in a square 1:1 frame.</p>
+                                    <h3 class="text-sm font-black text-brand-ink">Ordering process card images</h3>
+                                    <p class="mt-1 text-xs font-medium leading-5 text-slate-500">Upload or replace the photo for each ordering card. The storefront uses a 282:262 image frame and shows the supplied prototype image until you upload a replacement.</p>
                                 </div>
                                 <div class="flex shrink-0 flex-wrap items-center gap-2 text-[11px] font-bold text-slate-500">
-                                    <span class="rounded-full border border-slate-200 bg-white px-3 py-1.5">1:1 display</span>
+                                    <span class="rounded-full border border-slate-200 bg-white px-3 py-1.5">282:262 ratio</span>
                                     <span class="rounded-full border border-slate-200 bg-white px-3 py-1.5">10 MB max</span>
                                 </div>
                             </div>
@@ -1081,7 +1113,7 @@
                                     <article class="flex min-w-0 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-slate-300 hover:shadow-md">
                                         <div class="flex min-w-0 items-start gap-3">
                                             <label
-                                                class="group relative h-20 w-20 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-slate-200 bg-slate-50 focus-within:ring-2 focus-within:ring-brand-red/20"
+                                                class="group relative h-20 w-[86px] shrink-0 cursor-pointer overflow-hidden rounded-lg border border-slate-200 bg-slate-50 focus-within:ring-2 focus-within:ring-brand-red/20"
                                                 :for="`process-image-${index}`"
                                                 :title="item.image ? 'Replace image' : 'Choose image'"
                                             >
@@ -1108,13 +1140,15 @@
                                                     <span
                                                         class="rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide"
                                                         :class="item.image ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'"
-                                                        x-text="item.image ? 'Image set' : 'Default icon'"
+                                                        x-text="item.image_pending ? 'New image' : (item.image_is_default ? 'Default image' : (item.image ? 'Custom image' : 'No image'))"
                                                     ></span>
                                                 </div>
                                                 <h4 class="mt-1 line-clamp-2 text-sm font-black leading-5 text-brand-ink" x-text="item.title || `Process step ${index + 1}`"></h4>
-                                                <p class="mt-1 text-[10px] font-semibold leading-4 text-slate-400">Shown in the square media area on the homepage.</p>
+                                                <p class="mt-1 text-[10px] font-semibold leading-4 text-slate-400">Shown above the step title on the homepage.</p>
                                             </div>
                                         </div>
+
+                                        <input type="hidden" :name="`items[${index}][remove_image]`" :value="item.remove_image ? '1' : '0'">
 
                                         <input
                                             type="file"
@@ -1134,6 +1168,11 @@
                                             </svg>
                                             <span x-text="item.image ? 'Replace image' : 'Choose image'"></span>
                                         </label>
+
+                                        <button type="button"
+                                                x-show="!item.image_is_default || item.image_pending"
+                                                class="mt-2 text-[11px] font-bold text-slate-600 underline decoration-slate-300 underline-offset-2 hover:text-brand-red"
+                                                @click="resetProcessImage(index)">Use prototype image</button>
 
                                         <div class="mt-2 min-h-[32px]">
                                             <p x-show="item.upload_error" x-cloak class="text-[10px] font-bold leading-4 text-red-600" x-text="item.upload_error"></p>

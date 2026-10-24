@@ -112,13 +112,15 @@ class HomepageSectionMediaService
 
         foreach ($items as $index => &$item) {
             $uploaded = $request->file("items.{$index}.image_file");
-            if (! $uploaded) {
-                continue;
+            if ($uploaded) {
+                $existingPath = trim((string) ($item['image_path'] ?? '')) ?: null;
+                $item['image_path'] = StoredPublicImage::replace($uploaded, "homepage/sections/{$section->key}/items", $existingPath);
+                unset($item['image_url']);
+            } elseif ($request->boolean("items.{$index}.remove_image")) {
+                // Return this card to its bundled prototype image. The original
+                // upload is retired by the unused-media check below.
+                unset($item['image_path'], $item['image_url'], $item['image_alt']);
             }
-
-            $existingPath = trim((string) ($item['image_path'] ?? '')) ?: null;
-            $item['image_path'] = StoredPublicImage::replace($uploaded, "homepage/sections/{$section->key}/items", $existingPath);
-            unset($item['image_url']);
         }
         unset($item);
 

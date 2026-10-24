@@ -51,6 +51,7 @@ class HomepageSectionRequest extends FormRequest
             'items.*.image_url' => ['nullable', 'string', 'max:2048', new SafePublicUrl()],
             'items.*.image_alt' => ['nullable', 'string', 'max:255'],
             'items.*.image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:10240'],
+            'items.*.remove_image' => ['nullable', 'boolean'],
             // Duplicate category selections are checked below so the user sees
             // the real category names instead of technical array field names.
             'items.*.category_id' => ['nullable', 'integer', 'exists:categories,id'],
