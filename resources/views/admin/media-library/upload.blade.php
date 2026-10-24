@@ -1,14 +1,19 @@
+@push('admin-page-styles')
+<link rel="stylesheet" href="{{ asset('css/admin-media-gallery.css') }}?v=20261024c">
+<script src="{{ asset('js/admin-media-gallery.js') }}?v=20261024"></script>
+@endpush
 <x-layouts.admin
     title="Upload Media File"
     subtitle="Upload reusable product and content images to the global media gallery."
 >
     <div
-        x-data="adminMediaLibraryManager({
+        x-data="adminMediaUploadPage({
             indexUrl: @js(route('admin.media-library.index')),
             storeUrl: @js(route('admin.media-library.store')),
             totalImages: @js((int) $totalImages),
             scope: 'today',
-            perPage: 24,
+            allowFiles: true,
+            perPage: 12,
             emptyMessage: 'No media files were uploaded today. New uploads will appear here immediately.',
         })"
         x-init="init()"
@@ -50,7 +55,7 @@
             </div>
 
             <div class="p-5">
-                <input x-ref="uploadInput" class="sr-only" type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" @change="upload($event.target.files)">
+                <input x-ref="uploadInput" class="sr-only" type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif,application/pdf,.doc,.docx,.xls,.xlsx,.txt,video/mp4,video/webm" @change="upload($event.target.files)">
                 <div
                     class="np-gallery-page-upload min-h-[260px]"
                     :class="dragging ? 'is-dragging' : ''"
@@ -66,7 +71,7 @@
                     @drop.stop.prevent="drop($event)"
                 >
                     <strong class="text-lg" x-text="uploadBusy ? 'Uploading…' : (dragging ? 'Drop media files here' : 'Upload media files')"></strong>
-                    <small>JPG, PNG, WebP or AVIF. Max 20 files, 5 MB each.</small>
+                    <small>JPG, PNG, WebP, AVIF (5 MB), PDF, Office, TXT (10 MB), MP4, WebM (30 MB). Max 20 files.</small>
                     <span class="mt-5 inline-flex rounded-full bg-brand-red px-5 py-3 text-sm font-black text-white shadow-lg shadow-red-100">+ Select Files</span>
                 </div>
 
@@ -94,9 +99,9 @@
                 @scroll.passive="handleScroll($event)"
             >
                 <template x-for="image in items" :key="image.id">
-                    <article class="np-gallery-page-card" x-show="!image.broken">
-                        <a :href="image.url" target="_blank" rel="noopener" class="block" :aria-label="`Open ${image.name || 'media file'}`">
-                            <img :src="image.url" :alt="image.alt_text || image.name" loading="lazy" x-on:error="image.broken = true">
+                    <article class="np-gallery-page-card">
+                        <a :href="image.download_url || image.url" target="_blank" rel="noopener" class="block" :aria-label="`Open ${image.name || 'media file'}`">
+                            <x-admin.media.preview />
                         </a>
                         <div class="min-w-0 p-3">
                             <strong x-text="image.name || 'Media file'"></strong>

@@ -12,6 +12,10 @@ class MediaLibraryImage extends Model
         'path',
         'url',
         'name',
+        'original_filename',
+        'category',
+        'caption',
+        'description',
         'alt_text',
         'mime_type',
         'size_bytes',
@@ -28,6 +32,47 @@ class MediaLibraryImage extends Model
             'width' => 'integer',
             'height' => 'integer',
         ];
+    }
+
+    public function type(): string
+    {
+        $mime = strtolower((string) $this->mime_type);
+
+        // Imported product images predate MIME capture.
+        if ($mime === '' || str_starts_with($mime, 'image/')) {
+            return 'images';
+        }
+        if (str_starts_with($mime, 'video/')) {
+            return 'videos';
+        }
+        if (in_array($mime, [
+            'application/pdf', 'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'text/plain',
+        ], true)) {
+            return 'documents';
+        }
+
+        return 'others';
+    }
+
+    public function filename(): string
+    {
+        if (filled($this->original_filename)) {
+            return basename(str_replace('\\', '/', (string) $this->original_filename));
+        }
+        $name = trim((string) $this->name) ?: 'Media file';
+        $extension = strtolower((string) pathinfo((string) $this->path, PATHINFO_EXTENSION));
+
+        return $extension !== '' && ! str_ends_with(strtolower($name), '.'.$extension)
+            ? $name.'.'.$extension : $name;
+    }
+
+    public function productImages(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ProductImage::class, 'media_library_image_id');
     }
 
     public function creator(): BelongsTo

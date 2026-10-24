@@ -25653,3 +25653,332 @@ html.np-product-preview-open body { overflow: hidden; }
         height: 50px;
     }
 }
+
+/* Sizes & Quantities: keep the vertical divider between Sizes Available and
+   Minimum Order Quantity visible in four-column and no-fabric desktop layouts.
+   Target only the Sizes Available cell, not all summary children. */
+.storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-row > .np-proto-size-summary-fact:nth-last-child(3) {
+    border-right: 1px solid #e6ebf1;
+}
+
+/* With fabric, Sizes Available is the second (rightmost) cell on a 2-column
+   tablet row, so its vertical divider must be omitted there. */
+@container np-size-summary (max-width: 860px) {
+    .storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-row:not(.np-proto-size-summary-row--no-fabric) > .np-proto-size-summary-fact:nth-last-child(3) {
+        border-right: 0;
+    }
+}
+
+/* All summary cells stack vertically on narrow panels. */
+@container np-size-summary (max-width: 520px) {
+    .storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-row > .np-proto-size-summary-fact:nth-last-child(3) {
+        border-right: 0;
+    }
+}
+
+/* Keep the Sizes Available chart text a little smaller than other summary values. */
+.storefront-clean-ui .np-proto-size-summary-layout .np-proto-size-summary-row > .np-proto-size-summary-fact:nth-last-child(3) strong {
+    font-size: 13px;
+}
+
+/* NEXTPLAY_PRODUCT_SHIPPING_ARTWORK_ALIGNMENT_2026_10_24
+   Scoped to the product builder: respect the shared colors/font and uploaded icons.
+   Sized grid tracks must accommodate the actual 52px artwork, not just the SVG fallback. */
+.storefront-clean-ui .np-proto-delivery-panel {
+    container: np-delivery-summary / inline-size;
+}
+.storefront-clean-ui .np-proto-delivery-equation {
+    grid-template-columns: minmax(0, 1fr) 25px minmax(0, 1fr) 25px minmax(0, 1.25fr);
+}
+.storefront-clean-ui .np-proto-delivery-equation > div {
+    grid-template-columns: 60px minmax(0, 1fr);
+    column-gap: 14px;
+    min-width: 0;
+    padding: 14px 15px;
+}
+.storefront-clean-ui .np-proto-delivery-equation > div > .np-configurable-ui-icon,
+.storefront-clean-ui .np-proto-delivery-equation > div > svg {
+    display: block;
+    width: 52px;
+    height: 52px;
+    max-width: 100%;
+    justify-self: center;
+    align-self: center;
+}
+.storefront-clean-ui .np-proto-delivery-equation > div > span:not(.np-configurable-ui-icon) {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 3px;
+    line-height: 1.4;
+}
+.storefront-clean-ui .np-proto-delivery-equation > div > span:not(.np-configurable-ui-icon) > * {
+    max-width: 100%;
+    overflow-wrap: break-word;
+}
+/* White-backed uploaded artwork blends with the existing soft panel surface;
+   the best source is still a PNG/WebP/SVG with real transparency. */
+.storefront-clean-ui .np-proto-delivery-equation .np-configurable-ui-icon > img,
+.storefront-clean-ui .np-proto-info-panel .np-configurable-ui-icon > img,
+.storefront-clean-ui .np-proto-important-notes .np-configurable-ui-icon > img {
+    mix-blend-mode: multiply;
+}
+/* Align copy below its heading instead of adding a second list indentation. */
+.storefront-clean-ui .np-proto-info-panel,
+.storefront-clean-ui .np-proto-important-notes {
+    grid-template-columns: 36px minmax(0, 1fr);
+    column-gap: 12px;
+    align-items: start;
+}
+.storefront-clean-ui .np-proto-info-panel > .np-configurable-ui-icon,
+.storefront-clean-ui .np-proto-important-notes > .np-configurable-ui-icon {
+    display: block;
+    width: 32px;
+    height: 32px;
+    justify-self: center;
+    align-self: start;
+}
+.storefront-clean-ui .np-proto-info-panel > div,
+.storefront-clean-ui .np-proto-important-notes > div {
+    min-width: 0;
+}
+.storefront-clean-ui .np-proto-info-panel ul,
+.storefront-clean-ui .np-proto-important-notes ul {
+    margin: 6px 0 0;
+    padding: 0;
+    list-style: none;
+}
+.storefront-clean-ui .np-proto-info-panel li + li,
+.storefront-clean-ui .np-proto-important-notes li + li {
+    margin-top: 2px;
+}
+/* Stable artwork footprint for all shipping cards, independent of source dimensions. */
+.storefront-clean-ui .np-proto-choice-section {
+    container: np-shipping-choices / inline-size;
+}
+.storefront-clean-ui .np-proto-choice-card {
+    min-width: 0;
+}
+.storefront-clean-ui .np-proto-choice-copy {
+    min-width: 0;
+}
+.storefront-clean-ui .np-proto-choice-media {
+    justify-self: end;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.storefront-clean-ui .np-proto-choice-media > img {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+@container np-shipping-choices (max-width: 1060px) {
+    .storefront-clean-ui .np-proto-choice-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@container np-shipping-choices (max-width: 690px) {
+    .storefront-clean-ui .np-proto-choice-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+@container np-delivery-summary (max-width: 830px) {
+    .storefront-clean-ui .np-proto-delivery-equation {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .storefront-clean-ui .np-proto-delivery-equation > b {
+        display: none;
+    }
+    .storefront-clean-ui .np-proto-delivery-equation > div {
+        border-bottom: 1px solid var(--np-product-card-border);
+    }
+    .storefront-clean-ui .np-proto-delivery-equation > div:last-child {
+        border-bottom: 0;
+    }
+}
+@media (max-width: 767px) {
+    .storefront-clean-ui .np-proto-choice-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* NEXTPLAY_PRODUCT_DETAIL_NATURAL_MEDIA_2026_10_24
+   Show the original product artwork directly in its available slot. A square
+   upload stays square; non-square uploads keep their source aspect ratio. */
+.storefront-clean-ui .np-product-detail-prototype .np-proto-size-table .np-proto-size-image,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-inspiration-grid img,
+.storefront-clean-ui .np-product-detail-prototype .np-product-review-product > img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: auto;
+    object-fit: contain;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+}
+/* Preserve the existing thumbnail column width, with no inset or fixed-height letterbox. */
+.storefront-clean-ui .np-product-detail-prototype .np-proto-size-table .np-proto-size-image {
+    width: min(100%, 64px);
+    margin: 0 auto;
+}
+/* The grid controls spacing between images; the images themselves have no tile. */
+.storefront-clean-ui .np-product-detail-prototype .np-proto-inspiration-grid figure {
+    align-self: start;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+    overflow: visible;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-inspiration-grid img,
+.storefront-clean-ui .np-product-detail-prototype .np-product-review-product > img {
+    width: 100%;
+}
+@media (max-width: 420px) {
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-size-table .np-proto-size-image {
+        width: min(100%, 56px);
+    }
+}
+
+/* NEXTPLAY_PRODUCT_UI_ICON_SIZE_AND_SECTION_ARROW_2026_10_24
+   Artwork upload tabs establish the shared reference size (2.65rem ~= 42px).
+   All changes are restricted to the product builder; uploaded media is untouched. */
+.storefront-clean-ui .np-product-detail-prototype {
+    --np-product-ui-icon-size: 2.65rem;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-product-order-facts > div > .np-configurable-ui-icon,
+.storefront-clean-ui .np-product-detail-prototype .np-product-order-facts > button > .np-configurable-ui-icon,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-size-summary-layout .np-proto-size-summary-fact > .np-configurable-ui-icon,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-size-summary-layout .np-proto-size-summary-note > .np-configurable-ui-icon {
+    display: block;
+    width: var(--np-product-ui-icon-size);
+    height: var(--np-product-ui-icon-size);
+    min-width: var(--np-product-ui-icon-size);
+    min-height: var(--np-product-ui-icon-size);
+    max-width: 100%;
+    flex: 0 0 var(--np-product-ui-icon-size);
+    justify-self: center;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-size-summary-layout .np-proto-size-summary-fact,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-size-summary-layout .np-proto-size-summary-note {
+    grid-template-columns: var(--np-product-ui-icon-size) minmax(0, 1fr);
+    gap: 12px;
+}
+/* In Important Notes, only the artwork becomes slightly smaller, not the panel. */
+.storefront-clean-ui .np-product-detail-prototype .np-proto-important-notes {
+    grid-template-columns: 30px minmax(0, 1fr);
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-important-notes > .np-configurable-ui-icon {
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    min-height: 26px;
+}
+/* Never paint a tile behind uploaded or fallback icons. */
+.storefront-clean-ui .np-product-detail-prototype .np-configurable-ui-icon,
+.storefront-clean-ui .np-product-detail-prototype .np-configurable-ui-icon > img,
+.storefront-clean-ui .np-product-detail-prototype .np-configurable-ui-icon > svg {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+}
+/* Independent chevron button comes last, after the optional action button. */
+.storefront-clean-ui .np-product-detail-prototype .np-proto-step-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 44px;
+    column-gap: 10px;
+    align-items: center;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-step-toggle {
+    grid-column: 1;
+    grid-row: 1;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    min-width: 0;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-step-action {
+    grid-column: 2;
+    grid-row: 1;
+    padding-right: 0;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-step-chevron-button {
+    display: flex;
+    grid-column: 3;
+    grid-row: 1;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--np-color-primary);
+    cursor: pointer;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-step-chevron-button:hover {
+    background: transparent;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-step-chevron-button:focus-visible {
+    outline: 2px solid var(--np-color-secondary);
+    outline-offset: -3px;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-step-chevron-button .np-proto-step-chevron {
+    display: block;
+    width: 22px;
+    height: 22px;
+    font-size: inherit;
+    flex: 0 0 22px;
+}
+@media (max-width: 767px) {
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-step-header {
+        grid-template-columns: minmax(0, 1fr) 44px;
+        gap: 0;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-step-toggle {
+        grid-template-columns: 38px minmax(0, 1fr);
+        grid-column: 1;
+        grid-row: 1;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-step-chevron-button {
+        grid-column: 2;
+        grid-row: 1;
+    }
+    /* When a section has an action, keep the button then arrow on the last row. */
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-step-header--has-action .np-proto-step-toggle {
+        grid-column: 1 / -1;
+        grid-row: 1;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-step-header--has-action .np-proto-step-action {
+        grid-column: 1;
+        grid-row: 2;
+        padding: 0 0 12px 13px;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-step-header--has-action .np-proto-step-chevron-button {
+        grid-column: 2;
+        grid-row: 2;
+        align-self: center;
+        margin-bottom: 12px;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-step-header--has-action .np-proto-step-action[x-cloak],
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-step-header--has-action .np-proto-step-action[style*="display: none"] {
+        display: none !important;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-step-header--has-action .np-proto-step-action[style*="display: none"] ~ .np-proto-step-chevron-button {
+        grid-row: 1;
+        margin-bottom: 0;
+    }
+}
+@media (max-width: 767px) {
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-step-header--has-action .np-proto-step-toggle {
+        padding-right: 54px;
+    }
+}

@@ -633,6 +633,7 @@ window.adminProductForm = (initial = {}) => ({
         // Keep the product picker fast and readable. It should load one fixed-size page
         // first, then load more only when the admin scrolls or clicks Load more.
         url.searchParams.set('per_page', 12);
+        url.searchParams.set('purpose', 'product');
         if (String(this.mediaLibrarySearch || '').trim()) {
             url.searchParams.set('q', String(this.mediaLibrarySearch || '').trim());
         }
@@ -2977,6 +2978,7 @@ window.adminMediaLibraryManager = (initial = {}) => ({
     scope: initial.scope || '',
     perPage: Number(initial.perPage || 24),
     emptyMessage: initial.emptyMessage || 'No media files found. Upload files above to start the gallery.',
+    allowFiles: Boolean(initial.allowFiles),
     items: [],
     selectedIds: [],
     search: '',
@@ -3106,14 +3108,23 @@ window.adminMediaLibraryManager = (initial = {}) => ({
         const files = Array.from(fileList || []);
         if (!files.length) return;
 
-        const invalid = files.find(file => !this.isAllowedImageFile(file) || file.size > 5 * 1024 * 1024);
+        const allowedDocuments = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt'];
+        const allowedVideos = ['mp4', 'webm'];
+        const invalid = files.find(file => {
+            if (!this.allowFiles) return !this.isAllowedImageFile(file) || file.size > 5 * 1024 * 1024;
+            const extension = this.imageFileExtension(file);
+            const maxSize = allowedVideos.includes(extension) ? 30 : (allowedDocuments.includes(extension) ? 10 : 5);
+            return !(this.isAllowedImageFile(file) || allowedDocuments.includes(extension) || allowedVideos.includes(extension)) || file.size > maxSize * 1024 * 1024;
+        });
         if (invalid || files.length > 20) {
-            this.uploadError = 'Choose up to 20 JPG, PNG, WebP, or AVIF images, each no larger than 5 MB.';
+            this.uploadError = this.allowFiles
+                ? 'Choose up to 20 JPG, PNG, WebP, AVIF, PDF, Office, TXT, MP4 or WebM files. Images: 5 MB; documents: 10 MB; videos: 30 MB.'
+                : 'Choose up to 20 JPG, PNG, WebP, or AVIF images, each no larger than 5 MB.';
             return;
         }
 
         const formData = new FormData();
-        files.forEach(file => formData.append('images[]', file));
+        files.forEach(file => formData.append(this.allowFiles ? 'files[]' : 'images[]', file));
         this.uploadBusy = true;
         this.uploadError = '';
 

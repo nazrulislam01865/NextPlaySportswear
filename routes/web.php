@@ -122,6 +122,10 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
 
         Route::get('/media-library', [\App\Http\Controllers\Admin\MediaLibraryController::class, 'index'])->name('media-library.index');
         Route::get('/media-library/upload', [\App\Http\Controllers\Admin\MediaLibraryController::class, 'upload'])->name('media-library.upload');
+        Route::patch('/media-library/{media}', [\App\Http\Controllers\Admin\MediaLibraryController::class, 'update'])->name('media-library.update');
+        Route::delete('/media-library/{media}', [\App\Http\Controllers\Admin\MediaLibraryController::class, 'destroy'])->name('media-library.destroy');
+        Route::get('/media-library/{media}/download', [\App\Http\Controllers\Admin\MediaLibraryController::class, 'download'])->name('media-library.download');
+        Route::get('/media-library/{media}/preview', [\App\Http\Controllers\Admin\MediaLibraryController::class, 'preview'])->name('media-library.preview');
         Route::post('/media-library', [\App\Http\Controllers\Admin\MediaLibraryController::class, 'store'])
             ->middleware('throttle:30,1')
             ->name('media-library.store');

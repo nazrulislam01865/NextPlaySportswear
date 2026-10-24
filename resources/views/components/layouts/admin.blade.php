@@ -1,4 +1,4 @@
-@props(['title' => 'Admin', 'eyebrow' => null, 'subtitle' => null, 'compactHeader' => false, 'storefrontUrl' => null])
+@props(['title' => 'Admin', 'eyebrow' => null, 'subtitle' => null, 'compactHeader' => false, 'storefrontUrl' => null, 'mediaGalleryHeader' => false])
 <!doctype html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
@@ -443,6 +443,21 @@
         </aside>
 
         <div class="min-w-0">
+            @if($mediaGalleryHeader)
+                <header data-admin-page-header class="np-mg-topbar">
+                    <button type="button" class="np-mg-mobile-menu lg:hidden" @click="sidebarOpen = true" aria-label="Open sidebar">☰</button>
+                    <label class="np-mg-global-search">
+                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+                        <input type="search" placeholder="Search anything..." aria-label="Search media" @input.debounce.450ms="window.dispatchEvent(new CustomEvent('np-gallery-search', { detail: $event.target.value }))">
+                    </label>
+                    @auth('admin')
+                        <x-admin.notification-bell />
+                        <span class="np-mg-user-avatar" aria-hidden="true">{{ strtoupper(substr((string) (auth('admin')->user()?->name ?? 'A'), 0, 1)) }}</span>
+                        <span class="np-mg-user-name">{{ auth('admin')->user()?->name ?? 'Admin User' }}</span>
+                        <span class="np-mg-user-arrow" aria-hidden="true">⌄</span>
+                    @endauth
+                </header>
+            @else
             <header data-admin-page-header @class([
                 'sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-slate-200 bg-white/95 px-4 py-4 backdrop-blur sm:px-6 lg:px-8',
                 'min-h-[82px] lg:min-h-[92px]' => $compactHeader,
@@ -469,6 +484,7 @@
                     <a data-admin-storefront-link href="{{ $storefrontUrl ?: route('home') }}" target="_blank" rel="noopener" class="inline-flex min-h-10 shrink-0 items-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-brand-blue shadow-sm transition hover:bg-slate-50 sm:min-h-11"><span class="hidden sm:inline">View storefront&nbsp;</span>↗</a>
                 </div>
             </header>
+            @endif
 
             <main id="admin-main-content" tabindex="-1" class="min-w-0 p-4 sm:p-6 lg:p-8">
                 @if (session('status') && ! request()->routeIs('admin.email-customization.*', 'admin.holiday-calendars.*', 'admin.coupons.index', 'admin.promotions.sales.index', 'admin.storefront-branding.edit', 'admin.about-page.edit', 'admin.shipping-delivery-page.edit', 'admin.sustainability-page.edit'))

@@ -632,7 +632,7 @@
         'showInCategoryPage' => $showInCategoryPage,
         'categoryOptions' => $categorySearchOptions,
         'imageUrls' => $imageValues,
-        'mediaLibraryIndexUrl' => \Illuminate\Support\Facades\Route::has('admin.media-library.index') ? route('admin.media-library.index') : url('/admin/media-library'),
+        'mediaLibraryIndexUrl' => \Illuminate\Support\Facades\Route::has('admin.media-library.index') ? route('admin.media-library.index', ['purpose' => 'product']) : url('/admin/media-library?purpose=product'),
         'mediaLibraryStoreUrl' => \Illuminate\Support\Facades\Route::has('admin.media-library.store') ? route('admin.media-library.store') : url('/admin/media-library'),
         'priceHeaders' => $priceHeaderValues,
         'pricingMode' => old('pricing_mode', 'standard'),
