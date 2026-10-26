@@ -3067,41 +3067,49 @@ const setupProductCardImageLoaders = () => {
 };
 
 const setupCategoryCardImageLoaders = () => {
-    // Shared category/homepage media loader; no per-card listeners or requests.
+    // Listen before scanning: first-visit and cached images must both reveal.
     const selector = '[data-card-image-loader] > img[data-card-image]';
-    const markLoaded = (image) => {
-        image.closest('[data-card-image-loader]')?.classList.add('is-loaded');
+    const reveal = (image) => {
+        const media = image.parentElement;
+        if (!media?.hasAttribute('data-card-image-loader')) return;
+        media.classList.remove('is-loading');
+        media.classList.add('is-loaded');
+    };
+    const scan = () => {
+        document.querySelectorAll(selector).forEach((image) => {
+            if (image.complete && image.naturalWidth > 0) {
+                reveal(image);
+            } else if (image.complete && image.naturalWidth === 0) {
+                // Do not hide a lazy image forever or replace it before an error.
+                image.parentElement.classList.remove('is-loading');
+            } else {
+                image.parentElement.classList.add('is-loading');
+            }
+        });
     };
 
-    document.querySelectorAll(selector).forEach((image) => {
-        if (!image.complete) return;
-        if (image.naturalWidth > 0) {
-            markLoaded(image);
-        } else {
-            // Handle images whose error fired before this listener was registered.
-            window.nextPlayUseImagePlaceholder?.(image);
-            if (image.complete && image.naturalWidth === 0) markLoaded(image);
-        }
-    });
-
-    if (document.documentElement.dataset.categoryCardImageLoaderReady === 'true') return;
-    document.documentElement.dataset.categoryCardImageLoaderReady = 'true';
-
-    document.addEventListener('load', (event) => {
-        const image = event.target;
-        if (image instanceof HTMLImageElement && image.matches(selector)) markLoaded(image);
-    }, true);
-
-    document.addEventListener('error', (event) => {
-        const image = event.target;
-        if (!(image instanceof HTMLImageElement) || !image.matches(selector)) return;
-        // Global fallback runs before this handler. Allow one fallback load, but
-        // stop the shimmer if the placeholder also fails.
-        if (image.dataset.cardImageFallbackTried === '1' || !image.classList.contains('np-image-placeholder-active')) {
-            markLoaded(image);
-        }
-        image.dataset.cardImageFallbackTried = '1';
-    }, true);
+    if (document.documentElement.dataset.categoryCardImageLoaderReady !== 'true') {
+        document.documentElement.dataset.categoryCardImageLoaderReady = 'true';
+        document.addEventListener('load', (event) => {
+            const image = event.target;
+            if (image instanceof HTMLImageElement && image.matches(selector)) reveal(image);
+        }, true);
+        document.addEventListener('error', (event) => {
+            const image = event.target;
+            if (!(image instanceof HTMLImageElement) || !image.matches(selector)) return;
+            // The shared handler tries the placeholder on the first failure.
+            if (image.classList.contains('np-image-placeholder-active')
+                && image.dataset.cardImageFallbackTried !== '1') {
+                image.dataset.cardImageFallbackTried = '1';
+                image.parentElement.classList.add('is-loading');
+            } else {
+                reveal(image);
+            }
+        }, true);
+        // A slow module may initialize after an image's load event has fired.
+        window.addEventListener('pageshow', scan, { passive: true });
+    }
+    scan();
 };
 
 const updateProductCardWishlistButton = (button, wishlisted, busy = false) => {

@@ -15272,7 +15272,7 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
 /* NEXTPLAY_ALL_CATEGORY_CARD_IMAGE_LOADER
    Sample #1: Soft Shimmer + Fade. Scoped only to the existing All Product
    Categories grid, with no category-card markup or layout changes. */
-.storefront-clean-ui .np-all-categories-grid .np-category-square-media::before {
+.storefront-clean-ui .np-all-categories-grid .np-category-square-media.is-loading::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -15282,7 +15282,7 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
     transition: opacity .28s ease, visibility .28s ease;
 }
 
-.storefront-clean-ui .np-all-categories-grid .np-category-square-media::after {
+.storefront-clean-ui .np-all-categories-grid .np-category-square-media.is-loading::after {
     content: "";
     position: absolute;
     z-index: 6;
@@ -15308,7 +15308,7 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
     to { left: 125%; }
 }
 
-.storefront-clean-ui .np-all-categories-grid .np-category-square-media:not(.is-loaded) .np-category-square-image {
+.storefront-clean-ui .np-all-categories-grid .np-category-square-media.is-loading .np-category-square-image {
     opacity: 0;
     transform: scale(.985);
 }
@@ -26348,7 +26348,15 @@ html.np-product-preview-open body { overflow: hidden; }
     content: "";
     position: absolute;
     pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
     transition: opacity .28s ease, visibility .28s ease;
+}
+
+.storefront-clean-ui [data-card-image-loader].is-loading::before,
+.storefront-clean-ui [data-card-image-loader].is-loading::after {
+    opacity: 1;
+    visibility: visible;
 }
 
 .storefront-clean-ui [data-card-image-loader]::before {
@@ -26366,7 +26374,7 @@ html.np-product-preview-open body { overflow: hidden; }
     animation: np-category-card-shimmer 1.2s ease-in-out infinite;
 }
 
-.storefront-clean-ui [data-card-image-loader]:not(.is-loaded) > img[data-card-image] {
+.storefront-clean-ui [data-card-image-loader].is-loading > img[data-card-image] {
     opacity: 0;
 }
 

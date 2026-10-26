@@ -19,7 +19,7 @@
     "isEntry": true
   },
   "resources/css/storefront.css": {
-    "file": "assets/storefront-cardloader-374d1d694.css",
+    "file": "assets/storefront-CpyDWTeA.css",
     "name": "storefront",
     "names": [
       "storefront.css"
@@ -40,7 +40,7 @@
     ]
   },
   "resources/js/storefront.js": {
-    "file": "assets/storefront-cardloader-088cfb065.js",
+    "file": "assets/storefront-CDUVajpO.js",
     "name": "storefront",
     "src": "resources/js/storefront.js",
     "isEntry": true,
