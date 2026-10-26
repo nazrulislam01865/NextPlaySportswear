@@ -711,16 +711,19 @@ window.productBuilderFabricPricing = function (config = {}) {
                             @foreach($productHighlights as $index => $feature)
                                 <div class="np-product-feature-item">
                                     <span class="np-product-feature-icon" aria-hidden="true">
+                                        {{-- A real image (not an accent-colored mask) preserves the uploaded icon's own colors and details. --}}
                                         @if(filled($feature['icon'] ?? null))
-                                            <span class="np-product-feature-icon-uploaded" style="--np-feature-icon-image: url('{{ $feature['icon'] }}')"></span>
-                                        @elseif($index % 4 === 0)
-                                            <svg viewBox="0 0 24 24"><path d="M4 8h16M4 16h16M8 4v16M16 4v16"/></svg>
+                                            <img class="np-product-feature-icon-uploaded" src="{{ $feature['icon'] }}" alt="" decoding="async" onerror="this.hidden=true; this.nextElementSibling.hidden=false;">
+                                        @endif
+                                        {{-- Keep a graphic fallback for missing or failed uploads, without a request or an extra script. --}}
+                                        @if($index % 4 === 0)
+                                            <svg viewBox="0 0 24 24" @if(filled($feature['icon'] ?? null)) hidden @endif><path d="M4 8h16M4 16h16M8 4v16M16 4v16"/></svg>
                                         @elseif($index % 4 === 1)
-                                            <svg viewBox="0 0 24 24"><path d="M12 3s6 6.4 6 11a6 6 0 0 1-12 0c0-4.6 6-11 6-11Z"/></svg>
+                                            <svg viewBox="0 0 24 24" @if(filled($feature['icon'] ?? null)) hidden @endif><path d="M12 3s6 6.4 6 11a6 6 0 0 1-12 0c0-4.6 6-11 6-11Z"/></svg>
                                         @elseif($index % 4 === 2)
-                                            <svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.4 8 8 9 4.6-1 8-4 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+                                            <svg viewBox="0 0 24 24" @if(filled($feature['icon'] ?? null)) hidden @endif><path d="M12 3 4 6v6c0 5 3.4 8 8 9 4.6-1 8-4 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
                                         @else
-                                            <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 3 3 0 0 0 3-3c0-1.7-1.3-3-3-3h-1a2 2 0 0 1-2-2c0-1.1.9-2 2-2h4a3 3 0 0 0 0-6h-3Z"/></svg>
+                                            <svg viewBox="0 0 24 24" @if(filled($feature['icon'] ?? null)) hidden @endif><path d="M12 3a9 9 0 1 0 0 18 3 3 0 0 0 3-3c0-1.7-1.3-3-3-3h-1a2 2 0 0 1-2-2c0-1.1.9-2 2-2h4a3 3 0 0 0 0-6h-3Z"/></svg>
                                         @endif
                                     </span>
                                     <strong>{{ $feature['label'] }}</strong>

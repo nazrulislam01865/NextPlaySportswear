@@ -24282,31 +24282,31 @@ html.np-product-preview-open body { overflow: hidden; }
     box-shadow: none;
 }
 
-/* Product highlight uploaded icons: use the storefront theme accent consistently. */
+/* Product highlights show the actual admin-uploaded file, preserving every color.
+   Only the simple built-in SVG fallback inherits the theme accent. */
 .storefront-clean-ui .np-product-feature-icon {
-    flex-basis: 1.4rem;
-    width: 1.4rem;
-    height: 1.4rem;
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
 }
-
 .storefront-clean-ui .np-product-feature-icon svg {
-    width: 1.2rem;
-    height: 1.2rem;
+    width: 30px;
+    height: 30px;
 }
-
-.storefront-clean-ui .np-product-feature-icon-uploaded {
+.storefront-clean-ui .np-product-feature-icon img.np-product-feature-icon-uploaded {
     display: block;
-    width: 1.2rem;
-    height: 1.2rem;
-    background: var(--np-color-secondary);
-    -webkit-mask-image: var(--np-feature-icon-image);
-    mask-image: var(--np-feature-icon-image);
-    -webkit-mask-position: center;
-    mask-position: center;
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-    -webkit-mask-size: contain;
-    mask-size: contain;
+    width: 34px;
+    height: 34px;
+    max-width: 100%;
+    object-fit: contain;
+    object-position: center;
+    background: transparent;
+    filter: none;
+    -webkit-mask: none;
+    mask: none;
+}
+.storefront-clean-ui .np-product-feature-icon > [hidden] {
+    display: none !important;
 }
 
 /* Shared My Account alignment across dashboard, orders, profile, addresses,
@@ -26393,5 +26393,166 @@ html.np-product-preview-open body { overflow: hidden; }
     .storefront-clean-ui [data-card-image-loader]::after,
     .storefront-clean-ui [data-card-image-loader].is-loaded > img[data-card-image] {
         animation: none;
+    }
+}
+
+
+/* NEXTPLAY_PRODUCT_MOBILE_ICON_AND_LAYOUT_REPAIR_2026_10_26
+   Keep real uploaded icon colors, prevent collapsed size-row tracks and prevent
+   roster input overlap. Pure presentation: no extra query, API or JS listener. */
+.storefront-clean-ui .np-product-detail-prototype .np-product-feature-item {
+    min-width: 0;
+    gap: 10px;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-product-feature-item > strong {
+    min-width: 0;
+    overflow-wrap: break-word;
+}
+/* SVG fallback is intentionally themed; uploaded files never inherit its stroke. */
+.storefront-clean-ui .np-product-detail-prototype .np-product-feature-icon > img {
+    flex: 0 0 auto;
+    filter: none;
+}
+@media (max-width: 1023px) {
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tr {
+        box-sizing: border-box;
+        min-width: 0;
+        height: auto;
+        grid-auto-rows: min-content;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table td {
+        box-sizing: border-box;
+        width: auto;
+        min-width: 0;
+        height: auto;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table td:nth-child(n+3) {
+        align-content: start;
+        gap: 7px;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table .np-proto-table-input {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        height: 44px;
+        min-height: 44px;
+        padding: 9px 12px;
+        font-size: 16px; /* Avoid iOS Safari autofocus zoom on input fields. */
+        line-height: 1.25;
+    }
+}
+@media (max-width: 767px) {
+    .storefront-clean-ui .np-product-detail-prototype .np-product-summary {
+        overflow-wrap: anywhere;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-product-feature-item {
+        padding: 12px 10px;
+        min-height: 60px;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-size-table tr,
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tr {
+        box-sizing: border-box;
+        min-width: 0;
+        height: auto;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-size-table td,
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table td {
+        box-sizing: border-box;
+        width: auto;
+        min-width: 0;
+        height: auto;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-size-table td[data-label="Sample Image"] {
+        display: grid;
+        place-items: center;
+    }
+    /* A tall source image must never grow beyond its grid cell or cover quantity inputs. */
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-size-table .np-proto-size-image {
+        display: block;
+        width: auto;
+        height: auto;
+        max-width: 100%;
+        max-height: 66px;
+        margin: 0 auto;
+        object-fit: contain;
+        object-position: center;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-size-table td[data-label="Your Quantity"] {
+        min-width: 0;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-size-table .np-proto-size-counter {
+        width: 100%;
+        max-width: 168px;
+        min-width: 0;
+        grid-template-columns: minmax(30px, 36px) minmax(38px, 1fr) minmax(30px, 36px);
+        gap: 5px;
+        margin: 0 0 0 auto;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-step-toggle,
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-step-heading {
+        min-width: 0;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-step-heading {
+        overflow-wrap: break-word;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-step-action {
+        min-width: 0;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-custom-order-card {
+        max-width: calc(100vw - 20px);
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-table-input:focus,
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-size-counter input:focus {
+        scroll-margin-bottom: calc(100px + env(safe-area-inset-bottom));
+    }
+}
+@media (max-width: 480px) {
+    /* Two lines instead of forcing the image and three quantity controls into
+       a single narrow grid track (especially at 320px and when fonts scale). */
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-size-table tr {
+        grid-template-columns: minmax(40px, auto) minmax(0, 1fr);
+        gap: 9px 12px;
+        padding: 12px;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-size-table td[data-label="Size"] {
+        grid-column: 1;
+        grid-row: 1;
+        align-self: center;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-size-table td[data-label="Sample Image"] {
+        grid-column: 2;
+        grid-row: 1;
+        justify-self: start;
+        width: 72px;
+        max-width: 100%;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-size-table td[data-label="Your Quantity"] {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        border-top: 1px solid var(--np-product-card-border) !important;
+        padding-top: 10px !important;
+        text-align: left;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-size-table td[data-label="Your Quantity"]::before {
+        content: attr(data-label);
+        flex: 0 0 auto;
+        color: var(--np-color-muted);
+        font-size: 12px;
+        font-weight: 700;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-size-table .np-proto-size-counter {
+        width: min(100%, 164px);
+        flex: 0 1 164px;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tr {
+        gap: 12px 10px;
+        padding: 12px;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table td[data-label="Action"] {
+        padding-top: 3px !important;
     }
 }
