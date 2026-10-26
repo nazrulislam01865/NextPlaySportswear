@@ -68,6 +68,7 @@
                         <p>{{ $shipping['address_line_1'] ?? 'Address not provided' }}</p>
                         @if(!empty($shipping['address_line_2']))<p>{{ $shipping['address_line_2'] }}</p>@endif
                         <p>{{ collect([$shipping['city'] ?? null, $shipping['state'] ?? null, $shipping['postal_code'] ?? null])->filter()->join(', ') }}</p>
+                        <x-admin.remote-area-flag :remote="$order->is_remote_area" class="mt-2" />
                         <p>{{ $shipping['country'] ?? '' }}</p>
                     </div>
                 </div>

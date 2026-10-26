@@ -269,7 +269,7 @@
             <dl class="admin-detail-grid">
                 <x-admin.detail-field label="Country">{{ $bulkQuote->country }}</x-admin.detail-field>
                 <x-admin.detail-field label="State / Province">{{ $bulkQuote->state_province ?: '—' }}</x-admin.detail-field>
-                <x-admin.detail-field label="ZIP / Postal Code">{{ $bulkQuote->postal_code ?: '—' }}</x-admin.detail-field>
+                <x-admin.detail-field label="ZIP / Postal Code">{{ $bulkQuote->postal_code ?: '—' }}<x-admin.remote-area-flag :remote="$bulkQuote->is_remote_area" class="mt-2" /></x-admin.detail-field>
                 <x-admin.detail-field label="Preferred Shipping Method">{{ $bulkQuote->preferredShippingMethodLabel() }}</x-admin.detail-field>
                 <x-admin.detail-field label="Needed By">{{ $bulkQuote->needed_by?->format('M d, Y') ?: '—' }}</x-admin.detail-field>
                 <x-admin.detail-field label="Event Date">{{ $bulkQuote->event_date?->format('M d, Y') ?: '—' }}</x-admin.detail-field>

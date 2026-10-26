@@ -75,6 +75,10 @@
                             <td class="px-5 py-4">
                                 <p class="font-black">{{ $order->customer_name }}</p>
                                 <p class="text-xs text-slate-500">{{ $order->customer_email }}</p>
+                                @if($postalCode = data_get($order->shipping_address, 'address.postal_code', data_get($order->shipping_address, 'postal_code')))
+                                    <p class="mt-1 text-xs text-slate-600">{{ $postalCode }}</p>
+                                @endif
+                                <x-admin.remote-area-flag :remote="$order->is_remote_area" class="mt-1" />
                             </td>
                             <td class="px-5 py-4"><x-admin.status-pill :status="$order->status" /></td>
                             <td class="px-5 py-4"><x-admin.status-pill :status="$order->payment_status" /></td>

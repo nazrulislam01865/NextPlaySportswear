@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\Integrations\TransferFlowTrackBulkQuoteFiles;
 use App\Models\BulkQuoteRequest;
 use App\Models\User;
+use App\Services\Shipping\RuralAreaSurchargeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 /** Restricted machine-to-machine upsert, customer-owned and replay safe. */
 final class FlowTrackBulkOrderController extends Controller
 {
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, RuralAreaSurchargeService $remoteAreas): JsonResponse
     {
         if (! $request->isJson()) return response()->json(['ok' => false, 'message' => 'JSON required'], 415);
         $data = $request->validate([
@@ -77,7 +78,7 @@ final class FlowTrackBulkOrderController extends Controller
             ]);
         }
         $manifestHash = hash('sha256', json_encode($data['client_files'] ?? [], JSON_THROW_ON_ERROR));
-        $quote = DB::transaction(function () use ($data, $customer, $isNextPlayOrigin, $sourceId, $manifestHash): BulkQuoteRequest {
+        $quote = DB::transaction(function () use ($data, $customer, $isNextPlayOrigin, $sourceId, $manifestHash, $remoteAreas): BulkQuoteRequest {
             $query = BulkQuoteRequest::query();
             $existing = $isNextPlayOrigin
                 ? $query->whereKey((int) $data['source_quote_id'])->lockForUpdate()->first()
@@ -114,6 +115,13 @@ final class FlowTrackBulkOrderController extends Controller
                 $quote = $existing;
             }
             $quote->fill($fields);
+            if ($quote->is_remote_area === null || $quote->isDirty(['postal_code', 'country', 'state_province'])) {
+                $quote->is_remote_area = filled($quote->postal_code)
+                    ? $remoteAreas->resolve(
+                        $quote->postal_code, $quote->country, $quote->state_province,
+                    ) !== null
+                    : null;
+            }
             $quote->flowtrack_manifest_hash = $manifestHash;
             $quote->saveQuietly(); // Never echo an incoming synchronization event.
             return $quote;

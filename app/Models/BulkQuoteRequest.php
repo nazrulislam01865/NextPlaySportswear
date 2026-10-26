@@ -60,6 +60,7 @@ class BulkQuoteRequest extends Model
         'country',
         'state_province',
         'postal_code',
+        'is_remote_area',
         'preferred_shipping_method',
         'needed_by',
         'event_date',
@@ -239,6 +240,7 @@ class BulkQuoteRequest extends Model
             'flowtrack_last_attempt_at' => 'datetime',
             'flowtrack_synced_at' => 'datetime',
             'flowtrack_response' => 'array',
+            'is_remote_area' => 'boolean',
             'flowtrack_task_progress' => 'array',
         ];
     }

@@ -187,6 +187,7 @@ final class BulkQuoteGuestService
                     'subtotal' => $subtotal,
                     'customization_total' => $customization,
                     'shipping_total' => $shipping,
+                    'is_remote_area' => $quote->is_remote_area,
                     'grand_total' => $total,
                     'total_quantity' => $quantity,
                     'information' => ['source' => 'guest_bulk_quote', 'bulk_quote_id' => $quote->id, 'reference' => $quote->reference, 'version' => $quote->quotation_version],

@@ -8477,51 +8477,71 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     letter-spacing: .12em !important;
 }
 
+/* Keep the hero in the same centrally managed Expose typography system as
+   Shop by Sport, Shop by Category, and the ordering-process section.
+   The hero uses the page-title level (not the smaller section-title level). */
 .storefront-clean-ui .home-page .hero h1 {
-    max-width: 560px !important;
+    max-width: 620px !important;
     margin-bottom: 18px !important;
-    font-size: clamp(2.55rem, 4.25vw, 4.05rem) !important;
-    line-height: .94 !important;
-    font-weight: 700 !important;
-    letter-spacing: -.04em !important;
-    overflow-wrap: normal !important;
+    color: var(--np-home-heading) !important;
+    font-family: var(--np-font-heading) !important;
+    font-size: var(--np-page-title-size) !important;
+    font-style: normal !important;
+    font-weight: var(--np-page-title-weight) !important;
+    line-height: var(--np-page-title-line-height) !important;
+    letter-spacing: var(--np-letter-spacing) !important;
+    text-transform: uppercase !important;
+    overflow-wrap: break-word !important;
 }
 
 .storefront-clean-ui .home-page .hero p {
-    max-width: 560px !important;
+    max-width: 620px !important;
     margin-bottom: 18px !important;
-    font-size: clamp(.98rem, 1.08vw, 1.12rem) !important;
-    line-height: 1.6 !important;
+    font-family: var(--np-font-body) !important;
+    font-size: var(--np-home-section-description-size) !important;
+    font-style: normal !important;
+    font-weight: var(--np-body-2-weight) !important;
+    line-height: var(--np-home-section-description-line-height) !important;
+    letter-spacing: var(--np-letter-spacing) !important;
 }
 
 .storefront-clean-ui .home-page .checklist {
-    gap: 10px !important;
-    margin: 22px 0 26px !important;
+    gap: 8px !important;
+    margin: 18px 0 22px !important;
 }
 
 .storefront-clean-ui .home-page .checklist li {
-    gap: 10px !important;
-    font-size: 15px !important;
-    line-height: 1.45 !important;
+    gap: 9px !important;
+    font-family: var(--np-font-body) !important;
+    font-size: var(--np-home-section-description-size) !important;
+    font-weight: var(--np-font-weight-medium) !important;
+    line-height: var(--np-home-section-description-line-height) !important;
+    letter-spacing: var(--np-letter-spacing) !important;
 }
 
 /* Phase 3: hero CTA geometry inherits the global button system. */
 
 .storefront-clean-ui .home-page .trustline {
-    margin-top: 16px !important;
-    font-size: 13px !important;
+    margin-top: 14px !important;
+    font-family: var(--np-font-body) !important;
+    font-size: var(--np-body-2-size) !important;
+    font-weight: var(--np-body-2-weight) !important;
+    line-height: var(--np-body-2-line-height) !important;
 }
 
 .storefront-clean-ui .home-page .badges {
-    gap: 12px !important;
-    margin-top: 24px !important;
+    gap: 10px !important;
+    margin-top: 18px !important;
 }
 
 .storefront-clean-ui .home-page .badge {
     gap: 8px !important;
     padding: 10px 13px !important;
     border-radius: 10px !important;
-    font-size: 12.5px !important;
+    font-family: var(--np-font-body) !important;
+    font-size: var(--np-body-2-size) !important;
+    font-weight: var(--np-font-weight-medium) !important;
+    line-height: var(--np-body-2-line-height) !important;
 }
 
 .storefront-clean-ui .home-page .hero-card {
@@ -8688,7 +8708,7 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     }
 
     .storefront-clean-ui .home-page .hero h1 {
-        font-size: clamp(2.35rem, 4.6vw, 3.55rem) !important;
+        font-size: var(--np-page-title-size) !important;
     }
 
     .storefront-clean-ui .home-page .hero-card-slider {
@@ -8721,12 +8741,13 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
 
     .storefront-clean-ui .home-page .hero h1 {
         max-width: 100% !important;
-        font-size: clamp(2.05rem, 11vw, 3rem) !important;
-        line-height: .96 !important;
+        font-size: clamp(30px, 8.2vw, 40px) !important;
+        line-height: var(--np-page-title-line-height) !important;
     }
 
     .storefront-clean-ui .home-page .hero p {
-        font-size: .96rem !important;
+        font-size: var(--np-home-section-description-size) !important;
+        line-height: var(--np-home-section-description-line-height) !important;
     }
 
     .storefront-clean-ui .home-page .badges {

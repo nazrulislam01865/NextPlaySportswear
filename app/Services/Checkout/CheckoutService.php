@@ -410,6 +410,7 @@ class CheckoutService
                     'discount_total' => $summary['discount'],
                     'shipping_total' => $summary['shipping'],
                     'rural_surcharge_total' => $summary['rural_surcharge'],
+                    'is_remote_area' => $summary['rural_surcharge_details'] !== null,
                     'product_shipping_total' => $summary['product_shipping_total'] ?? 0,
                     'tax_total' => $summary['tax'],
                     'grand_total' => $summary['total'],

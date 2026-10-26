@@ -13,7 +13,7 @@ final class BulkQuoteFlowTrackObserver implements ShouldHandleEventsAfterCommit
         'full_name', 'organization', 'email', 'phone', 'customer_account', 'user_id',
         'product_type', 'estimated_quantity', 'sizes_needed', 'budget_range',
         'artwork_details', 'customization_types', 'shipping_address', 'country',
-        'state_province', 'postal_code', 'preferred_shipping_method', 'needed_by',
+        'state_province', 'postal_code', 'is_remote_area', 'preferred_shipping_method', 'needed_by',
         'event_date', 'attachment', 'additional_notes', 'status', 'guest_decision',
     ];
 

@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\Order\OrderProductSnapshotFactory;
+use App\Services\Shipping\RuralAreaSurchargeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +29,10 @@ final class FlowTrackCreatedOrderController extends Controller
             'reference' => ['nullable', 'string', 'max:200'],
             'shipping_address' => ['required', 'array'],
             'shipping_address.address' => ['required', 'string', 'max:2000'],
+            'shipping_address.postal_code' => ['nullable', 'string', 'max:40'],
+            'shipping_address.country' => ['nullable', 'string', 'max:120'],
+            'shipping_address.state' => ['nullable', 'string', 'max:120'],
+            'shipping_address.city' => ['nullable', 'string', 'max:160'],
             'items' => ['required', 'array', 'min:1', 'max:25'],
             'items.*.product_id' => ['required', 'integer', 'min:1'],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100000'],
@@ -121,11 +126,21 @@ final class FlowTrackCreatedOrderController extends Controller
                 'pricing_note' => 'Provisional catalog-tier amounts; shipping, promotions, customization surcharges and tax require manual invoice review.']);
         }
 
+        // Only structured destination data can be classified reliably. An old
+        // FlowTracker request with a free-text address remains unclassified.
+        $address = (array) $data['shipping_address'];
+        $isRemoteArea = filled($address['postal_code'] ?? null)
+            ? app(RuralAreaSurchargeService::class)->resolve(
+                $address['postal_code'], $address['country'] ?? 'United States',
+                $address['state'] ?? null, $address['city'] ?? null,
+            ) !== null
+            : null;
+
         // The idempotency key is uniquely constrained in the orders table.
         // Concurrent attempts serialize through the insert/unique constraint; a
         // collision returns the committed order, never a second customer order.
         try {
-            $order = DB::transaction(function () use ($data, $key, $customer, $lines, $snapshots): Order {
+            $order = DB::transaction(function () use ($data, $key, $customer, $lines, $snapshots, $isRemoteArea): Order {
                 $subtotal = round(collect($lines)->sum(fn ($l) => $l['price'] * $l['qty']), 2);
                 do {
                     $number = 'NP-'.now()->format('ymd').'-'.Str::upper(Str::random(6));
@@ -138,6 +153,7 @@ final class FlowTrackCreatedOrderController extends Controller
                     'customer_phone' => $customer->phone, 'subtotal' => $subtotal,
                     'customization_total' => 0, 'discount_total' => 0,
                     'shipping_total' => 0, 'rural_surcharge_total' => 0,
+                    'is_remote_area' => $isRemoteArea,
                     'product_shipping_total' => 0, 'tax_total' => 0, 'grand_total' => $subtotal,
                     'total_quantity' => collect($lines)->sum('qty'),
                     'information' => ['source' => 'flowtrack', 'flow_job_id' => (int) $data['flow_job_id'], 'reference' => $data['reference'] ?? null, 'pricing' => 'catalog_tier_estimate_pending_manual_invoice_review'],

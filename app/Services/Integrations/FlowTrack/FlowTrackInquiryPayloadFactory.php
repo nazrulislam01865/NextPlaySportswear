@@ -39,6 +39,7 @@ final class FlowTrackInquiryPayloadFactory
             'country' => (string) $quote->country,
             'state_province' => $quote->state_province,
             'postal_code' => $quote->postal_code,
+            'is_remote_area' => $quote->is_remote_area,
             'preferred_shipping_method' => $quote->preferred_shipping_method,
             'needed_by' => $quote->needed_by?->toDateString(),
             'event_date' => $quote->event_date?->toDateString(),

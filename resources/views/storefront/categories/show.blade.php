@@ -113,7 +113,7 @@
             <div class="site-container np-products-catalog-container" x-data="{ filtersOpen: false }">
                 <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div>
-                        <h2 class="font-display text-4xl font-bold uppercase text-brand-ink sm:text-5xl">Shop {{ $category['short_title'] }}</h2>
+                        <h2 class="font-display text-4xl font-bold uppercase text-brand-ink">Shop {{ $category['short_title'] }}</h2>
                     </div>
 
                     <button type="button" class="btn btn-outline w-full sm:w-auto lg:hidden" x-on:click="filtersOpen=true">

@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\AdminNotificationService;
 use App\Services\Email\TransactionalEmailManager;
 use App\Services\Integrations\FlowTrack\FlowTrackInquirySyncManager;
+use App\Services\Shipping\RuralAreaSurchargeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -64,6 +65,7 @@ class BulkQuoteController extends Controller
         AdminNotificationService $notifications,
         FlowTrackInquirySyncManager $flowTrackSync,
         BulkQuoteGuestService $guest,
+        RuralAreaSurchargeService $remoteAreas,
     ): RedirectResponse {
         $validated = $request->validated();
         unset($validated['company'], $validated['g-recaptcha-response']);
@@ -102,6 +104,12 @@ class BulkQuoteController extends Controller
             'guest_access_hash' => $accessToken !== null ? hash('sha256', $accessToken) : null,
             ...$validated,
             'reference' => $this->makeReference(),
+            'is_remote_area' => filled($validated['postal_code'] ?? null)
+                ? $remoteAreas->resolve(
+                    $validated['postal_code'], $validated['country'] ?? 'United States',
+                    $validated['state_province'] ?? null,
+                ) !== null
+                : null,
             'user_id' => $customer?->id,
             'customer_account' => $this->customerAccountSnapshot($customer, $validated),
             'attachment' => $attachment,

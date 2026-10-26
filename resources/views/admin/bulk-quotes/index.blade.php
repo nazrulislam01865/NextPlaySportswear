@@ -127,6 +127,10 @@
                             <td class="px-5 py-4 align-top">
                                 <p class="font-semibold text-slate-700">{{ $quote->needed_by?->format('M d, Y') ?: '—' }}</p>
                                 <p class="mt-1 text-xs text-slate-400">{{ collect([$quote->state_province, $quote->country])->filter()->join(', ') }}</p>
+                                @if($quote->postal_code)
+                                    <p class="mt-1 text-xs text-slate-600">{{ $quote->postal_code }}</p>
+                                @endif
+                                <x-admin.remote-area-flag :remote="$quote->is_remote_area" class="mt-1" />
                             </td>
                         </tr>
                     @empty

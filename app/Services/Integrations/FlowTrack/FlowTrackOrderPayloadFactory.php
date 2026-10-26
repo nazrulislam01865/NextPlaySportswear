@@ -71,6 +71,7 @@ final class FlowTrackOrderPayloadFactory
             'discount_total' => (float) $order->discount_total,
             'shipping_total' => (float) $order->shipping_total,
             'rural_surcharge_total' => (float) $order->rural_surcharge_total,
+            'is_remote_area' => $order->is_remote_area,
             'product_shipping_total' => (float) ($order->product_shipping_total ?? 0),
             'tax_total' => (float) $order->tax_total,
             'grand_total' => (float) $order->grand_total,

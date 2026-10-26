@@ -32,6 +32,8 @@ class BulkQuoteRequestController extends Controller
                 'sizes_needed',
                 'country',
                 'state_province',
+                'postal_code',
+                'is_remote_area',
                 'needed_by',
                 'status',
                 'assigned_to',
