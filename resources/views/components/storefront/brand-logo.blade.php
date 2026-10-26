@@ -4,16 +4,20 @@
 ])
 
 @php
-    $logoUrl = \App\Support\StorefrontBranding::logoUrl();
-    $hasCustomLogo = \App\Support\StorefrontBranding::hasCustomLogo();
+    $logoUrl = $variant === 'footer'
+        ? \App\Support\StorefrontBranding::footerLogoUrl()
+        : \App\Support\StorefrontBranding::logoUrl();
+    $hasCustomLogo = $variant === 'footer'
+        ? \App\Support\StorefrontBranding::hasFooterImageLogo()
+        : \App\Support\StorefrontBranding::hasCustomLogo();
     $logoAlt = $alt ?: config('storefront.name', 'NextPlay Sportswear');
     $variant = in_array($variant, ['header', 'footer', 'document', 'error'], true) ? $variant : 'header';
 
     $imageStyle = match ($variant) {
-        'footer' => 'display:block;max-width:190px;width:auto;height:48px;object-fit:contain;object-position:left center;',
-        'document' => 'display:block;max-width:210px;width:auto;height:58px;object-fit:contain;object-position:left center;',
-        'error' => 'display:block;max-width:210px;width:auto;height:48px;object-fit:contain;object-position:left center;',
-        default => 'display:block;max-width:220px;width:auto;height:46px;object-fit:contain;object-position:left center;',
+        'footer' => 'display:block;max-width:190px;width:auto;max-height:48px;height:auto;object-fit:contain;object-position:left center;background:transparent;',
+        'document' => 'display:block;max-width:210px;width:auto;height:58px;object-fit:contain;object-position:left center;background:transparent;',
+        'error' => 'display:block;max-width:210px;width:auto;height:48px;object-fit:contain;object-position:left center;background:transparent;',
+        default => 'display:block;max-width:220px;width:auto;height:46px;object-fit:contain;object-position:left center;background:transparent;',
     };
 @endphp
 

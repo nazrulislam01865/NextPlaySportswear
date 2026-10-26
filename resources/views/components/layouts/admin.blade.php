@@ -38,10 +38,9 @@
             :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
             aria-label="Admin navigation"
         >
-            <div class="flex h-[72px] shrink-0 items-center justify-between border-b border-white/10 px-4">
-                <a href="{{ route('admin.dashboard') }}" class="flex min-w-0 items-center gap-3 font-black" @click="sidebarOpen = false">
-                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl border-2 border-brand-red text-brand-red">✓</span>
-                    <span class="min-w-0"><span class="block truncate text-lg">NextPlay</span><span class="block truncate text-[10px] uppercase tracking-[.25em] text-slate-400">Commerce Admin</span></span>
+            <div class="flex h-[72px] shrink-0 items-center justify-between overflow-hidden border-b border-white/10 px-4">
+                <a href="{{ route('admin.dashboard') }}" class="flex min-w-0 flex-1 items-center overflow-hidden gap-3 font-black" style="min-width:0;max-width:100%;overflow:hidden" @click="sidebarOpen = false">
+                    <x-admin.brand-identity variant="sidebar" />
                 </a>
                 <button type="button" class="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-2xl text-slate-300 hover:bg-white/10 lg:hidden" @click="sidebarOpen = false" aria-label="Close sidebar">×</button>
             </div>

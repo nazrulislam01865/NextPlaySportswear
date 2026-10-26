@@ -23,6 +23,14 @@ class StorefrontBrandingRequest extends FormRequest
                 'max:5120',
             ],
             'remove_logo' => ['nullable', 'boolean'],
+            'footer_logo' => [
+                'nullable',
+                'file',
+                'mimes:jpg,jpeg,png,webp,avif',
+                'mimetypes:image/jpeg,image/png,image/webp,image/avif',
+                'max:5120',
+            ],
+            'remove_footer_logo' => ['nullable', 'boolean'],
             'favicon' => [
                 'nullable',
                 'file',
