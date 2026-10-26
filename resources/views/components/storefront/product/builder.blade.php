@@ -1141,13 +1141,17 @@ window.productBuilderFabricPricing = function (config = {}) {
                                     <h4 class="np-proto-section-title">{{ $ui['shipping_method_label'] }}</h4>
                                     <div class="np-proto-choice-grid">
                                         @foreach($product['shipping_methods'] as $method)
-                                            @php $methodJson = json_encode($method, JSON_THROW_ON_ERROR); @endphp
+                                            @php
+                                                $methodJson = json_encode($method, JSON_THROW_ON_ERROR);
+                                                $isStandardShipping = str_contains(strtolower((string) ($method['id'] ?? '')), 'standard')
+                                                    || str_contains(strtolower((string) ($method['label'] ?? '')), 'standard shipping');
+                                            @endphp
                                             <button type="button" class="np-proto-choice-card" :class="shippingMethod === @js($method['id']) ? 'is-selected' : ''" @click="chooseShippingMethod(@js($method['id']))">
                                                 <span class="np-proto-choice-radio"></span>
                                                 <span class="np-proto-choice-copy"><strong>{{ $method['label'] }}</strong><b x-text="shippingDaysOnlyLabel({{ $methodJson }})"></b><small>{{ $method['description'] ?? 'Worldwide delivery option.' }}</small></span>
                                                 <span class="np-proto-choice-media">
                                                     @if(filled($method['image'] ?? null))
-                                                        <img src="{{ $method['image'] }}" alt="{{ $method['label'] }}" loading="lazy" decoding="async">
+                                                        <img src="{{ $method['image'] }}" alt="{{ $method['label'] }}" @class(['np-proto-shipping-image--standard' => $isStandardShipping]) loading="lazy" decoding="async">
                                                     @else
                                                         <x-storefront.product.ui-icon :src="$ui['shipping_method_card_icon']" name="truck" />
                                                     @endif

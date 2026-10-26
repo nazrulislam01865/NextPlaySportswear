@@ -88,11 +88,11 @@
             <div class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach($categoryModel->children as $child)
                     <a href="{{ route('categories.show', $child->slug) }}" class="np-square-card group overflow-hidden border border-slate-200 bg-white shadow-card">
-                        <div class="np-category-square-media relative overflow-hidden">
+                        <div class="np-category-square-media relative overflow-hidden" data-card-image-loader>
                             <img
                                 src="{{ $child->thumbnailUrl() }}"
                                 alt="{{ $child->thumbnail_alt ?: $child->name }}"
-                                class="np-category-square-image transition duration-300 group-hover:scale-105"
+                                class="np-category-square-image transition duration-300 group-hover:scale-105" data-card-image
                                 loading="lazy"
                                 width="800"
                                 height="800"

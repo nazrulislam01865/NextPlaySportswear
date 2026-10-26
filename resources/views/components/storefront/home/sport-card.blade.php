@@ -15,12 +15,13 @@
     href="{{ $url }}"
     aria-label="Browse {{ $title }}, {{ $countLabel }}"
 >
-    <span class="np-shop-sport-card__media">
+    <span class="np-shop-sport-card__media" data-card-image-loader>
         <img
             loading="lazy"
             decoding="async"
             src="{{ $sport['image'] ?? asset('images/category-placeholder.svg') }}"
             alt="{{ $sport['alt'] ?? $title }}"
+            data-card-image
             width="420"
             height="420"
         >

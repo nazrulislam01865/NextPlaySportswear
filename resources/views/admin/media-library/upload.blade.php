@@ -1,125 +1,114 @@
-@push('admin-page-styles')
-<link rel="stylesheet" href="{{ asset('css/admin-media-gallery.css') }}?v=20261024c">
-<script src="{{ asset('js/admin-media-gallery.js') }}?v=20261024"></script>
-@endpush
-<x-layouts.admin
-    title="Upload Media File"
-    subtitle="Upload reusable product and content images to the global media gallery."
->
-    <div
-        x-data="adminMediaUploadPage({
-            indexUrl: @js(route('admin.media-library.index')),
-            storeUrl: @js(route('admin.media-library.store')),
-            totalImages: @js((int) $totalImages),
-            scope: 'today',
-            allowFiles: true,
-            perPage: 12,
-            emptyMessage: 'No media files were uploaded today. New uploads will appear here immediately.',
-        })"
-        x-init="init()"
-        class="space-y-5"
-    >
-        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
-                <div class="flex items-center gap-4">
-                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-50 text-lg font-black text-brand-blue">▧</span>
-                    <div class="min-w-0">
-                        <p class="text-xs font-semibold leading-4 text-slate-600">Total Media Files</p>
-                        <p class="mt-1 text-2xl font-black leading-none text-brand-ink" x-text="totalImages.toLocaleString()">{{ number_format((int) $totalImages) }}</p>
-                        <p class="mt-1 truncate text-[11px] font-medium text-slate-400">Reusable files available in Gallery</p>
+<x-layouts.admin title="Upload Media">
+    {{-- Admin soft navigation replaces only #admin-main-content, not the <head>.
+         Keep page-specific assets within the swapped content: the existing admin
+         navigation executes its scripts before Alpine.initTree(). A normal page
+         load also registers this component before the deferred admin bundle starts. --}}
+    <link rel="stylesheet" href="{{ asset('css/admin-media-gallery.css') }}?v=20261024c">
+    <link rel="stylesheet" href="{{ asset('css/admin-media-upload.css') }}?v=20261026c">
+    <script src="{{ asset('js/admin-media-upload.js') }}?v=20261026b"></script>
+    <div class="np-mu-page" x-data="adminMediaUploadPrototype({ storeUrl: @js(route('admin.media-library.store')) })">
+        <nav class="np-mg-breadcrumb" aria-label="Breadcrumb">
+            <a href="{{ route('admin.dashboard') }}">Dashboard</a><span>›</span><span>Media</span><span>›</span><a href="{{ route('admin.media-library.index') }}">Media Gallery</a><span>›</span><strong>Upload Media</strong>
+        </nav>
+        <header class="np-mu-heading">
+            <div>
+                <h1>Upload Media</h1>
+                <p>Upload images, documents, and media files to your library. You can upload multiple files at once.</p>
+            </div>
+            <a href="{{ route('admin.media-library.index') }}" class="btn btn-white np-mu-back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="m13.5 5-7 7 7 7M7 12h13"/></svg>
+                Back to Media Gallery
+            </a>
+        </header>
+
+        <div class="np-mu-layout" :class="{ 'np-mu-layout--single': !selectedFile || !detailsOpen }">
+            <section class="np-mu-card np-mu-workspace" aria-label="Upload files">
+                <input x-ref="fileInput" type="file" class="sr-only" multiple
+                       accept=".jpg,.jpeg,.png,.gif,.webp,.avif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.mp4,.mov,.webm"
+                       @change="addFiles($event.target.files)" aria-label="Choose media files">
+                <div class="np-mu-dropzone" :class="{ 'is-dragging': dragging }"
+                     @dragenter.stop.prevent="startDrag($event)"
+                     @dragover.stop.prevent="dragging = isFileDrag($event)"
+                     @dragleave.stop.prevent="endDrag($event)"
+                     @drop.stop.prevent="drop($event)">
+                    <svg class="np-mu-cloud" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 46H14a12 12 0 0 1-1.3-23.9A20 20 0 0 1 52 26a11 11 0 0 1-2 20h-4"/><path d="M32 51V22m-9 9 9-9 9 9"/></svg>
+                    <h2>Drag &amp; drop files here</h2>
+                    <p>or click to browse from your computer</p>
+                    <button type="button" class="btn btn-red np-mu-browse" @click="browse()" :disabled="busy">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 9V5a2 2 0 0 1 2-2h5l2 3"/></svg>
+                        Browse Files
+                    </button>
+                    <small>You can upload multiple files, documents, and videos. Max file size: 20 MB per file.<br>Supported: JPG, JPEG, PNG, GIF, WebP, AVIF, PDF, Office, TXT, MP4, MOV, WebM (SVG excluded for security).</small>
+                </div>
+
+                <div class="np-mu-notice np-mu-notice--error" x-cloak x-show="error" role="alert" x-text="error"></div>
+                <div class="np-mu-notice np-mu-notice--success" x-cloak x-show="success" role="status">
+                    <span x-text="success"></span>
+                    <a href="{{ route('admin.media-library.index') }}">View Media Gallery</a>
+                </div>
+
+                <div class="np-mu-file-header">
+                    <h2>Selected Files (<span x-text="fileCount">0</span>)</h2>
+                    <button type="button" class="np-mu-clear" x-show="fileCount" x-cloak :disabled="busy" @click="clearAll()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-9 0 1 14h10l1-14M10 11v6m4-6v6"/></svg>
+                        Clear All
+                    </button>
+                </div>
+
+                <div class="np-mu-files" x-show="fileCount" x-cloak>
+                    <template x-for="file in files" :key="file.id">
+                        <article class="np-mu-file" :class="{ 'is-selected': file.id === selectedId && detailsOpen }" @click="select(file)">
+                            <button type="button" class="np-mu-file-identity" @click.stop="select(file)" :aria-pressed="file.id === selectedId && detailsOpen" :aria-label="`Preview ${file.file.name}`">
+                                <x-admin.media-upload.preview />
+                                <span class="np-mu-file-name-wrap">
+                                    <strong x-text="file.file.name" :title="file.file.name"></strong>
+                                    <small><span x-text="fileSize(file.file.size)"></span><template x-if="file.width && file.height"><span> • <span x-text="`${file.width} × ${file.height}`"></span></span></template></small>
+                                </span>
+                            </button>
+                            <label class="np-mu-field np-mu-row-field" @click.stop>
+                                <span>Title</span>
+                                <input type="text" x-model="file.title" maxlength="250" placeholder="Media title" :disabled="busy">
+                            </label>
+                            <label class="np-mu-field np-mu-row-field" @click.stop>
+                                <span>Alt Text</span>
+                                <input type="text" x-model="file.altText" maxlength="255" :disabled="busy" :placeholder="file.isImage ? 'Describe the image' : 'Optional'">
+                            </label>
+                            <button type="button" class="np-mu-remove" title="Remove file" :aria-label="`Remove ${file.file.name}`" @click.stop="remove(file.id)" :disabled="busy">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-9 0 1 14h10l1-14M10 11v6m4-6v6"/></svg>
+                            </button>
+                        </article>
+                    </template>
+                </div>
+                <div class="np-mu-progress" x-cloak x-show="busy" role="status" aria-live="polite">
+                    <div class="np-mu-progress-copy">
+                        <span x-text="uploadProgressKnown ? (uploadProgress >= 100 ? 'Finishing upload…' : 'Uploading files…') : 'Starting upload…'"></span>
+                        <strong x-text="uploadProgressKnown ? `${uploadProgress}%` : 'Preparing…'"></strong>
+                    </div>
+                    <div class="np-mu-progress-track" role="progressbar" aria-label="Media upload progress" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="uploadProgressKnown ? uploadProgress : null">
+                        <span class="np-mu-progress-fill" :class="{ 'is-pending': !uploadProgressKnown }" :style="{ width: uploadProgressKnown ? `${uploadProgress}%` : '30%' }"></span>
                     </div>
                 </div>
-            </article>
-            <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-card sm:col-span-1 xl:col-span-2">
-                <div class="flex items-center gap-4">
-                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-50 text-lg font-black text-emerald-700">✓</span>
-                    <div class="min-w-0">
-                        <p class="text-xs font-semibold leading-4 text-slate-600">Latest Upload</p>
-                        <p class="mt-1 truncate text-lg font-black leading-tight text-brand-ink">{{ $latestImage?->name ?? 'No media uploaded yet' }}</p>
-                        <p class="mt-1 truncate text-[11px] font-medium text-slate-400">{{ \App\Support\ViewerTime::render($latestImage?->created_at, 'M j, Y g:i A') ?? 'Upload media files below to start the gallery.' }}</p>
+                <div class="np-mu-actions">
+                    <button type="button" class="btn btn-red np-mu-upload" @click="upload()" :disabled="busy || !fileCount" :aria-busy="busy">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 16V3m-5 5 5-5 5 5M4 16v4h16v-4"/></svg>
+                        <span x-text="busy ? 'Uploading files…' : `Upload ${fileCount} File${fileCount === 1 ? '' : 's'}`"></span>
+                    </button>
+                </div>
+            </section>
+
+            <aside class="np-mu-card np-mu-details" x-show="selectedFile && detailsOpen" x-cloak aria-label="File Preview and Details">
+                <div class="np-mu-details-heading"><h2>File Preview &amp; Details</h2><button type="button" @click="closeDetails()" aria-label="Close file details" title="Close details">×</button></div>
+                <template x-if="selectedFile">
+                    <div x-data="{ get file() { return selectedFile } }">
+                        <div class="np-mu-main-preview"><x-admin.media-upload.preview :large="true" /></div>
+                        <div class="np-mu-preview-info"><div><strong x-text="file.file.name"></strong><small><span x-text="fileSize(file.file.size)"></span><template x-if="file.width && file.height"><span> • <span x-text="`${file.width} × ${file.height}`"></span></span></template></small></div><button type="button" @click="window.open(file.previewUrl || '#', '_blank', 'noopener,noreferrer')" x-show="file.previewUrl" aria-label="Open preview in new tab" title="Open preview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 4h6v6m0-6-9 9M20 14v6H4V4h6"/></svg></button></div>
+                        <label class="np-mu-field"><span>Title</span><input type="text" x-model="file.title" maxlength="250" placeholder="Media title" :disabled="busy"></label>
+                        <label class="np-mu-field"><span>Alt Text</span><input type="text" x-model="file.altText" maxlength="255" placeholder="Describe the image" :disabled="busy"></label>
+                        <label class="np-mu-field"><span>Caption (optional)</span><textarea x-model="file.caption" maxlength="255" rows="2" :disabled="busy" placeholder="Add a caption"></textarea></label>
+                        <label class="np-mu-field"><span>Description (optional)</span><textarea x-model="file.description" maxlength="2000" rows="3" :disabled="busy" placeholder="Add a description"></textarea></label>
                     </div>
-                </div>
-            </article>
-        </div>
-
-        <section class="rounded-3xl border border-slate-200 bg-white shadow-card">
-            <div class="border-b border-slate-200 p-5">
-                <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                    <div class="max-w-2xl">
-                        <p class="text-xs font-black uppercase tracking-[.22em] text-brand-red">Media</p>
-                        <h2 class="mt-2 text-2xl font-black text-brand-ink">Upload Media File</h2>
-                        <p class="mt-2 text-sm font-semibold leading-6 text-slate-500">Drag files here or choose images from your device. Uploaded files will be available in the Gallery and product image picker.</p>
-                    </div>
-                    <a href="{{ route('admin.media-library.index') }}" class="btn btn-white">View Gallery</a>
-                </div>
-            </div>
-
-            <div class="p-5">
-                <input x-ref="uploadInput" class="sr-only" type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif,application/pdf,.doc,.docx,.xls,.xlsx,.txt,video/mp4,video/webm" @change="upload($event.target.files)">
-                <div
-                    class="np-gallery-page-upload min-h-[260px]"
-                    :class="dragging ? 'is-dragging' : ''"
-                    role="button"
-                    tabindex="0"
-                    aria-label="Upload media files"
-                    @click="$refs.uploadInput?.click()"
-                    @keydown.enter.prevent="$refs.uploadInput?.click()"
-                    @keydown.space.prevent="$refs.uploadInput?.click()"
-                    @dragenter.stop.prevent="startDrag($event)"
-                    @dragover.stop.prevent="dragging = isFileDrag($event)"
-                    @dragleave.stop.prevent="endDrag($event)"
-                    @drop.stop.prevent="drop($event)"
-                >
-                    <strong class="text-lg" x-text="uploadBusy ? 'Uploading…' : (dragging ? 'Drop media files here' : 'Upload media files')"></strong>
-                    <small>JPG, PNG, WebP, AVIF (5 MB), PDF, Office, TXT (10 MB), MP4, WebM (30 MB). Max 20 files.</small>
-                    <span class="mt-5 inline-flex rounded-full bg-brand-red px-5 py-3 text-sm font-black text-white shadow-lg shadow-red-100">+ Select Files</span>
-                </div>
-
-                <p class="np-media-alert np-media-alert--error !mx-0" x-show="uploadError" x-text="uploadError"></p>
-                <p class="np-media-alert np-media-alert--error !mx-0" x-show="error" x-text="error"></p>
-            </div>
-        </section>
-
-        <section class="rounded-3xl border border-slate-200 bg-white shadow-card">
-            <div class="flex flex-col gap-3 border-b border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h2 class="text-xl font-black text-brand-ink">Today's Uploaded Media</h2>
-                    <p class="mt-1 text-sm font-semibold text-slate-500">Only files uploaded today are shown here. Use Gallery to browse all media.</p>
-                </div>
-                <label class="admin-label mb-0 w-full sm:max-w-xs">
-                    Search today's uploads
-                    <input class="admin-input" type="search" x-model="search" @input.debounce.450ms="load(false)" placeholder="Search today's media" autocomplete="off">
-                </label>
-            </div>
-
-            <div
-                class="np-gallery-page-grid"
-                x-ref="scroller"
-                x-show="items.length"
-                @scroll.passive="handleScroll($event)"
-            >
-                <template x-for="image in items" :key="image.id">
-                    <article class="np-gallery-page-card">
-                        <a :href="image.download_url || image.url" target="_blank" rel="noopener" class="block" :aria-label="`Open ${image.name || 'media file'}`">
-                            <x-admin.media.preview />
-                        </a>
-                        <div class="min-w-0 p-3">
-                            <strong x-text="image.name || 'Media file'"></strong>
-                            <small x-text="image.size_label || image.created_at || 'Reusable media file'"></small>
-                        </div>
-                    </article>
                 </template>
-            </div>
-
-            <div class="np-media-empty" x-show="!loading && !items.length">
-                <span x-text="emptyMessage">No media files were uploaded today.</span>
-            </div>
-
-            <div class="border-t border-slate-200 p-4 text-center">
-                <div class="np-media-loading !m-0" x-show="loading">Loading media…</div>
-                <button type="button" class="btn btn-white" x-show="hasMore && !loading" @click="load(true)">Load more media</button>
-                <p class="text-sm font-bold text-slate-500" x-show="!hasMore && items.length && !loading">All today's uploaded media loaded.</p>
-            </div>
-        </section>
+            </aside>
+        </div>
     </div>
 </x-layouts.admin>

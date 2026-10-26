@@ -16,8 +16,8 @@
         <div class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             @foreach($items as $item)
                 <a href="{{ $item['url'] }}" class="np-square-card group overflow-hidden border border-slate-200 bg-white shadow-card">
-                    <div class="np-category-square-media relative overflow-hidden">
-                        <img src="{{ $item['image'] }}" alt="{{ $item['alt'] }}" class="np-category-square-image transition group-hover:scale-105" loading="lazy" width="800" height="800">
+                    <div class="np-category-square-media relative overflow-hidden" data-card-image-loader>
+                        <img src="{{ $item['image'] }}" alt="{{ $item['alt'] }}" class="np-category-square-image transition group-hover:scale-105" data-card-image loading="lazy" width="800" height="800">
                     </div>
                     <div class="p-4">
                         <strong class="text-brand-ink">{{ $item['title'] }}</strong>

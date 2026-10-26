@@ -3067,13 +3067,21 @@ const setupProductCardImageLoaders = () => {
 };
 
 const setupCategoryCardImageLoaders = () => {
-    const selector = '.np-all-categories-grid .np-category-square-image';
+    // Shared category/homepage media loader; no per-card listeners or requests.
+    const selector = '[data-card-image-loader] > img[data-card-image]';
     const markLoaded = (image) => {
-        image.closest('.np-category-square-media')?.classList.add('is-loaded');
+        image.closest('[data-card-image-loader]')?.classList.add('is-loaded');
     };
 
     document.querySelectorAll(selector).forEach((image) => {
-        if (image.complete && image.naturalWidth > 0) markLoaded(image);
+        if (!image.complete) return;
+        if (image.naturalWidth > 0) {
+            markLoaded(image);
+        } else {
+            // Handle images whose error fired before this listener was registered.
+            window.nextPlayUseImagePlaceholder?.(image);
+            if (image.complete && image.naturalWidth === 0) markLoaded(image);
+        }
     });
 
     if (document.documentElement.dataset.categoryCardImageLoaderReady === 'true') return;
@@ -3081,8 +3089,18 @@ const setupCategoryCardImageLoaders = () => {
 
     document.addEventListener('load', (event) => {
         const image = event.target;
+        if (image instanceof HTMLImageElement && image.matches(selector)) markLoaded(image);
+    }, true);
+
+    document.addEventListener('error', (event) => {
+        const image = event.target;
         if (!(image instanceof HTMLImageElement) || !image.matches(selector)) return;
-        markLoaded(image);
+        // Global fallback runs before this handler. Allow one fallback load, but
+        // stop the shimmer if the placeholder also fails.
+        if (image.dataset.cardImageFallbackTried === '1' || !image.classList.contains('np-image-placeholder-active')) {
+            markLoaded(image);
+        }
+        image.dataset.cardImageFallbackTried = '1';
     }, true);
 };
 

@@ -26007,18 +26007,14 @@ html.np-product-preview-open body { overflow: hidden; }
 }
 
 
-/* NEXTPLAY_DELIVERY_VISUAL_ICON_MATCH_2026_10_24
-   The uploaded plane artwork is wider than the square Production Time icon,
-   so equal 52px boxes do not look equal. Match the first icon's visible height
-   without stretching or changing uploaded files; keep this scoped to the
-   product builder's three-icon delivery calculation. */
-.storefront-clean-ui .np-product-detail-prototype .np-proto-delivery-equation > div:nth-of-type(2) > .np-configurable-ui-icon > img {
-    transform: scale(1.31);
-    transform-origin: center center;
-}
-.storefront-clean-ui .np-product-detail-prototype .np-proto-delivery-equation > div.is-estimate > .np-configurable-ui-icon > img {
-    transform: scale(1.77);
-    transform-origin: center center;
+/* Shipping and delivery artwork share the same existing icon slots. Avoid
+   enlarging selected uploads beyond their peers: original 1.31x/1.77x image
+   transforms made the shipping-time and delivery-result images too large. */
+.storefront-clean-ui .np-product-detail-prototype .np-proto-choice-media > img.np-proto-shipping-image--standard {
+    width: 82%;
+    height: 82%;
+    object-fit: contain;
+    border-radius: 0;
 }
 
 
@@ -26337,5 +26333,57 @@ html.np-product-preview-open body { overflow: hidden; }
     }
     .storefront-clean-ui .home-page .np-ordering-section .process-intro {
         margin-bottom: 26px !important;
+    }
+}
+
+/* NEXTPLAY_SHARED_CATEGORY_IMAGE_SHIMMER
+   Reuse product-card soft shimmer and fade on category, sport and gear card
+   image regions. Opt-in via data attributes; never changes media dimensions. */
+.storefront-clean-ui [data-card-image-loader] {
+    position: relative;
+}
+
+.storefront-clean-ui [data-card-image-loader]::before,
+.storefront-clean-ui [data-card-image-loader]::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    transition: opacity .28s ease, visibility .28s ease;
+}
+
+.storefront-clean-ui [data-card-image-loader]::before {
+    inset: 0;
+    z-index: 2;
+    background: #f0eeeb;
+}
+
+.storefront-clean-ui [data-card-image-loader]::after {
+    z-index: 3;
+    inset-block: 0;
+    left: -75%;
+    width: 60%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.18) 20%, rgba(255,255,255,.85) 50%, rgba(255,255,255,.18) 80%, transparent);
+    animation: np-category-card-shimmer 1.2s ease-in-out infinite;
+}
+
+.storefront-clean-ui [data-card-image-loader]:not(.is-loaded) > img[data-card-image] {
+    opacity: 0;
+}
+
+.storefront-clean-ui [data-card-image-loader].is-loaded::before,
+.storefront-clean-ui [data-card-image-loader].is-loaded::after {
+    opacity: 0;
+    visibility: hidden;
+    animation: none;
+}
+
+.storefront-clean-ui [data-card-image-loader].is-loaded > img[data-card-image] {
+    animation: np-category-card-image-fade .3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .storefront-clean-ui [data-card-image-loader]::after,
+    .storefront-clean-ui [data-card-image-loader].is-loaded > img[data-card-image] {
+        animation: none;
     }
 }

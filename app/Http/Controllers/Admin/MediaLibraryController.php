@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -53,67 +54,79 @@ class MediaLibraryController extends Controller
         ])->withHeaders(['Cache-Control' => 'no-store, max-age=0']);
     }
 
-    public function upload(Request $request): View
+    public function upload(): View
     {
-        $query = $this->galleryQuery($request);
-        $todayQuery = $this->galleryQuery($request->duplicate(query: array_merge($request->query(), ['scope' => 'today'])));
-
-        return view('admin.media-library.upload', [
-            'totalImages' => (clone $query)->count(),
-            'todayImages' => (clone $todayQuery)->count(),
-            'latestImage' => (clone $query)->latest('id')->first(),
-        ]);
+        // The prototype shows only the files selected in the browser. No gallery
+        // statistics or image queries are needed just to render the upload page.
+        return view('admin.media-library.upload');
     }
 
     public function store(Request $request): JsonResponse
     {
-        // Keep images[] compatible with the existing product-image picker.
+        // Preserve the image-only product picker, including its existing 5 MB
+        // image limit. The standalone upload screen sends files[] with metadata.
         $field = $request->hasFile('files') ? 'files' : 'images';
-        $request->validate([
+        $isStandaloneUpload = $field === 'files';
+        $rules = [
             $field => ['required', 'array', 'min:1', 'max:20'],
-            $field.'.*' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,avif,pdf,doc,docx,xls,xlsx,txt,mp4,webm', 'max:30720'],
+            $field.'.*' => $isStandaloneUpload
+                ? ['required', 'file', 'mimes:jpg,jpeg,png,gif,webp,avif,pdf,doc,docx,xls,xlsx,txt,mp4,mov,webm', 'max:20480']
+                : ['required', 'file', 'mimes:jpg,jpeg,png,webp,avif', 'max:5120'],
             'category' => ['nullable', 'in:general,products,branding,banners'],
-        ]);
-
-        $uploaded = $request->file($field, []);
-        foreach ($uploaded as $file) {
-            $mime = (string) $file->getMimeType();
-            $limit = str_starts_with($mime, 'image/') ? 5 : (str_starts_with($mime, 'video/') ? 30 : 10);
-            if ($file->getSize() > $limit * 1024 * 1024) {
-                return response()->json(['message' => 'One or more files exceed the allowed size for their type.'], 422);
-            }
-            if ($field === 'images' && ! str_starts_with($mime, 'image/')) {
-                return response()->json(['message' => 'Product image uploads must contain images only.'], 422);
-            }
+        ];
+        if ($isStandaloneUpload) {
+            $rules += [
+                'metadata' => ['sometimes', 'array', 'max:20'],
+                'metadata.*' => ['array'],
+                'metadata.*.title' => ['nullable', 'string', 'max:250'],
+                'metadata.*.alt_text' => ['nullable', 'string', 'max:255'],
+                'metadata.*.caption' => ['nullable', 'string', 'max:255'],
+                'metadata.*.description' => ['nullable', 'string', 'max:2000'],
+            ];
         }
+        $validated = $request->validate($rules);
+        $uploaded = $request->file($field, []);
+        $metadata = $isStandaloneUpload ? ($validated['metadata'] ?? []) : [];
+        $savedPaths = [];
+        try {
+            $images = DB::transaction(function () use ($uploaded, $metadata, $field, $request, &$savedPaths): array {
+                $results = [];
+                $directory = 'media-library/'.now()->format('Y/m');
+                foreach ($uploaded as $index => $file) {
+                    $originalFilename = Str::limit(basename(str_replace('\\', '/', $file->getClientOriginalName())), 255, '');
+                    $originalName = Str::limit(pathinfo($originalFilename, PATHINFO_FILENAME) ?: 'Media file', 250, '');
+                    $details = $metadata[$index] ?? [];
+                    $title = trim((string) ($details['title'] ?? ''));
+                    $name = $title !== '' ? $title : $originalName;
+                    $mime = (string) $file->getMimeType();
+                    $isImage = str_starts_with($mime, 'image/');
+                    $dimensions = $isImage ? (@getimagesize($file->getRealPath()) ?: []) : [];
 
-        $images = [];
-        foreach ($uploaded as $file) {
-            $path = StoredPublicImage::replace($file, 'media-library/'.now()->format('Y/m'), null);
-            try {
-                $originalFilename = Str::limit(basename(str_replace('\\', '/', $file->getClientOriginalName())), 255, '');
-                $name = Str::limit(pathinfo($originalFilename, PATHINFO_FILENAME) ?: 'Media file', 250, '');
-                $mime = (string) $file->getMimeType();
-                $dimensions = str_starts_with($mime, 'image/') ? (@getimagesize($file->getRealPath()) ?: []) : [];
-
-                $image = MediaLibraryImage::query()->create([
-                    'path' => $path,
-                    'name' => $name,
-                    'original_filename' => $originalFilename,
-                    'alt_text' => str_starts_with($mime, 'image/') ? $name : null,
-                    'mime_type' => $mime,
-                    'size_bytes' => $file->getSize(),
-                    'width' => $dimensions[0] ?? null,
-                    'height' => $dimensions[1] ?? null,
-                    'category' => $request->input('category') ?: ($field === 'images' ? 'products' : 'general'),
-                    'source' => 'upload',
-                    'created_by' => auth('admin')->id(),
-                ]);
-                $images[] = $this->imagePayload($image);
-            } catch (\Throwable $exception) {
-                Storage::disk('public')->delete($path);
-                throw $exception;
-            }
+                    $path = StoredPublicImage::replace($file, $directory, null);
+                    $savedPaths[] = $path;
+                    $image = MediaLibraryImage::query()->create([
+                        'path' => $path,
+                        'name' => $name,
+                        'original_filename' => $originalFilename,
+                        'alt_text' => $details['alt_text'] ?? ($isImage ? $name : null),
+                        'caption' => $details['caption'] ?? null,
+                        'description' => $details['description'] ?? null,
+                        'mime_type' => $mime,
+                        'size_bytes' => $file->getSize(),
+                        'width' => $dimensions[0] ?? null,
+                        'height' => $dimensions[1] ?? null,
+                        'category' => $request->input('category') ?: ($field === 'images' ? 'products' : 'general'),
+                        'source' => 'upload',
+                        'created_by' => auth('admin')->id(),
+                    ]);
+                    $results[] = $this->imagePayload($image);
+                }
+                return $results;
+            });
+        } catch (\Throwable $exception) {
+            // A failed batch must not leave orphaned files from earlier entries.
+            if ($savedPaths) Storage::disk('public')->delete($savedPaths);
+            throw $exception;
         }
 
         return response()->json([

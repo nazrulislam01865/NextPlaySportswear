@@ -38,8 +38,8 @@
             :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
             aria-label="Admin navigation"
         >
-            <div class="flex h-[72px] shrink-0 items-center justify-between overflow-hidden border-b border-white/10 px-4">
-                <a href="{{ route('admin.dashboard') }}" class="flex min-w-0 flex-1 items-center overflow-hidden gap-3 font-black" style="min-width:0;max-width:100%;overflow:hidden" @click="sidebarOpen = false">
+            <div class="flex h-[72px] shrink-0 items-center justify-between overflow-hidden" style="padding-inline:0!important;border:0!important">
+                <a href="{{ route('admin.dashboard') }}" class="flex min-w-0 flex-1 items-center justify-center overflow-hidden font-black" style="min-width:0;width:100%;max-width:100%;height:100%;border:0!important;border-radius:0!important;box-shadow:none!important;background:transparent!important" @click="sidebarOpen = false">
                     <x-admin.brand-identity variant="sidebar" />
                 </a>
                 <button type="button" class="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-2xl text-slate-300 hover:bg-white/10 lg:hidden" @click="sidebarOpen = false" aria-label="Close sidebar">×</button>

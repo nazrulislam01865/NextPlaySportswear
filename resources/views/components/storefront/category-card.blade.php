@@ -9,11 +9,11 @@
 @endphp
 
 <article class="np-home-category-card np-square-card group flex h-full flex-col overflow-hidden border border-slate-200 bg-white font-sans shadow-card card-hover">
-    <a href="{{ $category['url'] }}" class="np-home-category-card__media np-category-square-media relative block overflow-hidden" aria-label="Browse {{ $category['title'] }}">
+    <a href="{{ $category['url'] }}" class="np-home-category-card__media np-category-square-media relative block overflow-hidden" data-card-image-loader aria-label="Browse {{ $category['title'] }}">
         <img
             src="{{ $category['image'] }}"
             alt="{{ $category['alt'] }}"
-            class="np-category-square-image transition duration-500 group-hover:scale-[1.04]"
+            class="np-category-square-image transition duration-500 group-hover:scale-[1.04]" data-card-image
             loading="lazy"
             width="800"
             height="800"

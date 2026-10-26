@@ -106,12 +106,13 @@
                         aria-label="{{ $label }}: {{ $title }}"
                     >
                         <span class="np-best-gear-card__number" aria-hidden="true">{{ $number }}</span>
-                        <span class="np-best-gear-card__media">
+                        <span class="np-best-gear-card__media" data-card-image-loader>
                             <img
                                 loading="lazy"
                                 decoding="async"
                                 src="{{ $image }}"
                                 alt="{{ $alt }}"
+                                data-card-image
                                 width="{{ $isFeatured ? 640 : 280 }}"
                                 height="{{ $isFeatured ? 300 : ($usesSquareMedia ? 280 : 184) }}"
                             >

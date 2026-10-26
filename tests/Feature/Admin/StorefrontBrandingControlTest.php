@@ -193,6 +193,14 @@ class StorefrontBrandingControlTest extends TestCase
         $this->assertNotSame(StorefrontBranding::logoUrl(), StorefrontBranding::footerLogoUrl());
         $this->get(route('home'))->assertOk()->assertSee(StorefrontBranding::logoUrl(), false)
             ->assertSee(StorefrontBranding::footerLogoUrl(), false);
+        $this->get(route('admin.dashboard'))->assertOk()
+            ->assertSee('src="'.StorefrontBranding::footerLogoUrl().'"', false)
+            ->assertDontSee('src="'.StorefrontBranding::logoUrl().'"', false);
+        auth('admin')->logout();
+        $this->get(route('admin.login'))->assertOk()
+            ->assertSee('src="'.StorefrontBranding::logoUrl().'"', false)
+            ->assertDontSee('src="'.StorefrontBranding::footerLogoUrl().'"', false);
+        $this->actingAs($admin, 'admin');
 
         $footerPath = $setting->footer_logo_path;
         $mainPath = $setting->logo_path;
