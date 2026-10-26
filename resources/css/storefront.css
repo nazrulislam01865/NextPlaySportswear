@@ -24282,21 +24282,22 @@ html.np-product-preview-open body { overflow: hidden; }
     box-shadow: none;
 }
 
-/* Product highlights show the actual admin-uploaded file, preserving every color.
-   Only the simple built-in SVG fallback inherits the theme accent. */
+/* Product highlights share the same canonical icon size as the Sizes /
+   Minimum Order Quantity / View Size Chart icons, including the mobile size.
+   Uploaded artwork remains in its original colors and aspect ratio. */
 .storefront-clean-ui .np-product-feature-icon {
-    flex: 0 0 34px;
-    width: 34px;
-    height: 34px;
+    flex: 0 0 var(--np-product-ui-icon-size, 42px);
+    width: var(--np-product-ui-icon-size, 42px);
+    height: var(--np-product-ui-icon-size, 42px);
 }
 .storefront-clean-ui .np-product-feature-icon svg {
-    width: 30px;
-    height: 30px;
+    width: 100%;
+    height: 100%;
 }
 .storefront-clean-ui .np-product-feature-icon img.np-product-feature-icon-uploaded {
     display: block;
-    width: 34px;
-    height: 34px;
+    width: 100%;
+    height: 100%;
     max-width: 100%;
     object-fit: contain;
     object-position: center;
@@ -26507,10 +26508,10 @@ html.np-product-preview-open body { overflow: hidden; }
     }
 }
 @media (max-width: 480px) {
-    /* Two lines instead of forcing the image and three quantity controls into
-       a single narrow grid track (especially at 320px and when fonts scale). */
+    /* The size label may vary, but the thumbnail must stay in the same
+       centered column on every mobile row. Quantity remains below. */
     .storefront-clean-ui .np-product-detail-prototype .np-proto-size-table tr {
-        grid-template-columns: minmax(40px, auto) minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr);
         gap: 9px 12px;
         padding: 12px;
     }
@@ -26522,7 +26523,7 @@ html.np-product-preview-open body { overflow: hidden; }
     .storefront-clean-ui .np-product-detail-prototype .np-proto-size-table td[data-label="Sample Image"] {
         grid-column: 2;
         grid-row: 1;
-        justify-self: start;
+        justify-self: center;
         width: 72px;
         max-width: 100%;
     }
