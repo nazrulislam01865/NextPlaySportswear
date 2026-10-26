@@ -1,0 +1,34 @@
+NextPlay Sportswear - size & quantity product image alignment
+26 October 2026
+
+Issue
+Mobile size thumbnails shift horizontally as the size-label text becomes longer.
+The previous 480px breakpoint used an auto-sized first grid column.
+
+Fix
+At mobile widths up to 480px, the size rows use equal flexible side columns
+and a fixed 72px middle column for the product thumbnail. The thumbnail is
+centered in that column. Quantity controls remain in the second row.
+Natural image proportions are preserved; product image URLs/data are unchanged.
+
+Updated files:
+- resources/css/storefront.css
+- public/build/manifest.json
+Added production asset:
+- public/build/assets/storefront-f6626d94.css
+
+Deployment
+Extract the PATCH archive at your Laravel project root, preserving paths.
+Both manifest and new CSS asset must be uploaded together. Existing assets,
+including the previous CSS build, are intentionally retained for rollback.
+No need to modify the database or run migrations. With the supplied compiled
+CSS, npm build is not necessary for this patch. On the next regular build,
+Vite will regenerate the bundle from the corrected source CSS.
+
+Validation
+- CSS files parsed successfully
+- Browser measured identical image centers across five varied size labels
+  on 320, 375, 414, and 480px viewports; no horizontal overflow
+- 481px, 767px, and 768px layouts checked without changing their behavior
+
+No Blade components, JS logic, backend code or queries were changed.
