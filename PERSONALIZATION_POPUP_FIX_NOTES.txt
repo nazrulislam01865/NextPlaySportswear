@@ -1,0 +1,15 @@
+NextPlay Item Personalization modal fix (2026-10-27)
+
+Changed file:
+resources/views/admin/products/_form.blade.php
+
+- Category dropdown is rendered outside the clipping container and positioned next to its trigger.
+- Dropdown is scrollable, viewport-aware, and stays above the modal and cards.
+- Clicking menu items does not inadvertently dismiss the parent modal.
+- Modal border radius reduced to 20px to align with the more compact picker styling.
+- No data, migrations, routes, business logic, or frontend build changes.
+
+Install: replace the matching Blade view file, then run:
+php artisan view:clear
+
+Refresh Add/Edit Product and open Item Personalization -> Add Template.

@@ -26900,3 +26900,146 @@ html.np-product-preview-open body { overflow: hidden; }
     font-size: 11px !important;
     line-height: 1.2;
 }
+
+/* NextPlay: one personalization field per line; label left, input right.
+   Scoped to the product-detail builder, leaving other storefront sections alone. */
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody tr {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px 16px !important;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody td:nth-child(n+3):not(:last-child) {
+    grid-column: 1 / -1 !important;
+    display: grid !important;
+    grid-template-columns: minmax(120px, 27%) minmax(0, 1fr) !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody td:nth-child(n+3):not(:last-child)::before {
+    display: block !important;
+    grid-column: 1;
+    margin: 0 !important;
+    overflow-wrap: anywhere;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody td:nth-child(n+3):not(:last-child) > input,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody td:nth-child(n+3):not(:last-child) > .np-personalization-swatches,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody td:nth-child(n+3):not(:last-child) > .np-personalization-upload-input {
+    grid-column: 2;
+    width: 100%;
+    min-width: 0;
+}
+/* Smaller upload dropzone: same visual language and file/drag-drop behavior. */
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-upload-zone,
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-upload-zone.is-logo {
+    box-sizing: border-box;
+    min-height: 68px !important;
+    height: 68px !important;
+    padding: 5px 8px !important;
+    gap: 1px !important;
+    align-content: center;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-upload-zone > .np-configurable-ui-icon,
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-upload-zone.is-logo > .np-configurable-ui-icon {
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    min-height: 20px !important;
+    max-width: 20px !important;
+    max-height: 20px !important;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-upload-zone > strong {
+    font-size: 11px !important;
+    line-height: 1.15 !important;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-upload-zone > span:not(.np-configurable-ui-icon) {
+    font-size: 10px !important;
+    line-height: 1.1 !important;
+}
+/* Give icons one pixel of inner breathing room without changing their outer size. */
+.storefront-clean-ui .np-product-detail-prototype .np-configurable-ui-icon > img,
+.storefront-clean-ui .np-product-detail-prototype .np-configurable-ui-icon > svg,
+.storefront-clean-ui .np-product-detail-prototype .np-product-feature-icon > img,
+.storefront-clean-ui .np-product-detail-prototype .np-product-feature-icon > svg,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-artwork-tabs > button > svg,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-upload-dropzone > svg,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-choice-media > svg,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-delivery-equation > div > svg,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-size-summary-fact > svg,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-size-summary-note > svg,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-info-panel > svg,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-important-notes > svg {
+    box-sizing: border-box !important;
+    padding: 1px !important;
+}
+@media (max-width: 580px) {
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody tr {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody td:nth-child(n+3):not(:last-child) {
+        grid-template-columns: minmax(85px, 34%) minmax(0, 1fr) !important;
+        gap: 8px !important;
+    }
+}
+
+/* NEXTPLAY_PRODUCT_DETAIL_CENTRAL_TYPOGRAPHY_20261028
+   Use the existing storefront font families on every product-detail surface.
+   Preserve component-specific sizes, line heights, colors, spacing and layout. */
+.storefront-clean-ui .np-product-page {
+    font-family: var(--np-font-body);
+}
+
+/* Form controls and body copy must not silently fall back to browser UI fonts. */
+.storefront-clean-ui .np-product-page :is(
+    p, small, label, legend, summary, input, select, option, textarea,
+    button, a, li, dt, dd, th, td, caption
+) {
+    font-family: var(--np-font-body) !important;
+}
+
+/* Headings, including the customizer and review/related headings, use the
+   central heading family instead of independent component font stacks. */
+.storefront-clean-ui .np-product-page :is(
+    h1, h2, h3, h4, h5, h6,
+    .np-proto-step-heading strong,
+    .np-product-review-card-title strong
+) {
+    font-family: var(--np-font-heading) !important;
+}
+
+/* These are generated labels rather than real <label> elements. */
+.storefront-clean-ui .np-product-page .np-proto-roster-table tbody td::before,
+.storefront-clean-ui .np-product-page .np-roster-shared-fields > label > span,
+.storefront-clean-ui .np-product-page .np-personalization-upload-zone > strong,
+.storefront-clean-ui .np-product-page .np-personalization-upload-zone > span,
+.storefront-clean-ui .np-product-page .np-proto-upload-dropzone > strong,
+.storefront-clean-ui .np-product-page .np-proto-upload-dropzone > span {
+    font-family: var(--np-font-body) !important;
+}
+
+/* Align personalization copy with the existing weight tokens. The compact
+   font sizes and controls introduced in earlier refinements are untouched. */
+.storefront-clean-ui .np-product-page .np-proto-roster-table tbody td:nth-child(n+3):not(:last-child)::before,
+.storefront-clean-ui .np-product-page .np-roster-shared-fields > label > span {
+    font-weight: var(--np-font-weight-bold);
+}
+.storefront-clean-ui .np-product-page .np-personalization-upload-zone > strong {
+    font-weight: var(--np-font-weight-bold);
+}
+.storefront-clean-ui .np-product-page .np-personalization-upload-zone > span:not(.np-configurable-ui-icon) {
+    font-weight: var(--np-font-weight-medium);
+}
+
+/* Native file-selector buttons are UI text too. */
+.storefront-clean-ui .np-product-page input[type="file"]::file-selector-button {
+    font-family: var(--np-font-body);
+}
+
+/* Use the same existing body/label scale for personalization text inputs.
+   Keep the previously requested small upload typography unchanged. */
+.storefront-clean-ui .np-product-page .np-proto-roster-table .np-proto-table-input,
+.storefront-clean-ui .np-product-page .np-roster-shared-fields input:not([type="checkbox"]):not([type="file"]) {
+    font-size: var(--np-body-2-size);
+    font-weight: var(--np-body-2-weight);
+}
+.storefront-clean-ui .np-product-page .np-proto-roster-table tbody td:nth-child(n+3):not(:last-child)::before {
+    font-size: var(--np-body-2-size);
+}

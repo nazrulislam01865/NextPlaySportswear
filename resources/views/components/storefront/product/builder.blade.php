@@ -181,7 +181,7 @@
 @endphp
 
 @once
-<link rel="stylesheet" href="{{ asset('assets/item-personalization-20261027.css') }}?v=9">
+<link rel="stylesheet" href="{{ asset('assets/item-personalization-20261027.css') }}?v=10">
 <script>
 window.productBuilderFabricPricing = function (config = {}) {
     const baseFactory = window.productBuilder;

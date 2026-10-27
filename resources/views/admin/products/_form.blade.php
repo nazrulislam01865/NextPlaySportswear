@@ -2634,8 +2634,9 @@ Lead Time:"></div>
             class="np-personalization-template-modal fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-4"
             @keydown.escape.window="closePersonalizationPicker()" role="presentation">
             <div role="dialog" aria-modal="true" aria-labelledby="personalization-picker-title"
-                class="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl"
-                @click.outside="closePersonalizationPicker()">
+                class="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden bg-white shadow-2xl"
+                style="border-radius: 20px;"
+                @click.outside="if (!$event.target.closest('.np-personalization-template-category-menu')) closePersonalizationPicker()">
                 <div class="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-5 sm:px-7">
                     <div>
                         <p class="text-[10px] font-black uppercase tracking-[.14em] text-brand-blue">Master Data</p>
@@ -2647,18 +2648,52 @@ Lead Time:"></div>
                 </div>
 
                 <div class="grid gap-3 border-b border-slate-200 p-4 sm:grid-cols-[220px_minmax(0,1fr)] sm:px-7">
-                    <div class="relative min-w-0" x-data="{ open: false, search: '' }" @keydown.escape="open = false" @click.outside="open = false">
-                        <button type="button" class="admin-input mt-0 flex w-full items-center justify-between gap-2 bg-white text-left text-sm np-personalization-category-display" @click="open = !open; search = ''" aria-label="Choose template category" :aria-expanded="open.toString()">
+                    <div class="relative min-w-0"
+                        x-data="{
+                            open: false, search: '', dropdownStyle: {},
+                            positionDropdown(trigger) {
+                                if (!trigger) return;
+                                const rect = trigger.getBoundingClientRect();
+                                const below = window.innerHeight - rect.bottom - 10;
+                                const above = rect.top - 10;
+                                const flip = below < 220 && above > below;
+                                const available = Math.max(100, flip ? above : below);
+                                const height = Math.min(272, available);
+                                this.dropdownStyle = {
+                                    position: 'fixed',
+                                    top: `${flip ? rect.top - height - 5 : rect.bottom + 5}px`,
+                                    left: `${Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8))}px`,
+                                    width: `${Math.min(rect.width, window.innerWidth - 16)}px`,
+                                    maxHeight: `${height}px`,
+                                    zIndex: 9999
+                                };
+                            }
+                        }"
+                        @keydown.escape="open = false"
+                        @click.window="if (open && !$event.target.closest('.np-personalization-category-display, .np-personalization-template-category-menu')) open = false"
+                        @resize.window="if (open) positionDropdown($refs.categoryTrigger)"
+                        @scroll.window.capture="if (open) positionDropdown($refs.categoryTrigger)">
+                        <button type="button" x-ref="categoryTrigger" class="admin-input mt-0 flex w-full items-center justify-between gap-2 bg-white text-left text-sm np-personalization-category-display"
+                            @click="open = !open; search = ''; if (open) $nextTick(() => positionDropdown($refs.categoryTrigger))"
+                            aria-label="Choose template category" :aria-expanded="open.toString()" aria-haspopup="listbox">
                             <span class="min-w-0 truncate" x-text="personalizationPickerCategories().find(category => String(category.id) === String(personalizationPickerCategoryId))?.label || 'All template categories'"></span>
                             <span class="shrink-0 text-slate-500" aria-hidden="true">⌄</span>
                         </button>
-                        <div x-show="open" x-cloak class="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-auto rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
-                            <input type="search" class="admin-input mt-0 mb-2 w-full text-sm" x-model="search" placeholder="Search categories" aria-label="Search template categories">
-                            <button type="button" class="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-100" @click="personalizationPickerCategoryId = ''; open = false">All template categories</button>
-                            <template x-for="category in personalizationPickerCategories().filter(category => category.label.toLowerCase().includes(search.toLowerCase()))" :key="category.id">
-                                <button type="button" class="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-100" :class="String(category.id) === String(personalizationPickerCategoryId) ? 'bg-slate-100 font-bold' : ''" @click="personalizationPickerCategoryId = String(category.id); open = false" x-text="category.label"></button>
-                            </template>
-                        </div>
+                        {{-- Portal to body so the modal's clipped scrolling content cannot cover the category list. --}}
+                        <template x-teleport="body">
+                            <div x-show="open && personalizationPickerOpen" x-cloak
+                                class="np-personalization-template-category-menu overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-xl"
+                                :style="dropdownStyle" role="listbox" aria-label="Template categories">
+                                <input type="search" class="admin-input mt-0 mb-2 w-full text-sm" x-model="search" placeholder="Search categories" aria-label="Search template categories">
+                                <button type="button" role="option" class="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-100"
+                                    @click="personalizationPickerCategoryId = ''; open = false">All template categories</button>
+                                <template x-for="category in personalizationPickerCategories().filter(category => category.label.toLowerCase().includes(search.toLowerCase()))" :key="category.id">
+                                    <button type="button" role="option" class="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-100"
+                                        :class="String(category.id) === String(personalizationPickerCategoryId) ? 'bg-slate-100 font-bold' : ''"
+                                        @click="personalizationPickerCategoryId = String(category.id); open = false" x-text="category.label"></button>
+                                </template>
+                            </div>
+                        </template>
                     </div>
                     <input class="admin-input mt-0" type="search" x-model="personalizationPickerSearch"
                         placeholder="Search by template, section title, or field" aria-label="Search personalization templates">
