@@ -1661,6 +1661,8 @@ class ProductCatalogService
     private function fullProductRelations(): array
     {
         return [
+            'personalizationTemplates',
+            'personalizationTemplate',
             'category',
             'subcategory',
             'gender',

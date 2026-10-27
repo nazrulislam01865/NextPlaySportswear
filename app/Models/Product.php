@@ -6,8 +6,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 
@@ -24,7 +24,7 @@ class Product extends Model
         'minimum_quantity', 'maximum_quantity', 'is_featured', 'is_customizable', 'is_active',
         'track_inventory', 'stock_quantity', 'low_stock_threshold', 'allow_backorder', 'weight',
         'dimensions', 'shipping_class', 'production_methods_enabled', 'shipping_methods_enabled', 'jersey_roster_enabled',
-        'jersey_roster_optional', 'jersey_roster_title', 'jersey_roster_fields',
+        'jersey_roster_optional', 'jersey_roster_title', 'jersey_roster_fields', 'personalization_template_id',
         'sample_available', 'sample_charge',
         'artwork_upload_enabled', 'artwork_upload_required', 'artwork_upload_title',
         'artwork_upload_description', 'artwork_upload_max_files', 'artwork_upload_max_file_size_mb',
@@ -94,6 +94,17 @@ class Product extends Model
     public function scopeFeatured(Builder $query): Builder
     {
         return $query->where('is_featured', true);
+    }
+
+    public function personalizationTemplate(): BelongsTo
+    {
+        return $this->belongsTo(PersonalizationTemplate::class, 'personalization_template_id');
+    }
+
+    public function personalizationTemplates(): BelongsToMany
+    {
+        return $this->belongsToMany(PersonalizationTemplate::class, 'product_personalization_template')
+            ->withPivot('sort_order')->orderByPivot('sort_order')->orderBy('personalization_templates.id');
     }
 
     public function category(): BelongsTo

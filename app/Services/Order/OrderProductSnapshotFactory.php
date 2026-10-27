@@ -308,6 +308,7 @@ final class OrderProductSnapshotFactory
                 'enabled' => (bool) ($configuration['roster_enabled'] ?? false),
                 'fields' => (array) ($customization['roster_fields'] ?? data_get($product, 'roster.fields', [])),
                 'rows' => (array) ($configuration['roster'] ?? []),
+                'files' => (array) ($customization['personalization_files'] ?? []),
             ],
             'artwork' => [
                 'status' => $customization['artwork_status'] ?? null,

@@ -1220,6 +1220,9 @@ class CartService
             ]);
         }
 
+        $personalizationFiles = collect((array) ($payload['personalization_files'] ?? []))
+            ->filter(fn ($file) => is_array($file) && str_starts_with((string) ($file['path'] ?? ''), 'customer-personalization/'))
+            ->take(20)->values()->all();
         $firstArtwork = $artworkFiles->first();
         $sizeBreakdown = $this->sizeBreakdown($configuration, $product);
         $rosterFields = $this->rosterFieldSnapshot($product);
@@ -1246,6 +1249,7 @@ class CartService
             ],
             'fulfillment' => $fulfillment,
             'artwork_files' => $artworkFiles->all(),
+            'personalization_files' => $personalizationFiles,
             // Legacy first-file fields remain for existing order/cart views.
             'artwork_path' => $firstArtwork['path'] ?? null,
             'artwork_original_name' => $firstArtwork['original_name'] ?? null,
@@ -1742,10 +1746,18 @@ class CartService
                 $submittedValues = (array) ($submittedRows[$index]['values'] ?? []);
                 $values = [];
                 foreach ($fields as $key => $field) {
-                    $maximum = max(1, (int) ($field['max_length'] ?? 60));
+                    $fieldType = (string) ($field['type'] ?? 'text');
+                    $maximum = in_array($fieldType, ['image', 'file'], true) ? 200
+                        : ($fieldType === 'color' ? 7 : max(1, (int) ($field['max_length'] ?? 60)));
                     $value = Str::limit(trim((string) ($submittedValues[$key] ?? '')), $maximum, '');
                     if (($field['type'] ?? 'text') === 'number') {
                         $value = preg_replace('/[^0-9A-Za-z\-]/', '', $value) ?? '';
+                    } elseif (($field['type'] ?? '') === 'color') {
+                        $value = preg_match('/^#[0-9a-fA-F]{6}$/', $value) ? strtoupper($value) : '';
+                        $allowedColors = collect($field['color_options'] ?? [])->map(fn ($color) => strtoupper((string) (is_array($color) ? ($color['hex'] ?? '') : $color)))->all();
+                        if (! in_array($value, $allowedColors, true)) $value = '';
+                    } elseif (in_array($field['type'] ?? '', ['file', 'image'], true)) {
+                        $value = mb_substr(basename($value), 0, 200);
                     }
                     $values[(string) $key] = $value;
                 }

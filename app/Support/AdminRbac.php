@@ -411,6 +411,10 @@ class AdminRbac
             return 'dashboard.view';
         }
 
+        if (in_array($name, ['personalization-templates.publish', 'personalization-templates.fields.update'], true)) {
+            return 'customization.manage';
+        }
+
         if (Str::startsWith($name, 'products.')) {
             return self::resourcePermission($name, 'products');
         }
@@ -493,6 +497,7 @@ class AdminRbac
             'production-methods' => 'shipping',
             'shipping-methods' => 'shipping',
             'faqs' => 'customization',
+            'personalization-templates' => 'customization',
             'artwork-preferences' => 'customization',
             'genders' => 'products',
             'country-calling-codes' => 'orders',

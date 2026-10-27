@@ -120,6 +120,22 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::get('/newsletter-subscribers', [\App\Http\Controllers\Admin\NewsletterSubscriberController::class, 'index'])->name('newsletter-subscribers.index');
         Route::get('/newsletter-subscribers/export', [\App\Http\Controllers\Admin\NewsletterSubscriberController::class, 'export'])->name('newsletter-subscribers.export');
 
+        // Reusable per-item personalization: leaf-category creation, product-only assignment.
+        Route::prefix('personalization-templates')->name('personalization-templates.')->group(function () {
+            $controller = \App\Http\Controllers\Admin\PersonalizationTemplateController::class;
+            Route::get('/', [$controller, 'index'])->name('index');
+            Route::get('/create', [$controller, 'create'])->name('create');
+            Route::post('/', [$controller, 'store'])->name('store');
+            Route::get('/{personalizationTemplate}/edit', [$controller, 'edit'])->name('edit');
+            Route::put('/{personalizationTemplate}', [$controller, 'update'])->name('update');
+            Route::get('/{personalizationTemplate}/fields', [$controller, 'fields'])->name('fields');
+            Route::put('/{personalizationTemplate}/fields', [$controller, 'saveFields'])->name('fields.update');
+            Route::get('/{personalizationTemplate}/preview', [$controller, 'preview'])->name('preview');
+            Route::post('/{personalizationTemplate}/publish', [$controller, 'publish'])->name('publish');
+            Route::post('/{personalizationTemplate}/duplicate', [$controller, 'duplicate'])->name('duplicate');
+            Route::delete('/{personalizationTemplate}', [$controller, 'destroy'])->name('destroy');
+        });
+
         Route::get('/media-library', [\App\Http\Controllers\Admin\MediaLibraryController::class, 'index'])->name('media-library.index');
         Route::get('/media-library/upload', [\App\Http\Controllers\Admin\MediaLibraryController::class, 'upload'])->name('media-library.upload');
         Route::patch('/media-library/{media}', [\App\Http\Controllers\Admin\MediaLibraryController::class, 'update'])->name('media-library.update');
@@ -367,6 +383,8 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
                 ->name('orders.artwork-proofs.file');
             Route::post('/orders/{order}/artwork-proofs/{proof}/reply', [\App\Http\Controllers\Admin\ArtworkProofController::class, 'reply'])
                 ->middleware('throttle:10,1')->name('orders.artwork-proofs.reply');
+            Route::get('/orders/{order}/items/{orderItem}/personalization/{fileIndex}', [\App\Http\Controllers\Admin\OrderController::class, 'personalizationFile'])
+                ->whereNumber('fileIndex')->name('orders.personalization.show');
             Route::get('/orders/{order}/items/{orderItem}/artwork/{artworkIndex}', [\App\Http\Controllers\Admin\OrderController::class, 'artwork'])
                 ->whereNumber('artworkIndex')
                 ->name('orders.artwork.show');
@@ -558,6 +576,8 @@ Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 Route::get('/cart/items/{cartItem}/artwork/{artworkIndex}', [CartController::class, 'showArtwork'])
     ->whereNumber('artworkIndex')
     ->name('cart.items.artwork.show');
+Route::get('/cart/items/{cartItem}/personalization/{fileIndex}', [CartController::class, 'showPersonalizationFile'])
+    ->whereNumber('fileIndex')->name('cart.items.personalization.show');
 Route::post('/cart/items', [CartController::class, 'store'])->name('cart.items.store');
 Route::patch('/cart/items/{cartItem}/options', [CartController::class, 'updateOptions'])->name('cart.items.options.update');
 Route::patch('/cart/items/{cartItem}', [CartController::class, 'update'])->name('cart.items.update');

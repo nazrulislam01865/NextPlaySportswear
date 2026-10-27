@@ -586,6 +586,8 @@ window.productBuilder = (config = {}) => ({
     rosterRows: [],
     rosterSameForAll: false,
     rosterSharedValues: {},
+    rosterSectionShared: {},
+    personalizationPreviews: {},
     sampleRequested: false,
     sizeChartOpen: false,
     activeChartGroup: null,
@@ -678,6 +680,7 @@ window.productBuilder = (config = {}) => ({
 
             this.productionSpeed = initial.production_speed ? String(initial.production_speed) : null;
             this.rosterEnabled = Boolean(initial.roster_enabled);
+            this.rosterSectionShared = { ...(initial.roster_section_same_for_all || {}) };
             this.sampleRequested = Boolean(config.sample?.available && initial.sample_requested);
             this.rosterRows = Array.isArray(initial.roster)
                 ? initial.roster.map(row => ({
@@ -1695,6 +1698,52 @@ window.productBuilder = (config = {}) => ({
         }
     },
 
+    personalizationPreview(rowIndex, key) {
+        const reference = `${rowIndex}:${key}`;
+        if (!this.rosterRows?.[rowIndex]?.values?.[key]) return '';
+        if (Object.prototype.hasOwnProperty.call(this.personalizationPreviews, reference)) {
+            return this.personalizationPreviews[reference] || '';
+        }
+        return (config.personalization_existing_files || []).find(file => file.row === rowIndex && file.key === key)?.url || '';
+    },
+
+    setPersonalizationUpload(rowIndex, field, event) {
+        const file = event.target.files?.[0];
+        const row = this.rosterRows?.[rowIndex];
+        if (!row || !field?.key || !file) return;
+        const image = field.type === 'image';
+        const limit = (image ? 5 : 10) * 1024 * 1024;
+        const allowed = image
+            ? ['image/png', 'image/jpeg', 'image/webp']
+            : ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'text/csv', 'application/csv', 'image/png', 'image/jpeg', 'image/webp'];
+        if (!allowed.includes(file.type) || file.size > limit) {
+            event.target.value = '';
+            window.alert(image ? 'Use a PNG, JPG or WebP image up to 5 MB.' : 'Use a PDF, DOC, DOCX, TXT, CSV or image file up to 10 MB.');
+            return;
+        }
+        const reference = `${rowIndex}:${field.key}`;
+        if (this.personalizationPreviews[reference]?.startsWith('blob:')) {
+            URL.revokeObjectURL(this.personalizationPreviews[reference]);
+        }
+        this.personalizationPreviews[reference] = image ? URL.createObjectURL(file) : null;
+        row.values[field.key] = file.name;
+        this.sync();
+    },
+
+    clearPersonalizationUpload(rowIndex, field, event) {
+        const row = this.rosterRows?.[rowIndex];
+        if (!row) return;
+        const reference = `${rowIndex}:${field.key}`;
+        if (this.personalizationPreviews[reference]?.startsWith('blob:')) {
+            URL.revokeObjectURL(this.personalizationPreviews[reference]);
+        }
+        delete this.personalizationPreviews[reference];
+        row.values[field.key] = '';
+        const input = event.currentTarget.closest('td')?.querySelector('input[type=file]');
+        if (input) input.value = '';
+        this.sync();
+    },
+
     commitRosterField(rowIndex, field, value) {
         const normalized = String(value ?? '').trim();
         this.sync();
@@ -1801,6 +1850,7 @@ window.productBuilder = (config = {}) => ({
                 };
             });
             if (this.rosterSameForAll) this.applyRosterSharedValues();
+            this.applyRosterSectionSharedValues();
             return;
         }
 
@@ -1829,10 +1879,34 @@ window.productBuilder = (config = {}) => ({
         }));
         this.rosterRows = rows;
         if (this.rosterSameForAll) this.applyRosterSharedValues();
+        this.applyRosterSectionSharedValues();
+    },
+
+    applyRosterSectionSharedValues() {
+        const firstValues = this.rosterRows?.[0]?.values || {};
+        (productRosterSettings(config).sections || []).forEach(section => {
+            if (!this.rosterSectionShared[String(section.id)]) return;
+            (this.rosterRows || []).forEach(row => {
+                (section.fields || []).filter(field => !['image','file'].includes(field.type)).forEach(field => { row.values[field.key] = firstValues[field.key] || ''; });
+            });
+        });
+    },
+
+    setRosterSectionShared(id, enabled) {
+        this.rosterSectionShared[String(id)] = Boolean(enabled);
+        if (enabled) this.applyRosterSectionSharedValues();
+        this.sync();
+    },
+
+    updateRosterSectionSharedField(id, field, value) {
+        if (!field?.key || !this.rosterSectionShared[String(id)]) return;
+        (this.rosterRows || []).forEach(row => { row.values[field.key] = value; });
+        this.sync();
     },
 
     applyRosterSharedValues() {
-        const shared = { ...this.blankRosterValues(), ...(this.rosterSharedValues || {}) };
+        const fileKeys = new Set((productRosterSettings(config).fields || []).filter(field => ['image', 'file'].includes(field.type)).map(field => field.key));
+        const shared = Object.fromEntries(Object.entries(this.rosterSharedValues || {}).filter(([key]) => !fileKeys.has(key)));
         (this.rosterRows || []).forEach(row => {
             row.values = { ...this.blankRosterValues(), ...(row.values || {}), ...shared };
         });
@@ -1910,6 +1984,7 @@ window.productBuilder = (config = {}) => ({
             roster_enabled: this.rosterEnabled,
             roster: this.rosterRows,
             roster_same_for_all: this.rosterSameForAll,
+            roster_section_same_for_all: this.rosterSectionShared,
             sample_requested: this.sampleRequested,
         });
     },

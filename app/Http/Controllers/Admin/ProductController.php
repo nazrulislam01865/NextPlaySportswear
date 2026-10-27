@@ -514,6 +514,9 @@ class ProductController extends Controller
                     $copy->{$relation}()->create(Arr::except($item->toArray(), ['id', 'product_id', 'created_at', 'updated_at']));
                 }
             }
+            $copy->personalizationTemplates()->sync($product->personalizationTemplates->mapWithKeys(
+                fn ($template) => [$template->id => ['sort_order' => (int) $template->pivot->sort_order]]
+            )->all());
             $copy->artworkPreferences()->sync($product->artworkPreferences->pluck('id')->all());
             $copy->faqs()->sync(
                 $product->faqs
@@ -707,13 +710,19 @@ class ProductController extends Controller
             'faqOptions' => $faqOptions,
             'artworkPreferenceOptions' => ArtworkPreference::query()->active()->ordered()->get(),
             'genderOptions' => $genderOptions,
+            // Master Data templates are organized by category, but assigned to products directly.
+            // Include drafts/inactive entries in the picker so administrators understand why
+            // they are unavailable, instead of displaying an unexplained empty list.
+            'personalizationTemplates' => \App\Models\PersonalizationTemplate::query()
+                ->with('category.ancestors')
+                ->orderBy('name')->get(['id', 'category_id', 'name', 'section_title', 'fields', 'is_active', 'is_published']),
         ]);
     }
 
     private function relations(): array
     {
         return [
-            'category', 'subcategory', 'gender', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'sizeGroups.masterGroup',
+            'personalizationTemplates', 'category', 'subcategory', 'gender', 'categories', 'attributeValues.attribute', 'images', 'optionGroups.values', 'sizeGroups.sizes', 'sizeGroups.masterGroup',
             'priceTiers', 'fabricPriceTables.tiers', 'artworkPreferences', 'artworkMethods', 'productionSpeeds.productionMethod', 'shippingMethods', 'faqs',
         ];
     }
@@ -777,7 +786,7 @@ class ProductController extends Controller
             'favorites_count', 'recent_orders_count', 'minimum_quantity', 'maximum_quantity', 'is_featured',
             'is_customizable', 'is_active', 'track_inventory', 'stock_quantity', 'low_stock_threshold',
             'allow_backorder', 'weight', 'shipping_class', 'production_methods_enabled', 'shipping_methods_enabled', 'jersey_roster_enabled',
-            'jersey_roster_optional', 'jersey_roster_title', 'sample_available', 'sample_charge', 'artwork_upload_enabled',
+            'jersey_roster_optional', 'jersey_roster_title', 'personalization_template_id', 'sample_available', 'sample_charge', 'artwork_upload_enabled',
             'artwork_upload_required', 'artwork_upload_title', 'artwork_upload_description',
             'artwork_upload_max_files', 'artwork_upload_max_file_size_mb',
             'artwork_upload_accepted_types', 'tax_class', 'price_table_highlight_column',
@@ -940,6 +949,7 @@ class ProductController extends Controller
         }
 
         $payload['created_by'] = $product?->created_by ?? auth('admin')->id();
+        $payload['personalization_template_id'] = $data['personalization_template_ids'][0] ?? null;
         $payload['updated_by'] = auth('admin')->id();
 
         return $payload;
@@ -1303,6 +1313,8 @@ class ProductController extends Controller
     {
         $data = $request->validated();
         $this->syncCatalogAssignments($product, $data);
+        $product->personalizationTemplates()->sync(collect($data['personalization_template_ids'] ?? [])
+            ->mapWithKeys(fn ($id, $position) => [(int) $id => ['sort_order' => (int) $position]])->all());
         $product->artworkPreferences()->sync($data['artwork_preference_ids'] ?? []);
         $this->syncImages($product, $request, $data);
         $this->syncFeatureIcons($product, $request, $data);

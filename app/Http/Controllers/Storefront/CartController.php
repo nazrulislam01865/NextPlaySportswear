@@ -8,6 +8,7 @@ use App\Http\Requests\Storefront\ApplyCouponRequest;
 use App\Http\Requests\Storefront\UpdateCartItemOptionsRequest;
 use App\Http\Requests\Storefront\UpdateCartItemRequest;
 use App\Services\Cart\CartService;
+use App\Services\Cart\PersonalizationUploadService;
 use App\Services\Storefront\ProductCatalogService;
 use App\Services\Rewards\RewardService;
 use Illuminate\Http\JsonResponse;
@@ -95,6 +96,30 @@ class CartController extends Controller
         ]);
     }
 
+    public function showPersonalizationFile(string $cartItem, int $fileIndex): StreamedResponse
+    {
+        $item = $this->cart->findItem($cartItem);
+        abort_if($item === null, 404);
+        $files = array_values((array) data_get($item, 'customization.personalization_files', []));
+        $file = $files[$fileIndex] ?? null;
+        abort_unless(is_array($file) && str_starts_with((string) ($file['path'] ?? ''), 'customer-personalization/'), 404);
+        $disk = Storage::disk('local');
+        abort_unless($disk->exists($file['path']), 404);
+        $name = str_replace(["\r", "\n", '"'], '', basename((string) ($file['original_name'] ?? 'personalization-file')));
+        $mime = (string) ($file['mime_type'] ?? 'application/octet-stream');
+        $stream = $disk->readStream($file['path']);
+        abort_if($stream === false, 404);
+        return response()->stream(function () use ($stream): void {
+            try { fpassthru($stream); } finally { if (is_resource($stream)) fclose($stream); }
+        }, 200, [
+            'Content-Type' => in_array($mime, ['image/png', 'image/jpeg', 'image/webp'], true) ? $mime : 'application/octet-stream',
+            'Content-Disposition' => 'attachment; filename="'.$name.'"',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store',
+            'Content-Security-Policy' => "sandbox; default-src 'none'",
+        ]);
+    }
+
     public function store(AddCartItemRequest $request): RedirectResponse
     {
         $payload = $request->validated();
@@ -107,11 +132,19 @@ class CartController extends Controller
         $payload['artwork_files'] = $artwork['files'];
         $payload['artwork_path'] = $artwork['files'][0]['path'] ?? null;
         $payload['artwork_original_name'] = $artwork['files'][0]['original_name'] ?? null;
+        try {
+            $personalization = app(PersonalizationUploadService::class)->prepare($request, $product);
+        } catch (Throwable $exception) {
+            Storage::disk('local')->delete($artwork['new_paths']);
+            throw $exception;
+        }
+        $payload['configuration_json'] = $personalization['configuration_json'];
+        $payload['personalization_files'] = $personalization['files'];
 
         try {
             $this->cart->store($payload);
         } catch (Throwable $exception) {
-            Storage::disk('local')->delete($artwork['new_paths']);
+            Storage::disk('local')->delete(array_merge($artwork['new_paths'], $personalization['new_paths']));
             throw $exception;
         }
 
@@ -146,11 +179,21 @@ class CartController extends Controller
         $payload['artwork_files'] = $artwork['files'];
         $payload['artwork_path'] = $artwork['files'][0]['path'] ?? null;
         $payload['artwork_original_name'] = $artwork['files'][0]['original_name'] ?? null;
+        try {
+            $personalization = app(PersonalizationUploadService::class)->prepare(
+                $request, $product, (array) data_get($existingItem, 'customization.personalization_files', [])
+            );
+        } catch (Throwable $exception) {
+            Storage::disk('local')->delete($artwork['new_paths']);
+            throw $exception;
+        }
+        $payload['configuration_json'] = $personalization['configuration_json'];
+        $payload['personalization_files'] = $personalization['files'];
 
         try {
             $this->cart->replace($cartItem, $payload);
         } catch (Throwable $exception) {
-            Storage::disk('local')->delete($artwork['new_paths']);
+            Storage::disk('local')->delete(array_merge($artwork['new_paths'], $personalization['new_paths']));
             throw $exception;
         }
 

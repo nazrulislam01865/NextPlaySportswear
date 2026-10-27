@@ -10,6 +10,82 @@ const slugify = (value = '') => String(value)
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
+// Shared lightweight selector used by personalization setup and the template filters.
+// Search is local to the options already loaded with the page; no extra API calls.
+window.personalizationSelect = (options = [], selected = '') => ({
+    options: options.map(option => ({ value: String(option.value), label: String(option.label) })),
+    value: String(selected ?? ''),
+    open: false,
+    search: '',
+    activeIndex: 0,
+    get label() { return this.options.find(option => option.value === this.value)?.label || ''; },
+    filtered() {
+        const query = this.search.trim().toLocaleLowerCase();
+        return query ? this.options.filter(option => option.label.toLocaleLowerCase().includes(query)) : this.options;
+    },
+    visible() { return this.filtered().slice(0, 60); },
+    filteredCount() { return this.filtered().length; },
+    toggle() {
+        this.open = !this.open;
+        this.search = '';
+        this.activeIndex = 0;
+        if (this.open) this.$nextTick(() => this.$refs.searchInput?.focus());
+    },
+    close() { this.open = false; this.search = ''; },
+    move(delta) {
+        if (!this.open) { this.toggle(); return; }
+        const size = this.visible().length;
+        this.activeIndex = size ? (this.activeIndex + delta + size) % size : 0;
+        this.$nextTick(() => this.$el.querySelectorAll('.pt-select-option')[this.activeIndex]?.scrollIntoView({block:'nearest'}));
+    },
+    chooseVisible() {
+        if (!this.open) return;
+        const options = this.visible();
+        if (options.length) this.choose(options[Math.min(this.activeIndex, options.length-1)].value);
+    },
+    choose(id) {
+        this.value = String(id ?? '');
+        this.close();
+        this.$nextTick(() => this.$el.dispatchEvent(new CustomEvent('pt-select-change', { bubbles: true, detail: {name: this.$el.querySelector('input[type=hidden]')?.name, value: this.value} })));
+    },
+});
+
+// Inline validation lives beside each input. The same field names are validated
+// on the server; JavaScript only improves feedback and never replaces the rules.
+window.personalizationBasicForm = (initialErrors = {}) => ({
+    errors: { ...initialErrors },
+    clear(field) { delete this.errors[field]; },
+    validate(event) {
+        const form = event.target;
+        const required = {
+            category_id: 'Select a product category.',
+            name: 'Enter a template name.',
+            section_title: 'Enter a customer section title.',
+        };
+        const errors = {};
+        for (const [field, message] of Object.entries(required)) {
+            if (!String(form.elements.namedItem(field)?.value ?? '').trim()) errors[field] = [message];
+        }
+        for (const field of ['name', 'section_title', 'description', 'shared_entry_label']) {
+            const control = form.elements.namedItem(field);
+            if (control?.maxLength > 0 && control.value.length > control.maxLength) {
+                errors[field] = [`Maximum ${control.maxLength} characters allowed.`];
+            }
+        }
+        this.errors = errors;
+        if (Object.keys(errors).length) {
+            event.preventDefault();
+            this.$nextTick(() => {
+                const first = Object.keys(errors)[0];
+                const control = form.elements.namedItem(first);
+                const target = first === 'category_id' ? form.querySelector('.pt-select-trigger') : control;
+                target?.focus();
+                target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+        }
+    },
+});
+
 window.adminSizeOptionRows = (initial = []) => ({
     rows: Array.isArray(initial) && initial.length
         ? initial.map((row, index) => ({
@@ -124,6 +200,8 @@ window.adminProductForm = (initial = {}) => ({
     productionHeaders: initial.productionHeaders?.length ? initial.productionHeaders : ['Standard Production'],
     productionRows: initial.productionRows?.length ? initial.productionRows : [{ range: '1+', cells: [] }],
     shippingMethods: initial.shippingMethods?.length ? initial.shippingMethods : [],
+    personalizationTemplateIds: (initial.personalizationTemplateIds || []).map(String),
+    personalizationTemplates: initial.personalizationTemplates || [],
     rosterFields: initial.rosterFields?.length ? initial.rosterFields : [
         { key: 'name', label: 'Name', type: 'text', max_length: 60, required: false, enabled: true },
         { key: 'number', label: 'Number', type: 'number', max_length: 12, required: false, enabled: true },

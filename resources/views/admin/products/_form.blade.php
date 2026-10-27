@@ -676,6 +676,25 @@
         'productionRows' => $productionRowValues->all(),
         'shippingMethods' => $shippingValues,
         'rosterFields' => $rosterFieldValues,
+        'personalizationTemplateIds' => old('personalization_template_ids', $product->exists ? $product->personalizationTemplates->pluck('id')->all() : []),
+        'personalizationTemplates' => collect($personalizationTemplates ?? [])->map(fn ($t) => [
+            'id' => $t->id,
+            'category_id' => $t->category_id,
+            'category_label' => $t->category
+                ? $t->category->ancestors->pluck('name')->push($t->category->name)->implode(' › ')
+                : 'Uncategorized',
+            'name' => $t->name,
+            'section_title' => $t->section_title,
+            'fields' => collect($t->fields ?? [])->filter(fn ($field) => is_array($field) && ($field['enabled'] ?? true))
+                ->map(fn ($field) => trim((string) ($field['label'] ?? 'Field')).' · '.(['text' => 'Text', 'number' => 'Number', 'color' => 'Color', 'image' => 'Image upload', 'file' => 'File upload'][$field['type'] ?? 'text'] ?? 'Text'))
+                ->take(6)->values()->all(),
+            'color_fields' => collect($t->fields ?? [])->where('type', 'color')
+                ->filter(fn ($field) => (bool) ($field['enabled'] ?? true))
+                ->map(fn ($field) => ['label' => $field['label'], 'colors' => $field['color_options'] ?? []])->values()->all(),
+            'available' => (bool) ($t->is_active && $t->is_published && collect($t->fields ?? [])
+                ->contains(fn ($field) => is_array($field) && ($field['enabled'] ?? true))),
+            'status' => ! $t->is_published ? 'Draft' : (! $t->is_active ? 'Inactive' : (collect($t->fields ?? [])->contains(fn ($field) => is_array($field) && ($field['enabled'] ?? true)) ? 'Active' : 'Needs fields')),
+        ])->values()->all(),
         'productProfile' => old('product_profile', $product->product_profile ?: 'standard'),
         'productionMethodsEnabled' => (bool) old('production_methods_enabled', $product->production_methods_enabled ?? false),
         'shippingMethodsEnabled' => (bool) old('shipping_methods_enabled', $product->shipping_methods_enabled ?? false),
@@ -721,6 +740,66 @@ window.adminProductFormFabric = function (initial = {}) {
     const baseOpenSizeGroupPicker = form.openSizeGroupPicker || null;
 
     return Object.assign(form, {
+        // The product form also supports previously compiled admin.js assets.
+        // Keep the Master Data picker state here so a Vite rebuild is not required.
+        personalizationTemplateIds: (initial.personalizationTemplateIds || []).map(String),
+        personalizationTemplates: Array.isArray(initial.personalizationTemplates) ? initial.personalizationTemplates : [],
+        personalizationPickerOpen: false,
+        personalizationPickerSearch: '',
+        personalizationPickerCategoryId: '',
+        personalizationTemplateById(id) {
+            return this.personalizationTemplates.find(template => String(template.id) === String(id));
+        },
+        filteredPersonalizationTemplates() {
+            const query = String(this.personalizationPickerSearch || '').trim().toLowerCase();
+            const category = String(this.personalizationPickerCategoryId || '');
+            return this.personalizationTemplates.filter(template =>
+                (!category || String(template.category_id) === category) &&
+                (!query || [template.name, template.section_title, template.category_label, ...(template.fields || [])]
+                    .some(text => String(text || '').toLowerCase().includes(query)))
+            );
+        },
+        isPersonalizationTemplateSelected(id) {
+            return this.personalizationTemplateIds.includes(String(id));
+        },
+        personalizationPickerCategories() {
+            const categories = new Map();
+            this.personalizationTemplates.forEach(template => {
+                if (template.category_id && !categories.has(String(template.category_id))) {
+                    categories.set(String(template.category_id), template.category_label);
+                }
+            });
+            return [...categories].map(([id, label]) => ({id, label})).sort((a, b) => a.label.localeCompare(b.label));
+        },
+        openPersonalizationPicker() {
+            this.personalizationPickerSearch = '';
+            this.personalizationPickerCategoryId = String(this.categoryId || '');
+            this.personalizationPickerOpen = true;
+            document.documentElement.classList.add('overflow-hidden');
+        },
+        closePersonalizationPicker() {
+            this.personalizationPickerOpen = false;
+            document.documentElement.classList.remove('overflow-hidden');
+        },
+        addPersonalizationTemplate(template) {
+            if (!template?.available || this.isPersonalizationTemplateSelected(template.id)
+                || this.personalizationTemplateIds.length >= 10) return;
+            this.personalizationTemplateIds.push(String(template.id));
+            this.rosterEnabled = true;
+            this.handleProgressChange(false);
+        },
+        removePersonalizationTemplate(id) {
+            this.personalizationTemplateIds = this.personalizationTemplateIds.filter(value => value !== String(id));
+            this.rosterEnabled = this.personalizationTemplateIds.length > 0;
+            this.handleProgressChange(false);
+        },
+        // Only templates from the product's selected last-level category can be assigned.
+        selectCategory(id, label = '') {
+            this.categoryId = id === '' || id === null ? '' : String(id);
+            this.categoryName = label || this.selectedCategoryName();
+            this.closeCategoryDropdown();
+            this.handleProgressChange();
+        },
         confirmNewFeature() {
             const type = String(this.newFeatureType || '');
             if (type.startsWith('__size_options__:')) {
@@ -763,6 +842,7 @@ window.adminProductFormFabric = function (initial = {}) {
         fabricPriceImportTargetValueIndex: null,
         init() {
             baseInit.call(this);
+            this.rosterEnabled = this.personalizationTemplateIds.length > 0;
             (this.optionGroups || []).forEach((group) => {
                 (group.values || []).forEach((value) => this.ensureFabricPricing(value, group));
             });
@@ -2545,6 +2625,83 @@ Lead Time:"></div>
 
                 <div class="flex justify-end border-t border-slate-200 bg-slate-50 p-4 sm:px-7">
                     <button type="button" class="btn btn-white" @click="closeSizeGroupPicker()">Done</button>
+                </div>
+            </div>
+        </div>
+
+        {{-- Reuse the Add Size Option modal presentation for Master Data personalization. --}}
+        <div x-cloak x-show="personalizationPickerOpen" x-transition.opacity
+            class="np-personalization-template-modal fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-4"
+            @keydown.escape.window="closePersonalizationPicker()" role="presentation">
+            <div role="dialog" aria-modal="true" aria-labelledby="personalization-picker-title"
+                class="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl"
+                @click.outside="closePersonalizationPicker()">
+                <div class="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-5 sm:px-7">
+                    <div>
+                        <p class="text-[10px] font-black uppercase tracking-[.14em] text-brand-blue">Master Data</p>
+                        <h3 id="personalization-picker-title" class="mt-1 text-xl font-black text-brand-ink">Add Personalization Template</h3>
+                        <p class="mt-2 text-sm text-slate-500">Choose the templates customers can complete for this product.</p>
+                    </div>
+                    <button type="button" class="grid h-10 w-10 place-items-center rounded-full border border-slate-200 text-xl text-slate-500"
+                        @click="closePersonalizationPicker()" aria-label="Close">×</button>
+                </div>
+
+                <div class="grid gap-3 border-b border-slate-200 p-4 sm:grid-cols-[220px_minmax(0,1fr)] sm:px-7">
+                    <div class="relative min-w-0" x-data="{ open: false, search: '' }" @keydown.escape="open = false" @click.outside="open = false">
+                        <button type="button" class="admin-input mt-0 flex w-full items-center justify-between gap-2 bg-white text-left text-sm np-personalization-category-display" @click="open = !open; search = ''" aria-label="Choose template category" :aria-expanded="open.toString()">
+                            <span class="min-w-0 truncate" x-text="personalizationPickerCategories().find(category => String(category.id) === String(personalizationPickerCategoryId))?.label || 'All template categories'"></span>
+                            <span class="shrink-0 text-slate-500" aria-hidden="true">⌄</span>
+                        </button>
+                        <div x-show="open" x-cloak class="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-auto rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+                            <input type="search" class="admin-input mt-0 mb-2 w-full text-sm" x-model="search" placeholder="Search categories" aria-label="Search template categories">
+                            <button type="button" class="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-100" @click="personalizationPickerCategoryId = ''; open = false">All template categories</button>
+                            <template x-for="category in personalizationPickerCategories().filter(category => category.label.toLowerCase().includes(search.toLowerCase()))" :key="category.id">
+                                <button type="button" class="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-100" :class="String(category.id) === String(personalizationPickerCategoryId) ? 'bg-slate-100 font-bold' : ''" @click="personalizationPickerCategoryId = String(category.id); open = false" x-text="category.label"></button>
+                            </template>
+                        </div>
+                    </div>
+                    <input class="admin-input mt-0" type="search" x-model="personalizationPickerSearch"
+                        placeholder="Search by template, section title, or field" aria-label="Search personalization templates">
+                </div>
+
+                <div class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-7">
+                    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        <template x-for="template in filteredPersonalizationTemplates()" :key="template.id">
+                            <article class="flex flex-col rounded-2xl border border-slate-200 p-4">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <h4 class="font-black text-brand-ink" x-text="template.section_title"></h4>
+                                        <p class="mt-1 text-xs font-bold text-brand-blue" x-text="template.name"></p>
+                                    </div>
+                                    <span class="rounded-full px-2 py-1 text-[10px] font-black"
+                                        :class="template.available ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'"
+                                        x-text="template.status"></span>
+                                </div>
+                                <p class="mt-2 text-[11px] font-semibold text-slate-500" x-text="template.category_label"></p>
+                                <div class="mt-3 flex flex-wrap gap-1.5">
+                                    <template x-for="(field, fieldIndex) in template.fields" :key="fieldIndex">
+                                        <span class="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600" x-text="field"></span>
+                                    </template>
+                                </div>
+                                <button type="button" class="btn btn-white mt-4 w-full"
+                                    :disabled="!template.available || isPersonalizationTemplateSelected(template.id) || personalizationTemplateIds.length >= 10"
+                                    @click="addPersonalizationTemplate(template)"
+                                    x-text="!template.available ? 'Not available' : isPersonalizationTemplateSelected(template.id) ? 'Already selected' : 'Add template'"></button>
+                            </article>
+                        </template>
+                    </div>
+                    <div x-show="filteredPersonalizationTemplates().length === 0"
+                        class="rounded-2xl border-2 border-dashed border-slate-200 p-10 text-center" x-cloak>
+                        <p class="font-black text-brand-ink" x-text="!personalizationTemplates.length ? 'No personalization templates available.' : 'No templates found for this category or search.'"></p>
+                        <p class="mt-2 text-sm text-slate-500" x-show="!personalizationTemplates.length">Create templates in Master Data first.</p>
+                        <button type="button" class="btn btn-white mt-4" x-show="personalizationPickerSearch || personalizationPickerCategoryId"
+                            @click="personalizationPickerSearch = ''; personalizationPickerCategoryId = ''">Clear filters</button>
+                        <a href="{{ route('admin.personalization-templates.index') }}" class="btn btn-white mt-4" target="_blank" rel="noopener" x-show="!personalizationTemplates.length">Open Personalization Templates</a>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between gap-4 border-t border-slate-200 bg-slate-50 p-4 sm:px-7">
+                    <span class="text-xs text-slate-500" x-text="`${personalizationTemplateIds.length} of 10 selected`"></span>
+                    <button type="button" class="btn btn-white" @click="closePersonalizationPicker()">Done</button>
                 </div>
             </div>
         </div>

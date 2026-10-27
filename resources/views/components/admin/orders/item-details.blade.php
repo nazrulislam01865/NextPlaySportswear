@@ -6,6 +6,7 @@
     $selectedSizes = collect($item->selectedSizes());
     $rosterRows = collect($item->rosterRows());
     $rosterFields = collect($item->rosterFields());
+    $personalizationFiles = collect((array) ($customization['personalization_files'] ?? []))->values()->mapWithKeys(fn ($file, $index) => [($file['row'] ?? '').':'.($file['key'] ?? '') => ['index' => $index, 'name' => $file['original_name'] ?? 'File']]);
     $hasRosterSizes = $rosterRows->contains(fn (array $row): bool => filled($row['size_label'] ?? null) || filled($row['size_group_label'] ?? null));
     $artworkFiles = collect($item->artworkFiles());
     $artworkHelp = (array) data_get($customization, 'configuration.artwork_help', []);
@@ -148,6 +149,7 @@
                         <tbody class="divide-y divide-slate-100 bg-white">
                             @foreach($rosterRows as $row)
                                 <tr>
+                                    @php($personalizationRowIndex = $loop->index)
                                     <td class="px-4 py-3 font-black text-slate-500">{{ $loop->iteration }}</td>
                                     @if($hasRosterSizes)
                                         <td class="whitespace-nowrap px-4 py-3">
@@ -157,7 +159,16 @@
                                     @endif
                                     @foreach($rosterFields as $field)
                                         @php($value = data_get($row, 'values.'.data_get($field, 'key')))
-                                        <td class="px-4 py-3 font-semibold text-slate-700">{{ filled($value) ? $value : '—' }}</td>
+                                        @php($personalizationUpload = $personalizationFiles->get($personalizationRowIndex.':'.data_get($field, 'key')))
+                                        <td class="px-4 py-3 font-semibold text-slate-700">
+                                            @if($personalizationUpload)
+                                                <a class="text-brand-blue underline" href="{{ route('admin.orders.personalization.show', ['order' => $order, 'orderItem' => $item, 'fileIndex' => $personalizationUpload['index']]) }}">{{ $personalizationUpload['name'] }}</a>
+                                            @elseif(data_get($field, 'type') === 'color' && preg_match('/^#[0-9a-fA-F]{6}$/', (string) $value))
+                                                <span class="inline-flex items-center gap-2"><span class="h-4 w-4 border border-slate-300" style="background-color: {{ $value }}"></span>{{ $value }}</span>
+                                            @else
+                                                {{ filled($value) ? $value : '—' }}
+                                            @endif
+                                        </td>
                                     @endforeach
                                 </tr>
                             @endforeach

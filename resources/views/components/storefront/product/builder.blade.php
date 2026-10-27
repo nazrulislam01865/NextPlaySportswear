@@ -50,6 +50,12 @@
         'shipping_methods' => $product['shipping_methods'] ?? [],
         'roster' => \App\Support\ProductRoster::settings($product),
         'jersey_roster' => \App\Support\ProductRoster::settings($product),
+        'personalization_existing_files' => collect($editCustomization['personalization_files'] ?? [])->values()
+            ->map(fn ($file, $index) => [
+                'row' => (int) ($file['row'] ?? -1),
+                'key' => (string) ($file['key'] ?? ''),
+                'url' => $isEditing ? route('cart.items.personalization.show', ['cartItem' => (string) $editItem['key'], 'fileIndex' => $index]) : null,
+            ])->all(),
         'sample' => $product['sample'] ?? ['available' => false, 'charge' => 0, 'charge_type' => 'fixed_order'],
         'price_tiers' => $product['price_tiers'] ?? [],
         'price_table' => $product['price_table'] ?? [],
@@ -69,6 +75,7 @@
             'shipping_method' => $editConfiguration['shipping_method'] ?? null,
             'roster_enabled' => (bool) ($editConfiguration['roster_enabled'] ?? false),
             'roster' => array_values((array) ($editConfiguration['roster'] ?? [])),
+            'roster_section_same_for_all' => (array) ($editConfiguration['roster_section_same_for_all'] ?? []),
             'sample_requested' => (bool) ($editConfiguration['sample_requested'] ?? false),
             'artwork_files' => $existingArtwork,
             'artwork_help' => (array) ($editConfiguration['artwork_help'] ?? []),
@@ -157,7 +164,7 @@
         $reviewStep => ['title' => 'Review & Add to Cart', 'description' => 'Review your selections and add to cart.'],
     ];
     if ($showRosterStep) {
-        $customizerSteps[$rosterStep] = ['title' => 'Player Names & Numbers', 'description' => 'Add player names, numbers and configured item details.'];
+        $customizerSteps[$rosterStep] = ['title' => ($roster['template_id'] ?? null) ? ($roster['title'] ?? 'Personalization') : 'Player Names & Numbers', 'description' => ($roster['description'] ?? null) ?: (($roster['multiple_templates'] ?? false) ? 'Add your details to each selected section.' : 'Add player names, numbers and configured item details.')];
         ksort($customizerSteps);
     }
 
@@ -174,6 +181,7 @@
 @endphp
 
 @once
+<link rel="stylesheet" href="{{ asset('assets/item-personalization-20261027.css') }}?v=9">
 <script>
 window.productBuilderFabricPricing = function (config = {}) {
     const baseFactory = window.productBuilder;
@@ -187,6 +195,87 @@ window.productBuilderFabricPricing = function (config = {}) {
         mobileOrderSummaryOpen: false,
         completedCustomizerStep: Object.keys(config.initial_state || {}).length ? Math.max(0, Number(config.customizer_step_count || 6) - 1) : 0,
         skuCopied: false,
+        personalizationPreviews: {},
+        applyRosterSectionSharedValues() {
+            const first = this.rosterRows?.[0]?.values || {};
+            (config.roster?.sections || []).forEach(section => {
+                if (!this.rosterSectionShared[String(section.id)]) return;
+                (this.rosterRows || []).forEach(row => (section.fields || []).filter(field => !['image','file'].includes(field.type)).forEach(field => {
+                    row.values[field.key] = first[field.key] || '';
+                }));
+            });
+        },
+        applyRosterSharedValues() {
+            const fileKeys = new Set((config.roster?.fields || []).filter(field => ['image','file'].includes(field.type)).map(field => field.key));
+            const shared = Object.fromEntries(Object.entries(this.rosterSharedValues || {}).filter(([key]) => !fileKeys.has(key)));
+            (this.rosterRows || []).forEach(row => { row.values = { ...(row.values || {}), ...shared }; });
+        },
+        clearPersonalizationRowFiles(rowIndex) {
+            document.querySelectorAll('.np-proto-roster-table input[type="file"]').forEach(input => {
+                if (input.name.startsWith(`personalization_files[${rowIndex}]`)) input.value = '';
+            });
+            Object.keys(this.personalizationPreviews).filter(key => key.startsWith(`${rowIndex}:`)).forEach(key => {
+                const url = this.personalizationPreviews[key];
+                if (typeof url === 'string' && url.startsWith('blob:')) URL.revokeObjectURL(url);
+                delete this.personalizationPreviews[key];
+            });
+        },
+    personalizationPreview(rowIndex, key) {
+        const reference = `${rowIndex}:${key}`;
+        if (!this.rosterRows?.[rowIndex]?.values?.[key]) return '';
+        if (Object.prototype.hasOwnProperty.call(this.personalizationPreviews, reference)) {
+            return this.personalizationPreviews[reference] || '';
+        }
+        return (config.personalization_existing_files || []).find(file => file.row === rowIndex && file.key === key)?.url || '';
+    },
+
+    setPersonalizationUpload(rowIndex, field, event) {
+        const file = event.target.files?.[0];
+        const row = this.rosterRows?.[rowIndex];
+        if (!row || !field?.key || !file) return;
+        const image = field.type === 'image';
+        const limit = (image ? 5 : 10) * 1024 * 1024;
+        const allowed = image
+            ? ['image/png', 'image/jpeg', 'image/webp']
+            : ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'text/csv', 'application/csv', 'image/png', 'image/jpeg', 'image/webp'];
+        if (!allowed.includes(file.type) || file.size > limit) {
+            event.target.value = '';
+            window.alert(image ? 'Use a PNG, JPG or WebP image up to 5 MB.' : 'Use a PDF, DOC, DOCX, TXT, CSV or image file up to 10 MB.');
+            return;
+        }
+        const reference = `${rowIndex}:${field.key}`;
+        if (this.personalizationPreviews[reference]?.startsWith('blob:')) {
+            URL.revokeObjectURL(this.personalizationPreviews[reference]);
+        }
+        this.personalizationPreviews[reference] = image ? URL.createObjectURL(file) : null;
+        row.values[field.key] = file.name;
+        this.sync();
+    },
+
+    dropPersonalizationUpload(rowIndex, field, event) {
+        const file = event.dataTransfer?.files?.[0];
+        const input = event.currentTarget.querySelector('input[type="file"]');
+        if (!file || !input || typeof DataTransfer === 'undefined') return;
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        input.files = transfer.files;
+        this.setPersonalizationUpload(rowIndex, field, { target: input });
+    },
+
+    clearPersonalizationUpload(rowIndex, field, event) {
+        const row = this.rosterRows?.[rowIndex];
+        if (!row) return;
+        const reference = `${rowIndex}:${field.key}`;
+        if (this.personalizationPreviews[reference]?.startsWith('blob:')) {
+            URL.revokeObjectURL(this.personalizationPreviews[reference]);
+        }
+        delete this.personalizationPreviews[reference];
+        row.values[field.key] = '';
+        const input = event.currentTarget.closest('td')?.querySelector('input[type=file]');
+        if (input) input.value = '';
+        this.sync();
+    },
+
         async copySku(value) {
             const text = String(value || '').trim();
             if (!text) return;
@@ -283,11 +372,13 @@ window.productBuilderFabricPricing = function (config = {}) {
         clearRosterRow(rowIndex) {
             const row = this.rosterRows?.[Number(rowIndex)];
             if (!row) return;
+            this.clearPersonalizationRowFiles(Number(rowIndex));
             Object.keys(row.values || {}).forEach((key) => { row.values[key] = ''; });
             this.sync();
         },
         clearRosterRows() {
-            (this.rosterRows || []).forEach((row) => {
+            (this.rosterRows || []).forEach((row, index) => {
+                this.clearPersonalizationRowFiles(index);
                 Object.keys(row.values || {}).forEach((key) => { row.values[key] = ''; });
             });
             Object.keys(this.rosterSharedValues || {}).forEach((key) => { this.rosterSharedValues[key] = ''; });
@@ -797,7 +888,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                             Request Bulk Quote
                         </a>
                     </div>
-                    <p class="np-product-hero-help">Choose sizes, quantities, player details &amp; artwork in the next steps.</p>
+                    <p class="np-product-hero-help">Choose sizes, quantities, {{ ($roster['template_id'] ?? null) ? 'personalization' : 'player details' }} &amp; artwork in the next steps.</p>
                 </article>
             </div>
         </section>
@@ -949,7 +1040,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                             :back-step="$priceStep"
                             back-label="Back: Price & Fabric"
                             :next-step="$showRosterStep ? $rosterStep : $artworkStep"
-                            :next-label="$showRosterStep ? 'Next: Player Names & Numbers' : 'Next: Upload Artwork'"
+                            :next-label="$showRosterStep ? ($roster['template_id'] ?? null ? 'Next: '.($roster['title'] ?? 'Personalization') : 'Next: Player Names & Numbers') : 'Next: Upload Artwork'"
                         />
                         </div>
                     </section>
@@ -974,53 +1065,200 @@ window.productBuilderFabricPricing = function (config = {}) {
                                     x-cloak
                                     role="status"
                                 >
-                                    <strong>Select a quantity from the Sizes &amp; Quantities section to add player names and numbers.</strong>
+                                    <strong>Select a quantity from the Sizes &amp; Quantities section to add {{ strtolower($customizerSteps[$rosterStep]['title']) }}.</strong>
                                 </div>
                                 <div x-show="rosterEnabled && totalQuantity() > 0" x-cloak>
+                                    @if($roster['shared_entry_enabled'] ?? true)
                                     <div class="np-roster-same-for-all" x-show="rosterRows.length > 0" x-cloak>
                                         <label class="np-roster-same-toggle">
                                             <input type="checkbox" :checked="rosterSameForAll" @change="setRosterSameForAll($event.target.checked)">
-                                            <span><strong>Use the same name &amp; number for all items</strong><small>Enter the shared details once and apply them to every selected piece.</small></span>
+                                            <span><strong>{{ $roster['shared_entry_label'] ?? 'Use the same name & number for all items' }}</strong><small>Enter the shared details once and apply them to every selected piece.</small></span>
                                         </label>
                                         <div class="np-roster-shared-fields" x-show="rosterSameForAll" x-cloak>
-                                            @foreach($enabledRosterFields as $field)
+                                            @foreach($enabledRosterFields->reject(fn ($field) => in_array($field['type'] ?? '', ['image','file'], true)) as $field)
                                                 <label>
                                                     <span>{{ $field['label'] }}</span>
+                                                    @if(($field['type'] ?? 'text') === 'color')
+                                                        <div class="np-personalization-swatches" role="group" aria-label="{{ $field['label'] }}">
+                                                            @foreach(($field['color_options'] ?? []) as $option)
+                                                                @php $hex = is_array($option) ? ($option['hex'] ?? '') : $option; @endphp
+                                                                @if(preg_match('/^#[0-9a-fA-F]{6}$/', (string) $hex))
+                                                                    <button type="button" class="np-personalization-swatch" style="--personalization-swatch:{{ strtoupper($hex) }}"
+                                                                        :class="rosterSharedValues[@js($field['key'])] === @js(strtoupper($hex)) ? 'is-selected' : ''"
+                                                                        :aria-pressed="String(rosterSharedValues[@js($field['key'])] === @js(strtoupper($hex)))"
+                                                                        @click="updateRosterSharedField(@js($field), rosterSharedValues[@js($field['key'])] === @js(strtoupper($hex)) ? '' : @js(strtoupper($hex)))"></button>
+                                                                @endif
+                                                            @endforeach
+                                                        </div>
+                                                    @else
                                                     <input
                                                         type="text"
                                                         @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif
                                                         maxlength="{{ max(1, (int) ($field['max_length'] ?? 60)) }}"
                                                         :value="rosterSharedValues[@js($field['key'])] || ''"
                                                         @input="updateRosterSharedField(@js($field), $event.target.value)"
-                                                        placeholder="{{ $field['label'] }}"
+                                                        placeholder="{{ $field['placeholder'] ?? $field['label'] }}"
                                                     >
+                                                    @endif
                                                 </label>
                                             @endforeach
                                         </div>
                                     </div>
+                                    @endif
                                     <div class="np-proto-player-summary-row">
                                         <div class="np-proto-player-product"><img src="{{ $product['image'] }}" alt=""><span><small>Selected Fabric</small>@if($materialGroup)<strong x-text="optionValue(@js($materialGroup), selections[@js($materialGroup['id'])])?.label || 'Configured fabric'"></strong>@else<strong>Configured fabric</strong>@endif</span><button type="button" @click="openCustomizerStep(1)">Change</button></div>
                                         <div class="np-proto-player-stat"><x-storefront.product.ui-icon :src="$ui['roster_total_pieces_icon']" name="sizes" /><span class="np-proto-player-stat-copy"><small>Total Pieces</small><strong x-text="totalQuantity()"></strong></span></div>
-                                        <div class="np-proto-player-stat"><x-storefront.product.ui-icon :src="$ui['roster_players_icon']" name="player" /><span class="np-proto-player-stat-copy"><small>Players</small><strong><span x-text="rosterRows.length"></span> entries required</strong></span></div>
+                                        <div class="np-proto-player-stat"><x-storefront.product.ui-icon :src="$ui['roster_players_icon']" name="player" /><span class="np-proto-player-stat-copy"><small>{{ ($roster['template_id'] ?? null) ? 'Entries' : 'Players' }}</small><strong><span x-text="rosterRows.length"></span> entries required</strong></span></div>
                                     </div>
 
+                                    @if($roster['multiple_templates'] ?? false)
+                                        @foreach($roster['sections'] as $section)
+                                            <div class="np-item-personalization-section">
+                                                <div class="np-item-personalization-section__heading">
+                                                    <h3>{{ $section['title'] }}</h3>
+                                                    @if(filled($section['description']))<p>{{ $section['description'] }}</p>@endif
+                                                </div>
+                                                @if($section['shared_entry_enabled'])
+                                                    <div class="np-roster-same-for-all" x-show="rosterRows.length > 0" x-cloak>
+                                                        <label class="np-roster-same-toggle">
+                                                            <input type="checkbox" :checked="rosterSectionShared[@js($section['id'])] || false"
+                                                                @change="setRosterSectionShared(@js($section['id']), $event.target.checked)">
+                                                            <span><strong>{{ $section['shared_entry_label'] }}</strong></span>
+                                                        </label>
+                                                        <div class="np-roster-shared-fields" x-show="rosterSectionShared[@js($section['id'])]" x-cloak>
+                                                            @foreach(collect($section['fields'])->reject(fn ($field) => in_array($field['type'] ?? '', ['image','file'], true)) as $field)
+                                                                <label><span>{{ $field['label'] }}</span>
+                                                                    @if(($field['type'] ?? 'text') === 'color')
+                                                                        <div class="np-personalization-swatches">
+                                                                            @foreach(($field['color_options'] ?? []) as $option)
+                                                                                @php $hex = is_array($option) ? ($option['hex'] ?? '') : $option; @endphp
+                                                                                @if(preg_match('/^#[0-9a-fA-F]{6}$/', (string) $hex))
+                                                                                    <button type="button" class="np-personalization-swatch" style="--personalization-swatch:{{ strtoupper($hex) }}"
+                                                                                        :class="rosterRows[0]?.values?.[@js($field['key'])] === @js(strtoupper($hex)) ? 'is-selected' : ''"
+                                                                                        @click="updateRosterSectionSharedField(@js($section['id']), @js($field), rosterRows[0]?.values?.[@js($field['key'])] === @js(strtoupper($hex)) ? '' : @js(strtoupper($hex)))"></button>
+                                                                                @endif
+                                                                            @endforeach
+                                                                        </div>
+                                                                    @else
+                                                                        <input type="text" @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif
+                                                                            maxlength="{{ max(1, (int) ($field['max_length'] ?? 60)) }}"
+                                                                            :value="rosterRows[0]?.values?.[@js($field['key'])] || ''"
+                                                                            @input="updateRosterSectionSharedField(@js($section['id']), @js($field), $event.target.value)"
+                                                                            placeholder="{{ $field['placeholder'] ?? $field['label'] }}">
+                                                                    @endif
+                                                                </label>
+                                                            @endforeach
+                                                        </div>
+                                                    </div>
+                                                @endif
+                                                <div class="touch-scroll-x np-proto-roster-table-wrap">
+                                                    <table class="np-proto-data-table np-proto-roster-table">
+                                                        <thead><tr><th>#</th><th>Size</th>@foreach($section['fields'] as $field)<th>{{ $field['label'] }}@if(in_array($field['type'] ?? 'text', ['text','number'], true) && ($field['max_length'] ?? null))<small>(Max {{ (int) $field['max_length'] }} characters)</small>@endif</th>@endforeach<th></th></tr></thead>
+                                                        <tbody>
+                                                            <template x-for="(row, rowIndex) in rosterRows" :key="`${row.size_key || 'item'}:${rowIndex}`">
+                                                                <tr>
+                                                                    <td data-label="#" x-text="rowIndex + 1"></td>
+                                                                    <td class="is-quantity" data-label="Size" x-text="row.size_label || '—'"></td>
+                                                                    @foreach($section['fields'] as $field)
+                                                                        <td data-label="{{ $field['label'] }}">
+                                                                            @if(($field['type'] ?? 'text') === 'color')
+    <div class="np-personalization-swatches" role="group" aria-label="Choose {{ $field['label'] }}">
+        @foreach(($field['color_options'] ?? []) as $option)
+            @php $hex = is_array($option) ? ($option['hex'] ?? '') : $option; $colorName = is_array($option) ? ($option['name'] ?? $hex) : $hex; @endphp
+            @if(preg_match('/^#[0-9a-fA-F]{6}$/', (string) $hex))
+                <button type="button" class="np-personalization-swatch"
+                    :class="row.values[@js($field['key'])] === @js(strtoupper($hex)) ? 'is-selected' : ''"
+                    :aria-pressed="String(row.values[@js($field['key'])] === @js(strtoupper($hex)))"
+                    :disabled="rosterSectionShared[@js($section['id'])] || false"
+                    @click="row.values[@js($field['key'])] = row.values[@js($field['key'])] === @js(strtoupper($hex)) ? '' : @js(strtoupper($hex)); sync()"
+                    style="--personalization-swatch:{{ strtoupper($hex) }}" title="{{ $colorName }}" aria-label="{{ $colorName }}"></button>
+            @endif
+        @endforeach
+        @if(empty($field['color_options']))<small>No colors available</small>@endif
+    </div>
+@elseif(in_array($field['type'] ?? '', ['image', 'file'], true))
+    <div class="np-personalization-upload-input">
+        <label class="np-proto-upload-dropzone is-compact np-personalization-upload-zone {{ str_contains(strtolower($field['label']), 'logo') ? 'is-logo' : ($field['type'] === 'image' ? 'is-image' : 'is-file') }}"
+            @dragover.prevent @drop.prevent="dropPersonalizationUpload(rowIndex, @js($field), $event)">
+            <x-storefront.product.ui-icon :src="$ui['artwork_drop_icon']" name="upload" />
+            <strong>{{ $field['type'] === 'image' ? 'Upload image' : 'Upload file' }}</strong><span>or click to browse</span>
+            <input type="file" :name="`personalization_files[${rowIndex}][{{ $field['key'] }}]`"
+                accept="{{ $field['type'] === 'image' ? '.png,.jpg,.jpeg,.webp' : '.pdf,.doc,.docx,.txt,.csv,.png,.jpg,.jpeg,.webp' }}"
+                @change="setPersonalizationUpload(rowIndex, @js($field), $event)">
+        </label>
+        <small x-show="row.values[@js($field['key'])]" x-text="row.values[@js($field['key'])]"></small>
+        <a class="np-personalization-clear-file" x-show="row.values[@js($field['key'])] && personalizationPreview(rowIndex, @js($field['key'])) && !personalizationPreview(rowIndex, @js($field['key'])).startsWith('blob:')" :href="personalizationPreview(rowIndex, @js($field['key']))" target="_blank" rel="noopener">Open saved file</a>
+        @if($field['type'] === 'image')
+            <img x-show="personalizationPreview(rowIndex, @js($field['key']))" :src="personalizationPreview(rowIndex, @js($field['key']))" alt="Selected image" class="np-personalization-preview-image">
+        @endif
+        <button type="button" class="np-personalization-clear-file" x-show="row.values[@js($field['key'])]" @click="clearPersonalizationUpload(rowIndex, @js($field), $event)">Clear file</button>
+    </div>
+@else
+    <input class="np-proto-table-input" type="text" @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif maxlength="{{ max(1, (int) ($field['max_length'] ?? 60)) }}" x-model="row.values[@js($field['key'])]" :disabled="rosterSectionShared[@js($section['id'])] || false" @input="sync()" @change="commitRosterField(rowIndex, @js($field), $event.target.value)" placeholder="{{ $field['placeholder'] ?? $field['label'] }}">
+@endif
+                                                                        </td>
+                                                                    @endforeach
+                                                                    <td data-label="Action"><button type="button" class="np-roster-remove-button" @click="clearRosterRow(rowIndex)" aria-label="Clear item personalization"><span aria-hidden="true">×</span><span>Remove</span></button></td>
+                                                                </tr>
+                                                            </template>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    @else
                                     <div class="touch-scroll-x np-proto-roster-table-wrap">
                                         <table class="np-proto-data-table np-proto-roster-table">
-                                            <thead><tr><th>#</th><th>Size</th>@foreach($enabledRosterFields as $field)<th>{{ $field['label'] }}@if(($field['max_length'] ?? null))<small>(Max {{ (int) $field['max_length'] }} characters)</small>@endif</th>@endforeach<th></th></tr></thead>
+                                            <thead><tr><th>#</th><th>Size</th>@foreach($enabledRosterFields as $field)<th>{{ $field['label'] }}@if(in_array($field['type'] ?? 'text', ['text','number'], true) && ($field['max_length'] ?? null))<small>(Max {{ (int) $field['max_length'] }} characters)</small>@endif</th>@endforeach<th></th></tr></thead>
                                             <tbody>
                                                 <template x-for="(row, rowIndex) in rosterRows" :key="`${row.size_key || 'item'}:${rowIndex}`">
                                                     <tr>
                                                         <td data-label="#" x-text="rowIndex + 1"></td>
                                                         <td class="is-quantity" data-label="Size" x-text="row.size_label || '—'"></td>
                                                         @foreach($enabledRosterFields as $field)
-                                                            <td data-label="{{ $field['label'] }}"><input class="np-proto-table-input" type="text" @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif maxlength="{{ max(1, (int) ($field['max_length'] ?? 60)) }}" x-model="row.values[@js($field['key'])]" :disabled="rosterSameForAll" @input="sync()" @change="commitRosterField(rowIndex, @js($field), $event.target.value)" placeholder="{{ $field['label'] }}"></td>
+                                                            <td data-label="{{ $field['label'] }}">@if(($field['type'] ?? 'text') === 'color')
+    <div class="np-personalization-swatches" role="group" aria-label="Choose {{ $field['label'] }}">
+        @foreach(($field['color_options'] ?? []) as $option)
+            @php $hex = is_array($option) ? ($option['hex'] ?? '') : $option; $colorName = is_array($option) ? ($option['name'] ?? $hex) : $hex; @endphp
+            @if(preg_match('/^#[0-9a-fA-F]{6}$/', (string) $hex))
+                <button type="button" class="np-personalization-swatch"
+                    :class="row.values[@js($field['key'])] === @js(strtoupper($hex)) ? 'is-selected' : ''"
+                    :aria-pressed="String(row.values[@js($field['key'])] === @js(strtoupper($hex)))"
+                    :disabled="rosterSameForAll"
+                    @click="row.values[@js($field['key'])] = row.values[@js($field['key'])] === @js(strtoupper($hex)) ? '' : @js(strtoupper($hex)); sync()"
+                    style="--personalization-swatch:{{ strtoupper($hex) }}" title="{{ $colorName }}" aria-label="{{ $colorName }}"></button>
+            @endif
+        @endforeach
+        @if(empty($field['color_options']))<small>No colors available</small>@endif
+    </div>
+@elseif(in_array($field['type'] ?? '', ['image', 'file'], true))
+    <div class="np-personalization-upload-input">
+        <label class="np-proto-upload-dropzone is-compact np-personalization-upload-zone {{ str_contains(strtolower($field['label']), 'logo') ? 'is-logo' : ($field['type'] === 'image' ? 'is-image' : 'is-file') }}"
+            @dragover.prevent @drop.prevent="dropPersonalizationUpload(rowIndex, @js($field), $event)">
+            <x-storefront.product.ui-icon :src="$ui['artwork_drop_icon']" name="upload" />
+            <strong>{{ $field['type'] === 'image' ? 'Upload image' : 'Upload file' }}</strong><span>or click to browse</span>
+            <input type="file" :name="`personalization_files[${rowIndex}][{{ $field['key'] }}]`"
+                accept="{{ $field['type'] === 'image' ? '.png,.jpg,.jpeg,.webp' : '.pdf,.doc,.docx,.txt,.csv,.png,.jpg,.jpeg,.webp' }}"
+                @change="setPersonalizationUpload(rowIndex, @js($field), $event)">
+        </label>
+        <small x-show="row.values[@js($field['key'])]" x-text="row.values[@js($field['key'])]"></small>
+        <a class="np-personalization-clear-file" x-show="row.values[@js($field['key'])] && personalizationPreview(rowIndex, @js($field['key'])) && !personalizationPreview(rowIndex, @js($field['key'])).startsWith('blob:')" :href="personalizationPreview(rowIndex, @js($field['key']))" target="_blank" rel="noopener">Open saved file</a>
+        @if($field['type'] === 'image')
+            <img x-show="personalizationPreview(rowIndex, @js($field['key']))" :src="personalizationPreview(rowIndex, @js($field['key']))" alt="Selected image" class="np-personalization-preview-image">
+        @endif
+        <button type="button" class="np-personalization-clear-file" x-show="row.values[@js($field['key'])]" @click="clearPersonalizationUpload(rowIndex, @js($field), $event)">Clear file</button>
+    </div>
+@else
+    <input class="np-proto-table-input" type="text" @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif maxlength="{{ max(1, (int) ($field['max_length'] ?? 60)) }}" x-model="row.values[@js($field['key'])]" :disabled="rosterSameForAll" @input="sync()" @change="commitRosterField(rowIndex, @js($field), $event.target.value)" placeholder="{{ $field['placeholder'] ?? $field['label'] }}">
+@endif</td>
                                                         @endforeach
-                                                        <td data-label="Action"><button type="button" class="np-roster-remove-button" @click="clearRosterRow(rowIndex)" aria-label="Remove player details"><span aria-hidden="true">×</span><span>Remove</span></button></td>
+                                                        <td data-label="Action"><button type="button" class="np-roster-remove-button" @click="clearRosterRow(rowIndex)" aria-label="Remove item personalization"><span aria-hidden="true">×</span><span>Remove</span></button></td>
                                                     </tr>
                                                 </template>
                                             </tbody>
                                         </table>
                                     </div>
+                                    @endif
                                 </div>
                             @endif
                         </div>
@@ -1122,7 +1360,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                         <x-storefront.product.customizer.navigation
                             :step="$artworkStep"
                             :back-step="$showRosterStep ? $rosterStep : $sizeStep"
-                            :back-label="$showRosterStep ? 'Back: Player Names & Numbers' : 'Back: Sizes & Quantities'"
+                            :back-label="$showRosterStep ? 'Back: '.($customizerSteps[$rosterStep]['title'] ?? 'Personalization') : 'Back: Sizes & Quantities'"
                             :next-step="$productionStep"
                             next-label="Next: Production & Shipping"
                         />
@@ -1261,13 +1499,13 @@ window.productBuilderFabricPricing = function (config = {}) {
                                         @if($showRosterStep)
                                         <div class="np-product-review-section">
                                             <div class="np-product-review-card-title">
-                                                <h4>Player Names &amp; Numbers</h4>
+                                                <h4>{{ $customizerSteps[$rosterStep]['title'] ?? 'Player Names & Numbers' }}</h4>
                                                 <button type="button" @click="openCustomizerStep({{ $rosterStep }})">Edit</button>
                                             </div>
                                             @if($rosterEnabled)
                                                 <div class="np-review-roster-summary" x-show="rosterEnabled" x-cloak>
                                                     <div class="np-review-detail-list">
-                                                        <div><span>Players</span><strong x-text="`${rosterRows.length} player${rosterRows.length === 1 ? '' : 's'}`"></strong></div>
+                                                        <div><span>{{ ($roster['template_id'] ?? null) ? 'Entries' : 'Players' }}</span><strong x-text="`${rosterRows.length} {{ ($roster['template_id'] ?? null) ? 'entries' : 'players' }}`"></strong></div>
                                                     </div>
                                                     <div class="np-review-roster-list">
                                                         <template x-for="(row, rowIndex) in rosterRows" :key="`review:${row.size_key || 'item'}:${rowIndex}`">
@@ -1281,9 +1519,9 @@ window.productBuilderFabricPricing = function (config = {}) {
                                                         </template>
                                                     </div>
                                                 </div>
-                                                <p class="np-review-empty" x-show="!rosterEnabled" x-cloak>Player details are not enabled for this order.</p>
+                                                <p class="np-review-empty" x-show="!rosterEnabled" x-cloak>Personalization details are not enabled for this order.</p>
                                             @else
-                                                <p class="np-review-empty">Player details are not required for this product.</p>
+                                                <p class="np-review-empty">Personalization details are not required for this product.</p>
                                             @endif
                                         </div>
 

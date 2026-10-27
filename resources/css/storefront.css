@@ -26793,3 +26793,110 @@ html.np-product-preview-open body { overflow: hidden; }
     padding: 0;
     background: transparent;
 }
+
+/* Group multiple configured personalization templates inside the existing roster step. */
+.np-item-personalization-section + .np-item-personalization-section { margin-top: 22px; }
+.np-item-personalization-section__heading { margin: 12px 0; }
+.np-item-personalization-section__heading h3 { font-size: 15px; font-weight: 700; margin: 0; }
+.np-item-personalization-section__heading p { margin: 4px 0 0; font-size: 13px; color: #687b93; }
+
+
+/* Item personalization: keep inputs visually neutral while typing. */
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table .np-proto-table-input:is(:focus, :focus-visible),
+.storefront-clean-ui .np-product-detail-prototype .np-roster-shared-fields input:is(:focus, :focus-visible) {
+    border-color: var(--np-product-card-border, #dce2e8) !important;
+    outline: none !important;
+    box-shadow: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+}
+/* Center the per-item Remove action in its table column. */
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table td[data-label="Action"] {
+    text-align: center;
+    vertical-align: middle;
+}
+@media (max-width: 1023px) {
+    .storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table td[data-label="Action"] {
+        justify-content: center;
+        justify-items: center;
+    }
+}
+
+/* Personalization inputs use neutral focus without modifying other storefront sections. */
+.np-proto-roster-table .np-proto-table-input:focus,.np-roster-shared-fields input:focus,.np-item-personalization-section input:focus { outline:none!important; box-shadow:none!important; --tw-ring-shadow:0 0 #0000!important; border-color:#cbd5e1!important; }
+.np-personalization-upload-input { display:flex;flex-direction:column;gap:.35rem;min-width:155px; }
+.np-personalization-upload-input input[type=file] { height:auto;min-height:40px;padding:7px;max-width:100%;font-size:12px; }
+.np-personalization-upload-input small {font-size:11px;overflow-wrap:anywhere;color:#64748b; }
+.np-personalization-clear-file {font-size:12px;text-decoration:underline;align-self:flex-start;color:#b74232; }
+.np-personalization-preview-image {width:72px;height:72px;object-fit:contain;border:1px solid #e2e8f0;}
+.np-personalization-color-input {display:flex;align-items:center;gap:8px;min-width:115px;}
+.np-personalization-color-input input[type=color] {width:60px;min-width:60px;padding:3px;}
+
+
+/* Item personalization field layout: two controls per row, never a wide 6-8 column grid. */
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table-wrap {overflow:visible;max-width:100%;border:0;}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table {display:block;min-width:0!important;width:100%;border:0;}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table thead {display:none;}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody {display:grid;gap:14px;width:100%;}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody tr {
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:14px!important;min-width:0!important;width:100%;height:auto;
+  border:1px solid #dce5f0;border-radius:6px;background:#fff;padding:16px!important;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody td {
+  display:flex!important;flex-direction:column;align-items:stretch;justify-content:start;
+  width:100%!important;min-width:0!important;max-width:none!important;
+  height:auto!important;padding:0!important;border:0!important;grid-column:auto!important;
+  font-size:13px;gap:7px;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody td:nth-child(1),
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody td:nth-child(2) {
+  display:block!important;border-bottom:1px solid #e5eaf2!important;padding:0 0 12px!important;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody td:nth-child(1)::before,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody td:nth-child(2)::before {display:inline!important;content:attr(data-label) ': ';color:#728198;font-size:12px;margin-right:6px;}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody td:nth-child(n+3):not(:last-child)::before {
+  display:block!important;content:attr(data-label);font-weight:700;font-size:13px;color:var(--np-color-primary,#10274b);margin:0 0 2px;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody td:last-child {
+  grid-column:1/-1!important;display:flex!important;align-items:center;justify-content:center!important;
+  border-top:1px solid #e5eaf2!important;padding-top:10px!important;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody td:last-child::before {display:none!important;}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table .np-proto-table-input {min-width:0;width:100%;max-width:100%;}
+/* Swatches are the same circular choices as the existing Color Preference control. */
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-swatches {display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-height:38px;}
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-swatch {display:inline-flex!important;flex:none;align-items:center;justify-content:center;
+ width:38px;height:38px;max-width:38px;border-radius:50%;border:2px solid #ced8e4;background:transparent;padding:5px;position:relative;cursor:pointer;}
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-swatch::before {content:'';display:block;width:100%;height:100%;border-radius:50%;background:var(--personalization-swatch);}
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-swatch.is-selected {border-color:var(--np-color-secondary,#d55a33);box-shadow:0 0 0 1px var(--np-color-secondary,#d55a33);}
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-swatch:focus {outline:none;box-shadow:none;}
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-swatch.is-selected:focus {box-shadow:0 0 0 1px var(--np-color-secondary,#d55a33);}
+/* Reference Images upload styling reused verbatim; logo zone is the same 90px compact size. */
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-upload-input {min-width:0;max-width:100%;}
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-upload-zone {width:100%;max-width:100%;min-height:72px;position:relative;}
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-upload-zone.is-logo {min-height:76px;}
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-upload-zone > input[type=file] {
+ position:absolute!important;inset:0!important;width:100%!important;height:100%!important;opacity:0!important;cursor:pointer;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-upload-zone > .np-configurable-ui-icon {width:26px!important;height:26px!important;min-width:26px!important;min-height:26px!important;max-width:26px!important;max-height:26px!important;}
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-upload-zone.is-logo > .np-configurable-ui-icon {width:28px!important;height:28px!important;min-width:28px!important;min-height:28px!important;max-width:28px!important;max-height:28px!important;}
+@media(max-width:580px){.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody tr {grid-template-columns:minmax(0,1fr)!important;}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody td:first-child,
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody td:nth-child(2){padding:0 0 8px!important;}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody td:last-child{grid-column:1/-1!important;}}
+
+/* NEXTPLAY 2026-10-27: Compact only the Item Personalization color and file controls.
+   Maintain the two-column structure and reuse the Reference Images upload interaction. */
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-upload-zone {
+    box-sizing: border-box;
+    padding: 8px 10px !important;
+    gap: 2px !important;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-upload-zone > strong {
+    font-size: 12px !important;
+    line-height: 1.25;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-upload-zone > span {
+    font-size: 11px !important;
+    line-height: 1.2;
+}

@@ -84,13 +84,13 @@
     @if($rosterStep)
     <section class="np-custom-order-section np-custom-order-compact-row">
         <div>
-            <h4>Player Names &amp; Numbers</h4>
+            <h4>{{ ($product['roster']['template_id'] ?? null) ? ($product['roster']['title'] ?? 'Personalization') : 'Player Names & Numbers' }}</h4>
             @if($attributes->has('playerActionLabel'))
-                <strong x-text="rosterEnabled ? `${rosterRows.length} players` : 'Not added yet'"></strong>
+                <strong x-text="rosterEnabled ? `${rosterRows.length} {{ ($product['roster']['template_id'] ?? null) ? 'entries' : 'players' }}` : 'Not added yet'"></strong>
             @else
-                <strong x-text="rosterEnabled ? `${rosterRows.length} players` : 'Not added yet'"></strong>
+                <strong x-text="rosterEnabled ? `${rosterRows.length} {{ ($product['roster']['template_id'] ?? null) ? 'entries' : 'players' }}` : 'Not added yet'"></strong>
             @endif
-            <small x-text="rosterEnabled ? 'Names & numbers added' : 'Complete player details if required'"></small>
+            <small x-text="rosterEnabled ? @js(($product['roster']['template_id'] ?? null) ? 'Personalization added' : 'Names & numbers added') : @js(($product['roster']['template_id'] ?? null) ? 'Complete personalization if required' : 'Complete player details if required')"></small>
         </div>
         <button type="button" @click="openCustomizerStep({{ $rosterStep }})">Change <span aria-hidden="true">›</span></button>
     </section>

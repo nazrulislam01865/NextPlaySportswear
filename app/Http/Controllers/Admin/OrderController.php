@@ -129,6 +129,27 @@ class OrderController extends Controller
         ]);
     }
 
+    public function personalizationFile(Order $order, OrderItem $orderItem, int $fileIndex): StreamedResponse
+    {
+        abort_unless((int) $orderItem->order_id === (int) $order->id, 404);
+        $files = array_values((array) data_get($orderItem->customization, 'personalization_files', []));
+        $file = $files[$fileIndex] ?? null;
+        abort_unless(is_array($file) && str_starts_with((string) ($file['path'] ?? ''), 'customer-personalization/'), 404);
+        $disk = Storage::disk('local');
+        abort_unless($disk->exists($file['path']), 404);
+        $stream = $disk->readStream($file['path']);
+        abort_if($stream === false, 404);
+        $name = str_replace(["\r", "\n", '"'], '', basename((string) ($file['original_name'] ?? 'personalization-file')));
+        return response()->stream(function () use ($stream): void {
+            try { fpassthru($stream); } finally { if (is_resource($stream)) fclose($stream); }
+        }, 200, [
+            'Content-Type' => 'application/octet-stream',
+            'Content-Disposition' => 'attachment; filename="'.$name.'"',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store',
+        ]);
+    }
+
     public function approve(Request $request, Order $order): RedirectResponse
     {
         $admin = $request->user('admin');

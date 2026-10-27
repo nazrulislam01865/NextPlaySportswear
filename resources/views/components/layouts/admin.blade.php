@@ -164,7 +164,7 @@
                     <x-admin.sidebar-group
                         label="Master Data"
                         icon="◈"
-                        :active="$isCustomizationActive || $isSizeOptionActive || $isTrainingVestCustomizationActive || $isWorldCupCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*') || request()->routeIs('admin.faqs.*') || request()->routeIs('admin.genders.*') || request()->routeIs('admin.time-zones.*') || request()->routeIs('admin.country-calling-codes.*') || request()->routeIs('admin.bulk-quote-budget-ranges.*') || request()->routeIs('admin.artwork-preferences.*')"
+                        :active="$isCustomizationActive || request()->routeIs('admin.personalization-templates.*') || $isSizeOptionActive || $isTrainingVestCustomizationActive || $isWorldCupCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*') || request()->routeIs('admin.faqs.*') || request()->routeIs('admin.genders.*') || request()->routeIs('admin.time-zones.*') || request()->routeIs('admin.country-calling-codes.*') || request()->routeIs('admin.bulk-quote-budget-ranges.*') || request()->routeIs('admin.artwork-preferences.*')"
                     >
                         @if($canAdmin('customization.view'))
                         @foreach($primaryCustomizationMenuGroups as $groupKey => $customizationGroup)
@@ -300,6 +300,10 @@
                                 :href="route('admin.artwork-preferences.index', 'style')"
                                 :active="request()->routeIs('admin.artwork-preferences.*') && request()->route('type') === 'style'"
                             >{{ $trailingMasterDataNumbers['design_styles'] }} Design Styles</x-admin.sidebar-sub-link>
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.personalization-templates.index')"
+                                :active="request()->routeIs('admin.personalization-templates.*')"
+                            >{{ $trailingMasterDataNumbers['personalization_templates'] }} Personalization Templates</x-admin.sidebar-sub-link>
                         @endif
                     </x-admin.sidebar-group>
                 @endif
@@ -456,6 +460,19 @@
                         <span class="np-mg-user-arrow" aria-hidden="true">⌄</span>
                     @endauth
                 </header>
+            @elseif(request()->routeIs('admin.personalization-templates.*'))
+                <header data-admin-page-header class="flex min-h-[68px] items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8">
+                    <div class="flex min-w-0 items-center gap-4">
+                        <button type="button" class="lg:hidden" @click="sidebarOpen = true" aria-label="Open sidebar">☰</button>
+                        <div class="truncate text-xs text-slate-500">NextPlay Admin &nbsp; / &nbsp; <strong class="text-brand-ink">Master Data / Personalization Templates</strong></div>
+                    </div>
+                    <div class="flex items-center gap-4 text-xs text-slate-500">
+                        <a class="whitespace-nowrap" href="{{ route('home') }}" target="_blank" rel="noopener">View Storefront ↗</a>
+                        <x-admin.notification-bell />
+                        <span class="hidden sm:inline">{{ auth('admin')->user()?->name ?? 'Admin' }}</span>
+                        <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-dark text-white">{{ strtoupper(substr((string) (auth('admin')->user()?->name ?? 'A'), 0, 1)) }}</span>
+                    </div>
+                </header>
             @else
             <header data-admin-page-header @class([
                 'sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-slate-200 bg-white/95 px-4 py-4 backdrop-blur sm:px-6 lg:px-8',
@@ -489,7 +506,7 @@
                 @if (session('status') && ! request()->routeIs('admin.email-customization.*', 'admin.holiday-calendars.*', 'admin.coupons.index', 'admin.promotions.sales.index', 'admin.storefront-branding.edit', 'admin.about-page.edit', 'admin.shipping-delivery-page.edit', 'admin.sustainability-page.edit'))
                     <div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
                 @endif
-                @if ($errors->any() && ! request()->routeIs('admin.products.create', 'admin.products.edit', 'admin.homepage.sections.edit', 'admin.menus.create', 'admin.menus.edit', 'admin.email-customization.*', 'admin.holiday-calendars.*', 'admin.categories.create', 'admin.coupons.create', 'admin.coupons.edit', 'admin.storefront-branding.edit', 'admin.about-page.edit', 'admin.shipping-delivery-page.edit', 'admin.sustainability-page.edit', 'admin.users.index', 'admin.role-matrix.index', 'admin.bulk-quotes.show'))
+                @if ($errors->any() && ! request()->routeIs('admin.products.create', 'admin.products.edit', 'admin.homepage.sections.edit', 'admin.menus.create', 'admin.menus.edit', 'admin.email-customization.*', 'admin.holiday-calendars.*', 'admin.categories.create', 'admin.coupons.create', 'admin.coupons.edit', 'admin.storefront-branding.edit', 'admin.about-page.edit', 'admin.shipping-delivery-page.edit', 'admin.sustainability-page.edit', 'admin.users.index', 'admin.role-matrix.index', 'admin.bulk-quotes.show', 'admin.personalization-templates.*'))
                     <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                         <p class="font-black">Please correct the highlighted information.</p>
                         <ul class="mt-2 list-disc space-y-1 pl-5">

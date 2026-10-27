@@ -48,6 +48,7 @@ final class ProductCustomizationMenuRegistry
             'bulk_quote_budget_ranges' => '1.37',
             'pantone_colors' => '1.38',
             'design_styles' => '1.39',
+            'personalization_templates' => '1.40',
         ];
     }
 }
