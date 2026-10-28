@@ -9,7 +9,7 @@
         'is_empty' => true,
         'checkout_ready' => false,
     ];
-    $cartItemCount = (int) ($cartItemCount ?? ($headerCart['quantity'] ?? 0));
+    $cartItemCount = (int) ($cartItemCount ?? ($headerCart['total_items'] ?? 0));
     $headerWishlist = $headerWishlist ?? [
         'items' => [],
         'total_items' => 0,

@@ -11,7 +11,7 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2 11h10l3-7H7"/><circle cx="10" cy="19" r="1.5"/><circle cx="18" cy="19" r="1.5"/></svg>
             {{ $isEditing ? 'Update Cart Item' : 'Add to Cart' }}
         </button>
-        <a class="btn btn-outline btn-xl np-custom-order-save-quote" href="{{ route('quote.request', ['product' => $product['slug']]) }}">
+        <a class="btn btn-outline btn-xl np-custom-order-save-quote" href="{{ route('quote.request', ['product' => $product['id'] ?? $product['slug']]) }}">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6V3Z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg>
             Save as Quote
         </a>

@@ -295,7 +295,10 @@ class ProductController extends Controller
         $customer = auth('web')->user();
         $productId = (int) ($product['id'] ?? 0);
         $isAuthenticatedCustomer = ($customer?->isCustomer() ?? false) && $productId > 0;
-        $canonicalUrl = (string) (($product['canonical_url'] ?? null) ?: ($product['url'] ?? route('products.show', $product['slug'])));
+        // Sharing must use the actual storefront route, not an editable SEO canonical.
+        // A relative route lets the browser use the current site's real host and scheme.
+        $productSharePath = route('products.show', ['slug' => $product['slug']], false);
+        $productShareUrl = route('products.show', ['slug' => $product['slug']]);
         $firstGalleryImage = collect($product['gallery'] ?? [])->first();
         $productImage = (string) (($product['image'] ?? null) ?: (
             is_array($firstGalleryImage) && filled($firstGalleryImage['url'] ?? null)
@@ -313,7 +316,7 @@ class ProductController extends Controller
             'product_id' => $productId,
             'slug' => (string) $product['slug'],
             'title' => (string) $product['title'],
-            'url' => $canonicalUrl,
+            'url' => $productSharePath,
             'image' => $productImage,
             'summary' => (string) ($product['summary'] ?? ''),
             'price' => (float) ($product['display_unit_price'] ?? $product['base_price'] ?? 0),
@@ -342,6 +345,7 @@ class ProductController extends Controller
                 'og_title' => $product['og_title'] ?: $product['title'].' | '.config('storefront.name'),
                 'og_description' => $product['og_description'] ?: $product['summary'],
                 'og_image' => $product['og_image'] ?: $product['image'],
+                'og_url' => $productShareUrl,
                 'og_type' => 'product',
                 'schema_type' => 'ItemPage',
             ],

@@ -10,8 +10,8 @@
 
             <div class="np-cart-heading-row">
                 <h1 class="font-display">Shopping Cart</h1>
-                <span class="np-cart-count {{ $cart['is_empty'] ? 'np-cart-count--empty' : '' }}" data-cart-page-quantity>
-                    {{ $cart['quantity'] }} item{{ $cart['quantity'] === 1 ? '' : 's' }}
+                <span class="np-cart-count {{ $cart['is_empty'] ? 'np-cart-count--empty' : '' }}" data-cart-page-product-count>
+                    {{ $cart['product_count'] }} product{{ $cart['product_count'] === 1 ? '' : 's' }}
                 </span>
             </div>
 
@@ -85,11 +85,8 @@
                             node.textContent = `${prefix}${money.format(value)}`;
                         });
 
-                        const quantityNode = root.querySelector('[data-cart-quantity]');
-                        if (quantityNode) {
-                            const quantity = Number(cart.quantity || 0);
-                            quantityNode.textContent = `${quantity}`;
-                        }
+                        const countNode = root.querySelector('[data-cart-product-count]');
+                        if (countNode) countNode.textContent = String(cart.product_count ?? 0);
 
                         const pill = root.querySelector('[data-coupon-pill]');
                         const couponCode = root.querySelector('[data-coupon-code]');
@@ -103,16 +100,16 @@
                         }
                     });
 
-                    const pageQuantity = document.querySelector('[data-cart-page-quantity]');
-                    if (pageQuantity) {
-                        const quantity = Number(cart.quantity || 0);
-                        pageQuantity.textContent = `${quantity} item${quantity === 1 ? '' : 's'}`;
+                    const pageCount = document.querySelector('[data-cart-page-product-count]');
+                    if (pageCount) {
+                        const count = Number(cart.product_count || 0);
+                        pageCount.textContent = `${count} product${count === 1 ? '' : 's'}`;
                     }
 
                     document.querySelectorAll('.storefront-cart-count-badge').forEach((node) => {
-                        const quantity = Number(cart.quantity || 0);
-                        node.textContent = quantity > 99 ? '99+' : String(quantity);
-                        node.classList.toggle('hidden', quantity <= 0);
+                        const count = Number(cart.product_count || 0);
+                        node.textContent = count > 99 ? '99+' : String(count);
+                        node.classList.toggle('hidden', count <= 0);
                     });
                 };
 

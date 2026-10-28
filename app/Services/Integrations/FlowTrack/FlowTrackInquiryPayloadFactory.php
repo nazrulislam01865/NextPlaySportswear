@@ -29,6 +29,7 @@ final class FlowTrackInquiryPayloadFactory
             'customer_account' => $this->customerAccount($quote),
 
             'product_type' => (string) $quote->product_type,
+            'product_information' => $quote->product_information,
             'estimated_quantity' => (string) $quote->estimated_quantity,
             'sizes_needed' => (string) $quote->sizes_needed,
             'budget_range' => $quote->budget_range,

@@ -21,6 +21,21 @@
             <circle cx="12" cy="7.5" r="3.2" />
             <path d="M5.4 20a6.6 6.6 0 0 1 13.2 0" />
             @break
+        @case('search')
+            <circle cx="10.8" cy="10.8" r="6.6" />
+            <path d="m16 16 5 5" />
+            @break
+        @case('info')
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 11v5M12 8h.01" />
+            @break
+        @case('change')
+            <path d="M4 7h16M4 17h16" />
+            <path d="m8 4-4 3 4 3m8 4 4 3-4 3" />
+            @break
+        @case('trash')
+            <path d="M4 7h16M9 4h6M7 7l1 13h8l1-13M10 11v6m4-6v6" />
+            @break
         @case('box')
             <path d="m4 7 8-4 8 4v10l-8 4-8-4V7Z" />
             <path d="m4 7 8 4 8-4M12 11v10M8 5l8 4" />

@@ -95,6 +95,10 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-10 5L2 7"></path></svg>
                     Email
                 </button>
+                <button type="button" role="menuitem" x-show="nativeShareAvailable()" x-cloak @click="shareWithDevice()" :disabled="shareBusy">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m0 0L7 8m5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"></path></svg>
+                    More sharing options
+                </button>
             </div>
         </div>
         @endif

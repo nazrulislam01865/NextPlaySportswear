@@ -84,7 +84,7 @@
     <meta property="og:title" content="{{ $ogTitle }}">
     <meta property="og:description" content="{{ $ogDescription }}">
     <meta property="og:type" content="{{ $ogType }}">
-    <meta property="og:url" content="{{ $canonical }}">
+    <meta property="og:url" content="{{ $seo['og_url'] ?? $canonical }}">
     <meta property="og:image" content="{{ $ogImage }}">
     <meta property="og:image:alt" content="{{ $seo['og_image_alt'] ?? $ogTitle }}">
 
@@ -117,6 +117,9 @@
     @endforeach
 
     @vite(['resources/css/storefront.css', 'resources/js/storefront.js'])
+    @if(request()->routeIs('quote.request'))
+        <link rel="stylesheet" href="{{ asset('css/bulk-quote-product.css') }}?v=20261028c">
+    @endif
 </head>
 <body
     class="storefront-clean-ui"

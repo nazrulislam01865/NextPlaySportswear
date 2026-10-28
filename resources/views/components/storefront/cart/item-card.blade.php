@@ -41,6 +41,12 @@
                 <span class="text-slate-500">(${{ number_format((float) $item['original_unit_price'], 2) }} before offer / ${{ number_format((float) $item['unit_price'], 2) }} after offer)</span>
             </p>
         @endif
+        @if(filled($item['configuration_error'] ?? null))
+            <div role="alert" class="mt-2 border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <p>{{ $item['configuration_error'] }}</p>
+                <a class="mt-1 inline-block font-bold underline" href="{{ route('products.show', ['slug' => $item['product_slug'], 'cart_item' => $item['key']]) }}#configure-product">Update product options</a>
+            </div>
+        @endif
         <div class="np-cart-item-saved">
             <span class="np-cart-item-check" aria-hidden="true">
                 <svg viewBox="0 0 20 20" fill="none">
@@ -51,11 +57,18 @@
             <span>Customization details saved</span>
         </div>
 
-        <form method="POST" action="{{ route('cart.items.destroy', $item['key']) }}" class="np-cart-remove-form" data-cart-remove-form>
-            @csrf
-            @method('DELETE')
-            <button type="submit" class="np-cart-remove-button">Remove</button>
-        </form>
+        <div class="np-cart-remove-form flex items-center gap-4">
+            <a
+                href="{{ route('products.show', ['slug' => $item['product_slug'], 'cart_item' => $item['key']]) }}#configure-product"
+                class="np-cart-remove-button font-bold"
+                aria-label="Edit {{ $product['title'] }} in your cart"
+            >Edit</a>
+            <form method="POST" action="{{ route('cart.items.destroy', $item['key']) }}" data-cart-remove-form>
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="np-cart-remove-button">Remove</button>
+            </form>
+        </div>
     </div>
 
     <div class="np-cart-item-quantity">

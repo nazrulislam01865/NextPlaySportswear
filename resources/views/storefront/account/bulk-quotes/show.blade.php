@@ -34,7 +34,15 @@
                         <dt>Status</dt><dd><x-storefront.account.bulk-quote.status :quote="$quote" /></dd>
                         <dt>Version</dt><dd>v{{ $quote->quotation_version ?: '0' }}</dd>
                         <dt>Required Delivery</dt><dd>{{ $quote->needed_by?->format('M j, Y') ?: 'To be confirmed' }}</dd>
-                        <dt>Products</dt><dd>{{ $quote->product_type }}</dd>
+                        <dt>Products</dt><dd>{{ $quote->product_information['product_name'] ?? $quote->product_type }}</dd>
+                        @foreach((array) ($quote->product_information['options'] ?? []) as $option)
+                            <dt>{{ $option['label'] ?? 'Option' }}</dt><dd>{{ implode(', ', (array) ($option['values'] ?? [$option['value'] ?? '—'])) }}</dd>
+                        @endforeach
+                        @foreach((array) ($quote->product_information['size_groups'] ?? []) as $sizeGroup)
+                            <dt>Size &amp; Quantity @if(!empty($sizeGroup['label'])) ({{ $sizeGroup['label'] }}) @endif</dt>
+                            <dd>{{ collect($sizeGroup['sizes'] ?? [])->map(fn ($size) => ($size['size'] ?? 'Size').': '.($size['quantity'] ?? 0))->implode(', ') }}</dd>
+                        @endforeach
+                        @if(filled($quote->product_information['notes'] ?? null))<dt>Product Notes</dt><dd>{{ $quote->product_information['notes'] }}</dd>@endif
                         <dt>Special Notes</dt><dd>{{ $quote->additional_notes ?: ($quote->artwork_details ?: '—') }}</dd>
                     </dl>
                 </section>

@@ -78,7 +78,7 @@ class AppServiceProvider extends ServiceProvider
             $customer = auth('web')->user();
             $headerWishlist = app(WishlistHeaderService::class)->summary($customer, 4);
 
-            $view->with('cartItemCount', (int) ($headerCart['quantity'] ?? 0));
+            $view->with('cartItemCount', (int) ($headerCart['total_items'] ?? 0));
             $view->with('wishlistItemCount', (int) ($headerWishlist['total_items'] ?? 0));
             $view->with('wishlistAuthenticated', $customer?->isCustomer() ?? false);
             $view->with('headerWishlist', $headerWishlist);

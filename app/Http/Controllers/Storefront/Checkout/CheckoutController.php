@@ -343,7 +343,7 @@ class CheckoutController extends Controller
     private function guardCart(): ?RedirectResponse
     {
         if (! $this->checkout->hasCheckoutItems()) {
-            return redirect()->route('cart.index')->with('status', 'Add at least one product to your cart before checkout.');
+            return redirect()->route('cart.index')->with('status', 'Review your cart and resolve any product configuration issues before checkout.');
         }
 
         return null;

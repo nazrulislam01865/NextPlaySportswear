@@ -314,7 +314,17 @@ const createProductSocialActions = (socialConfig = {}) => ({
 
     sharePayload() {
         const title = String(this.socialConfig.title || document.title || 'NextPlay Sportswear product');
-        const url = String(this.socialConfig.url || window.location.href);
+        // Always copy a real URL for the current site, even with a different APP_URL
+        // or a separately configured (possibly outdated) SEO canonical URL.
+        let url = new URL(window.location.pathname, window.location.origin).href;
+        try {
+            const productUrl = new URL(String(this.socialConfig.url || window.location.pathname), window.location.origin);
+            if (productUrl.origin === window.location.origin && /^https?:$/.test(productUrl.protocol)) {
+                url = productUrl.href;
+            }
+        } catch (error) {
+            // Retain the current product page if a stale URL was supplied.
+        }
 
         return {
             title,
@@ -327,60 +337,28 @@ const createProductSocialActions = (socialConfig = {}) => ({
         return `product-share-menu-${this.socialProductKey().replace(/[^a-zA-Z0-9_-]/g, '-') || 'item'}`;
     },
 
-    async shareImageFile() {
-        if (typeof navigator.canShare !== 'function' || typeof window.File !== 'function') return null;
-
-        const image = String(this.socialConfig.image || '');
-        if (!image) return null;
-
-        try {
-            const imageUrl = new URL(image, window.location.href);
-            if (imageUrl.origin !== window.location.origin) return null;
-
-            const response = await fetch(imageUrl.toString(), {
-                credentials: 'same-origin',
-                cache: 'force-cache',
-            });
-
-            if (!response.ok) return null;
-
-            const blob = await response.blob();
-            if (!blob.type.startsWith('image/') || blob.size > 10 * 1024 * 1024) return null;
-
-            const extension = blob.type.split('/')[1]?.replace('jpeg', 'jpg').replace(/[^a-z0-9]/gi, '') || 'jpg';
-            const filename = `${String(this.socialConfig.slug || 'nextplay-product').replace(/[^a-z0-9_-]/gi, '-')}.${extension}`;
-            const file = new File([blob], filename, { type: blob.type });
-
-            return navigator.canShare({ files: [file] }) ? file : null;
-        } catch (error) {
-            return null;
-        }
+    shareProduct() {
+        // Show the social channels on every device. Native image/file sharing
+        // can copy a file instead of the product URL, so it is never automatic.
+        if (!this.shareBusy) this.shareOpen = !this.shareOpen;
     },
 
-    async shareProduct() {
-        if (this.shareBusy) return;
+    nativeShareAvailable() {
+        return typeof navigator.share === 'function';
+    },
+
+    async shareWithDevice() {
+        if (this.shareBusy || !this.nativeShareAvailable()) return;
 
         this.shareBusy = true;
-        const payload = this.sharePayload();
-
         try {
-            if (typeof navigator.share === 'function') {
-                const imageFile = await this.shareImageFile();
-                const payloadWithImage = imageFile ? { ...payload, files: [imageFile] } : null;
-                const nativePayload = payloadWithImage && navigator.canShare?.(payloadWithImage)
-                    ? payloadWithImage
-                    : payload;
-
-                try {
-                    await navigator.share(nativePayload);
-                    this.shareOpen = false;
-                    return;
-                } catch (error) {
-                    if (error?.name === 'AbortError') return;
-                }
+            // Link only: keep Copy in the operating system's share sheet a URL.
+            await navigator.share(this.sharePayload());
+            this.shareOpen = false;
+        } catch (error) {
+            if (error?.name !== 'AbortError') {
+                this.announceSocial('Unable to share from this device. Try one of the options below or copy the link.', 'error', 'Share unavailable');
             }
-
-            this.shareOpen = true;
         } finally {
             this.shareBusy = false;
         }
@@ -580,7 +558,6 @@ window.productBuilder = (config = {}) => ({
     selectedArtworkStyle() {
         return (config.artwork_preferences?.style || []).find(item => String(item.id) === String(this.artworkHelpStyle)) || null;
     },
-    productionSpeed: null,
     shippingMethod: config.shipping_methods?.find(method => method.default)?.id || config.shipping_methods?.[0]?.id || null,
     rosterEnabled: Boolean(productRosterSettings(config).enabled && !productRosterSettings(config).optional),
     rosterRows: [],
@@ -678,8 +655,12 @@ window.productBuilder = (config = {}) => ({
                 this.shippingMethod = requestedShipping;
             }
 
-            this.productionSpeed = initial.production_speed ? String(initial.production_speed) : null;
             this.rosterEnabled = Boolean(initial.roster_enabled);
+            this.rosterSameForAll = Boolean(initial.roster_same_for_all);
+            this.rosterSharedValues = {
+                ...this.blankRosterValues(),
+                ...(initial.roster?.[0]?.values || {}),
+            };
             this.rosterSectionShared = { ...(initial.roster_section_same_for_all || {}) };
             this.sampleRequested = Boolean(config.sample?.available && initial.sample_requested);
             this.rosterRows = Array.isArray(initial.roster)
@@ -713,7 +694,6 @@ window.productBuilder = (config = {}) => ({
                 : [];
         }
 
-        this.syncProductionSpeed();
         this.syncRosterRows();
         this.sync();
     },
@@ -858,7 +838,6 @@ window.productBuilder = (config = {}) => ({
         const previous = Number(this.quantities[key] || 0);
         const next = Math.max(0, Math.min(maximum, Number(amount || 0)));
         this.quantities[key] = next;
-        this.syncProductionSpeed();
         this.syncRosterRows();
         this.sync();
 
@@ -889,7 +868,6 @@ window.productBuilder = (config = {}) => ({
         const previous = Number(this.orderQuantity || 0);
         const next = Math.max(0, Math.min(maximum, Number(amount || 0)));
         this.orderQuantity = next;
-        this.syncProductionSpeed();
         this.syncRosterRows();
         this.sync();
 
@@ -929,18 +907,10 @@ window.productBuilder = (config = {}) => ({
         return this.productionOptionsForQuantity();
     },
 
-    syncProductionSpeed() {
-        const options = this.productionOptionsForQuantity();
-        if (config.production_methods_enabled || !options.some(option => option.id === this.productionSpeed)) {
-            this.productionSpeed = options[0]?.id || null;
-        }
-    },
-
+    // Production is chosen by the backend's quantity-matched rule order.
+    // Show the same first matching rule for timing and pricing estimates.
     currentProductionSpeed() {
-        const options = this.productionOptionsForQuantity();
-        return config.production_methods_enabled
-            ? options[0] || null
-            : options.find(option => option.id === this.productionSpeed) || options[0] || null;
+        return this.productionOptionsForQuantity()[0] || null;
     },
 
     productionTimeLabel(option) {
@@ -1386,9 +1356,12 @@ window.productBuilder = (config = {}) => ({
             const tableRate = this.shippingTableRate(shipping);
             if (tableRate !== null) {
                 const extraCharge = Math.max(0, Number(shipping.extra_charge_per_piece ?? shipping.price_delta ?? 0));
-                const combinedRate = tableRate + extraCharge;
-                breakdown.perUnit += combinedRate;
-                breakdown.shippingPerUnit += combinedRate;
+                // Table shipping is a once-per-order tier amount. Only an
+                // explicit product extra charge applies per piece.
+                breakdown.fixed += tableRate;
+                breakdown.shippingFixed += tableRate;
+                breakdown.perUnit += extraCharge;
+                breakdown.shippingPerUnit += extraCharge;
             } else if (this.shippingUsesPriceTable(shipping)) {
                 // No matching price-table column exists for this method. Master
                 // shipping methods should not fall back to stale saved prices.
@@ -1778,9 +1751,11 @@ window.productBuilder = (config = {}) => ({
         const tableRate = this.shippingTableRate(method);
         if (tableRate !== null) {
             const extraCharge = Math.max(0, Number(method?.extra_charge_per_piece ?? method?.price_delta ?? 0));
-            const combinedRate = tableRate + extraCharge;
-            if (!combinedRate) return 'Included';
-            return `${combinedRate > 0 ? '+' : '−'}${this.money(Math.abs(combinedRate))} / piece`;
+            if (!tableRate && !extraCharge) return 'Included';
+            const parts = [];
+            if (tableRate) parts.push(`${this.money(tableRate)} / shipment`);
+            if (extraCharge) parts.push(`${this.money(extraCharge)} / piece extra`);
+            return `+${parts.join(' + ')}`;
         }
 
         if (this.shippingUsesPriceTable(method)) {
@@ -1968,7 +1943,6 @@ window.productBuilder = (config = {}) => ({
     },
 
     sync() {
-        this.syncProductionSpeed();
         this.configurationJson = JSON.stringify({
             selections: this.selections,
             multi_selections: this.multiSelections,
@@ -1979,7 +1953,6 @@ window.productBuilder = (config = {}) => ({
             artwork_help_notes: this.artworkMode === 'help' ? this.artworkHelpNotes : '',
             artwork_help_color_id: this.artworkMode === 'help' ? this.artworkHelpColor : null,
             artwork_help_style_id: this.artworkMode === 'help' ? this.artworkHelpStyle : null,
-            production_speed: this.productionSpeed,
             shipping_method: this.shippingMethod,
             roster_enabled: this.rosterEnabled,
             roster: this.rosterRows,
@@ -2046,9 +2019,6 @@ window.productBuilder = (config = {}) => ({
         // Match the server-side quantity-based production rule requirement.
         if (config.production_methods_enabled && !this.currentProductionOptions().length) {
             return { message: 'No production rule is configured for the selected quantity. Please contact us or choose another quantity.', targetId: 'production-shipping' };
-        }
-        if (this.currentProductionOptions().length && !this.productionSpeed) {
-            return { message: 'Please choose a production option.', targetId: 'production-shipping' };
         }
 
         if ((config.shipping_methods || []).length && !this.shippingMethod) {

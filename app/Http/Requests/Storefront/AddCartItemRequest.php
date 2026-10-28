@@ -29,6 +29,8 @@ class AddCartItemRequest extends FormRequest
             'personalization_files' => ['nullable', 'array', 'max:250'],
             'personalization_files.*' => ['array'],
             'personalization_files.*.*' => ['file', 'max:10240'],
+            'personalization_shared_files' => ['nullable', 'array', 'max:20'],
+            'personalization_shared_files.*' => ['file', 'max:10240'],
             'artwork_files' => ['nullable', 'array', 'max:12'],
             'artwork_files.*' => ['file', 'mimes:pdf,svg,png,jpg,jpeg,webp', 'max:25600'],
             'artwork_reference_files' => ['nullable', 'array', 'max:5'],

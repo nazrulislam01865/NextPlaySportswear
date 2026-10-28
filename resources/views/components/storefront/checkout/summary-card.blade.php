@@ -117,6 +117,12 @@
     </dl>
 
 
+    @if($summary['remote_price_missing'] ?? false)
+        <p role="alert" class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
+            This destination is remote, but the product price table does not have a remote-area charge for the order quantity. Please contact us before ordering.
+        </p>
+    @endif
+
     <div class="mt-6 rounded-2xl bg-brand-navy p-4 text-white">
         <div class="flex items-end justify-between gap-4">
             <span class="text-sm font-black uppercase tracking-[.16em] text-blue-100">Total</span>

@@ -12756,14 +12756,14 @@ img[src*="product-placeholder.svg"] {
 
 .home-page .np-shop-sport-card__title {
     display: -webkit-box;
-    min-height: 2.36em;
+    min-height: 2.5em;
     overflow: hidden;
     color: var(--np-color-primary);
-    font-family: inherit;
-    font-size: clamp(14.5px, 1.05vw, 16.5px);
-    font-weight: 750;
-    line-height: 1.18;
-    letter-spacing: -.02em;
+    font-family: var(--np-font-heading);
+    font-size: .96rem;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -.022em;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     line-clamp: 2;
@@ -12903,9 +12903,6 @@ img[src*="product-placeholder.svg"] {
     }
 
     .home-page .np-shop-sport-card__title {
-        min-height: 2.36em;
-        font-size: clamp(15px, 2.2vw, 17px);
-        line-height: 1.18;
         -webkit-line-clamp: 2;
         line-clamp: 2;
     }
@@ -12943,10 +12940,6 @@ img[src*="product-placeholder.svg"] {
     .home-page .np-shop-sport-card__body {
         min-height: 80px;
         padding: 10px 11px 9px;
-    }
-
-    .home-page .np-shop-sport-card__title {
-        font-size: clamp(14.5px, 4vw, 16px);
     }
 
     .home-page .np-shop-sport-card__meta {
@@ -26923,11 +26916,11 @@ html.np-product-preview-open body { overflow: hidden; }
 /* Swatches are the same circular choices as the existing Color Preference control. */
 .storefront-clean-ui .np-product-detail-prototype .np-personalization-swatches {display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-height:38px;}
 .storefront-clean-ui .np-product-detail-prototype .np-personalization-swatch {display:inline-flex!important;flex:none;align-items:center;justify-content:center;
- width:38px;height:38px;max-width:38px;border-radius:50%;border:2px solid #ced8e4;background:transparent;padding:5px;position:relative;cursor:pointer;}
+ width:38px;height:38px;max-width:38px;border-radius:50%;border:1px solid #ced8e4;background:transparent;padding:5px;position:relative;cursor:pointer;}
 .storefront-clean-ui .np-product-detail-prototype .np-personalization-swatch::before {content:'';display:block;width:100%;height:100%;border-radius:50%;background:var(--personalization-swatch);}
-.storefront-clean-ui .np-product-detail-prototype .np-personalization-swatch.is-selected {border-color:var(--np-color-secondary,#d55a33);box-shadow:0 0 0 1px var(--np-color-secondary,#d55a33);}
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-swatch.is-selected {border-color:var(--np-color-secondary,#d55a33);box-shadow:none;}
 .storefront-clean-ui .np-product-detail-prototype .np-personalization-swatch:focus {outline:none;box-shadow:none;}
-.storefront-clean-ui .np-product-detail-prototype .np-personalization-swatch.is-selected:focus {box-shadow:0 0 0 1px var(--np-color-secondary,#d55a33);}
+.storefront-clean-ui .np-product-detail-prototype .np-personalization-swatch.is-selected:focus {box-shadow:none;}
 /* Reference Images upload styling reused verbatim; logo zone is the same 90px compact size. */
 .storefront-clean-ui .np-product-detail-prototype .np-personalization-upload-input {min-width:0;max-width:100%;}
 .storefront-clean-ui .np-product-detail-prototype .np-personalization-upload-zone {width:100%;max-width:100%;min-height:72px;position:relative;}
@@ -27127,12 +27120,11 @@ html.np-product-preview-open body { overflow: hidden; }
     object-fit: cover;
 }
 
-/* A single size is centered; additional sizes wrap in evenly spaced rows. */
+/* Show two selected sizes per row alongside the existing total panel. */
 .storefront-clean-ui .np-custom-order-sizes > .np-custom-order-size-chips {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-content: center;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
     gap: 8px;
     min-width: 0;
     border-radius: 0;
@@ -27281,4 +27273,54 @@ html.np-product-preview-open body { overflow: hidden; }
         justify-content: center;
         gap: 10px;
     }
+}
+
+/* NEXTPLAY PERSONALIZATION: size labels wrap inside cards and unused per-item
+   Remove controls have no visual footprint. Shared uploads use the same compact UI. */
+.storefront-clean-ui .np-product-detail-prototype .np-custom-order-size-chip {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding: 10px 6px;
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-custom-order-size-chip strong,
+.storefront-clean-ui .np-product-detail-prototype .np-custom-order-size-chip span {
+    display: block;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    line-height: 1.35;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-custom-order-size-total {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-proto-roster-table tbody td.np-personalization-unused-action {
+    display: none !important;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-roster-shared-fields > label {
+    min-width: 0;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-roster-shared-fields .np-personalization-upload-input {
+    width: 100%;
+    min-width: 0;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-roster-shared-fields .np-personalization-upload-zone {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+}
+
+.storefront-clean-ui .np-product-detail-prototype .np-roster-shared-fields > .np-roster-shared-field {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+}
+.storefront-clean-ui .np-product-detail-prototype .np-roster-shared-fields > .np-roster-shared-field > span {
+    color: var(--np-color-primary);
+    font-size: 12px;
+    font-weight: 800;
+    overflow-wrap: anywhere;
 }

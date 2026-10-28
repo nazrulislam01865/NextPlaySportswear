@@ -168,7 +168,7 @@ class ProductConfigurationBackendTest extends TestCase
     }
 
 
-    public function test_customer_can_select_one_of_multiple_production_options_for_the_active_quantity_range(): void
+    public function test_backend_selects_first_quantity_matched_production_rule_ignoring_submitted_method(): void
     {
         $product = $this->jerseyFixture();
         $product['production_speeds'] = [
@@ -230,6 +230,7 @@ class ProductConfigurationBackendTest extends TestCase
             'quantity' => 12,
             'configuration_json' => json_encode([
                 'quantities' => ['adult:s' => 12],
+                // Forged/stale customer selection must not override backend rules.
                 'production_speed' => 'bulk-priority',
                 'multi_selections' => ['imprint' => ['front']],
             ], JSON_THROW_ON_ERROR),
@@ -237,8 +238,88 @@ class ProductConfigurationBackendTest extends TestCase
 
         $item = $summary['items'][0];
 
-        $this->assertSame('bulk-priority', $item['customization']['configuration']['production_speed']);
-        $this->assertEqualsWithDelta(1.75, $item['customization_unit_price'], 0.001);
+        $this->assertSame('bulk-standard', $item['customization']['configuration']['production_speed']);
+        $this->assertEqualsWithDelta(1.25, $item['customization_unit_price'], 0.001);
+
+        $small = (new CartService($catalog, new CouponService))->store([
+            'product_slug' => 'test-jersey',
+            'quantity' => 5,
+            'configuration_json' => json_encode([
+                'quantities' => ['adult:s' => 5],
+                'production_speed' => 'small-rush',
+                'multi_selections' => ['imprint' => ['front']],
+            ], JSON_THROW_ON_ERROR),
+        ]);
+        $smallItem = collect($small['items'])->firstWhere('quantity', 5);
+        $this->assertNotNull($smallItem);
+        $this->assertSame('small-standard', $smallItem['customization']['configuration']['production_speed']);
+        $this->assertEqualsWithDelta(2.50, $smallItem['customization_unit_price'], 0.001);
+    }
+
+    public function test_storefront_does_not_request_customer_production_method_selection(): void
+    {
+        $source = file_get_contents(resource_path('js/storefront.js'));
+        $builder = file_get_contents(resource_path('views/components/storefront/product/builder.blade.php'));
+
+        $this->assertStringContainsString('return this.productionOptionsForQuantity()[0] || null;', $source);
+        $this->assertStringNotContainsString('Please choose a production option.', $source);
+        $this->assertStringNotContainsString('production_speed: this.productionSpeed', $source);
+        $this->assertStringNotContainsString('chooseProductionSpeed(', $builder);
+    }
+
+    public function test_cart_stays_accessible_but_checkout_is_blocked_when_production_rules_change(): void
+    {
+        session()->forget('nextplay_cart.items');
+
+        $product = $this->jerseyFixture();
+        $product['production_methods_enabled'] = true;
+        $product['production_speeds'] = [[
+            'id' => 'standard',
+            'label' => 'Standard',
+            'price_delta' => 1.00,
+            'minimum_quantity' => 1,
+            'maximum_quantity' => 20,
+            'minimum_days' => 7,
+            'maximum_days' => 10,
+        ]];
+        $product['shipping_methods'] = [];
+        $product['jersey_roster']['enabled'] = false;
+        $product['option_groups'][1]['required'] = false;
+
+        $catalog = new class($product) extends ProductCatalogService
+        {
+            public function __construct(public array $fixture)
+            {
+            }
+
+            public function findBySlug(string $slug): ?array
+            {
+                return $slug === $this->fixture['slug'] ? $this->fixture : null;
+            }
+        };
+
+        $cart = new CartService($catalog, new CouponService);
+        $valid = $cart->store([
+            'product_slug' => 'test-jersey',
+            'quantity' => 5,
+            'configuration_json' => json_encode(['quantities' => ['adult:s' => 5]], JSON_THROW_ON_ERROR),
+        ]);
+        $this->assertTrue($valid['checkout_ready']);
+        $this->assertNull($valid['items'][0]['configuration_error']);
+
+        // Simulate admin changing the quantity rule after the cart item was saved.
+        $catalog->fixture['production_speeds'][0]['minimum_quantity'] = 10;
+
+        $stale = $cart->summary();
+        $this->assertCount(1, $stale['items']);
+        $this->assertFalse($stale['checkout_ready']);
+        $this->assertNotEmpty($stale['items'][0]['configuration_error']);
+        $this->assertNull($stale['items'][0]['customization']['configuration']['production_speed']);
+
+        $catalog->fixture['production_speeds'][0]['minimum_quantity'] = 1;
+        $recovered = $cart->summary();
+        $this->assertTrue($recovered['checkout_ready']);
+        $this->assertNull($recovered['items'][0]['configuration_error']);
     }
 
     public function test_recent_master_data_customizations_all_support_reusable_additional_charges(): void

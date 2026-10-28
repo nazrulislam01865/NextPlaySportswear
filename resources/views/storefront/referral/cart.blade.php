@@ -10,7 +10,7 @@
             <nav class="np-referral-breadcrumb" aria-label="Breadcrumb"><a href="{{ route('home') }}">Home</a><span>/</span><strong>Basket</strong></nav>
 
             <div class="np-referral-cart-top">
-                <div><h1>YOUR BASKET</h1><span>{{ $cart['quantity'] }} item{{ $cart['quantity'] === 1 ? '' : 's' }}</span></div>
+                <div><h1>YOUR BASKET</h1><span>{{ $cart['product_count'] }} product{{ $cart['product_count'] === 1 ? '' : 's' }}</span></div>
                 <x-storefront.referral.stepper :current="1" />
             </div>
 
@@ -77,7 +77,7 @@
                     <aside class="np-referral-cart-summary">
                         <h2>ORDER SUMMARY</h2>
                         <div class="np-referral-cart-summary__body">
-                            <div class="np-referral-summary-row"><span>Items subtotal ({{ $cart['quantity'] }} items)</span><strong>${{ number_format((float) ($cart['configured_items_total'] ?? $cart['merchandise_total']), 2) }}</strong></div>
+                            <div class="np-referral-summary-row"><span>Products subtotal ({{ $cart['product_count'] }} products)</span><strong>${{ number_format((float) ($cart['configured_items_total'] ?? $cart['merchandise_total']), 2) }}</strong></div>
                             <div class="np-referral-summary-row np-referral-summary-row--reward"><span>Friend referral reward<small>First eligible order of £{{ number_format((float) ($offer['minimum_order'] ?? 0), 0) }} or more.<br><a href="{{ route('terms') }}">Offer terms</a></small></span><strong>{{ $rewardApplied ? '−$'.number_format((float) $cart['referral_discount'], 2) : '$0.00' }}</strong></div>
                             <div class="np-referral-summary-row"><span>Delivery</span><span>Calculated at checkout</span></div>
                             <div class="np-referral-summary-divider"></div>

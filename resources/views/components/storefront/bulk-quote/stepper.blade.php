@@ -1,9 +1,10 @@
 @php
     $steps = [
-        ['number' => '1', 'label' => 'Contact'],
-        ['number' => '2', 'label' => 'Order Details'],
-        ['number' => '3', 'label' => 'Shipping'],
-        ['number' => '4', 'label' => 'Attachments'],
+        ['number' => '1', 'label' => 'Product'],
+        ['number' => '2', 'label' => 'Contact'],
+        ['number' => '3', 'label' => 'Order Details'],
+        ['number' => '4', 'label' => 'Shipping'],
+        ['number' => '5', 'label' => 'Attachments'],
     ];
 @endphp
 

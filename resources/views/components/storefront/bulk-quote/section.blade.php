@@ -3,6 +3,7 @@
     'title',
     'description',
     'icon',
+    'optional' => false,
 ])
 
 <section {{ $attributes->class(['bulk-quote-section']) }}>
@@ -12,7 +13,7 @@
         </div>
         <div class="bulk-quote-section-content">
             <div class="bulk-quote-section-heading">
-                <h2><span>{{ $number }}.</span> {{ $title }}</h2>
+                <h2><span>{{ $number }}.</span> {{ $title }} @if($optional)<small class="bulk-quote-optional">Optional</small>@endif</h2>
                 <p>{{ $description }}</p>
             </div>
             {{ $slot }}

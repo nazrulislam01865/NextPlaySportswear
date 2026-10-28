@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
 class CartController extends Controller
@@ -145,6 +146,9 @@ class CartController extends Controller
             $this->cart->store($payload);
         } catch (Throwable $exception) {
             Storage::disk('local')->delete(array_merge($artwork['new_paths'], $personalization['new_paths']));
+            if ($exception instanceof HttpExceptionInterface && $exception->getStatusCode() === 422) {
+                return back()->withErrors(['configuration' => $exception->getMessage()])->withInput();
+            }
             throw $exception;
         }
 
@@ -194,6 +198,9 @@ class CartController extends Controller
             $this->cart->replace($cartItem, $payload);
         } catch (Throwable $exception) {
             Storage::disk('local')->delete(array_merge($artwork['new_paths'], $personalization['new_paths']));
+            if ($exception instanceof HttpExceptionInterface && $exception->getStatusCode() === 422) {
+                return back()->withErrors(['configuration' => $exception->getMessage()])->withInput();
+            }
             throw $exception;
         }
 

@@ -40,8 +40,10 @@
                     <input id="bulk-company" name="company" value="" tabindex="-1" autocomplete="off">
                 </div>
 
+                <x-storefront.bulk-quote.product-information :selected-product="$selectedProduct" />
+
                 <x-storefront.bulk-quote.section
-                    number="1"
+                    number="2"
                     title="Contact Information"
                     description="Let us know who you are and how to reach you."
                     icon="user"
@@ -131,7 +133,7 @@
                 </x-storefront.bulk-quote.section>
 
                 <x-storefront.bulk-quote.section
-                    number="2"
+                    number="3"
                     title="Order Details"
                     description="Tell us about the products you need."
                     icon="box"
@@ -228,7 +230,7 @@
                 </x-storefront.bulk-quote.section>
 
                 <x-storefront.bulk-quote.section
-                    number="3"
+                    number="4"
                     title="Shipping & Deadline"
                     description="Where should we ship and when do you need it?"
                     icon="truck"
@@ -308,7 +310,7 @@
                         && filled(config('services.recaptcha.secret_key'));
                 @endphp
                 <x-storefront.bulk-quote.section
-                    number="4"
+                    number="5"
                     title="Attachments & Notes"
                     description="Add any files or additional information."
                     icon="attachment"

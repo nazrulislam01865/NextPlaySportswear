@@ -70,7 +70,7 @@ class CheckoutService
 
     public function hasCheckoutItems(): bool
     {
-        return ! $this->cart->summary()['is_empty'];
+        return (bool) $this->cart->summary()['checkout_ready'];
     }
 
     public function firstIncompleteStepBefore(string $currentStep): ?array
@@ -105,7 +105,7 @@ class CheckoutService
 
         if (! $this->hasCheckoutItems()) {
             throw ValidationException::withMessages([
-                'checkout' => 'Add at least one product to your cart before checkout.',
+                'checkout' => 'Add a product or resolve any product configuration issues in your cart before checkout.',
             ]);
         }
 
@@ -290,6 +290,11 @@ class CheckoutService
         $state = $this->state();
         $cart = $this->cart->summary();
         $summary = $this->checkoutSummary($cart, $state);
+        if ($summary['remote_price_missing'] ?? false) {
+            throw ValidationException::withMessages([
+                'shipping_address' => 'Your postal code is classified as remote, but the product price table has no remote-area surcharge for this quantity. Please contact us before placing the order.',
+            ]);
+        }
         $idempotencyKey = trim((string) ($payload['idempotency_key'] ?? ''));
         $customerEmail = (string) ($state['information']['email'] ?? $user?->email ?? '');
         $couponValidation = $this->cart->appliedCouponValidation($customerEmail, $user);
@@ -895,7 +900,17 @@ class CheckoutService
         $productionWindow = $this->shipping->productionWindow($cart);
         $fulfillmentLines = $this->fulfillmentLines($cart, $productShipping, $productionWindow);
         $ruralSurchargeDetails = $this->ruralSurchargeForState($state);
-        $ruralSurcharge = (float) ($ruralSurchargeDetails['amount'] ?? 0);
+        // The remote-area list identifies eligible destinations; the charge
+        // itself comes from the selected product/fabric price tables, once per
+        // shipment at the combined cart quantity tier.
+        $ruralSurcharge = $ruralSurchargeDetails !== null
+            ? max(0, (float) ($cart['remote_table_surcharge'] ?? 0))
+            : 0.0;
+        if ($ruralSurchargeDetails !== null) {
+            $ruralSurchargeDetails['amount'] = round($ruralSurcharge, 2);
+            $ruralSurchargeDetails['extra_charge'] = round($ruralSurcharge, 2);
+            $ruralSurchargeDetails['source'] = 'product_price_table';
+        }
         $automaticShippingBase = max(0, (float) ($cart['additional_shipping'] ?? 0));
         $selectedShippingPrice = round($productShippingTotal + $automaticShippingBase + $ruralSurcharge, 2);
         $shippingMethod = $this->configuredShippingSnapshot(
@@ -934,6 +949,7 @@ class CheckoutService
             'shipping_base' => round($productShippingTotal + $automaticShippingBase, 2),
             'rural_surcharge' => round($ruralSurcharge, 2),
             'rural_surcharge_details' => $ruralSurchargeDetails,
+            'remote_price_missing' => $ruralSurchargeDetails !== null && ($cart['remote_table_surcharge'] ?? null) === null,
             'product_shipping_total' => round($productShippingTotal, 2),
             'product_shipping_lines' => $productShipping['lines'] ?? [],
             'production_lines' => $productionWindow['lines'] ?? [],

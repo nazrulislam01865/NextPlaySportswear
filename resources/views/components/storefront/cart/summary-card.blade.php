@@ -10,7 +10,7 @@
 
     <dl class="np-cart-summary-lines">
         <div>
-            <dt>Items (<span data-cart-quantity>{{ $cart['quantity'] }}</span>)</dt>
+            <dt>Products (<span data-cart-product-count>{{ $cart['product_count'] }}</span>)</dt>
             <dd data-cart-money="merchandise_total">${{ number_format((float) $cart['merchandise_total'], 2) }}</dd>
         </div>
         <div data-cart-discount-row class="{{ (float) ($cart['discount'] ?? 0) > 0 ? '' : 'hidden' }}">
@@ -58,6 +58,11 @@
         </div>
     @endif
 
+    @if(! $cart['checkout_ready'] && ! $cart['is_empty'])
+        <p role="alert" class="mb-3 border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            Checkout is unavailable until the product configuration issue above is resolved.
+        </p>
+    @endif
     <div class="np-cart-summary-actions">
         <a
             href="{{ route('checkout.index') }}"
@@ -157,8 +162,8 @@
                     node.textContent = `${prefix}${money.format(value)}`;
                 });
 
-                const quantityNode = root.querySelector('[data-cart-quantity]');
-                if (quantityNode) quantityNode.textContent = String(Number(cart.quantity || 0));
+                const countNode = root.querySelector('[data-cart-product-count]');
+                if (countNode) countNode.textContent = String(Number(cart.product_count || 0));
 
                 const discountRow = root.querySelector('[data-cart-discount-row]');
                 if (discountRow) discountRow.classList.toggle('hidden', Number(cart.discount || 0) <= 0);

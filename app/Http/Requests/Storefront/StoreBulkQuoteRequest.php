@@ -79,6 +79,12 @@ class StoreBulkQuoteRequest extends FormRequest
             'event_date' => ['nullable', 'date'],
             'attachment' => ['nullable', 'file', 'max:10240'],
             'additional_notes' => ['nullable', 'string', 'max:5000'],
+            'product_information' => ['nullable', 'array:product_id,options,sizes,notes'],
+            'product_information.product_id' => ['required_with:product_information', 'integer', 'min:1'],
+            'product_information.options' => ['nullable', 'array', 'max:30'],
+            'product_information.sizes' => ['nullable', 'array', 'max:10'],
+            'product_information.sizes.*' => ['array', 'max:80'],
+            'product_information.notes' => ['nullable', 'string', 'max:500'],
 
             // Local development can submit without Google's CAPTCHA service.
             // All other environments continue to require server-side verification.
@@ -120,6 +126,8 @@ class StoreBulkQuoteRequest extends FormRequest
             'needed_by' => 'needed by / delivery date',
             'event_date' => 'event date',
             'additional_notes' => 'additional notes',
+            'product_information.product_id' => 'selected product',
+            'product_information.notes' => 'product notes',
             'g-recaptcha-response' => 'CAPTCHA verification',
         ];
     }

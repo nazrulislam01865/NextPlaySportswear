@@ -63,6 +63,10 @@ Route::get('/artwork-guidelines', [ContentPageController::class, 'artworkGuideli
 Route::get('/customization-guide', [ContentPageController::class, 'customizationGuide'])->name('customization-guide');
 Route::get('/bulk-team-ordering', [ContentPageController::class, 'bulkOrdering'])->name('bulk-ordering');
 Route::get('/bulk-quote', [BulkQuoteController::class, 'create'])->name('quote.request');
+Route::get('/bulk-quote/products', [BulkQuoteController::class, 'searchProducts'])
+    ->middleware('throttle:60,1')->name('quote.products.search');
+Route::get('/bulk-quote/products/{product}', [BulkQuoteController::class, 'productDetails'])
+    ->whereNumber('product')->middleware('throttle:60,1')->name('quote.products.show');
 Route::post('/bulk-quote', [BulkQuoteController::class, 'store'])
     ->middleware('throttle:bulk-quote')
     ->name('quote.request.store');

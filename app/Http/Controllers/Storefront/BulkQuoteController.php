@@ -9,6 +9,10 @@ use App\Models\BulkQuoteBudgetRange;
 use App\Models\BulkQuoteRequest;
 use App\Models\CountryCallingCode;
 use App\Models\User;
+use App\Models\Product;
+use App\Services\BulkQuote\QuoteProductInformation;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use App\Services\AdminNotificationService;
 use App\Services\Email\TransactionalEmailManager;
 use App\Services\Integrations\FlowTrack\FlowTrackInquirySyncManager;
@@ -25,7 +29,7 @@ class BulkQuoteController extends Controller
     ) {
     }
 
-    public function create(): View
+    public function create(Request $request, QuoteProductInformation $productInformation): View
     {
         $faqItems = [
             ['question' => 'What is the minimum order quantity?', 'answer' => 'It depends on the product. Team uniforms usually start from 10+ pieces, while event apparel and promotional items may have different minimums.'],
@@ -52,12 +56,65 @@ class BulkQuoteController extends Controller
         $countryCallingCodes = CountryCallingCode::query()->active()->ordered()->get();
         $budgetRanges = BulkQuoteBudgetRange::query()->active()->ordered()->get();
 
+        // The product-page Request Quote link already supplies a product slug.
+        // Load it only when that link is used (or when restoring a failed POST).
+        $selectedProduct = null;
+        $selectedId = (int) old('product_information.product_id', 0);
+        if ($selectedId > 0) {
+            $product = $productInformation->find($selectedId);
+            $selectedProduct = $product ? $productInformation->describe($product) : null;
+        } elseif (is_string($requestedProduct = $request->query('product'))
+            && $requestedProduct !== '' && mb_strlen($requestedProduct) <= 200) {
+            // Product pages link by ID, while existing shared/SEO links can still use slugs.
+            // Both reuse the exact same published-product payload as the search picker.
+            $product = ctype_digit($requestedProduct)
+                ? $productInformation->find((int) $requestedProduct)
+                : $productInformation->findBySlug($requestedProduct);
+            $selectedProduct = $product ? $productInformation->describe($product) : null;
+        }
+
         return view('storefront.bulk-quote.create', compact(
             'faqItems',
             'structuredData',
             'countryCallingCodes',
             'budgetRanges',
+            'selectedProduct',
         ));
+    }
+
+    public function searchProducts(Request $request): JsonResponse
+    {
+        $term = $request->query('q', '');
+        $query = is_string($term) ? trim($term) : '';
+        if (mb_strlen($query) < 2 || mb_strlen($query) > 90) {
+            return response()->json(['products' => []]);
+        }
+
+        $products = Product::query()->published()
+            ->where(function ($builder) use ($query): void {
+                $builder->where('name', 'like', '%'.addcslashes($query, '%_\\').'%')
+                    ->orWhere('sku', 'like', '%'.addcslashes($query, '%_\\').'%');
+            })
+            ->with('images')
+            ->orderBy('name')->limit(10)->get();
+
+        return response()->json(['products' => $products->map(fn (Product $product): array => [
+            'id' => $product->id,
+            'name' => (string) $product->name,
+            'sku' => (string) ($product->sku ?? ''),
+            'image' => $product->primaryImageUrl(),
+        ])->all()])->header('Cache-Control', 'no-store');
+    }
+
+    public function productDetails(int $product, QuoteProductInformation $information): JsonResponse
+    {
+        $found = $information->find($product);
+        if (! $found) {
+            return response()->json(['message' => 'This product is no longer available.'], 404);
+        }
+
+        return response()->json(['product' => $information->describe($found)])
+            ->header('Cache-Control', 'no-store');
     }
 
     public function store(
@@ -66,9 +123,12 @@ class BulkQuoteController extends Controller
         FlowTrackInquirySyncManager $flowTrackSync,
         BulkQuoteGuestService $guest,
         RuralAreaSurchargeService $remoteAreas,
+        QuoteProductInformation $productInformation,
     ): RedirectResponse {
         $validated = $request->validated();
         unset($validated['company'], $validated['g-recaptcha-response']);
+        $validated['product_information'] = ! empty($validated['product_information']['product_id'])
+            ? $productInformation->validateAndSnapshot($validated['product_information']) : null;
 
         $countryCallingCode = CountryCallingCode::query()
             ->active()

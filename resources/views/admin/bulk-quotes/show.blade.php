@@ -265,6 +265,29 @@
             </dl>
         </x-admin.section-card>
 
+        @if(is_array($bulkQuote->product_information) && !empty($bulkQuote->product_information['product_id']))
+            @php($productInfo = $bulkQuote->product_information)
+            <x-admin.section-card title="Selected Product Information" description="Product-specific choices saved when this bulk quote was submitted.">
+                <dl class="admin-detail-grid">
+                    <x-admin.detail-field label="Product">{{ $productInfo['product_name'] ?? '—' }}</x-admin.detail-field>
+                    <x-admin.detail-field label="SKU">{{ $productInfo['sku'] ?? '—' }}</x-admin.detail-field>
+                    @foreach(($productInfo['options'] ?? []) as $option)
+                        <x-admin.detail-field :label="$option['label'] ?? 'Option'">
+                            {{ implode(', ', (array) ($option['values'] ?? [$option['value'] ?? '—'])) }}
+                        </x-admin.detail-field>
+                    @endforeach
+                    @foreach(($productInfo['size_groups'] ?? []) as $group)
+                        <x-admin.detail-field :label="'Size & Quantity'.(!empty($group['label']) ? ' — '.$group['label'] : '')" :wide="true">
+                            {{ collect($group['sizes'] ?? [])->map(fn ($size) => ($size['size'] ?? 'Size').': '.($size['quantity'] ?? 0))->implode(' · ') ?: '—' }}
+                        </x-admin.detail-field>
+                    @endforeach
+                    @if(filled($productInfo['notes'] ?? null))
+                        <x-admin.detail-field label="Product Notes" :wide="true"><div class="whitespace-pre-line">{{ $productInfo['notes'] }}</div></x-admin.detail-field>
+                    @endif
+                </dl>
+            </x-admin.section-card>
+        @endif
+
         <x-admin.section-card title="Delivery Requirements" description="Destination, shipping preference, and dates supplied by the customer.">
             <dl class="admin-detail-grid">
                 <x-admin.detail-field label="Country">{{ $bulkQuote->country }}</x-admin.detail-field>

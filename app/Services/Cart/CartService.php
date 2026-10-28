@@ -14,6 +14,7 @@ use App\Services\Rewards\RewardService;
 use App\Services\Storefront\ProductCatalogService;
 use App\Support\DerivedFabricPriceTable;
 use App\Support\PriceTableShipping;
+use App\Support\OrderShippingCharges;
 use App\Support\PriceTableUnitPrice;
 use App\Support\ProductRoster;
 use Illuminate\Support\Arr;
@@ -55,6 +56,8 @@ class CartService
     public function summary(bool $preview = false): array
     {
         $items = $preview ? $this->previewItems() : $this->items();
+        $shippingQuote = OrderShippingCharges::forCart($items);
+        $items = $shippingQuote['items'];
         $couponCode = $preview ? 'TEAM10' : $this->couponCode();
 
         $subtotal = (float) collect($items)->sum('line_subtotal');
@@ -79,11 +82,10 @@ class CartService
         );
         $rewardDiscount = (float) ($reward['amount'] ?? 0.00);
         $discount = $couponDiscount + $referralDiscount + $rewardDiscount;
-        $genericShippingItems = collect($items)->where('uses_product_shipping', false);
-        $additionalShipping = $this->calculateShipping(
-            (float) $genericShippingItems->sum(fn (array $item) => ($item['line_subtotal'] ?? 0) + ($item['customization_total'] ?? 0)),
-            (int) $genericShippingItems->sum('quantity')
-        );
+        // One shipment: only use the generic fallback when no product has a
+        // configured shipping method. Never add two separate shipment bases.
+        $additionalShipping = $shippingQuote['has_configured_shipping'] ? 0.0
+            : $this->calculateShipping($merchandiseTotal, $quantity);
         $productShippingTotal = (float) collect($items)->sum('product_shipping_total');
         // Product-level shipping is chosen inside the product configurator and is
         // therefore part of the configured product price the customer has already
@@ -115,12 +117,15 @@ class CartService
             'shipping' => round($shipping, 2),
             'additional_shipping' => round($additionalShipping, 2),
             'product_shipping_total' => round($productShippingTotal, 2),
+            'remote_table_surcharge' => $shippingQuote['remote_rate'],
             'tax' => round($tax, 2),
             'total' => round($total, 2),
             'quantity' => $quantity,
+            'product_count' => count($items),
             'is_empty' => count($items) === 0,
             'is_preview' => $preview,
-            'checkout_ready' => count($items) > 0,
+            'checkout_ready' => count($items) > 0
+                && collect($items)->every(fn (array $item): bool => blank($item['configuration_error'] ?? null)),
             'trust_points' => $this->trustPoints(),
             'payment_badges' => ['Visa', 'Mastercard', 'PayPal', 'Stripe', 'Bank Transfer'],
         ];
@@ -439,7 +444,9 @@ class CartService
                 $record->customization = $this->applyCartQuantityToCustomization((array) ($record->customization ?? []), $quantity);
             }
             $record->save();
-            $this->persistCalculatedCartItem($record, $this->cartItemArray($record));
+            // cartItemArray persists valid prices; do not overwrite the snapshot
+            // with an incomplete price when this quantity has no production rule.
+            $this->cartItemArray($record);
             $this->touchCart($cart);
         }
 
@@ -858,7 +865,7 @@ class CartService
             'updated_at' => $record->updated_at?->toIso8601String(),
         ];
 
-        $priced = $this->repriceItem($item);
+        $priced = $this->repriceItem($item, allowMissingProductionRule: true);
 
         if ($priced === []) {
             $record->delete();
@@ -866,7 +873,11 @@ class CartService
             return [];
         }
 
-        $this->persistCalculatedCartItem($record, $priced);
+        // Preserve the previous database price snapshot when a rule has been removed.
+        // The cart can still be opened/edited, but cannot be checked out until fixed.
+        if (blank($priced['configuration_error'] ?? null)) {
+            $this->persistCalculatedCartItem($record, $priced);
+        }
 
         return $priced;
     }
@@ -1024,7 +1035,7 @@ class CartService
     private function sessionItems(): array
     {
         return collect(session(self::SESSION_ITEMS_KEY, []))
-            ->map(fn (array $item): array => $this->repriceItem($item))
+            ->map(fn (array $item): array => $this->repriceItem($item, allowMissingProductionRule: true))
             ->filter()
             ->values()
             ->all();
@@ -1086,7 +1097,7 @@ class CartService
         return $this->summary();
     }
 
-    private function repriceItem(array $item): array
+    private function repriceItem(array $item, bool $allowMissingProductionRule = false): array
     {
         $product = $this->products->findBySlug((string) ($item['product_slug'] ?? ''));
 
@@ -1097,7 +1108,8 @@ class CartService
         $customization = $this->sanitizeCustomization(
             (array) ($item['customization'] ?? []),
             $product,
-            (int) ($item['quantity'] ?? 1)
+            (int) ($item['quantity'] ?? 1),
+            $allowMissingProductionRule
         );
         $configuredQuantity = (int) collect($customization['configuration']['quantities'] ?? [])->sum();
         $quantity = $this->sanitizeQuantity($configuredQuantity > 0 ? $configuredQuantity : (int) ($item['quantity'] ?? 1), $product);
@@ -1123,12 +1135,17 @@ class CartService
         }
         $offerApplied = $unitPrice < $originalUnitPrice;
         $shippingCharge = $this->productShippingCharge($product, $customization, $quantity);
+        $shippingPricingTable = $this->shippingPriceTable($product, $customization);
+        $shippingPricingMethod = collect($product['shipping_methods'] ?? [])
+            ->firstWhere('id', $customization['configuration']['shipping_method'] ?? null);
         $customization = $this->withFulfillmentPricing($customization, $shippingCharge, $quantity);
         $customizationPricing = $this->customizationPricing($product, $customization, $quantity);
         $customizationUnitPrice = (float) $customizationPricing['unit'];
         $customizationTotal = (float) $customizationPricing['total'];
         $productShippingTotal = round((float) ($shippingCharge['total'] ?? 0), 2);
         $shippingUnitPrice = $quantity > 0 ? round($productShippingTotal / $quantity, 4) : 0.0;
+        $missingProductionRule = (bool) ($product['production_methods_enabled'] ?? false)
+            && blank($customization['configuration']['production_speed'] ?? null);
 
         return array_merge($item, [
             'key' => $item['key'] ?? $this->makeItemKey($product['slug'], $customization),
@@ -1136,6 +1153,9 @@ class CartService
             'quantity' => $quantity,
             'quantity_min' => $this->minimumQuantityForProduct($product),
             'quantity_max' => $this->maximumQuantityForProduct($product),
+            'configuration_error' => $missingProductionRule
+                ? 'No production rule is available for this quantity. Please update your product options or contact us.'
+                : null,
             'customization' => $customization,
             'unit_price' => $unitPrice,
             'original_unit_price' => $originalUnitPrice,
@@ -1148,10 +1168,14 @@ class CartService
             'line_total' => round(($unitPrice * $quantity) + $customizationTotal + $productShippingTotal, 2),
             'product_shipping_total' => $productShippingTotal,
             'uses_product_shipping' => ! empty($product['shipping_methods']),
+            'shipping_pricing' => [
+                'method' => $shippingPricingMethod,
+                'table' => $shippingPricingTable,
+            ],
         ]);
     }
 
-    private function sanitizeCustomization(array $payload, array $product, int $fallbackQuantity = 1): array
+    private function sanitizeCustomization(array $payload, array $product, int $fallbackQuantity = 1, bool $allowMissingProductionRule = false): array
     {
         $designOption = Str::limit(trim((string) ($payload['design_option'] ?? 'Configured product')), 80, '');
         $deliveryPreference = Str::limit(trim((string) ($payload['delivery_preference'] ?? 'Standard production')), 80, '');
@@ -1168,7 +1192,8 @@ class CartService
         $configuration = $this->normalizeConfiguration(
             $rawConfiguration,
             $product,
-            $fallbackQuantity
+            $fallbackQuantity,
+            $allowMissingProductionRule
         );
         $selectedSpeed = collect($product['production_speeds'] ?? [])->firstWhere('id', $configuration['production_speed'] ?? null);
         $selectedShipping = collect($product['shipping_methods'] ?? [])->firstWhere('id', $configuration['shipping_method'] ?? null);
@@ -1585,7 +1610,7 @@ class CartService
         )));
     }
 
-    private function normalizeConfiguration(array|string $raw, array $product, int $fallbackQuantity = 1): array
+    private function normalizeConfiguration(array|string $raw, array $product, int $fallbackQuantity = 1, bool $allowMissingProductionRule = false): array
     {
         if (is_string($raw)) {
             $decoded = json_decode($raw, true);
@@ -1691,7 +1716,7 @@ class CartService
         $productionSpeed = $availableProductionSpeeds->first();
 
         abort_if(
-            (bool) ($product['production_methods_enabled'] ?? false) && $productionSpeed === null,
+            ! $allowMissingProductionRule && (bool) ($product['production_methods_enabled'] ?? false) && $productionSpeed === null,
             422,
             'No production rule is configured for the selected quantity. Please contact us or choose another quantity.'
         );
@@ -2116,7 +2141,10 @@ class CartService
 
         if ($tableRate !== null) {
             $extraChargePerPiece = max(0, (float) ($shipping['extra_charge_per_piece'] ?? $shipping['price_delta'] ?? 0));
-            $perUnit = max(0, $tableRate) + $extraChargePerPiece;
+            // The table lists a charge for the whole quantity tier. Only the
+            // explicitly configured extra is per piece.
+            $fixedOrder = max(0, $tableRate);
+            $perUnit = $extraChargePerPiece;
         } elseif (($shipping['price_source'] ?? null) === 'price_table' || ($shipping['requires_price_table'] ?? false) || ($shipping['charge_type'] ?? null) === 'price_table') {
             $priceStatus = 'contact_us';
         } elseif (($shipping['charge_type'] ?? 'per_unit') === 'master_method') {

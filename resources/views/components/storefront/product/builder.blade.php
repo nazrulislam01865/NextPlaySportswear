@@ -72,10 +72,10 @@
             'inputs' => (array) ($editConfiguration['inputs'] ?? []),
             'quantities' => (array) ($editConfiguration['quantities'] ?? []),
             'order_quantity' => (int) ($editItem['quantity'] ?? ($product['minimum_quantity'] ?? 1)),
-            'production_speed' => $editConfiguration['production_speed'] ?? null,
             'shipping_method' => $editConfiguration['shipping_method'] ?? null,
             'roster_enabled' => (bool) ($editConfiguration['roster_enabled'] ?? false),
             'roster' => array_values((array) ($editConfiguration['roster'] ?? [])),
+            'roster_same_for_all' => (bool) ($editConfiguration['roster_same_for_all'] ?? false),
             'roster_section_same_for_all' => (array) ($editConfiguration['roster_section_same_for_all'] ?? []),
             'sample_requested' => (bool) ($editConfiguration['sample_requested'] ?? false),
             'artwork_files' => $existingArtwork,
@@ -182,12 +182,15 @@
 @endphp
 
 @once
-<link rel="stylesheet" href="{{ asset('assets/item-personalization-20261027.css') }}?v=10">
+<link rel="stylesheet" href="{{ asset('assets/item-personalization-20261027.css') }}?v=12">
 <script>
 window.productBuilderFabricPricing = function (config = {}) {
     const baseFactory = window.productBuilder;
     const builder = baseFactory ? baseFactory(config) : {};
     const baseSync = builder.sync || function () {};
+    const baseSetRosterSameForAll = builder.setRosterSameForAll;
+    const baseSetRosterSectionShared = builder.setRosterSectionShared;
+    const baseSyncRosterRows = builder.syncRosterRows;
 
     return Object.assign(builder, {
         activeCustomizerStep: 1,
@@ -197,6 +200,104 @@ window.productBuilderFabricPricing = function (config = {}) {
         completedCustomizerStep: Object.keys(config.initial_state || {}).length ? Math.max(0, Number(config.customizer_step_count || 6) - 1) : 0,
         skuCopied: false,
         personalizationPreviews: {},
+        personalizationSharedPreviews: {},
+        personalizationSharedNames: {},
+        syncRosterRows() {
+            baseSyncRosterRows?.call(this);
+            // When size quantities change after a shared upload, newly created
+            // item rows must still carry the shared filename for validation.
+            const sections = config.roster?.sections || [];
+            const sharedKeys = new Set();
+            if (this.rosterSameForAll) (config.roster?.fields || []).filter(field => ['image', 'file'].includes(field.type)).forEach(field => sharedKeys.add(field.key));
+            sections.forEach(section => {
+                if (this.rosterSectionShared[String(section.id)]) (section.fields || []).filter(field => ['image', 'file'].includes(field.type)).forEach(field => sharedKeys.add(field.key));
+            });
+            sharedKeys.forEach(key => {
+                const saved = (config.personalization_existing_files || []).find(file => file.row === -1 && file.key === key);
+                const name = this.personalizationSharedNames[key] || (saved ? (config.initial_state?.roster || [])[0]?.values?.[key] : '') || '';
+                if (name) (this.rosterRows || []).forEach(row => { row.values[key] = name; });
+            });
+            this.sync();
+        },
+        resetPersonalizationFileMode(fields, sharedEnabled) {
+            (fields || []).filter(field => ['image', 'file'].includes(field.type)).forEach(field => {
+                // An existing stored file can be retained when switching into
+                // shared mode; freshly selected per-item uploads cannot.
+                const retained = sharedEnabled && (config.personalization_existing_files || []).some(file =>
+                    file.key === field.key && (file.row === -1 || file.row === 0));
+                if (retained) return;
+                this.clearPersonalizationSharedUpload(field);
+                document.querySelectorAll('input[name^="personalization_files["]').forEach(input => {
+                    if (input.name.endsWith(`][${field.key}]`)) input.value = '';
+                });
+                Object.keys(this.personalizationPreviews).filter(key => key.endsWith(`:${field.key}`)).forEach(key => {
+                    const preview = this.personalizationPreviews[key];
+                    if (typeof preview === 'string' && preview.startsWith('blob:')) URL.revokeObjectURL(preview);
+                    delete this.personalizationPreviews[key];
+                });
+            });
+            this.sync();
+        },
+        setRosterSameForAll(enabled) {
+            const wasEnabled = this.rosterSameForAll;
+            baseSetRosterSameForAll?.call(this, enabled);
+            if (wasEnabled !== Boolean(enabled)) this.resetPersonalizationFileMode(config.roster?.fields, Boolean(enabled));
+        },
+        setRosterSectionShared(id, enabled) {
+            const wasEnabled = Boolean(this.rosterSectionShared[String(id)]);
+            baseSetRosterSectionShared?.call(this, id, enabled);
+            if (wasEnabled !== Boolean(enabled)) {
+                const section = (config.roster?.sections || []).find(item => String(item.id) === String(id));
+                this.resetPersonalizationFileMode(section?.fields, Boolean(enabled));
+            }
+        },
+        personalizationSharedPreview(key) {
+            const live = this.personalizationSharedPreviews[key];
+            if (live) return live;
+            if (!this.rosterRows?.[0]?.values?.[key]) return '';
+            return (config.personalization_existing_files || []).find(file => file.row === -1 && file.key === key)?.url || '';
+        },
+        setPersonalizationSharedUpload(field, event) {
+            const file = event.target.files?.[0];
+            if (!file || !field?.key) return;
+            const image = field.type === 'image';
+            const allowed = image
+                ? ['image/png', 'image/jpeg', 'image/webp']
+                : ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'text/csv', 'application/csv', 'image/png', 'image/jpeg', 'image/webp'];
+            if (!allowed.includes(file.type) || file.size > (image ? 5 : 10) * 1024 * 1024) {
+                event.target.value = '';
+                window.showStorefrontToast?.({ type: 'error', title: 'Unsupported file', message: image ? 'Upload a PNG, JPG or WebP image up to 5 MB.' : 'Upload a PDF, DOC, DOCX, TXT, CSV or image up to 10 MB.' });
+                return;
+            }
+            const previous = this.personalizationSharedPreviews[field.key];
+            if (previous?.startsWith('blob:')) URL.revokeObjectURL(previous);
+            this.personalizationSharedPreviews[field.key] = image ? URL.createObjectURL(file) : '';
+            this.personalizationSharedNames[field.key] = file.name;
+            (this.rosterRows || []).forEach(row => { row.values[field.key] = file.name; });
+            this.sync();
+        },
+        dropPersonalizationSharedUpload(field, event) {
+            const file = event.dataTransfer?.files?.[0];
+            const input = event.currentTarget.querySelector('input[type=file]');
+            if (!file || !input || typeof DataTransfer === 'undefined') return;
+            const transfer = new DataTransfer();
+            transfer.items.add(file);
+            input.files = transfer.files;
+            this.setPersonalizationSharedUpload(field, { target: input });
+        },
+        clearPersonalizationSharedUpload(field, event) {
+            if (!field?.key) return;
+            const previous = this.personalizationSharedPreviews[field.key];
+            if (previous?.startsWith('blob:')) URL.revokeObjectURL(previous);
+            delete this.personalizationSharedPreviews[field.key];
+            delete this.personalizationSharedNames[field.key];
+            document.querySelectorAll('input[name^="personalization_shared_files["]').forEach(input => {
+                if (input.name === `personalization_shared_files[${field.key}]`) input.value = '';
+            });
+            (this.rosterRows || []).forEach(row => { row.values[field.key] = ''; });
+            this.sync();
+        },
+
         applyRosterSectionSharedValues() {
             const first = this.rosterRows?.[0]?.values || {};
             (config.roster?.sections || []).forEach(section => {
@@ -233,7 +334,7 @@ window.productBuilderFabricPricing = function (config = {}) {
     setPersonalizationUpload(rowIndex, field, event) {
         const file = event.target.files?.[0];
         const row = this.rosterRows?.[rowIndex];
-        if (!row || !field?.key || !file) return;
+        if (!row || !field?.key || !file || event.target.disabled) return;
         const image = field.type === 'image';
         const limit = (image ? 5 : 10) * 1024 * 1024;
         const allowed = image
@@ -256,7 +357,7 @@ window.productBuilderFabricPricing = function (config = {}) {
     dropPersonalizationUpload(rowIndex, field, event) {
         const file = event.dataTransfer?.files?.[0];
         const input = event.currentTarget.querySelector('input[type="file"]');
-        if (!file || !input || typeof DataTransfer === 'undefined') return;
+        if (!file || !input || input.disabled || typeof DataTransfer === 'undefined') return;
         const transfer = new DataTransfer();
         transfer.items.add(file);
         input.files = transfer.files;
@@ -877,7 +978,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                         <button type="button" class="btn btn-secondary btn-xl" @click="startCustomizing()">
                             Start Customizing
                         </button>
-                        <a class="btn btn-outline btn-xl" href="{{ route('quote.request', ['product' => $product['slug']]) }}">
+                        <a class="btn btn-outline btn-xl" href="{{ route('quote.request', ['product' => $product['id'] ?? $product['slug']]) }}">
                             Request Bulk Quote
                         </a>
                     </div>
@@ -1068,10 +1169,26 @@ window.productBuilderFabricPricing = function (config = {}) {
                                             <span><strong>{{ $roster['shared_entry_label'] ?? 'Use the same name & number for all items' }}</strong><small>Enter the shared details once and apply them to every selected piece.</small></span>
                                         </label>
                                         <div class="np-roster-shared-fields" x-show="rosterSameForAll" x-cloak>
-                                            @foreach($enabledRosterFields->reject(fn ($field) => in_array($field['type'] ?? '', ['image','file'], true)) as $field)
-                                                <label>
+                                            @foreach($enabledRosterFields as $field)
+                                                <div class="np-roster-shared-field">
                                                     <span>{{ $field['label'] }}</span>
-                                                    @if(($field['type'] ?? 'text') === 'color')
+                                                    @if(in_array($field['type'] ?? '', ['image', 'file'], true))
+                                                        <div class="np-personalization-upload-input np-personalization-shared-upload">
+                                                            <label class="np-proto-upload-dropzone is-compact np-personalization-upload-zone"
+                                                                @dragover.prevent @drop.prevent="dropPersonalizationSharedUpload(@js($field), $event)">
+                                                                <x-storefront.product.ui-icon :src="$ui['artwork_drop_icon']" name="upload" />
+                                                                <strong>{{ $field['type'] === 'image' ? 'Upload image' : 'Upload file' }}</strong><span>or click to browse</span>
+                                                                <input type="file" name="personalization_shared_files[{{ $field['key'] }}]" :disabled="!rosterSameForAll"
+                                                                    accept="{{ $field['type'] === 'image' ? '.png,.jpg,.jpeg,.webp' : '.pdf,.doc,.docx,.txt,.csv,.png,.jpg,.jpeg,.webp' }}"
+                                                                    @change="setPersonalizationSharedUpload(@js($field), $event)">
+                                                            </label>
+                                                            <small x-show="rosterRows[0]?.values?.[@js($field['key'])]" x-text="rosterRows[0]?.values?.[@js($field['key'])]"></small>
+                                                            @if(($field['type'] ?? '') === 'image')
+                                                                <img x-show="personalizationSharedPreview(@js($field['key']))" :src="personalizationSharedPreview(@js($field['key']))" alt="Selected image" class="np-personalization-preview-image">
+                                                            @endif
+                                                            <button type="button" class="np-personalization-clear-file" x-show="rosterRows[0]?.values?.[@js($field['key'])]" @click="clearPersonalizationSharedUpload(@js($field), $event)">Clear file</button>
+                                                        </div>
+                                                    @elseif(($field['type'] ?? 'text') === 'color')
                                                         <div class="np-personalization-swatches" role="group" aria-label="{{ $field['label'] }}">
                                                             @foreach(($field['color_options'] ?? []) as $option)
                                                                 @php $hex = is_array($option) ? ($option['hex'] ?? '') : $option; @endphp
@@ -1093,7 +1210,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                                                         placeholder="{{ $field['placeholder'] ?? $field['label'] }}"
                                                     >
                                                     @endif
-                                                </label>
+                                                </div>
                                             @endforeach
                                         </div>
                                     </div>
@@ -1119,9 +1236,25 @@ window.productBuilderFabricPricing = function (config = {}) {
                                                             <span><strong>{{ $section['shared_entry_label'] }}</strong></span>
                                                         </label>
                                                         <div class="np-roster-shared-fields" x-show="rosterSectionShared[@js($section['id'])]" x-cloak>
-                                                            @foreach(collect($section['fields'])->reject(fn ($field) => in_array($field['type'] ?? '', ['image','file'], true)) as $field)
-                                                                <label><span>{{ $field['label'] }}</span>
-                                                                    @if(($field['type'] ?? 'text') === 'color')
+                                                            @foreach($section['fields'] as $field)
+                                                                <div class="np-roster-shared-field"><span>{{ $field['label'] }}</span>
+                                                                    @if(in_array($field['type'] ?? '', ['image', 'file'], true))
+                                                        <div class="np-personalization-upload-input np-personalization-shared-upload">
+                                                            <label class="np-proto-upload-dropzone is-compact np-personalization-upload-zone"
+                                                                @dragover.prevent @drop.prevent="dropPersonalizationSharedUpload(@js($field), $event)">
+                                                                <x-storefront.product.ui-icon :src="$ui['artwork_drop_icon']" name="upload" />
+                                                                <strong>{{ $field['type'] === 'image' ? 'Upload image' : 'Upload file' }}</strong><span>or click to browse</span>
+                                                                <input type="file" name="personalization_shared_files[{{ $field['key'] }}]" :disabled="!rosterSectionShared[@js($section['id'])]"
+                                                                    accept="{{ $field['type'] === 'image' ? '.png,.jpg,.jpeg,.webp' : '.pdf,.doc,.docx,.txt,.csv,.png,.jpg,.jpeg,.webp' }}"
+                                                                    @change="setPersonalizationSharedUpload(@js($field), $event)">
+                                                            </label>
+                                                            <small x-show="rosterRows[0]?.values?.[@js($field['key'])]" x-text="rosterRows[0]?.values?.[@js($field['key'])]"></small>
+                                                            @if(($field['type'] ?? '') === 'image')
+                                                                <img x-show="personalizationSharedPreview(@js($field['key']))" :src="personalizationSharedPreview(@js($field['key']))" alt="Selected image" class="np-personalization-preview-image">
+                                                            @endif
+                                                            <button type="button" class="np-personalization-clear-file" x-show="rosterRows[0]?.values?.[@js($field['key'])]" @click="clearPersonalizationSharedUpload(@js($field), $event)">Clear file</button>
+                                                        </div>
+                                                    @elseif(($field['type'] ?? 'text') === 'color')
                                                                         <div class="np-personalization-swatches">
                                                                             @foreach(($field['color_options'] ?? []) as $option)
                                                                                 @php $hex = is_array($option) ? ($option['hex'] ?? '') : $option; @endphp
@@ -1139,14 +1272,14 @@ window.productBuilderFabricPricing = function (config = {}) {
                                                                             @input="updateRosterSectionSharedField(@js($section['id']), @js($field), $event.target.value)"
                                                                             placeholder="{{ $field['placeholder'] ?? $field['label'] }}">
                                                                     @endif
-                                                                </label>
+                                                                </div>
                                                             @endforeach
                                                         </div>
                                                     </div>
                                                 @endif
                                                 <div class="touch-scroll-x np-proto-roster-table-wrap">
                                                     <table class="np-proto-data-table np-proto-roster-table">
-                                                        <thead><tr><th>#</th><th>Size</th>@foreach($section['fields'] as $field)<th>{{ $field['label'] }}@if(in_array($field['type'] ?? 'text', ['text','number'], true) && ($field['max_length'] ?? null))<small>(Max {{ (int) $field['max_length'] }} characters)</small>@endif</th>@endforeach<th></th></tr></thead>
+                                                        <thead><tr><th>#</th><th>Size</th>@foreach($section['fields'] as $field)<th>{{ $field['label'] }}@if(in_array($field['type'] ?? 'text', ['text','number'], true) && ($field['max_length'] ?? null))<small>(Max {{ (int) $field['max_length'] }} characters)</small>@endif</th>@endforeach</tr></thead>
                                                         <tbody>
                                                             <template x-for="(row, rowIndex) in rosterRows" :key="`${row.size_key || 'item'}:${rowIndex}`">
                                                                 <tr>
@@ -1175,7 +1308,7 @@ window.productBuilderFabricPricing = function (config = {}) {
             @dragover.prevent @drop.prevent="dropPersonalizationUpload(rowIndex, @js($field), $event)">
             <x-storefront.product.ui-icon :src="$ui['artwork_drop_icon']" name="upload" />
             <strong>{{ $field['type'] === 'image' ? 'Upload image' : 'Upload file' }}</strong><span>or click to browse</span>
-            <input type="file" :name="`personalization_files[${rowIndex}][{{ $field['key'] }}]`"
+            <input type="file" :name="`personalization_files[${rowIndex}][{{ $field['key'] }}]`" :disabled="rosterSectionShared[@js($section['id'])] || false"
                 accept="{{ $field['type'] === 'image' ? '.png,.jpg,.jpeg,.webp' : '.pdf,.doc,.docx,.txt,.csv,.png,.jpg,.jpeg,.webp' }}"
                 @change="setPersonalizationUpload(rowIndex, @js($field), $event)">
         </label>
@@ -1184,14 +1317,14 @@ window.productBuilderFabricPricing = function (config = {}) {
         @if($field['type'] === 'image')
             <img x-show="personalizationPreview(rowIndex, @js($field['key']))" :src="personalizationPreview(rowIndex, @js($field['key']))" alt="Selected image" class="np-personalization-preview-image">
         @endif
-        <button type="button" class="np-personalization-clear-file" x-show="row.values[@js($field['key'])]" @click="clearPersonalizationUpload(rowIndex, @js($field), $event)">Clear file</button>
+        <button type="button" class="np-personalization-clear-file" x-show="row.values[@js($field['key'])] && !(rosterSectionShared[@js($section['id'])] || false)" @click="clearPersonalizationUpload(rowIndex, @js($field), $event)">Clear file</button>
     </div>
 @else
     <input class="np-proto-table-input" type="text" @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif maxlength="{{ max(1, (int) ($field['max_length'] ?? 60)) }}" x-model="row.values[@js($field['key'])]" :disabled="rosterSectionShared[@js($section['id'])] || false" @input="sync()" @change="commitRosterField(rowIndex, @js($field), $event.target.value)" placeholder="{{ $field['placeholder'] ?? $field['label'] }}">
 @endif
                                                                         </td>
                                                                     @endforeach
-                                                                    <td data-label="Action"><button type="button" class="np-roster-remove-button" @click="clearRosterRow(rowIndex)" aria-label="Clear item personalization"><span aria-hidden="true">×</span><span>Remove</span></button></td>
+                                                                    <td class="np-personalization-unused-action" hidden aria-hidden="true"></td>
                                                                 </tr>
                                                             </template>
                                                         </tbody>
@@ -1202,7 +1335,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                                     @else
                                     <div class="touch-scroll-x np-proto-roster-table-wrap">
                                         <table class="np-proto-data-table np-proto-roster-table">
-                                            <thead><tr><th>#</th><th>Size</th>@foreach($enabledRosterFields as $field)<th>{{ $field['label'] }}@if(in_array($field['type'] ?? 'text', ['text','number'], true) && ($field['max_length'] ?? null))<small>(Max {{ (int) $field['max_length'] }} characters)</small>@endif</th>@endforeach<th></th></tr></thead>
+                                            <thead><tr><th>#</th><th>Size</th>@foreach($enabledRosterFields as $field)<th>{{ $field['label'] }}@if(in_array($field['type'] ?? 'text', ['text','number'], true) && ($field['max_length'] ?? null))<small>(Max {{ (int) $field['max_length'] }} characters)</small>@endif</th>@endforeach</tr></thead>
                                             <tbody>
                                                 <template x-for="(row, rowIndex) in rosterRows" :key="`${row.size_key || 'item'}:${rowIndex}`">
                                                     <tr>
@@ -1230,7 +1363,7 @@ window.productBuilderFabricPricing = function (config = {}) {
             @dragover.prevent @drop.prevent="dropPersonalizationUpload(rowIndex, @js($field), $event)">
             <x-storefront.product.ui-icon :src="$ui['artwork_drop_icon']" name="upload" />
             <strong>{{ $field['type'] === 'image' ? 'Upload image' : 'Upload file' }}</strong><span>or click to browse</span>
-            <input type="file" :name="`personalization_files[${rowIndex}][{{ $field['key'] }}]`"
+            <input type="file" :name="`personalization_files[${rowIndex}][{{ $field['key'] }}]`" :disabled="rosterSameForAll"
                 accept="{{ $field['type'] === 'image' ? '.png,.jpg,.jpeg,.webp' : '.pdf,.doc,.docx,.txt,.csv,.png,.jpg,.jpeg,.webp' }}"
                 @change="setPersonalizationUpload(rowIndex, @js($field), $event)">
         </label>
@@ -1239,13 +1372,13 @@ window.productBuilderFabricPricing = function (config = {}) {
         @if($field['type'] === 'image')
             <img x-show="personalizationPreview(rowIndex, @js($field['key']))" :src="personalizationPreview(rowIndex, @js($field['key']))" alt="Selected image" class="np-personalization-preview-image">
         @endif
-        <button type="button" class="np-personalization-clear-file" x-show="row.values[@js($field['key'])]" @click="clearPersonalizationUpload(rowIndex, @js($field), $event)">Clear file</button>
+        <button type="button" class="np-personalization-clear-file" x-show="row.values[@js($field['key'])] && !rosterSameForAll" @click="clearPersonalizationUpload(rowIndex, @js($field), $event)">Clear file</button>
     </div>
 @else
     <input class="np-proto-table-input" type="text" @if(($field['type'] ?? 'text') === 'number') inputmode="numeric" @endif maxlength="{{ max(1, (int) ($field['max_length'] ?? 60)) }}" x-model="row.values[@js($field['key'])]" :disabled="rosterSameForAll" @input="sync()" @change="commitRosterField(rowIndex, @js($field), $event.target.value)" placeholder="{{ $field['placeholder'] ?? $field['label'] }}">
 @endif</td>
                                                         @endforeach
-                                                        <td data-label="Action"><button type="button" class="np-roster-remove-button" @click="clearRosterRow(rowIndex)" aria-label="Remove item personalization"><span aria-hidden="true">×</span><span>Remove</span></button></td>
+                                                        <td class="np-personalization-unused-action" hidden aria-hidden="true"></td>
                                                     </tr>
                                                 </template>
                                             </tbody>

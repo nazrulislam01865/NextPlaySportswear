@@ -78,6 +78,10 @@ class PriceTableShipping
     }
 
     /**
+     * Return the price-table shipping amount for the complete quantity tier.
+     * The historic method name is retained for compatibility; callers must NOT
+     * multiply this value by the number of items in the shipment.
+     *
      * @param array<int, mixed> $headers
      * @param array<int, mixed> $rows
      * @param array<int, mixed> $tiers
@@ -97,6 +101,25 @@ class PriceTableShipping
         $cells = array_values((array) $row);
 
         return self::parseMoney($cells[$column] ?? null);
+    }
+
+    /**
+     * A remote-area column is a one-time shipment surcharge for the matching
+     * quantity tier. Never substitute another shipping column or a ZIP-list fee.
+     */
+    public static function remoteSurcharge(array $headers, array $rows, array $tiers, int $quantity): ?float
+    {
+        foreach (array_values($headers) as $index => $header) {
+            if (preg_match('/\b(remote|rural|outlying)\b/i', (string) $header) !== 1
+                || preg_match('/\b(surcharge|shipping|delivery|freight)\b/i', (string) $header) !== 1) {
+                continue;
+            }
+            $row = self::rowForQuantity($rows, $tiers, max(1, $quantity));
+
+            return $row === null ? null : self::parseMoney(array_values($row)[$index] ?? null);
+        }
+
+        return null;
     }
 
     public static function parseMoney(mixed $value): ?float

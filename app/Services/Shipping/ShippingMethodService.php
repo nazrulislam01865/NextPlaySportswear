@@ -3,9 +3,7 @@
 namespace App\Services\Shipping;
 
 use App\Models\Product;
-use App\Models\ProductShippingMethod;
 use App\Models\ShippingMethod;
-use App\Support\PriceTableShipping;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
@@ -108,113 +106,38 @@ class ShippingMethodService
         return round((float) $method->base_price + ((float) $method->per_item_price * max(0, $quantity - 1)), 2);
     }
 
+    /**
+     * Checkout consumes the cart's already-repriced, once-per-order shipping
+     * allocation. Do not fetch products or multiply the table fee again here.
+     */
     public function productShippingTotal(array $cart): array
     {
         $lines = [];
-        $total = 0.00;
 
         foreach ((array) ($cart['items'] ?? []) as $item) {
-            $slug = (string) ($item['product_slug'] ?? Arr::get($item, 'product.slug', ''));
-            $selectedCode = (string) Arr::get($item, 'customization.configuration.shipping_method', '');
-            $quantity = max(1, (int) ($item['quantity'] ?? 1));
             $snapshot = Arr::get($item, 'customization.fulfillment.shipping');
-
-            if (is_array($snapshot) && $selectedCode !== '') {
-                $amount = round(max(0, (float) ($item['product_shipping_total'] ?? $snapshot['amount'] ?? 0)), 2);
-                $priceStatus = (string) ($snapshot['price_status'] ?? 'priced');
-                $total += $amount;
-                $lines[] = [
-                    'item_key' => (string) ($item['key'] ?? ''),
-                    'product' => Arr::get($item, 'product.short_title', Arr::get($item, 'product.title', 'Product')),
-                    'method' => (string) ($snapshot['label'] ?? 'Selected shipping'),
-                    'code' => (string) ($snapshot['code'] ?? $selectedCode),
-                    'charge_type' => (string) ($snapshot['charge_type'] ?? 'configured_product'),
-                    'quantity' => $quantity,
-                    'amount' => $amount,
-                    'display_amount' => (string) ($snapshot['display_amount'] ?? '$'.number_format($amount, 2)),
-                    'price_status' => $priceStatus,
-                    'minimum_days' => max(0, (int) ($snapshot['minimum_days'] ?? 0)),
-                    'maximum_days' => max(0, (int) ($snapshot['maximum_days'] ?? $snapshot['minimum_days'] ?? 0)),
-                ];
-
+            if (! is_array($snapshot)) {
                 continue;
             }
 
-            if ($slug === '' || $selectedCode === '') {
-                continue;
-            }
-
-            $product = Product::query()->where('slug', $slug)->with('shippingMethods')->first();
-
-            if (! $product instanceof Product || ! $product->shipping_methods_enabled) {
-                continue;
-            }
-
-            /** @var ProductShippingMethod|null $method */
-            $method = $product->shippingMethods
-                ->where('is_active', true)
-                ->firstWhere('code', $selectedCode);
-
-            if (! $method instanceof ProductShippingMethod) {
-                continue;
-            }
-
-            $usesPriceTable = (bool) $method->shipping_method_id || $method->charge_type === 'price_table';
-            $priceStatus = 'priced';
-
-            if ($usesPriceTable) {
-                $perUnitRate = PriceTableShipping::perUnitRate(
-                    (array) ($product->price_table_headers ?? []),
-                    (array) ($product->price_table_rows ?? []),
-                    [],
-                    $quantity,
-                    (string) $method->name,
-                    (string) $method->code
-                );
-
-                if ($perUnitRate === null) {
-                    $amount = 0.00;
-                    $priceStatus = 'contact_us';
-                } else {
-                    $extraChargePerPiece = max(0, (float) ($method->price_adjustment ?? 0));
-                    $amount = ($perUnitRate + $extraChargePerPiece) * $quantity;
-                }
-            } elseif ($method->charge_type === 'master_method') {
-                $basePrice = (float) ($method->base_price ?? $method->price_adjustment ?? 0);
-                $perItemPrice = (float) ($method->per_item_price ?? 0);
-                $lineSubtotal = (float) (($item['line_subtotal'] ?? 0) + ($item['customization_total'] ?? 0));
-
-                if ($method->free_shipping_minimum !== null && $lineSubtotal >= (float) $method->free_shipping_minimum) {
-                    $amount = 0.00;
-                } else {
-                    $amount = $basePrice + ($perItemPrice * max(0, $quantity - 1));
-                }
-            } else {
-                $amount = match ($method->charge_type) {
-                    'fixed_order' => (float) $method->price_adjustment,
-                    'included' => 0.00,
-                    default => (float) $method->price_adjustment * $quantity,
-                };
-            }
-
-            $amount = round(max(0, $amount), 2);
-            $total += $amount;
+            $amount = round(max(0, (float) ($item['product_shipping_total'] ?? 0)), 2);
             $lines[] = [
                 'item_key' => (string) ($item['key'] ?? ''),
                 'product' => Arr::get($item, 'product.short_title', Arr::get($item, 'product.title', 'Product')),
-                'method' => $method->name,
-                'code' => $method->code,
-                'charge_type' => $method->charge_type,
-                'quantity' => $quantity,
+                'method' => (string) ($snapshot['label'] ?? 'Selected shipping'),
+                'code' => (string) ($snapshot['code'] ?? ''),
+                'charge_type' => (string) ($snapshot['charge_type'] ?? 'configured_product'),
+                'quantity' => max(1, (int) ($item['quantity'] ?? 1)),
                 'amount' => $amount,
-                'price_status' => $priceStatus,
-                'minimum_days' => (int) $method->minimum_days,
-                'maximum_days' => (int) $method->maximum_days,
+                'display_amount' => '$'.number_format($amount, 2),
+                'price_status' => (string) ($snapshot['price_status'] ?? 'priced'),
+                'minimum_days' => max(0, (int) ($snapshot['minimum_days'] ?? 0)),
+                'maximum_days' => max(0, (int) ($snapshot['maximum_days'] ?? $snapshot['minimum_days'] ?? 0)),
             ];
         }
 
         return [
-            'total' => round($total, 2),
+            'total' => round(max(0, (float) ($cart['product_shipping_total'] ?? 0)), 2),
             'lines' => $lines,
         ];
     }
