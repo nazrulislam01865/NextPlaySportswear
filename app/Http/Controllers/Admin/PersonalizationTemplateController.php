@@ -236,7 +236,19 @@ class PersonalizationTemplateController extends Controller
 
     private function basicView(PersonalizationTemplate $template): View
     {
-        return view('admin.personalization-templates.basic', ['template' => $template, 'categories' => $this->categories()]);
+        $configuredCategoryIds = PersonalizationTemplate::query()->distinct()->pluck('category_id')
+            ->mapWithKeys(fn ($id) => [(int) $id => true]);
+
+        // Do not offer already configured categories for another new setup.
+        // Preserve the existing category when editing, including old duplicates.
+        $categories = $this->categories()->filter(fn (Category $category) =>
+            ! $configuredCategoryIds->has($category->id)
+            || ($template->exists && (int) $template->category_id === $category->id)
+        )->values();
+
+        return view('admin.personalization-templates.basic', [
+            'template' => $template, 'categories' => $categories,
+        ]);
     }
 
     private function categories()
@@ -270,6 +282,12 @@ class PersonalizationTemplateController extends Controller
         $category = Category::query()->findOrFail((int) $data['category_id']);
         if (! $category->isLeaf()) {
             throw ValidationException::withMessages(['category_id' => 'Select a last-level product category.']);
+        }
+        if ((! $template?->exists || (int) $template->category_id !== $category->id)
+            && PersonalizationTemplate::query()->where('category_id', $category->id)->exists()) {
+            throw ValidationException::withMessages([
+                'category_id' => 'Personalization has already been added for this category. Edit the existing setup instead.',
+            ]);
         }
         if ($template?->exists && ! $data['is_active'] && $template->is_active && $template->products()->exists()) {
             throw ValidationException::withMessages(['is_active' => 'Unassign this template from its products before deactivating it.']);

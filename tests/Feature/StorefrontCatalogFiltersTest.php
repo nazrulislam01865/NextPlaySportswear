@@ -5,6 +5,10 @@ namespace Tests\Feature;
 use App\Models\CatalogAttribute;
 use App\Models\Category;
 use App\Models\Gender;
+use App\Models\PersonalizationTemplate;
+use App\Services\Storefront\PersonalizationFieldFacets;
+use App\Services\Storefront\ProductCatalogService;
+use App\Services\Catalog\ProductOptionFilterSyncService;
 use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -44,6 +48,19 @@ class StorefrontCatalogFiltersTest extends TestCase
             $apparel->id => ['is_primary' => true, 'sort_order' => 0],
             $soccer->id => ['is_primary' => false, 'sort_order' => 1],
         ]);
+
+        $playerTemplate = PersonalizationTemplate::query()->create([
+            'category_id' => $apparel->id,
+            'name' => 'INTERNAL PLAYER DETAILS TEMPLATE',
+            'section_title' => 'Player customization',
+            'is_active' => true,
+            'is_published' => true,
+            'fields' => [
+                ['key' => 'name', 'label' => 'Player Name', 'type' => 'text', 'enabled' => true],
+                ['key' => 'number', 'label' => 'Player Number', 'type' => 'number', 'enabled' => true],
+            ],
+        ]);
+        $jersey->personalizationTemplates()->attach($playerTemplate->id, ['sort_order' => 0]);
 
         $sizeGroup = $jersey->sizeGroups()->create([
             'name' => 'Adult Sizes',
@@ -91,6 +108,17 @@ class StorefrontCatalogFiltersTest extends TestCase
             $jersey->attributeValues()->attach($value->id, ['sort_order' => 0]);
         }
         $jersey->attributeValues()->attach($vNeck->id, ['sort_order' => 0]);
+
+        // The storefront Color facet now requires a manually assigned Master
+        // Data > Attributes > Color value; option-group swatches do not count.
+        $masterColor = CatalogAttribute::query()->create([
+            'name' => 'Color', 'slug' => 'color', 'display_type' => 'color',
+            'is_filterable' => true, 'is_active' => true,
+        ]);
+        $masterRed = $masterColor->values()->create([
+            'label' => 'Red', 'slug' => 'red', 'color_hex' => '#D81E35', 'is_active' => true,
+        ]);
+        $jersey->attributeValues()->attach($masterRed->id, ['sort_order' => 0]);
 
         $fabricGroup = $jersey->optionGroups()->create([
             'name' => 'Fabric',
@@ -147,8 +175,7 @@ class StorefrontCatalogFiltersTest extends TestCase
             'materials' => ['polyester'],
             'artwork_methods' => ['sublimation'],
             'moq' => ['12-24'],
-            'customization' => ['customizable', 'artwork-upload', 'player-details'],
-            'availability' => ['made-to-order'],
+            'customization' => ['customizable', 'artwork-upload', PersonalizationFieldFacets::valueForLabel('Player Name')],
             'min_rating' => 4,
             'min_price' => 20,
             'max_price' => 25,
@@ -329,7 +356,6 @@ class StorefrontCatalogFiltersTest extends TestCase
             'product_types' => ['Jersey'],
             'moq' => ['12-24'],
             'customization' => ['customizable'],
-            'availability' => ['made-to-order'],
         ]));
 
         $response
@@ -342,6 +368,225 @@ class StorefrontCatalogFiltersTest extends TestCase
             ->assertDontSee('np-catalog-size-grid', false)
             ->assertDontSee('Production Time')
             ->assertDontSee('Shipping Time');
+    }
+
+    public function test_personalization_facets_use_enabled_field_labels_not_template_names_and_exclude_availability(): void
+    {
+        $category = $this->createCategory('Personalized Caps', 'personalized-caps');
+        $first = $this->createProduct([
+            'category_id' => $category->id,
+            'name' => 'Custom Cap With Name',
+            'slug' => 'custom-cap-with-name',
+            'jersey_roster_enabled' => true,
+        ]);
+        $second = $this->createProduct([
+            'category_id' => $category->id,
+            'name' => 'Custom Cap With Logo',
+            'slug' => 'custom-cap-with-logo',
+            'jersey_roster_enabled' => true,
+        ]);
+        $third = $this->createProduct([
+            'category_id' => $category->id,
+            'name' => 'Cap With Unpublished Template',
+            'slug' => 'cap-with-unpublished-template',
+            'jersey_roster_enabled' => true,
+        ]);
+        foreach ([$first, $second, $third] as $product) {
+            $product->categories()->attach($category->id, ['is_primary' => true, 'sort_order' => 0]);
+        }
+
+        $firstTemplate = PersonalizationTemplate::query()->create([
+            'category_id' => $category->id,
+            'name' => 'ADMIN ONLY TEMPLATE A',
+            'section_title' => 'Internal heading A',
+            'is_active' => true,
+            'is_published' => true,
+            'fields' => [
+                ['key' => 'name', 'label' => 'Printed Name', 'type' => 'text', 'enabled' => true],
+                ['key' => 'number', 'label' => 'Jersey Number', 'type' => 'number', 'enabled' => true],
+                ['key' => 'disabled', 'label' => 'Never Visible', 'type' => 'text', 'enabled' => false],
+            ],
+        ]);
+        $secondTemplate = PersonalizationTemplate::query()->create([
+            'category_id' => $category->id,
+            'name' => 'ADMIN ONLY TEMPLATE B',
+            'section_title' => 'Internal heading B',
+            'is_active' => true,
+            'is_published' => true,
+            'fields' => [
+                ['key' => 'another_name', 'label' => 'Printed Name', 'type' => 'text', 'enabled' => true],
+                ['key' => 'logo', 'label' => 'Logo Image', 'type' => 'image', 'enabled' => true],
+            ],
+        ]);
+        $unpublished = PersonalizationTemplate::query()->create([
+            'category_id' => $category->id,
+            'name' => 'DRAFT INTERNAL TEMPLATE',
+            'section_title' => 'Do not expose',
+            'is_active' => true,
+            'is_published' => false,
+            'fields' => [['key' => 'draft', 'label' => 'Secret Draft Field', 'type' => 'text', 'enabled' => true]],
+        ]);
+        $first->personalizationTemplates()->attach($firstTemplate->id, ['sort_order' => 0]);
+        $second->personalizationTemplates()->attach($secondTemplate->id, ['sort_order' => 0]);
+        $third->personalizationTemplates()->attach($unpublished->id, ['sort_order' => 0]);
+
+        $all = $this->get(route('products.index'));
+        $all->assertOk()
+            ->assertSee('Printed Name')
+            ->assertSee('Jersey Number')
+            ->assertSee('Logo Image')
+            ->assertDontSee('Never Visible')
+            ->assertDontSee('Secret Draft Field')
+            ->assertDontSee('ADMIN ONLY TEMPLATE A')
+            ->assertDontSee('ADMIN ONLY TEMPLATE B')
+            ->assertDontSee('Roster fields available')
+            ->assertDontSee('name="availability[]"', false);
+
+        $categoryPage = $this->get(route('categories.show', ['slug' => $category->slug]));
+        $categoryPage->assertOk()
+            ->assertSee('Printed Name')
+            ->assertDontSee('name="availability[]"', false)
+            ->assertDontSee('ADMIN ONLY TEMPLATE A');
+
+        // Only products with an assigned, published, enabled field match.
+        $this->get(route('products.index', [
+            'customization' => [PersonalizationFieldFacets::valueForLabel('Logo Image')],
+        ]))->assertOk()
+            ->assertSee('Custom Cap With Logo')
+            ->assertDontSee('Custom Cap With Name')
+            ->assertDontSee('Cap With Unpublished Template');
+
+        $this->get(route('categories.show', [
+            'slug' => $category->slug,
+            'customization' => [PersonalizationFieldFacets::valueForLabel('Jersey Number')],
+        ]))->assertOk()
+            ->assertSee('Custom Cap With Name')
+            ->assertDontSee('Custom Cap With Logo');
+
+        // Old availability links no longer alter catalog results.
+        $this->get(route('categories.show', [
+            'slug' => $category->slug,
+            'availability' => ['made-to-order'],
+        ]))->assertOk()->assertSee('Custom Cap With Name')->assertSee('Custom Cap With Logo');
+    }
+
+
+    public function test_color_filter_requires_master_data_color_and_ignores_option_and_pantone_colors(): void
+    {
+        $category = $this->createCategory('Color Master Test', 'color-master-test');
+        $master = CatalogAttribute::query()->create([
+            'name' => 'Color', 'slug' => 'color', 'display_type' => 'color',
+            'is_filterable' => true, 'is_active' => true,
+        ]);
+        $red = $master->values()->create([
+            'label' => 'Master Red', 'slug' => 'master-red',
+            'color_hex' => '#C00000', 'is_active' => true,
+        ]);
+        $inactive = $master->values()->create([
+            'label' => 'Disabled Blue', 'slug' => 'disabled-blue',
+            'color_hex' => '#0000FF', 'is_active' => false,
+        ]);
+        $pantone = CatalogAttribute::query()->create([
+            'name' => 'Pantone Color', 'slug' => 'pantone-color', 'display_type' => 'color',
+            'is_filterable' => true, 'is_active' => true,
+        ]);
+        $pantoneValue = $pantone->values()->create([
+            'label' => 'Pantone Purple', 'slug' => 'pantone-purple',
+            'color_hex' => '#661E7D', 'is_active' => true,
+        ]);
+
+        $manualProduct = $this->createProduct(['name' => 'Manual Master Color Product']);
+        $manualProduct->categories()->attach($category->id);
+        $manualProduct->attributeValues()->attach($red->id);
+        $inactiveProduct = $this->createProduct(['name' => 'Inactive Master Color Product']);
+        $inactiveProduct->categories()->attach($category->id);
+        $inactiveProduct->attributeValues()->attach($inactive->id);
+        $pantoneProduct = $this->createProduct(['name' => 'Pantone Only Product']);
+        $pantoneProduct->categories()->attach($category->id);
+        $pantoneProduct->attributeValues()->attach($pantoneValue->id);
+        $optionProduct = $this->createProduct(['name' => 'Option Swatch Only Product']);
+        $optionProduct->categories()->attach($category->id);
+        $group = $optionProduct->optionGroups()->create([
+            'name' => 'Primary Color', 'code' => 'primary-color',
+            'section' => 'product', 'type' => 'swatch', 'display_mode' => 'select',
+            'jersey_customization_type' => 'color', 'is_active' => true,
+        ]);
+        $group->values()->create([
+            'label' => 'Option Yellow', 'code' => 'option-yellow',
+            'color_hex' => '#EEEE00', 'is_active' => true,
+        ]);
+
+        $catalog = app(ProductCatalogService::class);
+        $facets = $catalog->commonFilterOptions(Product::query()->published());
+        $this->assertSame([[
+            'value' => 'master-red', 'label' => 'Master Red',
+            'color_hex' => '#C00000', 'count' => 1,
+        ]], $facets['colors']);
+
+        $filtered = $catalog->applyCommonCatalogFilters(
+            Product::query()->published(), ['colors' => ['master-red']]
+        )->pluck('products.id')->all();
+        $this->assertSame([$manualProduct->id], $filtered);
+
+        // Neither a Pantone attribute nor a product-option color is accepted
+        // as a URL filter value, even when a user submits it manually.
+        foreach (['pantone-purple', 'option-yellow', 'disabled-blue'] as $unavailableColor) {
+            $this->assertSame([], $catalog->applyCommonCatalogFilters(
+                Product::query()->published(), ['colors' => [$unavailableColor]]
+            )->pluck('products.id')->all());
+        }
+
+        $this->get(route('categories.show', ['slug' => $category->slug]))
+            ->assertOk()
+            ->assertSee('Master Red')
+            ->assertDontSee('Pantone Purple')
+            ->assertDontSee('Option Yellow');
+    }
+
+    public function test_color_filter_is_hidden_when_no_master_color_is_assigned(): void
+    {
+        $category = $this->createCategory('Custom Colors Only', 'custom-colors-only');
+        $product = $this->createProduct(['name' => 'Custom Swatches Product']);
+        $product->categories()->attach($category->id);
+        $group = $product->optionGroups()->create([
+            'name' => 'Color', 'code' => 'color', 'section' => 'product',
+            'type' => 'swatch', 'display_mode' => 'select', 'is_active' => true,
+        ]);
+        $group->values()->create([
+            'label' => 'Bright Red', 'code' => 'bright-red',
+            'color_hex' => '#FF0000', 'is_active' => true,
+        ]);
+
+        $this->assertSame([], app(ProductCatalogService::class)
+            ->commonFilterOptions(Product::query()->published())['colors']);
+        $this->get(route('products.index'))->assertOk()
+            ->assertDontSee('name="colors[]"', false);
+        $this->get(route('categories.show', ['slug' => $category->slug]))->assertOk()
+            ->assertDontSee('name="colors[]"', false);
+    }
+
+    public function test_product_color_option_sync_does_not_overwrite_master_color_attribute(): void
+    {
+        $master = CatalogAttribute::query()->create([
+            'name' => 'Color', 'slug' => 'color', 'display_type' => 'color',
+            'is_filterable' => true, 'is_active' => true,
+        ]);
+        $master->values()->create(['label' => 'White', 'slug' => 'white', 'is_active' => true]);
+        $product = $this->createProduct(['name' => 'Sync Guard Product']);
+        $group = $product->optionGroups()->create([
+            'name' => 'Color', 'code' => 'color', 'section' => 'product',
+            'type' => 'swatch', 'display_mode' => 'select', 'use_as_filter' => true,
+            'is_active' => true,
+        ]);
+        $group->values()->create(['label' => 'Temporary Pink', 'code' => 'temporary-pink',
+            'color_hex' => '#FF50AA', 'is_active' => true]);
+
+        app(ProductOptionFilterSyncService::class)->sync($product, []);
+
+        $this->assertSame('Color', $master->fresh()->name);
+        $this->assertSame(['white'], $master->fresh()->values->pluck('slug')->all());
+        $this->assertNull($group->fresh()->catalog_attribute_id);
+        $this->assertCount(0, $product->fresh()->attributeValues);
     }
 
     private function createCategory(string $name, string $slug, string $type = 'standard'): Category

@@ -39,10 +39,8 @@ class ProductFilterRequest extends FormRequest
             'max_price' => ['nullable', 'numeric', 'min:0', 'max:10000000'],
             'moq' => ['nullable', 'array', 'max:6'],
             'moq.*' => ['string', 'distinct', Rule::in(['single', '2-5', '6-11', '12-24', '25-49', '50-plus'])],
-            'customization' => ['nullable', 'array', 'max:4'],
-            'customization.*' => ['string', 'distinct', Rule::in(['customizable', 'ready-made', 'artwork-upload', 'player-details'])],
-            'availability' => ['nullable', 'array', 'max:3'],
-            'availability.*' => ['string', 'distinct', Rule::in(['in-stock', 'backorder', 'made-to-order'])],
+            'customization' => ['nullable', 'array', 'max:50'],
+            'customization.*' => ['string', 'distinct', 'max:46', 'regex:/^(?:customizable|ready-made|artwork-upload|field-[a-f0-9]{40})$/D'],
             'min_rating' => ['nullable', 'integer', Rule::in([2, 3, 4])],
             'sort' => ['nullable', Rule::in([
                 'featured', 'best-selling', 'newest', 'price-low', 'price-high', 'rating-high', 'name-asc',
@@ -89,7 +87,6 @@ class ProductFilterRequest extends FormRequest
             'max_price' => isset($validated['max_price']) ? (float) $validated['max_price'] : null,
             'moq' => $this->stringArray($validated['moq'] ?? []),
             'customization' => $this->stringArray($validated['customization'] ?? []),
-            'availability' => $this->stringArray($validated['availability'] ?? []),
             'min_rating' => isset($validated['min_rating']) ? (int) $validated['min_rating'] : null,
             'sort' => (string) ($validated['sort'] ?? 'featured'),
         ];

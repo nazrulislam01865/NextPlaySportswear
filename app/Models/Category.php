@@ -127,6 +127,11 @@ class Category extends Model
         return ! $this->children()->exists();
     }
 
+    public function personalizationTemplates(): HasMany
+    {
+        return $this->hasMany(PersonalizationTemplate::class);
+    }
+
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_id');

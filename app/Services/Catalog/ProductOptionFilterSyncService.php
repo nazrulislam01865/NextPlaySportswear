@@ -42,6 +42,15 @@ class ProductOptionFilterSyncService
             ->get();
 
         foreach ($groups as $group) {
+            // Reserve the canonical Color attribute for manual Master Data
+            // assignments, not auto-generated product customization swatches.
+            if (Str::slug($group->code ?: $group->name) === 'color') {
+                if ($group->catalog_attribute_id !== null) {
+                    $group->update(['catalog_attribute_id' => null]);
+                }
+                continue;
+            }
+
             if (! $this->isSupported($group)) {
                 $group->update(['use_as_filter' => false, 'catalog_attribute_id' => null]);
                 continue;

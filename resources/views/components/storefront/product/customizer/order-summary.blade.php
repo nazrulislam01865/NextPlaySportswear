@@ -1,7 +1,8 @@
 @props(['product', 'materialGroup' => null, 'sizeRangeLabel' => 'Configured sizes', 'isEditing' => false, 'rosterStep' => null, 'artworkStep' => 4, 'productionStep' => 5, 'ui' => []])
 
 <aside class="np-custom-order-card" :class="mobileOrderSummaryOpen ? 'is-mobile-open' : ''" aria-label="Your Custom Order">
-    <div class="np-custom-order-mobile-capsule">
+    <div class="np-custom-order-mobile-bar">
+        <div class="np-custom-order-mobile-capsule">
         <button
             type="button"
             class="np-custom-order-mobile-capsule__summary"
@@ -13,6 +14,7 @@
             <span><small>Subtotal</small><strong x-text="money(productPriceAmount())"></strong></span>
             <span class="np-custom-order-mobile-capsule__chevron" :class="mobileOrderSummaryOpen ? 'is-open' : ''" aria-hidden="true">⌃</span>
         </button>
+        </div>
     </div>
 
     <button type="button" class="np-custom-order-mobile-backdrop" x-show="mobileOrderSummaryOpen" x-cloak @click="closeMobileOrderSummary()" aria-label="Close custom order summary"></button>
@@ -132,30 +134,9 @@
         <div><span>Shipping (Estimated)</span><b x-text="money(shippingEstimatedAmount())"></b></div>
         <div x-show="productionExtraChargeAmount() > 0" x-cloak><span>Production Extra Charge</span><b x-text="money(productionExtraChargeAmount())"></b></div>
         <div x-show="shippingExtraChargeAmount() > 0" x-cloak><span>Shipping Extra Charge</span><b x-text="money(shippingExtraChargeAmount())"></b></div>
-        <div><span>Remote Area Surcharge</span><b x-text="money(remoteAreaSurchargeAmount())"></b></div>
         <div class="is-total"><span>Total <small>(Estimated)</small></span><b x-text="money(estimatedOrderTotal())"></b></div>
     </section>
 
-    <div class="np-custom-order-actions">
-        <button
-            type="submit"
-            form="np-product-config-form"
-            class="btn btn-secondary btn-xl np-custom-order-add-to-cart"
-            :disabled="!canAddToCart()"
-            :aria-disabled="!canAddToCart() ? 'true' : 'false'"
-            :title="canAddToCart() ? 'Add configured product to cart' : (validationIssue()?.message || 'Complete all required customization steps first')"
-        >
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2 11h10l3-7H7"/><circle cx="10" cy="19" r="1.5"/><circle cx="18" cy="19" r="1.5"/></svg>
-            {{ $isEditing ? 'Update Cart Item' : 'Add to Cart' }}
-        </button>
-        <a class="btn btn-outline btn-xl np-custom-order-save-quote" href="{{ route('quote.request', ['product' => $product['slug']]) }}">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6V3Z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg>
-            Save as Quote
-        </a>
-        <button type="button" class="btn btn-outline btn-xl np-custom-order-save-later" @click="toggleWishlist()" :aria-pressed="wishlisted ? 'true' : 'false'" :disabled="wishlistBusy">
-            <span aria-hidden="true">♡</span><span x-text="wishlisted ? 'Saved for Later' : 'Save for Later'"></span>
-        </button>
-        <p class="np-custom-order-disabled-note" x-show="!canAddToCart()" x-cloak x-text="validationIssue()?.message || 'Complete all required steps to enable Add to Cart.'"></p>
-    </div>
+    <x-storefront.product.customizer.order-actions :product="$product" :is-editing="$isEditing" />
     </div>
 </aside>

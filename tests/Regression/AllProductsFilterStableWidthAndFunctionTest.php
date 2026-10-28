@@ -48,18 +48,22 @@ $expect(
 
 $expect(
     str_contains($component, 'method="GET"')
-        && str_contains($component, 'action="{{ route(\'products.index\') }}"')
+        && str_contains($component, 'action="{{ $filterAction }}"')
         && str_contains($component, 'name="categories[]"')
         && str_contains($component, 'data-product-filter-form')
         && ! str_contains($component, '>Apply Filters</button>'),
     'Category filters remain real GET form controls and expose automatic filtering without an Apply Filters button.'
 );
 
-foreach (['sports[]', 'product_types[]', 'colors[]', 'materials[]', 'artwork_methods[]', 'moq[]', 'customization[]', 'availability[]', 'min_rating', 'min_price', 'max_price'] as $name) {
+foreach (['sports[]', 'product_types[]', 'colors[]', 'materials[]', 'artwork_methods[]', 'moq[]', 'customization[]', 'min_rating', 'min_price', 'max_price'] as $name) {
     $expect(str_contains($shared, 'name="'.$name.'"'), "Filter control {$name} remains wired in the shared filter form.");
 }
 
-foreach (['categories', 'sports', 'product_types', 'colors', 'materials', 'artwork_methods', 'attributes', 'min_price', 'max_price', 'moq', 'customization', 'availability', 'min_rating'] as $key) {
+$expect(! str_contains($shared, 'name="availability[]"'), 'Availability is removed from the shared catalog filters.');
+$expect(! str_contains($request, "'availability'"), 'Availability is removed from catalog request validation.');
+$expect(! str_contains($service, 'Roster fields available'), 'Legacy roster filter is no longer exposed.');
+
+foreach (['categories', 'sports', 'product_types', 'colors', 'materials', 'artwork_methods', 'attributes', 'min_price', 'max_price', 'moq', 'customization', 'min_rating'] as $key) {
     $expect(str_contains($request, "'{$key}'"), "ProductFilterRequest still validates {$key}.");
 }
 

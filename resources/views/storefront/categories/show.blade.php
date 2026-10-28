@@ -70,7 +70,7 @@
                     @else
                         <a href="{{ route('quote.request') }}" class="btn btn-primary">Request a category quote</a>
                     @endif
-                    <a href="{{ route('quote.request') }}" class="btn btn-outline-inverse">Request Bulk Quote</a>
+                    <a href="{{ route('quote.request') }}" class="btn btn-white">Request Bulk Quote</a>
                 </div>
             </div>
         </div>

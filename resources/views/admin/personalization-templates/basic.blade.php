@@ -2,7 +2,11 @@
     $editing = $template->exists;
     $target = $editing ? route('admin.personalization-templates.update', $template) : route('admin.personalization-templates.store');
     $categoryId = old('category_id', $template->category_id);
-    $categoryOptions = $categories->map(fn ($category) => ['value' => (string) $category->id, 'label' => $category->display_path])->all();
+    $categoryOptions = $categories->map(fn ($category) => [
+        'value' => (string) $category->id,
+        'label' => $category->display_path,
+        'tag' => $editing && (int) $category->id === (int) $template->category_id ? 'Personalization Added' : null,
+    ])->all();
     $formErrors = $errors->messages();
 @endphp
 <x-layouts.admin title="{{ $editing ? 'Edit' : 'Add' }} Personalization Template" compact-header>
@@ -17,6 +21,9 @@
             <label class="pt-label" for="pt-category">Product category <em>*</em></label>
             <div :class="{'pt-has-error': errors.category_id?.length}">
                 <x-admin.personalization-select name="category_id" id="pt-category" :selected="$categoryId" :options="$categoryOptions" placeholder="Select a product category" search-placeholder="Search categories..." />
+                @if(! $editing && $categories->isEmpty())
+                    <p class="pt-muted">All available last-level categories already have personalization setups. Edit an existing setup from Personalization Categories.</p>
+                @endif
                 <p class="pt-field-error" x-show="errors.category_id?.length" x-cloak x-text="errors.category_id?.[0]" role="alert"></p>
             </div>
             <div class="pt-form-two">

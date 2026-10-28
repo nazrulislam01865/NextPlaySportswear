@@ -1015,14 +1015,9 @@
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: .65rem !important;
     background: #061F44 !important;
     border: 1px solid #061F44 !important;
     color: #ffffff !important;
-    padding: .78rem 1.55rem !important;
-    font-size: .95rem !important;
-    font-weight: 600 !important;
-    line-height: 1.2 !important;
     border-radius: 6px !important;
     text-transform: none !important;
     box-shadow: 0 4px 14px rgba(6, 31, 68, .35) !important;
@@ -1058,10 +1053,6 @@
     background: #ffffff !important;
     border: 1px solid #ffffff !important;
     color: #061F44 !important;
-    padding: .78rem 1.65rem !important;
-    font-size: .95rem !important;
-    font-weight: 700 !important;
-    line-height: 1.2 !important;
     border-radius: 6px !important;
     text-transform: none !important;
     box-shadow: 0 4px 14px rgba(0, 0, 0, .14) !important;
@@ -1261,12 +1252,6 @@
         margin-top: 1.25rem;
     }
 
-    .promo-btn-primary,
-    .promo-btn-secondary {
-        padding: .72rem 1.35rem !important;
-        font-size: .9rem !important;
-    }
-
     .promo-controls {
         right: 16px;
         bottom: 18px;
@@ -1341,6 +1326,11 @@
     --np-home-button-line-height: var(--np-button-line-height);
     --np-home-button-transition: var(--np-button-transition-duration);
 
+    /* Shared geometry for paired hero/banner actions. Both buttons in each
+       pair use the same dimensions, regardless of their label or arrow. */
+    --np-home-paired-action-width: var(--np-button-paired-width);
+    --np-home-paired-action-height: var(--np-button-height-xl);
+
     /* Backward-compatible aliases for existing homepage components. */
     --navy: var(--np-home-navy);
     --navy-2: var(--np-home-navy-dark);
@@ -1386,7 +1376,57 @@
     overflow-wrap: anywhere;
 }
 
-/* Phase 3: homepage CTA visuals now inherit the canonical .btn system. */
+/* All homepage sections inherit the same Expose family from the centralized
+   storefront theme. Headings and native controls use the corresponding tokens;
+   component-specific sizes, weights, spacing and colors are preserved. */
+.storefront-clean-ui .home-page {
+    font-family: var(--np-font-body);
+}
+
+.storefront-clean-ui .home-page :is(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--np-font-heading);
+}
+
+.storefront-clean-ui .home-page :is(button, input, select, textarea) {
+    font-family: var(--np-font-body);
+}
+
+/* Paired CTAs in the main hero and promotional slider share one width/height
+   contract. This intentionally does not affect single-action sections. */
+.storefront-clean-ui .home-page :is(.hero-ctas, .promo-actions) > .np-home-action {
+    box-sizing: border-box;
+    flex: 0 0 var(--np-home-paired-action-width);
+    width: var(--np-home-paired-action-width);
+    height: var(--np-home-paired-action-height);
+    min-height: var(--np-home-paired-action-height);
+    padding-inline: var(--np-button-padding-x) !important;
+}
+
+/* Homepage slider: all slide actions inherit one typography contract from the
+   existing storefront button tokens. Label length must not change font sizing,
+   weight, or line count; paired button geometry stays shared with the hero. */
+.storefront-clean-ui .home-page .promo-actions > .np-home-action {
+    font-family: var(--np-home-button-font-family) !important;
+    font-size: var(--np-button-font-size-sm) !important;
+    font-weight: var(--np-home-button-font-weight) !important;
+    line-height: var(--np-home-button-line-height) !important;
+    gap: var(--np-button-gap) !important;
+    padding-inline: var(--np-button-padding-x-sm) !important;
+    white-space: nowrap !important;
+    overflow-wrap: normal !important;
+}
+
+.storefront-clean-ui .home-page .promo-actions > .np-home-action .promo-btn-text {
+    white-space: nowrap;
+    overflow-wrap: normal;
+}
+
+@media (max-width: 540px) {
+    .storefront-clean-ui .home-page :is(.hero-ctas, .promo-actions) > .np-home-action {
+        flex-basis: 100%;
+        width: 100%;
+    }
+}
 
 .home-page .hero {
     background: var(--np-color-soft);
@@ -25452,6 +25492,26 @@ html.np-product-preview-open body { overflow: hidden; }
 @media(max-width:740px){.storefront-clean-ui .np-rq-heading{flex-wrap:wrap}.storefront-clean-ui .np-rq-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.storefront-clean-ui .np-rq-card{padding:13px}.storefront-clean-ui .np-rq-heading--list>.btn{width:100%}.storefront-clean-ui .np-rq-message-actions{flex-wrap:wrap}.storefront-clean-ui .np-rq-message-actions .btn{width:100%}}
 @media(max-width:420px){.storefront-clean-ui .np-rq-stats{grid-template-columns:1fr}.storefront-clean-ui .np-rq-check-grid{grid-template-columns:1fr}.storefront-clean-ui .np-rq-file{flex-wrap:wrap}.storefront-clean-ui .np-rq-file-actions{width:100%}.storefront-clean-ui .np-rq-form-end>*{flex:1}.storefront-clean-ui .np-rq-definition{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 
+/* Category banner paired actions use the same design-system dimensions and
+   Expose CTA typography as the homepage slider, without affecting the other
+   category controls or catalog filter buttons. The secondary action uses the
+   existing .btn-white variant for readable contrast over uploaded banners. */
+.storefront-clean-ui .np-category-hero__actions > .btn {
+    box-sizing: border-box;
+    flex: 0 0 var(--np-button-paired-width);
+    width: var(--np-button-paired-width);
+    height: var(--np-button-height-xl);
+    min-height: var(--np-button-height-xl);
+    padding-inline: var(--np-button-padding-x-sm);
+    font-family: var(--np-font-body);
+    font-size: var(--np-button-font-size-sm);
+    font-weight: var(--np-button-font-weight);
+    line-height: var(--np-button-line-height);
+    letter-spacing: var(--np-letter-spacing);
+    white-space: nowrap;
+    overflow-wrap: normal;
+}
+
 /* NEXTPLAY_RESPONSIVE_CATEGORY_BANNER
    Keep the existing desktop banner and centralized controls. On narrow screens,
    make the banner compact, text readable over uploaded photography, and the
@@ -25518,19 +25578,10 @@ html.np-product-preview-open body { overflow: hidden; }
     }
 
     .np-category-hero__actions {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        display: flex;
+        flex-wrap: wrap;
         gap: 10px;
         margin-top: 22px;
-    }
-
-    .np-category-hero__actions > .btn {
-        width: 100%;
-        min-width: 0;
-        min-height: 44px;
-        padding-inline: 10px;
-        font-size: 12px;
-        line-height: 1.25;
     }
 }
 
@@ -25554,9 +25605,15 @@ html.np-product-preview-open body { overflow: hidden; }
     }
 }
 
-@media (max-width: 420px) {
+@media (max-width: 540px) {
     .np-category-hero__actions {
+        display: grid;
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    .storefront-clean-ui .np-category-hero__actions > .btn {
+        width: 100%;
+        min-width: 0;
     }
 }
 
@@ -27042,4 +27099,186 @@ html.np-product-preview-open body { overflow: hidden; }
 }
 .storefront-clean-ui .np-product-page .np-proto-roster-table tbody td:nth-child(n+3):not(:last-child)::before {
     font-size: var(--np-body-2-size);
+}
+
+/* NEXTPLAY_PRODUCT_DETAIL_MOBILE_CART_AND_ORDER_SUMMARY
+   Keep both mobile cart actions connected to the same product form; the
+   existing form submit handler owns validation and section navigation. */
+.storefront-clean-ui .np-custom-order-mobile-bar,
+.storefront-clean-ui .np-custom-order-mobile-cart,
+.storefront-clean-ui .np-custom-order-mobile-head-cart {
+    display: none;
+}
+
+/* The chosen fabric is a true square swatch, without rounded corners. */
+.storefront-clean-ui .np-custom-order-selection {
+    grid-template-columns: 74px minmax(0, 1fr);
+}
+.storefront-clean-ui .np-custom-order-fabric-preview {
+    width: 74px;
+    height: 74px;
+    aspect-ratio: 1 / 1;
+    border-radius: 0;
+}
+.storefront-clean-ui .np-custom-order-fabric-preview img {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    object-fit: cover;
+}
+
+/* A single size is centered; additional sizes wrap in evenly spaced rows. */
+.storefront-clean-ui .np-custom-order-sizes > .np-custom-order-size-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: center;
+    gap: 8px;
+    min-width: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+}
+.storefront-clean-ui .np-custom-order-size-chip {
+    box-sizing: border-box;
+    flex: 0 1 min(106px, calc((100% - 8px) / 2));
+    min-width: 0;
+    text-align: center;
+}
+
+@media (max-width: 767px) {
+    .storefront-clean-ui .np-product-detail-prototype {
+        padding-bottom: calc(92px + env(safe-area-inset-bottom));
+    }
+    .storefront-clean-ui .np-custom-order-mobile-bar {
+        position: relative;
+        z-index: 123;
+        display: flex;
+        width: 100%;
+        align-items: stretch;
+        gap: 8px;
+    }
+    .storefront-clean-ui .np-custom-order-mobile-capsule {
+        flex: 1 1 0;
+        width: auto;
+        min-width: 0;
+        padding: 7px 10px 7px 14px;
+    }
+    .storefront-clean-ui .np-custom-order-mobile-capsule__summary {
+        min-width: 0;
+        gap: 6px;
+    }
+    .storefront-clean-ui .np-custom-order-mobile-capsule__summary > span:first-child {
+        display: grid;
+        gap: 3px;
+        justify-items: start;
+        min-width: 0;
+    }
+    .storefront-clean-ui .np-custom-order-mobile-capsule__summary strong {
+        font-size: 17px;
+        white-space: nowrap;
+    }
+    .storefront-clean-ui .np-custom-order-mobile-capsule__chevron {
+        flex: 0 0 28px;
+        width: 28px;
+        height: 28px;
+    }
+    /* This CTA is a sibling of the subtotal capsule, not inside it. */
+    .storefront-clean-ui .np-custom-order-mobile-cart {
+        display: inline-flex;
+        flex: 0 0 clamp(116px, 37%, 150px);
+        align-items: center;
+        justify-content: center;
+        min-width: 0;
+        min-height: 58px;
+        border: 1px solid var(--np-color-secondary);
+        border-radius: 999px;
+        padding: 0 8px;
+        background: var(--np-color-secondary);
+        color: #fff;
+        font-family: var(--np-font-body);
+        font-size: 14px;
+        line-height: 1.1;
+        font-weight: 700;
+        white-space: nowrap;
+        box-shadow: 0 8px 20px rgb(var(--np-color-secondary-rgb) / .24);
+    }
+    .storefront-clean-ui .np-custom-order-mobile-cart:hover,
+    .storefront-clean-ui .np-custom-order-mobile-cart:focus-visible {
+        background: var(--np-color-secondary-hover);
+        color: #fff;
+    }
+    /* Expanded summary opens above the complete bottom bar. */
+    .storefront-clean-ui .np-custom-order-panel {
+        bottom: 70px;
+    }
+    .storefront-clean-ui .np-custom-order-card__head {
+        justify-content: space-between;
+        gap: 10px;
+    }
+    .storefront-clean-ui .np-custom-order-mobile-head-cart {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        min-height: 36px;
+        border: 1px solid var(--np-color-secondary);
+        border-radius: 4px;
+        background: var(--np-color-secondary);
+        color: #fff;
+        padding: 7px 12px;
+        font-family: var(--np-font-body);
+        font-size: 13px;
+        line-height: 1.15;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .storefront-clean-ui .np-custom-order-mobile-head-cart:hover,
+    .storefront-clean-ui .np-custom-order-mobile-head-cart:focus-visible {
+        background: var(--np-color-secondary-hover);
+        color: #fff;
+    }
+    .storefront-clean-ui .np-custom-order-sizes {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .storefront-clean-ui .np-custom-order-size-chips {
+        justify-content: center;
+    }
+}
+@media (max-width: 360px) {
+    .storefront-clean-ui .np-custom-order-mobile-cart {
+        font-size: 12px;
+    }
+    .storefront-clean-ui .np-custom-order-card__head h3 {
+        font-size: 17px;
+    }
+    .storefront-clean-ui .np-custom-order-mobile-head-cart {
+        padding-inline: 9px;
+        font-size: 12px;
+    }
+}
+
+/* NEXTPLAY_MOBILE_ORDER_REVIEW_ACTIONS_20261028
+   On phones the final Order Summary owns all purchase actions; the fixed
+   bottom capsule only toggles the existing cost summary. Desktop is unchanged. */
+.storefront-clean-ui .np-product-review-mobile-actions { display: none; }
+@media (max-width: 767px) {
+    .storefront-clean-ui .np-custom-order-mobile-bar { width: 100%; }
+    .storefront-clean-ui .np-custom-order-mobile-capsule { flex: 1 1 auto; width: 100%; }
+    .storefront-clean-ui .np-custom-order-panel .np-custom-order-actions { display: none; }
+    .storefront-clean-ui .np-product-review-summary > .np-product-review-mobile-actions {
+        display: grid;
+        gap: 10px;
+        padding: 16px;
+        border-top: 1px solid var(--np-product-card-border);
+        background: #fff;
+    }
+    .storefront-clean-ui .np-product-review-mobile-actions .btn {
+        display: inline-flex;
+        width: 100%;
+        min-height: 52px;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
 }

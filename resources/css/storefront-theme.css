@@ -170,6 +170,7 @@
     --np-button-height-sm: 40px;
     --np-button-height-lg: 48px;
     --np-button-height-xl: 54px;
+    --np-button-paired-width: 220px; /* Shared homepage and category-banner CTA width. */
     --np-button-product-height: 3.2rem;
     --np-button-padding-x: 18px;
     --np-button-padding-x-sm: 14px;

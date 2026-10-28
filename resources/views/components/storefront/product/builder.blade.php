@@ -37,6 +37,7 @@
         'title' => $product['title'],
         'currency' => $product['currency'] ?? 'USD',
         'base_price' => $product['base_price'],
+        'is_customizable' => (bool) ($product['is_customizable'] ?? false),
         'minimum_quantity' => $product['minimum_quantity'] ?? 1,
         'maximum_quantity' => $product['maximum_quantity'] ?? 999,
         'gallery' => $product['gallery'],
@@ -706,14 +707,6 @@ window.productBuilderFabricPricing = function (config = {}) {
             if (!match) return null;
             const price = Number(match[1].replace(/,/g, ''));
             return Number.isFinite(price) && price >= 0 ? Math.round((price + Number.EPSILON) * 100) / 100 : null;
-        },
-        canAddToCart() {
-            // The review step can be 5 or 6, and all panels start expanded.
-            // Valid configurations must not depend on which accordion was last clicked.
-            // On the review step, still allow a submit attempt so validate() can
-            // explain any missing fields and navigate to the relevant section.
-            return Number(this.activeCustomizerStep) === Number(this.maxCustomizerStep)
-                || this.validationIssue() === null;
         },
         optionGroupSummary(group) {
             if (!group) return 'Not selected';
@@ -1553,6 +1546,7 @@ window.productBuilderFabricPricing = function (config = {}) {
                                                 <div><span>{{ $ui['estimated_delivery_label'] }}</span><strong x-text="totalDeliveryDaysLabel()"></strong></div>
                                             </div>
                                         </div>
+                                        <x-storefront.product.customizer.order-actions :product="$product" :is-editing="$isEditing" :mobile-review="true" />
                                     </div>
 
 

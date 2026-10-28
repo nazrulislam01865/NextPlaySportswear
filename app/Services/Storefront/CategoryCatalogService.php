@@ -401,7 +401,10 @@ class CategoryCatalogService
     {
         $categoryIds = $this->categoryIdsForListing($category);
         $cacheVersion = (int) Cache::get('catalog.category-facets.version', 1);
-        $cacheKey = 'catalog.category-facets.'.$category->id.'.'.$cacheVersion;
+        // Product and personalization-template updates bump the product cache version.
+        // Include it so field labels/counts refresh immediately after admin changes.
+        $productCacheVersion = (int) Cache::get('catalog.products.version', 1);
+        $cacheKey = 'catalog.category-facets.master-color-v1.'.$category->id.'.'.$cacheVersion.'.'.$productCacheVersion;
 
         return Cache::remember($cacheKey, config('catalog.facets_cache_seconds', 300), function () use ($category, $categoryIds): array {
             $this->attachProductCounts($category->children);

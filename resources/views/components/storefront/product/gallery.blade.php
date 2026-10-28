@@ -76,14 +76,6 @@
                 </button>
             @endif
 
-            <button
-                type="button"
-                class="np-product-gallery-zoom"
-                @click.stop="$dispatch('open-product-image', currentImage())"
-                aria-label="Zoom product image"
-            >
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M11 8v6M8 11h6"/></svg>
-            </button>
         </div>
     </div>
 

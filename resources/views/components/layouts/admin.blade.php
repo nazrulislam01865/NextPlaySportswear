@@ -56,7 +56,7 @@
                     <x-admin.sidebar-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')" icon="▦">Dashboard</x-admin.sidebar-link>
                 @endif
 
-                @if($canAdmin('products.view') || $canAdmin('product_detail_controls.view') || $canAdmin('categories.view') || $canAdmin('attributes.view') || $canAdmin('menus.view') || $canAdmin('media.view'))
+                @if($canAdmin('products.view') || $canAdmin('product_detail_controls.view') || $canAdmin('categories.view') || $canAdmin('attributes.view') || $canAdmin('menus.view') || $canAdmin('media.view') || $canAdmin('customization.view'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Catalog</p>
                     @if($canAdmin('products.view'))
                         <x-admin.sidebar-link :href="route('admin.products.index')" :active="request()->routeIs('admin.products.*')" icon="◇">Products</x-admin.sidebar-link>
@@ -90,6 +90,9 @@
                     @endif
                     @if($canAdmin('menus.view'))
                         <x-admin.sidebar-link :href="route('admin.menus.index')" :active="request()->routeIs('admin.menus.*')" icon="☷">Navigation Menus</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('customization.view'))
+                        <x-admin.sidebar-link :href="route('admin.personalization-categories.index')" :active="request()->routeIs('admin.personalization-categories.*')" icon="◇">Personalization Categories</x-admin.sidebar-link>
                     @endif
                 @endif
 

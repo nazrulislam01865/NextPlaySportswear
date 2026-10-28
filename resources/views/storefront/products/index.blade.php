@@ -23,7 +23,7 @@
         <div class="site-container">
             <p class="text-xs font-black uppercase tracking-[.2em] text-red-100">NextPlay catalog</p>
             <h1 class="mt-3 font-display text-4xl font-bold uppercase leading-tight tracking-tight sm:text-5xl lg:text-6xl">Products</h1>
-            <p class="mt-4 max-w-2xl text-base leading-7 text-blue-50">Find sportswear and team gear by category, sport, color, material, customization, quantity, price, availability, and rating.</p>
+            <p class="mt-4 max-w-2xl text-base leading-7 text-blue-50">Find sportswear and team gear by category, sport, color, material, customization, quantity, price, and rating.</p>
         </div>
     </section>
 

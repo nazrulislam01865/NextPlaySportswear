@@ -1,6 +1,6 @@
 @props(['product'])
 
-<div class="grid gap-3">
+<div id="item-personalization" class="grid gap-3">
     <div class="np-option-tiles">
         <article>
             <span class="np-option-tiles__icon teal">♙</span>

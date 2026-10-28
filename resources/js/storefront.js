@@ -2009,7 +2009,7 @@ window.productBuilder = (config = {}) => ({
             };
         }
 
-        for (const group of (config.option_groups || [])) {
+        for (const group of (config.is_customizable ? (config.option_groups || []) : [])) {
             if ((group.display_mode || 'customer') !== 'customer' || !group.required) continue;
 
             if (group.type === 'checkbox' && (this.multiSelections[group.id] || []).length < Math.max(1, Number(group.minimum_selections || 1))) {
@@ -2018,7 +2018,11 @@ window.productBuilder = (config = {}) => ({
             if (['image', 'swatch', 'buttons', 'select'].includes(group.type) && !this.selections[group.id]) {
                 return { message: `Please select ${group.label}.`, targetId: 'configure-product' };
             }
-            if (!['image', 'swatch', 'buttons', 'select', 'checkbox', 'file'].includes(group.type) && !this.inputs[group.id]) {
+            if (group.type === 'file' && !this.artworkFiles.some(file => file.purpose !== 'reference')) {
+                return { message: `Please upload ${group.label}.`, targetId: 'artwork-upload' };
+            }
+            if (!['image', 'swatch', 'buttons', 'select', 'checkbox', 'file'].includes(group.type)
+                && !String(this.inputs[group.id] ?? '').trim()) {
                 return { message: `Please complete ${group.label}.`, targetId: 'configure-product' };
             }
         }
@@ -2096,15 +2100,19 @@ window.productBuilder = (config = {}) => ({
                 target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
 
+            const missingCustomization = ['configure-product', 'product-roster', 'artwork-upload'].includes(issue.targetId);
+            const title = missingCustomization ? 'Customization missing' : (issue.title || 'Complete your order');
+            const message = missingCustomization
+                ? `You have missed a required customization. ${issue.message} Please complete it first.`
+                : issue.message;
             if (typeof window.showStorefrontToast === 'function') {
-                this.notifyCustomization(
-                    issue.title || 'Complete your order',
-                    issue.message,
-                    `validation:${issue.targetId || 'product'}`,
-                    'warning',
-                );
+                window.showStorefrontToast({
+                    type: 'warning', title, message,
+                    key: `validation:${issue.targetId || 'product'}`,
+                    duration: 6000,
+                });
             } else {
-                window.alert(issue.message);
+                window.alert(message);
             }
             return false;
         }

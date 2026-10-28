@@ -12760,3 +12760,12 @@ body.admin-clean-ui .np-product-form .np-personalization-template-modal :is(inpu
     --tw-ring-shadow: 0 0 #0000 !important;
 }
 .np-product-form .np-personalization-category-display { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+#item-personalization { scroll-margin-top: 100px; }
+@media (max-width: 640px) {
+    body.admin-ui-compact .pp-heading { align-items: flex-start; }
+    body.admin-ui-compact .pp-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    body.admin-ui-compact .pp-tab { padding: .5rem .3rem; font-size: .7rem; }
+    body.admin-ui-compact .pp-filter-form .product-search-field { flex-basis: 100%; }
+    body.admin-ui-compact .pp-filter-form .product-category-field, body.admin-ui-compact .pp-filter-form .product-status-field { flex: 1 1 44%; }
+}

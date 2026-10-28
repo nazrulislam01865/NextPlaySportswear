@@ -4,7 +4,10 @@
 @endphp
 <x-layouts.admin title="Personalization Templates" compact-header>
     <x-admin.personalization-page heading="Personalization Templates" eyebrow="Master Data / Personalization">
-        <x-slot:actions><a href="{{ route('admin.personalization-templates.create') }}" class="pt-button pt-primary">＋ Add Personalization Template</a></x-slot:actions>
+        <x-slot:actions>
+            <a href="{{ route('admin.personalization-categories.index') }}" class="pt-button pt-outline">View Personalization Categories</a>
+            <a href="{{ route('admin.personalization-templates.create') }}" class="pt-button pt-primary">＋ Add Personalization Template</a>
+        </x-slot:actions>
         @error('template')<p class="pt-field-error" role="alert">{{ $message }}</p>@enderror
         <div class="pt-card pt-list-card">
             <div class="pt-list-head"><div><h3>Personalization template library</h3></div><span class="pt-count">{{ $templates->total() }} {{ $templates->total() === 1 ? 'template' : 'templates' }}</span></div>

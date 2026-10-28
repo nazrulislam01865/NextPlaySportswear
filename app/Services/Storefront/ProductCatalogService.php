@@ -27,6 +27,7 @@ class ProductCatalogService
 {
     public function __construct(
         private readonly SaleCampaignService $saleCampaigns,
+        private readonly PersonalizationFieldFacets $personalizationFieldFacets,
     ) {
     }
 
@@ -702,7 +703,7 @@ class ProductCatalogService
         $ttl = max(60, (int) config('catalog.facets_cache_seconds', 300));
 
         $shared = Cache::remember(
-            'catalog.products.complete-filter-options.'.$version.'.'.$scopeKey,
+            'catalog.products.complete-filter-options.master-color-v1.'.$version.'.'.$scopeKey,
             $ttl,
             function () use ($categoryIds, $sportIds, $queryText, $tag, $normalizedScopeIds): array {
                 $categoryScoped = Product::query()->published();
@@ -854,7 +855,6 @@ class ProductCatalogService
 
         $this->applyMoqFilter($query, $filters['moq'] ?? []);
         $this->applyCustomizationFilter($query, $filters['customization'] ?? []);
-        $this->applyAvailabilityFilter($query, $filters['availability'] ?? []);
 
         if (($filters['min_rating'] ?? null) !== null) {
             $query->whereNotNull('products.rating_average')
@@ -876,7 +876,7 @@ class ProductCatalogService
             ->select([
                 'products.id', 'products.product_type', 'products.gender_id', 'products.base_price', 'products.minimum_quantity',
                 'products.is_customizable', 'products.artwork_upload_enabled', 'products.jersey_roster_enabled',
-                'products.track_inventory', 'products.stock_quantity', 'products.allow_backorder',
+                'products.personalization_template_id',
                 'products.rating_average', 'products.reviews_count',
             ])
             ->selectRaw($this->listingPriceExpression().' AS catalog_filter_price')
@@ -943,28 +943,9 @@ class ProductCatalogService
             ['value' => 'customizable', 'label' => 'Customizable', 'count' => $products->where('is_customizable', true)->count()],
             ['value' => 'ready-made', 'label' => 'Ready-made / standard', 'count' => $products->where('is_customizable', false)->count()],
             ['value' => 'artwork-upload', 'label' => 'Artwork upload available', 'count' => $products->where('artwork_upload_enabled', true)->count()],
-            ['value' => 'player-details', 'label' => 'Roster fields available', 'count' => $products->where('jersey_roster_enabled', true)->count()],
+            ...$this->personalizationFieldFacets->options($products),
         ];
         $customization = collect($customization)->filter(fn (array $option): bool => $option['count'] > 0)->values()->all();
-
-        $availability = [
-            [
-                'value' => 'in-stock',
-                'label' => 'In stock',
-                'count' => $products->filter(fn (Product $product): bool => (bool) $product->track_inventory && (int) $product->stock_quantity > 0)->count(),
-            ],
-            [
-                'value' => 'backorder',
-                'label' => 'Backorder available',
-                'count' => $products->filter(fn (Product $product): bool => (bool) $product->allow_backorder && (int) $product->stock_quantity <= 0)->count(),
-            ],
-            [
-                'value' => 'made-to-order',
-                'label' => 'Made to order',
-                'count' => $products->where('track_inventory', false)->count(),
-            ],
-        ];
-        $availability = collect($availability)->filter(fn (array $option): bool => $option['count'] > 0)->values()->all();
 
         $ratingOptions = collect([4, 3, 2])->map(fn (int $rating): array => [
             'value' => $rating,
@@ -993,7 +974,6 @@ class ProductCatalogService
             'price_ceiling' => $priceCeiling,
             'moq' => $moq,
             'customization' => $customization,
-            'availability' => $availability,
             'rating_options' => $ratingOptions,
         ];
     }
@@ -1129,9 +1109,13 @@ class ProductCatalogService
                 ->map(fn ($row) => (object) array_merge((array) $row, ['source' => 'option']));
         }
 
-        $rows = $attributeRows->concat($optionRows);
-        $build = function (string $kind) use ($rows): array {
-            return $rows
+        // Only Master Data > Attributes > Color (slug: color) may populate
+        // the storefront Color filter. Product option swatches and Pantone
+        // colors must never contribute colors or product counts.
+        $masterColors = $attributeRows->filter(fn ($row): bool => (string) $row->group_code === 'color');
+        $materials = $attributeRows->concat($optionRows);
+        $build = function (string $kind, Collection $sourceRows): array {
+            return $sourceRows
                 ->filter(fn ($row): bool => $this->facetGroupMatches(
                     $kind,
                     (string) ($row->group_name ?? ''),
@@ -1156,7 +1140,7 @@ class ProductCatalogService
                 ->all();
         };
 
-        return [$build('color'), $build('material')];
+        return [$build('color', $masterColors), $build('material', $materials)];
     }
 
     /** @return array<int, array<string, mixed>> */
@@ -1326,13 +1310,15 @@ class ProductCatalogService
                 ->where('a.is_filterable', true)
                 ->where('av.is_active', true)
                 ->whereNull('a.deleted_at')
+                ->when($kind === 'color', fn ($query) => $query->where('a.slug', 'color'))
                 ->get(['av.id', 'av.label', 'av.slug', 'a.name as group_name', 'a.slug as group_code'])
                 ->filter(fn ($row): bool => $this->facetGroupMatches($kind, (string) $row->group_name, (string) $row->group_code)
                     && $tokens->contains(Str::slug((string) ($row->slug ?: $row->label))))
                 ->pluck('id');
         }
 
-        if (Schema::hasTable('product_option_groups') && Schema::hasTable('product_option_values')) {
+        // Materials may still use product options; Color is master-attribute-only.
+        if ($kind !== 'color' && Schema::hasTable('product_option_groups') && Schema::hasTable('product_option_values')) {
             $optionIds = DB::table('product_option_values as pov')
                 ->join('product_option_groups as pog', 'pog.id', '=', 'pov.product_option_group_id')
                 ->where('pog.is_active', true)
@@ -1403,36 +1389,36 @@ class ProductCatalogService
         $query->where(function (Builder $builder) use ($options): void {
             foreach ($options as $index => $option) {
                 $method = $index === 0 ? 'where' : 'orWhere';
-                match ($option) {
-                    'customizable' => $builder->{$method}('products.is_customizable', true),
-                    'ready-made' => $builder->{$method}('products.is_customizable', false),
-                    'artwork-upload' => $builder->{$method}('products.artwork_upload_enabled', true),
-                    'player-details' => $builder->{$method}('products.jersey_roster_enabled', true),
-                    default => null,
-                };
-            }
-        });
-    }
+                if ($option === 'customizable') {
+                    $builder->{$method}('products.is_customizable', true);
+                } elseif ($option === 'ready-made') {
+                    $builder->{$method}('products.is_customizable', false);
+                } elseif ($option === 'artwork-upload') {
+                    $builder->{$method}('products.artwork_upload_enabled', true);
+                } elseif (str_starts_with($option, 'field-')) {
+                    $templateIds = $this->personalizationFieldFacets->templateIdsForValue($option);
+                    $builder->{$method}(function (Builder $fieldQuery) use ($templateIds): void {
+                        if ($templateIds === []) {
+                            $fieldQuery->whereRaw('1 = 0');
+                            return;
+                        }
 
-    /** @param array<int, string> $options */
-    private function applyAvailabilityFilter(Builder $query, array $options): void
-    {
-        $options = collect($options)->filter()->unique()->values();
-        if ($options->isEmpty()) {
-            return;
-        }
-
-        $query->where(function (Builder $builder) use ($options): void {
-            foreach ($options as $index => $option) {
-                $method = $index === 0 ? 'where' : 'orWhere';
-                $builder->{$method}(function (Builder $availabilityQuery) use ($option): void {
-                    match ($option) {
-                        'in-stock' => $availabilityQuery->where('products.track_inventory', true)->where('products.stock_quantity', '>', 0),
-                        'backorder' => $availabilityQuery->where('products.allow_backorder', true)->where('products.stock_quantity', '<=', 0),
-                        'made-to-order' => $availabilityQuery->where('products.track_inventory', false),
-                        default => $availabilityQuery->whereRaw('1 = 0'),
-                    };
-                });
+                        // Match the same usable-template precedence as ProductRoster:
+                        // active pivot assignments first, legacy FK only as fallback.
+                        $fieldQuery->where('products.jersey_roster_enabled', true)
+                            ->where(function (Builder $assignments) use ($templateIds): void {
+                                $assignments->whereHas('personalizationTemplates', fn (Builder $template) =>
+                                    $template->whereIn('personalization_templates.id', $templateIds)
+                                )->orWhere(function (Builder $legacy) use ($templateIds): void {
+                                    $legacy->whereIn('products.personalization_template_id', $templateIds)
+                                        ->whereDoesntHave('personalizationTemplates', fn (Builder $template) =>
+                                            $template->where('personalization_templates.is_active', true)
+                                                ->where('personalization_templates.is_published', true)
+                                        );
+                                });
+                            });
+                    });
+                }
             }
         });
     }

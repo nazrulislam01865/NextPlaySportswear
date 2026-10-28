@@ -184,6 +184,9 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::patch('/homepage-slides/{homepageSlide}/toggle', [\App\Http\Controllers\Admin\HomepageSlideController::class, 'toggle'])->name('homepage-slides.toggle');
         Route::resource('homepage-slides', \App\Http\Controllers\Admin\HomepageSlideController::class)->except('show');
 
+        Route::get('/personalization-categories', [\App\Http\Controllers\Admin\PersonalizationCategoryController::class, 'index'])
+            ->name('personalization-categories.index');
+
         Route::get('/products/stats', [\App\Http\Controllers\Admin\ProductController::class, 'stats'])->name('products.stats');
         Route::get('/products/search-suggestions', [\App\Http\Controllers\Admin\ProductController::class, 'suggestions'])->name('products.suggestions');
         Route::post('/products/{product}/duplicate', [\App\Http\Controllers\Admin\ProductController::class, 'duplicate'])->name('products.duplicate');

@@ -100,7 +100,6 @@ class CategoryController extends Controller
             || $filters['max_price'] !== null
             || $filters['moq'] !== []
             || $filters['customization'] !== []
-            || $filters['availability'] !== []
             || $filters['min_rating'] !== null
             || $filters['sort'] !== $defaultSort;
         $schemas = [[
@@ -153,7 +152,7 @@ class CategoryController extends Controller
     {
         $count = filled($filters['q'] ?? null) ? 1 : 0;
 
-        foreach (['subcategory', 'sports', 'product_types', 'colors', 'materials', 'artwork_methods', 'moq', 'customization', 'availability'] as $key) {
+        foreach (['subcategory', 'sports', 'product_types', 'colors', 'materials', 'artwork_methods', 'moq', 'customization'] as $key) {
             $count += count((array) ($filters[$key] ?? []));
         }
 

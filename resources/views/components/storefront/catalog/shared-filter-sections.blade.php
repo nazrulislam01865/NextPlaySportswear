@@ -170,24 +170,6 @@
     </details>
 @endif
 
-@if(($options['availability'] ?? []) !== [])
-    <details class="np-catalog-filter-section" @if($hasSelection('availability')) open @endif>
-        <summary class="np-catalog-filter-title"><span>Availability</span><span aria-hidden="true">+</span></summary>
-        <div class="np-catalog-filter-options @if(count($options['availability']) > $filterScrollThreshold) np-catalog-option-list--scroll @endif">
-            @foreach($options['availability'] as $option)
-                @php($fieldId = $idPrefix.'-availability-'.$option['value'])
-                <label class="np-catalog-filter-option" for="{{ $fieldId }}">
-                    <span class="np-catalog-filter-option__main">
-                        <input id="{{ $fieldId }}" type="checkbox" name="availability[]" value="{{ $option['value'] }}" @checked(in_array($option['value'], $selected('availability'), true))>
-                        <span>{{ $option['label'] }}</span>
-                    </span>
-                    <span class="np-catalog-filter-count">{{ $option['count'] }}</span>
-                </label>
-            @endforeach
-        </div>
-    </details>
-@endif
-
 @if(($options['rating_options'] ?? []) !== [])
     <details class="np-catalog-filter-section" @if(($filters['min_rating'] ?? null) !== null) open @endif>
         <summary class="np-catalog-filter-title"><span>Customer rating</span><span aria-hidden="true">+</span></summary>

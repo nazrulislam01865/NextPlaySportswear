@@ -415,6 +415,10 @@ class AdminRbac
             return 'customization.manage';
         }
 
+        if ($name === 'personalization-categories.index') {
+            return 'customization.view';
+        }
+
         if (Str::startsWith($name, 'products.')) {
             return self::resourcePermission($name, 'products');
         }
