@@ -9,6 +9,8 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 use Symfony\Component\Mime\Email;
+use Illuminate\Mail\Mailables\Attachment;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class TransactionalEmail extends Mailable
@@ -54,6 +56,18 @@ class TransactionalEmail extends Mailable
      */
     public function attachments(): array
     {
-        return [];
+        $attachments = [];
+        foreach ($this->emailMessage->attachments ?? [] as $spec) {
+            $name = basename(str_replace('\\', '/', (string) ($spec['name'] ?? 'attachment')));
+            if (($spec['type'] ?? '') === 'data' && is_string($spec['data'] ?? null)) {
+                $attachments[] = Attachment::fromData(static fn (): string => $spec['data'], $name)
+                    ->withMime((string) ($spec['mime'] ?? 'application/pdf'));
+            } elseif (($spec['type'] ?? '') === 'storage' && ($spec['disk'] ?? '') === 'local'
+                && Storage::disk('local')->exists((string) ($spec['path'] ?? ''))) {
+                $attachments[] = Attachment::fromStorageDisk('local', $spec['path'])
+                    ->as($name)->withMime((string) ($spec['mime'] ?? 'application/octet-stream'));
+            }
+        }
+        return $attachments;
     }
 }

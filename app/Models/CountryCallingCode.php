@@ -16,6 +16,7 @@ class CountryCallingCode extends Model
         'dial_code',
         'is_active',
         'sort_order',
+        'region_label',
     ];
 
     protected function casts(): array
@@ -34,6 +35,11 @@ class CountryCallingCode extends Model
     public function scopeOrdered(Builder $query): Builder
     {
         return $query->orderBy('sort_order')->orderBy('country_name')->orderBy('id');
+    }
+
+    public function regions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(CountryRegion::class);
     }
 
     public function flagEmoji(): string

@@ -1,4 +1,4 @@
-@props(['title' => 'Admin', 'eyebrow' => null, 'subtitle' => null, 'compactHeader' => false, 'storefrontUrl' => null, 'mediaGalleryHeader' => false])
+@props(['title' => 'Admin', 'eyebrow' => null, 'subtitle' => null, 'compactHeader' => false, 'storefrontUrl' => null, 'mediaGalleryHeader' => false, 'bulkQuoteDetail' => false])
 <!doctype html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
@@ -45,6 +45,7 @@
                 <button type="button" class="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-2xl text-slate-300 hover:bg-white/10 lg:hidden" @click="sidebarOpen = false" aria-label="Close sidebar">×</button>
             </div>
 
+            {{-- Use the shared, scrollable and resizable admin sidebar on every route. --}}
             <nav data-admin-sidebar-nav class="admin-sidebar-nav min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 text-sm" @click="if ($event.target.closest('a')) sidebarOpen = false">
                 @php
                     $adminUser = auth('admin')->user();
@@ -167,7 +168,7 @@
                     <x-admin.sidebar-group
                         label="Master Data"
                         icon="◈"
-                        :active="$isCustomizationActive || request()->routeIs('admin.personalization-templates.*') || $isSizeOptionActive || $isTrainingVestCustomizationActive || $isWorldCupCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*') || request()->routeIs('admin.faqs.*') || request()->routeIs('admin.genders.*') || request()->routeIs('admin.time-zones.*') || request()->routeIs('admin.country-calling-codes.*') || request()->routeIs('admin.bulk-quote-budget-ranges.*') || request()->routeIs('admin.artwork-preferences.*')"
+                        :active="$isCustomizationActive || request()->routeIs('admin.personalization-templates.*') || $isSizeOptionActive || $isTrainingVestCustomizationActive || $isWorldCupCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*') || request()->routeIs('admin.faqs.*') || request()->routeIs('admin.genders.*') || request()->routeIs('admin.time-zones.*') || request()->routeIs('admin.country-calling-codes.*') || request()->routeIs('admin.country-regions.*') || request()->routeIs('admin.country-geography.*') || request()->routeIs('admin.bulk-quote-budget-ranges.*') || request()->routeIs('admin.artwork-preferences.*')"
                     >
                         @if($canAdmin('customization.view'))
                         @foreach($primaryCustomizationMenuGroups as $groupKey => $customizationGroup)
@@ -287,8 +288,8 @@
                         @if($canAdmin('orders.view'))
                             <x-admin.sidebar-sub-link
                                 :href="route('admin.country-calling-codes.index')"
-                                :active="request()->routeIs('admin.country-calling-codes.*')"
-                            >{{ $trailingMasterDataNumbers['country_calling_codes'] }} Country Calling Codes</x-admin.sidebar-sub-link>
+                                :active="request()->routeIs('admin.country-calling-codes.*') || request()->routeIs('admin.country-regions.*') || request()->routeIs('admin.country-geography.*')"
+                            >{{ $trailingMasterDataNumbers['country_calling_codes'] }} Countries &amp; Regions</x-admin.sidebar-sub-link>
                             <x-admin.sidebar-sub-link
                                 :href="route('admin.bulk-quote-budget-ranges.index')"
                                 :active="request()->routeIs('admin.bulk-quote-budget-ranges.*')"
@@ -449,7 +450,9 @@
         </aside>
 
         <div class="min-w-0">
-            @if($mediaGalleryHeader)
+            @if($bulkQuoteDetail)
+                {{-- This screen supplies its own compact prototype header. --}}
+            @elseif($mediaGalleryHeader)
                 <header data-admin-page-header class="np-mg-topbar">
                     <button type="button" class="np-mg-mobile-menu lg:hidden" @click="sidebarOpen = true" aria-label="Open sidebar">☰</button>
                     <label class="np-mg-global-search">

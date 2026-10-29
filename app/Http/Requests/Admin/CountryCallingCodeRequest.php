@@ -20,6 +20,7 @@ class CountryCallingCodeRequest extends FormRequest
             'dial_code' => trim((string) $this->input('dial_code', '')),
             'is_active' => $this->boolean('is_active'),
             'sort_order' => $this->input('sort_order') ?: 0,
+            'region_label' => trim((string) $this->input('region_label', 'State / Province')),
         ]);
     }
 
@@ -30,6 +31,7 @@ class CountryCallingCodeRequest extends FormRequest
 
         return [
             'country_name' => ['required', 'string', 'max:120'],
+            'region_label' => ['required', 'string', 'max:30'],
             'iso_code' => ['required', 'string', 'size:2', 'regex:/^[A-Z]{2}$/', Rule::unique('country_calling_codes', 'iso_code')->ignore($id)],
             'dial_code' => ['required', 'string', 'max:12', 'regex:/^\+[0-9]{1,10}$/'],
             'is_active' => ['required', 'boolean'],

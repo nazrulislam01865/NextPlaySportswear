@@ -11,6 +11,7 @@ final class EmailMessage
      * @param array<int, string> $introLines
      * @param array<string, string> $details
      * @param array<int, string> $outroLines
+     * @param array<int,array<string,mixed>> $attachments
      * @param array<string, scalar|null> $metadata
      */
     public function __construct(
@@ -26,6 +27,7 @@ final class EmailMessage
         public ?string $replyTo = null,
         public ?string $replyToName = null,
         public array $metadata = [],
+        public array $attachments = [],
     ) {
         // Generated before queue dispatch so retries carry the same ID.
         $this->deliveryId = (string) \Illuminate\Support\Str::uuid();

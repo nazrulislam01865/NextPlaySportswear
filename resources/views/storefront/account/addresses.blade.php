@@ -82,30 +82,11 @@
 
                     <div class="grid gap-5 md:grid-cols-2">
                         <x-storefront.account.form-field name="city" label="City" :value="old('city')" placeholder="Enter city or town" autocomplete="address-level2" required />
-                        <div>
-                            <label for="state" class="mb-2 block text-sm font-black text-slate-800">State</label>
-                            <select id="state" name="state" class="h-12 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/10" autocomplete="address-level1">
-                                <option value="">-- Select --</option>
-                                @foreach ($states as $code => $label)
-                                    <option value="{{ $code }}" @selected(old('state') === $code)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                            @error('state')<p class="mt-2 text-sm font-bold text-brand-red">{{ $message }}</p>@enderror
-                        </div>
+                        <x-storefront.account.form-field name="postal_code" label="Postal / ZIP Code" :value="old('postal_code')" placeholder="Enter postal code" autocomplete="postal-code" required />
                     </div>
 
                     <div class="grid gap-5 md:grid-cols-2">
-                        <div>
-                            <label for="country" class="mb-2 block text-sm font-black text-slate-800">Country <span class="text-brand-red">*</span></label>
-                            <select id="country" name="country" required class="h-12 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/10" autocomplete="country-name">
-                                <option value="United States" @selected(old('country', 'United States') === 'United States')>United States</option>
-                                <option value="Canada" @selected(old('country') === 'Canada')>Canada</option>
-                                <option value="United Kingdom" @selected(old('country') === 'United Kingdom')>United Kingdom</option>
-                                <option value="Australia" @selected(old('country') === 'Australia')>Australia</option>
-                            </select>
-                            @error('country')<p class="mt-2 text-sm font-bold text-brand-red">{{ $message }}</p>@enderror
-                        </div>
-                        <x-storefront.account.form-field name="postal_code" label="Zip Code" :value="old('postal_code')" placeholder="Enter zip or postal code" autocomplete="postal-code" required />
+                        <x-storefront.address-geography variant="account" country-field="country" region-field="state" :country-value="'United Kingdom'" />
                     </div>
 
                     <div class="grid gap-5 md:grid-cols-2">

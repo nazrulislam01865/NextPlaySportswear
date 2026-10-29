@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Listeners\Auth\SendWelcomeEmailAfterVerification;
 use App\Services\Cart\CartService;
 use App\Services\Catalog\NavigationService;
+use App\Services\Storefront\AddressGeography;
 use App\Services\Storefront\FooterPaymentMethodService;
 use App\Services\Storefront\HomepageSliderService;
 use App\Services\Storefront\HomepageSectionService;
@@ -24,6 +25,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->scoped(AddressGeography::class);
         $this->app->singleton(NavigationService::class);
         $this->app->singleton(FooterPaymentMethodService::class);
         $this->app->singleton(HomepageSliderService::class);

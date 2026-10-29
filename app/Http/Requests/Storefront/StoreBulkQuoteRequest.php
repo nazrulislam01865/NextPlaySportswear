@@ -71,7 +71,7 @@ class StoreBulkQuoteRequest extends FormRequest
                 Rule::in(['logo', 'names-numbers', 'full-custom-design', 'embroidery', 'sublimation', 'not-sure']),
             ],
             'shipping_address' => ['bail', 'required', 'string', 'min:8', 'max:500'],
-            'country' => ['required', Rule::in(['United States', 'Canada', 'United Kingdom', 'Australia', 'Other'])],
+            'country' => ['required', Rule::exists('country_calling_codes', 'country_name')->where('is_active', true)],
             'state_province' => ['nullable', 'string', 'max:120'],
             'postal_code' => ['nullable', 'string', 'max:40'],
             'preferred_shipping_method' => ['nullable', Rule::in(['standard', 'express', 'rush', 'recommend'])],

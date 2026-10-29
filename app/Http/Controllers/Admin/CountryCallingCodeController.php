@@ -26,6 +26,7 @@ class CountryCallingCodeController extends Controller
             'countryCallingCode' => new CountryCallingCode([
                 'is_active' => true,
                 'sort_order' => ((int) CountryCallingCode::query()->max('sort_order')) + 10,
+                'region_label' => 'State / Province',
             ]),
         ]);
     }

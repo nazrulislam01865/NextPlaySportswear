@@ -8,12 +8,15 @@ use App\Models\AdminRole;
 use App\Models\BulkQuoteRequest;
 use App\Models\User;
 use App\Services\BulkQuote\BulkQuoteWorkflowService;
+use App\Services\BulkQuote\BulkQuoteRequestDocument;
 use App\Services\Integrations\FlowTrack\FlowTrackInquirySyncManager;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use RuntimeException;
 
 class BulkQuoteRequestController extends Controller
 {
@@ -110,7 +113,7 @@ class BulkQuoteRequestController extends Controller
 
     public function show(BulkQuoteRequest $bulkQuote): View
     {
-        $bulkQuote->loadMissing(['user', 'assignedAdmin', 'closedByAdmin']);
+        $bulkQuote->loadMissing(['user', 'assignedAdmin', 'convertedOrder']);
         $guestFiles = $bulkQuote->quoteFiles()->latest()->limit(40)->get();
         $guestMessages = $bulkQuote->messages()->with(['actor:id,name', 'files'])->latest()->limit(50)->get();
         $activities = $bulkQuote->activities()
@@ -166,7 +169,24 @@ class BulkQuoteRequestController extends Controller
         return back()->with('status', 'FlowTrack synchronization has been queued or completed successfully.');
     }
 
-    public function attachment(BulkQuoteRequest $bulkQuote): StreamedResponse
+    public function downloadDocument(BulkQuoteRequest $bulkQuote, BulkQuoteRequestDocument $document): BinaryFileResponse|RedirectResponse
+    {
+        try {
+            $file = $document->create($bulkQuote);
+        } catch (RuntimeException $exception) {
+            report($exception);
+            return back()->withErrors(['document' => $exception->getMessage()]);
+        }
+
+        $reference = preg_replace('/[^A-Za-z0-9_-]/', '-', $bulkQuote->reference);
+        return response()->download($file, 'NextPlay_Quote_Request_'.$reference.'.docx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'Cache-Control' => 'private, no-store, max-age=0',
+            'X-Content-Type-Options' => 'nosniff',
+        ])->deleteFileAfterSend(true);
+    }
+
+    public function attachment(Request $request, BulkQuoteRequest $bulkQuote): StreamedResponse
     {
         $attachment = is_array($bulkQuote->attachment) ? $bulkQuote->attachment : [];
         $path = trim((string) ($attachment['path'] ?? ''));
@@ -185,6 +205,9 @@ class BulkQuoteRequestController extends Controller
             $mimeType = (string) ($disk->mimeType($path) ?: 'application/octet-stream');
         }
 
+        $previewable = in_array($mimeType, ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'], true);
+        $disposition = $request->boolean('preview') && $previewable ? 'inline' : 'attachment';
+
         return response()->stream(function () use ($stream): void {
             try {
                 fpassthru($stream);
@@ -195,7 +218,7 @@ class BulkQuoteRequestController extends Controller
             }
         }, 200, [
             'Content-Type' => $mimeType,
-            'Content-Disposition' => 'attachment; filename="'.$safeName.'"',
+            'Content-Disposition' => $disposition.'; filename="'.$safeName.'"',
             'Cache-Control' => 'private, no-store, max-age=0',
             'Pragma' => 'no-cache',
             'X-Content-Type-Options' => 'nosniff',

@@ -1,0 +1,19 @@
+# Bulk quotation Word export: NO ADDITIONAL .env SETTINGS REQUIRED.
+# All the following entries are OPTIONAL. Missing entries never prevent
+# document creation. Do not add placeholder email/phone/address values.
+# The Word header logo uses the active Admin > Storefront Branding > Storefront Logo.
+# No .env logo setting is needed for an uploaded header logo.
+
+# Uncomment only when you have actual business contact details to display:
+# STOREFRONT_NAME="NextPlay Sportswear"
+# STOREFRONT_EMAIL="your-real-business-email@example.org"
+# STOREFRONT_ADDRESS="Your actual business address"
+# STOREFRONT_PHONE="Your actual business phone"
+
+# Existing optional fallback logo when no Storefront Branding header logo exists:
+# STOREFRONT_LOGO="/images/logo.png"
+
+# Optional conversion commands only if the tools cannot be found in the PATH.
+# Without these variables, 'pdftoppm' and 'soffice' are used automatically.
+# BULK_QUOTE_PDFTOPPM_BIN="/usr/bin/pdftoppm"
+# BULK_QUOTE_SOFFICE_BIN="/usr/bin/soffice"

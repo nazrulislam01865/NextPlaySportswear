@@ -122,7 +122,8 @@ final class BulkQuoteGuestService
     public function accept(BulkQuoteRequest $quote, string $decision, ?User $customer = null): BulkQuoteRequest
     {
         $wasLinkedToAccount = $quote->user_id !== null;
-        $result = DB::transaction(function () use ($quote, $decision, $customer): BulkQuoteRequest {
+        $createdOrderId = null;
+        $result = DB::transaction(function () use ($quote, $decision, $customer, &$createdOrderId): BulkQuoteRequest {
             $quote = BulkQuoteRequest::query()->whereKey($quote->id)->lockForUpdate()->firstOrFail();
             if ($decision === 'create_order') {
                 // A secure tracking link is not proof of account ownership. Require an
@@ -215,6 +216,8 @@ final class BulkQuoteGuestService
                     'occurred_at' => now(),
                 ]);
                 $quote->converted_order_id = $order->id;
+                $quote->status = BulkQuoteRequest::STATUS_CONVERTED;
+                $createdOrderId = $order->id;
             }
             $quote->save();
             $quote->messages()->create(['sender' => 'guest', 'kind' => 'decision', 'body' => $decision === 'create_order' ? 'Quotation accepted; create an order.' : 'Quotation accepted without creating an order.']);
@@ -226,6 +229,13 @@ final class BulkQuoteGuestService
         // orders through the SAME idempotent integration manager.
         if ($decision === 'create_order' && $result->converted_order_id) {
             $order = Order::query()->find($result->converted_order_id);
+            if ($order && $createdOrderId === $order->id) {
+                try {
+                    app(\App\Services\Email\TransactionalEmailManager::class)->bulkQuoteConverted($result, $order);
+                } catch (\Throwable $exception) {
+                    report($exception); // The order is valid even if notification delivery is temporarily unavailable.
+                }
+            }
             if ($order && ($order->flowtrack_sync_status !== \App\Services\Integrations\FlowTrack\FlowTrackOrderSyncManager::STATUS_SYNCED
                 || ! $wasLinkedToAccount)) {
                 app(\App\Services\Integrations\FlowTrack\FlowTrackOrderSyncManager::class)->dispatch($order);

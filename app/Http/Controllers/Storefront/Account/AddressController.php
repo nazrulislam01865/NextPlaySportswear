@@ -24,7 +24,6 @@ class AddressController extends Controller
             'account' => $this->accountService->dashboard($request->user()),
             'navigation' => $this->accountService->accountNavigation(),
             'addressBook' => $this->accountService->addressBook($request->user()),
-            'states' => $this->accountService->usStates(),
         ]);
     }
 

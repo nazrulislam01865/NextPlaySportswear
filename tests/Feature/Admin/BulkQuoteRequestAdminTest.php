@@ -256,6 +256,77 @@ class BulkQuoteRequestAdminTest extends TestCase
             ->assertHeader('x-content-type-options', 'nosniff');
     }
 
+    public function test_admin_can_download_word_request_with_visible_customer_artwork(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('bulk-quotes/customer-artwork.png', file_get_contents(public_path('images/logo.png')));
+        $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $quote = $this->quote(['attachment' => [
+            'disk' => 'public',
+            'path' => 'bulk-quotes/customer-artwork.png',
+            'original_name' => 'team-artwork.png',
+            'mime_type' => 'image/png',
+        ]]);
+
+        $response = $this->actingAs($admin, 'admin')->get(route('admin.bulk-quotes.download-document', $quote));
+        $response->assertOk()->assertDownload('NextPlay_Quote_Request_'.$quote->reference.'.docx');
+        $docx = $response->baseResponse->getFile()->getPathname();
+        $archive = new \PharData($docx, 0, null, \Phar::ZIP);
+        $this->assertTrue(isset($archive['word/document.xml']));
+        $this->assertTrue(isset($archive['word/media/image2.png']));
+        $contents = $archive['word/document.xml']->getContent();
+        $this->assertStringContainsString('team-artwork.png', $contents);
+        $this->assertStringContainsString('Embedded Artwork', $contents);
+        unset($archive);
+        @unlink($docx);
+    }
+
+    public function test_word_export_uses_the_uploaded_storefront_header_logo(): void
+    {
+        Storage::fake('public');
+        $logo = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGM86c3/n4GBgYGJAQoAIRICJmxWHWkAAAAASUVORK5CYII=', true);
+        $this->assertIsString($logo);
+        Storage::disk('public')->put('branding/quote-header.png', $logo);
+
+        \App\Models\StorefrontBrandingSetting::query()->create([
+            'logo_path' => 'branding/quote-header.png',
+            'footer_logo_path' => 'branding/different-footer.png',
+        ]);
+        \App\Support\StorefrontBranding::flushCache();
+
+        try {
+            $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+            $quote = $this->quote();
+            $response = $this->actingAs($admin, 'admin')
+                ->get(route('admin.bulk-quotes.download-document', $quote));
+            $response->assertOk()->assertDownload();
+
+            $path = $response->baseResponse->getFile()->getPathname();
+            $archive = new \PharData($path, 0, null, \Phar::ZIP);
+            $this->assertTrue(isset($archive['word/media/image1.png']));
+            $this->assertSame($logo, $archive['word/media/image1.png']->getContent());
+            unset($archive);
+            @unlink($path);
+        } finally {
+            \App\Support\StorefrontBranding::flushCache();
+        }
+    }
+
+    public function test_pdf_export_returns_an_inline_preview_for_supported_artwork(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('bulk-quotes/artwork.pdf', '%PDF-1.4');
+        $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $quote = $this->quote(['attachment' => [
+            'disk' => 'public', 'path' => 'bulk-quotes/artwork.pdf',
+            'original_name' => 'artwork.pdf', 'mime_type' => 'application/pdf',
+        ]]);
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.bulk-quotes.attachment', $quote).'?preview=1')
+            ->assertOk()
+            ->assertHeader('content-disposition', 'inline; filename="artwork.pdf"');
+    }
+
     /** @param array<string,mixed> $overrides */
     private function quote(array $overrides = []): BulkQuoteRequest
     {

@@ -76,9 +76,8 @@
                         <x-storefront.checkout.form-field label="Street address" name="address_line_1" placeholder="Billing street address" :value="$state['billing_address']['address']['address_line_1'] ?? ''" full required />
                         <x-storefront.checkout.form-field label="Apartment / suite" name="address_line_2" placeholder="Optional" :value="$state['billing_address']['address']['address_line_2'] ?? ''" />
                         <x-storefront.checkout.form-field label="City" name="city" placeholder="City" :value="$state['billing_address']['address']['city'] ?? ''" required />
-                        <x-storefront.checkout.form-field label="State / Province" name="state" placeholder="State" :value="$state['billing_address']['address']['state'] ?? ''" required />
                         <x-storefront.checkout.form-field label="ZIP / Postal code" name="postal_code" placeholder="ZIP" :value="$state['billing_address']['address']['postal_code'] ?? ''" required />
-                        <x-storefront.checkout.form-field label="Country" name="country" :value="$state['billing_address']['address']['country'] ?? 'United States'" :options="['United States' => 'United States', 'Canada' => 'Canada']" required />
+                        <x-storefront.address-geography variant="checkout" country-field="country" region-field="state" :country-value="$state['billing_address']['address']['country'] ?? 'United Kingdom'" :region-value="$state['billing_address']['address']['state'] ?? ''" />
                         <x-storefront.checkout.form-field label="Phone" name="phone" type="tel" placeholder="Billing phone" :value="$state['billing_address']['address']['phone'] ?? $state['information']['phone'] ?? ''" />
                         <x-storefront.checkout.form-field label="Email" name="email" type="email" placeholder="Billing email" :value="$state['billing_address']['address']['email'] ?? $state['information']['email'] ?? ''" />
                     </div>

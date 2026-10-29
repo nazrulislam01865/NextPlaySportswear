@@ -1,0 +1,39 @@
+/* Country and region master data only. Inherits NextPlay typography, tokens and buttons. */
+.np-geo-page { font-family: var(--np-font-body, inherit); }
+.np-geo-page .np-geo-toolbar { display:flex; align-items:center; justify-content:flex-end; gap:12px; margin-bottom:16px; }
+.np-geo-page .np-geo-import-form { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.np-geo-page .np-geo-import-file { flex:1 1 320px; min-width:0; padding:14px 16px; border:1px solid #dee5ee; background:#f8fafc; border-radius:12px; }
+.np-geo-page .np-geo-import-label { display:block; margin:0 0 9px; color:var(--admin-theme-text, #10254a); font-size:.82rem; font-weight:700; }
+/* The native input remains focusable and provides real browser file validation;
+   it covers the whole selection surface, so its visual button is always centered. */
+.np-geo-page .np-geo-upload-surface { position:relative; display:flex; align-items:center; justify-content:center; min-width:0; min-height:96px; padding:14px 16px; border:1px dashed #c3d1e3; border-radius:9px; background:#fff; transition:border-color .15s ease, background-color .15s ease; }
+.np-geo-page .np-geo-upload-surface:hover { border-color:var(--np-color-secondary, #d35a36); background:#fffdfb; }
+.np-geo-page .np-geo-upload-surface:focus-within { outline:2px solid var(--np-color-secondary, #d35a36); outline-offset:2px; }
+.np-geo-page .np-geo-upload-surface.has-file { border-style:solid; border-color:#9ab9a4; background:#fbfefc; }
+.np-geo-page input.np-geo-file-input { position:absolute !important; inset:0 !important; z-index:2; display:block !important; box-sizing:border-box !important; width:100% !important; height:100% !important; margin:0 !important; padding:0 !important; opacity:0 !important; cursor:pointer; }
+.np-geo-page .np-geo-upload-content { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-width:0; width:100%; text-align:center; pointer-events:none; }
+.np-geo-page .np-geo-upload-button { flex:0 0 auto; min-height:36px; padding-inline:17px; font-family:var(--np-font-body, inherit); white-space:nowrap; }
+.np-geo-page .np-geo-selected-file { display:block; width:100%; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#64748b; font-size:.8rem; line-height:1.35; }
+.np-geo-page .np-geo-upload-surface.has-file .np-geo-selected-file { color:var(--admin-theme-text, #10254a); font-weight:600; }
+.np-geo-page .np-geo-file-hint { display:block; margin-top:8px; color:#64748b; font-size:.75rem; line-height:1.35; text-align:center; }
+.np-geo-page .np-geo-import-actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:9px; }
+.np-geo-page .np-geo-import-actions .btn { min-width:110px; }
+.np-geo-page .np-geo-field-grid { display:grid; grid-template-columns:minmax(0,2fr) minmax(120px,1fr) minmax(100px,.65fr) auto; align-items:end; gap:12px; }
+.np-geo-page .np-geo-field-grid .admin-label { min-width:0; }
+.np-geo-page .np-geo-field-grid .btn { white-space:nowrap; }
+.np-geo-page .np-geo-section { margin-bottom:16px; }
+.np-geo-page .np-geo-section .admin-section-card__header { margin-bottom:16px; padding-bottom:12px; }
+.np-geo-page .np-geo-inline-error { margin:8px 0 0; color:#b91c1c; font-size:.83rem; font-weight:600; }
+.np-geo-page .np-geo-table-wrap { margin-top:18px; }
+.np-geo-page .np-geo-empty { padding:30px 18px; color:#64748b; text-align:center; }
+.np-geo-page .np-geo-card-toolbar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+.np-geo-page .np-geo-card-title { color:#10254a; font-size:1rem; font-weight:750; }
+@media (max-width: 840px) { .np-geo-page .np-geo-field-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .np-geo-page .np-geo-field-grid .btn { width:100%; } }
+@media (max-width: 560px) { .np-geo-page .np-geo-field-grid { grid-template-columns:minmax(0,1fr); } .np-geo-page .np-geo-import-file { flex-basis:100%; padding:12px; } .np-geo-page .np-geo-upload-surface { min-height:90px; } .np-geo-page .np-geo-import-actions, .np-geo-page .np-geo-import-actions .btn { width:100%; } }
+.np-geo-page .np-geo-more-menu summary { list-style:none; user-select:none; }
+.np-geo-page .np-geo-more-menu summary::-webkit-details-marker { display:none; }
+.np-geo-page .np-geo-more-menu[open] { z-index:40; }
+.np-geo-page .np-geo-more-menu[open] summary { background:#f8fafc; }
+/* Allow the action dropdown to escape its table wrapper while retaining horizontal scroll. */
+.np-geo-page .np-geo-table-shell:has(.np-geo-more-menu[open]) { overflow:visible; }
+.np-geo-page .admin-table-scroll:has(.np-geo-more-menu[open]) { overflow:visible; }

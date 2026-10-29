@@ -7,6 +7,9 @@ return [
 
     'email' => env('STOREFRONT_EMAIL', 'support@example.com'),
 
+    'address' => env('STOREFRONT_ADDRESS', ''),
+    'phone' => env('STOREFRONT_PHONE', env('STOREFRONT_WHATSAPP', '')), 
+
     'whatsapp' => env('STOREFRONT_WHATSAPP', '+1 000 000 0000'),
 
     'whatsapp_url' => env('STOREFRONT_WHATSAPP_URL'),

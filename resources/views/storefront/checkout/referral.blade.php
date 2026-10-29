@@ -36,8 +36,7 @@
                             <label class="np-referral-field">Apartment, suite, etc. (optional)<input type="text" name="address_line_2" value="{{ old('address_line_2', $shipping['address_line_2'] ?? '') }}" placeholder="Apartment, suite, etc." autocomplete="address-line2"></label>
                             <label class="np-referral-field">City / Town <span>*</span><input type="text" name="city" value="{{ old('city', $shipping['city'] ?? '') }}" placeholder="City or town" autocomplete="address-level2" required></label>
                             <label class="np-referral-field">Postcode <span>*</span><input type="text" name="postal_code" value="{{ old('postal_code', $shipping['postal_code'] ?? '') }}" placeholder="Postcode" autocomplete="postal-code" required></label>
-                            <label class="np-referral-field">County / State<input type="text" name="state" value="{{ old('state', $shipping['state'] ?? '') }}" placeholder="County or state" autocomplete="address-level1"></label>
-                            <label class="np-referral-field">Country <span>*</span><select name="country" autocomplete="country-name" required>@foreach (['United Kingdom', 'United States', 'Canada', 'Australia', 'New Zealand'] as $country)<option value="{{ $country }}" @selected(old('country', $shipping['country'] ?? 'United Kingdom') === $country)>{{ $country }}</option>@endforeach</select></label>
+                            <x-storefront.address-geography variant="referral" country-field="country" region-field="state" :country-value="old('country', $shipping['country'] ?? 'United Kingdom')" :region-value="old('state', $shipping['state'] ?? '')" />
                         </div>
                     </section>
 
@@ -78,8 +77,7 @@
                                 <label class="np-referral-field">Address line 2<input type="text" name="billing_address_line_2" value="{{ old('billing_address_line_2') }}"></label>
                                 <label class="np-referral-field">City / Town <span>*</span><input type="text" name="billing_city" value="{{ old('billing_city') }}"></label>
                                 <label class="np-referral-field">Postcode <span>*</span><input type="text" name="billing_postal_code" value="{{ old('billing_postal_code') }}"></label>
-                                <label class="np-referral-field">County / State<input type="text" name="billing_state" value="{{ old('billing_state') }}"></label>
-                                <label class="np-referral-field">Country <span>*</span><select name="billing_country">@foreach (['United Kingdom', 'United States', 'Canada', 'Australia', 'New Zealand'] as $country)<option value="{{ $country }}" @selected(old('billing_country', 'United Kingdom') === $country)>{{ $country }}</option>@endforeach</select></label>
+                            <x-storefront.address-geography variant="referral" country-field="billing_country" region-field="billing_state" :country-value="old('billing_country', 'United Kingdom')" :region-value="old('billing_state', '')" />
                             </div>
                         </div>
                     </section>

@@ -375,6 +375,59 @@ final class TransactionalEmailManager
         );
     }
 
+    /** Only called when a customer actually creates a new order from a published quote. */
+    public function bulkQuoteConverted(BulkQuoteRequest $quote, Order $order): void
+    {
+        $order->loadMissing('items');
+        $quotationFiles = $quote->quoteFiles()
+            ->where('category', 'quotation')
+            ->where('version', $quote->quotation_version)
+            ->orderBy('id')
+            ->get(['path', 'original_name', 'mime_type']);
+
+        $attachments = [[
+            'type' => 'data',
+            'name' => 'Order-Details-'.$order->order_number.'.pdf',
+            'mime' => 'application/pdf',
+            'data' => app(\App\Services\Order\OrderPdfService::class)->orderDetails($order, $quote),
+        ]];
+        foreach ($quotationFiles as $file) {
+            $attachments[] = [
+                'type' => 'storage', 'disk' => 'local', 'path' => $file->path,
+                'name' => basename(str_replace('\\', '/', $file->original_name)),
+                'mime' => $file->mime_type ?: 'application/octet-stream',
+            ];
+        }
+
+        $this->emails->safelyQueue(new EmailMessage(
+            key: 'quote.customer-converted-order',
+            recipients: $this->customerRecipient($order->customer_email, $order->customer_name),
+            subject: 'Your NextPlay order '.$order->order_number.' has been created',
+            heading: 'Your quotation has become an order',
+            introLines: [
+                'Your quotation '.$quote->reference.' has been converted to order '.$order->order_number.'. Payment is still pending.',
+                'Your order details PDF and quotation documents are attached.',
+                'For public tracking, open '.route('orders.track').' and verify using your order number and email address.',
+            ],
+            details: [
+                'Quotation Reference' => $quote->reference,
+                'Order Number' => $order->order_number,
+                'Product' => $quote->product_type,
+                'Quantity' => (string) $order->total_quantity,
+                'Shipping Method' => (string) (data_get($order->shipping_method, 'name') ?: $quote->preferredShippingMethodLabel()),
+                'Order Total' => $this->money($order->grand_total, $order->currency),
+                'Payment Status' => $order->paymentStatusLabel(),
+                'Order Status' => $order->statusLabel(),
+                'Track Order' => route('orders.track'),
+            ],
+            actionText: 'View Order & Tracking',
+            actionUrl: route('account.orders.show', $order),
+            outroLines: ['Your invoice and payment instructions will follow from our team as applicable.'],
+            metadata: ['order_id' => $order->id, 'bulk_quote_request_id' => $quote->id],
+            attachments: $attachments,
+        ));
+    }
+
     public function orderPlaced(Order $order): void
     {
         $order->loadMissing('items');

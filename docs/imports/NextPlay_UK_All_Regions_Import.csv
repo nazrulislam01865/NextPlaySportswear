@@ -1,0 +1,219 @@
+﻿name,code,sort_order,is_active
+Barking and Dagenham,GB-BDG,10,1
+Barnet,GB-BNE,20,1
+Barnsley,GB-BNS,30,1
+Bath and North East Somerset,GB-BAS,40,1
+Bedford,GB-BDF,50,1
+Bexley,GB-BEX,60,1
+Birmingham,GB-BIR,70,1
+Blackburn with Darwen,GB-BBD,80,1
+Blackpool,GB-BPL,90,1
+Bolton,GB-BOL,100,1
+"Bournemouth, Christchurch and Poole",GB-BCP,110,1
+Bracknell Forest,GB-BRC,120,1
+Bradford,GB-BRD,130,1
+Brent,GB-BEN,140,1
+Brighton and Hove,GB-BNH,150,1
+"Bristol, City of",GB-BST,160,1
+Bromley,GB-BRY,170,1
+Buckinghamshire,GB-BKM,180,1
+Bury,GB-BUR,190,1
+Calderdale,GB-CLD,200,1
+Cambridgeshire,GB-CAM,210,1
+Camden,GB-CMD,220,1
+Central Bedfordshire,GB-CBF,230,1
+Cheshire East,GB-CHE,240,1
+Cheshire West and Chester,GB-CHW,250,1
+Cornwall,GB-CON,260,1
+Coventry,GB-COV,270,1
+Croydon,GB-CRY,280,1
+Cumberland,,290,1
+Darlington,GB-DAL,300,1
+Derby,GB-DER,310,1
+Derbyshire,GB-DBY,320,1
+Devon,GB-DEV,330,1
+Doncaster,GB-DNC,340,1
+Dorset,GB-DOR,350,1
+Dudley,GB-DUD,360,1
+"Durham, County",GB-DUR,370,1
+Ealing,GB-EAL,380,1
+East Riding of Yorkshire,GB-ERY,390,1
+East Sussex,GB-ESX,400,1
+Enfield,GB-ENF,410,1
+Essex,GB-ESS,420,1
+Gateshead,GB-GAT,430,1
+Gloucestershire,GB-GLS,440,1
+Greenwich,GB-GRE,450,1
+Hackney,GB-HCK,460,1
+Halton,GB-HAL,470,1
+Hammersmith and Fulham,GB-HMF,480,1
+Hampshire,GB-HAM,490,1
+Haringey,GB-HRY,500,1
+Harrow,GB-HRW,510,1
+Hartlepool,GB-HPL,520,1
+Havering,GB-HAV,530,1
+Herefordshire,GB-HEF,540,1
+Hertfordshire,GB-HRT,550,1
+Hillingdon,GB-HIL,560,1
+Hounslow,GB-HNS,570,1
+Isle of Wight,GB-IOW,580,1
+Isles of Scilly,GB-IOS,590,1
+Islington,GB-ISL,600,1
+Kensington and Chelsea,GB-KEC,610,1
+Kent,GB-KEN,620,1
+Kingston upon Hull,GB-KHL,630,1
+Kingston upon Thames,GB-KTT,640,1
+Kirklees,GB-KIR,650,1
+Knowsley,GB-KWL,660,1
+Lambeth,GB-LBH,670,1
+Lancashire,GB-LAN,680,1
+Leeds,GB-LDS,690,1
+Leicester,GB-LCE,700,1
+Leicestershire,GB-LEC,710,1
+Lewisham,GB-LEW,720,1
+Lincolnshire,GB-LIN,730,1
+Liverpool,GB-LIV,740,1
+"London, City of",GB-LND,750,1
+Luton,GB-LUT,760,1
+Manchester,GB-MAN,770,1
+Medway,GB-MDW,780,1
+Merton,GB-MRT,790,1
+Middlesbrough,GB-MDB,800,1
+Milton Keynes,GB-MIK,810,1
+Newcastle upon Tyne,GB-NET,820,1
+Newham,GB-NWM,830,1
+Norfolk,GB-NFK,840,1
+North East Lincolnshire,GB-NEL,850,1
+North Lincolnshire,GB-NLN,860,1
+North Northamptonshire,GB-NNH,870,1
+North Somerset,GB-NSM,880,1
+North Tyneside,GB-NTY,890,1
+North Yorkshire,GB-NYK,900,1
+Northumberland,GB-NBL,910,1
+Nottingham,GB-NGM,920,1
+Nottinghamshire,GB-NTT,930,1
+Oldham,GB-OLD,940,1
+Oxfordshire,GB-OXF,950,1
+Peterborough,GB-PTE,960,1
+Plymouth,GB-PLY,970,1
+Portsmouth,GB-POR,980,1
+Reading,GB-RDG,990,1
+Redbridge,GB-RDB,1000,1
+Redcar and Cleveland,GB-RCC,1010,1
+Richmond upon Thames,GB-RIC,1020,1
+Rochdale,GB-RCH,1030,1
+Rotherham,GB-ROT,1040,1
+Rutland,GB-RUT,1050,1
+Salford,GB-SLF,1060,1
+Sandwell,GB-SAW,1070,1
+Sefton,GB-SFT,1080,1
+Sheffield,GB-SHF,1090,1
+Shropshire,GB-SHR,1100,1
+Slough,GB-SLG,1110,1
+Solihull,GB-SOL,1120,1
+Somerset,GB-SOM,1130,1
+South Gloucestershire,GB-SGC,1140,1
+South Tyneside,GB-STY,1150,1
+Southampton,GB-STH,1160,1
+Southend-on-Sea,GB-SOS,1170,1
+Southwark,GB-SWK,1180,1
+St. Helens,GB-SHN,1190,1
+Staffordshire,GB-STS,1200,1
+Stockport,GB-SKP,1210,1
+Stockton-on-Tees,GB-STT,1220,1
+Stoke-on-Trent,GB-STE,1230,1
+Suffolk,GB-SFK,1240,1
+Sunderland,GB-SND,1250,1
+Surrey,GB-SRY,1260,1
+Sutton,GB-STN,1270,1
+Swindon,GB-SWD,1280,1
+Tameside,GB-TAM,1290,1
+Telford and Wrekin,GB-TFW,1300,1
+Thurrock,GB-THR,1310,1
+Torbay,GB-TOB,1320,1
+Tower Hamlets,GB-TWH,1330,1
+Trafford,GB-TRF,1340,1
+Wakefield,GB-WKF,1350,1
+Walsall,GB-WLL,1360,1
+Waltham Forest,GB-WFT,1370,1
+Wandsworth,GB-WND,1380,1
+Warrington,GB-WRT,1390,1
+Warwickshire,GB-WAR,1400,1
+West Berkshire,GB-WBK,1410,1
+West Northamptonshire,GB-WNH,1420,1
+West Sussex,GB-WSX,1430,1
+Westminster,GB-WSM,1440,1
+Westmorland and Furness,,1450,1
+Wigan,GB-WGN,1460,1
+Wiltshire,GB-WIL,1470,1
+Windsor and Maidenhead,GB-WNM,1480,1
+Wirral,GB-WRL,1490,1
+Wokingham,GB-WOK,1500,1
+Wolverhampton,GB-WLV,1510,1
+Worcestershire,GB-WOR,1520,1
+York,GB-YOR,1530,1
+Aberdeen City,GB-ABE,1540,1
+Aberdeenshire,GB-ABD,1550,1
+Angus,GB-ANS,1560,1
+Argyll and Bute,GB-AGB,1570,1
+Clackmannanshire,GB-CLK,1580,1
+Dumfries and Galloway,GB-DGY,1590,1
+Dundee City,GB-DND,1600,1
+East Ayrshire,GB-EAY,1610,1
+East Dunbartonshire,GB-EDU,1620,1
+East Lothian,GB-ELN,1630,1
+East Renfrewshire,GB-ERW,1640,1
+"Edinburgh, City of",GB-EDH,1650,1
+Eilean Siar,GB-ELS,1660,1
+Falkirk,GB-FAL,1670,1
+Fife,GB-FIF,1680,1
+Glasgow City,GB-GLG,1690,1
+Highland,GB-HLD,1700,1
+Inverclyde,GB-IVC,1710,1
+Midlothian,GB-MLN,1720,1
+Moray,GB-MRY,1730,1
+North Ayrshire,GB-NAY,1740,1
+North Lanarkshire,GB-NLK,1750,1
+Orkney Islands,GB-ORK,1760,1
+Perth and Kinross,GB-PKN,1770,1
+Renfrewshire,GB-RFW,1780,1
+Scottish Borders,GB-SCB,1790,1
+Shetland Islands,GB-ZET,1800,1
+South Ayrshire,GB-SAY,1810,1
+South Lanarkshire,GB-SLK,1820,1
+Stirling,GB-STG,1830,1
+West Dunbartonshire,GB-WDU,1840,1
+West Lothian,GB-WLN,1850,1
+Blaenau Gwent,GB-BGW,1860,1
+Bridgend,GB-BGE,1870,1
+Caerphilly,GB-CAY,1880,1
+Cardiff,GB-CRF,1890,1
+Carmarthenshire,GB-CMN,1900,1
+Ceredigion,GB-CGN,1910,1
+Conwy,GB-CWY,1920,1
+Denbighshire,GB-DEN,1930,1
+Flintshire,GB-FLN,1940,1
+Gwynedd,GB-GWN,1950,1
+Isle of Anglesey,GB-AGY,1960,1
+Merthyr Tydfil,GB-MTY,1970,1
+Monmouthshire,GB-MON,1980,1
+Neath Port Talbot,GB-NTL,1990,1
+Newport,GB-NWP,2000,1
+Pembrokeshire,GB-PEM,2010,1
+Powys,GB-POW,2020,1
+Rhondda Cynon Taf,GB-RCT,2030,1
+Swansea,GB-SWA,2040,1
+Torfaen,GB-TOF,2050,1
+Vale of Glamorgan,GB-VGL,2060,1
+Wrexham,GB-WRX,2070,1
+Antrim and Newtownabbey,GB-ANN,2080,1
+Ards and North Down,GB-AND,2090,1
+"Armagh City, Banbridge and Craigavon",GB-ABC,2100,1
+Belfast City,GB-BFS,2110,1
+Causeway Coast and Glens,GB-CCG,2120,1
+Derry and Strabane,GB-DRS,2130,1
+Fermanagh and Omagh,GB-FMO,2140,1
+Lisburn and Castlereagh,GB-LBC,2150,1
+Mid and East Antrim,GB-MEA,2160,1
+Mid Ulster,GB-MUL,2170,1
+"Newry, Mourne and Down",GB-NMD,2180,1

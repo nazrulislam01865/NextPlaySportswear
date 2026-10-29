@@ -29,8 +29,6 @@ class ShippingAddressRequest extends FormRequest
     public function rules(): array
     {
         $usingSaved = $this->input('address_choice') === 'saved';
-        $country = (string) $this->input('country', 'United States');
-        $stateRequired = ! $usingSaved && in_array($country, ['United States', 'Canada'], true);
 
         return [
             'address_choice' => ['required', Rule::in(['saved', 'new'])],
@@ -47,8 +45,8 @@ class ShippingAddressRequest extends FormRequest
             'address_line_1' => [$usingSaved ? 'nullable' : 'required', 'string', 'min:4', 'max:190'],
             'address_line_2' => ['nullable', 'string', 'max:190'],
             'city' => [$usingSaved ? 'nullable' : 'required', 'string', 'min:2', 'max:120'],
-            'state' => [$stateRequired ? 'required' : 'nullable', 'string', 'max:120'],
-            'country' => [$usingSaved ? 'nullable' : 'required', 'string', 'max:120'],
+            'state' => ['nullable', 'string', 'max:120'],
+            'country' => [$usingSaved ? 'nullable' : 'required', 'string', 'max:120', Rule::exists('country_calling_codes', 'country_name')->where('is_active', true)],
             'postal_code' => [$usingSaved ? 'nullable' : 'required', 'string', 'max:30', 'regex:/^[A-Za-z0-9\-\s]{3,30}$/'],
             'phone' => [$usingSaved ? 'nullable' : 'required', 'string', 'max:40', 'regex:/^[0-9+\-\s().]{7,40}$/'],
             'email' => ['nullable', 'email:rfc', 'max:255'],

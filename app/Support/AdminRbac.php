@@ -505,6 +505,8 @@ class AdminRbac
             'artwork-preferences' => 'customization',
             'genders' => 'products',
             'country-calling-codes' => 'orders',
+            'country-geography' => 'orders',
+            'country-regions' => 'orders',
             'bulk-quote-budget-ranges' => 'orders',
             'time-zones' => 'coupons',
             'rural-area-surcharges' => 'rural_surcharges',

@@ -250,22 +250,7 @@
                             <x-storefront.bulk-quote.field-error name="shipping_address" />
                         </div>
 
-                        <div class="bulk-quote-field bulk-quote-half">
-                            <label for="bulk-country">Country <span class="bulk-quote-req">*</span></label>
-                            <select id="bulk-country" name="country" required aria-invalid="{{ $errors->has('country') ? 'true' : 'false' }}">
-                                <option value="">Select country</option>
-                                @foreach(['United States', 'Canada', 'United Kingdom', 'Australia', 'Other'] as $country)
-                                    <option value="{{ $country }}" @selected(old('country') === $country)>{{ $country }}</option>
-                                @endforeach
-                            </select>
-                            <x-storefront.bulk-quote.field-error name="country" />
-                        </div>
-
-                        <div class="bulk-quote-field bulk-quote-half">
-                            <label for="bulk-state">State / Province</label>
-                            <input id="bulk-state" name="state_province" value="{{ old('state_province') }}" maxlength="120" placeholder="Select state or province" aria-invalid="{{ $errors->has('state_province') ? 'true' : 'false' }}">
-                            <x-storefront.bulk-quote.field-error name="state_province" />
-                        </div>
+                        <x-storefront.address-geography variant="bulk" country-field="country" region-field="state_province" :country-value="'United Kingdom'" />
 
                         <div class="bulk-quote-field bulk-quote-quarter">
                             <label for="bulk-postal-code">ZIP / Postal Code</label>

@@ -26,7 +26,7 @@ class StoreAddressRequest extends FormRequest
             'address_line_2' => ['nullable', 'string', 'max:190'],
             'city' => ['required', 'string', 'min:2', 'max:120'],
             'state' => ['nullable', 'string', 'max:120'],
-            'country' => ['required', 'string', 'max:120'],
+            'country' => ['required', 'string', 'max:120', Rule::exists('country_calling_codes', 'country_name')->where('is_active', true)],
             'postal_code' => ['required', 'string', 'max:30', 'regex:/^[A-Za-z0-9\-\s]{3,30}$/'],
             'phone' => ['nullable', 'string', 'max:40', 'regex:/^[0-9+\-\s().]{7,40}$/'],
             'email' => ['nullable', 'email:rfc', 'max:255'],

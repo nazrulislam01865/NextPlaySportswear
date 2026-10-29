@@ -39,6 +39,8 @@ Route::get('/referral/{token}', [ReferralOfferController::class, 'show'])
 Route::get('/homepage/latest-products', [HomeController::class, 'latestProducts'])
     ->middleware('throttle:120,1')
     ->name('home.latest-products');
+Route::get('/address-regions/{iso}', \App\Http\Controllers\Storefront\AddressRegionsController::class)
+    ->middleware('throttle:90,1')->name('address.regions');
 Route::get('/sitemap.xml', \App\Http\Controllers\Storefront\SitemapController::class)->name('sitemap');
 Route::post('/products/visitor-activity', [ProductActivityController::class, 'track'])
     ->middleware('throttle:120,1')
@@ -319,6 +321,14 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
             ->except('show');
         Route::resource('genders', \App\Http\Controllers\Admin\GenderController::class)
             ->except('show');
+        Route::get('country-geography/import-template', [\App\Http\Controllers\Admin\CountryGeographyImportController::class, 'template'])->name('country-geography.template');
+        Route::post('country-geography/import', [\App\Http\Controllers\Admin\CountryGeographyImportController::class, 'store'])->middleware('throttle:5,1')->name('country-geography.import');
+        Route::get('country-calling-codes/{countryCallingCode}/regions', [\App\Http\Controllers\Admin\CountryRegionController::class, 'index'])->name('country-regions.index');
+        Route::get('country-calling-codes/{countryCallingCode}/regions/import-template', [\App\Http\Controllers\Admin\CountryRegionImportController::class, 'template'])->name('country-regions.import-template');
+        Route::post('country-calling-codes/{countryCallingCode}/regions/import', [\App\Http\Controllers\Admin\CountryRegionImportController::class, 'store'])->middleware('throttle:5,1')->name('country-regions.import');
+        Route::post('country-calling-codes/{countryCallingCode}/regions', [\App\Http\Controllers\Admin\CountryRegionController::class, 'store'])->name('country-regions.store');
+        Route::put('country-calling-codes/{countryCallingCode}/regions/{region}', [\App\Http\Controllers\Admin\CountryRegionController::class, 'update'])->name('country-regions.update');
+        Route::delete('country-calling-codes/{countryCallingCode}/regions/{region}', [\App\Http\Controllers\Admin\CountryRegionController::class, 'destroy'])->name('country-regions.destroy');
         Route::post('country-calling-codes/quick-store', [\App\Http\Controllers\Admin\CountryCallingCodeController::class, 'quickStore'])
             ->name('country-calling-codes.quick-store');
         Route::resource('country-calling-codes', \App\Http\Controllers\Admin\CountryCallingCodeController::class)
@@ -369,6 +379,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::group([], function (): void {
             Route::get('/bulk-quotes', [\App\Http\Controllers\Admin\BulkQuoteRequestController::class, 'index'])->name('bulk-quotes.index');
             Route::get('/bulk-quotes/{bulkQuote}', [\App\Http\Controllers\Admin\BulkQuoteRequestController::class, 'show'])->name('bulk-quotes.show');
+            Route::get('/bulk-quotes/{bulkQuote}/request-document', [\App\Http\Controllers\Admin\BulkQuoteRequestController::class, 'downloadDocument'])->name('bulk-quotes.download-document');
             Route::get('/bulk-quotes/{bulkQuote}/attachment', [\App\Http\Controllers\Admin\BulkQuoteRequestController::class, 'attachment'])->name('bulk-quotes.attachment');
             Route::patch('/bulk-quotes/{bulkQuote}', [\App\Http\Controllers\Admin\BulkQuoteRequestController::class, 'update'])
                 ->middleware('throttle:20,1')

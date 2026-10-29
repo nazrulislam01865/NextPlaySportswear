@@ -35,8 +35,6 @@ class BillingAddressRequest extends FormRequest
     {
         $same = $this->boolean('same_as_shipping');
         $usingSaved = $this->input('address_choice') === 'saved';
-        $country = (string) $this->input('country', 'United States');
-        $stateRequired = ! $same && ! $usingSaved && in_array($country, ['United States', 'Canada'], true);
 
         return [
             'same_as_shipping' => ['nullable', 'boolean'],
@@ -54,8 +52,8 @@ class BillingAddressRequest extends FormRequest
             'address_line_1' => [$same || $usingSaved ? 'exclude' : 'required', 'string', 'min:4', 'max:190'],
             'address_line_2' => [$same || $usingSaved ? 'exclude' : 'nullable', 'string', 'max:190'],
             'city' => [$same || $usingSaved ? 'exclude' : 'required', 'string', 'min:2', 'max:120'],
-            'state' => [$same || $usingSaved ? 'exclude' : ($stateRequired ? 'required' : 'nullable'), 'string', 'max:120'],
-            'country' => [$same || $usingSaved ? 'exclude' : 'required', 'string', 'max:120'],
+            'state' => [$same || $usingSaved ? 'exclude' : 'nullable', 'string', 'max:120'],
+            'country' => [$same || $usingSaved ? 'exclude' : 'required', 'string', 'max:120', Rule::exists('country_calling_codes', 'country_name')->where('is_active', true)],
             'postal_code' => [$same || $usingSaved ? 'exclude' : 'required', 'string', 'max:30', 'regex:/^[A-Za-z0-9\-\s]{3,30}$/'],
             'phone' => [$same || $usingSaved ? 'exclude' : 'nullable', 'string', 'max:40', 'regex:/^[0-9+\-\s().]{7,40}$/'],
             'email' => [$same || $usingSaved ? 'exclude' : 'nullable', 'email:rfc', 'max:255'],
