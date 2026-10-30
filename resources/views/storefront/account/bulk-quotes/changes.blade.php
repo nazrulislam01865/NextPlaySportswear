@@ -13,7 +13,7 @@
                 <x-storefront.account.bulk-quote.conversation :quote="$quote" :messages="$messages" />
             </div>
             <section class="np-rq-card np-rq-changes-form"><h2>Request Quotation Changes</h2><p class="np-rq-card-subtitle">Tell NextPlay which details should be revised. No order will be created by sending this request.</p>
-                <form method="POST" action="{{ route('account.bulk-quotes.changes.send', $quote->reference) }}" enctype="multipart/form-data" data-single-submit>
+                <form class="nps-form" method="POST" action="{{ route('account.bulk-quotes.changes.send', $quote->reference) }}" enctype="multipart/form-data" data-single-submit>
                     @csrf
                     <fieldset><legend>What would you like to change? <span class="np-rq-required">*</span></legend><p class="np-rq-card-subtitle">Select all that apply.</p>
                         <div class="np-rq-check-grid">

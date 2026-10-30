@@ -120,6 +120,7 @@
     @if(request()->routeIs('quote.request'))
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-product.css') }}?v=20261030g">
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-redesign.css') }}?v=20261030i">
+        <link rel="stylesheet" href="{{ asset('css/bulk-quote-form-system.css') }}?v=20261030c">
     @endif
 </head>
 <body

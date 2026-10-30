@@ -85,6 +85,13 @@
     --np-font-weight-bold: 700;
     --np-font-weight-black: 900;
 
+    /* Customer authentication and header previews follow the 14px nav type.
+       Display headings remain no larger than the storefront wordmark. */
+    --np-customer-ui-text-size: var(--np-body-2-size);
+    --np-customer-ui-title-size: 40px;
+    --np-customer-ui-title-mobile-size: 30px;
+    --np-customer-ui-heading-weight: var(--np-font-weight-black);
+
     /* Approved typography scale. All tracking is zero. */
     --np-title-1-size: 48px;
     --np-title-1-weight: 900;

@@ -32,8 +32,8 @@ class CustomerPasswordResetTest extends TestCase
     {
         $this->get(route('password.request'))
             ->assertOk()
-            ->assertSee('Reset your password')
-            ->assertSee('Send Password Reset Link');
+            ->assertSee('Forgot password?')
+            ->assertSee('Send reset link');
     }
 
     public function test_active_customer_can_request_a_password_reset_link(): void
@@ -105,11 +105,11 @@ class CustomerPasswordResetTest extends TestCase
             'email' => $customer->email,
         ]))
             ->assertOk()
-            ->assertSee('Choose a new password')
+            ->assertSee('Set a new password')
             ->assertSee($customer->email)
             ->assertSee('name="password_confirmation"', false)
-            ->assertSee('aria-controls="password"', false)
-            ->assertSee('aria-controls="password_confirmation"', false);
+            ->assertSee('data-password-visibility="reset-password"', false)
+            ->assertSee('data-password-visibility="reset-confirm-password"', false);
     }
 
     public function test_invalid_or_expired_reset_link_is_rejected_before_showing_the_form(): void
@@ -167,15 +167,15 @@ class CustomerPasswordResetTest extends TestCase
         $this->post(route('password.store'), [
             'token' => $token,
             'email' => $customer->email,
-            'password' => 'NewPassword123',
-            'password_confirmation' => 'NewPassword123',
+            'password' => 'NewPassword123!',
+            'password_confirmation' => 'NewPassword123!',
         ])
             ->assertRedirect(route('login'))
             ->assertSessionHas('status');
 
         $customer->refresh();
 
-        $this->assertTrue(Hash::check('NewPassword123', $customer->password));
+        $this->assertTrue(Hash::check('NewPassword123!', $customer->password));
         $this->assertNotSame($oldRememberToken, $customer->remember_token);
         $this->assertSame(1, (int) $customer->auth_session_version);
         $this->assertDatabaseMissing('password_reset_tokens', [
@@ -203,8 +203,8 @@ class CustomerPasswordResetTest extends TestCase
         $payload = [
             'token' => $token,
             'email' => $customer->email,
-            'password' => 'NewPassword123',
-            'password_confirmation' => 'NewPassword123',
+            'password' => 'NewPassword123!',
+            'password_confirmation' => 'NewPassword123!',
         ];
 
         $this->post(route('password.store'), $payload)
@@ -212,11 +212,46 @@ class CustomerPasswordResetTest extends TestCase
 
         $this->post(route('password.store'), [
             ...$payload,
-            'password' => 'AnotherPassword456',
-            'password_confirmation' => 'AnotherPassword456',
+            'password' => 'AnotherPassword456!',
+            'password_confirmation' => 'AnotherPassword456!',
         ])->assertSessionHasErrors('email');
 
-        $this->assertTrue(Hash::check('NewPassword123', $customer->fresh()->password));
+        $this->assertTrue(Hash::check('NewPassword123!', $customer->fresh()->password));
+    }
+
+    public function test_password_reset_requires_a_special_character_and_does_not_consume_token_on_validation_failure(): void
+    {
+        $customer = User::factory()->create(['role' => 'customer', 'is_active' => true]);
+        $token = Password::broker('users')->createToken($customer);
+
+        $this->post(route('password.store'), [
+            'token' => $token,
+            'email' => $customer->email,
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
+        ])->assertSessionHasErrors('password');
+
+        $this->assertTrue(Password::broker('users')->tokenExists($customer, $token));
+    }
+
+    public function test_reset_mail_uses_prototype_layout_with_customer_name_and_one_time_link(): void
+    {
+        $message = new \App\Data\EmailMessage(
+            key: 'customer.password-reset',
+            recipients: [['email' => 'alex@example.com', 'name' => 'Alex Taylor']],
+            subject: 'Reset your NextPlay Sportswear password',
+            heading: 'Reset your password',
+            actionText: 'Reset password',
+            actionUrl: 'https://example.com/reset-password/test-token?email=alex%40example.com',
+        );
+        $mail = new \App\Mail\TransactionalEmail($message);
+        $this->assertSame('emails.customer-password-reset', $mail->content()->view);
+
+        $html = view('emails.customer-password-reset', ['emailMessage' => $message])->render();
+        $this->assertStringContainsString('Hi Alex,', $html);
+        $this->assertStringContainsString('Didn’t request this?', $html);
+        $this->assertStringContainsString('reset-password/test-token', $html);
+        $this->assertStringContainsString('15 minutes', $html);
     }
 
     public function test_weak_or_mismatched_password_is_not_accepted(): void

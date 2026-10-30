@@ -19,7 +19,7 @@
             @if (session('status'))<div class="np-referral-form-alert np-referral-form-alert--success">{{ session('status') }}</div>@endif
             @if ($errors->any())<div class="np-referral-form-alert">{{ $errors->first() }}</div>@endif
 
-            <form method="POST" action="{{ route('checkout.referral.store') }}" class="np-referral-checkout-grid" novalidate data-single-submit>
+            <form method="POST" action="{{ route('checkout.referral.store') }}" class="nps-form np-referral-checkout-grid" novalidate data-single-submit>
                 @csrf
                 <div class="np-referral-checkout-main">
                     <section class="np-referral-checkout-panel">

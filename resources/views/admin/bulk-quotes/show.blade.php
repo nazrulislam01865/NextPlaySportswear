@@ -129,8 +129,12 @@
                                 <div class="np-bq-extra-fields">
                                     <strong>Selected Product Information</strong>
                                     <div class="np-bq-extra-fields-list">
-                        <x-admin.bulk-quote-field label="Product">{{ $productInfo['product_name'] ?? '—' }}</x-admin.bulk-quote-field>
-                        <x-admin.bulk-quote-field label="SKU">{{ $productInfo['sku'] ?? '—' }}</x-admin.bulk-quote-field>
+                        @if(filled($productInfo['product_name'] ?? null))
+                            <x-admin.bulk-quote-field label="Product">{{ $productInfo['product_name'] }}</x-admin.bulk-quote-field>
+                        @endif
+                        @if(filled($productInfo['sku'] ?? null))
+                            <x-admin.bulk-quote-field label="SKU">{{ $productInfo['sku'] }}</x-admin.bulk-quote-field>
+                        @endif
                         @foreach(($productInfo['options'] ?? []) as $option)
                             <x-admin.bulk-quote-field :label="$option['label'] ?? 'Option'">{{ implode(', ', (array) ($option['values'] ?? [$option['value'] ?? '—'])) }}</x-admin.bulk-quote-field>
                         @endforeach
@@ -140,6 +144,9 @@
                         @if(filled($productInfo['notes'] ?? null))
                             <x-admin.bulk-quote-field label="Product Notes">{{ $productInfo['notes'] }}</x-admin.bulk-quote-field>
                         @endif
+                        @foreach((array) ($productInfo['selected_products'] ?? []) as $item)
+                            <x-admin.bulk-quote-field label="FlowTracker product">{{ $item['name'] ?? 'Product' }}{{ filled($item['category'] ?? null) ? ' ('.$item['category'].')' : '' }} · {{ $item['quantity'] ?? 0 }} {{ $item['unit'] ?? 'pcs' }}</x-admin.bulk-quote-field>
+                        @endforeach
                         
                                     </div>
                                 </div>

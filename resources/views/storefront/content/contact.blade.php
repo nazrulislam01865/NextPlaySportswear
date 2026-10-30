@@ -40,7 +40,7 @@
 
             <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-card sm:p-8">
                 <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">Support request</p>
-                <h2 class="mt-2 font-display text-3xl font-bold uppercase text-brand-ink">Send Us a Message</h2>
+                <h2 class="nps-form-section-title mt-2 font-display text-3xl font-bold uppercase text-brand-ink">Send Us a Message</h2>
                 <p class="mt-2 text-sm text-slate-500">Fields marked with an asterisk are required. Do not include full payment-card information.</p>
 
                 @if(session('status'))
@@ -56,7 +56,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('contact.store') }}" class="mt-7 grid gap-5" novalidate>
+                <form data-nps-inline method="POST" action="{{ route('contact.store') }}" class="nps-form mt-7 grid gap-5" novalidate>
                     @csrf
                     <div class="hidden" aria-hidden="true">
                         <label for="company">Company</label><input id="company" name="company" value="" tabindex="-1" autocomplete="off">
@@ -73,7 +73,7 @@
                     </div>
                     <div class="grid gap-5 sm:grid-cols-2">
                         <div>
-                            <label for="contact-phone" class="mb-2 block text-sm font-extrabold text-brand-ink">Phone</label>
+                            <label for="contact-phone" class="mb-2 block text-sm font-extrabold text-brand-ink">Phone <span class="nps-optional">(optional)</span></label>
                             <input id="contact-phone" name="phone" value="{{ old('phone') }}" maxlength="40" autocomplete="tel" class="h-12 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 outline-none focus:border-brand-blue">
                         </div>
                         <div>
@@ -96,7 +96,7 @@
                         </div>
                     </div>
                     <div>
-                        <label for="contact-order" class="mb-2 block text-sm font-extrabold text-brand-ink">Order or quote number</label>
+                        <label for="contact-order" class="mb-2 block text-sm font-extrabold text-brand-ink">Order or quote number <span class="nps-optional">(optional)</span></label>
                         <input id="contact-order" name="order_number" value="{{ old('order_number') }}" maxlength="80" class="h-12 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 uppercase outline-none focus:border-brand-blue" placeholder="Example: NP-2026-00125">
                     </div>
                     <div>

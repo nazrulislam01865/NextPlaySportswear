@@ -5,7 +5,6 @@ namespace App\Http\Requests\Storefront\Auth;
 use App\Services\Referrals\ReferralOfferService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 
 class RegisterRequest extends FormRequest
 {
@@ -49,12 +48,6 @@ class RegisterRequest extends FormRequest
     public function rules(): array
     {
         $referralRegistration = is_array($this->session()->get(ReferralOfferService::SESSION_KEY));
-        $password = Password::min(8)->letters()->numbers();
-
-        if ($referralRegistration) {
-            $password = $password->symbols();
-        }
-
         return [
             'name' => ['required', 'string', 'min:2', 'max:120'],
             'first_name' => [Rule::requiredIf($referralRegistration), 'nullable', 'string', 'min:2', 'max:60'],
@@ -62,7 +55,7 @@ class RegisterRequest extends FormRequest
             // Verification proves ownership/deliverability, so registration
             // avoids network-dependent DNS validation on the request path.
             'email' => ['required', 'email:rfc', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', $password],
+            'password' => ['required', 'string', 'min:8', 'confirmed', 'regex:/^(?=.*[A-Za-z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).+$/'],
             'website' => ['nullable', 'max:0'],
             'terms' => ['accepted'],
             'redirect' => ['nullable', 'string', 'max:2048'],
@@ -75,6 +68,8 @@ class RegisterRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'password.regex' => 'Password must include at least one letter, one number, and one special character.',
+            'password.min' => 'Password must contain at least 8 characters.',
             'terms.accepted' => 'Please accept the Terms & Conditions and Privacy Policy before creating an account.',
             'website.max' => 'The registration request could not be accepted.',
             'email.unique' => 'A customer account already exists with this email address. Please sign in or reset your password.',

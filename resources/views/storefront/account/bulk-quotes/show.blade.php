@@ -2,6 +2,9 @@
     $details = (array) $quote->quotation_details;
     $ready = $quote->quotation_version > 0 && $quote->quotation_sent_at;
     $priced = !($details['pricing_pending'] ?? false) && (int) ($details['quantity'] ?? 0) > 0 && (float) $quote->quoted_amount > 0;
+    $pendingPrice = \App\Services\BulkQuote\BulkQuoteOrderTerms::pricePending($quote);
+    $suggestedQuantity = \App\Services\BulkQuote\BulkQuoteOrderTerms::exactQuantity($quote);
+    $canOrder = $priced || $pendingPrice;
     $confirmed = in_array($quote->status, ['accepted','converted'], true);
     $final = $confirmed || in_array($quote->status, ['closed','rejected'], true);
     $expired = $quote->quotation_valid_until && $quote->quotation_valid_until->lt(today());
@@ -43,13 +46,16 @@
                             <dd>{{ collect($sizeGroup['sizes'] ?? [])->map(fn ($size) => ($size['size'] ?? 'Size').': '.($size['quantity'] ?? 0))->implode(', ') }}</dd>
                         @endforeach
                         @if(filled($quote->product_information['notes'] ?? null))<dt>Product Notes</dt><dd>{{ $quote->product_information['notes'] }}</dd>@endif
+                        @foreach((array) ($quote->product_information['selected_products'] ?? []) as $item)
+                            <dt>Quotation product</dt><dd>{{ $item['name'] ?? 'Product' }}{{ filled($item['category'] ?? null) ? ' ('.$item['category'].')' : '' }} · {{ $item['quantity'] ?? 0 }} {{ $item['unit'] ?? 'pcs' }}</dd>
+                        @endforeach
                         <dt>Special Notes</dt><dd>{{ $quote->additional_notes ?: ($quote->artwork_details ?: '—') }}</dd>
                     </dl>
                 </section>
                 <section class="np-rq-card">
                     <h2>Pricing Summary</h2>
                     @if($ready && !$priced)
-                        <p class="np-rq-muted">Your formal quotation is attached. Please refer to the offer document for pricing. A structured checkout amount has not been entered, so an order cannot yet be created online.</p>
+                        <p class="np-rq-muted">Your formal quotation is attached. You may create an order now; the final amount will be confirmed by sales before invoicing or payment. No online payment will be taken at this step.</p>
                     @elseif($ready)
                         <table class="np-rq-pricing"><thead><tr><th>Description</th><th>Amount ({{ $quote->quote_currency ?: 'USD' }})</th></tr></thead><tbody>
                             <tr><td>Products ({{ number_format((int) ($details['quantity'] ?? 0)) }} pieces)</td><td>{{ number_format((float) ($details['subtotal'] ?? 0), 2) }}</td></tr>
@@ -65,7 +71,7 @@
                 @if($canReply)
                     <section class="np-rq-card np-rq-message-form">
                         <h2>Send a message or request changes</h2>
-                        <form method="POST" action="{{ route('account.bulk-quotes.message', $quote->reference) }}" enctype="multipart/form-data" data-single-submit>
+                        <form class="nps-form" method="POST" action="{{ route('account.bulk-quotes.message', $quote->reference) }}" enctype="multipart/form-data" data-single-submit>
                             @csrf
                             <label class="np-rq-label" for="np-rq-message">Your message</label>
                             <textarea id="np-rq-message" name="body" required minlength="2" maxlength="3000" placeholder="Type your message here...">{{ old('body') }}</textarea>
@@ -91,26 +97,42 @@
                         @endif
                     @elseif($confirmed)
                         <p class="np-rq-success">Quotation confirmed without an order.</p>
-                        @if($priced)
-                            <form action="{{ route('account.bulk-quotes.decision', $quote->reference) }}" method="POST" data-single-submit>@csrf
-                                <button type="submit" name="decision" value="create_order" class="btn btn-red">Confirm &amp; Create Order</button>
+                        @if($canOrder && !$expired)
+                            <form class="nps-form" action="{{ route('account.bulk-quotes.decision', $quote->reference) }}" method="POST" data-single-submit>@csrf
+                                @if($pendingPrice)
+                                    <p class="np-rq-muted">Create a pending-invoice order from the accepted offer. Sales will confirm the amount before payment.</p>
+                                    @unless($suggestedQuantity)
+                                        <label class="np-rq-label" for="np-account-order-quantity">Exact order quantity</label>
+                                        <input id="np-account-order-quantity" type="number" min="1" step="1" max="2147483647" name="order_quantity" value="{{ old('order_quantity') }}" required>
+                                        @error('order_quantity')<p class="np-rq-error" role="alert">{{ $message }}</p>@enderror
+                                    @endunless
+                                @endif
+                                <button type="submit" name="decision" value="create_order" class="btn btn-red">Create Order from Quotation</button>
                             </form>
-                        @else
-                            <p class="np-rq-muted">Order creation is available after your quotation includes the final price and quantity.</p>
+                        @elseif($expired)
+                            <p class="np-rq-warning">This quotation has expired. Contact sales before creating an order.</p>
                         @endif
                     @elseif($expired)
                         <p class="np-rq-warning">This quotation has expired. Please contact NextPlay Sales for an updated quotation.</p>
                     @elseif($quote->guest_decision === 'changes_requested')
                         <p class="np-rq-muted">Your revision request is under review. NextPlay will send an updated quotation.</p>
                     @elseif($canConfirm)
-                        <form action="{{ route('account.bulk-quotes.decision', $quote->reference) }}" method="POST" data-single-submit class="np-rq-decisions">@csrf
-                            @if($priced)
-                                <button type="submit" name="decision" value="create_order" class="btn btn-red">Confirm &amp; Create Order<small>Accept the quotation and create an order.</small></button>
+                        <form action="{{ route('account.bulk-quotes.decision', $quote->reference) }}" method="POST" data-single-submit class="nps-form np-rq-decisions">@csrf
+                            @if($canOrder)
+                                @if($pendingPrice)
+                                    <p class="np-rq-muted">The order will await final invoicing. No online payment is due now.</p>
+                                    @unless($suggestedQuantity)
+                                        <label class="np-rq-label" for="np-account-order-quantity">Exact order quantity</label>
+                                        <input id="np-account-order-quantity" type="number" min="1" step="1" max="2147483647" name="order_quantity" value="{{ old('order_quantity') }}" required>
+                                        @error('order_quantity')<p class="np-rq-error" role="alert">{{ $message }}</p>@enderror
+                                    @endunless
+                                @endif
+                                <button type="submit" name="decision" value="create_order" class="btn btn-red">Confirm &amp; Create Order<small>Accept and create {{ $pendingPrice ? 'a pending-invoice order' : 'an order' }}.</small></button>
                             @endif
-                            <button type="submit" name="decision" value="accept_only" class="btn btn-white">Confirm Quotation Only<small>Accept without creating an order yet.</small></button>
+                            <button type="submit" name="decision" value="accept_only" formnovalidate class="btn btn-white">Confirm Quotation Only<small>Accept without creating an order yet.</small></button>
                         </form>
                         <a class="btn btn-white" href="{{ route('account.bulk-quotes.changes', $quote->reference) }}">Request Changes<small>Ask us to revise the quotation.</small></a>
-                        @unless($priced)<p class="np-rq-muted">Online order creation requires structured pricing and quantity. You can still confirm the offer or request changes.</p>@endunless
+
                     @else
                         <p class="np-rq-muted">NextPlay is reviewing your request. You'll be able to confirm it once a quotation is published.</p>
                     @endif

@@ -157,6 +157,7 @@ class GuestBulkQuoteController extends Controller
         $quote = $this->forPost($request, $reference);
         $data = $request->validate([
             'decision' => ['required', Rule::in(['accept_only', 'create_order'])],
+            'order_quantity' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
         ]);
 
         $customer = Auth::guard('web')->user();
@@ -179,7 +180,7 @@ class GuestBulkQuoteController extends Controller
         $previousOrderId = $quote->converted_order_id;
 
         try {
-            $quote = $this->guest->accept($quote, $data['decision'], $data['decision'] === 'create_order' ? $customer : null);
+            $quote = $this->guest->accept($quote, $data['decision'], $data['decision'] === 'create_order' ? $customer : null, isset($data['order_quantity']) ? (int) $data['order_quantity'] : null);
         } catch (ValidationException $exception) {
             // Invalid, expired or withdrawn quotes must retain the exact validation feedback.
             throw $exception;

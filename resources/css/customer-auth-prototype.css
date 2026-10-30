@@ -1,0 +1,207 @@
+/* NEXTPLAY AUTH PROTOTYPES 2026-10-30
+   Scoped to customer sign-in and pre-registration only. Expose, button colors,
+   body type and weights come from the existing centralized storefront tokens. */
+.np-auth-proto {
+    --np-auth-text: var(--np-body-2-size);
+    --np-auth-heading: var(--np-title-3-size);
+    font-family: var(--np-font-ui);
+    background: radial-gradient(ellipse at 50% 26%, #f9fcff 0%, #f1f6fb 56%, #eaf1f8 100%);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 48px 16px;
+    min-height: 420px;
+    color: var(--np-color-heading);
+    font-size: var(--np-auth-text);
+    line-height: var(--np-body-2-line-height);
+}
+.np-auth-proto, .np-auth-proto input, .np-auth-proto button, .np-auth-proto a {
+    font-family: var(--np-font-ui);
+}
+.np-auth-proto__card {
+    width: min(100%, 430px);
+    padding: 24px 26px 22px;
+    border-radius: 7px;
+    border: 1px solid var(--np-color-border);
+    background: #fff;
+    box-shadow: 0 9px 24px rgb(var(--np-color-primary-rgb) / .05);
+}
+.np-auth-proto__card--login { padding-top: 23px; }
+.np-auth-proto__title {
+    margin: 0;
+    text-align: center;
+    color: var(--np-color-heading);
+    font-size: var(--np-auth-heading);
+    font-weight: var(--np-font-weight-bold);
+    line-height: var(--np-title-3-line-height);
+    letter-spacing: var(--np-letter-spacing);
+    text-transform: none;
+}
+.np-auth-proto__subtitle {
+    text-align: center;
+    font-size: var(--np-auth-text);
+    line-height: 1.4;
+    color: var(--np-color-muted);
+    margin: 6px 0 23px;
+}
+.np-auth-proto__form { display: grid; gap: 14px; }
+.np-auth-proto__field { min-width: 0; }
+.np-auth-proto__field > label,
+.np-auth-proto__code-label {
+    display: block;
+    font-size: var(--np-auth-text);
+    font-weight: var(--np-font-weight-bold);
+    color: var(--np-color-heading);
+    margin-bottom: 6px;
+    line-height: 1.35;
+}
+.np-auth-proto__field > input,
+.np-auth-proto__input-icon input,
+.np-auth-proto__password input {
+    height: 36px;
+    padding: 0 12px;
+    width: 100%;
+    border: 1px solid var(--np-color-border);
+    border-radius: 5px;
+    color: var(--np-color-heading);
+    background: #fff;
+    font-size: var(--np-auth-text);
+    font-weight: var(--np-font-weight-regular);
+    outline: none;
+    box-shadow: none;
+}
+.np-auth-proto__field input::placeholder { color: var(--np-color-placeholder); opacity: 1; }
+.np-auth-proto__field input:focus { border-color: var(--np-color-primary); outline: 1px solid var(--np-color-primary); outline-offset: 0; box-shadow: none; }
+.np-auth-proto__input-icon { position: relative; }
+.np-auth-proto__input-icon svg { position: absolute; top: 9px; left: 12px; color: var(--np-color-muted); pointer-events: none; }
+.np-auth-proto__input-icon input { padding-left: 40px; }
+.np-auth-proto__password { position: relative; }
+.np-auth-proto__password input { padding-right: 42px; }
+.np-auth-proto__password button {
+    border: 0; background: none; color: var(--np-color-muted);
+    position: absolute; right: 4px; top: 0; height: 36px;
+    width: 36px; cursor: pointer; font-size: 19px;
+}
+.np-auth-proto__hint {
+    color: var(--np-color-muted);
+    font-size: var(--np-body-3-size, 12px);
+    margin: 5px 0 0;
+    line-height: 1.35;
+}
+.np-auth-proto__primary.btn {
+    display: flex; justify-content: center; align-items: center;
+    width: 100%; min-height: 37px; height: auto;
+    border-radius: var(--np-button-radius);
+    font-size: var(--np-auth-text); font-weight: var(--np-font-weight-bold);
+    padding: 8px 12px; text-transform: none;
+    box-shadow: none;
+}
+.np-auth-proto__primary.btn:disabled { opacity: .55; }
+.np-auth-proto__footer {
+    border-top: 1px solid var(--np-color-border);
+    margin-top: 18px; padding-top: 14px;
+    text-align: center; color: var(--np-color-muted);
+    font-size: var(--np-auth-text);
+}
+.np-auth-proto__footer:empty { display: none; }
+.np-auth-proto a, .np-auth-proto__text-button {
+    color: var(--np-color-secondary);
+    text-decoration: none; font-size: inherit;
+    font-weight: var(--np-font-weight-medium);
+}
+.np-auth-proto a:hover, .np-auth-proto__text-button:hover { text-decoration: underline; }
+.np-auth-proto__text-button { background: none; border: none; padding: 0; cursor: pointer; }
+.np-auth-proto__text-button:disabled { color: var(--np-color-placeholder); cursor: not-allowed; text-decoration: none; }
+.np-auth-proto__footer--stacked { display: grid; gap: 8px; }
+.np-auth-proto__secondary.btn {
+    width: 100%; display: flex; align-items: center; justify-content: center;
+    min-height: 36px; border-radius: var(--np-button-radius);
+    border: 1px solid var(--np-color-primary);
+    background: white; color: var(--np-color-primary);
+    font-size: var(--np-auth-text); font-weight: var(--np-font-weight-bold);
+    padding: 7px 12px;
+}
+.np-auth-proto__secondary.btn:hover { background: var(--np-color-soft); text-decoration: none; }
+.np-auth-proto__login-extras { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.np-auth-proto__remember { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.np-auth-proto__remember input, .np-auth-proto__card .np-customer-register-terms__checkbox { width: 16px; height: 16px; accent-color: var(--np-color-primary); }
+.np-auth-proto__legal { margin: 11px 0 0; text-align: center; font-size: var(--np-body-3-size, 12px); color: var(--np-color-muted); line-height: 1.45; }
+.np-auth-proto__legal a { color: var(--np-color-muted); text-decoration: underline; }
+.np-auth-proto__alert { border: 1px solid #e86565; background: #fff1f1; color: #d62121; border-radius: 5px; padding: 10px 12px; margin: 10px 0; display: flex; align-items: flex-start; gap: 10px; }
+.np-auth-proto__alert span { background: #dc2b2b; color: #fff; border-radius: 50%; font-weight: bold; min-width: 18px; height: 18px; text-align: center; }
+.np-auth-proto__notice { color: var(--np-color-muted); text-align: center; font-size: var(--np-body-3-size, 12px); margin: 7px 0; }
+.np-auth-proto__error { color: var(--np-color-error); font-size: var(--np-body-3-size, 12px); line-height: 1.4; margin: 5px 0 0; }
+/* Three-step progress indicator */
+.np-auth-proto__steps { display: flex; align-items: flex-start; justify-content: center; margin: 0 0 22px; gap: 0; }
+.np-auth-proto__step { width: 65px; flex: 0 0 65px; display: flex; align-items: center; flex-direction: column; gap: 4px; color: var(--np-color-muted); font-size: var(--np-body-3-size, 12px); }
+.np-auth-proto__step-dot { display: grid; place-items: center; height: 28px; width: 28px; border-radius: 50%; background: #e9eef5; color: var(--np-color-muted); font-weight: var(--np-font-weight-bold); }
+.np-auth-proto__step.is-current { color: var(--np-color-primary); font-weight: var(--np-font-weight-bold); }
+.np-auth-proto__step.is-current .np-auth-proto__step-dot { background: var(--np-color-secondary); color: #fff; }
+.np-auth-proto__step.is-complete .np-auth-proto__step-dot { background: var(--np-color-primary); color: #fff; }
+.np-auth-proto__step-line { height: 2px; background: var(--np-color-border); width: 43px; margin: 13px -6px 0; }
+.np-auth-proto__step-line.is-complete { background: var(--np-color-primary); }
+.np-auth-proto__email-line { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 12px; margin: -18px 0 18px; }
+.np-auth-proto__email-line strong { color: var(--np-color-primary); overflow-wrap: anywhere; }
+.np-auth-proto__code-cells { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.np-auth-proto__code-cells input { width: 100%; min-width: 0; height: 42px; font-family: var(--np-font-ui); font-size: var(--np-auth-text); text-align: center; font-weight: var(--np-font-weight-bold); border: 1px solid var(--np-color-border); border-radius: 5px; outline: none; background: #fff; }
+.np-auth-proto__code-cells input:focus { border-color: var(--np-color-primary); outline: 1px solid var(--np-color-primary); }
+.np-auth-proto__resend { margin-top: 16px; padding-top: 13px; border-top: 1px solid var(--np-color-border); text-align: center; }
+.np-auth-proto__resend p { margin: 0 0 6px; color: var(--np-color-muted); }
+.np-auth-proto__back { margin-top: 16px; }
+.np-auth-proto__verified { display: flex; align-items: center; gap: 9px; border-radius: 6px; padding: 8px 12px; margin: 13px 0 12px; color: var(--np-color-primary); background: #e9faef; font-size: var(--np-body-3-size, 12px); }
+.np-auth-proto__verified span { display: grid; place-items: center; background: #159447; color: #fff; border-radius: 50%; width: 17px; height: 17px; flex-shrink: 0; }
+.np-auth-proto__verified strong { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.np-auth-proto__verified em { padding: 3px 8px; color: #127639; border-radius: 14px; font-style: normal; background: #d3f3dc; }
+.np-auth-proto__complete-form { gap: 11px; }
+.np-auth-proto__card .np-customer-register-terms { margin-top: 0; }
+.np-auth-proto__card .np-customer-register-terms__label { align-items: flex-start; font-size: var(--np-body-3-size, 12px); font-weight: var(--np-font-weight-regular); gap: 8px; }
+.np-auth-proto__card .np-customer-register-terms__text a { color: var(--np-color-link); text-decoration: underline; }
+.np-auth-proto__card .np-customer-register-match { font-size: var(--np-body-3-size, 12px); margin: 4px 0 0; }
+@media (max-width: 479px) {
+    .np-auth-proto { padding: 32px 10px; }
+    .np-auth-proto__card { padding: 20px 15px; }
+    .np-auth-proto__step-line { width: 28px; }
+    .np-auth-proto__code-cells { gap: 5px; }
+}
+
+/* Equal breathing room for every customer authentication/recovery card.
+   Scoped so storefront and account pages keep their existing layout. */
+.np-auth-page--recovery .np-customer-login {
+    min-height: auto;
+    padding: 48px 16px;
+}
+.np-auth-page--recovery > section {
+    padding-top: 48px;
+    padding-bottom: 48px;
+}
+.np-auth-proto__error[hidden] { display: none; }
+.np-auth-proto__card .np-customer-register-terms__text a {
+    color: var(--np-color-link);
+    text-decoration: underline;
+}
+@media (max-width: 479px) {
+    .np-auth-page--recovery .np-customer-login { padding: 32px 10px; }
+    .np-auth-page--recovery > section { padding-top: 32px; padding-bottom: 32px; }
+}
+
+/* Reset/recovery pages share the sign-in geometry and Expose typography. */
+.np-auth-proto__card--recovery { padding: 25px 26px 24px; }
+.np-auth-proto__lock { display:flex; justify-content:center; margin:0 auto 14px; color:var(--np-color-primary); }
+.np-auth-proto__card--recovery .np-auth-proto__subtitle { margin: 6px auto 23px; max-width: 350px; }
+.np-auth-proto__reset-form { gap: 17px; }
+.np-auth-proto__recovery-back { text-align:center; margin-top:18px; }
+.np-auth-proto__recovery-back a { color:var(--np-color-primary); font-weight:var(--np-font-weight-medium); }
+.np-auth-proto__recovery-back span { margin-right:7px; }
+.np-auth-proto__hint.is-invalid { color:var(--np-color-error); }
+.np-auth-proto__error[hidden] { display:none; }
+.np-auth-proto__password input[aria-invalid="true"] { border-color:var(--np-color-error); }
+.np-auth-proto__card .np-customer-register-terms__text a,
+.np-auth-proto__legal a { color:#1769cf; }
+
+/* The auth forms render field messages inline instead of browser validation bubbles. */
+.np-auth-proto__field input[aria-invalid="true"],
+.np-auth-proto__field input[aria-invalid="true"]:focus {
+    border-color: var(--np-color-error);
+    outline: none;
+    box-shadow: none;
+}

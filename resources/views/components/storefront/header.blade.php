@@ -140,16 +140,16 @@
                         <span class="np-account-dropdown-arrow" aria-hidden="true"></span>
 
                         @if($customerAuthenticated)
-                            <a href="{{ route('account.dashboard') }}" class="np-account-primary-action" role="menuitem">My Account</a>
+                            <a href="{{ route('account.dashboard') }}" class="btn btn-primary btn-sm np-account-primary-action" role="menuitem">My Account</a>
                             <form method="POST" action="{{ route('logout') }}" class="np-account-secondary-form">
                                 @csrf
                                 <button type="submit" class="np-account-secondary-action" role="menuitem">Sign out</button>
                             </form>
                         @else
-                            <a href="{{ $accountHref }}" class="np-account-primary-action" role="menuitem">Sign in</a>
+                            <a href="{{ $accountHref }}" class="btn btn-primary btn-sm np-account-primary-action" role="menuitem">Sign in</a>
                             <p class="np-account-new-customer">
                                 <span>New customer?</span>
-                                <a href="{{ route('register') }}" role="menuitem">Start here.</a>
+                                <a href="{{ route('register') }}" role="menuitem">Sign up</a>
                             </p>
                         @endif
                     </div>
@@ -428,7 +428,7 @@
                         <form method="POST" action="{{ route('logout') }}">@csrf<button class="np-mobile-nav-link np-mobile-nav-button">Sign out</button></form>
                     @else
                         <a href="{{ $accountHref }}" class="np-mobile-nav-link" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_sign_in">Sign in</a>
-                        <a href="{{ route('register') }}" class="np-mobile-nav-link" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_create_account">New customer? Start here.</a>
+                        <a href="{{ route('register') }}" class="np-mobile-nav-link" data-header-analytics="header_cta_click" data-header-analytics-label="mobile_create_account">New customer? Sign up</a>
                     @endif
                 </div>
 

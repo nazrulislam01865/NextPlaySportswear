@@ -1,0 +1,300 @@
+/* NextPlay Form Design System v1.0, scoped solely to the bulk quote request.
+ * Reference: NextPlay_Form_Design_System.html. The guide's example Arial
+ * is replaced with the site's approved centralized Expose font token.
+ * Nothing here changes the fields, backend contract, or unrelated pages. */
+.bulk-quote-page {
+    --nps-navy: var(--np-color-primary);
+    --nps-orange: var(--np-color-secondary);
+    --nps-text: var(--np-color-body);
+    --nps-muted: var(--np-color-muted);
+    --nps-border: var(--np-color-border);
+    --nps-surface: var(--np-color-page);
+    --nps-soft: var(--np-color-soft);
+    --nps-error: var(--np-color-error);
+    --nps-error-bg: #fff3f2;
+    --nps-success: var(--np-color-success);
+    --nps-focus: var(--np-color-focus);
+    --nps-radius: 8px;
+    --nps-control: 48px;
+    --nps-font: var(--np-font-body);
+    font-family: var(--nps-font);
+    color: var(--nps-text);
+}
+.bulk-quote-page .nps-form,
+.bulk-quote-page .nps-form * { box-sizing: border-box; }
+.bulk-quote-page .nps-form { font: 400 16px/1.5 var(--nps-font); color: var(--nps-text); }
+.bulk-quote-page .bulk-quote-intro h1 {
+    color: var(--nps-navy); font-family: var(--nps-font);
+    font-size: 28px; line-height: 1.25; font-weight: 700; text-transform: none;
+}
+.bulk-quote-page .bulk-quote-intro-heading > div > p {
+    color: var(--nps-muted); font-size: 16px; line-height: 1.5; margin-top: 8px;
+}
+.bulk-quote-page .bulk-quote-section { padding: 24px; border-radius: 8px; }
+.bulk-quote-page .bulk-quote-section-layout { row-gap: 24px; }
+.bulk-quote-page .bulk-quote-section-heading h2,
+.bulk-quote-page .bulk-quote-side-heading h2 {
+    font: 700 20px/1.4 var(--nps-font); color: var(--nps-navy);
+}
+.bulk-quote-page .bulk-quote-section-heading p {
+    margin-top: 8px; font: 400 16px/1.5 var(--nps-font); color: var(--nps-muted);
+}
+.bulk-quote-page .nps-form .bulk-quote-grid,
+.bulk-quote-page .nps-form .bulk-quote-shipping-grid,
+.bulk-quote-page .nps-form .bulk-quote-attachments-card .bulk-quote-grid {
+    gap: 24px;
+}
+.bulk-quote-page .nps-form .bulk-quote-grid-two,
+.bulk-quote-page .nps-form .bulk-quote-shipping-grid,
+.bulk-quote-page .nps-form .bulk-quote-attachments-card .bulk-quote-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.bulk-quote-page .nps-form .bulk-quote-field { min-width: 0; }
+.bulk-quote-page .nps-form .bulk-quote-field > label:not(.bulk-quote-upload),
+.bulk-quote-page .nps-form .bulk-quote-field > .bulk-quote-label,
+.bulk-quote-page .nps-form .bulk-quote-product-label,
+.bulk-quote-page .nps-form .bulk-quote-product-field-label,
+.bulk-quote-page .nps-form [data-address-geography] > label,
+.bulk-quote-page .nps-form [data-address-region-for] > label {
+    display: block; margin: 0 0 8px; font: 600 14px/1.5 var(--nps-font);
+    color: var(--nps-navy);
+}
+.bulk-quote-page .nps-form .bulk-quote-req { color: var(--nps-error); }
+/* The guide treats (optional) as ordinary muted label text, not a badge. */
+.bulk-quote-page .nps-form .bulk-quote-optional {
+    display: inline; margin: 0 0 0 4px; padding: 0;
+    background: none; border: 0; border-radius: 0; box-shadow: none;
+    color: var(--nps-muted); font: 400 14px/1.5 var(--nps-font);
+    vertical-align: baseline; white-space: normal;
+}
+.bulk-quote-page .nps-form .bulk-quote-product-search-row {
+    display: block; margin-bottom: 8px;
+}
+.bulk-quote-page .nps-form .bulk-quote-product-search-row > .bulk-quote-product-label {
+    margin: 0;
+}
+.bulk-quote-page .nps-form .bulk-quote-field-note,
+.bulk-quote-page .nps-form .bulk-quote-product-feedback,
+.bulk-quote-page .nps-form .bulk-quote-upload-copy small {
+    font: 400 13px/1.5 var(--nps-font); color: var(--nps-muted);
+}
+.bulk-quote-page .nps-form input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]),
+.bulk-quote-page .nps-form select:not(.bulk-quote-select-native-hidden),
+.bulk-quote-page .nps-form textarea,
+.bulk-quote-page .nps-form .bulk-quote-select-trigger {
+    width: 100%; min-width: 0; min-height: var(--nps-control);
+    border: 1px solid var(--nps-border); border-radius: var(--nps-radius);
+    background-color: var(--nps-surface); color: var(--nps-text);
+    font: 400 16px/1.5 var(--nps-font); box-shadow: none; outline: 0;
+    padding: 12px 14px;
+}
+.bulk-quote-page .nps-form select:not(.bulk-quote-select-native-hidden) { padding-right: 40px; }
+.bulk-quote-page .nps-form textarea { min-height: 120px; height: auto; padding-bottom: 30px; resize: vertical; }
+.bulk-quote-page .nps-form input::placeholder,
+.bulk-quote-page .nps-form textarea::placeholder {
+    color: #66768c; opacity: 1; font-weight: 400;
+}
+.bulk-quote-page .nps-form input:not([type=checkbox]):not([type=radio]):hover:not(:disabled),
+.bulk-quote-page .nps-form select:hover:not(:disabled),
+.bulk-quote-page .nps-form textarea:hover:not(:disabled),
+.bulk-quote-page .nps-form .bulk-quote-select-trigger:hover { border-color: #8193aa; }
+.bulk-quote-page .nps-form :is(input,select,textarea,button,a):focus-visible,
+.bulk-quote-page .nps-form .bulk-quote-select-trigger:focus-visible,
+.bulk-quote-page .nps-form .bulk-quote-upload:focus-within {
+    outline: 3px solid var(--nps-focus); outline-offset: 3px; box-shadow: none;
+}
+.bulk-quote-page .nps-form .bulk-quote-phone-control:focus-within,
+.bulk-quote-page .nps-form .bulk-quote-date-control:focus-within { box-shadow: none; }
+.bulk-quote-page .nps-form [aria-invalid=true],
+.bulk-quote-page .nps-form .bulk-quote-phone-control.is-invalid,
+.bulk-quote-page .nps-form .bulk-quote-upload.is-invalid { border-color: var(--nps-error) !important; }
+.bulk-quote-page .nps-form input:disabled,
+.bulk-quote-page .nps-form select:disabled,
+.bulk-quote-page .nps-form textarea:disabled { background-color: #edf0f4; color: #667287; }
+.bulk-quote-page .nps-form input[readonly] { background: var(--nps-soft); }
+.bulk-quote-page .nps-form .bulk-quote-phone-control {
+    min-height: var(--nps-control); border: 1px solid var(--nps-border);
+    border-radius: var(--nps-radius); background: var(--nps-surface);
+}
+.bulk-quote-page .nps-form .bulk-quote-phone-code-select {
+    min-height: 46px !important; width: 130px !important; min-width: 130px;
+    border: 0 !important; border-right: 1px solid var(--nps-border) !important;
+    border-radius: 0 !important; background-color: transparent !important;
+    box-shadow: none !important; font: 400 16px/1.5 var(--nps-font) !important;
+}
+.bulk-quote-page .nps-form .bulk-quote-phone-control input:not([type=checkbox]):not([type=radio]) {
+    min-height: 46px; border: 0 !important; border-radius: 0; box-shadow: none;
+}
+.bulk-quote-page .nps-form .bulk-quote-date-control input[type=date] { padding-left: 40px; }
+.bulk-quote-page .nps-form .bulk-quote-date-control > svg { color: var(--nps-navy); }
+.bulk-quote-page .nps-form .bulk-quote-select-trigger { display: flex; align-items: center; justify-content: space-between; }
+.bulk-quote-page .nps-form .bulk-quote-select-option { font: 400 16px/1.5 var(--nps-font); }
+.bulk-quote-page .nps-form .bulk-quote-select-trigger[aria-invalid=true] { border-color: var(--nps-error); }
+.bulk-quote-page .nps-form .bulk-quote-select-menu { border-color: var(--nps-border); border-radius: var(--nps-radius); }
+.bulk-quote-page .nps-form .bulk-quote-select-filter { font: 400 16px/1.5 var(--nps-font); }
+.bulk-quote-page .nps-form .bulk-quote-field-error {
+    display: flex; align-items: flex-start; gap: 6px;
+    margin: 8px 0 0; color: var(--nps-error);
+    font: 400 13px/1.5 var(--nps-font);
+}
+.bulk-quote-page .nps-form .bulk-quote-field-error::before {
+    content: '!'; display: inline-grid; place-items: center;
+    flex: 0 0 16px; width: 16px; height: 16px; margin-top: 2px;
+    border-radius: 50%; background: var(--nps-error); color: #fff;
+    font: 700 11px/1 var(--nps-font);
+}
+.bulk-quote-page .nps-form .bulk-quote-alert-error {
+    margin: 0; padding: 16px; border: 1px solid #e4a8a3;
+    border-radius: var(--nps-radius); background: var(--nps-error-bg);
+    color: var(--nps-error); font: 400 14px/1.5 var(--nps-font);
+}
+.bulk-quote-page .nps-form .bulk-quote-alert-error ul { margin: 8px 0 0; padding-left: 22px; }
+.bulk-quote-page .nps-form [hidden] { display: none !important; }
+.bulk-quote-page .nps-form .bulk-quote-custom-options { gap: 12px; padding-left: 0; }
+.bulk-quote-page .nps-form .bulk-quote-custom-option {
+    min-height: 48px; border: 1px solid var(--nps-border); border-radius: var(--nps-radius);
+    padding: 10px 12px; color: var(--nps-text); background: var(--nps-surface);
+    font: 400 14px/1.5 var(--nps-font) !important;
+    white-space: normal; cursor: pointer;
+}
+.bulk-quote-page .nps-form .bulk-quote-custom-option:has(input:checked) {
+    background: #fff7f3; border-color: var(--nps-orange);
+}
+.bulk-quote-page .nps-form .bulk-quote-custom-option input:focus-visible + .bulk-quote-custom-check { outline: 3px solid var(--nps-focus); outline-offset: 3px; }
+.bulk-quote-page .nps-form .bulk-quote-custom-check { width: 20px; height: 20px; flex-basis: 20px; }
+.bulk-quote-page .nps-form .bulk-quote-upload {
+    min-height: 100px; border: 1px dashed #8193aa; border-radius: var(--nps-radius);
+    background: var(--nps-surface); padding: 20px;
+}
+.bulk-quote-page .nps-form .bulk-quote-upload-copy strong { font: 600 16px/1.5 var(--nps-font); }
+.bulk-quote-page .nps-form .bulk-quote-browse-text { color: var(--nps-navy); text-decoration: underline; }
+.bulk-quote-page .nps-form .bulk-quote-upload-icon { color: var(--nps-navy); }
+.bulk-quote-page .nps-form .bulk-quote-counter { font: 400 13px/1.5 var(--nps-font); }
+.bulk-quote-page .nps-form .bulk-quote-product-bottom,
+.bulk-quote-page .nps-form .bulk-quote-product-options { gap: 24px; }
+.bulk-quote-page .nps-form .bulk-quote-product-check,
+.bulk-quote-page .nps-form .bulk-quote-size-quantity { font: 400 14px/1.5 var(--nps-font); }
+.bulk-quote-page .nps-form .bulk-quote-size-quantity input[type=number] {
+    min-height: 48px; font: 400 16px/1.5 var(--nps-font);
+}
+.bulk-quote-page .nps-form .bulk-quote-submit-row {
+    margin: 0; padding: 24px; gap: 16px; border-top: 1px solid #e2e7ef;
+    align-items: center; justify-content: space-between;
+}
+.bulk-quote-page .nps-form .bulk-quote-submit {
+    transform: none !important; min-height: 48px; min-width: 200px;
+    border: 1px solid var(--nps-navy); border-radius: var(--nps-radius);
+    background: var(--nps-navy); color: #fff; padding: 12px 20px;
+    font: 600 16px/1.4 var(--nps-font); box-shadow: none;
+}
+.bulk-quote-page .nps-form .bulk-quote-submit:hover:not(:disabled) { background: #163b68; }
+.bulk-quote-page .nps-form .bulk-quote-submit:disabled {
+    border-color: #d4dce6; background: #e4e8ee; color: #647087; cursor: not-allowed;
+}
+.bulk-quote-page .nps-form .bulk-quote-privacy { font: 400 13px/1.5 var(--nps-font); color: var(--nps-muted); }
+.bulk-quote-page .nps-form .bulk-quote-attachments-card .bulk-quote-submit-row {
+    margin-top: 0; padding: 24px; transform: none;
+}
+@media (min-width: 761px) {
+    .bulk-quote-page .nps-form .bulk-quote-attachments-card .bulk-quote-submit-row { margin-top: 0; }
+}
+@media (max-width: 760px) {
+    .bulk-quote-page .nps-form .bulk-quote-section { padding: 20px; }
+}
+@media (max-width: 640px) {
+    .bulk-quote-page .bulk-quote-intro h1 { font-size: 24px; line-height: 1.25; }
+    .bulk-quote-page .nps-form .bulk-quote-grid-two,
+    .bulk-quote-page .nps-form .bulk-quote-shipping-grid,
+    .bulk-quote-page .nps-form .bulk-quote-attachments-card .bulk-quote-grid,
+    .bulk-quote-page .nps-form .bulk-quote-product-options {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .bulk-quote-page .nps-form .bulk-quote-shipping-grid .bulk-quote-half,
+    .bulk-quote-page .nps-form .bulk-quote-shipping-grid .bulk-quote-quarter,
+    .bulk-quote-page .nps-form .bulk-quote-shipping-grid .bulk-quote-quarter-wide,
+    .bulk-quote-page .nps-form .bulk-quote-shipping-grid .bulk-quote-full { grid-column: 1; }
+    .bulk-quote-page .nps-form .bulk-quote-section-heading h2 { font-size: 20px; }
+    .bulk-quote-page .nps-form .bulk-quote-custom-options { gap: 10px; }
+    .bulk-quote-page .nps-form .bulk-quote-submit-row { flex-direction: column; align-items: stretch; padding: 20px; }
+    .bulk-quote-page .nps-form .bulk-quote-submit { width: 100%; }
+}
+
+/* Guide component 06: visible, keyboard-operable native upload in a dashed region. */
+.bulk-quote-page .nps-form .bulk-quote-upload { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.bulk-quote-page .nps-form .bulk-quote-upload-heading {
+    display: block; width: 100%; margin: 0; font: 600 14px/1.5 var(--nps-font);
+    color: var(--nps-navy); text-align: left;
+}
+.bulk-quote-page .nps-form input.bulk-quote-file-control[type=file] {
+    display: block; position: static !important; width: 100% !important;
+    height: auto !important; min-height: 48px !important;
+    padding: 8px !important; margin: 0;
+    border: 1px solid var(--nps-border); border-radius: var(--nps-radius);
+    clip: auto !important; clip-path: none !important;
+    overflow: visible; white-space: normal;
+    background: var(--nps-surface); color: var(--nps-text);
+    font: 400 14px/1.5 var(--nps-font);
+}
+.bulk-quote-page .nps-form input.bulk-quote-file-control[type=file]::file-selector-button {
+    margin-right: 12px; padding: 8px 12px;
+    border: 1px solid var(--nps-border); border-radius: 6px;
+    background: var(--nps-soft); color: var(--nps-navy);
+    font: 400 14px/1.5 var(--nps-font); cursor: pointer;
+}
+.bulk-quote-page .nps-form .bulk-quote-upload .bulk-quote-field-note { margin: 0; }
+.bulk-quote-page .nps-form .bulk-quote-upload:focus-within { outline: none; }
+.bulk-quote-page .nps-form input.bulk-quote-file-control[type=file]:focus-visible {
+    outline: 3px solid var(--nps-focus); outline-offset: 3px;
+}
+
+/* The assistance sidebar sits outside the .nps-form element. Apply the same
+ * NextPlay form typography here without affecting its copy or interactions.
+ * These rules intentionally override the legacy 10-11px sidebar text and
+ * its independent heading/button styles in bulk-quote-redesign.css. */
+.bulk-quote-page .bulk-quote-sidebar {
+    font-family: var(--nps-font);
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--nps-text);
+}
+.bulk-quote-page .bulk-quote-sidebar .bulk-quote-side-heading h2 {
+    margin: 0;
+    font: 700 20px/1.4 var(--nps-font);
+    color: var(--nps-navy);
+    text-transform: none;
+}
+.bulk-quote-page .bulk-quote-sidebar .bulk-quote-side-lead {
+    font: 400 16px/1.5 var(--nps-font);
+    color: var(--nps-muted);
+}
+.bulk-quote-page .bulk-quote-sidebar .bulk-quote-summary-row dt,
+.bulk-quote-page .bulk-quote-sidebar .bulk-quote-summary-row dd {
+    font: 600 14px/1.5 var(--nps-font);
+    color: var(--nps-navy);
+}
+.bulk-quote-page .bulk-quote-sidebar .bulk-quote-summary-row dd {
+    font-weight: 400;
+    color: var(--nps-muted);
+}
+.bulk-quote-page .bulk-quote-sidebar .bulk-quote-next-num {
+    font: 700 14px/1.5 var(--nps-font);
+}
+.bulk-quote-page .bulk-quote-sidebar .bulk-quote-next-steps strong {
+    font: 600 14px/1.5 var(--nps-font);
+    color: var(--nps-navy);
+}
+.bulk-quote-page .bulk-quote-sidebar .bulk-quote-next-steps p {
+    font: 400 13px/1.5 var(--nps-font);
+    color: var(--nps-muted);
+}
+.bulk-quote-page .bulk-quote-sidebar .bulk-quote-whatsapp-link {
+    font: 600 16px/1.4 var(--nps-font);
+}
+.bulk-quote-page .bulk-quote-sidebar .bulk-quote-security-note p {
+    font: 400 13px/1.5 var(--nps-font);
+    color: var(--nps-muted);
+}
+.bulk-quote-page .bulk-quote-sidebar .bulk-quote-security-note strong {
+    font: 600 14px/1.5 var(--nps-font);
+    color: var(--nps-navy);
+}

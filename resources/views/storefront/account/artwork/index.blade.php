@@ -22,7 +22,7 @@
         </div>
         <div class="np-artwork-section-heading">
             <h2>Artwork Proofs <span>({{ $proofs->total() }})</span></h2>
-            <form action="{{ route('account.artwork.index') }}" method="GET"><label class="sr-only" for="artwork-status">Filter artwork proofs</label>
+            <form class="nps-form" action="{{ route('account.artwork.index') }}" method="GET"><label class="sr-only" for="artwork-status">Filter artwork proofs</label>
                 <select id="artwork-status" name="status" onchange="this.form.submit()">
                     <option value="">All Statuses</option>
                     <option value="pending_review" @selected(request('status') === 'pending_review')>Pending Review</option>

@@ -107,6 +107,12 @@ class Order extends Model
         return config('commerce.fulfillment_statuses.'.$this->fulfillment_status, str($this->fulfillment_status)->headline()->toString());
     }
 
+    /** A file-based bulk quotation has not yet been assigned a payable price. */
+    public function awaitingQuotePrice(): bool
+    {
+        return (bool) data_get($this->information, 'pricing_pending', false) && (float) $this->grand_total <= 0;
+    }
+
     public function canPay(): bool
     {
         return in_array($this->status, config('commerce.payable_statuses', []), true)

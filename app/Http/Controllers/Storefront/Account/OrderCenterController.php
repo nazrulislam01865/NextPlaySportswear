@@ -219,6 +219,7 @@ class OrderCenterController extends Controller
     public function invoice(Request $request, Order $order): View
     {
         $this->authorize('view', $order);
+        abort_if($order->awaitingQuotePrice(), 409, 'The final invoice has not been issued yet.');
         return $this->view('storefront.account.orders.invoice', $request, [
             'order' => $order->load('items'),
             'downloadUrl' => URL::temporarySignedRoute('account.orders.invoice.download', now()->addMinutes(10), ['order' => $order]),
@@ -228,6 +229,7 @@ class OrderCenterController extends Controller
     public function downloadInvoice(Request $request, Order $order): Response
     {
         $this->authorize('view', $order);
+        abort_if($order->awaitingQuotePrice(), 409, 'The final invoice has not been issued yet.');
         return response($this->pdf->invoice($order), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="invoice-'.$order->order_number.'.pdf"',

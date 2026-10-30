@@ -12,7 +12,7 @@
 ])
 
 <div class="{{ $full ? 'sm:col-span-2' : '' }}">
-    <label for="{{ $name }}" class="text-sm font-black text-brand-ink">{{ $label }} @if($required)<span class="text-brand-red">*</span>@endif</label>
+    <label for="{{ $name }}" class="text-sm font-black text-brand-ink">{{ $label }} @if($required)<span class="nps-required" aria-hidden="true">*</span>@else<span class="nps-optional">(optional)</span>@endif</label>
     @if ($textarea)
         <textarea id="{{ $name }}" name="{{ $name }}" rows="4" placeholder="{{ $placeholder }}" class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-brand-blue focus:bg-white">{{ old($name, $value) }}</textarea>
     @elseif ($options)
@@ -26,9 +26,9 @@
     @endif
 
     @if ($hint)
-        <p class="mt-2 text-xs font-semibold leading-5 text-slate-500">{{ $hint }}</p>
+        <p class="nps-help">{{ $hint }}</p>
     @endif
     @error($name)
-        <p class="mt-2 text-xs font-black text-brand-red">{{ $message }}</p>
+        <p class="nps-error" role="alert">{{ $message }}</p>
     @enderror
 </div>

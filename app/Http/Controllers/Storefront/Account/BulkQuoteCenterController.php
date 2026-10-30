@@ -153,11 +153,11 @@ class BulkQuoteCenterController extends Controller
     public function decision(Request $request, string $reference): RedirectResponse
     {
         $quote = $this->mine($request, $reference);
-        $data = $request->validate(['decision' => ['required', Rule::in(['accept_only', 'create_order'])]]);
+        $data = $request->validate(['decision' => ['required', Rule::in(['accept_only', 'create_order'])], 'order_quantity' => ['nullable', 'integer', 'min:1', 'max:2147483647']]);
         $wasAccepted = in_array($quote->status, [BulkQuoteRequest::STATUS_ACCEPTED, BulkQuoteRequest::STATUS_CONVERTED], true);
         $oldOrder = $quote->converted_order_id;
         try {
-            $quote = $this->quotes->accept($quote, $data['decision'], $data['decision'] === 'create_order' ? $request->user() : null);
+            $quote = $this->quotes->accept($quote, $data['decision'], $data['decision'] === 'create_order' ? $request->user() : null, isset($data['order_quantity']) ? (int) $data['order_quantity'] : null);
         } catch (ValidationException $exception) {
             throw $exception;
         } catch (\Throwable $exception) {

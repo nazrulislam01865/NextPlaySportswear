@@ -72,7 +72,7 @@
                         @empty
                             <p class="np-artwork-messages__empty">No messages yet. Questions or updates about your proof will appear here.</p>
                         @endforelse
-                        <form method="POST" action="{{ route('account.artwork.message', $proof) }}">@csrf
+                        <form class="nps-form" method="POST" action="{{ route('account.artwork.message', $proof) }}">@csrf
                             <label for="designer-message">Message the design team</label>
                             <textarea id="designer-message" name="message" minlength="5" maxlength="2000" required rows="3" placeholder="Ask a question or reply to the design team...">{{ old('message') }}</textarea>
                             @error('message')<p role="alert" class="np-artwork-form-error">{{ $message }}</p>@enderror

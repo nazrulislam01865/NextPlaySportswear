@@ -4,7 +4,7 @@
             data-single-submit
             method="POST"
             action="{{ route('checkout.place-order.submit') }}"
-            class="grid gap-5"
+            class="nps-form grid gap-5"
             x-data="{ processing: false }"
             @submit="processing = true"
         >

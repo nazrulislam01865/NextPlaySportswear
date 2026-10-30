@@ -12,7 +12,7 @@
             </div>
             <div class="np-artwork-change-form">
                 <h2>Revision Details</h2><p class="np-artwork-muted">Let us know what changes you'd like, and our design team will create an updated proof for your review.</p>
-                <form method="POST" action="{{ route('account.artwork.changes.store', $proof) }}" enctype="multipart/form-data">@csrf
+                <form class="nps-form" method="POST" action="{{ route('account.artwork.changes.store', $proof) }}" enctype="multipart/form-data">@csrf
                     <label class="np-artwork-field-label" for="artwork-change-feedback">What would you like changed? <b>*</b></label>
                     <textarea id="artwork-change-feedback" name="feedback" minlength="10" maxlength="500" required rows="6" placeholder="Please describe what needs to change, including colors, sizes, names, or logo placement...">{{ old('feedback') }}</textarea>
                     <small class="np-artwork-count" id="artwork-feedback-count">Maximum 500 characters</small>

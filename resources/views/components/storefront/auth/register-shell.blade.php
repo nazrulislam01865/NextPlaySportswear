@@ -1,5 +1,5 @@
 @props([
-    'title' => 'Create Account',
+    'title' => 'Sign Up',
 ])
 
 <section class="np-customer-login np-customer-register" aria-labelledby="customer-register-title">

@@ -1,6 +1,11 @@
 import './bootstrap';
 
 import Alpine from 'alpinejs';
+import { setupCustomerRegistration } from './customer-registration.js';
+import { setupCustomerAuthInlineValidation } from './customer-auth-inline-validation.js';
+import { setupResetPassword } from './customer-reset-password.js';
+import { setupRegistrationWizard } from './registration-wizard.js';
+import { setupUnifiedFormValidation } from './unified-form-validation.js';
 
 window.Alpine = Alpine;
 
@@ -4315,6 +4320,11 @@ const bootStorefront = () => {
     setupStorefrontSearchSuggestions();
     setupProductCatalogPartialUpdates();
     setupHeaderAnalytics();
+    setupCustomerRegistration();
+    setupCustomerAuthInlineValidation();
+    setupResetPassword();
+    setupRegistrationWizard();
+    setupUnifiedFormValidation();
     setupSingleSubmitForms();
     setupGlobalWishlistHeader();
     setupWishlistPage();

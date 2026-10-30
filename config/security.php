@@ -2,6 +2,13 @@
 
 return [
 
+    // TEMPORARY: Opt-in development-only OTP screen preview. Always ignored
+    // outside local/testing, even if someone accidentally sets the env flag.
+    'registration_otp_preview' => filter_var(
+        env('NEXTPLAY_LOCAL_OTP_PREVIEW', false),
+        FILTER_VALIDATE_BOOLEAN
+    ),
+
     'email_verification' => [
         /*
          * Temporary operational switch for customer email verification.

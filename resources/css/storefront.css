@@ -1,5 +1,7 @@
 @import "./storefront-theme.css";
 @import "./pagination.css";
+@import "./customer-auth-prototype.css";
+@import "./nextplay-form-system.css";
 
 @tailwind base;
 @tailwind components;
@@ -13120,31 +13122,9 @@ img[src*="product-placeholder.svg"] {
 .np-account-primary-action {
     position: relative;
     z-index: 1;
-    min-height: 48px;
-    width: 100%;
     display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid #f2c200;
-    border-radius: 999px;
-    background: #ffd814;
-    padding: 0 22px;
-    color: var(--np-color-heading);
-    font-size: 16px;
-    font-weight: 750;
-    line-height: 1;
+    width: 100%;
     text-decoration: none;
-    box-shadow: 0 7px 18px rgba(17, 24, 39, .1);
-    transition: background-color .16s ease, border-color .16s ease, transform .16s ease;
-}
-
-.np-account-primary-action:hover,
-.np-account-primary-action:focus-visible {
-    border-color: #e6b800;
-    background: #f7ca00;
-    color: var(--np-color-heading);
-    outline: none;
-    transform: translateY(-1px);
 }
 
 .np-account-new-customer {
@@ -13532,22 +13512,7 @@ img[src*="product-placeholder.svg"] {
 }
 
 
-/* NEXTPLAY_STOREFRONT_LOGIN_RATE_AND_DROPDOWN_BUTTON_FIX */
-.np-account-primary-action,
-.np-account-primary-action:hover,
-.np-account-primary-action:active,
-.np-account-primary-action:focus-visible {
-    border-color: #061F44 !important;
-    background: #061F44 !important;
-    color: #ffffff !important;
-    transform: none !important;
-    box-shadow: 0 7px 18px rgba(6, 31, 68, .18) !important;
-}
-
-.np-account-primary-action:focus-visible {
-    outline: 3px solid rgba(6, 31, 68, .2) !important;
-    outline-offset: 2px !important;
-}
+/* Account menu action uses the canonical .btn.btn-primary.btn-sm styles. */
 
 
 
@@ -14773,6 +14738,25 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
     }
 }
 
+/* Customer-facing account, authentication, and previews reuse the Expose stack. */
+.np-customer-login,
+.np-account-dropdown,
+.storefront-cart-preview,
+.storefront-wishlist-preview {
+    font-family: var(--np-font-ui);
+}
+
+.np-account-new-customer,
+.np-customer-login__register,
+.np-customer-login-password__forgot {
+    font-size: var(--np-customer-ui-text-size);
+}
+
+.storefront-cart-preview [class~="text-base"],
+.storefront-wishlist-preview [class~="text-base"] {
+    font-size: var(--np-customer-ui-text-size);
+}
+
 /* NEXTPLAY_CUSTOMER_LOGIN_PROTOTYPE
    Customer-only sign-in screen matching the approved prototype. The admin
    authentication UI remains independent. Colors and type inherit the existing
@@ -14812,10 +14796,10 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
     margin: 0 0 31px;
     color: var(--np-customer-login-navy);
     font-family: var(--np-font-heading);
-    font-size: 52px;
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: -.035em;
+    font-size: var(--np-customer-ui-title-size);
+    font-weight: var(--np-customer-ui-heading-weight);
+    line-height: var(--np-title-3-line-height);
+    letter-spacing: var(--np-letter-spacing);
     text-align: center;
     text-transform: uppercase;
 }
@@ -14833,9 +14817,9 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
     display: block;
     margin-bottom: 9px;
     color: var(--np-customer-login-navy);
-    font-size: var(--np-label-size);
-    font-weight: var(--np-label-weight);
-    line-height: var(--np-label-line-height);
+    font-size: var(--np-customer-ui-text-size);
+    font-weight: var(--np-font-weight-bold);
+    line-height: var(--np-body-2-line-height);
 }
 
 .np-customer-login-field__required {
@@ -14851,8 +14835,8 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
     background: #fff;
     padding: 0 15px;
     color: var(--np-customer-login-navy);
-    font-size: 14px;
-    font-weight: 500;
+    font-size: var(--np-customer-ui-text-size);
+    font-weight: var(--np-font-weight-medium);
     line-height: 1;
     box-shadow: inset 0 0 0 1px rgba(213, 222, 236, .18);
     outline: none;
@@ -14989,7 +14973,7 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
 
     .np-customer-login__title {
         margin-bottom: 28px;
-        font-size: 43px;
+        font-size: var(--np-customer-ui-title-mobile-size);
     }
 
     .np-customer-login-form {
@@ -15003,7 +14987,7 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
     }
 
     .np-customer-login__title {
-        font-size: 39px;
+        font-size: var(--np-customer-ui-title-mobile-size);
     }
 }
 
@@ -15034,8 +15018,8 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
     gap: 12px;
     min-height: 20px;
     color: var(--np-customer-login-navy);
-    font-size: 14px;
-    font-weight: 500;
+    font-size: var(--np-customer-ui-text-size);
+    font-weight: var(--np-font-weight-medium);
     line-height: 1.35;
     cursor: pointer;
 }
@@ -15055,20 +15039,39 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
     min-width: 0;
 }
 
-.np-customer-register-terms__links,
-.np-customer-register-terms__links a {
+.np-customer-register-terms__text a {
     color: var(--np-customer-login-link);
-}
-
-.np-customer-register-terms__links a {
-    font-weight: 500;
+    font-weight: var(--np-font-weight-bold);
     text-decoration: none;
 }
 
-.np-customer-register-terms__links a:hover,
-.np-customer-register-terms__links a:focus-visible {
+.np-customer-register-terms__text a:hover,
+.np-customer-register-terms__text a:focus-visible {
     text-decoration: underline;
     text-underline-offset: 2px;
+}
+
+/* Field-level password feedback; no large text or layout change. */
+.np-customer-register-match {
+    margin: -12px 0 0;
+    font-family: var(--np-font-ui);
+    font-size: var(--np-customer-ui-text-size);
+    font-weight: var(--np-font-weight-medium);
+    line-height: var(--np-body-2-line-height);
+    color: var(--np-color-error);
+}
+
+.np-customer-register-match[data-state="match"] {
+    color: var(--np-color-success);
+}
+
+.np-customer-register-match[hidden] {
+    display: none;
+}
+
+.np-customer-register-terms__text strong,
+.np-customer-register-terms__text strong a {
+    font-weight: var(--np-font-weight-bold);
 }
 
 .np-customer-register__signin {
@@ -15134,8 +15137,8 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
 .np-system-card__message {
     margin: 0 auto 31px;
     color: var(--np-color-primary);
-    font-size: 18px;
-    font-weight: 500;
+    font-size: var(--np-customer-ui-text-size);
+    font-weight: var(--np-font-weight-medium);
     line-height: 1.45;
     text-align: center;
 }
@@ -15167,6 +15170,8 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
 
 .np-system-card__secondary-link {
     appearance: none;
+    font-family: var(--np-font-ui);
+    font-size: var(--np-customer-ui-text-size);
 }
 
 
@@ -15216,7 +15221,7 @@ html body.storefront-clean-ui .home-page .home-product-section--slider .home-pro
 
     .np-system-card__message {
         margin-bottom: 25px;
-        font-size: 16px;
+        font-size: var(--np-customer-ui-text-size);
     }
 
     .np-system-card__form {
@@ -27322,3 +27327,6 @@ html.np-product-preview-open body { overflow: hidden; }
     font-weight: 800;
     overflow-wrap: anywhere;
 }
+/* Bulk quote to order: reuse the customer quotation form's compact inputs. */
+.storefront-clean-ui .np-rq-next input[name="order_quantity"]{display:block;width:100%;max-width:220px;min-height:39px;border:1px solid #cedaed;border-radius:6px;padding:8px 12px;font:inherit;color:inherit;background:#fff}
+.np-gq-review-bottom label[for="np-guest-order-quantity"]{display:block;font-size:12px;font-weight:700}

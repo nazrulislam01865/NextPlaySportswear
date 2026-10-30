@@ -13,7 +13,7 @@
 
             <div class="np-referral-register-grid">
                 <section class="np-referral-register-card">
-                    <h1>CREATE YOUR ACCOUNT</h1>
+                    <h1 class="nps-form-page-title">CREATE YOUR ACCOUNT</h1>
                     <h2>Your friend's £{{ $rewardLabel }} offer is saved for this visit.</h2>
                     <p class="np-referral-register-card__intro">Create an account to continue and start shopping with your referral offer already linked to your order.</p>
 
@@ -21,7 +21,7 @@
                         <div class="np-referral-form-alert" role="alert">{{ $errors->first() }}</div>
                     @endif
 
-                    <form method="POST" action="{{ route('register.store') }}" class="np-referral-register-form" novalidate data-single-submit>
+                    <form method="POST" action="{{ route('register.store') }}" class="nps-form np-referral-register-form" novalidate data-single-submit>
                         @csrf
                         @if (! empty($redirectUrl))<input type="hidden" name="redirect" value="{{ $redirectUrl }}">@endif
                         <input type="text" name="website" value="" autocomplete="off" tabindex="-1" class="hidden" aria-hidden="true">

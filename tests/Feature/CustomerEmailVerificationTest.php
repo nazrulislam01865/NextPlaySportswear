@@ -28,25 +28,26 @@ class CustomerEmailVerificationTest extends TestCase
         config()->set('security.email_verification.expire_minutes', 60);
     }
 
-    public function test_registration_auto_verifies_and_skips_verification_email_when_verification_is_disabled(): void
+    public function test_preverified_registration_succeeds_when_legacy_verification_is_disabled(): void
     {
         Queue::fake();
         config()->set('security.email_verification.enabled', false);
         config()->set('transactional_email.enabled', false);
 
-        $this->post(route('register.store'), [
+        $this->withSession([
+            \App\Http\Controllers\Storefront\Auth\RegistrationEmailCodeController::SESSION_KEY => [
+                'email' => 'auto@example.com', 'verified_at' => time(),
+            ],
+        ])->post(route('register.store'), [
             'name' => 'Automatic Verification Customer',
             'email' => ' AUTO@EXAMPLE.COM ',
-            'password' => 'Password123',
-            'password_confirmation' => 'Password123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
             'terms' => '1',
             'website' => '',
-        ])
-            ->assertRedirect(route('account.dashboard'))
-            ->assertSessionHas('status');
+        ])->assertRedirect(route('account.dashboard'));
 
         $customer = User::query()->where('email', 'auto@example.com')->firstOrFail();
-
         $this->assertNotNull($customer->email_verified_at);
         $this->assertAuthenticatedAs($customer, 'web');
         Queue::assertNothingPushed();
@@ -73,36 +74,27 @@ class CustomerEmailVerificationTest extends TestCase
         $this->assertAuthenticatedAs($customer->fresh(), 'web');
     }
 
-    public function test_registration_creates_an_unverified_customer_and_queues_a_signed_verification_email(): void
+    public function test_preverified_registration_does_not_send_a_second_verification_link(): void
     {
         Queue::fake();
-
-        $this->post(route('register.store'), [
+        $this->withSession([
+            \App\Http\Controllers\Storefront\Auth\RegistrationEmailCodeController::SESSION_KEY => [
+                'email' => 'verify@example.com', 'verified_at' => time(),
+            ],
+        ])->post(route('register.store'), [
             'name' => 'Verification Customer',
             'email' => ' VERIFY@EXAMPLE.COM ',
-            'password' => 'Password123',
-            'password_confirmation' => 'Password123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
             'terms' => '1',
             'website' => '',
-        ])
-            ->assertRedirect(route('verification.notice'))
-            ->assertSessionHas('status', 'verification-link-sent');
+        ])->assertRedirect(route('account.dashboard'));
 
         $customer = User::query()->where('email', 'verify@example.com')->firstOrFail();
-
-        $this->assertNull($customer->email_verified_at);
+        $this->assertNotNull($customer->email_verified_at);
         $this->assertAuthenticatedAs($customer, 'web');
-
-        Queue::assertPushed(SendTransactionalEmail::class, function (SendTransactionalEmail $job) use ($customer): bool {
-            return $job->message->key === 'customer.email-verification'
-                && data_get($job->message->recipients, '0.email') === $customer->email
-                && str_contains((string) $job->message->actionUrl, '/email/verify/'.$customer->id.'/')
-                && str_contains((string) $job->message->actionUrl, 'signature=')
-                && str_contains((string) $job->message->actionUrl, 'expires=');
-        });
-
         Queue::assertNotPushed(SendTransactionalEmail::class, function (SendTransactionalEmail $job): bool {
-            return $job->message->key === 'customer.welcome';
+            return $job->message->key === 'customer.email-verification';
         });
     }
 
@@ -151,26 +143,16 @@ class CustomerEmailVerificationTest extends TestCase
         Queue::assertPushed(SendTransactionalEmail::class, 1);
     }
 
-    public function test_registration_survives_verification_delivery_outage_and_shows_retry_message(): void
+    public function test_pre_registration_delivery_outage_never_creates_an_account(): void
     {
         Queue::fake();
         config()->set('transactional_email.enabled', false);
 
-        $this->post(route('register.store'), [
-            'name' => 'Mail Outage Customer',
-            'email' => 'outage@example.com',
-            'password' => 'Password123',
-            'password_confirmation' => 'Password123',
-            'terms' => '1',
-            'website' => '',
-        ])
-            ->assertRedirect(route('verification.notice'))
-            ->assertSessionHas('verification_delivery_failed');
+        $this->post(route('register.email.send'), ['email' => 'outage@example.com'])
+            ->assertSessionHasErrors('email');
 
-        $customer = User::query()->where('email', 'outage@example.com')->firstOrFail();
-
-        $this->assertNull($customer->email_verified_at);
-        $this->assertAuthenticatedAs($customer, 'web');
+        $this->assertDatabaseMissing('users', ['email' => 'outage@example.com']);
+        $this->assertGuest('web');
         Queue::assertNothingPushed();
     }
 

@@ -444,8 +444,14 @@ Route::middleware(['guest:web', 'not.admin'])->group(function () {
         ->name('login.store');
 
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
+    Route::post('/register/email', [\App\Http\Controllers\Storefront\Auth\RegistrationEmailCodeController::class, 'send'])
+        ->middleware('throttle:registration-email-send')->name('register.email.send');
+    Route::post('/register/email/verify', [\App\Http\Controllers\Storefront\Auth\RegistrationEmailCodeController::class, 'verify'])
+        ->middleware('throttle:registration-email-verify')->name('register.email.verify');
+    Route::post('/register/email/change', [\App\Http\Controllers\Storefront\Auth\RegistrationEmailCodeController::class, 'change'])
+        ->name('register.email.change');
     Route::post('/register', [RegisteredUserController::class, 'store'])
-        ->middleware('throttle:5,1')
+        ->middleware('throttle:registration-complete')
         ->name('register.store');
 
     Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])

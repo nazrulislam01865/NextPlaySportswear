@@ -19,7 +19,7 @@
         </div>
         <div class="text-left md:text-right">
             <p class="text-xs font-black uppercase tracking-wide text-slate-400">Order total</p>
-            <p class="mt-1 text-2xl font-black text-brand-ink">${{ number_format((float)$order->grand_total, 2) }}</p>
+            <p class="mt-1 text-2xl font-black text-brand-ink">{{ $order->awaitingQuotePrice() ? 'Pending invoice' : '$'.number_format((float)$order->grand_total, 2) }}</p>
         </div>
     </div>
     <div class="grid gap-2 border-t border-slate-100 bg-slate-50 p-4 sm:flex sm:flex-wrap [&_.btn]:w-full sm:[&_.btn]:w-auto">

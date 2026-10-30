@@ -13,11 +13,14 @@
     <label for="{{ $name }}" class="mb-2 block text-sm font-black text-slate-800">
         {{ $label }}
         @if ($required)
-            <span class="text-brand-red">*</span>
+            <span class="nps-required" aria-hidden="true">*</span>
+        @else
+            <span class="nps-optional">(optional)</span>
         @endif
     </label>
 
     <input
+        @error($name) aria-invalid="true" aria-describedby="{{ $name }}-server-error" @enderror
         id="{{ $name }}"
         name="{{ $name }}"
         type="{{ $type }}"
@@ -29,10 +32,10 @@
     >
 
     @if ($help)
-        <p class="mt-2 text-xs font-semibold leading-5 text-slate-500">{{ $help }}</p>
+        <p class="nps-help">{{ $help }}</p>
     @endif
 
     @error($name)
-        <p class="mt-2 text-sm font-bold text-brand-red">{{ $message }}</p>
+        <p id="{{ $name }}-server-error" class="nps-error" role="alert">{{ $message }}</p>
     @enderror
 </div>

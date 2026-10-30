@@ -34,9 +34,17 @@ class ResetPasswordRequest extends FormRequest
                 'string',
                 'confirmed',
                 'max:255',
-                PasswordRule::min(8)->letters()->numbers(),
+                PasswordRule::min(8)->letters()->numbers()->symbols(),
             ],
             'password_confirmation' => ['required', 'string', 'max:255'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'password.confirmed' => 'Passwords do not match. Please try again.',
+            'password_confirmation.required' => 'Please confirm your new password.',
         ];
     }
 }

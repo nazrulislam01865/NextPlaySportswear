@@ -15,7 +15,7 @@
                 @if(in_array($quote->status, [\App\Models\BulkQuoteRequest::STATUS_ACCEPTED, \App\Models\BulkQuoteRequest::STATUS_CONVERTED, \App\Models\BulkQuoteRequest::STATUS_CLOSED]))
                     <p class="np-gq-muted">This quotation has been finalized. Please contact sales for assistance.</p>
                 @else
-                <form method="POST" action="{{ route('quote.guest.changes.send', $quote->reference) }}" enctype="multipart/form-data" class="np-gq-change-form">@csrf
+                <form method="POST" action="{{ route('quote.guest.changes.send', $quote->reference) }}" enctype="multipart/form-data" class="nps-form np-gq-change-form">@csrf
                     <fieldset><legend>What would you like to change? <span>*</span></legend><p>Select all that apply.</p><div class="np-gq-check-grid">
                         @foreach(['pricing' => 'Pricing / quantity tiers', 'delivery' => 'Delivery date / shipping', 'products' => 'Products / quantities', 'customization' => 'Customization / artwork', 'payment' => 'Payment terms', 'other' => 'Other'] as $key => $label)
                             <label><input type="checkbox" name="change_types[]" value="{{ $key }}" @checked(in_array($key, old('change_types', [])))><span>{{ $label }}</span></label>

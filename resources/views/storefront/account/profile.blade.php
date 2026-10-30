@@ -10,7 +10,7 @@
                 title="Profile Details"
                 description="This information helps NextPlay prepare quotes, artwork proofs, delivery updates, and customer support faster."
             >
-                <form method="POST" action="{{ route('account.profile.update') }}" class="grid gap-5" novalidate>
+                <form data-nps-inline method="POST" action="{{ route('account.profile.update') }}" class="nps-form grid gap-5" novalidate>
                     @csrf
                     @method('PATCH')
 
@@ -99,7 +99,7 @@
                     title="Change Password"
                     description="Use a strong password that you do not use on other websites."
                 >
-                    <form method="POST" action="{{ route('account.password.update') }}" class="grid gap-5" novalidate>
+                    <form data-nps-inline method="POST" action="{{ route('account.password.update') }}" class="nps-form grid gap-5" novalidate>
                         @csrf
                         @method('PATCH')
 

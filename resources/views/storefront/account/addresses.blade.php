@@ -57,7 +57,7 @@
                     </div>
                 </div>
 
-                <form method="POST" action="{{ route('account.addresses.store') }}" class="grid gap-5 p-5 md:p-7" novalidate>
+                <form data-nps-inline method="POST" action="{{ route('account.addresses.store') }}" class="nps-form grid gap-5 p-5 md:p-7" novalidate>
                     @csrf
 
                     <div>

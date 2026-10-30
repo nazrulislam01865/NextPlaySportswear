@@ -123,6 +123,75 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        // Email-first customer registration: isolate the send and verify actions
+        // from other forms. The old throttle:3,1 was shared by every person on
+        // an IP and counted both initial requests and resends, producing a raw
+        // 429 screen during legitimate sign-up or local OTP testing.
+        $registrationLimitResponse = static function (Request $request): \Illuminate\Http\RedirectResponse {
+            $verifying = $request->routeIs('register.email.verify');
+            $field = $verifying ? 'code' : 'email';
+            $message = $verifying
+                ? 'Too many verification attempts. Please wait a moment before trying again.'
+                : 'Too many verification code requests. Please wait a moment before trying again.';
+
+            return redirect()->route('register')
+                ->withInput($verifying ? [] : $request->only('email'))
+                ->withErrors([$field => $message]);
+        };
+
+        // Keep account-creation abuse protection, but validation retries must
+        // not be blocked by the old shared 5-per-minute IP bucket. A named
+        // limiter uses a browser-session bucket with a generous ceiling and
+        // returns an inline form error instead of a raw HTTP 429 page.
+        RateLimiter::for('registration-complete', static function (Request $request): array {
+            $session = $request->hasSession() ? (string) $request->session()->getId() : '';
+            $ip = (string) ($request->ip() ?: 'unknown');
+            $browserKey = hash('sha256', $session !== '' ? $session : $ip);
+            $respond = static fn (Request $request) => redirect()->route('register')
+                ->withErrors(['password' => 'Too many account creation attempts. Please try again in a moment.']);
+
+            return [
+                Limit::perMinute(30)->by('registration-complete-session-minute:'.$browserKey)->response($respond),
+                Limit::perHour(180)->by('registration-complete-ip-hour:'.$ip)->response($respond),
+            ];
+        });
+
+        RateLimiter::for('registration-email-send', function (Request $request) use ($registrationLimitResponse): array {
+            $ip = (string) ($request->ip() ?: 'unknown');
+            $email = strtolower(trim((string) $request->input('email')));
+            // The controller independently enforces a 45-second resend delay
+            // per browser session. These buckets protect shared IPs and each
+            // destination email without locking out ordinary retries.
+            $limits = [
+                Limit::perMinute(20)->by('registration-email-send-ip-minute:'.$ip)->response($registrationLimitResponse),
+                Limit::perHour(120)->by('registration-email-send-ip-hour:'.$ip)->response($registrationLimitResponse),
+            ];
+
+            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $emailKey = hash('sha256', substr($email, 0, 190));
+                $limits[] = Limit::perHour(12)
+                    ->by('registration-email-send-email-hour:'.$emailKey)
+                    ->response($registrationLimitResponse);
+            }
+
+            return $limits;
+        });
+
+        RateLimiter::for('registration-email-verify', function (Request $request) use ($registrationLimitResponse): array {
+            $ip = (string) ($request->ip() ?: 'unknown');
+            $sessionId = $request->hasSession() ? (string) $request->session()->getId() : '';
+            $browserKey = hash('sha256', $sessionId !== '' ? $sessionId : $ip);
+
+            // Five incorrect codes per challenge are still enforced by the
+            // controller. This limiter handles automated traffic across
+            // repeated challenges without penalizing shared-IP customers.
+            return [
+                Limit::perMinute(30)->by('registration-email-verify-session-minute:'.$browserKey)->response($registrationLimitResponse),
+                Limit::perHour(90)->by('registration-email-verify-session-hour:'.$browserKey)->response($registrationLimitResponse),
+                Limit::perHour(240)->by('registration-email-verify-ip-hour:'.$ip)->response($registrationLimitResponse),
+            ];
+        });
+
         RateLimiter::for('email-verification-send', function (Request $request): array {
             $ip = (string) ($request->ip() ?: 'unknown');
             $userId = (string) ($request->user('web')?->getAuthIdentifier() ?: 'guest');

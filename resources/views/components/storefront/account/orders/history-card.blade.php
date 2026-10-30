@@ -28,7 +28,7 @@
 
     <div class="np-order-history-card__total">
         <span>Order Total</span>
-        <strong>${{ number_format((float) $order->grand_total, 2) }}</strong>
+        <strong>{{ $order->awaitingQuotePrice() ? 'Pending invoice' : '$'.number_format((float) $order->grand_total, 2) }}</strong>
     </div>
 
     <div class="np-order-history-card__actions">

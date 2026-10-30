@@ -27,17 +27,17 @@
             <option value="{{ $country->country_name }}" data-iso="{{ $country->iso_code }}" data-region-label="{{ $country->region_label }}" data-has-regions="{{ $country->has_regions ? 1 : 0 }}" @selected((string) $countryValue === (string) $country->country_name)>{{ $country->country_name }}</option>
         @endforeach
     </select>
-    @error($countryField)<p class="mt-2 text-xs font-semibold text-brand-red">{{ $message }}</p>@enderror
+    @error($countryField)<p class="{{ $isBulk ? 'bulk-quote-field-error nps-error' : 'mt-2 text-xs font-semibold text-brand-red' }}" role="alert">{{ $message }}</p>@enderror
 </div>
 <div data-address-region-for="{{ $countryField }}" @if($isBulk) data-geo-region-freeform @endif class="{{ $fieldClass }}" style="font-family:inherit">
-    <label for="{{ $regionField }}" class="{{ $labelClass }}" data-geo-region-label>{{ $regionLabel ?: 'State / Province (optional)' }}</label>
+    <label for="{{ $regionField }}" class="{{ $labelClass }}" data-geo-region-label>{{ $regionLabel ?: 'State / Province' }} @if($isBulk)<span class="bulk-quote-optional">(optional)</span>@elseif(! $regionLabel)(optional)@endif</label>
     @unless($isBulk)
         <select id="{{ $regionField }}-select" data-geo-region-select data-region-name="{{ $regionField }}" class="{{ $selectClass }}" style="font-family:var(--np-font-body,inherit)" hidden disabled aria-label="State / Province">
             <option value="">Select (optional)</option>
         </select>
     @endunless
     <input id="{{ $regionField }}" name="{{ $regionField }}" data-geo-region-input value="{{ $regionValue }}" maxlength="120" class="{{ $selectClass }}" style="font-family:var(--np-font-body,inherit)" placeholder="{{ $isBulk ? 'County / State (optional)' : 'State / Province (optional)' }}" autocomplete="address-level1" aria-invalid="{{ $errors->has($regionField) ? 'true' : 'false' }}">
-    @error($regionField)<p class="mt-2 text-xs font-semibold text-brand-red">{{ $message }}</p>@enderror
+    @error($regionField)<p class="{{ $isBulk ? 'bulk-quote-field-error nps-error' : 'mt-2 text-xs font-semibold text-brand-red' }}" role="alert">{{ $message }}</p>@enderror
 </div>
 @once
     <style>[data-geo-region-select][hidden],[data-geo-region-input][hidden]{display:none!important}</style>

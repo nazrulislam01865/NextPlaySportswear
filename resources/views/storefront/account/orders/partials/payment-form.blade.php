@@ -4,7 +4,7 @@
 @endphp
 
 <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_330px] lg:items-start">
-    <form method="POST" action="{{ route('account.orders.pay.store', $order) }}" class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-card md:p-7">
+    <form method="POST" action="{{ route('account.orders.pay.store', $order) }}" class="nps-form rounded-[28px] border border-slate-200 bg-white p-5 shadow-card md:p-7">
         @csrf
         <input type="hidden" name="idempotency_key" value="{{ old('idempotency_key', (string) \Illuminate\Support\Str::uuid()) }}">
 

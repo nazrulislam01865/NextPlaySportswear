@@ -48,7 +48,7 @@
             @enderror
 
             <div class="mt-6 grid gap-3 sm:grid-cols-2">
-                <form method="POST" action="{{ route('verification.send') }}" data-single-submit>
+                <form class="nps-form" method="POST" action="{{ route('verification.send') }}" data-single-submit>
                     @csrf
                     <button type="submit" class="btn btn-primary btn-lg w-full">
                         Resend Verification Email

@@ -45,6 +45,13 @@ final class FlowTrackBulkOrderController extends Controller
             'event_date' => ['nullable', 'date'],
             'additional_notes' => ['nullable', 'string', 'max:5000'],
             'status' => ['required', Rule::in(array_keys(BulkQuoteRequest::statuses()))],
+            'selected_products' => ['sometimes', 'array', 'max:25'],
+            'selected_products.*' => ['array:id,name,category,quantity,unit'],
+            'selected_products.*.id' => ['required', 'integer', 'min:1'],
+            'selected_products.*.name' => ['required', 'string', 'max:255'],
+            'selected_products.*.category' => ['nullable', 'string', 'max:190'],
+            'selected_products.*.quantity' => ['required', 'numeric', 'min:0'],
+            'selected_products.*.unit' => ['nullable', 'string', 'max:40'],
             'client_files' => ['array', 'max:25'],
             'client_files.*.id' => ['required', 'integer', 'min:1'],
             'client_files.*.name' => ['required', 'string', 'max:190'],
@@ -86,6 +93,9 @@ final class FlowTrackBulkOrderController extends Controller
             if ($isNextPlayOrigin && (! $existing || (int) $existing->flowtrack_inquiry_id !== $sourceId)) {
                 throw ValidationException::withMessages(['source_quote_id' => 'Original NextPlay quote link was not found or does not match.']);
             }
+            if ($isNextPlayOrigin && $existing && ! hash_equals((string) $existing->reference, (string) $data['source_reference'])) {
+                throw ValidationException::withMessages(['source_reference' => 'Original NextPlay quote reference does not match.']);
+            }
             if ($existing && ((int) ($existing->user_id ?? 0) !== (int) ($customer?->id ?? 0)
                 || (! $isNextPlayOrigin && (int) $existing->flowtrack_inquiry_id !== $sourceId))) {
                 throw ValidationException::withMessages(['user_id' => 'A synchronized quote cannot be reassigned to a different customer.']);
@@ -115,6 +125,15 @@ final class FlowTrackBulkOrderController extends Controller
                 $quote = $existing;
             }
             $quote->fill($fields);
+            // FlowTracker's staff-selected inquiry items are separate from the
+            // original customer's product picker. Preserve both without a migration.
+            $productInfo = (array) ($quote->product_information ?? []);
+            if (! empty($data['selected_products'])) {
+                $productInfo['selected_products'] = array_values($data['selected_products']);
+            } else {
+                unset($productInfo['selected_products']);
+            }
+            $quote->product_information = $productInfo === [] ? null : $productInfo;
             if ($quote->is_remote_area === null || $quote->isDirty(['postal_code', 'country', 'state_province'])) {
                 $quote->is_remote_area = filled($quote->postal_code)
                     ? $remoteAreas->resolve(

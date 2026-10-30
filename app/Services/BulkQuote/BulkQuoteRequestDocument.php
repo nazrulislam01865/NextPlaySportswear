@@ -80,6 +80,11 @@ final class BulkQuoteRequestDocument
                         $rows[] = ['Size & Quantity'.(isset($group['label']) ? ' — '.$group['label'] : ''), implode(', ', $sizes)];
                     }
                 }
+                foreach (($product['selected_products'] ?? []) as $item) {
+                    if (is_array($item)) {
+                        $rows[] = ['FlowTracker product', ($item['name'] ?? 'Product').' · '.($item['quantity'] ?? 0).' '.($item['unit'] ?? 'pcs')];
+                    }
+                }
                 $rows[] = ['Product notes', $product['notes'] ?? ''];
                 $xml .= $this->table($rows);
             }

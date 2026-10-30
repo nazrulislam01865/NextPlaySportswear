@@ -44,7 +44,9 @@ class TransactionalEmail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.transactional',
+            view: $this->emailMessage->key === 'customer.password-reset'
+                ? 'emails.customer-password-reset'
+                : 'emails.transactional',
             with: [
                 'emailMessage' => $this->emailMessage,
             ],

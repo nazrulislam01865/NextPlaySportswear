@@ -1,0 +1,389 @@
+/* NextPlay customer form system - one implementation for all storefront workflows.
+ * Geometry follows NextPlay_Form_Design_System.html (v1.0).
+ * Colors and typeface always reference storefront-theme.css, never the guide palette.
+ * Scope is intentional: admin, header search, cart steppers and payment iframes are not altered.
+ */
+.storefront-clean-ui {
+    --nps-navy: var(--np-color-primary);
+    --nps-orange: var(--np-color-secondary);
+    --nps-text: var(--np-color-body);
+    --nps-muted: var(--np-color-muted);
+    --nps-border: var(--np-color-border);
+    --nps-surface: var(--np-color-page);
+    --nps-soft: var(--np-color-soft);
+    --nps-error: var(--np-color-error);
+    --nps-success: var(--np-color-success);
+    --nps-focus: var(--np-color-focus);
+    --nps-radius: 8px;
+    --nps-control: 48px;
+    --nps-font: var(--np-font-body);
+    --nps-title-size: 28px;
+    --nps-section-size: 20px;
+    --nps-body-size: 16px;
+    --nps-label-size: 14px;
+    --nps-help-size: 13px;
+    --nps-field-gap: 24px;
+}
+.storefront-clean-ui form.nps-form,
+.storefront-clean-ui form.nps-form * { box-sizing: border-box; }
+.storefront-clean-ui form.nps-form {
+    min-width: 0;
+    color: var(--nps-text);
+    font: 400 var(--nps-body-size)/1.5 var(--nps-font);
+}
+.storefront-clean-ui form.nps-form :is(input, select, textarea, button, label, legend) {
+    font-family: var(--nps-font);
+}
+/* Shared field geometry. Never style hidden inputs, choice widgets, OTP cells,
+   custom payment elements, or existing nested telephone/subcontrol wrappers. */
+.storefront-clean-ui form.nps-form :is(
+    input[type="text"], input[type="email"], input[type="password"],
+    input[type="tel"], input[type="url"], input[type="search"],
+    input[type="number"], input[type="date"], input[type="datetime-local"],
+    input:not([type]), select, textarea
+):not(.sr-only):not(.bulk-quote-select-native-hidden):not([data-code-digit]) {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-height: var(--nps-control);
+    border: 1px solid var(--nps-border);
+    border-radius: var(--nps-radius);
+    background-color: var(--nps-surface);
+    color: var(--nps-text);
+    font: 400 16px/1.5 var(--nps-font);
+    box-shadow: none;
+}
+.storefront-clean-ui form.nps-form :is(
+    input[type="text"], input[type="email"], input[type="password"],
+    input[type="tel"], input[type="url"], input[type="search"],
+    input[type="number"], input[type="date"], input[type="datetime-local"],
+    input:not([type]), select
+):not(.sr-only):not(.bulk-quote-select-native-hidden):not([data-code-digit]) {
+    height: var(--nps-control);
+    padding: 12px 14px;
+}
+.storefront-clean-ui form.nps-form textarea {
+    min-height: 120px;
+    height: auto;
+    padding: 12px 14px;
+    resize: vertical;
+}
+.storefront-clean-ui form.nps-form :is(input,textarea)::placeholder {
+    color: var(--np-color-placeholder);
+    font-weight: 400;
+    opacity: 1;
+}
+.storefront-clean-ui form.nps-form :is(input,select,textarea):hover:not(:disabled):not([aria-invalid="true"]) {
+    border-color: var(--np-color-muted);
+}
+.storefront-clean-ui form.nps-form :is(input,select,textarea,button,a):focus-visible {
+    outline: 3px solid var(--nps-focus);
+    outline-offset: 3px;
+}
+.storefront-clean-ui form.nps-form :is(input,select,textarea)[aria-invalid="true"] {
+    border-color: var(--nps-error) !important;
+}
+.storefront-clean-ui form.nps-form :is(input,select,textarea):disabled {
+    background: var(--np-color-soft);
+    color: var(--nps-muted);
+    cursor: not-allowed;
+}
+.storefront-clean-ui form.nps-form :is(input,select,textarea)[readonly] {
+    background: var(--np-color-soft);
+}
+/* Labels use the same metrics independent of legacy Tailwind weight classes. */
+.storefront-clean-ui form.nps-form label:not(.sr-only) {
+    font-family: var(--nps-font);
+    font-size: 14px;
+    line-height: 1.5;
+}
+.storefront-clean-ui form.nps-form.np-referral-register-form > label {
+    color: var(--nps-navy);
+    font-weight: 600;
+}
+.storefront-clean-ui form.nps-form label[for],
+.storefront-clean-ui form.nps-form .nps-label,
+.storefront-clean-ui form.nps-form legend {
+    color: var(--nps-navy);
+    font: 600 14px/1.5 var(--nps-font);
+}
+.storefront-clean-ui form.nps-form :is(.nps-optional,.bulk-quote-optional) {
+    display: inline;
+    margin-left: 4px;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    color: var(--nps-muted);
+    background: none;
+    font: 400 14px/1.5 var(--nps-font);
+    text-transform: none;
+}
+.storefront-clean-ui form.nps-form :is(.nps-required,.bulk-quote-req) { color: var(--nps-error); }
+.storefront-clean-ui form.nps-form .nps-help,
+.storefront-clean-ui form.nps-form :is(.np-auth-proto__hint,.bulk-quote-field-note) {
+    color: var(--nps-muted);
+    font: 400 13px/1.5 var(--nps-font);
+}
+.storefront-clean-ui form.nps-form .nps-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin-top: 8px;
+    color: var(--nps-error);
+    font: 400 13px/1.5 var(--nps-font);
+}
+.storefront-clean-ui form.nps-form .nps-error::before {
+    content: '!';
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 16px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--nps-error);
+    color: white;
+    font: 700 11px/1 var(--nps-font);
+}
+.storefront-clean-ui form.nps-form .nps-success {
+    color: var(--nps-success);
+    font: 400 13px/1.5 var(--nps-font);
+}
+.storefront-clean-ui form.nps-form [hidden] { display: none !important; }
+/* Keep special product, artwork, saved-card and segmented choice styling intact;
+   only their typeface and semantic brand colors are unified. */
+.storefront-clean-ui form.nps-form :is(input[type="checkbox"],input[type="radio"]):not(.sr-only) {
+    accent-color: var(--nps-navy);
+}
+.storefront-clean-ui form.nps-form .nps-choice { font: 400 14px/1.5 var(--nps-font); }
+.storefront-clean-ui form.nps-form .nps-choice-card:has(input:checked) {
+    border-color: var(--nps-orange);
+}
+.storefront-clean-ui form.nps-form input[type="file"] {
+    height: auto;
+    min-height: 48px;
+    font: 400 16px/1.5 var(--nps-font);
+}
+.storefront-clean-ui form.nps-form input[type="file"]::file-selector-button {
+    padding: 8px 12px;
+    margin-right: 12px;
+    border: 1px solid var(--nps-border);
+    border-radius: 6px;
+    background: var(--nps-soft);
+    color: var(--nps-navy);
+    font: 600 14px/1.5 var(--nps-font);
+}
+/* Primary/secondary action system: never force quantities, controls, or icon
+   toggles into large buttons; their buttons have separate interactions. */
+.storefront-clean-ui form.nps-form :is(.btn-primary,.btn-navy,.nps-btn,.np-auth-proto__primary) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    border-radius: var(--nps-radius);
+    font: 600 16px/1.4 var(--nps-font);
+    text-decoration: none;
+    color: #fff;
+    border-color: var(--nps-navy);
+    background: var(--nps-navy);
+}
+.storefront-clean-ui form.nps-form :is(.btn-primary,.btn-navy,.nps-btn,.np-auth-proto__primary):hover:not(:disabled) {
+    color: #fff;
+    border-color: var(--np-color-primary-hover);
+    background: var(--np-color-primary-hover);
+}
+.storefront-clean-ui form.nps-form :is(.btn-outline,.btn-light,.nps-btn-secondary) {
+    min-height: 48px;
+    border: 1px solid var(--nps-border);
+    border-radius: var(--nps-radius);
+    background: var(--nps-surface);
+    color: var(--nps-navy);
+    font: 600 16px/1.4 var(--nps-font);
+}
+.storefront-clean-ui form.nps-form :is(.btn-primary,.btn-navy,.nps-btn,.np-auth-proto__primary):disabled {
+    background: var(--np-color-border);
+    border-color: var(--np-color-border);
+    color: var(--nps-muted);
+    opacity: 1;
+    cursor: not-allowed;
+}
+/* Account pages, checkout, and auth share field spacing without changing
+   conditional Alpine layouts and without forcing two columns into single forms. */
+.storefront-clean-ui form.nps-form :is(.nps-grid) {
+    column-gap: var(--nps-field-gap);
+    row-gap: var(--nps-field-gap);
+}
+.storefront-clean-ui form.nps-form .nps-stack { display: flex; flex-direction: column; gap: 24px; }
+/* Auth widgets have historically used 36px fields and isolated styling.
+   Bring them into the SAME tokens while preserving the verified-email wizard. */
+.storefront-clean-ui .np-auth-proto { font-family: var(--nps-font); }
+.storefront-clean-ui .np-auth-proto__card { width: min(100%, 480px); border-radius: var(--nps-radius); }
+.storefront-clean-ui .np-auth-proto__title {
+    font: 700 28px/1.25 var(--nps-font);
+    color: var(--nps-navy);
+}
+.storefront-clean-ui .np-auth-proto__subtitle {
+    color: var(--nps-muted);
+    font: 400 16px/1.5 var(--nps-font);
+    margin-top: 8px;
+    margin-bottom: 28px;
+}
+.storefront-clean-ui form.nps-form.np-auth-proto__form { gap: 24px; }
+.storefront-clean-ui form.nps-form .np-auth-proto__field > label,
+.storefront-clean-ui form.nps-form .np-auth-proto__code-label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--nps-navy);
+    font: 600 14px/1.5 var(--nps-font);
+}
+.storefront-clean-ui form.nps-form .np-auth-proto__input-icon input { padding-left: 40px; }
+.storefront-clean-ui form.nps-form .np-auth-proto__input-icon svg { top: 15px; }
+.storefront-clean-ui form.nps-form .np-auth-proto__password input { padding-right: 52px; }
+.storefront-clean-ui form.nps-form .np-auth-proto__password button {
+    height: 48px;
+    width: 48px;
+    right: 3px;
+}
+.storefront-clean-ui form.nps-form .np-auth-proto__code-cells input {
+    height: 48px;
+    min-height: 48px;
+    border-radius: var(--nps-radius);
+    color: var(--nps-text);
+    font: 600 16px/1.5 var(--nps-font);
+}
+.storefront-clean-ui form.nps-form .np-auth-proto__error { color: var(--nps-error); font-size: 13px; line-height: 1.5; }
+.storefront-clean-ui .np-auth-proto__alert { border-color: var(--nps-error); color: var(--nps-error); }
+.storefront-clean-ui .np-auth-proto__alert span { background: var(--nps-error); }
+.storefront-clean-ui .np-auth-proto__legal a { color: var(--np-color-link); }
+.storefront-clean-ui .np-auth-proto__step,
+.storefront-clean-ui .np-auth-proto__step-dot { font-family: var(--nps-font); }
+.storefront-clean-ui form.nps-form .np-customer-register-terms__label { font: 400 14px/1.5 var(--nps-font); }
+.storefront-clean-ui form.nps-form :is(.np-customer-register-terms__checkbox,.np-auth-proto__remember input) {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--nps-navy);
+}
+.storefront-clean-ui .np-auth-proto__footer { font: 400 14px/1.5 var(--nps-font); }
+.storefront-clean-ui .np-auth-proto__secondary.btn {
+    min-height: 48px;
+    border-radius: var(--nps-radius);
+    font: 600 16px/1.4 var(--nps-font);
+}
+/* Signup's input visibility control remains transparent / icon-only. */
+.storefront-clean-ui form.nps-form .np-auth-proto__password button[type="button"] {
+    background: transparent; border: 0; color: var(--nps-muted);
+}
+@media (max-width: 640px) {
+    .storefront-clean-ui { --nps-title-size: 24px; }
+    .storefront-clean-ui .np-auth-proto__title { font-size: 24px; }
+    .storefront-clean-ui form.nps-form .nps-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Auth errors use the same single-line icon+message treatment as other forms. */
+.storefront-clean-ui form.nps-form .np-auth-proto__error:not([hidden]) {
+    display: flex; align-items: flex-start; gap: 6px;
+    margin-top: 8px; color: var(--nps-error); font: 400 13px/1.5 var(--nps-font);
+}
+.storefront-clean-ui form.nps-form .np-auth-proto__error:not([hidden])::before {
+    content: '!'; display: inline-grid; place-items: center; flex: 0 0 16px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--nps-error); color: white; font: 700 11px/1 var(--nps-font);
+}
+
+/* Heading hierarchy shared by checkout/contact/referral/account forms. */
+.storefront-clean-ui .nps-form-page-title {
+    font: 700 var(--nps-title-size)/1.25 var(--nps-font);
+    letter-spacing: 0; text-transform: none;
+}
+.storefront-clean-ui .nps-form-section-title {
+    font: 700 var(--nps-section-size)/1.4 var(--nps-font);
+    letter-spacing: 0; text-transform: none;
+}
+.storefront-clean-ui .nps-form-section-description {
+    font: 400 16px/1.5 var(--nps-font);
+}
+/* Referral signup is a primary registration action, not an orange secondary CTA. */
+.storefront-clean-ui .np-referral-register-form.nps-form .np-referral-register-submit {
+    min-height: 48px; border: 1px solid var(--nps-navy);
+    border-radius: var(--nps-radius); background: var(--nps-navy);
+    color: #fff; font: 600 16px/1.4 var(--nps-font);
+}
+
+/* Auth polish: use one visible 1px control border at focus, not a border,
+   legacy inner outline and shared 3px focus ring stacked together.
+   Focus is still communicated by the theme focus color. */
+.storefront-clean-ui form.nps-form :is(input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), select, textarea):is(:focus, :focus-visible) {
+    outline: none !important;
+    outline-offset: 0 !important;
+    box-shadow: none !important;
+    border-width: 1px !important;
+    border-style: solid !important;
+    border-color: var(--nps-focus) !important;
+}
+.storefront-clean-ui form.nps-form :is(input, select, textarea)[aria-invalid="true"]:is(:focus, :focus-visible) {
+    border-color: var(--nps-error) !important;
+}
+/* The shared geometry has a stronger selector than the original icon padding;
+   reserve space explicitly so the caret and email text never cross the icon. */
+.storefront-clean-ui form.nps-form .np-auth-proto__input-icon input[type="email"] {
+    padding-left: 50px !important;
+}
+.storefront-clean-ui form.nps-form .np-auth-proto__input-icon svg {
+    top: 50%;
+    left: 16px;
+    transform: translateY(-50%);
+    z-index: 1;
+    pointer-events: none;
+}
+/* Keep eye controls compact and transparent, with one visual state marker. */
+.storefront-clean-ui form.nps-form .np-auth-proto__password button[type="button"] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    outline: none !important;
+    box-shadow: none !important;
+    cursor: pointer;
+}
+.storefront-clean-ui form.nps-form .np-auth-proto__password button[type="button"]:focus-visible {
+    color: var(--nps-focus);
+}
+.storefront-clean-ui form.nps-form .np-auth-proto__password button[aria-pressed="true"]::after {
+    content: "";
+    position: absolute;
+    width: 19px;
+    height: 1.5px;
+    background: currentColor;
+    transform: rotate(-33deg);
+    pointer-events: none;
+}
+/* The guide sets 13px supporting copy and 14px field labels throughout auth. */
+.storefront-clean-ui .np-auth-proto__hint {
+    font: 400 13px/1.5 var(--nps-font);
+}
+.storefront-clean-ui .np-auth-proto__notice--success {
+    margin: 0 0 24px;
+    padding: 12px 14px;
+    border: 1px solid #bbdfcb;
+    border-radius: var(--nps-radius);
+    background: #e9f8ee;
+    color: var(--nps-success);
+    font: 400 14px/1.5 var(--nps-font);
+    text-align: left;
+}
+
+/* Progress, verification and small state copy share the same typography scale;
+   no isolated 12px auth label styling or alternate font stack. */
+.storefront-clean-ui .np-auth-proto__step {
+    font: 400 14px/1.5 var(--nps-font);
+}
+.storefront-clean-ui .np-auth-proto__step.is-current {
+    font-weight: 600;
+}
+.storefront-clean-ui .np-auth-proto__verified {
+    font: 400 14px/1.5 var(--nps-font);
+}
+.storefront-clean-ui .np-auth-proto__resend {
+    font: 400 13px/1.5 var(--nps-font);
+}

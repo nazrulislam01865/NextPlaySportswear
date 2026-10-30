@@ -19,7 +19,7 @@
                     <span class="text-white">Checkout</span>
                 </nav>
                 <p class="text-xs font-black uppercase tracking-[.22em] text-brand-red">Secure checkout</p>
-                <h1 class="mt-3 font-display text-4xl font-bold uppercase leading-tight tracking-tight sm:text-6xl">{{ $title }}</h1>
+                <h1 class="nps-form-page-title mt-3 font-display text-4xl font-bold uppercase leading-tight tracking-tight sm:text-6xl">{{ $title }}</h1>
                 <p class="mt-4 max-w-3xl text-base leading-7 text-blue-100">{{ $description }}</p>
             </div>
 

@@ -1,7 +1,7 @@
 <x-layouts.storefront :seo="['title' => 'Track Bulk Quote | NextPlay', 'robots' => 'noindex, nofollow']">
     <div class="np-gq-page np-gq-page--track"><div class="np-gq-container">
         <header class="np-gq-page-head"><h1>Track Bulk Quote</h1><p>Enter your quote number and email address to view the status and quotation files.</p></header>
-        <form class="np-gq-panel np-gq-search" method="POST" action="{{ route('quote.guest.lookup') }}" data-guest-quote-lookup novalidate>
+        <form class="nps-form np-gq-panel np-gq-search" method="POST" action="{{ route('quote.guest.lookup') }}" data-guest-quote-lookup novalidate>
             @csrf
             <label for="guest-quote-reference">
                 <span class="np-gq-label-line">Quote Number <span aria-hidden="true">*</span></span>
@@ -85,7 +85,7 @@
                     <x-storefront.bulk-quote.guest.messages :messages="$messages" :quote="$quote" />
                     @if($quote->guest_decision === 'changes_requested' && !$accepted)
                         <x-storefront.bulk-quote.guest.panel title="Send a message" subtitle="Your requested revision is being prepared. You can continue the conversation here.">
-                            <form method="POST" action="{{ route('quote.guest.message', $quote->reference) }}" class="np-gq-change-form" enctype="multipart/form-data" data-single-submit>
+                            <form method="POST" action="{{ route('quote.guest.message', $quote->reference) }}" class="nps-form np-gq-change-form" enctype="multipart/form-data" data-single-submit>
                                 @csrf
                                 <label class="np-gq-change-description">Your message<textarea name="body" rows="3" minlength="2" maxlength="3000" required placeholder="Write your message...">{{ old('body') }}</textarea></label>
                                 @error('body')<p class="np-gq-alert np-gq-alert--error" role="alert">{{ $message }}</p>@enderror

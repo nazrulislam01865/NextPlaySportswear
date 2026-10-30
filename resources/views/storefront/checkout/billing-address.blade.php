@@ -12,7 +12,7 @@
 
 <x-storefront.checkout.shell :seo="$seo" :steps="$steps" :current-step="$currentStep" title="Billing Address" description="Use the shipping address for billing or add a separate billing address." :summary="$summary">
     <x-storefront.checkout.panel title="Billing Address" description="If billing is the same as shipping, no extra billing form is needed.">
-        <form data-single-submit method="POST" action="{{ route('checkout.billing-address.store') }}" class="grid gap-6" x-data="{ sameAsShipping: @js($billingSame), addressChoice: @js($defaultBillingChoice) }">
+        <form data-single-submit method="POST" action="{{ route('checkout.billing-address.store') }}" class="nps-form grid gap-6" x-data="{ sameAsShipping: @js($billingSame), addressChoice: @js($defaultBillingChoice) }">
             @csrf
 
             <input type="hidden" name="same_as_shipping" value="0">

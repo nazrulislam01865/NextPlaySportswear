@@ -8,8 +8,7 @@
         data-detail-url="{{ route('quote.products.show', ['product' => '__ID__']) }}"
     >
         <div class="bulk-quote-product-search-row">
-            <label for="bulk-quote-product-search" class="bulk-quote-product-label">Search for a product</label>
-            <span class="bulk-quote-product-hint">Optional</span>
+            <label for="bulk-quote-product-search" class="bulk-quote-product-label">Search for a product <span class="bulk-quote-optional">(optional)</span></label>
         </div>
         <div class="bulk-quote-product-search-area">
             <span class="bulk-quote-product-search-icon" aria-hidden="true"><x-storefront.bulk-quote.icon name="search" :size="18" /></span>
@@ -54,7 +53,7 @@
             <div class="bulk-quote-product-bottom" id="bulk-quote-product-bottom">
                 <div id="bulk-quote-product-sizes" class="bulk-quote-product-sizes"></div>
                 <div class="bulk-quote-field bulk-quote-product-notes">
-                    <label for="bulk-quote-product-notes">Additional Product Notes <span class="bulk-quote-inline-optional">(Optional)</span></label>
+                    <label for="bulk-quote-product-notes">Additional Product Notes <span class="bulk-quote-optional">(optional)</span></label>
                     <div class="bulk-quote-control-wrap">
                         <textarea id="bulk-quote-product-notes" name="product_information[notes]" maxlength="500" placeholder="e.g., logo placement, special design requests, etc." disabled></textarea>
                         <div class="bulk-quote-counter" aria-hidden="true"><span id="bulk-quote-product-notes-count">0</span>/500</div>

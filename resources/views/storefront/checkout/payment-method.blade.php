@@ -1,6 +1,6 @@
 <x-storefront.checkout.shell :seo="$seo" :steps="$steps" :current-step="$currentStep" title="Payment Method" description="Choose the admin-enabled payment method for the final checkout total." :summary="$summary">
     <x-storefront.checkout.panel title="Payment Method" description="Production timing and charges are calculated automatically from product quantities, while the selected shipping configuration is carried with each item. The amount below includes fulfillment, any address surcharge, discounts, tax, and cart totals.">
-        <form data-single-submit method="POST" action="{{ route('checkout.payment-method.store') }}" class="grid gap-6">
+        <form data-single-submit method="POST" action="{{ route('checkout.payment-method.store') }}" class="nps-form grid gap-6">
             @csrf
 
             <div class="rounded-[24px] border border-brand-navy/10 bg-brand-navy p-5 text-white shadow-card">

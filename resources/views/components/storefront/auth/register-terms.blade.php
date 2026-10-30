@@ -1,5 +1,6 @@
 @props([
     'name' => 'terms',
+    'short' => false,
 ])
 
 <div class="np-customer-register-terms">
@@ -16,12 +17,15 @@
             @error($name) aria-invalid="true" aria-describedby="{{ $name }}-error" @enderror
         >
         <span class="np-customer-register-terms__text">
-            I agree to the
-            <span class="np-customer-register-terms__links">
-                <a href="{{ route('terms') }}">Terms</a>
-                <span aria-hidden="true"> &amp; </span>
-                <a href="{{ route('privacy') }}">Privacy Policy.</a>
-            </span>
+            @if ($short)
+                I agree to the <a href="{{ route('terms') }}" target="_blank" rel="noopener noreferrer">Terms and Conditions</a>
+                and <a href="{{ route('privacy') }}" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+            @else
+                By continuing, you agree to NextPlay Sportswear’s
+                <strong><a href="{{ route('terms') }}" target="_blank" rel="noopener noreferrer">Terms and Conditions</a></strong>
+                and
+                <strong><a href="{{ route('privacy') }}" target="_blank" rel="noopener noreferrer">Privacy Policy</a></strong>.
+            @endif
         </span>
     </label>
 

@@ -1,6 +1,6 @@
 <x-storefront.account.orders.page :seo="$seo" :account="$account" :navigation="$navigation" title="Cancel Order Request" :subtitle="'Request cancellation for all or selected eligible items in '.$order->order_number.'. Cancellation is not final until approved.'" eyebrow="Order cancellation">
     <x-slot:actions><a class="btn btn-outline" href="{{ route('account.orders.show',$order) }}">Order Details</a></x-slot:actions>
-    <form method="POST" action="{{ route('account.orders.cancel.store',$order) }}" class="space-y-6">@csrf
+    <form method="POST" action="{{ route('account.orders.cancel.store',$order) }}" class="nps-form space-y-6">@csrf
         <section class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-card md:p-7">
             <h3 class="text-xl font-black">What would you like to cancel?</h3>
             <div class="mt-4 grid gap-4 md:grid-cols-2">

@@ -119,11 +119,11 @@ final class BulkQuoteGuestService
         }
     }
 
-    public function accept(BulkQuoteRequest $quote, string $decision, ?User $customer = null): BulkQuoteRequest
+    public function accept(BulkQuoteRequest $quote, string $decision, ?User $customer = null, ?int $orderQuantity = null): BulkQuoteRequest
     {
         $wasLinkedToAccount = $quote->user_id !== null;
         $createdOrderId = null;
-        $result = DB::transaction(function () use ($quote, $decision, $customer, &$createdOrderId): BulkQuoteRequest {
+        $result = DB::transaction(function () use ($quote, $decision, $customer, $orderQuantity, &$createdOrderId): BulkQuoteRequest {
             $quote = BulkQuoteRequest::query()->whereKey($quote->id)->lockForUpdate()->firstOrFail();
             if ($decision === 'create_order') {
                 // A secure tracking link is not proof of account ownership. Require an
@@ -167,14 +167,22 @@ final class BulkQuoteGuestService
             }
             if ($decision === 'create_order') {
                 $data = (array) $quote->quotation_details;
-                $quantity = (int) ($data['quantity'] ?? 0);
-                if ($quantity < 1 || $quote->quoted_amount === null || (float) $quote->quoted_amount <= 0) {
-                    throw ValidationException::withMessages(['quote' => 'The quotation is missing the final item quantity or price. Please contact sales.']);
+                $pendingPrice = BulkQuoteOrderTerms::pricePending($quote);
+                $quantity = $pendingPrice
+                    ? (BulkQuoteOrderTerms::exactQuantity($quote) ?: (int) $orderQuantity)
+                    : (int) ($data['quantity'] ?? 0);
+                if ($quantity < 1 || $quantity > 2147483647) {
+                    throw ValidationException::withMessages(['order_quantity' => 'Enter the exact number of items to order.']);
                 }
-                $subtotal = (float) ($data['subtotal'] ?? 0);
-                $customization = (float) ($data['customization'] ?? 0);
-                $shipping = (float) ($data['shipping'] ?? 0);
-                $total = (float) $quote->quoted_amount;
+                if (! $pendingPrice && ($quote->quoted_amount === null || (float) $quote->quoted_amount <= 0)) {
+                    throw ValidationException::withMessages(['quote' => 'This quotation needs a valid final price before an order can be created.']);
+                }
+                // File-only quotations are valid manual-invoice orders. Zero here
+                // means PRICE NOT YET ENTERED, not a free or paid order.
+                $subtotal = $pendingPrice ? 0 : (float) ($data['subtotal'] ?? 0);
+                $customization = $pendingPrice ? 0 : (float) ($data['customization'] ?? 0);
+                $shipping = $pendingPrice ? 0 : (float) ($data['shipping'] ?? 0);
+                $total = $pendingPrice ? 0 : (float) $quote->quoted_amount;
                 $order = Order::create([
                     'user_id' => $customer->id,
                     'order_number' => 'BQO-'.Str::upper(Str::random(16)),
@@ -191,7 +199,7 @@ final class BulkQuoteGuestService
                     'is_remote_area' => $quote->is_remote_area,
                     'grand_total' => $total,
                     'total_quantity' => $quantity,
-                    'information' => ['source' => 'guest_bulk_quote', 'bulk_quote_id' => $quote->id, 'reference' => $quote->reference, 'version' => $quote->quotation_version],
+                    'information' => ['source' => 'guest_bulk_quote', 'bulk_quote_id' => $quote->id, 'reference' => $quote->reference, 'version' => $quote->quotation_version, 'flowtrack_inquiry_id' => $quote->flowtrack_inquiry_id, 'pricing_pending' => $pendingPrice, 'product_information' => (array) $quote->product_information],
                     'shipping_address' => ['address' => ['address_line_1' => $quote->shipping_address, 'country' => $quote->country, 'state' => $quote->state_province, 'postal_code' => $quote->postal_code]],
                     'billing_address' => ['same_as_shipping' => true],
                     'payment_method' => ['method' => 'manual_invoice', 'payment_type' => 'invoice', 'requires_manual_review' => true],
@@ -201,18 +209,19 @@ final class BulkQuoteGuestService
                 ]);
                 OrderItem::create([
                     'order_id' => $order->id,
-                    'product_name' => $quote->product_type,
+                    'product_name' => mb_substr((string) (data_get($quote->product_information, 'product_name') ?: $quote->product_type), 0, 220),
+                    'sku' => mb_substr((string) (data_get($quote->product_information, 'sku') ?: ''), 0, 120) ?: null,
                     'quantity' => $quantity,
                     'unit_price' => round($subtotal / $quantity, 2),
                     'customization_unit_price' => round($customization / $quantity, 2),
                     'line_total' => $subtotal + $customization,
-                    'customization' => ['quote_reference' => $quote->reference, 'details' => $quote->artwork_details],
+                    'customization' => ['quote_reference' => $quote->reference, 'details' => $quote->artwork_details, 'product_information' => (array) $quote->product_information, 'pricing_pending' => $pendingPrice, 'size_breakdown' => BulkQuoteOrderTerms::sizeBreakdown($quote), 'notes' => $quote->artwork_details],
                 ]);
                 OrderStatusHistory::create([
                     'order_id' => $order->id,
                     'status' => 'quote_invoice_requested',
                     'title' => 'Bulk quotation accepted',
-                    'description' => 'Customer accepted quotation '.$quote->reference.'. Awaiting invoice and payment instructions from sales.',
+                    'description' => 'Customer accepted quotation '.$quote->reference.'. '.($pendingPrice ? 'Final invoice amount requires confirmation from sales.' : 'Awaiting invoice and payment instructions from sales.'),
                     'occurred_at' => now(),
                 ]);
                 $quote->converted_order_id = $order->id;

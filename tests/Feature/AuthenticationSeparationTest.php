@@ -233,11 +233,15 @@ class AuthenticationSeparationTest extends TestCase
     {
         Queue::fake();
 
-        $this->post(route('register.store'), [
+        $this->withSession([
+            \App\Http\Controllers\Storefront\Auth\RegistrationEmailCodeController::SESSION_KEY => [
+                'email' => 'customer@example.com', 'verified_at' => time(),
+            ],
+        ])->post(route('register.store'), [
             'name' => 'NextPlay Customer',
             'email' => 'CUSTOMER@EXAMPLE.COM',
-            'password' => 'Password123',
-            'password_confirmation' => 'Password123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
             'terms' => '1',
             'website' => '',
         ])->assertRedirect(route('account.dashboard'));
@@ -246,7 +250,7 @@ class AuthenticationSeparationTest extends TestCase
 
         $this->assertSame('customer', $customer->role);
         $this->assertTrue($customer->is_active);
-        $this->assertTrue(Hash::check('Password123', $customer->password));
+        $this->assertTrue(Hash::check('Password123!', $customer->password));
         $this->assertNotSame('Password123', $customer->password);
         $this->assertNotNull($customer->email_verified_at);
 

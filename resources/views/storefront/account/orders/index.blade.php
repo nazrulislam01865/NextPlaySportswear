@@ -27,7 +27,7 @@
             </div>
         </section>
 
-        <form method="GET" class="np-orders-filter-bar" id="orders-filter-form">
+        <form method="GET" class="nps-form np-orders-filter-bar" id="orders-filter-form">
             <label class="np-orders-filter-bar__search">
                 <span class="sr-only">Search orders</span>
                 <x-storefront.account.icon name="search" :size="19" />
@@ -71,7 +71,7 @@
 
         <div class="np-orders-list-heading">
             <h2>{{ $orders->total() }} Order{{ $orders->total() === 1 ? '' : 's' }}</h2>
-            <form method="GET" class="np-orders-sort-form">
+            <form method="GET" class="nps-form np-orders-sort-form">
                 @foreach(['q', 'status', 'payment_status', 'period'] as $field)
                     @if(request()->filled($field))<input type="hidden" name="{{ $field }}" value="{{ request($field) }}">@endif
                 @endforeach
