@@ -180,6 +180,8 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
             Route::put('/templates/{template}/visibility', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'updateVisibility'])->name('templates.visibility.update');
             Route::get('/templates/{template}/preview', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'preview'])->name('templates.preview');
             Route::post('/templates/{template}/send-test', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'sendTest'])->name('templates.send-test');
+            Route::get('/forwarding', [\App\Http\Controllers\Admin\ConfirmationForwardController::class, 'edit'])->name('forwarding.edit');
+            Route::put('/forwarding', [\App\Http\Controllers\Admin\ConfirmationForwardController::class, 'update'])->middleware('throttle:10,1')->name('forwarding.update');
             Route::get('/branding', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'branding'])->name('branding.edit');
             Route::put('/branding', [\App\Http\Controllers\Admin\EmailCustomizationController::class, 'updateBranding'])->name('branding.update');
         });
@@ -379,6 +381,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::group([], function (): void {
             Route::get('/bulk-quotes', [\App\Http\Controllers\Admin\BulkQuoteRequestController::class, 'index'])->name('bulk-quotes.index');
             Route::get('/bulk-quotes/{bulkQuote}', [\App\Http\Controllers\Admin\BulkQuoteRequestController::class, 'show'])->name('bulk-quotes.show');
+            Route::post('/bulk-quotes/{bulkQuote}/forward', [\App\Http\Controllers\Admin\ConfirmationForwardController::class, 'quote'])->middleware('throttle:5,1')->name('bulk-quotes.forward');
             Route::get('/bulk-quotes/{bulkQuote}/request-document', [\App\Http\Controllers\Admin\BulkQuoteRequestController::class, 'downloadDocument'])->name('bulk-quotes.download-document');
             Route::get('/bulk-quotes/{bulkQuote}/attachment', [\App\Http\Controllers\Admin\BulkQuoteRequestController::class, 'attachment'])->name('bulk-quotes.attachment');
             Route::patch('/bulk-quotes/{bulkQuote}', [\App\Http\Controllers\Admin\BulkQuoteRequestController::class, 'update'])
@@ -395,6 +398,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
                 ->name('artwork-approvals.index');
             Route::get('/orders', [\App\Http\Controllers\Admin\OrderController::class, 'index'])->name('orders.index');
             Route::get('/orders/{order}', [\App\Http\Controllers\Admin\OrderController::class, 'show'])->name('orders.show');
+            Route::post('/orders/{order}/forward', [\App\Http\Controllers\Admin\ConfirmationForwardController::class, 'order'])->middleware('throttle:5,1')->name('orders.forward');
             Route::post('/orders/{order}/artwork-proofs', [\App\Http\Controllers\Admin\ArtworkProofController::class, 'store'])
                 ->middleware('throttle:10,1')->name('orders.artwork-proofs.store');
             Route::get('/orders/{order}/artwork-proofs/{proof}/file', [\App\Http\Controllers\Admin\ArtworkProofController::class, 'file'])

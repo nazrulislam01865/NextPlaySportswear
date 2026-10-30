@@ -603,7 +603,7 @@ class AdminRbac
         $manageActions = [
             'create', 'store', 'edit', 'update', 'destroy', 'duplicate', 'toggle', 'bulk', 'import',
             'ordering.update', 'sync-legacy', 'approve', 'shipments.store', 'shipments.update', 'requests.update',
-            'downloads.store', 'downloads.destroy', 'roles.store', 'suspend', 'reactivate', 'retry-sync', 'upload',
+            'downloads.store', 'downloads.destroy', 'roles.store', 'suspend', 'reactivate', 'retry-sync', 'upload', 'forward',
         ];
 
         foreach ($manageActions as $action) {

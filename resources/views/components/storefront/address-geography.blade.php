@@ -3,6 +3,7 @@
     'regionField' => 'state',
     'countryValue' => 'United Kingdom',
     'regionValue' => '',
+    'regionLabel' => null,
     'variant' => 'checkout',
 ])
 @php
@@ -28,12 +29,14 @@
     </select>
     @error($countryField)<p class="mt-2 text-xs font-semibold text-brand-red">{{ $message }}</p>@enderror
 </div>
-<div data-address-region-for="{{ $countryField }}" class="{{ $fieldClass }}" style="font-family:inherit">
-    <label for="{{ $regionField }}" class="{{ $labelClass }}" data-geo-region-label>State / Province (optional)</label>
-    <select id="{{ $regionField }}-select" data-geo-region-select data-region-name="{{ $regionField }}" class="{{ $selectClass }}" style="font-family:var(--np-font-body,inherit)" hidden disabled aria-label="State / Province">
-        <option value="">Select (optional)</option>
-    </select>
-    <input id="{{ $regionField }}" name="{{ $regionField }}" data-geo-region-input value="{{ $regionValue }}" maxlength="120" class="{{ $selectClass }}" style="font-family:var(--np-font-body,inherit)" placeholder="State / Province (optional)" autocomplete="address-level1" aria-invalid="{{ $errors->has($regionField) ? 'true' : 'false' }}">
+<div data-address-region-for="{{ $countryField }}" @if($isBulk) data-geo-region-freeform @endif class="{{ $fieldClass }}" style="font-family:inherit">
+    <label for="{{ $regionField }}" class="{{ $labelClass }}" data-geo-region-label>{{ $regionLabel ?: 'State / Province (optional)' }}</label>
+    @unless($isBulk)
+        <select id="{{ $regionField }}-select" data-geo-region-select data-region-name="{{ $regionField }}" class="{{ $selectClass }}" style="font-family:var(--np-font-body,inherit)" hidden disabled aria-label="State / Province">
+            <option value="">Select (optional)</option>
+        </select>
+    @endunless
+    <input id="{{ $regionField }}" name="{{ $regionField }}" data-geo-region-input value="{{ $regionValue }}" maxlength="120" class="{{ $selectClass }}" style="font-family:var(--np-font-body,inherit)" placeholder="{{ $isBulk ? 'County / State (optional)' : 'State / Province (optional)' }}" autocomplete="address-level1" aria-invalid="{{ $errors->has($regionField) ? 'true' : 'false' }}">
     @error($regionField)<p class="mt-2 text-xs font-semibold text-brand-red">{{ $message }}</p>@enderror
 </div>
 @once

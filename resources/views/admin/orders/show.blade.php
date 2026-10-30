@@ -20,6 +20,10 @@
         </div>
     </div>
 
+    @if($canManageOrders)
+        <x-admin.confirmation-forward-form :action="route('admin.orders.forward', $order)" :reference="$order->order_number" />
+    @endif
+
     @include('admin.orders.partials.artwork-proofs')
 
     @if($hasFlowTrackSync)

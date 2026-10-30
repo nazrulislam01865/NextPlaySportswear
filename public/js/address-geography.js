@@ -7,6 +7,13 @@
         const country = container.querySelector('[data-geo-country]');
         const region = document.querySelector(`[data-address-region-for="${CSS.escape(country.name)}"]`);
         if (!region) return;
+        // Bulk quotes use a free-text County / State field by design.
+        // No region fetch is needed and the field must never become a dropdown.
+        if (region.hasAttribute('data-geo-region-freeform')) {
+            const input = region.querySelector('[data-geo-region-input]');
+            country.addEventListener('change', () => { if (input) input.value = ''; });
+            return;
+        }
         const label = region.querySelector('[data-geo-region-label]');
         const input = region.querySelector('[data-geo-region-input]');
         const select = region.querySelector('[data-geo-region-select]');

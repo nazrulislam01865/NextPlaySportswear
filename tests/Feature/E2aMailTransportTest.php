@@ -60,11 +60,40 @@ class E2aMailTransportTest extends TestCase
                 && $request->method() === 'POST'
                 && $request->hasHeader('Authorization', 'Bearer test-api-key')
                 && filled($request->header('Idempotency-Key')[0] ?? '')
-                && $request['to'] === ['Customer <customer@example.com>']
+                && $request['to'] === ['customer@example.com']
                 && $request['subject'] === 'NextPlay test'
                 && str_contains((string) $request['html'], 'Welcome!')
                 && str_contains((string) $request['text'], 'NextPlay test.')
                 && $request['reply_to'] === 'support@example.com';
+        });
+    }
+
+    public function test_e2a_serializes_multi_recipient_addresses_as_api_strings(): void
+    {
+        Http::fake(['api.e2a.dev/*' => Http::response([
+            'status' => 'accepted', 'message_id' => 'msg_004',
+        ], 202)]);
+
+        app(EmailService::class)->sendNow(new EmailMessage(
+            key: 'test.forwarding',
+            recipients: [
+                ['email' => 'production@example.com'],
+                ['email' => 'manager@example.com', 'name' => 'Manager'],
+            ],
+            subject: 'Forwarded order',
+            heading: 'Order confirmation',
+            attachments: [[
+                'type' => 'data', 'name' => 'request.txt', 'data' => 'Order details', 'mime' => 'text/plain',
+            ]],
+        ));
+
+        Http::assertSent(static function ($request): bool {
+            return $request['to'] === [
+                    'production@example.com',
+                    'manager@example.com',
+                ]
+                && $request['attachments'][0]['filename'] === 'request.txt'
+                && base64_decode($request['attachments'][0]['data']) === 'Order details';
         });
     }
 
@@ -89,7 +118,7 @@ class E2aMailTransportTest extends TestCase
         $this->assertSame($keys[0], $keys[1]);
     }
 
-    public function test_provider_rejection_and_held_mail_are_never_reported_as_sent(): void
+    public function test_provider_rejection_is_never_reported_as_sent(): void
     {
         Http::fake(['api.e2a.dev/*' => Http::response([
             'error' => ['code' => 'external_sending_not_enabled'],
@@ -102,7 +131,12 @@ class E2aMailTransportTest extends TestCase
             $this->assertStringContainsString('403', $exception->getMessage());
             $this->assertStringNotContainsString('test-api-key', $exception->getMessage());
         }
+    }
 
+    public function test_held_mail_is_never_reported_as_sent(): void
+    {
+        // Keep this provider response in a separate test: Laravel's HTTP fake
+        // registrations from an earlier scenario can continue matching requests.
         Http::fake(['api.e2a.dev/*' => Http::response([
             'status' => 'pending_review', 'message_id' => 'msg_003',
         ], 202)]);

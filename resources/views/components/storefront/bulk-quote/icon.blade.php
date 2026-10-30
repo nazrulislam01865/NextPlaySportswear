@@ -17,6 +17,34 @@
     'aria-hidden' => 'true',
 ]) }}>
     @switch($name)
+        @case('file-text')
+            <path d="M7 3h7l5 5v13H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+            <path d="M14 3v6h5M9 13h6M9 17h6" />
+            @break
+        @case('users')
+            <path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="3" />
+            <path d="M17 11a4 4 0 0 0 0-8M22 20v-2a4 4 0 0 0-3-3.87" />
+            @break
+        @case('calendar')
+            <rect x="3" y="5" width="18" height="16" rx="2" />
+            <path d="M7 3v4M17 3v4M3 10h18" />
+            @break
+        @case('settings')
+            <path d="M10 2h4l.7 2.4 2 .9 2.2-1.1 2.8 2.8-1.1 2.2.9 2L24 12l-2.5 1-.9 2 1.1 2.2-2.8 2.8-2.2-1.1-2 .9L14 22h-4l-.7-2.4-2-.9-2.2 1.1-2.8-2.8 1.1-2.2-.9-2L1 12l2.5-1 .9-2-1.1-2.2 2.8-2.8 2.2 1.1 2-.9L10 2Z" transform="translate(1 1) scale(.9)" />
+            <circle cx="12" cy="12" r="3" />
+            @break
+        @case('message-circle')
+            <path d="M20 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.6 0-3.1-.4-4.4-1.2L3 20l1.2-4.1A8.5 8.5 0 1 1 20 11.5Z" />
+            @break
+        @case('lock')
+            <rect x="5" y="10" width="14" height="11" rx="2" />
+            <path d="M8 10V7a4 4 0 0 1 8 0v3M12 15v2" />
+            @break
+        @case('whatsapp')
+            <path d="M20 11.5a8.5 8.5 0 0 1-12.9 7.3L3 20l1.2-4.1A8.5 8.5 0 1 1 20 11.5Z" />
+            <path d="M8.5 8.5c-.7 1.2.9 3.6 2.5 4.9 1.7 1.4 3.5 2.2 4.7 1.6l.4-1.7-2-1-1 1.1a7 7 0 0 1-2.4-2.4l1.1-1-1-2-1.7.5Z" />
+            @break
         @case('user')
             <circle cx="12" cy="7.5" r="3.2" />
             <path d="M5.4 20a6.6 6.6 0 0 1 13.2 0" />

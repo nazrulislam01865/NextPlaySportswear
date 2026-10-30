@@ -35,6 +35,10 @@
             </div>
         </div>
 
+        @if($canManage)
+            <x-admin.confirmation-forward-form :action="route('admin.bulk-quotes.forward', $bulkQuote)" :reference="$bulkQuote->reference" />
+        @endif
+
         @if($errors->any())
             <div class="np-bq-error" role="alert">
                 <strong>Unable to complete the request.</strong>

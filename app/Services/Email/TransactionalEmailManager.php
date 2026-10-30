@@ -373,6 +373,9 @@ final class TransactionalEmailManager
                 metadata: ['bulk_quote_request_id' => $quote->id],
             ),
         );
+
+        // The saved forwarding addresses are an automatic notification target.
+        app(AutomaticConfirmationForwarder::class)->quoteCreated($quote);
     }
 
     /** Only called when a customer actually creates a new order from a published quote. */
@@ -426,6 +429,8 @@ final class TransactionalEmailManager
             metadata: ['order_id' => $order->id, 'bulk_quote_request_id' => $quote->id],
             attachments: $attachments,
         ));
+
+        app(AutomaticConfirmationForwarder::class)->orderCreated($order);
     }
 
     public function orderPlaced(Order $order): void
@@ -510,6 +515,8 @@ final class TransactionalEmailManager
                 metadata: ['order_id' => $order->id],
             ),
         );
+
+        app(AutomaticConfirmationForwarder::class)->orderCreated($order);
     }
 
     public function orderUpdated(

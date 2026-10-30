@@ -23,6 +23,11 @@
             >
                 <span>⚡ Builder</span>
             </a>
+            @if(auth('admin')->user()?->canAdmin('email_customization.manage'))
+            @if(auth('admin')->user()?->canAdmin('email_customization.manage'))
+                <a href="{{ route('admin.email-customization.forwarding.edit') }}" class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-brand-ink transition hover:border-brand-red hover:text-brand-red">Forwarding Settings</a>
+            @endif
+            @endif
             <a
                 href="{{ route('admin.email-customization.branding.edit') }}"
                 class="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold !text-white shadow-sm transition hover:opacity-95"

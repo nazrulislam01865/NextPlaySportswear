@@ -388,7 +388,7 @@
                     @if($canAdmin('newsletters.view'))
                         <x-admin.sidebar-link :href="route('admin.newsletter-subscribers.index')" :active="request()->routeIs('admin.newsletter-subscribers.*')" icon="@">Newsletter Emails</x-admin.sidebar-link>
                     @endif
-                    @if($canAdmin('email_customization.view') || $canAdmin('storefront_branding.view'))
+                    @if($canAdmin('email_customization.view') || $canAdmin('email_customization.manage') || $canAdmin('storefront_branding.view'))
                         <x-admin.sidebar-group
                             label="Email Customization"
                             icon="✉"
@@ -402,6 +402,12 @@
                                 :href="route('admin.email-customization.branding.edit')"
                                 :active="request()->routeIs('admin.email-customization.branding.*')"
                             >Global Branding</x-admin.sidebar-sub-link>
+                            @if($canAdmin('email_customization.manage'))
+                                <x-admin.sidebar-sub-link
+                                    :href="route('admin.email-customization.forwarding.edit')"
+                                    :active="request()->routeIs('admin.email-customization.forwarding.*')"
+                                >Forwarding Settings</x-admin.sidebar-sub-link>
+                            @endif
                         </x-admin.sidebar-group>
                     @endif
                     @if($canAdmin('rural_surcharges.view'))

@@ -118,7 +118,8 @@
 
     @vite(['resources/css/storefront.css', 'resources/js/storefront.js'])
     @if(request()->routeIs('quote.request'))
-        <link rel="stylesheet" href="{{ asset('css/bulk-quote-product.css') }}?v=20261028c">
+        <link rel="stylesheet" href="{{ asset('css/bulk-quote-product.css') }}?v=20261030g">
+        <link rel="stylesheet" href="{{ asset('css/bulk-quote-redesign.css') }}?v=20261030i">
     @endif
 </head>
 <body

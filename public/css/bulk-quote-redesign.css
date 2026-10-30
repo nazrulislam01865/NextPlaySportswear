@@ -1,0 +1,834 @@
+/* NextPlay bulk quote prototype, isolated from the global storefront design system.
+   All brand colors, typography, and action states use existing storefront tokens. */
+.bulk-quote-page {
+    padding: 0 0 18px;
+    background: rgb(var(--np-color-primary-rgb) / .035);
+    color: var(--np-color-body);
+    font-family: var(--np-font-body);
+}
+.bulk-quote-page .site-container {
+    width: min(1296px, calc(100% - 48px));
+    max-width: 1296px;
+}
+.bulk-quote-page .bulk-quote-intro {
+    padding: 24px 0 23px;
+}
+.bulk-quote-page .bulk-quote-breadcrumb {
+    margin: 0 0 7px;
+    font-size: 11px;
+    font-weight: var(--np-font-weight-medium);
+}
+.bulk-quote-intro-heading {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 20px;
+}
+.bulk-quote-page .bulk-quote-intro h1 {
+    font-size: clamp(29px, 2.64vw, 38px);
+    line-height: 1.16;
+    text-transform: none;
+    font-weight: var(--np-font-weight-black);
+    letter-spacing: 0;
+}
+.bulk-quote-page .bulk-quote-intro-heading > div > p {
+    margin: 6px 0 0;
+    color: var(--np-color-muted);
+    font-size: 15px;
+    line-height: 1.4;
+}
+.bulk-quote-page .bulk-quote-required-hint {
+    flex: none;
+    margin: 0 0 3px;
+    font-size: 11px;
+    color: var(--np-color-muted);
+}
+.bulk-quote-page .bulk-quote-main { margin: 0 auto; }
+.bulk-quote-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 2.6fr) minmax(255px, 1fr);
+    align-items: start;
+    gap: 18px;
+}
+.bulk-quote-page .bulk-quote-card {
+    display: grid;
+    gap: 17px;
+    min-width: 0;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+.bulk-quote-page .bulk-quote-section,
+.bulk-quote-page .bulk-quote-attachments-card,
+.bulk-quote-page .bulk-quote-side-card,
+.bulk-quote-page .bulk-quote-security-note {
+    border: 1px solid var(--np-color-border);
+    border-radius: 9px;
+    background: var(--np-color-page);
+    box-shadow: 0 2px 12px rgb(var(--np-color-primary-rgb) / .025);
+}
+.bulk-quote-page .bulk-quote-section {
+    margin: 0;
+    padding: 19px 24px 20px;
+}
+/* Headings occupy the icon row; each field group returns to full card width. */
+.bulk-quote-page .bulk-quote-section-layout {
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr);
+    column-gap: 20px;
+    row-gap: 22px;
+    align-items: center;
+}
+.bulk-quote-page .bulk-quote-section-content { display: contents; }
+.bulk-quote-page .bulk-quote-section-icon {
+    grid-column: 1;
+    grid-row: 1;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgb(var(--np-color-secondary-rgb) / .14) 0%, rgb(var(--np-color-secondary-rgb) / .065) 67%, transparent 100%);
+    color: var(--np-color-secondary);
+}
+.bulk-quote-page .bulk-quote-section-icon svg { width: 20px; height: 20px; }
+.bulk-quote-page .bulk-quote-section-heading {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+    margin: 0;
+}
+.bulk-quote-page .bulk-quote-section-heading h2 {
+    margin: 0;
+    color: var(--np-color-heading);
+    font-size: 20px;
+    font-weight: var(--np-font-weight-black);
+    line-height: 1.22;
+}
+.bulk-quote-page .bulk-quote-section-heading h2 > span { display: none; }
+.bulk-quote-page .bulk-quote-section-heading p {
+    margin: 3px 0 0;
+    font-size: 13px;
+    line-height: 1.3;
+    color: var(--np-color-muted);
+}
+.bulk-quote-page .bulk-quote-section-layout > :not(.bulk-quote-section-icon):not(.bulk-quote-section-heading) {
+    grid-column: 1 / -1;
+    min-width: 0;
+}
+.bulk-quote-product-picker { min-width: 0; }
+.bulk-quote-page .bulk-quote-product-search-row {
+    justify-content: flex-start;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.bulk-quote-page .bulk-quote-product-label,
+.bulk-quote-page .bulk-quote-field > label,
+.bulk-quote-page .bulk-quote-field > .bulk-quote-label,
+.bulk-quote-page .bulk-quote-product-field-label {
+    color: var(--np-color-heading);
+    font-family: var(--np-font-body);
+    font-size: 13px;
+    line-height: 1.35;
+    font-weight: var(--np-font-weight-bold);
+}
+.bulk-quote-page .bulk-quote-product-hint,
+.bulk-quote-page .bulk-quote-optional {
+    display: inline-flex;
+    align-items: center;
+    min-height: 18px;
+    margin: 0;
+    padding: 3px 8px;
+    border: 0;
+    border-radius: 999px;
+    background: rgb(var(--np-color-primary-rgb) / .07);
+    color: var(--np-color-muted);
+    font-family: var(--np-font-body);
+    font-size: 10px;
+    font-weight: var(--np-font-weight-medium);
+    line-height: 1;
+}
+.bulk-quote-product-general { margin-top: 0; }
+/* Keep the optional product search in the same visible field group as the other product fields. */
+/* This section must be visible even if storefront/global utility styles change.
+   Target the component rather than relying on its exact parent nesting. */
+.bulk-quote-page #bulk-quote-product-picker {
+    display: block;
+    position: relative;
+    min-width: 0;
+    width: 100%;
+    margin: 0 0 18px;
+    visibility: visible;
+    opacity: 1;
+}
+.bulk-quote-page .bulk-quote-product-search-row { display: flex; }
+.bulk-quote-page .bulk-quote-product-search-area { display: block; }
+.bulk-quote-page #bulk-quote-product-search { display: block; width: 100%; }
+.bulk-quote-page .bulk-quote-grid { gap: 25px 20px; }
+.bulk-quote-page .bulk-quote-grid-two { grid-template-columns: repeat(2, minmax(0,1fr)); }
+.bulk-quote-page .bulk-quote-customization-choices { order: 2; }
+.bulk-quote-page .bulk-quote-customization-details { order: 3; }
+.bulk-quote-page .bulk-quote-field-note {
+    margin: -2px 0 10px;
+    font-size: 10px;
+    color: var(--np-color-muted);
+}
+.bulk-quote-page input:not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='file']),
+.bulk-quote-page select,
+.bulk-quote-page textarea {
+    border: 1px solid var(--np-color-border);
+    border-radius: 6px;
+    background-color: var(--np-color-page);
+    color: var(--np-color-heading);
+    font: var(--np-font-weight-medium) 13px/1.4 var(--np-font-body);
+    box-shadow: none;
+}
+.bulk-quote-page input:not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='file']),
+.bulk-quote-page select { min-height: 38px; padding: 8px 12px; }
+.bulk-quote-page select { padding-right: 37px; background-position: right 12px center; }
+.bulk-quote-page textarea { min-height: 90px; padding: 11px 12px 24px; }
+/* Separate visual icon and native picker so the date segments cannot overlap. */
+.bulk-quote-page .bulk-quote-date-control { position: relative; min-width: 0; }
+.bulk-quote-page .bulk-quote-date-control > svg {
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    left: 12px;
+    transform: translateY(-50%);
+    color: var(--np-color-heading);
+    pointer-events: none;
+}
+.bulk-quote-page .bulk-quote-date-control input[type="date"] {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    padding-left: 40px;
+    padding-right: 12px;
+}
+.bulk-quote-page .bulk-quote-date-control input[type="date"]::-webkit-calendar-picker-indicator {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+.bulk-quote-page input::placeholder,
+.bulk-quote-page textarea::placeholder { font-weight: var(--np-font-weight-regular); color: var(--np-color-placeholder); }
+.bulk-quote-page input:not([type='checkbox']):not([type='radio']):focus-visible,
+.bulk-quote-page select:focus-visible,
+.bulk-quote-page textarea:focus-visible {
+    border-color: var(--np-color-secondary);
+    outline: 2px solid rgb(var(--np-color-secondary-rgb) / .16);
+    outline-offset: 0;
+    box-shadow: none;
+}
+.bulk-quote-page input[aria-invalid='true'],
+.bulk-quote-page select[aria-invalid='true'],
+.bulk-quote-page textarea[aria-invalid='true'] { border-color: var(--np-color-error) !important; }
+.bulk-quote-page .bulk-quote-custom-options {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 10px;
+    padding-left: 16px;
+}
+.bulk-quote-page .bulk-quote-custom-option {
+    flex: 1 1 auto;
+    justify-content: flex-start;
+    min-height: 44px;
+    gap: 8px;
+    padding: 9px 11px;
+    border: 1px solid var(--np-color-border);
+    border-radius: 6px;
+    font: var(--np-font-weight-medium) 12px/1.2 var(--np-font-body) !important;
+}
+.bulk-quote-page .bulk-quote-custom-check,
+.bulk-quote-page .bulk-quote-custom-option input:checked + .bulk-quote-custom-check {
+    flex-basis: 17px;
+    width: 17px;
+    height: 17px;
+    border-radius: 2px;
+}
+.bulk-quote-page .bulk-quote-custom-icon { display: none; }
+.bulk-quote-page .bulk-quote-custom-option input:checked + .bulk-quote-custom-check::after { top: 4px; left: 5px; }
+.bulk-quote-page .bulk-quote-control-wrap .bulk-quote-counter { bottom: 9px; right: 8px; }
+.bulk-quote-page .bulk-quote-phone-control {
+    min-height: 41px;
+    border-radius: 6px;
+}
+.bulk-quote-page .bulk-quote-phone-code-select {
+    min-height: 39px !important;
+    width: 133px !important;
+    min-width: 133px;
+    border: 0 !important;
+    border-right: 1px solid var(--np-color-border) !important;
+    border-radius: 0 !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+.bulk-quote-page .bulk-quote-phone-control input { border: 0 !important; border-radius: 0 !important; }
+.bulk-quote-page .bulk-quote-shipping-grid { grid-template-columns: repeat(2,minmax(0,1fr)); row-gap: 22px; }
+.bulk-quote-page .bulk-quote-shipping-grid .bulk-quote-full { grid-column: 1 / -1; }
+.bulk-quote-page .bulk-quote-shipping-grid .bulk-quote-half,
+.bulk-quote-page .bulk-quote-shipping-grid .bulk-quote-quarter,
+.bulk-quote-page .bulk-quote-shipping-grid .bulk-quote-quarter-wide { grid-column: span 1; }
+.bulk-quote-page .bulk-quote-attachments-card .bulk-quote-section {
+    border: none;
+    border-radius: 10px 10px 0 0;
+    box-shadow: none;
+    padding-bottom: 12px;
+}
+.bulk-quote-page .bulk-quote-upload {
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    min-height: 86px;
+    padding: 11px;
+    background: rgb(var(--np-color-primary-rgb) / .012);
+    border: 1px dashed var(--np-color-border);
+    border-radius: 6px;
+    text-align: center;
+}
+.bulk-quote-page .bulk-quote-upload-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: none;
+    width: 22px;
+    height: 22px;
+    color: var(--np-color-secondary);
+}
+.bulk-quote-page .bulk-quote-upload-copy { gap: 4px; }
+.bulk-quote-page .bulk-quote-upload-copy strong {
+    font-size: 12px;
+    color: var(--np-color-heading);
+}
+.bulk-quote-page .bulk-quote-upload-copy small { font-size: 10px; color: var(--np-color-muted); }
+.bulk-quote-page .bulk-quote-upload:focus-within { outline: 2px solid var(--np-color-secondary); outline-offset: 2px; }
+.bulk-quote-page .bulk-quote-file-control:focus-visible + .bulk-quote-upload { outline: 2px solid var(--np-color-secondary); }
+.bulk-quote-page .bulk-quote-submit-row {
+    padding: 0 20px 20px;
+    gap: 14px;
+    align-items: end;
+}
+.bulk-quote-page .bulk-quote-privacy { max-width: 360px; font-size: 10px; }
+.bulk-quote-page .bulk-quote-submit {
+    min-width: 240px;
+    min-height: 46px;
+    padding: 10px var(--np-button-padding-x-sm);
+    border: 1px solid var(--np-color-secondary);
+    border-radius: var(--np-button-radius);
+    background: var(--np-color-secondary);
+    color: #fff;
+    font-family: var(--np-font-body);
+    font-size: 13px;
+    font-weight: var(--np-font-weight-bold);
+    line-height: 1.1;
+    text-transform: none;
+    box-shadow: 0 5px 9px rgb(var(--np-color-secondary-rgb) / .12);
+}
+.bulk-quote-page .bulk-quote-submit:hover:not(:disabled) {
+    background: var(--np-color-secondary-hover);
+    filter: brightness(.94);
+}
+.bulk-quote-page .bulk-quote-submit:focus-visible,
+.bulk-quote-page .bulk-quote-whatsapp-link:focus-visible {
+    outline: 2px solid var(--np-color-secondary);
+    outline-offset: 2px;
+}
+.bulk-quote-page .bulk-quote-submit:disabled { opacity: .55; cursor: not-allowed; }
+.bulk-quote-page .bulk-quote-alert { margin: 0; }
+.bulk-quote-sidebar { display: grid; gap: 22px; min-width: 0; }
+.bulk-quote-page .bulk-quote-side-card { padding: 22px 20px; }
+.bulk-quote-side-heading { display: flex; gap: 25px; align-items: center; min-width: 0; }
+.bulk-quote-side-icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: radial-gradient(circle, rgb(var(--np-color-secondary-rgb) / .13), rgb(var(--np-color-secondary-rgb) / .045) 82%, transparent);
+    color: var(--np-color-secondary);
+}
+.bulk-quote-side-heading h2 {
+    margin: 0;
+    color: var(--np-color-heading);
+    font-family: var(--np-font-heading);
+    font-size: 20px;
+    font-weight: var(--np-font-weight-black);
+    line-height: 1.22;
+}
+.bulk-quote-side-lead { margin: 14px 0 17px; color: var(--np-color-muted); font-size: 13px; line-height: 1.45; }
+.bulk-quote-summary-rows {
+    display: grid;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--np-color-border);
+    border-radius: 7px;
+}
+.bulk-quote-summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 9px;
+    min-height: 57px;
+    padding: 10px 11px;
+    border-bottom: 1px solid var(--np-color-border);
+}
+.bulk-quote-summary-row:last-child { border-bottom: 0; }
+.bulk-quote-summary-row dt {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    color: var(--np-color-heading);
+    font-size: 12px;
+    font-weight: var(--np-font-weight-bold);
+}
+.bulk-quote-summary-row dt svg { flex: none; }
+.bulk-quote-summary-row dd {
+    margin: 0;
+    max-width: 55%;
+    overflow-wrap: anywhere;
+    color: var(--np-color-muted);
+    font-size: 12px;
+    line-height: 1.3;
+    text-align: right;
+}
+.bulk-quote-next-steps { display: grid; gap: 41px; list-style: none; margin: 20px 0 0; padding: 0; }
+.bulk-quote-next-steps li { display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 13px; align-items: start; }
+.bulk-quote-next-num {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgb(var(--np-color-secondary-rgb) / .08);
+    color: var(--np-color-secondary);
+    font-size: 12px;
+    font-weight: var(--np-font-weight-bold);
+}
+.bulk-quote-next-steps strong { display: block; color: var(--np-color-heading); font-size: 13px; font-weight: var(--np-font-weight-bold); line-height: 1.35; }
+.bulk-quote-next-steps p { margin: 7px 0 0; color: var(--np-color-muted); font-size: 12px; line-height: 1.5; }
+.bulk-quote-page .bulk-quote-whatsapp-link {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    min-height: var(--np-button-height-sm);
+    border: 1px solid var(--np-color-secondary);
+    border-radius: var(--np-button-radius);
+    background: var(--np-color-page);
+    color: var(--np-color-secondary) !important;
+    font: var(--np-font-weight-bold) 12px/1.2 var(--np-font-body);
+    text-decoration: none;
+    transition: background-color var(--np-button-transition-duration) var(--np-button-transition-easing);
+}
+.bulk-quote-page .bulk-quote-whatsapp-link:hover { background: rgb(var(--np-color-secondary-rgb) / .055); }
+.bulk-quote-page .bulk-quote-security-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 13px;
+    padding: 24px 21px;
+}
+.bulk-quote-security-note svg { flex: none; color: var(--np-color-heading); }
+.bulk-quote-security-note p { margin: 0; font-size: 12px; line-height: 1.5; color: var(--np-color-muted); }
+.bulk-quote-security-note strong { display: block; color: var(--np-color-heading); font-size: 12px; }
+.bulk-quote-page .bulk-quote-product-fields { border-radius: 7px; }
+.bulk-quote-page .bulk-quote-product-options { gap: 14px; }
+.bulk-quote-page .bulk-quote-product-search-area { isolation: isolate; }
+.bulk-quote-page .bulk-quote-product-results { z-index: 31; }
+.bulk-quote-page .bulk-quote-product-search-area > .bulk-quote-product-search-icon { z-index: 2; }
+.bulk-quote-page .bulk-quote-field-error { font-size: 12px; line-height: 1.4; }
+.bulk-quote-page .g-recaptcha { transform-origin: left top; }
+@media (max-width: 920px) {
+    .bulk-quote-layout { grid-template-columns: minmax(0, 2.45fr) minmax(240px, 1fr); }
+    .bulk-quote-page .bulk-quote-section { padding: 16px 16px 18px; }
+    .bulk-quote-page .bulk-quote-attachments-card .bulk-quote-section { padding-bottom: 10px; }
+    .bulk-quote-page .bulk-quote-submit-row { padding: 0 16px 17px; }
+    .bulk-quote-page .bulk-quote-side-card { padding: 15px 13px; }
+}
+@media (max-width: 760px) {
+    .bulk-quote-layout { grid-template-columns: minmax(0, 1fr); }
+    .bulk-quote-sidebar { grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; }
+    .bulk-quote-page .bulk-quote-security-note { grid-column: 1/-1; }
+    .bulk-quote-page .bulk-quote-required-hint { display: none; }
+}
+@media (max-width: 550px) {
+    .bulk-quote-page .site-container { width: calc(100% - 24px); }
+    .bulk-quote-page .bulk-quote-intro { padding: 16px 0 14px; }
+    .bulk-quote-page .bulk-quote-intro h1 { font-size: 26px; }
+    .bulk-quote-page .bulk-quote-intro-heading > div > p { font-size: 12px; }
+    .bulk-quote-page .bulk-quote-grid-two,
+    .bulk-quote-page .bulk-quote-shipping-grid { grid-template-columns: minmax(0, 1fr); }
+    .bulk-quote-page .bulk-quote-shipping-grid .bulk-quote-half,
+    .bulk-quote-page .bulk-quote-shipping-grid .bulk-quote-quarter,
+    .bulk-quote-page .bulk-quote-shipping-grid .bulk-quote-quarter-wide { grid-column: 1; }
+    .bulk-quote-page .bulk-quote-section { padding: 15px 13px 17px; }
+    .bulk-quote-page .bulk-quote-section-layout { grid-template-columns: 34px minmax(0, 1fr); gap: 11px 9px; }
+    .bulk-quote-page .bulk-quote-section-icon { width: 34px; height: 34px; }
+    .bulk-quote-page .bulk-quote-section-heading h2 { font-size: 15px; }
+    .bulk-quote-page .bulk-quote-custom-options { gap: 7px; }
+    .bulk-quote-page .bulk-quote-custom-option { flex: 1 1 auto; }
+    .bulk-quote-page .bulk-quote-submit-row { flex-direction: column-reverse; align-items: stretch; padding: 0 13px 16px; }
+    .bulk-quote-page .bulk-quote-submit { width: 100%; }
+    .bulk-quote-sidebar { grid-template-columns: minmax(0,1fr); }
+    .bulk-quote-page .bulk-quote-security-note { grid-column: 1; }
+}
+@media (max-width: 360px) {
+    .bulk-quote-page .g-recaptcha { transform: scale(.83); margin-bottom: -12px; }
+    .bulk-quote-page .bulk-quote-phone-code-select { min-width: 107px; width: 107px !important; }
+}
+/* CSS Grid's display:contents flattens the slot into grid items. */
+.bulk-quote-page .bulk-quote-section-layout > .bulk-quote-section-content > :not(.bulk-quote-section-heading) {
+    grid-column: 1 / -1;
+}
+
+/* Prototype-specific finishing details (no new brand colors, fonts, or request logic). */
+.bulk-quote-page .bulk-quote-intro-heading > div > p { color: var(--np-color-muted); }
+.bulk-quote-page .bulk-quote-custom-option { white-space: nowrap; }
+.bulk-quote-page .bulk-quote-customization-choices { margin-bottom: 0; }
+.bulk-quote-page .bulk-quote-custom-option .bulk-quote-custom-check { border-color: #94a3b8; }
+.bulk-quote-page .bulk-quote-browse-text { color: var(--np-color-secondary); }
+.bulk-quote-page .bulk-quote-attachments-card .bulk-quote-section { padding-bottom: 6px; }
+.bulk-quote-page .bulk-quote-attachments-card .bulk-quote-grid {
+    grid-template-columns: minmax(0, 1.22fr) minmax(0, 1fr);
+    row-gap: 15px;
+}
+.bulk-quote-page .bulk-quote-attachments-card .bulk-quote-submit-row { padding-top: 0; }
+.bulk-quote-page .bulk-quote-security-field { grid-column: 1; }
+.bulk-quote-page .bulk-quote-attachments-card .bulk-quote-upload-copy strong { color: var(--np-color-heading); }
+.bulk-quote-page .bulk-quote-attachments-card .bulk-quote-upload-copy strong .bulk-quote-browse-text { color: var(--np-color-secondary); }
+.bulk-quote-page .bulk-quote-side-card .bulk-quote-summary-rows { border-color: var(--np-color-border); }
+.bulk-quote-page .bulk-quote-side-card .bulk-quote-side-icon { background: rgb(var(--np-color-secondary-rgb) / .08); }
+.bulk-quote-page .bulk-quote-whatsapp-link { min-height: 46px; }
+.bulk-quote-page .bulk-quote-phone-control input { min-height: 39px; }
+@media (max-width: 920px) and (min-width: 761px) {
+    .bulk-quote-page .bulk-quote-section-layout { column-gap: 12px; }
+    .bulk-quote-page .bulk-quote-custom-option { white-space: normal; }
+    .bulk-quote-page .bulk-quote-side-heading h2 { font-size: 17px; }
+}
+@media (max-width: 760px) {
+    .bulk-quote-page .bulk-quote-custom-option { white-space: normal; }
+    .bulk-quote-page .bulk-quote-section-layout { row-gap: 13px; }
+    .bulk-quote-page .bulk-quote-product-general { margin-top: 14px; }
+    .bulk-quote-page .bulk-quote-grid { row-gap: 17px; }
+
+}
+@media (max-width: 550px) {
+    .bulk-quote-page .bulk-quote-section-icon { width: 34px; height: 34px; }
+    .bulk-quote-page .bulk-quote-section-heading h2 { font-size: 17px; }
+    .bulk-quote-page .bulk-quote-attachments-card .bulk-quote-security-field { grid-column: 1; }
+    .bulk-quote-page .bulk-quote-custom-options { padding-left: 0; justify-content: flex-start; }
+    .bulk-quote-page .bulk-quote-custom-option { flex: 1 1 auto; }
+    .bulk-quote-page .bulk-quote-submit { min-width: 0; }
+}
+
+.bulk-quote-page .bulk-quote-product-search-row { margin-bottom: 11px; }
+.bulk-quote-page .bulk-quote-attachments-card .bulk-quote-section-layout { row-gap: 18px; }
+.bulk-quote-page .bulk-quote-attachments-card .g-recaptcha { transform: none; margin-bottom: 0; }
+@media (max-width: 550px) {
+    .bulk-quote-page .bulk-quote-attachments-card .bulk-quote-section-layout { row-gap: 11px; }
+    .bulk-quote-page .bulk-quote-attachments-card .bulk-quote-grid { grid-template-columns: minmax(0, 1fr); }
+    .bulk-quote-page .bulk-quote-attachments-card .g-recaptcha { transform: scale(.85); margin-bottom: -12px; }
+}
+
+/* CTA and privacy line share the bottom of the CAPTCHA row as in the reference. */
+@media (min-width: 761px) {
+    .bulk-quote-page .bulk-quote-attachments-card .bulk-quote-submit-row {
+        position: relative;
+        margin-top: -39px;
+    }
+    .bulk-quote-page .bulk-quote-attachments-card.without-captcha .bulk-quote-submit-row {
+        margin-top: 0;
+    }
+    .bulk-quote-page .bulk-quote-attachments-card .bulk-quote-submit {
+        transform: translateY(-4px);
+    }
+    .bulk-quote-page .bulk-quote-security-note { margin-top: 0; }
+    .bulk-quote-page .bulk-quote-sidebar > .bulk-quote-side-card:nth-of-type(3) { padding-bottom: 32px; }
+}
+
+/* Invariant: the search control always precedes the general product fields. */
+.bulk-quote-page .bulk-quote-product-general > #bulk-quote-product-picker { margin-top: 0; }
+
+/* Prototype: five compact customisation choices on one desktop row. */
+@media (min-width: 761px) {
+    .bulk-quote-page .bulk-quote-custom-options { padding-left: 0; gap: 8px; }
+    .bulk-quote-page .bulk-quote-custom-option {
+        flex: 1 1 0;
+        min-width: 0;
+        gap: 6px;
+        padding: 7px 6px;
+        font-size: 10px !important;
+        white-space: nowrap;
+    }
+}
+
+/* Match the compact sidebar panels in the supplied bulk-quote reference. */
+.bulk-quote-page .bulk-quote-sidebar { gap: 15px; }
+.bulk-quote-page .bulk-quote-side-card { padding: 16px 14px; }
+.bulk-quote-page .bulk-quote-side-heading { gap: 11px; }
+.bulk-quote-page .bulk-quote-side-icon { flex-basis: 32px; width: 32px; height: 32px; border-radius: 9px; }
+.bulk-quote-page .bulk-quote-side-heading h2 { font-size: 15px; line-height: 1.24; }
+.bulk-quote-page .bulk-quote-side-lead { margin: 11px 0 13px; font-size: 11px; }
+.bulk-quote-page .bulk-quote-summary-row { min-height: 45px; padding: 8px 9px; }
+.bulk-quote-page .bulk-quote-summary-row dt { font-size: 11px; }
+.bulk-quote-page .bulk-quote-summary-row dd { font-size: 11px; }
+.bulk-quote-page .bulk-quote-next-steps { gap: 22px; margin-top: 16px; }
+.bulk-quote-page .bulk-quote-next-steps li { grid-template-columns: 27px minmax(0,1fr); gap: 10px; }
+.bulk-quote-page .bulk-quote-next-num { width: 27px; height: 27px; }
+.bulk-quote-page .bulk-quote-next-steps strong { font-size: 11px; }
+.bulk-quote-page .bulk-quote-next-steps p { margin-top: 5px; font-size: 10px; }
+.bulk-quote-page .bulk-quote-security-note p,
+.bulk-quote-page .bulk-quote-security-note strong { font-size: 10px; }
+
+/* Bulk quote control usability: keep live product matches in the document flow.
+   A result list must never cover the product type, quantity, or customisation fields. */
+.bulk-quote-page .bulk-quote-product-search-area { isolation: auto; }
+.bulk-quote-page .bulk-quote-product-results {
+    position: static;
+    z-index: auto;
+    width: 100%;
+    max-height: 270px;
+    margin-top: 7px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--np-color-border);
+    border-radius: 6px;
+    background: var(--np-color-page);
+    box-shadow: 0 8px 22px rgb(var(--np-color-primary-rgb) / .09);
+}
+.bulk-quote-page .bulk-quote-product-result { min-height: 56px; padding: 8px 12px; }
+.bulk-quote-page .bulk-quote-product-result strong { line-height: 1.4; overflow-wrap: anywhere; }
+.bulk-quote-page .bulk-quote-product-result:focus-visible {
+    outline: 2px solid var(--np-color-secondary);
+    outline-offset: -2px;
+}
+
+/* Reusable dropdown UI. The original select keeps the same name, value,
+   change events, validation and form submission semantics. No new queries. */
+.bulk-quote-page select.bulk-quote-select-native-hidden { display: none !important; }
+.bulk-quote-page .bulk-quote-select-ui { position: relative; min-width: 0; width: 100%; }
+.bulk-quote-page .bulk-quote-select-ui.is-open { z-index: 150; }
+.bulk-quote-page .bulk-quote-select-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-height: 39px;
+    padding: 8px 13px;
+    border: 1px solid var(--np-color-border);
+    border-radius: 6px;
+    background: var(--np-color-page);
+    color: var(--np-color-heading);
+    font: var(--np-font-weight-medium) 13px/1.4 var(--np-font-body);
+    text-align: left;
+    cursor: pointer;
+}
+.bulk-quote-page .bulk-quote-select-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bulk-quote-page .bulk-quote-select-trigger::after {
+    content: '';
+    flex: none;
+    width: 11px;
+    height: 7px;
+    background: currentColor;
+    clip-path: polygon(0 0,50% 80%,100% 0,100% 29%,50% 100%,0 29%);
+    opacity: .8;
+    transition: transform .15s ease;
+}
+.bulk-quote-page .is-open > .bulk-quote-select-trigger::after { transform: rotate(180deg); }
+.bulk-quote-page .bulk-quote-select-trigger:is(:hover, :focus-visible),
+.bulk-quote-page .is-open > .bulk-quote-select-trigger {
+    border-color: var(--np-color-secondary);
+    outline: 2px solid rgb(var(--np-color-secondary-rgb) / .12);
+    outline-offset: 0;
+}
+.bulk-quote-page .bulk-quote-select-trigger[aria-invalid="true"] { border-color: var(--np-color-error); }
+.bulk-quote-page .bulk-quote-select-menu {
+    position: absolute;
+    z-index: 150;
+    top: calc(100% + 5px);
+    left: 0;
+    width: 100%;
+    min-width: min(240px, calc(100vw - 35px));
+    padding: 6px;
+    border: 1px solid var(--np-color-border);
+    border-radius: 8px;
+    background: var(--np-color-page);
+    box-shadow: 0 12px 28px rgb(var(--np-color-primary-rgb) / .16);
+}
+.bulk-quote-page .bulk-quote-select-menu[hidden] { display: none !important; }
+.bulk-quote-page .bulk-quote-select-list { max-height: 220px; overflow-y: auto; overscroll-behavior: contain; }
+.bulk-quote-page .bulk-quote-select-option {
+    display: block;
+    width: 100%;
+    min-height: 34px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--np-color-heading);
+    font: var(--np-font-weight-medium) 12px/1.4 var(--np-font-body);
+    text-align: left;
+    cursor: pointer;
+}
+.bulk-quote-page .bulk-quote-select-option:is(:hover, :focus-visible),
+.bulk-quote-page .bulk-quote-select-option[aria-selected="true"] {
+    outline: none;
+    background: rgb(var(--np-color-secondary-rgb) / .09);
+}
+.bulk-quote-page .bulk-quote-select-option[aria-selected="true"] { font-weight: var(--np-font-weight-bold); }
+.bulk-quote-page input.bulk-quote-select-filter {
+    display: block;
+    width: 100%;
+    min-height: 35px;
+    margin-bottom: 6px;
+    padding: 7px 10px;
+    border: 1px solid var(--np-color-border);
+    border-radius: 5px;
+    font-size: 12px;
+}
+.bulk-quote-page .bulk-quote-select-empty { padding: 10px; color: var(--np-color-muted); font-size: 12px; }
+/* Allow the country calling-code menu to extend beyond its compact field. */
+.bulk-quote-page .bulk-quote-phone-control { overflow: visible; }
+.bulk-quote-page .bulk-quote-phone-control .bulk-quote-select-ui { width: 133px; }
+.bulk-quote-page .bulk-quote-phone-control .bulk-quote-select-trigger {
+    min-height: 39px;
+    height: 100%;
+    padding: 7px 10px;
+    border: 0;
+    border-right: 1px solid var(--np-color-border);
+    border-radius: 5px 0 0 5px;
+    font-size: 12px;
+}
+.bulk-quote-page .bulk-quote-phone-control .bulk-quote-select-menu { width: 260px; min-width: 260px; }
+.bulk-quote-page .bulk-quote-phone-control .bulk-quote-select-trigger:focus-visible { outline-offset: -2px; }
+
+/* The calendar icon takes its own flex column; the browser's date segments
+   begin after it. The native picker indicator remains clickable at the right. */
+.bulk-quote-page .bulk-quote-date-control {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 39px;
+    padding: 0 12px;
+    border: 1px solid var(--np-color-border);
+    border-radius: 6px;
+    background: var(--np-color-page);
+}
+.bulk-quote-page .bulk-quote-date-control > svg {
+    position: static;
+    flex: 0 0 17px;
+    width: 17px;
+    height: 17px;
+    transform: none;
+    pointer-events: none;
+}
+.bulk-quote-page .bulk-quote-date-control input[type="date"] {
+    position: relative;
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    min-height: 37px;
+    padding: 6px 30px 6px 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    outline: none;
+}
+.bulk-quote-page .bulk-quote-date-control input[type="date"]::-webkit-datetime-edit { padding: 0; }
+.bulk-quote-page .bulk-quote-date-control input[type="date"]::-webkit-calendar-picker-indicator {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: auto;
+    width: 28px;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+.bulk-quote-page .bulk-quote-date-control:focus-within {
+    border-color: var(--np-color-secondary);
+    box-shadow: 0 0 0 2px rgb(var(--np-color-secondary-rgb) / .12);
+}
+.bulk-quote-page .bulk-quote-date-control:has(input[aria-invalid="true"]) { border-color: var(--np-color-error); }
+@media (max-width: 550px) {
+    .bulk-quote-page .bulk-quote-phone-control .bulk-quote-select-ui { width: 113px; }
+    .bulk-quote-page .bulk-quote-phone-control .bulk-quote-select-menu { width: min(260px, calc(100vw - 42px)); min-width: 0; }
+}
+
+/* Bulk quote focus appearance: keep the prototype's neutral border when fields
+   are clicked or opened. Validation errors still use the existing error color. */
+.bulk-quote-page :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea):is(:focus, :focus-visible) {
+    border-color: var(--np-color-border) !important;
+    outline: none !important;
+    outline-offset: 0;
+    box-shadow: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+}
+.bulk-quote-page :is(input, select, textarea)[aria-invalid="true"]:is(:focus, :focus-visible) {
+    border-color: var(--np-color-error) !important;
+}
+.bulk-quote-page .bulk-quote-select-trigger:is(:focus, :focus-visible, :hover),
+.bulk-quote-page .bulk-quote-select-ui.is-open > .bulk-quote-select-trigger {
+    border-color: var(--np-color-border) !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+.bulk-quote-page .bulk-quote-select-trigger[aria-invalid="true"]:is(:focus, :focus-visible) {
+    border-color: var(--np-color-error) !important;
+}
+.bulk-quote-page .bulk-quote-phone-control:focus-within,
+.bulk-quote-page .bulk-quote-date-control:focus-within {
+    border-color: var(--np-color-border);
+    outline: none;
+    box-shadow: none;
+}
+.bulk-quote-page .bulk-quote-phone-control.is-invalid:focus-within,
+.bulk-quote-page .bulk-quote-date-control:has(input[aria-invalid="true"]):focus-within {
+    border-color: var(--np-color-error);
+}
+.bulk-quote-page .bulk-quote-upload:focus-within,
+.bulk-quote-page .bulk-quote-file-control:focus-visible + .bulk-quote-upload,
+.bulk-quote-page .bulk-quote-custom-option:has(input:focus-visible) {
+    outline: none;
+    box-shadow: none;
+}
+/* The calendar opens from the full field surface, including its icon and padding. */
+.bulk-quote-page .bulk-quote-date-control,
+.bulk-quote-page .bulk-quote-date-control input[type="date"] { cursor: pointer; }
+/* Older engines without showPicker can use the native picker hit-area. */
+.bulk-quote-page .bulk-quote-date-control.bulk-quote-date-fallback input[type="date"]::-webkit-calendar-picker-indicator {
+    right: 0; left: 0; width: 100%; height: 100%;
+}
+
+/* A keyboard-focused color swatch should not acquire an extra ring;
+   the selected swatch keeps its distinct checked state. */
+.bulk-quote-page .bulk-quote-color-choice input:not(:checked):focus-visible + .bulk-quote-color-chip {
+    outline: none;
+}
+
+/* One outline per date field: the wrapper owns the normal/error border.
+   Override the more-specific generic input and validation rules above. */
+.bulk-quote-page .bulk-quote-date-control > input[type="date"],
+.bulk-quote-page .bulk-quote-date-control > input[type="date"]:is(:hover, :focus, :focus-visible),
+.bulk-quote-page .bulk-quote-date-control > input[type="date"][aria-invalid="true"] {
+    border: 0 !important;
+    border-radius: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+}

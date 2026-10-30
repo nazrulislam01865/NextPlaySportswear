@@ -123,7 +123,23 @@ final class CentralEmailService implements EmailService
                 return;
             }
 
-            SendTransactionalEmail::dispatchAfterResponse($message);
+            // An exception during an after-response callback can escape the
+            // HTTP kernel after headers are already sent, resulting in a 500
+            // and preventing later terminating callbacks (including automatic
+            // order/quote forwarding) from executing. Isolate this delivery.
+            app()->terminating(function () use ($message): void {
+                try {
+                    $this->sendNow($message);
+                } catch (Throwable $exception) {
+                    // sendNow() already logs the provider error. Do not rethrow
+                    // after the customer response has been sent.
+                    Log::warning('Transactional email failed after response.', [
+                        'email_key' => $message->key,
+                        'exception' => $exception::class,
+                        'error' => $this->safeErrorMessage($exception),
+                    ]);
+                }
+            });
 
             return;
         }

@@ -73,8 +73,7 @@ final class E2aTransport extends AbstractTransport
         }
 
         if ($email->getReplyTo() !== []) {
-            $replyTo = $this->addresses($email->getReplyTo());
-            $payload['reply_to'] = count($replyTo) === 1 ? $replyTo[0] : $replyTo;
+            $payload['reply_to'] = $email->getReplyTo()[0]->getAddress();
         }
 
         $attachments = [];
@@ -120,9 +119,17 @@ final class E2aTransport extends AbstractTransport
 
         if (! $response->successful()) {
             $code = $response->json('error.code');
+            $fields = $response->json('error.details.fields');
+            $locations = is_array($fields) ? array_values(array_filter(array_map(
+                static fn ($field): ?string => is_array($field) && is_string($field['location'] ?? null)
+                    && preg_match('/^[a-zA-Z0-9_.\[\]-]{1,100}$/', $field['location'])
+                        ? $field['location'] : null,
+                array_slice($fields, 0, 3),
+            ))) : [];
             throw new TransportException(
                 'E2A rejected the email (HTTP ' . $response->status() .
-                (is_string($code) && preg_match('/^[a-z_]+$/', $code) ? ', ' . $code : '') . ').'
+                (is_string($code) && preg_match('/^[a-z_]+$/', $code) ? ', ' . $code : '') .
+                ($locations !== [] ? '; invalid fields: '.implode(', ', $locations) : '') . ').'
             );
         }
 
@@ -138,10 +145,20 @@ final class E2aTransport extends AbstractTransport
         }
     }
 
-    /** @param array<int, Address> $addresses */
+    /**
+     * E2A's /v1 SendEmailRequest schema requires arrays of address strings
+     * for to, cc and bcc. Objects ({email, name}) are rejected at body.to[0].
+     * Display names are omitted to keep the API payload unambiguous.
+     *
+     * @param array<int, Address> $addresses
+     * @return array<int, string>
+     */
     private function addresses(array $addresses): array
     {
-        return array_map(static fn (Address $address): string => $address->toString(), $addresses);
+        return array_map(
+            static fn (Address $address): string => $address->getAddress(),
+            $addresses,
+        );
     }
 
     public function __toString(): string

@@ -1,25 +1,15 @@
 @props(['selectedProduct' => null])
 
-
-<x-storefront.bulk-quote.section
-    number="1"
-    title="Product Information"
-    description="Search a product to auto-load available options. Product-specific fields appear only when relevant."
-    icon="box"
-    :optional="true"
->
     <div
         class="bulk-quote-product-picker"
         id="bulk-quote-product-picker"
+        data-prototype-product-search
         data-search-url="{{ route('quote.products.search') }}"
         data-detail-url="{{ route('quote.products.show', ['product' => '__ID__']) }}"
     >
         <div class="bulk-quote-product-search-row">
-            <label for="bulk-quote-product-search" class="bulk-quote-product-label">Search Product</label>
-            <span class="bulk-quote-product-hint" aria-hidden="true">
-                <x-storefront.bulk-quote.icon name="info" :size="16" />
-                Options are loaded from the selected product
-            </span>
+            <label for="bulk-quote-product-search" class="bulk-quote-product-label">Search for a product</label>
+            <span class="bulk-quote-product-hint">Optional</span>
         </div>
         <div class="bulk-quote-product-search-area">
             <span class="bulk-quote-product-search-icon" aria-hidden="true"><x-storefront.bulk-quote.icon name="search" :size="18" /></span>
@@ -76,4 +66,3 @@
     </div>
     <script type="application/json" id="bulk-quote-product-initial">@json(['product' => $selectedProduct, 'selection' => old('product_information', [])])</script>
     <script src="{{ asset('js/bulk-quote-product.js') }}?v=20261028b" defer></script>
-</x-storefront.bulk-quote.section>
