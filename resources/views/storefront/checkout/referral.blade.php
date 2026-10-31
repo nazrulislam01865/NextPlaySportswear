@@ -12,7 +12,7 @@
             <nav class="np-referral-breadcrumb" aria-label="Breadcrumb"><a href="{{ route('home') }}">Home</a><span>/</span><a href="{{ route('cart.index') }}">Basket</a><span>/</span><strong>Checkout</strong></nav>
 
             <div class="np-referral-checkout-top">
-                <h1>SECURE CHECKOUT</h1>
+                <h1>Secure checkout</h1>
                 <x-storefront.referral.stepper :current="2" />
             </div>
 
@@ -23,12 +23,12 @@
                 @csrf
                 <div class="np-referral-checkout-main">
                     <section class="np-referral-checkout-panel">
-                        <div class="np-referral-checkout-panel__heading"><h2>CONTACT</h2><p>We'll send your order confirmation to this email address.</p></div>
+                        <div class="np-referral-checkout-panel__heading"><h2>Contact</h2><p>We'll send your order confirmation to this email address.</p></div>
                         <label class="np-referral-field np-referral-field--full">Email address <span>*</span><input type="email" name="email" value="{{ auth()->user()?->email }}" autocomplete="email" readonly required><small>This referral is tied to the new account that claimed the link.</small></label>
                     </section>
 
                     <section class="np-referral-checkout-panel">
-                        <div class="np-referral-checkout-panel__heading np-referral-checkout-panel__heading--row"><h2>DELIVERY ADDRESS</h2><span>Secure delivery details</span></div>
+                        <div class="np-referral-checkout-panel__heading np-referral-checkout-panel__heading--row"><h2>Delivery address</h2><span>Secure delivery details</span></div>
                         <div class="np-referral-fields-grid">
                             <label class="np-referral-field">First name <span>*</span><input type="text" name="first_name" value="{{ old('first_name', $shipping['first_name'] ?? data_get($contact, 'first_name', str(auth()->user()?->name)->before(' '))) }}" placeholder="First name" autocomplete="given-name" required></label>
                             <label class="np-referral-field">Last name <span>*</span><input type="text" name="last_name" value="{{ old('last_name', $shipping['last_name'] ?? data_get($contact, 'last_name', str(auth()->user()?->name)->after(' '))) }}" placeholder="Last name" autocomplete="family-name" required></label>
@@ -41,13 +41,13 @@
                     </section>
 
                     <section class="np-referral-checkout-panel">
-                        <div class="np-referral-checkout-panel__heading"><h2>DELIVERY METHOD</h2><p>Select how you'd like to receive your order. The final delivery charge continues to use the delivery method configured for each product.</p></div>
+                        <div class="np-referral-checkout-panel__heading"><h2>Delivery method</h2><p>Select how you'd like to receive your order. The final delivery charge continues to use the delivery method configured for each product.</p></div>
                         <label class="np-referral-choice"><input type="radio" name="delivery_preference" value="standard" @checked(old('delivery_preference', 'standard') === 'standard')><span><strong>Standard delivery</strong><small>Delivery cost is calculated from your configured items.</small></span><b>To be confirmed<small>Calculated at review</small></b></label>
                         <label class="np-referral-choice"><input type="radio" name="delivery_preference" value="express" @checked(old('delivery_preference') === 'express')><span><strong>Express delivery</strong><small>We'll keep this preference with your checkout details.</small></span><b>To be confirmed<small>Calculated at review</small></b></label>
                     </section>
 
                     <section class="np-referral-checkout-panel">
-                        <div class="np-referral-checkout-panel__heading np-referral-checkout-panel__heading--row"><h2>PAYMENT</h2><span>🔒 Secure payment</span></div>
+                        <div class="np-referral-checkout-panel__heading np-referral-checkout-panel__heading--row"><h2>Payment</h2><span>🔒 Secure payment</span></div>
                         @forelse ($paymentOptions as $index => $option)
                             @php($code = (string) ($option['code'] ?? ''))
                             <label class="np-referral-payment-choice">
@@ -83,14 +83,14 @@
                     </section>
 
                     <section class="np-referral-checkout-panel np-referral-review-panel">
-                        <h2>REVIEW &amp; PLACE ORDER</h2>
+                        <h2>Review &amp; place order</h2>
                         <label class="np-referral-check"><input type="checkbox" name="terms" value="1" @checked(old('terms')) required><span>I agree to the <a href="{{ route('terms') }}">Terms &amp; Conditions</a> <em>*</em></span></label>
-                        <div class="np-referral-review-panel__actions"><a href="{{ route('cart.index') }}"><x-storefront.referral.icon name="arrow-left" :size="18" /> Back to basket</a><button type="submit" class="btn btn-secondary" @disabled(empty($paymentOptions))>CONTINUE TO REVIEW <x-storefront.referral.icon name="arrow-right" :size="20" /></button></div>
+                        <div class="np-referral-review-panel__actions"><a href="{{ route('cart.index') }}"><x-storefront.referral.icon name="arrow-left" :size="18" /> Back to basket</a><button type="submit" class="btn btn-secondary" @disabled(empty($paymentOptions)) >Continue to review <x-storefront.referral.icon name="arrow-right" :size="20" /></button></div>
                     </section>
                 </div>
 
                 <aside class="np-referral-checkout-summary">
-                    <h2>ORDER SUMMARY</h2>
+                    <h2>Order summary</h2>
                     <div class="np-referral-checkout-summary__body">
                         <div class="np-referral-checkout-summary__title"><strong>{{ $summary['quantity'] }} item{{ $summary['quantity'] === 1 ? '' : 's' }}</strong><a href="{{ route('cart.index') }}">Edit basket</a></div>
                         @foreach ($summary['items'] as $item)

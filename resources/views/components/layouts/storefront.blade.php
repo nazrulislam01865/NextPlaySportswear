@@ -121,7 +121,7 @@
          so the approved homepage rules work on existing cloud builds too. --}}
     <link rel="stylesheet" href="{{ asset('css/storefront-typography.css') }}?v=20261031accountcompact4">
     @if(request()->routeIs('checkout.*'))
-        <link rel="stylesheet" href="{{ asset('css/nextplay-checkout.css') }}?v=20261031c">
+        <link rel="stylesheet" href="{{ asset('css/nextplay-checkout.css') }}?v=20261031templatev11">
     @endif
     @if(request()->routeIs('quote.request'))
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-product.css') }}?v=20261030g">
