@@ -1279,3 +1279,59 @@
     .storefront-clean-ui .np-account-typography .np-artwork-list-card {grid-template-columns:1fr;}
     .storefront-clean-ui .np-account-typography .np-artwork-list-card__actions {grid-column:auto;}
 }
+
+/* Homepage FAQ and Quick Help: the headings occupy the same parent grid row.
+   This is a structural layout, not a placeholder height or a subgrid override:
+   when either optional description is empty, both content columns still start
+   at precisely the same vertical coordinate. */
+.storefront-clean-ui .home-page .np-home-faq-layout {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 16px;
+}
+.storefront-clean-ui .home-page .np-home-faq-layout > .section-head {
+    margin: 0 !important;
+    min-width: 0;
+    align-self: start;
+}
+.storefront-clean-ui .home-page .np-home-faq-layout > .np-home-faq-column {
+    min-width: 0;
+}
+.storefront-clean-ui .home-page .np-home-faq-layout > .np-home-faq-aside {
+    min-width: 0;
+    margin: 0;
+}
+@media (min-width: 1024px) {
+    .storefront-clean-ui .home-page .np-home-faq-layout:not(.np-home-faq-layout--single) {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 436px);
+        grid-template-rows: max-content auto;
+        column-gap: clamp(34px, 4vw, 58px);
+        align-items: start;
+    }
+    .storefront-clean-ui .home-page .np-home-faq-layout:not(.np-home-faq-layout--single) > .np-home-faq-main-heading {
+        grid-column: 1;
+        grid-row: 1;
+    }
+    .storefront-clean-ui .home-page .np-home-faq-layout:not(.np-home-faq-layout--single) > .np-home-quick-help-heading {
+        grid-column: 2;
+        grid-row: 1;
+    }
+    .storefront-clean-ui .home-page .np-home-faq-layout:not(.np-home-faq-layout--single) > .np-home-faq-column {
+        grid-column: 1;
+        grid-row: 2;
+        width: 94%;
+    }
+    .storefront-clean-ui .home-page .np-home-faq-layout:not(.np-home-faq-layout--single) > .np-home-faq-aside {
+        grid-column: 2;
+        grid-row: 2;
+        width: 100%;
+        max-width: 436px;
+    }
+}
+@media (max-width: 1023px) {
+    .storefront-clean-ui .home-page .np-home-faq-layout > .np-home-faq-main-heading {grid-row: 1;}
+    .storefront-clean-ui .home-page .np-home-faq-layout > .np-home-faq-column {grid-row: 2;}
+    .storefront-clean-ui .home-page .np-home-faq-layout > .np-home-quick-help-heading {grid-row: 3; margin-top: 18px !important;}
+    .storefront-clean-ui .home-page .np-home-faq-layout > .np-home-faq-aside {grid-row: 4;}
+}

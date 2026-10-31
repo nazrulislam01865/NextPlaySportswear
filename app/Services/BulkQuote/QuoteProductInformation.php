@@ -14,10 +14,11 @@ final class QuoteProductInformation
 {
     private const RELATIONS = [
         'images',
-        'optionGroups.values',
+        'optionGroups.values.jerseyCustomizationOption.images',
+        'optionGroups.values.worldCupCustomizationOption.images',
         'sizeGroups.sizes',
         'attributeValues.attribute',
-        'fabricPriceTables',
+        'fabricPriceTables.jerseyCustomizationOption.images',
     ];
 
     public function find(int $id): ?Product
@@ -40,6 +41,10 @@ final class QuoteProductInformation
                     'id' => (string) $value->id,
                     'label' => (string) $value->label,
                     'color' => $this->color($value->color_hex),
+                    // Prefer product-specific images, then uploaded master-option images.
+                    'image' => $value->publicImageUrl()
+                        ?: $value->jerseyCustomizationOption?->images->first()?->publicUrl()
+                        ?: $value->worldCupCustomizationOption?->images->first()?->publicUrl(),
                     'default' => (bool) $value->is_default,
                 ])->values()->all();
 
@@ -80,6 +85,7 @@ final class QuoteProductInformation
                     'id' => 'a'.$value->id,
                     'label' => (string) $value->label,
                     'color' => $this->color($value->color_hex),
+                    'image' => $value->publicImageUrl(),
                     'default' => false,
                 ])->values()->all();
             if ($colors !== []) {
@@ -93,7 +99,9 @@ final class QuoteProductInformation
             $fabrics = $product->fabricPriceTables->where('is_active', true)
                 ->map(fn ($table): array => ['id' => 'f'.$table->id,
                     'label' => (string) ($table->fabric_label ?: $table->fabric_code ?: 'Fabric'),
-                    'color' => null, 'default' => false])->values()->all();
+                    'color' => null,
+                    'image' => $table->jerseyCustomizationOption?->images->first()?->publicUrl(),
+                    'default' => false])->values()->all();
             if ($fabrics !== []) {
                 $groups[] = ['id' => 'fabric-tables', 'label' => 'Fabric', 'type' => 'select',
                     'placeholder' => '', 'default' => $fabrics[0]['id'], 'values' => $fabrics];

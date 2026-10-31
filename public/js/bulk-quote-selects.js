@@ -14,6 +14,28 @@
         if (restoreFocus) instance.trigger.focus();
     };
 
+    // Icons come from Master Data > Shipping Methods, never from local SVGs.
+    function optionIcon(option) {
+        const url = option?.dataset.iconUrl;
+        if (!url) {
+            const color = option?.dataset.color;
+            if (!/^#[a-f0-9]{6}$/i.test(color || '')) return null;
+            const dot = document.createElement('span');
+            dot.className = 'bulk-quote-select-color-dot';
+            dot.style.backgroundColor = color;
+            dot.setAttribute('aria-hidden', 'true');
+            return dot;
+        }
+        const image = document.createElement('img');
+        image.className = 'bulk-quote-shipping-option-icon';
+        image.src = url;
+        image.width = 20;
+        image.height = 20;
+        image.alt = '';
+        image.decoding = 'async';
+        image.setAttribute('aria-hidden', 'true');
+        return image;
+    }
     let menuIndex = 0;
     const enhance = select => {
         if (select.classList.contains('bulk-quote-select-native-hidden') || select.disabled || select.hidden) return;
@@ -25,12 +47,16 @@
         trigger.className = 'bulk-quote-select-trigger';
         trigger.setAttribute('aria-haspopup', 'listbox');
         trigger.setAttribute('aria-expanded', 'false');
-        const label = select.closest('.bulk-quote-field, [data-address-geography]')?.querySelector('label')?.textContent?.trim()
+        const label = select.closest('.bulk-quote-field, [data-address-geography], .npq-catalog-option')?.querySelector('label')?.textContent?.trim()
             || select.getAttribute('aria-label') || 'Choose an option';
         trigger.setAttribute('aria-label', label);
         const selectedText = document.createElement('span');
         selectedText.className = 'bulk-quote-select-value';
-        trigger.append(selectedText);
+        const visual = select.id === 'bulk-shipping-method' || Boolean(select.closest('#npq-catalog-options'));
+        const selectedWrap = document.createElement('span');
+        selectedWrap.className = 'bulk-quote-select-selection';
+        selectedWrap.append(selectedText);
+        trigger.append(selectedWrap);
 
         const menu = document.createElement('div');
         menu.className = 'bulk-quote-select-menu';
@@ -63,6 +89,8 @@
         function sync() {
             const option = select.selectedOptions[0];
             selectedText.textContent = option?.textContent?.trim() || 'Select an option';
+            selectedWrap.querySelectorAll('.bulk-quote-shipping-option-icon, .bulk-quote-select-color-dot').forEach(node => node.remove());
+            if (visual) { const icon = optionIcon(option); if (icon) selectedWrap.prepend(icon); }
             trigger.classList.toggle('is-placeholder', !select.value);
             trigger.setAttribute('aria-invalid', select.getAttribute('aria-invalid') || 'false');
             list.querySelectorAll('[role="option"]').forEach(button => {
@@ -87,10 +115,13 @@
                 item.setAttribute('role', 'option');
                 item.setAttribute('aria-selected', String(option.value === select.value));
                 item.dataset.value = option.value;
-                item.textContent = option.dataset.countryName
+                const itemText = option.dataset.countryName
                     ? `${option.textContent.trim()} · ${option.dataset.countryName}`
                     : option.textContent.trim();
+                if (visual) { const icon = optionIcon(option); if (icon) item.append(icon); }
+                item.append(document.createTextNode(itemText));
                 item.addEventListener('click', () => {
+                    if (select.dataset.fixed === 'true') return;
                     select.value = option.value;
                     select.dispatchEvent(new Event('change', { bubbles: true }));
                     sync();
@@ -110,8 +141,9 @@
             if (filter) filter.focus();
             else (list.querySelector('[aria-selected="true"]') || list.querySelector('button'))?.focus();
         }
-        trigger.addEventListener('click', () => menu.hidden ? open() : close(instance));
+        trigger.addEventListener('click', () => { if (select.dataset.fixed === 'true') return; menu.hidden ? open() : close(instance); });
         trigger.addEventListener('keydown', event => {
+            if (select.dataset.fixed === 'true') return;
             if (['ArrowDown', 'ArrowUp', ' ', 'Enter'].includes(event.key) && menu.hidden) {
                 event.preventDefault();
                 open();
@@ -143,11 +175,12 @@
     };
 
     form.querySelectorAll('select:not([hidden]):not([disabled])').forEach(enhance);
-    // Product-specific options are inserted only after a product is selected.
-    const dynamicOptions = document.getElementById('bulk-quote-product-options');
+    // Product option images are supplied by the existing catalogue details endpoint.
+    // All single-select catalogue options share one dropdown, with optional master images / swatches.
+    const dynamicOptions = document.getElementById('npq-catalog-options');
     if (dynamicOptions) {
         new MutationObserver(() => {
-            dynamicOptions.querySelectorAll('select:not(.bulk-quote-select-native-hidden)').forEach(enhance);
+            dynamicOptions.querySelectorAll('select:not([multiple]):not(.bulk-quote-select-native-hidden)').forEach(enhance);
         }).observe(dynamicOptions, { childList: true, subtree: true });
     }
 

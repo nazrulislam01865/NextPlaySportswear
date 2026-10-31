@@ -15,6 +15,38 @@ class StoreBulkQuoteRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        // The prototype submits several products through the existing quote endpoint.
+        // Keep legacy single-product requests working without a database change.
+        $rawProducts = $this->input('quote_products_json');
+        $quoteProducts = is_string($rawProducts) && strlen($rawProducts) <= 90000
+            ? json_decode($rawProducts, true) : null;
+        $isBuilderRequest = is_string($rawProducts);
+        if ($isBuilderRequest) {
+            $this->merge(['quote_products' => is_array($quoteProducts) && array_is_list($quoteProducts) ? $quoteProducts : []]);
+            if (is_array($quoteProducts) && array_is_list($quoteProducts) && $quoteProducts !== []) {
+                $first = is_array($quoteProducts[0]) ? $quoteProducts[0] : [];
+                $total = 0;
+                $selectedCustomizations = [];
+                foreach ($quoteProducts as $entry) {
+                    if (! is_array($entry)) continue;
+                    $total += max(0, min(99999, (int) ($entry['quantity'] ?? 0)));
+                    foreach ((array) ($entry['customizations'] ?? []) as $choice) {
+                        if (is_string($choice)) $selectedCustomizations[] = $choice;
+                    }
+                }
+                $quantityTier = $total < 50 ? '10-49' : ($total < 100 ? '50-99'
+                    : ($total < 500 ? '100-499' : ($total < 1000 ? '500-999' : '1000-plus')));
+                $this->merge([
+                    'product_type' => mb_substr(trim((string) ($first['name'] ?? 'Bulk products')), 0, 190),
+                    'estimated_quantity' => $quantityTier,
+                    'sizes_needed' => mb_substr(trim((string) ($first['sizes'] ?? '')) ?: 'See product breakdown', 0, 190),
+                    'artwork_details' => mb_substr('Product: '.trim((string) ($first['name'] ?? 'Bulk quote')).'. '
+                        .(trim((string) ($first['description'] ?? '')) ?: trim((string) ($first['customization'] ?? '')) ?: 'See product specifications.'), 0, 5000),
+                    'customization_types' => array_values(array_unique($selectedCustomizations)),
+                ]);
+            }
+        }
+
         $customizationTypes = collect((array) $this->input('customization_types', []))
             ->map(fn ($value): string => trim((string) $value))
             ->filter()
@@ -79,6 +111,27 @@ class StoreBulkQuoteRequest extends FormRequest
             'event_date' => ['nullable', 'date'],
             'attachment' => ['nullable', 'file', 'max:10240'],
             'additional_notes' => ['nullable', 'string', 'max:5000'],
+            // The JSON carrier is decoded to a bounded array by prepareForValidation.
+            'quote_products_json' => ['sometimes', 'required', 'string', 'max:90000'],
+            'quote_products' => ['required_with:quote_products_json', 'array', 'min:1', 'max:20'],
+            'quote_products.*' => ['required', 'array'],
+            'quote_products.*.mode' => ['required', Rule::in(['new', 'existing'])],
+            'quote_products.*.name' => ['required', 'string', 'min:2', 'max:190'],
+            'quote_products.*.description' => ['nullable', 'string', 'max:500'],
+            'quote_products.*.quantity' => ['required', 'integer', 'min:1', 'max:99999'],
+            'quote_products.*.material' => ['nullable', 'string', 'max:190'],
+            'quote_products.*.colors' => ['nullable', 'string', 'max:190'],
+            'quote_products.*.sizes' => ['nullable', 'string', 'max:190'],
+            'quote_products.*.budget' => ['nullable', 'string', 'max:190'],
+            'quote_products.*.customization' => ['nullable', 'string', 'max:500'],
+            'quote_products.*.artwork_name' => ['nullable', 'string', 'max:255'],
+            'quote_products.*.customizations' => ['nullable', 'array', 'max:5'],
+            'quote_products.*.customizations.*' => [Rule::in(['logo', 'names-numbers', 'embroidery', 'sublimation', 'full-custom-design'])],
+            'quote_products.*.catalog_product_id' => ['nullable', 'integer', 'min:1'],
+            'quote_products.*.options' => ['nullable', 'array', 'max:30'],
+            'quote_products.*.sizeQuantities' => ['nullable', 'array', 'max:10'],
+            'quote_artworks' => ['nullable', 'array', 'max:20'],
+            'quote_artworks.*' => ['nullable', 'file', 'max:10240', 'mimes:jpg,jpeg,png,pdf'],
             'product_information' => ['nullable', 'array:product_id,options,sizes,notes'],
             'product_information.product_id' => ['required_with:product_information', 'integer', 'min:1'],
             'product_information.options' => ['nullable', 'array', 'max:30'],
@@ -104,7 +157,51 @@ class StoreBulkQuoteRequest extends FormRequest
             'phone.regex' => 'Please enter a valid phone or WhatsApp number.',
             'attachment.max' => 'The attachment may not be larger than 10MB.',
             'g-recaptcha-response.required' => 'Please confirm that you are not a robot.',
+            'quote_products.min' => 'Add at least one product to your request.',
+            'quote_artworks.*.max' => 'Artwork must be smaller than 10 MB.',
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            if (! is_string($this->input('quote_products_json'))) return;
+            foreach ((array) $this->input('quote_products', []) as $index => $product) {
+                if (! is_array($product)) continue;
+                if (($product['mode'] ?? '') === 'new' && trim((string) ($product['description'] ?? '')) === '') {
+                    $validator->errors()->add("quote_products.$index.description", 'Enter a product description.');
+                }
+                if (($product['mode'] ?? '') === 'existing' && (int) ($product['catalog_product_id'] ?? 0) < 1) {
+                    $validator->errors()->add("quote_products.$index.catalog_product_id", 'Select a catalogue product.');
+                }
+                // Only unlisted products must supply all four specifications.
+                // Catalogue products show the options assigned to that product;
+                // unconfigured material, colour and size fields must not be forced.
+                if (($product['mode'] ?? '') === 'new') {
+                    foreach (['material' => 'material / fabric', 'colors' => 'colours', 'sizes' => 'size / dimensions'] as $key => $label) {
+                        if (trim((string) ($product[$key] ?? '')) === '') {
+                            $validator->errors()->add("quote_products.$index.$key", "Enter the $label for product ".($index + 1).'.');
+                        }
+                    }
+                }
+                // Catalogue quantity comes from the size table, so prevent a
+                // mismatched headline total being saved or forwarded.
+                if (($product['mode'] ?? '') === 'existing' && ! empty($product['sizeQuantities']) && is_array($product['sizeQuantities'])) {
+                    $sizeTotal = 0;
+                    foreach ($product['sizeQuantities'] as $amounts) {
+                        if (! is_array($amounts)) continue;
+                        foreach ($amounts as $amount) {
+                            if (is_scalar($amount) && preg_match('/^\d{1,5}$/D', (string) $amount)) {
+                                $sizeTotal += (int) $amount;
+                            }
+                        }
+                    }
+                    if ($sizeTotal !== (int) ($product['quantity'] ?? 0)) {
+                        $validator->errors()->add("quote_products.$index.quantity", 'The quantity must equal the selected size quantities.');
+                    }
+                }
+            }
+        });
     }
 
     public function attributes(): array

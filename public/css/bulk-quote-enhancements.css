@@ -1,0 +1,57 @@
+/* Bulk Quote request: optional catalog thumbnails, shipping method icons and stacked notes.
+   Uses the same centrally-defined Expose/font/color tokens as the existing form system. */
+.bulk-quote-page .bulk-quote-product-image-choices {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px;
+}
+.bulk-quote-page .bulk-quote-product-image-choice {
+    position: relative; display: flex; flex-direction: column; gap: 8px; align-items: center;
+    min-width: 0; padding: 10px; border: 1px solid var(--nps-border);
+    border-radius: var(--nps-radius); background: var(--nps-surface);
+    text-align: center; cursor: pointer;
+    color: var(--nps-text); font: 500 14px/1.4 var(--nps-font);
+}
+.bulk-quote-page .bulk-quote-product-image-choice:has(input:checked) {
+    border-color: var(--nps-orange); background: var(--nps-soft);
+}
+.bulk-quote-page .bulk-quote-product-image-choice:focus-within {
+    outline: 2px solid var(--nps-focus); outline-offset: 2px;
+}
+.bulk-quote-page .bulk-quote-product-image-choice > input {
+    position: absolute; top: 9px; left: 9px; width: 16px; height: 16px;
+    margin: 0; accent-color: var(--nps-navy);
+}
+.bulk-quote-page .bulk-quote-option-image {
+    display: block; width: 64px; height: 64px; max-width: 100%; object-fit: contain;
+    border-radius: 4px; background: var(--nps-surface);
+}
+.bulk-quote-page .bulk-quote-option-image[hidden] { display: none; }
+.bulk-quote-page .bulk-quote-product-image-label { overflow-wrap: anywhere; }
+.bulk-quote-page .bulk-quote-product-fixed-option { display: flex; align-items: center; gap: 10px; }
+.bulk-quote-page .bulk-quote-color-chip { overflow: hidden; }
+.bulk-quote-page .bulk-quote-color-chip .bulk-quote-option-image { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.bulk-quote-page .bulk-quote-product-check .bulk-quote-option-image { width: 40px; height: 40px; }
+.bulk-quote-page .bulk-quote-select-selection { display: inline-flex; align-items: center; gap: 9px; min-width: 0; flex: 1; }
+.bulk-quote-page .bulk-quote-select-selection .bulk-quote-select-value { flex: 1; }
+.bulk-quote-page .bulk-quote-select-option:has(.bulk-quote-shipping-option-icon) {
+    display: flex; align-items: center; gap: 10px;
+}
+/* The image is uploaded in Master Data; keep it unframed and uncropped. */
+.bulk-quote-page .bulk-quote-shipping-option-icon {
+    flex: 0 0 20px; display: block; width: 20px; height: 20px;
+    object-fit: contain; background: transparent; padding: 0; margin: 0;
+}
+/* 52px transparent icon slots remain standard; a 36px glyph balances the
+   adjacent 20px section headings without expanding the text row. */
+.bulk-quote-page .bulk-quote-section-icon > svg,
+.bulk-quote-page .bulk-quote-side-card .bulk-quote-side-icon > svg {
+    width: 36px; height: 36px;
+}
+.bulk-quote-page .bulk-quote-attachments-card .bulk-quote-grid > .bulk-quote-field.bulk-quote-full {
+    grid-column: 1 / -1; width: 100%;
+}
+.bulk-quote-page .bulk-quote-attachments-card .bulk-quote-control-wrap,
+.bulk-quote-page .bulk-quote-attachments-card .bulk-quote-control-wrap textarea { width: 100%; }
+.bulk-quote-page .bulk-quote-privacy { padding-left: 0; }
+@media(max-width: 640px) {
+    .bulk-quote-page .bulk-quote-product-image-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

@@ -17,15 +17,27 @@
 
 <section class="section-alt np-home-faq-section">
     <div class="container">
+        {{-- The two headings are direct grid children, sharing one intrinsic row.
+             Removing either optional description cannot move one content column. --}}
         <div class="np-home-faq-layout{{ $showQuickHelp ? '' : ' np-home-faq-layout--single' }}">
-            <div class="np-home-faq-column">
-                <x-storefront.home.section-heading
-                    class="section-head"
-                    align="left"
-                    :title="$text('title', 'Common Questions')"
-                    :description="$text('description')"
-                />
+            <x-storefront.home.section-heading
+                class="section-head np-home-faq-main-heading"
+                align="left"
+                :title="$text('title', 'Common Questions')"
+                :description="$text('description')"
+            />
 
+            @if($showQuickHelp)
+                <x-storefront.home.section-heading
+                    class="section-head np-home-quick-help-heading"
+                    align="left"
+                    :title="(string) ($settings['quick_help_title'] ?? 'Quick Help')"
+                    :description="(string) ($settings['quick_help_description'] ?? 'Find what you need.')"
+                    title-id="np-home-quick-help-title"
+                />
+            @endif
+
+            <div class="np-home-faq-column">
                 <div class="faq" id="faq" data-home-faq>
                     @foreach($faqs as $faq)
                         @php($answerId = 'home-faq-answer-'.$loop->iteration)
@@ -45,6 +57,7 @@
                     :title="(string) ($settings['quick_help_title'] ?? 'Quick Help')"
                     :description="(string) ($settings['quick_help_description'] ?? 'Find what you need.')"
                     :cards="$quickHelpCards"
+                    :show-heading="false"
                 />
             @endif
         </div>

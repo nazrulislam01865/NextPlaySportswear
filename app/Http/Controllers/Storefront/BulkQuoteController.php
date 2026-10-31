@@ -5,11 +5,11 @@ namespace App\Http\Controllers\Storefront;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Storefront\StoreBulkQuoteRequest;
 use App\Services\BulkQuote\BulkQuoteGuestService;
-use App\Models\BulkQuoteBudgetRange;
 use App\Models\BulkQuoteRequest;
 use App\Models\CountryCallingCode;
 use App\Models\User;
 use App\Models\Product;
+use App\Models\ShippingMethod;
 use App\Services\BulkQuote\QuoteProductInformation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,30 +31,45 @@ class BulkQuoteController extends Controller
 
     public function create(Request $request, QuoteProductInformation $productInformation): View
     {
-        $faqItems = [
-            ['question' => 'What is the minimum order quantity?', 'answer' => 'It depends on the product. Team uniforms usually start from 10+ pieces, while event apparel and promotional items may have different minimums.'],
-            ['question' => 'Can I request a quote without final artwork?', 'answer' => 'Yes. You can upload a rough reference or describe the design. Final artwork can be confirmed later.'],
-            ['question' => 'How fast will I receive the quote?', 'answer' => 'Most quote requests are reviewed within 24 hours on business days. Large or complex orders may need more clarification.'],
-            ['question' => 'Do you support names and numbers?', 'answer' => 'Yes. For jerseys and uniforms, you can include player names, numbers, sizes, and roster files.'],
-            ['question' => 'Can you help choose the right product?', 'answer' => 'Yes. Share your event, sport, or budget and we can suggest suitable product options.'],
-            ['question' => 'Is rush delivery available?', 'answer' => 'Rush delivery depends on the item, quantity, artwork readiness, and shipping location. Add your needed date in the form.'],
-        ];
-
-        $structuredData = [[
-            '@context' => 'https://schema.org',
-            '@type' => 'FAQPage',
-            'mainEntity' => collect($faqItems)->map(fn (array $item): array => [
-                '@type' => 'Question',
-                'name' => $item['question'],
-                'acceptedAnswer' => [
-                    '@type' => 'Answer',
-                    'text' => $item['answer'],
-                ],
-            ])->all(),
-        ]];
-
         $countryCallingCodes = CountryCallingCode::query()->active()->ordered()->get();
-        $budgetRanges = BulkQuoteBudgetRange::query()->active()->ordered()->get();
+
+        // Match the four existing quote preferences to the images that admins
+        // upload in Master Data > Shipping Methods. Do not change form values.
+        $shippingAliases = [
+            'standard' => ['standard', 'standard-shipping', 'standard-delivery'],
+            'express' => ['express', 'express-shipping', 'express-delivery', 'expedited', 'expedited-shipping'],
+            'rush' => ['rush', 'rush-shipping', 'rush-delivery', 'rush-review', 'rush-event-delivery-review', 'rush-delivery-if-available'],
+            'recommend' => ['recommend', 'recommended', 'recommend-best-option', 'recommend-best-shipping-option'],
+        ];
+        $shippingOptionIcons = [];
+        $shippingMethodsWithImages = ShippingMethod::query()
+            ->active()
+            ->where(static function ($query): void {
+                $query->whereNotNull('image_path')->orWhereNotNull('image_url');
+            })
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get(['name', 'code', 'image_path', 'image_url']);
+
+        foreach ($shippingMethodsWithImages as $shippingMethod) {
+            $code = Str::slug((string) $shippingMethod->code);
+            $name = Str::slug((string) $shippingMethod->name);
+            $imageUrl = $shippingMethod->imageUrl();
+            if (! $imageUrl) {
+                continue;
+            }
+            foreach ($shippingAliases as $preference => $aliases) {
+                // Prefer the actual master code/name; a descriptive suffix is OK
+                // (e.g. "standard-shipping-uk") but do not invent icon images.
+                $matches = in_array($code, $aliases, true) || in_array($name, $aliases, true)
+                    || collect($aliases)->contains(static fn (string $alias): bool =>
+                        str_starts_with($code, $alias.'-') || str_starts_with($name, $alias.'-'));
+                if (! isset($shippingOptionIcons[$preference]) && $matches) {
+                    $shippingOptionIcons[$preference] = $imageUrl;
+                    break;
+                }
+            }
+        }
 
         // The product-page Request Quote link already supplies a product slug.
         // Load it only when that link is used (or when restoring a failed POST).
@@ -74,10 +89,8 @@ class BulkQuoteController extends Controller
         }
 
         return view('storefront.bulk-quote.create', compact(
-            'faqItems',
-            'structuredData',
             'countryCallingCodes',
-            'budgetRanges',
+            'shippingOptionIcons',
             'selectedProduct',
         ));
     }
@@ -127,8 +140,71 @@ class BulkQuoteController extends Controller
     ): RedirectResponse {
         $validated = $request->validated();
         unset($validated['company'], $validated['g-recaptcha-response']);
+        $items = $validated['quote_products'] ?? null;
+        unset($validated['quote_products_json'], $validated['quote_products'], $validated['quote_artworks']);
         $validated['product_information'] = ! empty($validated['product_information']['product_id'])
             ? $productInformation->validateAndSnapshot($validated['product_information']) : null;
+
+        // All requested items live in the existing JSON column. Catalogue IDs are
+        // verified and snapshotted against current published products (not client labels).
+        $itemArtwork = null;
+        if (is_array($items)) {
+            $selectedProducts = [];
+            foreach ($items as $index => $item) {
+                $snapshot = ($item['mode'] ?? '') === 'existing'
+                    ? $productInformation->validateAndSnapshot([
+                        'product_id' => (int) ($item['catalog_product_id'] ?? 0),
+                        'options' => $item['options'] ?? [],
+                        'sizes' => $item['sizeQuantities'] ?? [],
+                        'notes' => mb_substr((string) ($item['customization'] ?? ''), 0, 500),
+                    ]) : null;
+                $artwork = null;
+                if ($request->hasFile("quote_artworks.$index")) {
+                    $file = $request->file("quote_artworks.$index");
+                    $artwork = [
+                        'path' => $file->store('bulk-quotes', 'local'),
+                        'disk' => 'local',
+                        'original_name' => Str::limit($file->getClientOriginalName(), 190, ''),
+                        'mime_type' => $file->getClientMimeType(),
+                        'size' => $file->getSize(),
+                    ];
+                    $itemArtwork ??= $artwork;
+                }
+                // Use verified catalogue option labels, not arbitrary JSON fields,
+                // for a catalogue product's material, colour, and size summary.
+                $configuredValue = static function (array $options, string $pattern): string {
+                    foreach ($options as $option) {
+                        if (preg_match($pattern, (string) ($option['label'] ?? '')) !== 1) continue;
+                        return trim((string) ($option['value'] ?? implode(', ', $option['values'] ?? [])));
+                    }
+                    return '';
+                };
+                $confirmedSizes = $snapshot
+                    ? collect($snapshot['size_groups'] ?? [])->flatMap(static fn (array $group) =>
+                        collect($group['sizes'] ?? [])->map(static fn (array $size) =>
+                            (string) $size['size'].': '.(int) $size['quantity']))->implode('  |  ')
+                    : (string) ($item['sizes'] ?? '');
+                $selectedProducts[] = [
+                    'name' => $snapshot['product_name'] ?? $item['name'],
+                    'quantity' => (int) $item['quantity'],
+                    'unit' => 'pcs',
+                    'category' => $snapshot ? 'Catalogue product' : 'New product',
+                    'product_id' => $snapshot['product_id'] ?? null,
+                    'sku' => $snapshot['sku'] ?? null,
+                    'description' => $item['description'] ?? '',
+                    'material' => $snapshot ? $configuredValue($snapshot['options'], '/fabric|material/i') : ($item['material'] ?? ''),
+                    'colors' => $snapshot ? $configuredValue($snapshot['options'], '/colou?r/i') : ($item['colors'] ?? ''),
+                    'sizes' => $confirmedSizes,
+                    'budget' => $snapshot ? '' : ($item['budget'] ?? ''),
+                    'customizations' => $item['customizations'] ?? [],
+                    'customization_details' => $item['customization'] ?? '',
+                    'options' => $snapshot['options'] ?? [],
+                    'size_groups' => $snapshot['size_groups'] ?? [],
+                    'artwork' => $artwork,
+                ];
+            }
+            $validated['product_information'] = ['selected_products' => $selectedProducts];
+        }
 
         $countryCallingCode = CountryCallingCode::query()
             ->active()
@@ -139,7 +215,7 @@ class BulkQuoteController extends Controller
             : trim($countryCallingCode->dial_code.' '.$phone);
         unset($validated['phone_country_code_id']);
 
-        $attachment = null;
+        $attachment = $itemArtwork;
         if ($request->hasFile('attachment')) {
             $file = $request->file('attachment');
             $path = $file->store('bulk-quotes', 'local');

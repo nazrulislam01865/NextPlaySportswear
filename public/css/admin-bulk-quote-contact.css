@@ -1,0 +1,7 @@
+/* Existing product-detail / bulk quote admin UI tokens. */
+.np-bqic-contact-field { display: flex; flex-direction: column; gap: 8px; max-width: 490px; }
+.np-bqic-contact-field label { font-size: 14px; font-weight: 600; color: var(--np-color-heading, #051e44); }
+.np-bqic-contact-field input { width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid var(--np-color-border, #bac6d5); border-radius: 8px; background: #fff; color: var(--np-color-body, #26364b); font: 400 16px/1.5 var(--np-font-body, 'Expose', 'Segoe UI', sans-serif); }
+.np-bqic-contact-help { color: var(--np-color-muted, #52637a); font-size: 13px; line-height: 1.5; }
+.np-bqic-contact-error { color: var(--np-color-error, #b42318); font-size: 13px; }
+.np-bqic-contact-actions { display: flex; justify-content: flex-end; padding: 18px 0; }

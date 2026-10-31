@@ -102,7 +102,10 @@ final class StorefrontRedirect
         $path = '/'.ltrim((string) ($parts['path'] ?? '/'), '/');
         $normalizedPath = Str::lower(rtrim($path, '/') ?: '/');
 
-        foreach (['/admin', '/login', '/register', '/logout', '/forgot-password', '/reset-password'] as $blockedPath) {
+        // The verification notice and success screens are auth flow states,
+        // never post-login destinations. Preserving a stale intended URL to
+        // either would trap an already-verified customer in the old screen.
+        foreach (['/admin', '/login', '/register', '/logout', '/forgot-password', '/reset-password', '/email/verify', '/email/verified'] as $blockedPath) {
             if ($normalizedPath === $blockedPath || Str::startsWith($normalizedPath, $blockedPath.'/')) {
                 return null;
             }

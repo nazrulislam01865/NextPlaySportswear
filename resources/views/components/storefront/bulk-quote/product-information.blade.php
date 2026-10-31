@@ -64,4 +64,4 @@
         </div>
     </div>
     <script type="application/json" id="bulk-quote-product-initial">@json(['product' => $selectedProduct, 'selection' => old('product_information', [])])</script>
-    <script src="{{ asset('js/bulk-quote-product.js') }}?v=20261028b" defer></script>
+    <script src="{{ asset('js/bulk-quote-product.js') }}?v=20261031optionimages1" defer></script>

@@ -15,20 +15,53 @@
                 <section class="np-referral-register-card">
                     <h1 class="nps-form-page-title">CREATE YOUR ACCOUNT</h1>
                     <h2>Your friend's £{{ $rewardLabel }} offer is saved for this visit.</h2>
-                    <p class="np-referral-register-card__intro">Create an account to continue and start shopping with your referral offer already linked to your order.</p>
+                    <p class="np-referral-register-card__intro">Verify your email and create an account to shop with your referral offer already linked to your order.</p>
 
-                    @if ($errors->any())
+                    @if ($errors->any() && $step === 3)
                         <div class="np-referral-form-alert" role="alert">{{ $errors->first() }}</div>
                     @endif
 
-                    <form method="POST" action="{{ route('register.store') }}" class="nps-form np-referral-register-form" novalidate data-single-submit>
+                    {{-- Referral signup shares the same verified-email lifecycle as regular signup. --}}
+                    @if ($step === 1)
+                        <p class="np-referral-register-card__intro">Verify your email address before completing your referral account.</p>
+                        <form method="POST" action="{{ route('register.email.send') }}" class="nps-form np-referral-register-form" novalidate data-auth-inline-validation data-single-submit>
+                            @csrf
+                            <label>Email address
+                                <input type="email" name="email" value="{{ old('email') }}" autocomplete="email" placeholder="Enter your email address" required autofocus data-auth-field @error('email') aria-invalid="true" aria-describedby="referral-register-email-error" @enderror>
+                            </label>
+                            <p id="referral-register-email-error" class="np-referral-form-alert" data-auth-error-for="email" role="alert" @if(!$errors->has('email')) hidden @endif>@error('email'){{ $message }}@enderror</p>
+                            <button type="submit" class="btn btn-secondary np-referral-register-submit">SEND VERIFICATION CODE <x-storefront.referral.icon name="arrow-right" :size="20" /></button>
+                        </form>
+                    @elseif ($step === 2)
+                        <p class="np-referral-register-card__intro">Enter the six-digit code sent to <strong>{{ $pendingEmail }}</strong>.</p>
+                        @if(session('status'))<p class="np-referral-register-card__intro" role="status">{{ session('status') }}</p>@endif
+                        <form method="POST" action="{{ route('register.email.verify') }}" class="nps-form np-referral-register-form" novalidate data-single-submit>
+                            @csrf
+                            <label>Verification code
+                                <input type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="6-digit code" required autofocus>
+                            </label>
+                            @error('code')<p class="np-referral-form-alert" role="alert">{{ $message }}</p>@enderror
+                            <button type="submit" class="btn btn-secondary np-referral-register-submit">VERIFY EMAIL <x-storefront.referral.icon name="arrow-right" :size="20" /></button>
+                        </form>
+                        <form method="POST" action="{{ route('register.email.send') }}" data-registration-resend data-single-submit data-available-at="{{ $resendAfter }}">
+                            @csrf
+                            <input type="hidden" name="email" value="{{ $pendingEmail }}">
+                            <button type="submit" class="np-auth-proto__text-button" data-resend-button disabled>Resend verification code</button>
+                        </form>
+                        <form method="POST" action="{{ route('register.email.change') }}">
+                            @csrf
+                            <button type="submit" class="np-auth-proto__text-button">Change email address</button>
+                        </form>
+                    @else
+                        <p class="np-referral-register-card__intro">Email verified: <strong>{{ $verifiedEmail }}</strong></p>
+                        <form method="POST" action="{{ route('register.store') }}" class="nps-form np-referral-register-form" novalidate data-single-submit>
                         @csrf
                         @if (! empty($redirectUrl))<input type="hidden" name="redirect" value="{{ $redirectUrl }}">@endif
                         <input type="text" name="website" value="" autocomplete="off" tabindex="-1" class="hidden" aria-hidden="true">
 
                         <label>First name<input type="text" name="first_name" value="{{ old('first_name') }}" placeholder="First name" autocomplete="given-name" required autofocus></label>
                         <label>Last name<input type="text" name="last_name" value="{{ old('last_name') }}" placeholder="Last name" autocomplete="family-name" required></label>
-                        <label>Email address<input type="email" name="email" value="{{ old('email') }}" placeholder="Email address" autocomplete="email" required></label>
+                        <input type="hidden" name="email" value="{{ $verifiedEmail }}">
                         <label>Password
                             <span class="np-referral-password-wrap">
                                 <input type="password" name="password" placeholder="Create a password" autocomplete="new-password" required data-referral-password>
@@ -41,6 +74,7 @@
 
                         <button type="submit" class="btn btn-secondary np-referral-register-submit">CREATE ACCOUNT &amp; CONTINUE <x-storefront.referral.icon name="arrow-right" :size="20" /></button>
                     </form>
+                    @endif
 
                     <div class="np-referral-register-or"><span>OR</span></div>
                     <a href="{{ route('products.index') }}" class="btn btn-outline np-referral-register-guest">CONTINUE SHOPPING <x-storefront.referral.icon name="arrow-right" :size="20" /></a>

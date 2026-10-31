@@ -19,7 +19,7 @@
     "isEntry": true
   },
   "resources/css/storefront.css": {
-    "file": "assets/storefront-BMJ3zZq7.css",
+    "file": "assets/storefront-B7SZ5y0L.css",
     "name": "storefront",
     "names": [
       "storefront.css"
@@ -40,7 +40,7 @@
     ]
   },
   "resources/js/storefront.js": {
-    "file": "assets/storefront-authfix-1c92e05bad.js",
+    "file": "assets/storefront-cA8nb8Tu.js",
     "name": "storefront",
     "src": "resources/js/storefront.js",
     "isEntry": true,

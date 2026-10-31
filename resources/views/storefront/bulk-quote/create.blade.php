@@ -1,445 +1,119 @@
 <x-layouts.storefront
-    :seo="[
-        'title' => 'Request a Bulk Quote | ' . config('storefront.name'),
-        'description' => 'Request a bulk quote for team uniforms, school apparel, league orders, event apparel, promotional products, artwork, delivery dates, and shipping details.',
-        'schema_type' => 'ContactPage',
-    ]"
+    :seo="['title' => 'Request a Bulk Quote | ' . config('storefront.name'), 'description' => 'Request a bulk quote for customised team wear and promotional products.', 'schema_type' => 'ContactPage']"
     :structured-data="$structuredData ?? []"
 >
-    @php
-        $whatsappDigits = preg_replace('/\D+/', '', (string) config('storefront.whatsapp'));
-        $whatsappUrl = config('storefront.whatsapp_url') ?: ($whatsappDigits ? 'https://wa.me/'.$whatsappDigits : null);
-    @endphp
-    <div class="bulk-quote-page">
-        <header class="bulk-quote-intro site-container">
-            <nav class="bulk-quote-breadcrumb" aria-label="Breadcrumb">
-                <a href="{{ route('home') }}">Home</a>
-                <span aria-hidden="true">/</span>
-                <a href="{{ route('bulk-ordering') }}">Bulk Orders</a>
-                <span aria-hidden="true">/</span>
-                <span aria-current="page">Request a Quote</span>
+    <main class="bulk-quote-page npq-page">
+        <div class="site-container">
+            <nav class="npq-breadcrumb" aria-label="Breadcrumb">
+                <a href="{{ route('home') }}">Home</a><span aria-hidden="true">/</span><span aria-current="page">Bulk Quote</span>
             </nav>
-            <div class="bulk-quote-intro-heading">
-                <div>
-                    <h1>Request a Bulk Quote</h1>
-                    <p>Tell us what you need. We'll prepare a quote for your team or business.</p>
+            <header class="npq-intro">
+                <h1>Request a Bulk Quote</h1>
+                <p>Add one or more products to your request.</p>
+            </header>
+            <form id="bulk-quote-request-form" class="nps-form npq-form" method="POST"
+                  action="{{ route('quote.request.store') }}" enctype="multipart/form-data" novalidate
+                  data-search-url="{{ route('quote.products.search') }}"
+                  data-details-url="{{ route('quote.products.show', ['product' => '__ID__']) }}"
+                  data-server-errors="{{ $errors->any() ? '1' : '0' }}"
+                  data-product-errors="{{ $errors->has('quote_products') || $errors->has('quote_products.*') || $errors->has('quote_artworks.*') ? '1' : '0' }}">
+                @csrf
+                <div class="npq-honeypot" aria-hidden="true"><label for="bulk-company">Company</label><input id="bulk-company" type="text" name="company" tabindex="-1" autocomplete="off" value=""></div>
+                <input type="hidden" id="npq-products-data" name="quote_products_json" value="{{ old('quote_products_json', '[]') }}">
+                @if($errors->any())
+                    <div class="npq-validation-alert" role="alert" id="npq-server-errors">
+                        Please review the highlighted information and try again.
+                        @foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach
+                    </div>
+                @endif
+                <div class="npq-layout" id="npq-product-stage">
+                    <section class="npq-panel npq-editor" aria-labelledby="npq-editor-heading">
+                        <div class="npq-editor-heading">
+                            <h2 id="npq-editor-heading">Add a product</h2>
+                            <div class="npq-draft-status" id="npq-draft-status"><span class="npq-status-pill"><span class="npq-dot"></span> Not added yet</span></div>
+                        </div>
+                        <div class="npq-tabs" role="tablist" aria-label="Product type">
+                            <button class="npq-tab is-active" type="button" id="npq-existing-tab" role="tab" aria-selected="true" aria-controls="npq-existing-fields" data-mode="existing">Existing product</button>
+                            <button class="npq-tab" type="button" id="npq-new-tab" role="tab" aria-selected="false" aria-controls="npq-new-fields" data-mode="new">Product not listed</button>
+                        </div>
+                        <p class="npq-mode-help" id="npq-mode-help" hidden>Choose a product from our catalogue and configure your request.</p>
+                        <div class="npq-existing-fields" id="npq-existing-fields" role="tabpanel" aria-labelledby="npq-existing-tab">
+                            <div class="npq-field npq-search-field">
+                                <label for="npq-catalog-search">Search for a product by name or SKU</label>
+                                <div class="npq-search-wrap"><span aria-hidden="true"><x-storefront.bulk-quote.icon name="search" :size="17" /></span>
+                                    <input id="npq-catalog-search" type="search" autocomplete="off" placeholder="Search for a product by name or SKU" role="combobox" aria-expanded="false" aria-controls="npq-search-results">
+                                </div>
+                                <div id="npq-search-results" role="listbox" class="npq-search-results" hidden></div>
+                                <span class="npq-error" data-error="catalog" hidden></span>
+                            </div>
+                            <div id="npq-catalog-selection" class="npq-catalog-selection" hidden></div>
+                            <div id="npq-existing-config" hidden>
+                                <h3 class="npq-config-heading">Configure this product</h3>
+                                <div id="npq-catalog-options" class="npq-catalog-options"></div>
+                                <div class="npq-existing-sizes">
+                                    <h4 id="npq-existing-size-heading">Quantity <span class="npq-required">*</span></h4>
+                                    <div id="npq-catalog-sizes"></div>
+                                    <span class="npq-error" data-error="existing-sizes" hidden></span>
+                                </div>
+                                <div class="npq-existing-extras npq-field-row">
+                                    <div class="npq-field"><label for="npq-existing-customization">Customisation notes <span class="npq-optional">(optional)</span></label><div class="npq-textarea"><textarea id="npq-existing-customization" maxlength="500" rows="3" placeholder="Add placement, logo or design details..."></textarea><span class="npq-count"><span id="npq-existing-customization-count">0</span>/500</span></div></div>
+                                    <div class="npq-field npq-artwork-field"><label for="npq-existing-artwork">Product artwork <span class="npq-optional">(optional)</span></label>
+                                        <label class="npq-dropzone" id="npq-existing-dropzone" for="npq-existing-artwork">
+                                            <input id="npq-existing-artwork" type="file" accept=".jpg,.jpeg,.png,.pdf">
+                                            <span class="npq-upload-icon"><x-storefront.bulk-quote.icon name="upload" :size="20" /></span><span><strong>Upload artwork</strong><small>PDF, JPG or PNG (max 10MB)</small></span>
+                                        </label>
+                                        <div class="npq-file-preview" id="npq-existing-file-preview" hidden><img id="npq-existing-image-preview" alt="Selected artwork preview" hidden><span id="npq-existing-file-name"></span><small id="npq-existing-file-size"></small><button type="button" id="npq-existing-file-remove" aria-label="Remove selected artwork">×</button></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="npq-new-fields" role="tabpanel" aria-labelledby="npq-new-tab" hidden>
+                            <div class="npq-field"><label for="npq-name">Product name / type <span class="npq-required">*</span></label><input id="npq-name" maxlength="190" placeholder="e.g. Custom Training Backpack" autocomplete="off"><span class="npq-error" data-error="name" hidden></span></div>
+                            <div class="npq-field"><label for="npq-description">Product description <span class="npq-required">*</span></label><div class="npq-textarea"><textarea id="npq-description" rows="3" maxlength="500" placeholder="Describe the product and its features..."></textarea><span class="npq-count"><span id="npq-description-count">0</span>/500</span></div><span class="npq-error" data-error="description" hidden></span></div>
+                            <div class="npq-field-row npq-two">
+                                <div class="npq-field"><label for="npq-material">Material / fabric <span class="npq-required">*</span></label><input id="npq-material" maxlength="190" placeholder="e.g. Water-resistant polyester" required><span class="npq-error" data-error="material" hidden></span></div>
+                                <div class="npq-field"><label for="npq-colors">Colours <span class="npq-required">*</span></label><input id="npq-colors" maxlength="190" placeholder="e.g. Navy and orange" required><span class="npq-error" data-error="colors" hidden></span></div>
+                                <div class="npq-field"><label for="npq-sizes">Size / dimensions <span class="npq-required">*</span></label><input id="npq-sizes" maxlength="190" placeholder="e.g. 45 × 30 × 18 cm" required><span class="npq-error" data-error="sizes" hidden></span></div>
+                                <div class="npq-field"><label for="npq-quantity">Quantity <span class="npq-required">*</span></label><input id="npq-quantity" type="number" min="1" max="99999" step="1" inputmode="numeric" placeholder="e.g. 80" required><span class="npq-error" data-error="quantity" hidden></span></div>
+                                <div class="npq-field"><label for="npq-budget">Budget <span class="npq-optional">(optional)</span></label><input id="npq-budget" maxlength="190" placeholder="e.g. USD 10–15 per piece"></div>
+                            </div>
+                            <fieldset class="npq-customizations"><legend>Customisation options <span class="npq-optional">(optional)</span></legend><p>Select all that apply</p><div class="npq-checkbox-row">
+                                @foreach(['logo' => 'Logo', 'names-numbers' => 'Names & numbers', 'embroidery' => 'Embroidery', 'sublimation' => 'Sublimation', 'full-custom-design' => 'Full custom design'] as $key => $name)
+                                    <label class="npq-choice"><input type="checkbox" name="npq_choice[]" value="{{ $key }}"><span class="npq-choice-box" aria-hidden="true"></span>{{ $name }}</label>
+                                @endforeach
+                            </div></fieldset>
+                            <div class="npq-new-extras npq-field-row"><div class="npq-field"><label for="npq-customization">Customisation notes <span class="npq-optional">(optional)</span></label><div class="npq-textarea"><textarea id="npq-customization" maxlength="500" rows="3" placeholder="Add placement, logo or design details..."></textarea><span class="npq-count"><span id="npq-customization-count">0</span>/500</span></div></div>
+                            <div class="npq-field npq-artwork-field"><label for="npq-artwork">Product artwork <span class="npq-optional">(optional)</span></label>
+                                <label class="npq-dropzone" id="npq-dropzone" for="npq-artwork"><input id="npq-artwork" type="file" accept=".jpg,.jpeg,.png,.pdf"><span class="npq-upload-icon"><x-storefront.bulk-quote.icon name="upload" :size="20" /></span><span><strong>Upload artwork</strong><small>PDF, JPG or PNG (max 10MB)</small></span></label>
+                                <div class="npq-file-preview" id="npq-file-preview" hidden><img id="npq-image-preview" alt="Selected artwork preview" hidden><span id="npq-file-name"></span><small id="npq-file-size"></small><button type="button" id="npq-file-remove" aria-label="Remove selected artwork">×</button></div>
+                            </div></div>
+                        </div>
+                        <span class="npq-error" data-error="artwork" hidden></span>
+                        <div class="npq-editor-actions"><button type="button" class="npq-cancel" id="npq-cancel">Cancel</button><button type="button" class="npq-primary npq-quote-cta" id="npq-add">Add Product to Request <span aria-hidden="true">＋</span></button></div>
+                        <div class="npq-shared-details" id="npq-contact-stage">
+                            @include('storefront.bulk-quote.partials.contact-delivery')
+                        </div>
+                    </section>
+                    <aside class="npq-panel npq-added" aria-labelledby="npq-added-heading">
+                        <div class="npq-added-heading"><h2 id="npq-added-heading">Added products (<span id="npq-added-count">0</span>)</h2><button type="button" id="npq-another" class="npq-add-another">＋ Add another product</button></div>
+                        <div id="npq-added-list" class="npq-added-list" aria-live="polite"><p class="npq-empty">No products added yet. Complete the form on the left to add your first product.</p></div>
+                        <div class="npq-summary"><h3>Request summary</h3><div class="npq-summary-totals"><strong><span id="npq-summary-count">0</span> products</strong><strong><span id="npq-summary-quantity">0</span> pieces</strong></div><p><span aria-hidden="true">ⓘ</span> The product currently being edited is not added yet and is not included in this total.</p></div>
+                        <p class="npq-error npq-request-error" id="npq-products-error" hidden></p>
+                    </aside>
                 </div>
-                <p class="bulk-quote-required-hint">Required fields are marked <span class="bulk-quote-req nps-required">*</span></p>
-            </div>
-        </header>
-
-        <div class="bulk-quote-main site-container" id="quote">
-            <div class="bulk-quote-layout">
-                <form
-                    class="bulk-quote-card nps-form"
-                    id="bulk-quote-request-form"
-                    method="POST"
-                    action="{{ route('quote.request.store') }}"
-                    enctype="multipart/form-data"
-                    novalidate
-                >
-                    @csrf
-                    @if(session('status'))
-                        <div class="bulk-quote-alert bulk-quote-alert-success" role="status">{{ session('status') }}</div>
-                    @endif
-                    <div class="hidden" aria-hidden="true">
-                        <label for="bulk-company">Company</label>
-                        <input id="bulk-company" name="company" value="" tabindex="-1" autocomplete="off">
-                    </div>
-
-                    <x-storefront.bulk-quote.section
-                        number="1"
-                        title="Product & Customisation"
-                        description="Tell us about the products you need and how you'd like to customise them."
-                        icon="box"
-                    >
-                        {{-- Keep the optional product picker visibly above the general product fields.
-                             Its component owns the search and selection UI; never wrap it in a hidden conditional. --}}
-                        <div class="bulk-quote-product-general">
-                            <x-storefront.bulk-quote.product-information :selected-product="$selectedProduct" />
-                            <div class="bulk-quote-grid nps-grid bulk-quote-grid-two">
-                        <div class="bulk-quote-field nps-field">
-                            <label for="bulk-product-type">Items needed / Product type <span class="bulk-quote-req nps-required">*</span></label>
-                            <input
-                                id="bulk-product-type"
-                                name="product_type"
-                                value="{{ old('product_type') }}"
-                                required
-                                maxlength="190"
-                                placeholder="e.g., Jerseys, Hoodies, Caps"
-                                aria-invalid="{{ $errors->has('product_type') ? 'true' : 'false' }}"
-                            >
-                            <x-storefront.bulk-quote.field-error name="product_type" />
-                        </div>
-
-                        <div class="bulk-quote-field nps-field">
-                            <label for="bulk-quantity">Estimated quantity <span class="bulk-quote-req nps-required">*</span></label>
-                            <select id="bulk-quantity" name="estimated_quantity" required aria-invalid="{{ $errors->has('estimated_quantity') ? 'true' : 'false' }}">
-                                <option value="">Select quantity</option>
-                                @foreach([
-                                    '10-49' => '10–49 pieces',
-                                    '50-99' => '50–99 pieces',
-                                    '100-499' => '100–499 pieces',
-                                    '500-999' => '500–999 pieces',
-                                    '1000-plus' => '1,000+ pieces',
-                                ] as $value => $label)
-                                    <option value="{{ $value }}" @selected(old('estimated_quantity') === $value)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                            <x-storefront.bulk-quote.field-error name="estimated_quantity" />
-                        </div>
-
-                        <div class="bulk-quote-field nps-field">
-                            <label for="bulk-sizes">Sizes needed <span class="bulk-quote-req nps-required">*</span></label>
-                            <input
-                                id="bulk-sizes"
-                                name="sizes_needed"
-                                value="{{ old('sizes_needed') }}"
-                                required
-                                maxlength="190"
-                                placeholder="e.g., S, M, L, XL, 2XL, or size range"
-                                aria-invalid="{{ $errors->has('sizes_needed') ? 'true' : 'false' }}"
-                            >
-                            <x-storefront.bulk-quote.field-error name="sizes_needed" />
-                        </div>
-
-                        <div class="bulk-quote-field nps-field">
-                            <label for="bulk-budget">Budget range <span class="bulk-quote-optional">(optional)</span></label>
-                            <select id="bulk-budget" name="budget_range" aria-invalid="{{ $errors->has('budget_range') ? 'true' : 'false' }}">
-                                <option value="">Select budget range</option>
-                                @foreach($budgetRanges as $budgetRange)
-                                    <option value="{{ $budgetRange->value }}" @selected(old('budget_range') === $budgetRange->value)>{{ $budgetRange->label }}</option>
-                                @endforeach
-                            </select>
-                            <x-storefront.bulk-quote.field-error name="budget_range" />
-                        </div>
-
-                        <div class="bulk-quote-field nps-field bulk-quote-full bulk-quote-customization-details" x-data="{ count: {{ mb_strlen((string) old('artwork_details', '')) }} }">
-                            <label for="bulk-artwork-details">Customisation details <span class="bulk-quote-req nps-required">*</span></label>
-                            <div class="bulk-quote-control-wrap">
-                                <textarea
-                                    id="bulk-artwork-details"
-                                    name="artwork_details"
-                                    required
-                                    minlength="10"
-                                    maxlength="5000"
-                                    placeholder="Tell us about colours, artwork, names, numbers or placement..."
-                                    aria-invalid="{{ $errors->has('artwork_details') ? 'true' : 'false' }}"
-                                    @input="count = $event.target.value.length"
-                                >{{ old('artwork_details') }}</textarea>
-                                <div class="bulk-quote-counter" aria-hidden="true"><span x-text="count">{{ mb_strlen((string) old('artwork_details', '')) }}</span>/5000</div>
-                            </div>
-                            <x-storefront.bulk-quote.field-error name="artwork_details" />
-                        </div>
-
-                        <div class="bulk-quote-field nps-field bulk-quote-full bulk-quote-customization-choices">
-                            <label>Customisation options <span class="bulk-quote-optional">(optional)</span></label>
-                            <p class="bulk-quote-field-note nps-help">Select all that apply</p>
-                            <div class="bulk-quote-custom-options">
-                                <x-storefront.bulk-quote.customization-option value="logo" label="Logo" icon="logo" />
-                                <x-storefront.bulk-quote.customization-option value="names-numbers" label="Names & numbers" icon="numbers" />
-                                <x-storefront.bulk-quote.customization-option value="embroidery" label="Embroidery" icon="embroidery" />
-                                <x-storefront.bulk-quote.customization-option value="sublimation" label="Sublimation" icon="drop" />
-                                <x-storefront.bulk-quote.customization-option value="full-custom-design" label="Full custom design" icon="custom" />
-                            </div>
-                            <x-storefront.bulk-quote.field-error name="customization_types" />
-                            <x-storefront.bulk-quote.field-error name="customization_types.*" />
-                        </div>
-                            </div>
-                        </div>
-                    </x-storefront.bulk-quote.section>
-
-                <x-storefront.bulk-quote.section
-                    number="2"
-                    title="Contact Information"
-                    description="Let us know who you are and how to reach you."
-                    icon="user"
-                >
-                    <div class="bulk-quote-grid nps-grid bulk-quote-grid-two">
-                        <div class="bulk-quote-field nps-field">
-                            <label for="bulk-full-name">Full name <span class="bulk-quote-req nps-required">*</span></label>
-                            <input
-                                id="bulk-full-name"
-                                name="full_name"
-                                value="{{ old('full_name', auth()->user()?->name) }}"
-                                required
-                                maxlength="120"
-                                autocomplete="name"
-                                placeholder="Your full name"
-                                aria-invalid="{{ $errors->has('full_name') ? 'true' : 'false' }}"
-                            >
-                            <x-storefront.bulk-quote.field-error name="full_name" />
-                        </div>
-
-                        <div class="bulk-quote-field nps-field">
-                            <label for="bulk-organization">Company / Team <span class="bulk-quote-req nps-required">*</span></label>
-                            <input
-                                id="bulk-organization"
-                                name="organization"
-                                value="{{ old('organization') }}"
-                                required
-                                maxlength="160"
-                                placeholder="Organization or team name"
-                                aria-invalid="{{ $errors->has('organization') ? 'true' : 'false' }}"
-                            >
-                            <x-storefront.bulk-quote.field-error name="organization" />
-                        </div>
-
-                        <div class="bulk-quote-field nps-field">
-                            <label for="bulk-email">Email <span class="bulk-quote-req nps-required">*</span></label>
-                            <input
-                                id="bulk-email"
-                                type="email"
-                                name="email"
-                                value="{{ old('email', auth()->user()?->email) }}"
-                                required
-                                maxlength="190"
-                                autocomplete="email"
-                                placeholder="you@example.com"
-                                aria-invalid="{{ $errors->has('email') ? 'true' : 'false' }}"
-                            >
-                            <x-storefront.bulk-quote.field-error name="email" />
-                        </div>
-
-                        <div class="bulk-quote-field nps-field">
-                            <label for="bulk-phone">Phone / WhatsApp <span class="bulk-quote-req nps-required">*</span></label>
-                            @php
-                                $ukCallingCode = $countryCallingCodes->first(fn ($code) => in_array(strtoupper((string) $code->iso_code), ['GB', 'UK'], true));
-                                $selectedCallingCodeId = (string) old('phone_country_code_id', $ukCallingCode?->id ?? $countryCallingCodes->first()?->id);
-                                $phoneHasError = $errors->has('phone') || $errors->has('phone_country_code_id');
-                            @endphp
-                            <div class="bulk-quote-phone-control {{ $phoneHasError ? 'is-invalid' : '' }}">
-                                <select
-                                    id="bulk-phone-country-code"
-                                    name="phone_country_code_id"
-                                    class="bulk-quote-phone-code-select"
-                                    required
-                                    aria-label="Country calling code"
-                                    aria-invalid="{{ $errors->has('phone_country_code_id') ? 'true' : 'false' }}"
-                                >
-                                    @foreach($countryCallingCodes as $callingCode)
-                                        <option value="{{ $callingCode->id }}" data-country-name="{{ $callingCode->country_name }}" @selected($selectedCallingCodeId === (string) $callingCode->id)>
-                                            {{ $callingCode->flagEmoji() }} {{ $callingCode->dial_code }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <input
-                                    id="bulk-phone"
-                                    name="phone"
-                                    value="{{ old('phone') }}"
-                                    required
-                                    maxlength="40"
-                                    autocomplete="tel-national"
-                                    placeholder="7123 456789"
-                                    aria-invalid="{{ $errors->has('phone') ? 'true' : 'false' }}"
-                                >
-                            </div>
-                            <x-storefront.bulk-quote.field-error name="phone_country_code_id" />
-                            <x-storefront.bulk-quote.field-error name="phone" />
-                        </div>
-                    </div>
-                </x-storefront.bulk-quote.section>
-
-                <x-storefront.bulk-quote.section
-                    number="3"
-                    title="Delivery Requirements"
-                    description="Where should we ship and when do you need it?"
-                    icon="truck"
-                >
-                    <div class="bulk-quote-grid nps-grid bulk-quote-shipping-grid">
-                        <div class="bulk-quote-field nps-field bulk-quote-full">
-                            <label for="bulk-shipping-address">Shipping address <span class="bulk-quote-req nps-required">*</span></label>
-                            <input
-                                id="bulk-shipping-address"
-                                name="shipping_address"
-                                value="{{ old('shipping_address') }}"
-                                required
-                                maxlength="500"
-                                placeholder="Street address, city, state/province, postcode, country"
-                                aria-invalid="{{ $errors->has('shipping_address') ? 'true' : 'false' }}"
-                            >
-                            <x-storefront.bulk-quote.field-error name="shipping_address" />
-                        </div>
-
-                        <x-storefront.address-geography variant="bulk" country-field="country" region-field="state_province" region-label="County / State" :country-value="'United Kingdom'" />
-
-                        <div class="bulk-quote-field nps-field bulk-quote-quarter">
-                            <label for="bulk-postal-code">Postcode <span class="bulk-quote-optional">(optional)</span></label>
-                            <input id="bulk-postal-code" name="postal_code" value="{{ old('postal_code') }}" maxlength="40" placeholder="e.g. SW1A 1AA" aria-invalid="{{ $errors->has('postal_code') ? 'true' : 'false' }}">
-                            <x-storefront.bulk-quote.field-error name="postal_code" />
-                        </div>
-
-                        <div class="bulk-quote-field nps-field bulk-quote-quarter bulk-quote-quarter-wide">
-                            <label for="bulk-shipping-method">Preferred shipping method <span class="bulk-quote-optional">(optional)</span></label>
-                            <select id="bulk-shipping-method" name="preferred_shipping_method" aria-invalid="{{ $errors->has('preferred_shipping_method') ? 'true' : 'false' }}">
-                                <option value="">Select shipping method</option>
-                                @foreach([
-                                    'standard' => 'Standard shipping',
-                                    'express' => 'Express shipping',
-                                    'rush' => 'Rush delivery if available',
-                                    'recommend' => 'Recommend best option',
-                                ] as $value => $label)
-                                    <option value="{{ $value }}" @selected(old('preferred_shipping_method') === $value)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                            <x-storefront.bulk-quote.field-error name="preferred_shipping_method" />
-                        </div>
-
-                        <div class="bulk-quote-field nps-field bulk-quote-quarter">
-                            <label for="bulk-needed-by">Needed by / Delivery date <span class="bulk-quote-req nps-required">*</span></label>
-                            <div class="bulk-quote-date-control">
-                                <x-storefront.bulk-quote.icon name="calendar" :size="17" />
-                                <input id="bulk-needed-by" type="date" lang="en-GB" name="needed_by" value="{{ old('needed_by') }}" required aria-invalid="{{ $errors->has('needed_by') ? 'true' : 'false' }}">
-                            </div>
-                            <x-storefront.bulk-quote.field-error name="needed_by" />
-                        </div>
-
-                        <div class="bulk-quote-field nps-field bulk-quote-quarter">
-                            <label for="bulk-event-date">Event date <span class="bulk-quote-optional">(optional)</span></label>
-                            <div class="bulk-quote-date-control">
-                                <x-storefront.bulk-quote.icon name="calendar" :size="17" />
-                                <input id="bulk-event-date" type="date" lang="en-GB" name="event_date" value="{{ old('event_date') }}" aria-invalid="{{ $errors->has('event_date') ? 'true' : 'false' }}">
-                            </div>
-                            <x-storefront.bulk-quote.field-error name="event_date" />
-                        </div>
-                    </div>
-                </x-storefront.bulk-quote.section>
-
-                    @php
-                        // Keep the existing CAPTCHA policy: production requires verification;
-                        // local development does not make external CAPTCHA requests mandatory.
-                        $recaptchaRequired = ! app()->environment('local');
-                        $recaptchaConfigured = $recaptchaRequired
-                            && filled(config('services.recaptcha.site_key'))
-                            && filled(config('services.recaptcha.secret_key'));
-                    @endphp
-                    <div class="bulk-quote-attachments-card {{ $recaptchaRequired ? 'has-captcha' : 'without-captcha' }}">
-                <x-storefront.bulk-quote.section
-                    number="4"
-                    title="Attachments & Notes"
-                    description="Add any files or additional information."
-                    icon="attachment"
-                >
-                    <div class="bulk-quote-grid nps-grid bulk-quote-grid-two">
-                        <div class="bulk-quote-field nps-field" x-data="{ fileName: '' }">
-                            <div
-                                class="bulk-quote-upload nps-upload {{ $errors->has('attachment') ? 'is-invalid' : '' }}"
-                                @dragover.prevent
-                                @drop.prevent="if ($event.dataTransfer.files.length) { $refs.attachment.files = $event.dataTransfer.files; fileName = $event.dataTransfer.files[0].name }"
-                            >
-                                <label class="bulk-quote-upload-heading nps-label" for="bulk-attachment">Upload artwork or reference files <span class="bulk-quote-optional">(optional)</span></label>
-                                <input
-                                    x-ref="attachment"
-                                    id="bulk-attachment"
-                                    type="file"
-                                    name="attachment"
-                                    accept=".pdf,.png,.jpg,.jpeg,.ai,.eps,.svg"
-                                    class="bulk-quote-file-control"
-                                    @change="fileName = $event.target.files?.[0]?.name || ''"
-                                    aria-describedby="bulk-attachment-help"
-                                    aria-invalid="{{ $errors->has('attachment') ? 'true' : 'false' }}"
-                                >
-                                <p id="bulk-attachment-help" class="bulk-quote-field-note nps-help">PDF, JPG, PNG, AI, EPS or SVG. Maximum 10 MB per file.</p>
-                            </div>
-                            <x-storefront.bulk-quote.field-error name="attachment" />
-                        </div>
-
-                        <div class="bulk-quote-field nps-field" x-data="{ count: {{ mb_strlen((string) old('additional_notes', '')) }} }">
-                            <label for="bulk-notes">Additional notes <span class="bulk-quote-optional">(optional)</span></label>
-                            <div class="bulk-quote-control-wrap">
-                                <textarea id="bulk-notes" name="additional_notes" maxlength="5000" placeholder="Anything else we should know?" aria-invalid="{{ $errors->has('additional_notes') ? 'true' : 'false' }}" @input="count = $event.target.value.length">{{ old('additional_notes') }}</textarea>
-                                <div class="bulk-quote-counter" aria-hidden="true"><span x-text="count">{{ mb_strlen((string) old('additional_notes', '')) }}</span>/5000</div>
-                            </div>
-                            <x-storefront.bulk-quote.field-error name="additional_notes" />
-                        </div>
-                        @if($recaptchaRequired)
-                            <div class="bulk-quote-field nps-field bulk-quote-security-field">
-                                <p class="bulk-quote-label">Security Verification <span class="bulk-quote-req nps-required">*</span></p>
-                                @if($recaptchaConfigured)
-                                    <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
-                                @else
-                                    <p class="bulk-quote-field-error nps-error" role="alert">Quote requests are temporarily unavailable. Please try again later.</p>
-                                @endif
-                                <x-storefront.bulk-quote.field-error name="g-recaptcha-response" />
-                            </div>
-                        @endif
-                    </div>
-                </x-storefront.bulk-quote.section>
-                <div class="bulk-quote-submit-row nps-actions">
-                    <p class="bulk-quote-privacy">
-                        <span class="bulk-quote-privacy-icon" aria-hidden="true"><x-storefront.bulk-quote.icon name="shield-check" :size="17" /></span>
-                        Your details are used to prepare and manage your quotation.
-                    </p>
-                    <button class="btn btn-primary btn-sm bulk-quote-submit nps-btn" type="submit" @disabled($recaptchaRequired && ! $recaptchaConfigured)>
-                        <span>Submit Quote Request</span>
-                        <x-storefront.bulk-quote.icon name="arrow-right" :size="16" />
-                    </button>
-                </div>
-                    </div>
-                </form>
-
-                <aside class="bulk-quote-sidebar" aria-label="Quote request assistance">
-                    <section class="bulk-quote-side-card bulk-quote-request-summary" aria-labelledby="bulk-quote-summary-heading">
-                        <div class="bulk-quote-side-heading">
-                            <span class="bulk-quote-side-icon" aria-hidden="true"><x-storefront.bulk-quote.icon name="file-text" :size="20" /></span>
-                            <h2 id="bulk-quote-summary-heading">Your Request</h2>
-                        </div>
-                        <p class="bulk-quote-side-lead">Your selections will appear here.</p>
-                        <dl class="bulk-quote-summary-rows" aria-live="polite" aria-atomic="false">
-                            <div class="bulk-quote-summary-row">
-                                <dt><x-storefront.bulk-quote.icon name="box" :size="18" /> <span>Products</span></dt>
-                                <dd id="bulk-quote-summary-product">—</dd>
-                            </div>
-                            <div class="bulk-quote-summary-row">
-                                <dt><x-storefront.bulk-quote.icon name="users" :size="18" /> <span>Quantity</span></dt>
-                                <dd id="bulk-quote-summary-quantity">—</dd>
-                            </div>
-                            <div class="bulk-quote-summary-row">
-                                <dt><x-storefront.bulk-quote.icon name="calendar" :size="18" /> <span>Delivery date</span></dt>
-                                <dd id="bulk-quote-summary-date">—</dd>
-                            </div>
-                        </dl>
-                    </section>
-
-                    <section class="bulk-quote-side-card" aria-labelledby="bulk-quote-next-heading">
-                        <div class="bulk-quote-side-heading">
-                            <span class="bulk-quote-side-icon" aria-hidden="true"><x-storefront.bulk-quote.icon name="settings" :size="20" /></span>
-                            <h2 id="bulk-quote-next-heading">What happens next?</h2>
-                        </div>
-                        <ol class="bulk-quote-next-steps">
-                            <li><span class="bulk-quote-next-num">1</span><div><strong>We review your request</strong><p>Our team will check your requirements and get back to you.</p></div></li>
-                            <li><span class="bulk-quote-next-num">2</span><div><strong>You receive a tailored quotation</strong><p>We'll send you a detailed quote, including lead times.</p></div></li>
-                            <li><span class="bulk-quote-next-num">3</span><div><strong>You approve artwork before production</strong><p>We'll share a design proof for your approval before we go into production.</p></div></li>
-                        </ol>
-                    </section>
-
-                    <section class="bulk-quote-side-card" aria-labelledby="bulk-quote-help-heading">
-                        <div class="bulk-quote-side-heading">
-                            <span class="bulk-quote-side-icon" aria-hidden="true">@if($helpIcon = \App\Support\BulkQuoteIcons::url('help'))<img src="{{ $helpIcon }}" alt="" width="52" height="52" class="bulk-quote-uploaded-icon">@else <x-storefront.bulk-quote.icon name="message-circle" :size="20" /> @endif</span>
-                            <h2 id="bulk-quote-help-heading">Need a hand?</h2>
-                        </div>
-                        <p class="bulk-quote-side-lead">Not sure about materials, sizes or artwork? Our team is here to help.</p>
-                        @if($whatsappUrl)
-                            <a class="bulk-quote-whatsapp-link" href="{{ $whatsappUrl }}" target="_blank" rel="noopener noreferrer">
-                                <x-storefront.bulk-quote.icon name="whatsapp" :size="19" /> Chat on WhatsApp
-                            </a>
-                        @else
-                            <a class="bulk-quote-whatsapp-link" href="{{ route('contact') }}">Contact our team</a>
-                        @endif
-                    </section>
-
-                    <div class="bulk-quote-security-note">
-                        <x-storefront.bulk-quote.icon name="lock" :size="21" />
-                        <p><strong>No payment required to request a quote.</strong> You'll only receive a quotation. Payment is requested later, after you approve the design.</p>
-                    </div>
-                </aside>
-            </div>
-            @if($recaptchaConfigured)
-                <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-            @endif
-            <script src="{{ asset('js/bulk-quote-summary.js') }}?v=20261030a" defer></script>
-            <script src="{{ asset('js/bulk-quote-selects.js') }}?v=20261030b" defer></script>
-            <script src="{{ asset('js/bulk-quote-form-validation.js') }}?v=20261030c" defer></script>
+                <div id="npq-upload-inputs" hidden></div>
+            </form>
         </div>
-    </div>
+        @php
+            // Build the state before encoding; Blade directives cannot reliably parse nested expressions.
+            $quoteState = [
+                'products' => json_decode(old('quote_products_json', '[]'), true) ?: [],
+                'selected' => $selectedProduct,
+            ];
+        @endphp
+        <script id="npq-state" type="application/json">@json($quoteState)</script>
+        <script src="{{ asset('js/nextplay-quote-builder.js') }}?v=20261031v7" defer></script>
+        <script src="{{ asset('js/bulk-quote-selects.js') }}?v=20261031v3" defer></script>
+        <script src="{{ asset('js/bulk-quote-form-validation.js') }}?v=20261030c" defer></script>
+    </main>
 </x-layouts.storefront>

@@ -82,7 +82,24 @@ final class BulkQuoteRequestDocument
                 }
                 foreach (($product['selected_products'] ?? []) as $item) {
                     if (is_array($item)) {
-                        $rows[] = ['FlowTracker product', ($item['name'] ?? 'Product').' · '.($item['quantity'] ?? 0).' '.($item['unit'] ?? 'pcs')];
+                        $label = ($item['name'] ?? 'Product').' · '.($item['quantity'] ?? 0).' '.($item['unit'] ?? 'pcs');
+                        $rows[] = ['Requested product', $label];
+                        foreach (['description' => 'Description', 'sizes' => 'Sizes', 'material' => 'Fabric',
+                            'colors' => 'Colours', 'budget' => 'Budget', 'customization_details' => 'Customisation details'] as $key => $name) {
+                            if (filled($item[$key] ?? null)) $rows[] = [$name, (string) $item[$key]];
+                        }
+                        if (! empty($item['customizations'])) $rows[] = ['Customisation options', implode(', ', (array) $item['customizations'])];
+                        foreach ((array) ($item['options'] ?? []) as $option) {
+                            if (is_array($option)) $rows[] = [(string) ($option['label'] ?? 'Option'),
+                                implode(', ', array_map('strval', (array) ($option['values'] ?? [$option['value'] ?? ''])))];
+                        }
+                        foreach ((array) ($item['size_groups'] ?? []) as $group) {
+                            $sizes = [];
+                            foreach ((array) ($group['sizes'] ?? []) as $size) {
+                                if (is_array($size)) $sizes[] = ($size['size'] ?? 'Size').': '.($size['quantity'] ?? 0);
+                            }
+                            if ($sizes !== []) $rows[] = ['Size & Quantity', implode(', ', $sizes)];
+                        }
                     }
                 }
                 $rows[] = ['Product notes', $product['notes'] ?? ''];
@@ -96,19 +113,27 @@ final class BulkQuoteRequestDocument
             ]);
             $xml .= $this->heading('Artwork and attachments');
             $attachment = (array) $quote->attachment;
-            if (empty($attachment['path'])) {
+            $artworks = [];
+            if (! empty($attachment['path'])) $artworks[$attachment['path']] = $attachment;
+            foreach ((array) ($product['selected_products'] ?? []) as $entry) {
+                $file = is_array($entry) ? ($entry['artwork'] ?? null) : null;
+                if (is_array($file) && filled($file['path'] ?? null)) $artworks[$file['path']] = $file;
+            }
+            if ($artworks === []) {
                 $xml .= $this->paragraph('No artwork file was uploaded.', 'Muted');
             } else {
-                $name = basename((string) ($attachment['original_name'] ?? 'Customer artwork'));
-                $xml .= $this->paragraph('Original file: '.$name, 'Normal');
-                $input = $this->readAttachment($attachment);
-                $images = $this->previewPages($input, $name);
-                foreach ($images as $i => $path) {
-                    $xml .= $this->paragraph('Artwork preview'.(count($images) > 1 ? ' — page '.($i + 1) : ''), 'Muted');
-                    $xml .= $this->image($path, 6.65, 8.25);
-                }
-                if ($images === []) {
-                    throw new RuntimeException('Unable to display the uploaded artwork in Word. Check the document conversion tools.');
+                foreach ($artworks as $artwork) {
+                    $name = basename((string) ($artwork['original_name'] ?? 'Customer artwork'));
+                    $xml .= $this->paragraph('Original file: '.$name, 'Normal');
+                    $input = $this->readAttachment($artwork);
+                    $images = $this->previewPages($input, $name);
+                    foreach ($images as $i => $path) {
+                        $xml .= $this->paragraph('Artwork preview'.(count($images) > 1 ? ' — page '.($i + 1) : ''), 'Muted');
+                        $xml .= $this->image($path, 6.65, 8.25);
+                    }
+                    if ($images === []) {
+                        throw new RuntimeException('Unable to display the uploaded artwork in Word. Check the document conversion tools.');
+                    }
                 }
             }
             $xml .= $this->paragraph('Original customer request — not a priced quotation.', 'Muted');

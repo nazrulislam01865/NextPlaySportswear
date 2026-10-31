@@ -121,6 +121,14 @@ final class ConfirmationForwarder
             $disk = ($original['disk'] ?? '') === 'local' ? 'local' : 'public';
             $this->addStored($files, $disk, (string) $original['path'], (string) ($original['original_name'] ?? 'original-upload'), (string) ($original['mime_type'] ?? ''), 'request');
         }
+        // Files for every item in the multi-product request, not only the first.
+        foreach ((array) data_get($quote->product_information, 'selected_products', []) as $index => $item) {
+            $file = is_array($item) ? ($item['artwork'] ?? null) : null;
+            if (! is_array($file) || ! filled($file['path'] ?? null) || $file['path'] === ($original['path'] ?? null)) continue;
+            $this->addStored($files, 'local', (string) $file['path'],
+                (string) ($file['original_name'] ?? 'artwork'),
+                (string) ($file['mime_type'] ?? ''), 'product'.($index + 1));
+        }
         // One query for all quote, message, artwork and quotation files.
         foreach ($quote->quoteFiles()->get(['path', 'original_name', 'mime_type']) as $file) {
             $this->addStored($files, 'local', (string) $file->path, (string) $file->original_name, (string) $file->mime_type, 'quote');

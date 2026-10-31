@@ -154,6 +154,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
 
         Route::get('/bulk-quote-icons', [\App\Http\Controllers\Admin\BulkQuoteIconController::class, 'edit'])->name('bulk-quote-icons.edit');
         Route::put('/bulk-quote-icons', [\App\Http\Controllers\Admin\BulkQuoteIconController::class, 'update'])->name('bulk-quote-icons.update');
+        Route::put('/bulk-quote-icons/contact', [\App\Http\Controllers\Admin\BulkQuoteIconController::class, 'updateContact'])->name('bulk-quote-icons.contact.update');
 
         Route::get('/storefront-branding', [\App\Http\Controllers\Admin\StorefrontBrandingController::class, 'edit'])->name('storefront-branding.edit');
         Route::put('/storefront-branding', [\App\Http\Controllers\Admin\StorefrontBrandingController::class, 'update'])->name('storefront-branding.update');
@@ -475,7 +476,7 @@ Route::get('/email/verify', [EmailVerificationController::class, 'notice'])
     ->name('verification.notice');
 
 Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
-    ->middleware(['not.admin', 'auth:web', 'customer', 'signed', 'throttle:30,1'])
+    ->middleware(['signed', 'throttle:30,1'])
     ->name('verification.verify');
 
 Route::get('/email/verified', [EmailVerificationController::class, 'success'])

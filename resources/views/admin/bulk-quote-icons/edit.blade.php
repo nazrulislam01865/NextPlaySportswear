@@ -1,5 +1,6 @@
 @push('admin-page-styles')
     <link rel="stylesheet" href="{{ asset('css/admin-bulk-quote-icons.css') }}?v=20261031bqic2">
+    <link rel="stylesheet" href="{{ asset('css/admin-bulk-quote-contact.css') }}?v=20261031a">
 @endpush
 
 <x-layouts.admin
@@ -68,5 +69,32 @@
                 </div>
             </div>
         </form>
+        <section class="np-pdui-section">
+            <header class="np-pdui-section__header">
+                <div>
+                    <p class="np-pdui-eyebrow">Centralized Bulk Quote support</p>
+                    <h2>WhatsApp contact number</h2>
+                    <p>Update the phone number used by the “Need a hand?” WhatsApp button on the Bulk Quote form. This does not change your other storefront contact numbers.</p>
+                </div>
+            </header>
+            <form method="POST" action="{{ route('admin.bulk-quote-icons.contact.update') }}" class="np-pdui-editor">
+                @csrf
+                @method('PUT')
+                <div class="np-pdui-grid np-pdui-grid--2">
+                    <div class="np-bqic-contact-field">
+                        <label for="bulk-quote-whatsapp-number">WhatsApp number</label>
+                        <input id="bulk-quote-whatsapp-number" name="whatsapp_number" type="tel" maxlength="24"
+                            inputmode="tel" autocomplete="tel" placeholder="e.g. +44 7700 900123"
+                            value="{{ old('whatsapp_number', $customWhatsappNumber ?: $whatsappNumber) }}"
+                            @disabled(! $canManage) aria-invalid="{{ $errors->has('whatsapp_number') ? 'true' : 'false' }}">
+                        <p class="np-bqic-contact-help">Include country code. Leave blank to restore the storefront default.</p>
+                        @error('whatsapp_number')<p class="np-bqic-contact-error" role="alert">{{ $message }}</p>@enderror
+                    </div>
+                </div>
+                @if($canManage)
+                    <div class="np-bqic-contact-actions"><button type="submit" class="btn btn-primary">Save WhatsApp Number</button></div>
+                @endif
+            </form>
+        </section>
     </div>
 </x-layouts.admin>

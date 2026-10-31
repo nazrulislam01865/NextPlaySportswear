@@ -119,7 +119,7 @@
     @vite(['resources/css/storefront.css', 'resources/js/storefront.js'])
     {{-- Generated from the centralized theme + typography sources; loaded last
          so the approved homepage rules work on existing cloud builds too. --}}
-    <link rel="stylesheet" href="{{ asset('css/storefront-typography.css') }}?v=20261031accountcompact4">
+    <link rel="stylesheet" href="{{ asset('css/storefront-typography.css') }}?v=20261031faqsharedrow2">
     @if(request()->routeIs('checkout.*'))
         <link rel="stylesheet" href="{{ asset('css/nextplay-checkout.css') }}?v=20261031templatev11">
     @endif
@@ -127,6 +127,8 @@
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-product.css') }}?v=20261030g">
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-redesign.css') }}?v=20261030i">
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-form-system.css') }}?v=20261031icons53clear">
+        <link rel="stylesheet" href="{{ asset('css/bulk-quote-enhancements.css') }}?v=20261031shippingmaster1">
+        <link rel="stylesheet" href="{{ asset('css/nextplay-quote-builder.css') }}?v=20261031v7">
     @endif
 </head>
 <body

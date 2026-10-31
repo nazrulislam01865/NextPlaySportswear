@@ -178,6 +178,16 @@
     });
     notes.addEventListener('input', () => { byId('bulk-quote-product-notes-count').textContent = notes.value.length; });
 
+    function optionPicture(value) {
+        if (typeof value.image !== 'string' || !value.image.trim()) return null;
+        const picture = element('img', 'bulk-quote-option-image');
+        picture.src = value.image;
+        picture.alt = '';
+        picture.loading = 'lazy';
+        picture.decoding = 'async';
+        picture.addEventListener('error', () => { picture.hidden = true; }, { once: true });
+        return picture;
+    }
     function optionField(group, oldOptions) {
         const field = element('div', 'bulk-quote-field bulk-quote-product-option-field');
         const label = element('label', '', group.label);
@@ -189,7 +199,11 @@
         if (group.fixed && type !== 'checkbox') {
             label.htmlFor = `bq-option-${group.id}`;
             const text = values.find(value => String(value.id) === String(group.default))?.label || group.default || 'Not specified';
-            const display = element('div', 'bulk-quote-product-fixed-option', text);
+            const display = element('div', 'bulk-quote-product-fixed-option');
+            const fixedValue = values.find(value => String(value.id) === String(group.default));
+            const picture = fixedValue && optionPicture(fixedValue);
+            if (picture) display.append(picture);
+            display.append(element('span', '', text));
             const fixedInput = input('hidden', name, group.default || '');
             field.append(label, display, fixedInput);
             return field;
@@ -208,7 +222,9 @@
                 radio.checked = String(current) === String(value.id);
                 radio.setAttribute('aria-label', value.label);
                 const circle = element('span', 'bulk-quote-color-chip');
-                if (value.color) circle.style.backgroundColor = value.color;
+                const picture = optionPicture(value);
+                if (picture) circle.append(picture);
+                else if (value.color) circle.style.backgroundColor = value.color;
                 else circle.textContent = value.label.slice(0, 2);
                 item.title = value.label;
                 item.append(radio, circle);
@@ -222,11 +238,36 @@
                 const item = element('label', 'bulk-quote-product-check');
                 const checkbox = input('checkbox', `${name}[]`, value.id);
                 checkbox.checked = Array.isArray(prior) ? prior.map(String).includes(String(value.id)) : !!value.default;
-                item.append(checkbox, element('span', '', value.label));
+                item.append(checkbox);
+                const picture = optionPicture(value);
+                if (picture) item.append(picture);
+                item.append(element('span', '', value.label));
                 choices.append(item);
             });
             field.append(choices);
         } else if (['image', 'swatch', 'buttons', 'select'].includes(type)) {
+            // Native-value radios permit actual thumbnails; the server still receives
+            // the same product_information[options][group-id] scalar ID as before.
+            if (values.some(value => value.image)) {
+                field.append(label);
+                const choices = element('div', 'bulk-quote-product-image-choices');
+                choices.setAttribute('role', 'radiogroup');
+                choices.setAttribute('aria-label', group.label);
+                const current = prior === undefined ? group.default : prior;
+                values.forEach(value => {
+                    const choice = element('label', 'bulk-quote-product-image-choice');
+                    const radio = input('radio', name, value.id);
+                    radio.checked = String(current) === String(value.id);
+                    const picture = optionPicture(value);
+                    const content = element('span', 'bulk-quote-product-image-label', value.label);
+                    choice.append(radio);
+                    if (picture) choice.append(picture);
+                    choice.append(content);
+                    choices.append(choice);
+                });
+                field.append(choices);
+                return field;
+            }
             label.htmlFor = `bq-option-${group.id}`;
             const select = element('select');
             select.id = label.htmlFor;

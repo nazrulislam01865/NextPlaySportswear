@@ -145,7 +145,7 @@
                             <x-admin.bulk-quote-field label="Product Notes">{{ $productInfo['notes'] }}</x-admin.bulk-quote-field>
                         @endif
                         @foreach((array) ($productInfo['selected_products'] ?? []) as $item)
-                            <x-admin.bulk-quote-field label="FlowTracker product">{{ $item['name'] ?? 'Product' }}{{ filled($item['category'] ?? null) ? ' ('.$item['category'].')' : '' }} · {{ $item['quantity'] ?? 0 }} {{ $item['unit'] ?? 'pcs' }}</x-admin.bulk-quote-field>
+                            <x-admin.bulk-quote-field label="Requested product">{{ $item['name'] ?? 'Product' }}{{ filled($item['category'] ?? null) ? ' ('.$item['category'].')' : '' }} · {{ $item['quantity'] ?? 0 }} {{ $item['unit'] ?? 'pcs' }}</x-admin.bulk-quote-field>
                         @endforeach
                         
                                     </div>

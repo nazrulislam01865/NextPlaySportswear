@@ -15,40 +15,47 @@ class BulkQuoteProductInformationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_bulk_quote_contains_optional_picker_without_querying_product_list(): void
+    public function test_bulk_quote_renders_prototype_builder_without_loading_product_list(): void
     {
-        $this->get(route('quote.request'))->assertOk()
-            ->assertSee('Product &amp; Customisation', false)
-            ->assertSee('Search by product name or SKU')
-            ->assertSee('Optional');
+        $response = $this->get(route('quote.request'))->assertOk()
+            ->assertSee('Add a product')
+            ->assertSee('Existing product')
+            ->assertSee('Product not listed')
+            ->assertSee('Added products')
+            ->assertSee('Request summary')
+            ->assertSee('Search for a product by name or SKU')
+            ->assertDontSee('Continue to Contact Details');
+
+        $html = $response->getContent();
+        $this->assertSame(1, substr_count($html, 'id="npq-catalog-search"'));
+        $this->assertSame(1, substr_count($html, 'id="npq-added-list"'));
+        $this->assertStringNotContainsString('id="bulk-quote-product-picker"', $html);
     }
 
-    public function test_prototype_search_is_rendered_once_above_product_type_and_local_captcha_is_absent(): void
+    public function test_local_captcha_is_absent_and_delivery_fields_are_preserved(): void
     {
-        $originalEnvironment = app()->environment();
-
+        $environment = app()->environment();
         try {
             app()->instance('env', 'local');
-            $response = $this->get(route('quote.request'))->assertOk()
-                ->assertSee('Search for a product')
-                ->assertSee('Search by product name or SKU')
-                ->assertSee('data-prototype-product-search', false)
-                ->assertSee('id="bulk-quote-product-picker"', false)
+            // Even when a developer has site keys in .env, local must not load Google CAPTCHA.
+            config()->set('services.recaptcha.site_key', 'local-test-site-key');
+            config()->set('services.recaptcha.secret_key', 'local-test-secret-key');
+            $this->get(route('quote.request'))->assertOk()
                 ->assertSee('County / State (optional)')
-                ->assertDontSee('Optional in local development')
-                ->assertDontSee('class="g-recaptcha"', false)
-                ->assertDontSee('https://www.google.com/recaptcha/api.js');
-
-            $html = $response->getContent();
-            $this->assertSame(1, substr_count($html, 'id="bulk-quote-product-search"'));
-            $this->assertLessThan(
-                strpos($html, 'id="bulk-product-type"'),
-                strpos($html, 'id="bulk-quote-product-search"'),
-                'The optional product search must be shown before the general product type input.'
-            );
+                ->assertSee('name="preferred_shipping_method"', false)
+                ->assertDontSee('class="g-recaptcha"', false);
         } finally {
-            app()->instance('env', $originalEnvironment);
+            app()->instance('env', $environment);
         }
+    }
+
+    public function test_product_without_configured_groups_has_no_fabric_or_colour_options(): void
+    {
+        $product = $this->product('Plain Catalogue Jersey', 'NJ-009');
+        $this->getJson(route('quote.products.show', $product->id))
+            ->assertOk()
+            ->assertJsonPath('product.groups', [])
+            ->assertJsonPath('product.size_groups', []);
     }
 
     public function test_only_published_products_are_searchable_and_product_links_preselect(): void

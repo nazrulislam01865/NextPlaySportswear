@@ -69,9 +69,10 @@ test('original server submission rules retain their required and optional constr
 test('assistance sidebar uses centralized Expose typography', () => {
     const sidebar = form.match(/<aside class="bulk-quote-sidebar"[\s\S]*?<\/aside>/)?.[0];
     assert.ok(sidebar);
-    for (const copy of ['Your Request', 'What happens next?', 'Need a hand?', 'No payment required to request a quote.']) {
+    for (const copy of ['What happens next?', 'Need a hand?', 'No payment required to request a quote.']) {
         assert.ok(sidebar.includes(copy), `Missing sidebar content: ${copy}`);
     }
+    assert.doesNotMatch(sidebar, /Your Request|bulk-quote-request-summary/);
     assert.match(system, /\.bulk-quote-page \.bulk-quote-sidebar\s*\{\s*font-family:\s*var\(--nps-font\)/);
     for (const rule of [
         '.bulk-quote-sidebar .bulk-quote-side-heading h2',

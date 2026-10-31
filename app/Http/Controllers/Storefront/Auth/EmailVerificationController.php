@@ -4,7 +4,8 @@ namespace App\Http\Controllers\Storefront\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Support\StorefrontRedirect;
-use Illuminate\Foundation\Auth\EmailVerificationRequest;
+use App\Models\User;
+use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -33,26 +34,45 @@ final class EmailVerificationController extends Controller
         ]);
     }
 
-    public function verify(EmailVerificationRequest $request): RedirectResponse
+    public function verify(Request $request, string $id, string $hash): RedirectResponse
     {
-        if (! $request->user()->hasVerifiedEmail()) {
-            $request->fulfill();
+        // Laravel's `signed` route middleware verifies expiry and signature.
+        // Verify the referenced account rather than the current browser's
+        // authenticated user: opening the email on another device must work.
+        $customer = User::query()
+            ->whereKey($id)
+            ->where('role', 'customer')
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        abort_unless(hash_equals(sha1($customer->getEmailForVerification()), $hash), 403);
+
+        // Idempotent even when the link is opened more than once. Use the
+        // persisted timestamp, not the optional verification feature switch.
+        if ($customer->email_verified_at === null && $customer->markEmailAsVerified()) {
+            event(new Verified($customer));
         }
 
-        // Resolve the original safe storefront destination (for example the
-        // checkout page), but do not send the customer there immediately.
-        // First show a clear verification-success screen so the customer knows
-        // that email ownership was confirmed successfully.
-        $destination = StorefrontRedirect::intended(
-            $request,
-            route('account.dashboard')
-        );
+        $signedInCustomer = $request->user('web');
+        if (! $signedInCustomer instanceof User) {
+            // A valid email link is proof of email ownership, not a login.
+            return redirect()->route('login')->with(
+                'status',
+                'Your email address has been verified. Sign in to continue.'
+            );
+        }
+        if (! $signedInCustomer->is($customer)) {
+            // Do not sign out, replace, or hijack a different logged-in user.
+            return redirect()->route('home')->with(
+                'status',
+                'Email verified. Sign out of this account to sign in to the verified account.'
+            );
+        }
 
+        $destination = StorefrontRedirect::intended($request, route('account.dashboard'));
         $request->session()->put(self::CONTINUE_URL_SESSION_KEY, $destination);
 
-        return redirect()
-            ->route('verification.success')
-            ->with('status', 'email-verified');
+        return redirect()->route('verification.success')->with('status', 'email-verified');
     }
 
     public function success(Request $request): View|RedirectResponse

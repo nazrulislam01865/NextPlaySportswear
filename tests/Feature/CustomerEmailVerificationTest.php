@@ -383,4 +383,91 @@ class CustomerEmailVerificationTest extends TestCase
             return $job->message->key === 'customer.email-verification';
         });
     }
+
+    public function test_referral_registration_uses_the_same_email_code_step_instead_of_legacy_verification(): void
+    {
+        $referrer = User::factory()->create(['role' => 'customer', 'is_active' => true]);
+        $this->withSession([
+            \App\Services\Referrals\ReferralOfferService::SESSION_KEY => ['referrer_id' => $referrer->id],
+        ])->get(route('register'))
+            ->assertOk()
+            ->assertSee('SEND VERIFICATION CODE')
+            ->assertDontSee('CREATE ACCOUNT &amp; CONTINUE', false);
+
+        $this->post(route('register.store'), [
+            'first_name' => 'Referral',
+            'last_name' => 'Customer',
+            'email' => 'referral@example.com',
+            'password' => 'Password123!',
+            'terms' => '1',
+            'website' => '',
+        ])->assertSessionHasErrors('email');
+        $this->assertDatabaseMissing('users', ['email' => 'referral@example.com']);
+    }
+
+    public function test_preverified_referral_registration_is_persistently_verified_and_keeps_its_offer(): void
+    {
+        Queue::fake();
+        $referrer = User::factory()->create(['role' => 'customer', 'is_active' => true]);
+
+        $this->withSession([
+            \App\Services\Referrals\ReferralOfferService::SESSION_KEY => ['referrer_id' => $referrer->id],
+            \App\Http\Controllers\Storefront\Auth\RegistrationEmailCodeController::SESSION_KEY => [
+                'email' => 'referral@example.com', 'verified_at' => time(),
+            ],
+        ])->post(route('register.store'), [
+            'first_name' => 'Referral',
+            'last_name' => 'Customer',
+            'email' => 'referral@example.com',
+            'password' => 'Password123!',
+            'terms' => '1',
+            'website' => '',
+        ])->assertRedirect(route('products.index'));
+
+        $customer = User::query()->where('email', 'referral@example.com')->firstOrFail();
+        $this->assertNotNull($customer->email_verified_at);
+        $this->assertSame((int) $referrer->id, (int) $customer->referred_by_user_id);
+        $this->assertAuthenticatedAs($customer, 'web');
+        Queue::assertNotPushed(SendTransactionalEmail::class, static fn ($job) =>
+            $job->message->key === 'customer.email-verification'
+        );
+        $this->get(route('verification.notice'))->assertRedirect(route('account.dashboard'));
+    }
+
+    public function test_valid_legacy_verification_link_works_without_login_on_the_email_device(): void
+    {
+        Queue::fake();
+        $customer = User::factory()->unverified()->create([
+            'role' => 'customer', 'is_active' => true, 'password' => 'Password123!',
+        ]);
+        $url = URL::temporarySignedRoute('verification.verify', now()->addMinutes(60), [
+            'id' => $customer->id,
+            'hash' => sha1($customer->getEmailForVerification()),
+        ]);
+
+        $this->get($url)->assertRedirect(route('login'))
+            ->assertSessionHas('status');
+        $this->assertNotNull($customer->fresh()->email_verified_at);
+        $this->assertGuest('web');
+
+        $this->post(route('login.store'), [
+            'email' => $customer->email,
+            'password' => 'Password123!',
+        ])->assertRedirect(route('account.dashboard'));
+        $this->assertAuthenticatedAs($customer->fresh(), 'web');
+    }
+
+    public function test_signed_link_with_wrong_email_hash_cannot_verify_an_account(): void
+    {
+        $customer = User::factory()->unverified()->create([
+            'role' => 'customer', 'is_active' => true,
+        ]);
+        $url = URL::temporarySignedRoute('verification.verify', now()->addMinutes(60), [
+            'id' => $customer->id,
+            'hash' => sha1('someone-else@example.com'),
+        ]);
+        $this->get($url)->assertForbidden();
+        $this->assertNull($customer->fresh()->email_verified_at);
+    }
+
 }

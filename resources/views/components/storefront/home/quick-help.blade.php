@@ -1,6 +1,7 @@
-@props(['title' => 'Quick Help', 'description' => 'Find what you need.', 'cards' => []])
+@props(['title' => 'Quick Help', 'description' => 'Find what you need.', 'cards' => [], 'showHeading' => true])
 
 <aside class="np-home-faq-aside" aria-labelledby="np-home-quick-help-title">
+    @if($showHeading)
     <x-storefront.home.section-heading
         class="section-head np-home-quick-help-heading"
         align="left"
@@ -8,6 +9,7 @@
         :description="$description"
         title-id="np-home-quick-help-title"
     />
+    @endif
 
     <div class="np-home-quick-help-grid">
         @foreach($cards as $card)
