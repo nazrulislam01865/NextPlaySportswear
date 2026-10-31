@@ -42,6 +42,10 @@ final class PaymentReturnController extends Controller
                 ? 'Payment confirmed successfully.'
                 : 'Your payment is being verified with the provider. The order will update once payment is confirmed.';
 
+            if ($payment->order->fresh()->payment_status === 'paid') {
+                return redirect()->route('order.confirmation', ['order' => $payment->order->order_number])->with('status', $message);
+            }
+
             return redirect()->route('account.orders.show', $payment->order)->with('status', $message);
         }
 

@@ -160,7 +160,7 @@ class CheckoutController extends Controller
 
         $this->checkout->storeShippingAddress($request->validated(), $request->user());
 
-        return redirect()->route('checkout.billing-address');
+        return redirect()->route('checkout.review');
     }
 
     public function shippingPreview(ShippingAddressRequest $request): \Illuminate\Http\JsonResponse
@@ -192,17 +192,10 @@ class CheckoutController extends Controller
         return response()->json(['remote' => $matched !== null]);
     }
 
-    public function billingAddress(Request $request): View|RedirectResponse
+    public function billingAddress(Request $request): RedirectResponse
     {
-        if ($redirect = $this->guardCart()) {
-            return $redirect;
-        }
-
-        if ($redirect = $this->guardStep('billing')) {
-            return $redirect;
-        }
-
-        return $this->view('storefront.checkout.billing-address', 'Billing Address Selection', 'Choose whether billing address is the same as shipping or add a separate billing address.', $request, 'billing');
+        // The prototype collects billing within Review & pay, not on a fourth step.
+        return redirect()->route('checkout.review');
     }
 
     public function storeBillingAddress(BillingAddressRequest $request): RedirectResponse
@@ -327,6 +320,27 @@ class CheckoutController extends Controller
         }
 
         $validated = $request->validated();
+        // Billing is collected on the review screen (the prototype has no
+        // intermediate billing page). The existing address service is reused.
+        $same = (bool) $validated['billing_same_as_shipping'];
+        $this->checkout->storeBillingAddress($same ? [
+            'same_as_shipping' => true,
+        ] : [
+            'same_as_shipping' => false,
+            'address_choice' => 'new',
+            'first_name' => $validated['billing_first_name'],
+            'last_name' => $validated['billing_last_name'],
+            'address_line_1' => $validated['billing_address_line_1'],
+            'address_line_2' => $validated['billing_address_line_2'] ?? '',
+            'city' => $validated['billing_city'],
+            'country' => $validated['billing_country'],
+            'postal_code' => $validated['billing_postal_code'],
+            'state' => '',
+            'email' => $validated['billing_email'],
+            'phone' => (string) data_get($this->checkout->state(), 'information.phone', ''),
+            'save_to_account' => false,
+        ], $request->user());
+
         // Select the available Stripe-hosted method only on final submission.
         // Customer card details never enter this Laravel application.
         // Do not create an unpaid order when the gateway is not available.
@@ -336,7 +350,11 @@ class CheckoutController extends Controller
                 'payment_method' => 'Secure Stripe checkout is unavailable. Please contact support or try again later.',
             ]);
         }
-        $this->checkout->selectStripePayment($request->user());
+        try {
+            $this->checkout->selectStripePayment($request->user());
+        } catch (ValidationException $exception) {
+            return back()->withInput()->withErrors($exception->errors());
+        }
         $this->checkout->confirmReview($validated);
         $snapshot = $this->checkout->placeOrder($validated, $request->user());
         $order = Order::query()->findOrFail((int) $snapshot['id']);
@@ -368,7 +386,10 @@ class CheckoutController extends Controller
 
     private function view(string $view, string $title, string $description, Request $request, string $currentStep): View
     {
-        return view($view, array_merge($this->checkout->pageData($request->user()), [
+        $pageData = $this->checkout->pageData($request->user());
+        \Illuminate\Support\Facades\View::share('npCheckoutCartSummary', $pageData['summary'] ?? []);
+
+        return view($view, array_merge($pageData, [
             'currentStep' => $currentStep,
             'seo' => $this->seo($title, $description),
         ]));

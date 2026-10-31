@@ -17,9 +17,11 @@
             + (float) ($item['customization_total'] ?? 0)
             + (float) ($item['product_shipping_total'] ?? 0);
     }
-    $unitDisplayPrice = $quantity > 0
-        ? ($displayLineTotal / $quantity)
-        : (float) ($item['unit_price'] ?? 0);
+    // Product unit price must not fold a once-per-order shipping fee into
+    // each unit; doing so misrepresents the sale and price-table unit rate.
+    $unitDisplayPrice = (float) ($item['unit_price'] ?? 0);
+    $customizationTotal = (float) ($item['customization_total'] ?? 0);
+    $shippingTotal = (float) ($item['product_shipping_total'] ?? 0);
 @endphp
 
 <article class="np-cart-item cart-item-card" data-cart-item-card data-cart-item-key="{{ $item['key'] }}">
@@ -35,7 +37,7 @@
 
     <div class="np-cart-item-details">
         <h2><a href="{{ $product['url'] }}">{{ $product['title'] }}</a></h2>
-        <p class="np-cart-item-unit">From ${{ number_format($unitDisplayPrice, 2) }} each</p>
+        <p class="np-cart-item-unit">${{ number_format($unitDisplayPrice, 2) }} per piece @if($customizationTotal > 0) · plus customisation @endif @if($shippingTotal > 0) · shipping shown in item total @endif</p>
         @if ((float) ($item['offer_savings'] ?? 0) > 0)
             <p class="text-xs font-bold text-green-700">Sale applied: save ${{ number_format((float) $item['offer_savings'], 2) }} on the product price
                 <span class="text-slate-500">(${{ number_format((float) $item['original_unit_price'], 2) }} before offer / ${{ number_format((float) $item['unit_price'], 2) }} after offer)</span>
@@ -107,6 +109,6 @@
     <div class="np-cart-item-total">
         <p>Item total</p>
         <strong data-cart-item-money="line_total">${{ number_format($displayLineTotal, 2) }}</strong>
-        <span><span data-cart-item-money="unit_total">${{ number_format($unitDisplayPrice, 2) }}</span> each</span>
+        <span>Includes ${{ number_format($shippingTotal, 2) }} shipping</span>
     </div>
 </article>

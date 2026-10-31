@@ -120,15 +120,18 @@
     {{-- Generated from the centralized theme + typography sources; loaded last
          so the approved homepage rules work on existing cloud builds too. --}}
     <link rel="stylesheet" href="{{ asset('css/storefront-typography.css') }}?v=20261031faqsharedrow2">
-    @if(request()->routeIs('checkout.*'))
-        <link rel="stylesheet" href="{{ asset('css/nextplay-checkout.css') }}?v=20261031templatev11">
+    @if(request()->routeIs('checkout.*', 'order.confirmation'))
+        <link rel="stylesheet" href="{{ asset('css/nextplay-checkout.css') }}?v=20261031discount-sticky1">
+        <script defer src="{{ asset('js/nextplay-checkout.js') }}?v=20261031phone-compact-v5"></script>
+        <script defer src="{{ asset('js/nextplay-checkout-dropdown.js') }}?v=20261031phone-compact-v5"></script>
+        <link rel="stylesheet" href="{{ asset('css/nextplay-checkout-patches.css') }}?v=20261031discount-sticky1">
     @endif
     @if(request()->routeIs('quote.request'))
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-product.css') }}?v=20261030g">
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-redesign.css') }}?v=20261030i">
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-form-system.css') }}?v=20261031icons53clear">
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-enhancements.css') }}?v=20261031shippingmaster1">
-        <link rel="stylesheet" href="{{ asset('css/nextplay-quote-builder.css') }}?v=20261031v7">
+        <link rel="stylesheet" href="{{ asset('css/nextplay-quote-builder.css') }}?v=20261031discount-sticky1">
     @endif
 </head>
 <body
@@ -139,6 +142,11 @@
     <a class="np-skip-link" href="#main-content">Skip to main content</a>
     <x-storefront.topbar />
     <x-storefront.header />
+    @if(request()->routeIs('checkout.*', 'quote.request', 'cart.*'))
+        <link rel="stylesheet" href="{{ asset('css/nextplay-sticky-summary.css') }}?v=20261031discount-sticky1">
+        <script defer src="{{ asset('js/nextplay-sticky-summary.js') }}?v=20261031discount-sticky1"></script>
+    @endif
+    <script defer src="{{ asset('js/nextplay-cart-float.js') }}?v=20261031float-v4"></script>
     <x-storefront.toast-center />
 
     <main id="main-content" tabindex="-1">

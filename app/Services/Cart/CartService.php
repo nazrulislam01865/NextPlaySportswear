@@ -82,6 +82,15 @@ class CartService
         );
         $rewardDiscount = (float) ($reward['amount'] ?? 0.00);
         $discount = $couponDiscount + $referralDiscount + $rewardDiscount;
+        // Prices in line_subtotal already reflect sale offers. Surface those
+        // savings for the customer without subtracting them a second time.
+        $saleSavings = round((float) collect($items)->sum(function (array $item): float {
+            return max(0, (float) ($item['offer_savings'] ?? max(0,
+                ((float) ($item['original_unit_price'] ?? $item['unit_price'] ?? 0)
+                    - (float) ($item['unit_price'] ?? 0)) * (int) ($item['quantity'] ?? 0)
+            )));
+        }), 2);
+        $totalSavings = round($saleSavings + $discount, 2);
         // One shipment: only use the generic fallback when no product has a
         // configured shipping method. Never add two separate shipment bases.
         $additionalShipping = $shippingQuote['has_configured_shipping'] ? 0.0
@@ -106,6 +115,9 @@ class CartService
             'subtotal' => round($subtotal, 2),
             'customization_total' => round($customizationTotal, 2),
             'merchandise_total' => round($merchandiseTotal, 2),
+            'merchandise_before_offers' => round($merchandiseTotal + $saleSavings, 2),
+            'sale_savings' => $saleSavings,
+            'total_discount' => $totalSavings,
             'configured_items_total' => round($configuredItemsTotal, 2),
             'estimated_subtotal' => round(max(0, $configuredItemsTotal - $discount), 2),
             'discount' => round($discount, 2),

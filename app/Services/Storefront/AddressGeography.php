@@ -17,7 +17,7 @@ class AddressGeography
             ->active()
             ->withExists(['regions as has_regions' => fn ($query) => $query->where('is_active', true)])
             ->ordered()
-            ->get(['id', 'iso_code', 'country_name', 'region_label']);
+            ->get(['id', 'iso_code', 'country_name', 'dial_code', 'region_label']);
     }
 
     public function regions(string $iso): Collection

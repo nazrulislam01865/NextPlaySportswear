@@ -110,6 +110,24 @@
                             <x-storefront.bulk-quote.field-error name="shipping_address" />
                         </div>
 
+                        <div class="bulk-quote-field nps-field bulk-quote-full">
+                            <label for="bulk-shipment-notes">Shipment notes <span class="bulk-quote-optional">(optional)</span></label>
+                            <p class="bulk-quote-field-note" id="bulk-shipment-notes-help">For separate shipments, include the product name or item number, recipient, full address and preferred delivery date.</p>
+                            <div class="npq-textarea">
+                                <textarea
+                                    id="bulk-shipment-notes"
+                                    name="additional_notes"
+                                    rows="5"
+                                    maxlength="2000"
+                                    placeholder="Tell us which products should ship separately, any alternative addresses, or other delivery instructions..."
+                                    aria-describedby="bulk-shipment-notes-help bulk-shipment-notes-count"
+                                    aria-invalid="{{ $errors->has('additional_notes') ? 'true' : 'false' }}"
+                                >{{ old('additional_notes') }}</textarea>
+                                <span class="npq-count" id="bulk-shipment-notes-count"><span id="bulk-shipment-notes-length">{{ mb_strlen((string) old('additional_notes', '')) }}</span>/2000</span>
+                            </div>
+                            <x-storefront.bulk-quote.field-error name="additional_notes" />
+                        </div>
+
                         <x-storefront.address-geography variant="bulk" country-field="country" region-field="state_province" region-label="County / State" :country-value="'United Kingdom'" />
 
                         <div class="bulk-quote-field nps-field bulk-quote-quarter">

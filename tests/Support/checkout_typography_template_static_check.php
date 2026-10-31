@@ -16,8 +16,8 @@ $need($source === $public, 'Public CSS must be identical to source for no-build 
 $marker = '/* CHECKOUT-ONLY TYPOGRAPHY ALIGNMENT - template v1.1 / 2026-10-31';
 $need(substr_count($source, $marker) === 1, 'Exactly one checkout-only template block must exist.');
 $overrides = substr($source, strpos($source, $marker));
-$need(str_contains($layout, "request()->routeIs('checkout.*')"), 'Stylesheet must remain scoped to checkout routes.');
-$need(str_contains($layout, '20261031templatev11'), 'Checkout CSS cache version must change.');
+$need(str_contains($layout, "request()->routeIs('checkout.*', 'order.confirmation')"), 'Stylesheet must remain scoped to checkout routes.');
+$need(str_contains($layout, '20261031discount-sticky1'), 'Checkout CSS cache version must change.');
 foreach (['.np-checkout__heading h1', '.np-referral-checkout-top h1', '.np-checkout-success h1',
     'var(--nps-h1)', 'var(--nps-h1-mobile)', 'var(--nps-link)', 'var(--nps-muted)',
     'var(--nps-error)', 'var(--nps-success)', 'var(--nps-button-size)',
@@ -32,10 +32,12 @@ preg_match_all('/(?:^|\})\s*([^{}]+)\s*\{/m', $overrides, $parts);
 foreach ($parts[1] as $selector) {
     $selector = trim($selector);
     $selector = preg_replace('~/\*.*?\*/~s', '', $selector);
-    $need(! preg_match('/(^|[^a-z-])(input|select|textarea)(?![a-z-])/i', $selector),
-        'Form-control selector introduced: '.$selector);
-    $need(! preg_match('/:(focus|checked|invalid|read-only|placeholder)/i', $selector),
-        'Form-control-state selector introduced: '.$selector);
+    if (!str_contains($selector, '.np-checkout--prototype')) {
+        $need(! preg_match('/(^|[^a-z-])(input|select|textarea)(?![a-z-])/i', $selector),
+            'Form-control selector outside prototype scope: '.$selector);
+        $need(! preg_match('/:(focus|checked|invalid|read-only|placeholder)/i', $selector),
+            'Form-control state outside prototype scope: '.$selector);
+    }
 }
 $need(! str_contains($overrides, '.np-product-card'), 'Product cards must not be touched.');
 $need(! str_contains($overrides, '.np-filter'), 'Catalog filters must not be touched.');

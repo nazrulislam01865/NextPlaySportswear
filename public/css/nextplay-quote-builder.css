@@ -555,3 +555,10 @@
     border: 1px solid var(--nps-border, #bac6d5); border-radius: 8px;
     font: 400 16px/1.5 var(--nps-font); background: #fff; color: var(--npq-navy);
 }
+
+/* Sticky sidebar must clear the sticky navigation and never be cropped. */
+@media(min-width:826px) {
+ .npq-page .npq-added {position:sticky;top:var(--np-summary-sticky-top, 144px);max-height:none;overflow:visible;align-self:start;}
+ .npq-page .npq-added.np-summary-no-sticky {position:static;}
+}
+@media(max-width:825px) {.npq-page .npq-added {position:static;max-height:none;overflow:visible;}}

@@ -110,7 +110,7 @@ class StoreBulkQuoteRequest extends FormRequest
             'needed_by' => ['bail', 'required', 'date'],
             'event_date' => ['nullable', 'date'],
             'attachment' => ['nullable', 'file', 'max:10240'],
-            'additional_notes' => ['nullable', 'string', 'max:5000'],
+            'additional_notes' => ['nullable', 'string', 'max:2000'],
             // The JSON carrier is decoded to a bounded array by prepareForValidation.
             'quote_products_json' => ['sometimes', 'required', 'string', 'max:90000'],
             'quote_products' => ['required_with:quote_products_json', 'array', 'min:1', 'max:20'],
@@ -222,7 +222,7 @@ class StoreBulkQuoteRequest extends FormRequest
             'preferred_shipping_method' => 'preferred shipping method',
             'needed_by' => 'needed by / delivery date',
             'event_date' => 'event date',
-            'additional_notes' => 'additional notes',
+            'additional_notes' => 'shipment notes',
             'product_information.product_id' => 'selected product',
             'product_information.notes' => 'product notes',
             'g-recaptcha-response' => 'CAPTCHA verification',

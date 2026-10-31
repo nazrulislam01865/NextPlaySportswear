@@ -144,12 +144,6 @@
                     <span class="sr-only" data-hero-card-status aria-live="polite">Showing slide 1 of {{ $heroSlides->count() }}</span>
                 </div>
             </div>
-            @if(filled($setting('stat_value')) || filled($setting('stat_subtitle')))
-                <div class="hero-stat">
-                    @if(filled($setting('stat_value')))<strong>{{ $setting('stat_value') }}</strong>@endif
-                    @if(filled($setting('stat_subtitle')))<span>{{ $setting('stat_subtitle') }}</span>@endif
-                </div>
-            @endif
         </div>
     </div>
 </section>

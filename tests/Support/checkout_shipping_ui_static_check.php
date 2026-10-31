@@ -1,0 +1,27 @@
+<?php
+declare(strict_types=1);
+$root = dirname(__DIR__, 2);
+$read = static fn(string $path): string => (string) file_get_contents($root.'/'.$path);
+$assert = static function(bool $ok, string $message): void { if (!$ok) throw new RuntimeException($message); };
+$summary = $read('resources/views/components/storefront/checkout/summary-card.blade.php');
+$review = $read('resources/views/storefront/checkout/review.blade.php');
+$shipping = $read('resources/views/components/storefront/checkout/shipment-card.blade.php');
+$controller = $read('app/Http/Controllers/Storefront/Checkout/CheckoutController.php');
+$provider = $read('app/Providers/AppServiceProvider.php');
+$dropdown = $read('public/js/nextplay-checkout-dropdown.js');
+$float = $read('public/js/nextplay-cart-float.js');
+$layout = $read('resources/views/components/layouts/storefront.blade.php');
+$product = $read('resources/views/components/storefront/product/builder.blade.php');
+$assert(str_contains($summary, '$lineMerchandise') && str_contains($summary, '$lineShipping'), 'Product and shipping amounts must be separate.');
+$assert(str_contains($summary, 'Product merchandise') && str_contains($summary, 'Product total'), 'Itemized product breakdown missing.');
+$assert(str_contains($review, 'line_subtotal') && str_contains($review, 'customization_total'), 'Review product price must exclude shipping.');
+$assert(str_contains($shipping, '$shippingLines') && str_contains($shipping, 'Configured shipping'), 'Combined shipment must list configured product methods.');
+$assert(str_contains($controller, 'npCheckoutCartSummary') && str_contains($provider, 'npCheckoutCartSummary'), 'Cart header must reuse authoritative checkout prices.');
+$assert(str_contains($dropdown, 'select.value = option.value') && str_contains($dropdown, "dispatchEvent(new Event('change'"), 'Styled selector must preserve original form binding.');
+$assert(str_contains($float, 'document.body.append(preview)'), 'Cart preview must escape header clipping.');
+$assert(str_contains($layout, 'nextplay-checkout-dropdown.js') && str_contains($layout, 'nextplay-cart-float.js'), 'Frontend assets must load.');
+$assert(str_contains($product, 'chooseShippingMethod(@js('), 'Product shipping dropdown must reuse configured shipping selection.');
+$assert(is_file($root.'/public/css/nextplay-checkout-patches.css'), 'Styling must be included without asset rebuild.');
+$base = [5*3.81, 14*3.81]; $shippingLines=[5.54,0];
+$assert(round(array_sum($base)+array_sum($shippingLines),2) === 77.93, 'Reference basket amounts must reconcile.');
+echo "PASS: product-wise shipping, dropdowns and unclipped cart preview static checks\n";

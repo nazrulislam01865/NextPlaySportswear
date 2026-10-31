@@ -11,11 +11,11 @@
     <dl class="np-cart-summary-lines">
         <div>
             <dt>Products (<span data-cart-product-count>{{ $cart['product_count'] }}</span>)</dt>
-            <dd data-cart-money="merchandise_total">${{ number_format((float) $cart['merchandise_total'], 2) }}</dd>
+            <dd data-cart-money="merchandise_before_offers">${{ number_format((float) ($cart['merchandise_before_offers'] ?? $cart['merchandise_total']), 2) }}</dd>
         </div>
-        <div data-cart-discount-row class="{{ (float) ($cart['discount'] ?? 0) > 0 ? '' : 'hidden' }}">
-            <dt>Discounts</dt>
-            <dd class="font-black text-emerald-700">−<span data-cart-money="discount">${{ number_format((float) $cart['discount'], 2) }}</span></dd>
+        <div data-cart-discount-row class="{{ (float) ($cart['total_discount'] ?? $cart['discount'] ?? 0) > 0 ? '' : 'hidden' }}">
+            <dt>Total discounts</dt>
+            <dd class="font-black text-emerald-700">−<span data-cart-money="total_discount">${{ number_format((float) ($cart['total_discount'] ?? $cart['discount'] ?? 0), 2) }}</span></dd>
         </div>
         <div>
             <dt>Shipping</dt>

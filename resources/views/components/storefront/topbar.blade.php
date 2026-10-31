@@ -33,20 +33,6 @@
                 <span>Track Order</span>
             </a>
 
-            <a href="{{ route('quote.request') }}" class="np-utility-link" data-header-analytics="header_cta_click" data-header-analytics-label="bulk_order">
-                <span class="np-utility-link-icon" aria-hidden="true">
-                    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4 7h16"/>
-                        <path d="M7 3v4"/>
-                        <path d="M17 3v4"/>
-                        <rect x="4" y="5" width="16" height="16" rx="2"/>
-                        <path d="M8 11h3"/>
-                        <path d="M8 15h8"/>
-                    </svg>
-                </span>
-                <span>Bulk Order</span>
-            </a>
-
             <a href="{{ $whatsappUrl }}" class="np-utility-link np-whatsapp-link" target="_blank" rel="noopener noreferrer" data-header-analytics="header_cta_click" data-header-analytics-label="whatsapp">
                 <span class="np-utility-link-icon np-whatsapp-icon" aria-hidden="true">
                     <svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor" focusable="false">

@@ -85,6 +85,9 @@
                             node.textContent = `${prefix}${money.format(value)}`;
                         });
 
+                        const discountRow = root.querySelector('[data-cart-discount-row]');
+                        if (discountRow) discountRow.classList.toggle('hidden', Number(cart.total_discount || 0) <= 0);
+
                         const countNode = root.querySelector('[data-cart-product-count]');
                         if (countNode) countNode.textContent = String(cart.product_count ?? 0);
 

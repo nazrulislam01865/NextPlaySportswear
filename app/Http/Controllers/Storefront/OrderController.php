@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Http\Requests\Storefront\Order\TrackOrderRequest;
 use App\Services\Order\OrderExperienceService;
 use Illuminate\Http\RedirectResponse;
@@ -17,7 +18,21 @@ class OrderController extends Controller
 
     public function confirmation(Request $request): View
     {
-        $order = $this->orders->orderForNumber(null, allowDemo: true);
+        // Resolve only this authenticated customer's order and refresh payment status
+        // from the database. Never trust a success URL or a stale session snapshot.
+        $snapshot = $this->orders->currentOrder();
+        $requestedNumber = trim((string) $request->query('order', ''));
+        $requestedId = (int) ($snapshot['id'] ?? 0);
+        $live = null;
+        if ($request->user()) {
+            $query = Order::query()->where('user_id', $request->user()->id);
+            if ($requestedNumber !== '') {
+                $live = $query->where('order_number', $requestedNumber)->first();
+            } elseif ($requestedId > 0) {
+                $live = $query->whereKey($requestedId)->first();
+            }
+        }
+        $order = $live ? $this->orders->orderSnapshot($live) : $this->orders->demoOrder();
 
         $view = (bool) data_get($order, 'information.referral_offer.applied', false)
             ? 'storefront.referral.confirmation'

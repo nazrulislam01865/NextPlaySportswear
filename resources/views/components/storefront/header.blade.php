@@ -301,6 +301,7 @@
                                         <span class="min-w-0 flex-1">
                                             <span class="block truncate text-sm font-black leading-5 text-brand-ink">{{ $previewTitle }}</span>
                                             <span class="mt-1 block text-xs font-bold text-slate-500">Qty {{ (int) ($item['quantity'] ?? 0) }} · ${{ number_format((float) ($item['display_unit_price'] ?? $item['unit_price'] ?? 0), 2) }} each</span>
+                                            @if(array_key_exists('display_shipping', $item))<span class="block text-xs text-slate-500">Configured shipping: ${{ number_format((float) $item['display_shipping'], 2) }}</span>@endif
                                             @if (filled($previewProduct['offer_label'] ?? null))
                                                 <span class="text-xs font-bold text-green-700">Sale applied to product price</span>
                                             @endif
@@ -316,7 +317,7 @@
 
                             <div class="border-t border-slate-100 p-4">
                                 <div class="mb-3 flex items-center justify-between gap-4">
-                                    <span class="text-sm font-bold text-slate-500">Cart subtotal</span>
+                                    <span class="text-sm font-bold text-slate-500">{{ request()->routeIs('checkout.*') ? 'Checkout total' : 'Cart subtotal' }}</span>
                                     <span class="text-lg font-black text-brand-ink">${{ number_format((float) ($headerCart['total'] ?? 0), 2) }}</span>
                                 </div>
                                 <div class="grid grid-cols-2 gap-2">

@@ -77,6 +77,28 @@ class AppServiceProvider extends ServiceProvider
 
         View::composer('components.storefront.header', function ($view): void {
             $headerCart = app(CartService::class)->headerSummary(4);
+            // Checkout already calculated authoritative product prices, quantities
+            // and shipping. Reuse them instead of displaying stale cart snapshots.
+            $checkoutSummary = View::shared('npCheckoutCartSummary');
+            if (request()->routeIs('checkout.*') && is_array($checkoutSummary) && ! empty($checkoutSummary['items'])) {
+                $accurateItems = collect($checkoutSummary['items'])->map(static function (array $item): array {
+                    $quantity = max(1, (int) ($item['quantity'] ?? 1));
+                    $shipping = (float) ($item['product_shipping_total'] ?? 0);
+                    $merchandise = round((float) ($item['line_subtotal'] ?? 0) + (float) ($item['customization_total'] ?? 0), 2);
+                    return array_merge($item, [
+                        'display_unit_price' => round($merchandise / $quantity, 2),
+                        'line_total' => round($merchandise + $shipping, 2),
+                        'display_shipping' => round($shipping, 2),
+                    ]);
+                });
+                $headerCart = array_merge($headerCart, [
+                    'items' => $accurateItems->take(4)->all(),
+                    'total_items' => $accurateItems->count(),
+                    'remaining_items' => max(0, $accurateItems->count() - 4),
+                    'quantity' => (int) ($checkoutSummary['quantity'] ?? 0),
+                    'total' => (float) ($checkoutSummary['total'] ?? 0),
+                ]);
+            }
             $customer = auth('web')->user();
             $headerWishlist = app(WishlistHeaderService::class)->summary($customer, 4);
 

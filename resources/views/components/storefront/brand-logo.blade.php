@@ -22,7 +22,14 @@
 @endphp
 
 @if($hasCustomLogo)
-    <img src="{{ $logoUrl }}" alt="{{ $logoAlt }}" style="{{ $imageStyle }}" {{ $attributes }}>
+    @if(request()->routeIs('checkout.*', 'order.confirmation'))
+        <img src="{{ $logoUrl }}" alt="{{ $logoAlt }}" style="{{ $imageStyle }}" onerror="this.style.display='none';this.hidden=true;this.nextElementSibling.hidden=false;this.nextElementSibling.style.display='block'" {{ $attributes }}>
+        <img src="{{ asset('images/checkout-wordmark.png') }}" alt="{{ $logoAlt }}" style="width:clamp(160px,15.4vw,205px);max-width:100%;height:auto;object-fit:contain;object-position:left center;" hidden>
+    @else
+        <img src="{{ $logoUrl }}" alt="{{ $logoAlt }}" style="{{ $imageStyle }}" {{ $attributes }}>
+    @endif
+@elseif(request()->routeIs('checkout.*', 'order.confirmation'))
+    <img src="{{ asset('images/checkout-wordmark.png') }}" alt="{{ $logoAlt }}" style="display:block;width:clamp(160px,15.4vw,205px);max-width:100%;height:auto;object-fit:contain;object-position:left center;">
 @elseif($variant === 'footer')
     <span class="relative grid h-8 w-8 place-items-center rounded-lg border-[3px] border-brand-red text-brand-red" aria-hidden="true">✓</span>
     <span class="min-w-0 break-words">NextPlay <span class="text-brand-red">Sportswear</span></span>

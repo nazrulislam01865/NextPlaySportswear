@@ -1600,3 +1600,7 @@
     .storefront-clean-ui .home-page .np-home-faq-layout > .np-home-faq-aside {grid-row: 4;}
 }
 
+
+/* Global floating cart preview: outside the sticky header stacking context. */
+body > .storefront-cart-preview.np-cart-preview-floating {display:block!important;position:fixed!important;z-index:9999!important;overflow-y:auto!important;overscroll-behavior:contain;right:auto!important;transform:none!important;animation:none!important;background:#fff;box-shadow:0 20px 60px rgba(7,28,59,.21);}
+body > .storefront-cart-preview.np-cart-preview-floating > .storefront-cart-preview-arrow {display:none!important;}

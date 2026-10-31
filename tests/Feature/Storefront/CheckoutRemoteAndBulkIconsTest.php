@@ -12,7 +12,8 @@ class CheckoutRemoteAndBulkIconsTest extends TestCase
     public function test_remote_area_notice_only_appears_on_confirmed_match(): void
     {
         $shipping = file_get_contents(resource_path('views/storefront/checkout/shipping-address.blade.php'));
-        $this->assertStringContainsString('x-show="remote"', $shipping);
+        $script = file_get_contents(public_path('js/nextplay-checkout.js'));
+        $this->assertStringContainsString('result.remote', $script);
         $this->assertStringContainsString("route('checkout.remote-area-status')", $shipping);
         $this->assertStringNotContainsString('An additional charge may apply based on your delivery address.', $shipping);
         $this->assertTrue(Route::has('checkout.remote-area-status'));

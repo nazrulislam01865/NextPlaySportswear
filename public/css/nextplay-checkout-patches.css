@@ -1,0 +1,100 @@
+/* Shared checkout select treatment. Retains native form values for validation. */
+.storefront-clean-ui .np-checkout--prototype .np-select-native {position:absolute!important;width:1px!important;min-width:1px!important;height:1px!important;min-height:1px!important;padding:0!important;margin:0!important;border:0!important;opacity:0!important;pointer-events:none!important;}
+.storefront-clean-ui .np-checkout--prototype .np-select-shell {position:relative;min-width:0;width:100%;font-family:var(--nps-font);}
+.storefront-clean-ui .np-checkout--prototype .np-select-trigger {display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;min-width:0;height:48px;padding:10px 14px;background:#fff;border:1px solid var(--nps-border);border-radius:8px;color:var(--nps-navy);font:500 15px/1.4 var(--nps-font);text-align:left;cursor:pointer;box-shadow:none;}
+.storefront-clean-ui .np-checkout--prototype .np-select-trigger:focus-visible {outline:2px solid #2164c5;outline-offset:2px;}
+.storefront-clean-ui .np-checkout--prototype .np-select-shell.is-open .np-select-trigger {border-color:#90aacd;border-radius:8px;}
+.storefront-clean-ui .np-checkout--prototype .np-select-trigger-title {min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.storefront-clean-ui .np-checkout--prototype .np-select-arrow {width:18px;height:18px;flex:0 0 18px;color:#52637a;transition:transform .15s;}
+.storefront-clean-ui .np-checkout--prototype .np-select-arrow svg {width:18px;height:18px;}
+.storefront-clean-ui .np-checkout--prototype .np-select-shell.is-open .np-select-arrow {transform:rotate(180deg);}
+.storefront-clean-ui .np-checkout--prototype .np-select-list {position:absolute;z-index:250;top:calc(100% + 8px);left:0;right:0;max-height:min(350px,60vh);overflow-y:auto;padding:8px;background:#fff;border:1px solid var(--nps-border);border-radius:9px;box-shadow:0 16px 34px rgba(11,35,69,.17);overscroll-behavior:contain;}
+.storefront-clean-ui .np-checkout--prototype .np-select-list[hidden] {display:none!important;}
+.storefront-clean-ui .np-checkout--prototype .np-select-option {display:block;width:100%;padding:12px 13px;margin:0;border:0;border-radius:7px;text-align:left;color:var(--nps-navy);font:600 15px/1.45 var(--nps-font);background:#fff;cursor:pointer;overflow-wrap:anywhere;}
+.storefront-clean-ui .np-checkout--prototype .np-select-option:hover,.storefront-clean-ui .np-checkout--prototype .np-select-option:focus-visible {background:#f1f6fe;outline:none;}
+.storefront-clean-ui .np-checkout--prototype .np-select-option.is-selected {background:#fdf0eb;color:#a84226;}
+.storefront-clean-ui .np-checkout--prototype .np-select-shell:has(+ .nps-error) .np-select-trigger {border-color:var(--nps-error);}
+/* Clear group-by-product breakdown; avoid counting the shipping amount in product price. */
+.storefront-clean-ui .np-checkout--prototype .np-checkout__summary-product {min-width:0;border-bottom:1px solid #dce5ef;padding:12px 0 14px;}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__summary-product .np-checkout__summary-item {border:0;padding:0 0 9px;align-items:start;}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__summary-product .np-checkout__summary-item>strong:last-child {white-space:nowrap;text-align:right;}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__summary-item>div {min-width:0;overflow-wrap:anywhere;}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__product-breakdown {display:grid;gap:6px;margin:6px 0 0 76px;min-width:0;}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__product-breakdown>div {display:flex;justify-content:space-between;gap:9px;font:400 12px/1.45 var(--nps-font);color:var(--nps-muted);}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__product-breakdown dt {min-width:0;overflow-wrap:anywhere;}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__product-breakdown dt span {font-weight:400;}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__product-breakdown dd {margin:0;color:var(--nps-navy);font-weight:600;white-space:nowrap;}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__product-breakdown .np-checkout__product-line-total {border-top:1px dashed #d9e3ee;padding-top:6px;font-weight:700;color:var(--nps-navy);}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__configured-methods {display:grid;gap:7px;}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__shipping-selected>span:nth-child(2) {flex:1;min-width:0;}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__shipping-selected small {display:block;margin-top:2px;font:400 11px/1.3 var(--nps-font);color:var(--nps-muted);overflow-wrap:anywhere;}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__shipping-selected strong {overflow-wrap:anywhere;}
+/* Cart preview is portaled to the body on open to escape sticky header clipping. */
+body > .storefront-cart-preview.np-cart-preview-floating {display:block!important;position:fixed!important;z-index:9999!important;overflow-y:auto!important;overscroll-behavior:contain;right:auto!important;transform:none!important;animation:none!important;background:#fff;box-shadow:0 20px 60px rgba(7,28,59,.21);}
+body > .storefront-cart-preview.np-cart-preview-floating > .storefront-cart-preview-arrow {display:none!important;}
+@media(max-width:640px){.storefront-clean-ui .np-checkout--prototype .np-checkout__product-breakdown {margin-left:0;}}
+
+
+/* Shared compact dial-code segment (main contact and every shipment).
+ * The enhanced select becomes a .np-select-shell flex child; unlike ordinary
+ * full-width dropdowns, this segment must not consume half the phone field.
+ * The outer phone control owns the one continuous border and focus radius.
+ */
+.storefront-clean-ui .np-checkout--prototype .np-checkout__form .np-checkout__phone-control > .np-select-shell--phone {
+    flex:0 0 112px;
+    width:112px;
+    min-width:112px;
+    max-width:112px;
+    height:100%;
+    border-right:1px solid var(--nps-border);
+    border-radius:8px 0 0 8px;
+}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__form .np-checkout__phone-control > .np-select-shell--phone > .np-select-trigger {
+    height:100%;
+    min-height:0;
+    padding:0 9px;
+    gap:4px;
+    border:0;
+    border-radius:7px 0 0 7px;
+    background:transparent;
+    font-size:14px;
+    font-weight:600;
+}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__form .np-checkout__phone-control > .np-select-shell--phone > .np-select-trigger:focus-visible {
+    outline:none;
+}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__form .np-checkout__phone-control > .np-select-shell--phone .np-select-arrow,
+.storefront-clean-ui .np-checkout--prototype .np-checkout__form .np-checkout__phone-control > .np-select-shell--phone .np-select-arrow svg {
+    width:14px;
+    height:14px;
+    flex-basis:14px;
+}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__form .np-checkout__phone-control > .np-select-shell--phone > .np-select-list {
+    right:auto;
+    width:max-content;
+    min-width:176px;
+    max-width:min(260px,calc(100vw - 32px));
+}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__form .np-checkout__phone-control > .np-checkout__phone-input {
+    flex:1 1 0!important;
+    min-width:0!important;
+}
+@media(max-width:390px) {
+    .storefront-clean-ui .np-checkout--prototype .np-checkout__form .np-checkout__phone-control > .np-select-shell--phone {
+        flex-basis:100px;
+        width:100px;
+        min-width:100px;
+        max-width:100px;
+    }
+}
+
+/* Sticky summaries clear the actual header. Tall cards scroll with the page. */
+.storefront-clean-ui .np-checkout--prototype .np-checkout__summary {
+  top:var(--np-summary-sticky-top, 144px) !important;
+  align-self:start;
+}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__summary.np-summary-no-sticky {
+  position:static !important;
+}
+.storefront-clean-ui .np-checkout--prototype .np-checkout__product-offer dd,
+.storefront-clean-ui .np-checkout--prototype .np-checkout__discount-total dd {color:#187044;}

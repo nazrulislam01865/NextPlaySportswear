@@ -296,6 +296,7 @@ class OrderExperienceService
                         ])->values()->all(),
                     'fulfillment' => (array) ($customization['fulfillment'] ?? []),
                     'notes' => (string) ($customization['notes'] ?? ''),
+                    'shipping_recipient' => (array) ($customization['shipping_recipient'] ?? []),
                 ],
             ];
         })->values()->all();

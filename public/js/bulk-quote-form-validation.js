@@ -5,6 +5,16 @@
     'use strict';
     const form = document.getElementById('bulk-quote-request-form');
     if (!form) return;
+    // Reuse the existing additional_notes payload; update only the visible count.
+    const shipmentNotes = form.elements.namedItem('additional_notes');
+    const shipmentNotesLength = document.getElementById('bulk-shipment-notes-length');
+    if (shipmentNotes && shipmentNotesLength) {
+        const updateShipmentNotesCount = () => {
+            shipmentNotesLength.textContent = String(shipmentNotes.value.length);
+        };
+        shipmentNotes.addEventListener('input', updateShipmentNotesCount);
+        updateShipmentNotesCount();
+    }
     const fields = [
         'product_type', 'estimated_quantity', 'sizes_needed', 'artwork_details',
         'full_name', 'organization', 'email', 'phone_country_code_id', 'phone',

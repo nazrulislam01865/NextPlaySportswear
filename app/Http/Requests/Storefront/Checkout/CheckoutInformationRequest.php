@@ -24,6 +24,7 @@ class CheckoutInformationRequest extends FormRequest
             'last_name' => trim((string) $this->input('last_name')),
             'order_note' => trim((string) $this->input('order_note')),
             'save_to_account' => $this->boolean('save_to_account'),
+            'shipment_plan' => (string) $this->input('shipment_plan', 'separate'),
         ]);
     }
 
@@ -33,6 +34,7 @@ class CheckoutInformationRequest extends FormRequest
 
         return [
             'contact_choice' => ['required', Rule::in(['saved', 'new'])],
+            'shipment_plan' => ['required', Rule::in(['separate', 'together'])],
             'email' => [$usingSaved ? 'nullable' : 'required', 'email:rfc,dns', 'max:255'],
             'phone' => [$usingSaved ? 'nullable' : 'required', 'string', 'max:40', 'regex:/^[0-9+\-\s().]{7,40}$/'],
             'first_name' => [$usingSaved ? 'nullable' : 'required', 'string', 'min:2', 'max:120'],

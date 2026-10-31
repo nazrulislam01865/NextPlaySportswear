@@ -136,6 +136,7 @@ class CheckoutService
                 'first_name' => $saved['first_name'],
                 'last_name' => $saved['last_name'],
                 'order_note' => Str::limit(trim((string) ($payload['order_note'] ?? '')), 1200, ''),
+                'shipment_plan' => in_array($payload['shipment_plan'] ?? 'separate', ['separate', 'together'], true) ? $payload['shipment_plan'] : 'separate',
             ];
         } else {
             $information = [
@@ -145,6 +146,7 @@ class CheckoutService
                 'first_name' => trim((string) $payload['first_name']),
                 'last_name' => trim((string) $payload['last_name']),
                 'order_note' => Str::limit(trim((string) ($payload['order_note'] ?? '')), 1200, ''),
+                'shipment_plan' => in_array($payload['shipment_plan'] ?? 'separate', ['separate', 'together'], true) ? $payload['shipment_plan'] : 'separate',
             ];
 
             if ($user instanceof User && (bool) ($payload['save_to_account'] ?? false)) {
@@ -162,7 +164,39 @@ class CheckoutService
 
     public function storeShippingAddress(array $payload, ?User $user = null): void
     {
-        $this->mergeState('shipping_address', $this->resolveAddressPayload($payload, $user, 'shipping'));
+        $primary = $this->resolveAddressPayload($payload, $user, 'shipping');
+        $state = $this->state();
+        $separate = ($state['information']['shipment_plan'] ?? 'separate') === 'separate';
+        $items = $this->cart->summary()['items'] ?? [];
+        $expected = $separate ? count($items) : 1;
+        $secondary = array_values((array) ($payload['shipments'] ?? []));
+
+        if (count($secondary) !== $expected - 1) {
+            throw ValidationException::withMessages(['shipments' => 'Complete the delivery details for each product shipment.']);
+        }
+
+        $shipments = [[
+            'item_key' => $separate ? (string) ($items[0]['key'] ?? '') : null,
+            'address' => $primary['address'],
+            'needed_by' => $payload['needed_by'] ?? null,
+            'shipping_notes' => $payload['delivery_instruction'] ?? null,
+        ]];
+        foreach ($secondary as $index => $shipment) {
+            $address = (bool) ($shipment['same_as_first'] ?? false)
+                ? $primary['address']
+                : $this->resolveAddressPayload(array_merge($shipment, [
+                    'address_choice' => 'new', 'save_to_account' => false,
+                ]), $user, 'shipping')['address'];
+            $shipments[] = [
+                'item_key' => (string) ($items[$index + 1]['key'] ?? ''),
+                'address' => $address,
+                'needed_by' => $shipment['needed_by'] ?? null,
+                'shipping_notes' => $shipment['delivery_instruction'] ?? null,
+            ];
+        }
+        $primary['shipments'] = $shipments;
+        $primary['shipment_plan'] = $separate ? 'separate' : 'together';
+        $this->mergeState('shipping_address', $primary);
     }
 
     public function previewShippingCharges(array $payload, ?User $user = null): array
@@ -494,10 +528,19 @@ class CheckoutService
                     $this->rewards->recordReferralOrder($order, $lockedCustomer, (array) $orderInformation['referral_offer']);
                 }
 
-                foreach ($cart['items'] as $cartItem) {
+                foreach ($cart['items'] as $itemIndex => $cartItem) {
                     $productData = (array) ($cartItem['product'] ?? []);
                     $product = Product::query()->where('slug', $cartItem['product_slug'] ?? $productData['slug'] ?? '')->first();
                     $customization = (array) ($cartItem['customization'] ?? []);
+                    $shipmentEntries = (array) data_get($state, 'shipping_address.shipments', []);
+                    $shipment = ($state['information']['shipment_plan'] ?? 'separate') === 'together'
+                        ? ($shipmentEntries[0] ?? null)
+                        : ($shipmentEntries[$itemIndex] ?? null);
+                    if (is_array($shipment)) {
+                        // Keep individual recipient details attached to each order item,
+                        // using existing JSON metadata rather than adding database tables.
+                        $customization['shipping_recipient'] = $shipment;
+                    }
                     $orderContext = [
                         'quantity' => (int) ($cartItem['quantity'] ?? 1),
                         'unit_price' => (float) ($cartItem['unit_price'] ?? 0),
@@ -674,6 +717,7 @@ class CheckoutService
                 'first_name',
                 'last_name',
                 'order_note',
+                'shipment_plan',
                 'source',
             ]);
 
@@ -855,6 +899,13 @@ class CheckoutService
             ->get()
             ->map(fn (CustomerAddress $address): array => [
                 'id' => $address->id,
+                'first_name' => $address->first_name,
+                'last_name' => $address->last_name,
+                'company_name' => $address->company_name,
+                'address_line_1' => $address->address_line_1,
+                'address_line_2' => $address->address_line_2,
+                'phone' => $address->phone,
+                'email' => $address->email,
                 'label' => $address->company_name ?: $address->formattedName(),
                 'type' => $address->typeLabel(),
                 'type_raw' => $address->type,
@@ -986,6 +1037,9 @@ class CheckoutService
             'subtotal' => $cart['subtotal'],
             'customization_total' => $cart['customization_total'],
             'discount' => $cart['discount'],
+            'sale_savings' => $cart['sale_savings'] ?? 0,
+            'total_discount' => $cart['total_discount'] ?? $cart['discount'],
+            'merchandise_before_offers' => $cart['merchandise_before_offers'] ?? ($cart['subtotal'] + $cart['customization_total']),
             'referral_discount' => $cart['referral_discount'] ?? 0,
             'referral_offer' => $cart['referral_offer'] ?? [],
             'reward_discount' => $cart['reward_discount'] ?? 0,
@@ -1122,14 +1176,28 @@ class CheckoutService
 
     private function ruralSurchargeForState(array $state): ?array
     {
-        $address = (array) Arr::get($state, 'shipping_address.address', []);
-
-        return $this->ruralSurcharges->resolve(
-            $address['postal_code'] ?? null,
-            $address['country'] ?? 'United States',
-            $address['state'] ?? null,
-            $address['city'] ?? null,
-        );
+        $addresses = [(array) Arr::get($state, 'shipping_address.address', [])];
+        foreach ((array) Arr::get($state, 'shipping_address.shipments', []) as $shipment) {
+            $addresses[] = (array) ($shipment['address'] ?? []);
+        }
+        $seen = [];
+        foreach ($addresses as $address) {
+            if (! filled($address['postal_code'] ?? null)) continue;
+            $identity = strtolower(implode('|', [
+                $address['postal_code'] ?? '', $address['country'] ?? '',
+                $address['state'] ?? '', $address['city'] ?? '',
+            ]));
+            if (isset($seen[$identity])) continue;
+            $seen[$identity] = true;
+            $match = $this->ruralSurcharges->resolve(
+                $address['postal_code'] ?? null,
+                $address['country'] ?? 'United States',
+                $address['state'] ?? null,
+                $address['city'] ?? null,
+            );
+            if ($match !== null) return $match;
+        }
+        return null;
     }
 
     private function paymentOptions(array $summary, ?User $user = null): array
@@ -1182,10 +1250,9 @@ class CheckoutService
     private function steps(): array
     {
         return [
-            ['key' => 'information', 'label' => 'Contact', 'route' => 'checkout.information'],
-            ['key' => 'shipping', 'label' => 'Shipping', 'route' => 'checkout.shipping-address'],
-            ['key' => 'billing', 'label' => 'Billing', 'route' => 'checkout.billing-address'],
-            ['key' => 'review', 'label' => 'Review', 'route' => 'checkout.review'],
+            ['key' => 'information', 'label' => 'Contact & plan', 'route' => 'checkout.information'],
+            ['key' => 'shipping', 'label' => 'Delivery details', 'route' => 'checkout.shipping-address'],
+            ['key' => 'review', 'label' => 'Review & pay', 'route' => 'checkout.review'],
         ];
     }
 }
