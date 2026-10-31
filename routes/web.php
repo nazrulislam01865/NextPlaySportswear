@@ -152,6 +152,9 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
             ->middleware('throttle:30,1')
             ->name('media-library.store');
 
+        Route::get('/bulk-quote-icons', [\App\Http\Controllers\Admin\BulkQuoteIconController::class, 'edit'])->name('bulk-quote-icons.edit');
+        Route::put('/bulk-quote-icons', [\App\Http\Controllers\Admin\BulkQuoteIconController::class, 'update'])->name('bulk-quote-icons.update');
+
         Route::get('/storefront-branding', [\App\Http\Controllers\Admin\StorefrontBrandingController::class, 'edit'])->name('storefront-branding.edit');
         Route::put('/storefront-branding', [\App\Http\Controllers\Admin\StorefrontBrandingController::class, 'update'])->name('storefront-branding.update');
 
@@ -640,6 +643,8 @@ Route::prefix('checkout')->name('checkout.')->middleware(['not.admin', 'auth:web
 
     Route::get('/shipping-address', [CheckoutController::class, 'shippingAddress'])->name('shipping-address');
     Route::post('/shipping-address', [CheckoutController::class, 'storeShippingAddress'])->middleware('throttle:checkout-step')->name('shipping-address.store');
+    Route::post('/remote-area-status', [CheckoutController::class, 'remoteAreaStatus'])->middleware('throttle:60,1')->name('remote-area-status');
+    Route::post('/shipping-preview', [CheckoutController::class, 'shippingPreview'])->middleware('throttle:checkout-step')->name('shipping-preview');
 
     Route::get('/billing-address', [CheckoutController::class, 'billingAddress'])->name('billing-address');
     Route::post('/billing-address', [CheckoutController::class, 'storeBillingAddress'])->middleware('throttle:checkout-step')->name('billing-address.store');

@@ -38,6 +38,8 @@ class BillingAddressRequest extends FormRequest
 
         return [
             'same_as_shipping' => ['nullable', 'boolean'],
+            'invoice_company' => ['nullable', 'string', 'max:160'],
+            'invoice_tax_number' => ['nullable', 'string', 'max:80'],
             'address_choice' => [$same ? 'exclude' : 'required', Rule::in(['saved', 'new'])],
             'saved_address_id' => [
                 $same || ! $usingSaved ? 'exclude' : 'required',

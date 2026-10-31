@@ -1,84 +1,74 @@
 @php
-    $selectedShippingId = $state['shipping_address']['saved_address_id'] ?? null;
-    $oldAddressChoice = old('address_choice');
-    $oldSavedAddressId = old('saved_address_id');
-    $defaultAddressChoice = $oldAddressChoice === 'saved' && $oldSavedAddressId
-        ? 'saved:'.$oldSavedAddressId
-        : old('address_choice', $selectedShippingId ? 'saved:'.$selectedShippingId : (count($savedShippingAddresses) > 0 ? 'saved:'.$savedShippingAddresses[0]['id'] : 'new'));
+    $address = $state['shipping_address']['address'] ?? [];
+    $selectedId = $state['shipping_address']['saved_address_id'] ?? null;
+    $oldChoice = old('address_choice');
+    $choice = $oldChoice === 'saved' && old('saved_address_id')
+        ? 'saved:'.old('saved_address_id')
+        : old('address_choice', $selectedId ? 'saved:'.$selectedId : 'new');
+    $countries = app(\App\Services\Storefront\AddressGeography::class)->countries();
 @endphp
-
-<x-storefront.checkout.shell :seo="$seo" :steps="$steps" :current-step="$currentStep" title="Shipping Address" description="Use a saved shipping address or add a new delivery address for this order." :summary="$summary">
-    <x-storefront.checkout.panel title="Shipping Address" description="Choose where the order should be delivered. Rural ZIP/postal surcharges are checked automatically after this step.">
-        <form data-single-submit method="POST" action="{{ route('checkout.shipping-address.store') }}" class="nps-form grid gap-6" x-data="{ addressChoice: @js($defaultAddressChoice) }">
+<x-storefront.checkout.shell :seo="$seo" :steps="$steps" :current-step="$currentStep" :summary="$summary">
+    <x-storefront.checkout.panel title="Shipping address" description="Where should we deliver your order?">
+        <form class="nps-form np-checkout__form" method="POST" novalidate data-single-submit action="{{ route('checkout.shipping-address.store') }}" x-data="{
+            addressChoice: @js($choice),
+            remote: @js(! empty($summary['rural_surcharge_details'])),
+            checkSequence: 0,
+            async checkRemote() {
+                const sequence = ++this.checkSequence;
+                const isSaved = this.addressChoice.startsWith('saved:');
+                const selected = this.$refs.addressChoiceSelect.selectedOptions[0];
+                const postal = isSaved ? (selected?.dataset?.postal || '') : (this.$el.querySelector('[name=postal_code]')?.value || '');
+                const country = isSaved ? (selected?.dataset?.country || '') : (this.$refs.remoteCountry?.value || '');
+                const city = isSaved ? (selected?.dataset?.city || '') : (this.$el.querySelector('[name=city]')?.value || '');
+                const state = isSaved ? (selected?.dataset?.state || '') : (this.$el.querySelector('[name=state]')?.value || '');
+                this.remote = false;
+                if (postal.trim().length < 3 || !country) return;
+                try {
+                    const response = await fetch(@js(route('checkout.remote-area-status')), {
+                        method: 'POST', credentials: 'same-origin',
+                        headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': @js(csrf_token())},
+                        body: JSON.stringify({postal_code: postal, country: country, city: city, state: state})
+                    });
+                    const result = response.ok ? await response.json() : null;
+                    if (sequence === this.checkSequence) this.remote = Boolean(result?.remote);
+                } catch (error) { if (sequence === this.checkSequence) this.remote = false; }
+            }
+        }">
             @csrf
-
-            @if (count($savedShippingAddresses) > 0)
-                <div>
-                    <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                        <div>
-                            <h3 class="text-sm font-black uppercase tracking-[.16em] text-brand-red">Saved shipping addresses</h3>
-                            <p class="mt-1 text-sm font-semibold text-slate-500">Choose one to continue quickly, or add a new address below.</p>
-                        </div>
-                    </div>
-                    <div class="mt-3 grid gap-4 md:grid-cols-2">
-                        @foreach ($savedShippingAddresses as $address)
-                            @php($choiceValue = 'saved:'.$address['id'])
-                            <label class="cursor-pointer rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-brand-red hover:bg-white has-[:checked]:border-brand-red has-[:checked]:bg-red-50">
-                                <div class="flex items-start gap-3">
-                                    <input type="radio" name="address_choice" value="{{ $choiceValue }}" class="mt-1" x-model="addressChoice">
-                                    <div>
-                                        <div class="flex flex-wrap items-center gap-2">
-                                            <strong class="text-brand-ink">{{ $address['label'] }}</strong>
-                                            @if ($address['is_default'])
-                                                <span class="rounded-full bg-brand-red px-2 py-0.5 text-[10px] font-black uppercase text-white">Default</span>
-                                            @endif
-                                            <span class="rounded-full bg-white px-2 py-0.5 text-[10px] font-black uppercase text-slate-500">{{ $address['type'] }}</span>
-                                        </div>
-                                        <p class="mt-2 text-sm font-semibold leading-6 text-slate-600">{!! implode('<br>', array_map('e', $address['lines'])) !!}</p>
-                                    </div>
-                                </div>
-                            </label>
-                        @endforeach
-                    </div>
+            <div class="nps-field">
+                <label for="address_choice" class="nps-label">Use a saved address</label>
+                <select name="address_choice" id="address_choice" x-ref="addressChoiceSelect" x-model="addressChoice" @change="checkRemote()">
+                    <option value="new">Add a new address</option>
+                    @foreach($savedShippingAddresses as $saved)
+                        <option value="saved:{{ $saved['id'] }}" data-postal="{{ $saved['postal_code'] ?? '' }}" data-country="{{ $saved['country'] ?? '' }}" data-city="{{ $saved['city'] ?? '' }}" data-state="{{ $saved['state'] ?? '' }}">{{ $saved['label'] }} — {{ implode(', ', $saved['lines']) }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="nps-grid" x-show="addressChoice === 'new'" x-cloak
+                @input.debounce.650ms="if (['postal_code', 'city'].includes($event.target.name)) checkRemote()"
+                @change="if (['postal_code', 'city', 'country'].includes($event.target.name)) checkRemote()">
+                <x-storefront.checkout.form-field label="First name" name="first_name" :value="$address['first_name'] ?? $state['information']['first_name'] ?? ''" required />
+                <x-storefront.checkout.form-field label="Last name" name="last_name" :value="$address['last_name'] ?? $state['information']['last_name'] ?? ''" required />
+                <x-storefront.checkout.form-field label="Company" name="company_name" :value="$address['company_name'] ?? ''" full />
+                <div class="nps-field nps-full"><label class="nps-label" for="country">Country / Region <span class="nps-required">*</span></label>
+                    <select id="country" name="country" x-ref="remoteCountry" x-bind:required="addressChoice === 'new'" aria-invalid="{{ $errors->has('country') ? 'true' : 'false' }}"><option value="">Select country</option>
+                        @foreach($countries as $country)<option value="{{ $country->country_name }}" @selected(old('country', $address['country'] ?? 'United Kingdom') === $country->country_name)>{{ $country->country_name }}</option>@endforeach
+                    </select>
+                    @error('country')
+                        <p class="nps-error" role="alert">{{ $message }}</p>
+                    @enderror
                 </div>
-            @endif
-
-            <div class="rounded-2xl border border-slate-200 bg-white p-5">
-                <label class="mb-5 flex items-center gap-3 text-sm font-black text-brand-ink">
-                    <input type="radio" name="address_choice" value="new" x-model="addressChoice">
-                    Add a new shipping address
-                </label>
-
-                <div class="grid gap-5 sm:grid-cols-2" x-show="addressChoice === 'new'" x-cloak>
-                    <x-storefront.checkout.form-field label="First name" name="first_name" placeholder="First name" :value="$state['shipping_address']['address']['first_name'] ?? $state['information']['first_name'] ?? ''" required />
-                    <x-storefront.checkout.form-field label="Last name" name="last_name" placeholder="Last name" :value="$state['shipping_address']['address']['last_name'] ?? $state['information']['last_name'] ?? ''" required />
-                    <x-storefront.checkout.form-field label="Company / Team" name="company_name" placeholder="Optional" :value="$state['shipping_address']['address']['company_name'] ?? ''" full />
-                    <x-storefront.checkout.form-field label="Street address" name="address_line_1" placeholder="Street address" :value="$state['shipping_address']['address']['address_line_1'] ?? ''" full required />
-                    <x-storefront.checkout.form-field label="Apartment / suite" name="address_line_2" placeholder="Optional" :value="$state['shipping_address']['address']['address_line_2'] ?? ''" />
-                    <x-storefront.checkout.form-field label="City" name="city" placeholder="City" :value="$state['shipping_address']['address']['city'] ?? ''" required />
-                    <x-storefront.checkout.form-field label="ZIP / Postal code" name="postal_code" placeholder="ZIP" :value="$state['shipping_address']['address']['postal_code'] ?? ''" required hint="If this ZIP/postal code matches an admin rural-area rule, the surcharge is added automatically." />
-                    <x-storefront.address-geography variant="checkout" country-field="country" region-field="state" :country-value="$state['shipping_address']['address']['country'] ?? 'United Kingdom'" :region-value="$state['shipping_address']['address']['state'] ?? ''" />
-                    <x-storefront.checkout.form-field label="Delivery phone" name="phone" type="tel" placeholder="Delivery phone" :value="$state['shipping_address']['address']['phone'] ?? $state['information']['phone'] ?? ''" required />
-                    <x-storefront.checkout.form-field label="Delivery email" name="email" type="email" placeholder="Delivery email" :value="$state['shipping_address']['address']['email'] ?? $state['information']['email'] ?? ''" />
-                    <x-storefront.checkout.form-field label="Delivery instruction" name="delivery_instruction" placeholder="Gate code, school office, club house, delivery contact..." :value="$state['shipping_address']['address']['delivery_instruction'] ?? ''" textarea full />
-                </div>
-
-                @auth
-                    <label class="mt-5 flex items-start gap-3 rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-700" x-show="addressChoice === 'new'" x-cloak>
-                        <input type="checkbox" name="save_to_account" value="1" class="mt-1">
-                        Save this shipping address to my account for future orders.
-                    </label>
-                @endauth
+                <x-storefront.checkout.form-field label="Address line 1" name="address_line_1" :value="$address['address_line_1'] ?? ''" full required />
+                <x-storefront.checkout.form-field label="Address line 2" name="address_line_2" :value="$address['address_line_2'] ?? ''" full />
+                <x-storefront.checkout.form-field label="Town / City" name="city" :value="$address['city'] ?? ''" required />
+                <x-storefront.checkout.form-field label="Postcode" name="postal_code" :value="$address['postal_code'] ?? ''" required />
+                <input type="hidden" name="state" value="{{ old('state', $address['state'] ?? '') }}">
+                <input type="hidden" name="phone" value="{{ $address['phone'] ?? $state['information']['phone'] ?? '' }}">
+                <input type="hidden" name="email" value="{{ $address['email'] ?? $state['information']['email'] ?? '' }}">
             </div>
-
-            <div class="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm font-bold leading-6 text-brand-navy">
-                Rural/remote ZIP rules are managed from the admin panel. Checkout totals are recalculated by the server before payment.
-            </div>
-
-            <div class="flex flex-col-reverse gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
-                <a class="btn btn-light" href="{{ route('checkout.information') }}">Back</a>
-                <button class="btn btn-primary" type="submit">Continue to Billing</button>
-            </div>
+            <div class="np-checkout__notice np-checkout__remote" x-show="remote" x-cloak role="status" aria-live="polite"><span class="np-checkout__pin" aria-hidden="true">●</span><div><strong>Remote-area delivery</strong><p>Your address is in a remote delivery area. An additional delivery charge applies.</p></div></div>
+            <label class="np-checkout__check" x-show="addressChoice === 'new'"><input type="checkbox" name="save_to_account" value="1"><span>Save this address to my account</span></label>
+            <div class="np-checkout__actions"><a href="{{ route('checkout.information') }}" class="np-checkout__back">← &nbsp; Back to contact</a><button class="np-checkout__button" type="submit">Continue to billing &nbsp; →</button></div>
         </form>
     </x-storefront.checkout.panel>
 </x-storefront.checkout.shell>

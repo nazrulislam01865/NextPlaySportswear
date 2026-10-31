@@ -2,6 +2,7 @@
 @import "./pagination.css";
 @import "./customer-auth-prototype.css";
 @import "./nextplay-form-system.css";
+@import "./nextplay-checkout.css";
 
 @tailwind base;
 @tailwind components;
@@ -27330,3 +27331,60 @@ html.np-product-preview-open body { overflow: hidden; }
 /* Bulk quote to order: reuse the customer quotation form's compact inputs. */
 .storefront-clean-ui .np-rq-next input[name="order_quantity"]{display:block;width:100%;max-width:220px;min-height:39px;border:1px solid #cedaed;border-radius:6px;padding:8px 12px;font:inherit;color:inherit;background:#fff}
 .np-gq-review-bottom label[for="np-guest-order-quantity"]{display:block;font-size:12px;font-weight:700}
+
+/* Bulk Quote heading icon dimensions - one source for all section headings. */
+.bulk-quote-section-layout { grid-template-columns: 52px minmax(0, 1fr); }
+.bulk-quote-section-icon, .bulk-quote-side-heading .bulk-quote-side-icon { width:52px; height:52px; flex: 0 0 52px; display:grid; place-items:center; }
+.bulk-quote-uploaded-icon { display:block; width:52px; height:52px; max-width:52px; max-height:52px; object-fit:contain; }
+@media(max-width:640px){ .bulk-quote-section-layout { grid-template-columns:52px minmax(0, 1fr); } .bulk-quote-section-icon { width:52px; height:52px; } }
+
+/* Admin-uploaded Bulk Quote heading icons: fixed 52x52 in all breakpoints. */
+.bulk-quote-page .bulk-quote-section-layout { grid-template-columns:52px minmax(0,1fr); }
+.bulk-quote-page .bulk-quote-section-icon, .bulk-quote-page .bulk-quote-side-card .bulk-quote-side-icon {
+  width:52px; height:52px; min-width:52px; min-height:52px; flex:0 0 52px; display:grid; place-items:center;
+}
+.bulk-quote-page .bulk-quote-uploaded-icon { width:52px; height:52px; max-width:52px; max-height:52px; display:block; object-fit:contain; }
+@media(max-width:640px){.bulk-quote-page .bulk-quote-section-layout{grid-template-columns:52px minmax(0,1fr)}
+.bulk-quote-page .bulk-quote-section-icon,.bulk-quote-page .bulk-quote-side-card .bulk-quote-side-icon{width:52px;height:52px;min-width:52px;min-height:52px;}}
+
+/* Bulk Quote icons: one transparent 52px slot, 1px inset, zero icon margins.
+   Leave section text/layout spacing unchanged. */
+.bulk-quote-page .bulk-quote-section-icon,
+.bulk-quote-page .bulk-quote-side-card .bulk-quote-side-icon {
+    box-sizing: border-box !important;
+    display: grid;
+    place-items: center;
+    width: 52px !important;
+    height: 52px !important;
+    min-width: 52px !important;
+    min-height: 52px !important;
+    flex: 0 0 52px !important;
+    padding: 1px !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+.bulk-quote-page .bulk-quote-section-icon .bulk-quote-uploaded-icon,
+.bulk-quote-page .bulk-quote-side-card .bulk-quote-side-icon .bulk-quote-uploaded-icon {
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    padding: 0;
+    margin: 0;
+    object-fit: contain;
+    background: transparent !important;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+.bulk-quote-page .bulk-quote-section-icon svg,
+.bulk-quote-page .bulk-quote-side-card .bulk-quote-side-icon svg {
+    padding: 0;
+    margin: 0;
+    background: transparent;
+}

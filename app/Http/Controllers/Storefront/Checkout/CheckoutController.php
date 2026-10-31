@@ -132,7 +132,7 @@ class CheckoutController extends Controller
 
         $this->checkout->storeInformation($request->validated(), $request->user());
 
-        return redirect()->route('checkout.shipping-address')->with('status', 'Contact information saved securely.');
+        return redirect()->route('checkout.shipping-address');
     }
 
     public function shippingAddress(Request $request): View|RedirectResponse
@@ -160,7 +160,36 @@ class CheckoutController extends Controller
 
         $this->checkout->storeShippingAddress($request->validated(), $request->user());
 
-        return redirect()->route('checkout.billing-address')->with('status', 'Shipping address saved.');
+        return redirect()->route('checkout.billing-address');
+    }
+
+    public function shippingPreview(ShippingAddressRequest $request): \Illuminate\Http\JsonResponse
+    {
+        if (! $this->checkout->hasCheckoutItems() || $this->checkout->firstIncompleteStepBefore('shipping')) {
+            return response()->json(['message' => 'Complete your contact information first.'], 422);
+        }
+        return response()->json($this->checkout->previewShippingCharges($request->validated(), $request->user()));
+    }
+
+    public function remoteAreaStatus(Request $request): \Illuminate\Http\JsonResponse
+    {
+        if (! $this->checkout->hasCheckoutItems()) {
+            return response()->json(['remote' => false], 422);
+        }
+
+        $data = $request->validate([
+            'postal_code' => ['required', 'string', 'min:3', 'max:30', 'regex:/^[A-Za-z0-9\-\s]+$/'],
+            'country' => ['required', 'string', 'max:120'],
+            'city' => ['nullable', 'string', 'max:120'],
+            'state' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        // Reuse the same postcode matcher as order pricing. Never infer from prefixes in JavaScript.
+        $matched = app(\App\Services\Shipping\RuralAreaSurchargeService::class)->resolve(
+            $data['postal_code'], $data['country'], $data['state'] ?? null, $data['city'] ?? null
+        );
+
+        return response()->json(['remote' => $matched !== null]);
     }
 
     public function billingAddress(Request $request): View|RedirectResponse
@@ -188,7 +217,7 @@ class CheckoutController extends Controller
 
         $this->checkout->storeBillingAddress($request->validated(), $request->user());
 
-        return redirect()->route('checkout.payment-method')->with('status', 'Billing preference saved. Product production was calculated from quantity and the shipping selections were carried forward automatically.');
+        return redirect()->route('checkout.review');
     }
 
     public function shippingMethod(Request $request): View|RedirectResponse
@@ -202,7 +231,7 @@ class CheckoutController extends Controller
         }
 
         return redirect()
-            ->route('checkout.payment-method')
+            ->route('checkout.review')
             ->with('status', 'Production is calculated automatically from each product quantity, and shipping is already configured for each item.');
     }
 
@@ -217,7 +246,7 @@ class CheckoutController extends Controller
         }
 
         return redirect()
-            ->route('checkout.payment-method')
+            ->route('checkout.review')
             ->with('status', 'Production was calculated automatically from quantity and shipping was carried from your configured cart items.');
     }
 
@@ -227,11 +256,7 @@ class CheckoutController extends Controller
             return $redirect;
         }
 
-        if ($redirect = $this->guardStep('payment')) {
-            return $redirect;
-        }
-
-        return $this->view('storefront.checkout.payment-method', 'Payment Method', 'Choose a secure payment method for online order payment or bulk quote invoice handling.', $request, 'payment');
+        return redirect()->route('checkout.review');
     }
 
     public function storePaymentMethod(PaymentMethodRequest $request): RedirectResponse
@@ -246,7 +271,7 @@ class CheckoutController extends Controller
 
         $this->checkout->storePaymentMethod($request->validated(), $request->user());
 
-        return redirect()->route('checkout.review')->with('status', 'Payment method selected. No raw card information was stored.');
+        return redirect()->route('checkout.review');
     }
 
     public function review(Request $request): View|RedirectResponse
@@ -259,7 +284,7 @@ class CheckoutController extends Controller
             return $redirect;
         }
 
-        return $this->view('storefront.checkout.review', 'Review & Place Order', 'Review contact, shipping, billing, payment, customization, and the final total, then place the order once.', $request, 'review');
+        return $this->view('storefront.checkout.review', 'Review Order', 'Review your details before completing secure payment.', $request, 'review');
     }
 
     public function storeReview(ReviewConfirmationRequest $request): RedirectResponse
@@ -272,9 +297,14 @@ class CheckoutController extends Controller
             return $redirect;
         }
 
+        try {
+            $this->checkout->selectStripePayment($request->user());
+        } catch (ValidationException $exception) {
+            return back()->withErrors($exception->errors());
+        }
         $this->checkout->confirmReview($request->validated());
 
-        return redirect()->route('checkout.review')->with('status', 'Order details confirmed. You can now place the order on this page.');
+        return redirect()->route('checkout.review');
     }
 
     public function placeOrder(Request $request): View|RedirectResponse
@@ -297,6 +327,16 @@ class CheckoutController extends Controller
         }
 
         $validated = $request->validated();
+        // Select the available Stripe-hosted method only on final submission.
+        // Customer card details never enter this Laravel application.
+        // Do not create an unpaid order when the gateway is not available.
+        // Stripe's live/test keys AND webhook signing secret must be configured.
+        if (! app(\App\Payments\PaymentGatewayManager::class)->isAvailable('stripe')) {
+            return back()->withErrors([
+                'payment_method' => 'Secure Stripe checkout is unavailable. Please contact support or try again later.',
+            ]);
+        }
+        $this->checkout->selectStripePayment($request->user());
         $this->checkout->confirmReview($validated);
         $snapshot = $this->checkout->placeOrder($validated, $request->user());
         $order = Order::query()->findOrFail((int) $snapshot['id']);
@@ -304,18 +344,21 @@ class CheckoutController extends Controller
         try {
             $handoff = $this->payments->initiateCheckout($order, (string) $validated['idempotency_key']);
         } catch (ValidationException $exception) {
-            return redirect()->route('account.orders.show', $order)->withErrors($exception->errors());
+            return redirect()->route('account.orders.show', $order)
+                ->withErrors($exception->errors())
+                ->with('checkout_payment_error', 'The order was saved, but Stripe could not start. You can retry payment from this order.');
         } catch (PaymentGatewayException $exception) {
-            return redirect()->route('account.orders.show', $order)->withErrors([
-                'payment_method' => $exception->getMessage(),
-            ]);
+            return redirect()->route('account.orders.show', $order)
+                ->withErrors(['payment_method' => $exception->getMessage()])
+                ->with('checkout_payment_error', 'Your order was saved but Stripe checkout did not open. Retry payment from your order.');
         }
 
         if ($handoff->requiresRedirect()) {
             return redirect()->away((string) $handoff->url);
         }
 
-        return redirect()->route('order.confirmation')->with('status', 'Order created and submitted for payment review.');
+        return redirect()->route('account.orders.show', $order)
+            ->with('checkout_payment_error', 'The order is pending payment. Open Pay for Order to complete your secure Stripe payment.');
     }
 
     public function success(Request $request): RedirectResponse

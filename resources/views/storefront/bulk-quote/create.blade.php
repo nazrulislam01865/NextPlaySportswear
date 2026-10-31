@@ -415,7 +415,7 @@
 
                     <section class="bulk-quote-side-card" aria-labelledby="bulk-quote-help-heading">
                         <div class="bulk-quote-side-heading">
-                            <span class="bulk-quote-side-icon" aria-hidden="true"><x-storefront.bulk-quote.icon name="message-circle" :size="20" /></span>
+                            <span class="bulk-quote-side-icon" aria-hidden="true">@if($helpIcon = \App\Support\BulkQuoteIcons::url('help'))<img src="{{ $helpIcon }}" alt="" width="52" height="52" class="bulk-quote-uploaded-icon">@else <x-storefront.bulk-quote.icon name="message-circle" :size="20" /> @endif</span>
                             <h2 id="bulk-quote-help-heading">Need a hand?</h2>
                         </div>
                         <p class="bulk-quote-side-lead">Not sure about materials, sizes or artwork? Our team is here to help.</p>

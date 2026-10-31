@@ -84,5 +84,5 @@ test('assistance sidebar uses centralized Expose typography', () => {
         '.bulk-quote-sidebar .bulk-quote-security-note p',
         '.bulk-quote-sidebar .bulk-quote-security-note strong',
     ]) assert.ok(system.includes(rule), `Missing sidebar typography: ${rule}`);
-    assert.match(layout, /bulk-quote-form-system\.css'\) \}\}\?v=20261030c/);
+    assert.match(layout, /bulk-quote-form-system\.css'\) \}\}\?v=[A-Za-z0-9_-]+/);
 });

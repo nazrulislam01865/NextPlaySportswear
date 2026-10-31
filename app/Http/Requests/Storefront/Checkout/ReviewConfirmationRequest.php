@@ -15,6 +15,7 @@ class ReviewConfirmationRequest extends FormRequest
     {
         return [
             'confirm_details' => ['accepted'],
+            'terms' => ['accepted'],
         ];
     }
 

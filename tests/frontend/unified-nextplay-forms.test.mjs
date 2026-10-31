@@ -49,7 +49,11 @@ test('type, control and action metrics follow the provided design handoff', () =
 test('all primary customer-facing form families use the shared class', () => {
     for (const [section, pages] of Object.entries(groups)) {
         for (const page of pages) {
-            assert.match(read(base + page), /<form[^>]*\bclass="[^"]*nps-form/, `${section}: ${page}`);
+            const content = read(base + page);
+            const formSource = page === 'checkout/review.blade.php'
+                ? read('resources/views/components/storefront/checkout/summary-card.blade.php')
+                : content;
+            assert.match(formSource, /<form[^>]*\bclass="[^"]*nps-form/, `${section}: ${page}`);
         }
     }
     assert.doesNotMatch(read('resources/css/admin.css'), /nextplay-form-system\.css/);

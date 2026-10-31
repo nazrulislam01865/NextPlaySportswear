@@ -1,0 +1,74 @@
+/* Bulk Quote Icons settings — use the Product Detail Controls admin components,
+   existing theme tokens and the centralized Expose font. Scoped to this page. */
+.np-bqic-page {
+    font-family: var(--admin-font-sans, var(--np-font-body));
+}
+.np-bqic-page .np-bqic-card {
+    gap: .8rem;
+}
+.np-bqic-page .np-bqic-icon-field {
+    grid-template-columns: 52px minmax(0, 1fr);
+    align-items: center;
+    gap: .85rem;
+    margin-top: auto;
+    padding: .8rem;
+}
+.np-bqic-page .np-bqic-icon-preview {
+    box-sizing: border-box;
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    min-height: 52px;
+    max-width: 52px;
+    max-height: 52px;
+    display: grid;
+    place-items: center;
+    padding: 1px;
+    margin: 0;
+    overflow: hidden;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    color: var(--admin-theme-cta, var(--np-color-secondary));
+}
+.np-bqic-page .np-bqic-icon-image {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    padding: 0;
+    margin: 0;
+    object-fit: contain;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+}
+.np-bqic-page .np-bqic-default-icon {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    place-items: center;
+}
+.np-bqic-page .np-bqic-default-icon svg {
+    display: block;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+}
+.np-bqic-page .np-bqic-icon-field .np-pdui-icon-label { margin: 0 0 .4rem; }
+.np-bqic-page .np-bqic-field-error { margin: .4rem 0 0; color: var(--np-color-error, #dc2626); font-size: .7rem; }
+.np-bqic-page .np-bqic-restore { cursor: pointer; }
+.np-bqic-feedback { border: 1px solid var(--admin-theme-border); padding: .75rem 1rem; border-radius: var(--admin-radius); font-size: .75rem; font-weight: 600; }
+.np-bqic-feedback--success { color: var(--np-color-success); background: rgb(21 128 61 / .07); }
+.np-bqic-feedback--error { color: var(--np-color-error); background: rgb(220 38 38 / .05); }
+@media (max-width: 520px) {
+    .np-bqic-page .np-bqic-icon-field { grid-template-columns: 52px minmax(0, 1fr); }
+    .np-bqic-page .np-pdui-icon-actions { flex-direction: row; flex-wrap: wrap; align-items: center; }
+}

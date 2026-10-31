@@ -9,7 +9,21 @@
 <section {{ $attributes->class(['bulk-quote-section']) }}>
     <div class="bulk-quote-section-layout">
         <div class="bulk-quote-section-icon" aria-hidden="true">
-            <x-storefront.bulk-quote.icon :name="$icon" />
+            @php
+                $iconSlot = match ($icon) {
+                    'box' => 'product',
+                    'user' => 'contact',
+                    'truck', 'shipping' => 'delivery',
+                    'attachment' => 'attachments',
+                    default => null,
+                };
+                $customIcon = $iconSlot ? \App\Support\BulkQuoteIcons::url($iconSlot) : null;
+            @endphp
+            @if($customIcon)
+                <img src="{{ $customIcon }}" alt="" width="52" height="52" class="bulk-quote-uploaded-icon">
+            @else
+                <x-storefront.bulk-quote.icon :name="$icon" />
+            @endif
         </div>
         <div class="bulk-quote-section-content">
             <div class="bulk-quote-section-heading">

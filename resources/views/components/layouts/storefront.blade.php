@@ -117,10 +117,13 @@
     @endforeach
 
     @vite(['resources/css/storefront.css', 'resources/js/storefront.js'])
+    @if(request()->routeIs('checkout.*'))
+        <link rel="stylesheet" href="{{ asset('css/nextplay-checkout.css') }}?v=20261031c">
+    @endif
     @if(request()->routeIs('quote.request'))
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-product.css') }}?v=20261030g">
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-redesign.css') }}?v=20261030i">
-        <link rel="stylesheet" href="{{ asset('css/bulk-quote-form-system.css') }}?v=20261030c">
+        <link rel="stylesheet" href="{{ asset('css/bulk-quote-form-system.css') }}?v=20261031icons53clear">
     @endif
 </head>
 <body

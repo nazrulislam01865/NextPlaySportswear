@@ -165,10 +165,35 @@ class CheckoutService
         $this->mergeState('shipping_address', $this->resolveAddressPayload($payload, $user, 'shipping'));
     }
 
+    public function previewShippingCharges(array $payload, ?User $user = null): array
+    {
+        // Do not save addresses or mutate checkout state while previewing charges.
+        $payload['save_to_account'] = false;
+        $state = $this->state();
+        $state['shipping_address'] = $this->resolveAddressPayload($payload, $user, 'shipping');
+        $summary = $this->checkoutSummary($this->cart->summary(), $state);
+
+        return [
+            'total' => '$'.number_format((float) $summary['total'], 2),
+            'rural' => '$'.number_format((float) $summary['rural_surcharge'], 2),
+            'remote_price_missing' => (bool) ($summary['remote_price_missing'] ?? false),
+            'message' => ($summary['remote_price_missing'] ?? false)
+                ? 'The remote-area charge is not configured for this quantity. Please contact support.'
+                : ((float) $summary['rural_surcharge'] > 0
+                    ? 'Remote-area delivery charge included in your total.'
+                    : 'Address checked. No additional remote-area charge.'),
+        ];
+    }
+
     public function storeBillingAddress(array $payload, ?User $user = null): void
     {
+        $invoiceDetails = [
+            'company_name' => trim((string) ($payload['invoice_company'] ?? '')),
+            'tax_number' => trim((string) ($payload['invoice_tax_number'] ?? '')),
+        ];
         if ((bool) ($payload['same_as_shipping'] ?? false)) {
             $this->mergeState('billing_address', [
+                'invoice_details' => $invoiceDetails,
                 'same_as_shipping' => true,
                 'label' => 'Same as shipping address',
                 'address' => $this->state()['shipping_address']['address'] ?? [],
@@ -179,6 +204,7 @@ class CheckoutService
 
         $billing = $this->resolveAddressPayload($payload, $user, 'billing');
         $billing['same_as_shipping'] = false;
+        $billing['invoice_details'] = $invoiceDetails;
 
         $this->mergeState('billing_address', $billing);
     }
@@ -273,6 +299,20 @@ class CheckoutService
         }
 
         $this->mergeState('payment_method', $payment);
+    }
+
+    public function selectStripePayment(?User $user = null): void
+    {
+        $summary = $this->checkoutSummary($this->cart->summary(), $this->state());
+        $stripe = collect($this->paymentOptions($summary, $user))
+            ->first(fn (array $option): bool => ($option['provider'] ?? '') === 'stripe'
+                && ($option['requires_provider_redirect'] ?? false));
+        if (! is_array($stripe)) {
+            throw ValidationException::withMessages([
+                'payment_method' => 'Secure Stripe payment is currently unavailable. Please contact support.',
+            ]);
+        }
+        $this->storePaymentMethod(['payment_method' => $stripe['code']], $user);
     }
 
     public function confirmReview(array $payload): void
@@ -819,6 +859,10 @@ class CheckoutService
                 'type' => $address->typeLabel(),
                 'type_raw' => $address->type,
                 'is_default' => $address->is_default,
+                'postal_code' => $address->postal_code,
+                'country' => $address->country,
+                'city' => $address->city,
+                'state' => $address->state,
                 'lines' => array_filter([
                     $address->formattedName(),
                     $address->company_name,
@@ -871,7 +915,8 @@ class CheckoutService
             'billing' => filled(Arr::get($state, 'billing_address.address.address_line_1'))
                 || (bool) Arr::get($state, 'billing_address.same_as_shipping'),
             'payment' => filled(Arr::get($state, 'payment_method.method')),
-            'review' => (bool) Arr::get($state, 'review.confirmed'),
+            'review' => (bool) Arr::get($state, 'review.confirmed')
+                && filled(Arr::get($state, 'payment_method.method')),
             default => true,
         };
     }
@@ -1137,11 +1182,10 @@ class CheckoutService
     private function steps(): array
     {
         return [
-            ['key' => 'information', 'label' => 'Information', 'route' => 'checkout.information'],
-            ['key' => 'shipping', 'label' => 'Shipping Address', 'route' => 'checkout.shipping-address'],
+            ['key' => 'information', 'label' => 'Contact', 'route' => 'checkout.information'],
+            ['key' => 'shipping', 'label' => 'Shipping', 'route' => 'checkout.shipping-address'],
             ['key' => 'billing', 'label' => 'Billing', 'route' => 'checkout.billing-address'],
-            ['key' => 'payment', 'label' => 'Payment', 'route' => 'checkout.payment-method'],
-            ['key' => 'review', 'label' => 'Review & Place Order', 'route' => 'checkout.review'],
+            ['key' => 'review', 'label' => 'Review', 'route' => 'checkout.review'],
         ];
     }
 }

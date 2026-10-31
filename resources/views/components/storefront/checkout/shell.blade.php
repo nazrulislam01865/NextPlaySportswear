@@ -1,60 +1,30 @@
 @props([
-    'seo' => [],
-    'steps' => [],
-    'currentStep' => 'information',
-    'title' => 'Secure Checkout',
-    'description' => 'Complete your order securely.',
-    'summary' => [],
+    'seo' => [], 'steps' => [], 'currentStep' => 'information',
+    'title' => 'Checkout', 'description' => '', 'summary' => [], 'orderIdempotencyKey' => null,
 ])
 
 <x-layouts.storefront :seo="$seo">
-    <section class="bg-gradient-to-br from-brand-navy via-brand-dark to-slate-950 py-10 text-white">
-        <div class="site-container grid gap-7 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-center">
-            <div>
-                <nav class="mb-5 flex flex-wrap items-center gap-2 text-sm font-bold text-blue-100" aria-label="Breadcrumb">
-                    <a href="{{ route('home') }}" class="hover:text-white">Home</a>
-                    <span>/</span>
-                    <a href="{{ route('cart.index') }}" class="hover:text-white">Cart</a>
-                    <span>/</span>
-                    <span class="text-white">Checkout</span>
-                </nav>
-                <p class="text-xs font-black uppercase tracking-[.22em] text-brand-red">Secure checkout</p>
-                <h1 class="nps-form-page-title mt-3 font-display text-4xl font-bold uppercase leading-tight tracking-tight sm:text-6xl">{{ $title }}</h1>
-                <p class="mt-4 max-w-3xl text-base leading-7 text-blue-100">{{ $description }}</p>
+    <section class="np-checkout">
+        <div class="site-container np-checkout__container">
+            <nav class="np-checkout__breadcrumb" aria-label="Breadcrumb">
+                <a href="{{ route('home') }}">Home</a><span>/</span>
+                <a href="{{ route('cart.index') }}">Cart</a><span>/</span><span>Checkout</span>
+            </nav>
+            <div class="np-checkout__heading">
+                <h1>Checkout</h1>
+                <span class="np-checkout__secure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Secure checkout</span>
             </div>
+            <x-storefront.checkout.stepper :steps="$steps" :current-step="$currentStep" />
 
-            <aside class="rounded-[26px] border border-white/15 bg-white/10 p-5 shadow-hero backdrop-blur">
-                <div class="grid gap-4 text-sm font-semibold text-blue-50">
-                    <div class="flex gap-3"><span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-brand-red">✓</span><span>Encrypted checkout and protected customer information.</span></div>
-                    <div class="flex gap-3"><span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-brand-red">✓</span><span>Design support before custom production begins.</span></div>
-                    <div class="flex gap-3"><span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-brand-red">✓</span><span>Server-side totals, shipping, tax, and payment validation.</span></div>
-                </div>
-            </aside>
-        </div>
-    </section>
-
-    <x-storefront.checkout.stepper :steps="$steps" :current-step="$currentStep" />
-
-    <section class="bg-slate-50 py-10 lg:py-14">
-        <div class="site-container">
-            @if (session('status'))
-                <div class="mb-6 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-black text-green-800">
-                    {{ session('status') }}
-                </div>
+            @if(session('status'))
+                <div class="np-checkout__status" role="status">{{ session('status') }}</div>
             @endif
-
-            @if ($errors->any())
-                <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-black text-red-800">
-                    {{ $errors->first() }}
-                </div>
+            @if($errors->has('checkout') || $errors->has('payment_method') || $errors->has('coupon_code'))
+                <div class="np-checkout__alert" role="alert">{{ $errors->first('checkout') ?: ($errors->first('payment_method') ?: $errors->first('coupon_code')) }}</div>
             @endif
-
-            <div class="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start xl:grid-cols-[minmax(0,1fr)_390px]">
-                <div class="min-w-0">
-                    {{ $slot }}
-                </div>
-
-                <x-storefront.checkout.summary-card :summary="$summary" />
+            <div class="np-checkout__columns">
+                <div class="np-checkout__body">{{ $slot }}</div>
+                <x-storefront.checkout.summary-card :summary="$summary" :current-step="$currentStep" :order-idempotency-key="$orderIdempotencyKey" />
             </div>
         </div>
     </section>

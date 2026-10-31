@@ -1,137 +1,75 @@
-@props(['summary' => []])
-
+@props(['summary' => [], 'currentStep' => 'information', 'orderIdempotencyKey' => null])
 @php
     $items = $summary['items'] ?? [];
-    $initialShippingTitle = (string) data_get($summary, 'shipping_method.title', '');
-    $initialShippingBase = '$'.number_format((float) ($summary['shipping_base'] ?? $summary['shipping'] ?? 0), 2);
-    $initialRuralAmount = (float) ($summary['rural_surcharge'] ?? 0);
-    $initialRural = '$'.number_format($initialRuralAmount, 2);
-    $initialRuralPostalCode = (string) data_get($summary, 'rural_surcharge_details.postal_code', '');
-    $initialTotal = '$'.number_format((float) ($summary['total'] ?? 0), 2);
-    $initialEta = (string) data_get($summary, 'shipping_method.eta', '');
+    $rural = (float) ($summary['rural_surcharge'] ?? 0);
+    $addressComplete = filled(data_get(session('nextplay_checkout', []), 'shipping_address.address.postal_code'));
+    $total = (float) ($summary['total'] ?? 0);
+    // Reuse the same quantity-based production and selected shipping windows as cart configurator.
+    $lines = collect($summary['fulfillment_lines'] ?? []);
+    $etaMin = (int) $lines->max('estimated_minimum_days');
+    $etaMax = (int) $lines->max('estimated_maximum_days');
+    $eta = ($etaMin > 0 && $etaMax >= $etaMin)
+        ? $etaMin.'–'.$etaMax.' business days'
+        : 'Calculated from selected production & shipping';
 @endphp
-
-<aside
-    class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-card lg:sticky lg:top-24 lg:p-6"
-    aria-label="Order summary"
-    x-data="{
-        shippingTitle: @js($initialShippingTitle),
-        shippingBase: @js($initialShippingBase),
-        ruralAmount: @js(round($initialRuralAmount, 2)),
-        rural: @js($initialRural),
-        ruralPostalCode: @js($initialRuralPostalCode),
-        total: @js($initialTotal),
-        eta: @js($initialEta),
-        holidayNotice: @js((string) data_get($summary, 'shipping_method.holiday_notice', '')),
-        syncShippingPreview(detail) {
-            if (!detail || Object.keys(detail).length === 0) return;
-            this.shippingTitle = detail.shipping_title || this.shippingTitle || 'Shipping';
-            this.shippingBase = detail.shipping_base || detail.shipping || this.shippingBase;
-            this.ruralAmount = Number(detail.rural_amount || 0);
-            this.rural = detail.rural || '$0.00';
-            this.ruralPostalCode = detail.rural_postal_code || '';
-            this.total = detail.total || this.total;
-            this.eta = detail.eta || this.eta;
-            this.holidayNotice = detail.holiday_notice || this.holidayNotice;
-        }
-    }"
-    x-on:checkout-shipping-preview.window="syncShippingPreview($event.detail)"
->
-    <div class="flex items-start justify-between gap-4">
-        <div>
-            <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">Order summary</p>
-            <h2 class="mt-1 font-display text-3xl font-bold uppercase text-brand-ink">Secure Total</h2>
-        </div>
-        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{{ $summary['quantity'] ?? 0 }} item{{ ($summary['quantity'] ?? 0) === 1 ? '' : 's' }}</span>
+<aside class="np-checkout__card np-checkout__summary" aria-label="Order summary">
+    <div class="np-checkout__summary-head">
+        <h2>Order summary</h2>
+        <span>{{ $summary['quantity'] ?? 0 }} items</span>
+        <a href="{{ route('cart.index') }}">Edit cart</a>
     </div>
-
-    <div class="mt-6 grid gap-4">
-        @forelse ($items as $item)
-            @php
-                $itemFulfillment = (array) data_get($item, 'customization.fulfillment', []);
-                $itemProduction = is_array($itemFulfillment['production'] ?? null) ? $itemFulfillment['production'] : null;
-                $itemShipping = is_array($itemFulfillment['shipping'] ?? null) ? $itemFulfillment['shipping'] : null;
-            @endphp
-            <div class="grid grid-cols-[68px_1fr] gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-                <img src="{{ $item['product']['image'] ?? '' }}" alt="{{ $item['product']['alt'] ?? $item['product']['title'] ?? 'Product' }}" class="h-16 w-16 rounded-xl bg-white object-contain">
-                <div class="min-w-0">
-                    <h3 class="line-clamp-2 text-sm font-black text-brand-ink">{{ $item['product']['short_title'] ?? $item['product']['title'] ?? 'Product' }}</h3>
-                    <p class="mt-1 text-xs font-semibold text-slate-500">Qty {{ $item['quantity'] ?? 1 }} · {{ $item['customization']['design_option'] ?? 'Custom design' }}</p>
-                    @if ((float) ($item['offer_savings'] ?? 0) > 0)
-                        <p class="mt-1 text-xs font-bold text-green-700">Sale: ${{ number_format((float) ($item['unit_price'] ?? 0), 2) }} per item <del class="text-slate-500">${{ number_format((float) ($item['original_unit_price'] ?? 0), 2) }}</del></p>
-                    @endif
-                    @if($itemProduction)
-                        <p class="mt-1 text-xs font-bold text-slate-600">Production charge: {{ $itemProduction['display_amount'] ?? 'Included' }}</p>
-                    @endif
-                    @if($itemShipping)
-                        <p class="mt-1 text-xs font-bold text-slate-600">Shipping: {{ $itemShipping['label'] ?? 'Selected shipping' }}</p>
-                    @endif
-                    <p class="mt-1 text-sm font-black text-slate-900">${{ number_format($item['line_total'] ?? 0, 2) }}</p>
-                </div>
+    @foreach($items as $item)
+        <div class="np-checkout__summary-item">
+            <img src="{{ $item['product']['image'] ?? asset('images/product-placeholder.svg') }}" alt="{{ $item['product']['alt'] ?? $item['product']['title'] ?? 'Product' }}" loading="lazy">
+            <div><strong>{{ $item['product']['short_title'] ?? $item['product']['title'] ?? 'Product' }}</strong>
+                <p>{{ $item['customization']['design_option'] ?? 'Custom design' }}</p>
+                <p>Qty {{ $item['quantity'] ?? 1 }} × ${{ number_format((float) ($item['unit_price'] ?? 0), 2) }}</p>
             </div>
-        @empty
-            <div class="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500">No cart items available.</div>
-        @endforelse
-    </div>
-
-    <div class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs font-bold leading-5 text-slate-600" x-show="eta" x-cloak>
-        <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">Estimated delivery</div>
-        <div class="text-xl font-extrabold text-brand-ink" x-text="eta">{{ $initialEta }}</div>
-        <p class="text-[11px] font-semibold text-slate-500 mt-0.5">Production and delivery estimate: 8–12 business days</p>
-
-        <div class="mt-3 rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 text-xs text-amber-950 shadow-sm" x-show="holidayNotice" x-cloak>
-            <div class="flex items-start gap-2.5">
-                <svg class="w-4 h-4 text-[#CF5D38] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <div class="min-w-0">
-                    <strong class="font-extrabold text-amber-950 block text-xs mb-0.5">Includes holiday adjustment</strong>
-                    <p class="font-medium text-amber-900 text-[11px] leading-relaxed" x-text="holidayNotice"></p>
-                </div>
-            </div>
+            <strong>${{ number_format((float) ($item['line_total'] ?? 0), 2) }}</strong>
         </div>
-    </div>
-
-    <dl class="mt-6 grid gap-3 text-sm">
-        <div class="flex justify-between gap-4"><dt class="font-semibold text-slate-500">Merchandise subtotal</dt><dd class="font-black text-slate-900">${{ number_format($summary['subtotal'] ?? 0, 2) }}</dd></div>
-        <div class="flex justify-between gap-4"><dt class="font-semibold text-slate-500">Customization</dt><dd class="font-black text-slate-900">${{ number_format($summary['customization_total'] ?? 0, 2) }}</dd></div>
-        <div class="flex justify-between gap-4"><dt class="font-semibold text-slate-500">Discount @if(!empty($summary['coupon_code']))<span class="text-xs font-black text-green-700">({{ $summary['coupon_code'] }})</span>@endif</dt><dd class="font-black text-green-700">-${{ number_format($summary['discount'] ?? 0, 2) }}</dd></div>
-        @if((float) ($summary['reward_discount'] ?? 0) > 0)
-            <div class="flex justify-between gap-4 rounded-xl bg-emerald-50 px-3 py-2"><dt class="font-black text-emerald-700">My Rewards applied</dt><dd class="font-black text-emerald-700">−£{{ number_format((float) $summary['reward_discount'], 2) }}</dd></div>
-        @endif
-        <div class="flex justify-between gap-4">
-            <dt class="font-semibold text-slate-500">
-                Shipping charges
-                <span class="text-xs font-black text-slate-400" x-show="shippingTitle" x-cloak>(<span x-text="shippingTitle"></span>)</span>
-            </dt>
-            <dd class="font-black text-slate-900" x-text="shippingBase">{{ $initialShippingBase }}</dd>
-        </div>
-        <div class="flex justify-between gap-4" x-show="ruralAmount > 0" x-cloak>
-            <dt class="font-semibold text-amber-700">
-                Rural area surcharge
-                <span class="text-xs font-black" x-show="ruralPostalCode">(<span x-text="ruralPostalCode"></span>)</span>
-            </dt>
-            <dd class="font-black text-amber-700" x-text="rural">{{ $initialRural }}</dd>
-        </div>
-        <div class="flex justify-between gap-4"><dt class="font-semibold text-slate-500">Estimated tax</dt><dd class="font-black text-slate-900">${{ number_format($summary['tax'] ?? 0, 2) }}</dd></div>
+    @endforeach
+    <dl class="np-checkout__prices">
+        <div><dt>Merchandise subtotal</dt><dd>${{ number_format((float) ($summary['subtotal'] ?? 0), 2) }}</dd></div>
+        <div><dt>Customization</dt><dd>${{ number_format((float) ($summary['customization_total'] ?? 0), 2) }}</dd></div>
+        @if((float) ($summary['discount'] ?? 0) > 0)<div><dt>Discount</dt><dd>−${{ number_format((float) $summary['discount'], 2) }}</dd></div>
+@endif
+        <div><dt>Shipping{{ data_get($summary, 'shipping_method.title') ? ' ('.data_get($summary, 'shipping_method.title').')' : '' }}</dt><dd>${{ number_format((float) ($summary['shipping_base'] ?? 0), 2) }}</dd></div>
+        <div><dt>Remote-area charge</dt><dd>
+            @if($currentStep === 'shipping' && ! $addressComplete)
+                Calculated on continue
+            @else
+                ${{ number_format($rural, 2) }}
+            @endif
+        </dd></div>
+        <div><dt>Estimated tax</dt><dd>${{ number_format((float) ($summary['tax'] ?? 0), 2) }}</dd></div>
     </dl>
-
-
-    @if($summary['remote_price_missing'] ?? false)
-        <p role="alert" class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
-            This destination is remote, but the product price table does not have a remote-area charge for the order quantity. Please contact us before ordering.
-        </p>
+    <div class="np-checkout__summary-total">
+        <strong>{{ $currentStep === 'shipping' && ! $addressComplete ? 'Estimated total (USD)' : 'Total (USD)' }}</strong>
+        <strong>${{ number_format($total, 2) }}</strong>
+    </div>
+    @if(($summary['remote_price_missing'] ?? false))<p class="nps-error" role="alert">The remote-area charge is not configured for this quantity. Please contact support before paying.</p>
+@endif
+    @if($currentStep === 'shipping' && ! $addressComplete)<p class="np-checkout__fine">Excludes any remote-area charge until your shipping address is saved.</p>
+@endif
+    <div class="np-checkout__notice np-checkout__delivery">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 7h12v11H2zM14 10h4l4 4v4h-8zM2 11h12"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg>
+        <div><strong>Estimated production &amp; delivery</strong><b>{{ $eta }}</b><p>Production starts after artwork approval.</p></div>
+    </div>
+    @if($currentStep === 'review')
+        <form class="nps-form np-checkout__final-payment" method="POST" action="{{ route('checkout.place-order.submit') }}" data-single-submit x-data="{ accepted: false, paymentBlocked: @js((bool) ($summary['remote_price_missing'] ?? false)) }">
+            @csrf
+            <input type="hidden" name="idempotency_key" value="{{ $orderIdempotencyKey }}">
+            <input type="hidden" name="confirm_details" value="1">
+            <label class="np-checkout__check">
+                <input type="checkbox" name="terms" value="1" x-model="accepted" required>
+                <span>I agree to the <a href="{{ route('terms') }}" target="_blank" rel="noopener">Terms and Conditions</a> and have read the <a href="{{ route('privacy') }}" target="_blank" rel="noopener">Privacy Policy</a>.</span>
+            </label>
+            @error('terms')
+                <p class="nps-error" role="alert">{{ $message }}</p>
+            @enderror
+            <button class="np-checkout__button np-checkout__full" type="submit" :disabled="!accepted || paymentBlocked">Place order &amp; pay ${{ number_format($total, 2) }}</button>
+            <p class="np-checkout__fine np-checkout__center">Secure payment via Stripe</p>
+        </form>
     @endif
-
-    <div class="mt-6 rounded-2xl bg-brand-navy p-4 text-white">
-        <div class="flex items-end justify-between gap-4">
-            <span class="text-sm font-black uppercase tracking-[.16em] text-blue-100">Total</span>
-            <span class="font-display text-4xl font-bold" x-text="total">{{ $initialTotal }}</span>
-        </div>
-        <p class="mt-2 text-xs font-semibold leading-5 text-blue-100">Final price is recalculated by the Laravel backend before payment.</p>
-    </div>
-
-    <div class="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-xs font-bold leading-5 text-brand-navy">
-        🔒 Secure checkout · Raw card numbers and CVV are never stored in the application database.
-    </div>
+    <p class="np-checkout__secure-footer">&#128274; Secure checkout</p>
 </aside>

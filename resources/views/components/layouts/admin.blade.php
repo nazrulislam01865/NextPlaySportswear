@@ -351,6 +351,9 @@
                     @if($canAdmin('storefront_branding.view'))
                         <x-admin.sidebar-link :href="route('admin.storefront-branding.edit')" :active="request()->routeIs('admin.storefront-branding.*')" icon="◆">Storefront Branding</x-admin.sidebar-link>
                     @endif
+                    @if($canAdmin('storefront_branding.view'))
+                        <x-admin.sidebar-link :href="route('admin.bulk-quote-icons.edit')" :active="request()->routeIs('admin.bulk-quote-icons.*')" icon="▧">Bulk Quote Icons</x-admin.sidebar-link>
+                    @endif
                     @if($canAdmin('about_page.view'))
                         <x-admin.sidebar-link :href="route('admin.about-page.edit')" :active="request()->routeIs('admin.about-page.*')" icon="◫">About Page</x-admin.sidebar-link>
                     @endif

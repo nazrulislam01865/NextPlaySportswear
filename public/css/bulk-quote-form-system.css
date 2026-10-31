@@ -298,3 +298,59 @@
     font: 600 14px/1.5 var(--nps-font);
     color: var(--nps-navy);
 }
+
+/* Bulk Quote heading icon dimensions - one source for all section headings. */
+.bulk-quote-section-layout { grid-template-columns: 52px minmax(0, 1fr); }
+.bulk-quote-section-icon, .bulk-quote-side-heading .bulk-quote-side-icon { width:52px; height:52px; flex: 0 0 52px; display:grid; place-items:center; }
+.bulk-quote-uploaded-icon { display:block; width:52px; height:52px; max-width:52px; max-height:52px; object-fit:contain; }
+@media(max-width:640px){ .bulk-quote-section-layout { grid-template-columns:52px minmax(0, 1fr); } .bulk-quote-section-icon { width:52px; height:52px; } }
+
+/* Admin-uploaded Bulk Quote heading icons: fixed 52x52 in all breakpoints. */
+.bulk-quote-page .bulk-quote-section-layout { grid-template-columns:52px minmax(0,1fr); }
+.bulk-quote-page .bulk-quote-section-icon, .bulk-quote-page .bulk-quote-side-card .bulk-quote-side-icon {
+  width:52px; height:52px; min-width:52px; min-height:52px; flex:0 0 52px; display:grid; place-items:center;
+}
+.bulk-quote-page .bulk-quote-uploaded-icon { width:52px; height:52px; max-width:52px; max-height:52px; display:block; object-fit:contain; }
+@media(max-width:640px){.bulk-quote-page .bulk-quote-section-layout{grid-template-columns:52px minmax(0,1fr)}
+.bulk-quote-page .bulk-quote-section-icon,.bulk-quote-page .bulk-quote-side-card .bulk-quote-side-icon{width:52px;height:52px;min-width:52px;min-height:52px;}}
+
+/* Final storefront override: transparent 52x52 heading icons; one pixel of
+   interior padding and no icon margins, on all screen sizes. */
+.bulk-quote-page .bulk-quote-section-icon,
+.bulk-quote-page .bulk-quote-side-card .bulk-quote-side-icon {
+    box-sizing: border-box !important;
+    width: 52px !important;
+    height: 52px !important;
+    min-width: 52px !important;
+    min-height: 52px !important;
+    flex: 0 0 52px !important;
+    display: grid;
+    place-items: center;
+    padding: 1px !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+.bulk-quote-page .bulk-quote-uploaded-icon {
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    padding: 0;
+    margin: 0;
+    background: transparent !important;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+.bulk-quote-page .bulk-quote-section-icon svg,
+.bulk-quote-page .bulk-quote-side-card .bulk-quote-side-icon svg {
+    padding: 0;
+    margin: 0;
+    background: transparent;
+}
