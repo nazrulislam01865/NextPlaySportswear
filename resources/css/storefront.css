@@ -3,6 +3,7 @@
 @import "./customer-auth-prototype.css";
 @import "./nextplay-form-system.css";
 @import "./nextplay-checkout.css";
+@import "./nextplay-typography.css";
 
 @tailwind base;
 @tailwind components;

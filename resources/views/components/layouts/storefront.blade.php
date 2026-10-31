@@ -125,9 +125,10 @@
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-redesign.css') }}?v=20261030i">
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-form-system.css') }}?v=20261031icons53clear">
     @endif
+    <link rel="stylesheet" href="{{ asset('css/nextplay-typography.css') }}?v=1.1">
 </head>
 <body
-    class="storefront-clean-ui"
+    class="storefront-clean-ui nps-site"
     data-image-placeholder-url="{{ asset('images/product-placeholder.svg') }}"
     data-product-activity-url="{{ route('products.visitor-activity') }}"
 >
