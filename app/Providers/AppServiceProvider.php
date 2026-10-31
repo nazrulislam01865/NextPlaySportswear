@@ -76,28 +76,36 @@ class AppServiceProvider extends ServiceProvider
         });
 
         View::composer('components.storefront.header', function ($view): void {
-            $headerCart = app(CartService::class)->headerSummary(4);
-            // Checkout already calculated authoritative product prices, quantities
-            // and shipping. Reuse them instead of displaying stale cart snapshots.
-            $checkoutSummary = View::shared('npCheckoutCartSummary');
-            if (request()->routeIs('checkout.*') && is_array($checkoutSummary) && ! empty($checkoutSummary['items'])) {
-                $accurateItems = collect($checkoutSummary['items'])->map(static function (array $item): array {
+            // Checkout and cart pages already calculated authoritative amounts.
+            // Share them with the mini-cart instead of reading stale snapshots
+            // or repricing the same cart a second time during page rendering.
+            $checkoutSummary = request()->routeIs('checkout.*') ? View::shared('npCheckoutCartSummary') : null;
+            $cartPageSummary = request()->routeIs('cart.index') ? View::shared('npCurrentCartSummary') : null;
+            $pricedSummary = is_array($checkoutSummary) ? $checkoutSummary : $cartPageSummary;
+            if (is_array($pricedSummary) && ! empty($pricedSummary['items'])) {
+                $accurateItems = collect($pricedSummary['items'])->map(static function (array $item): array {
                     $quantity = max(1, (int) ($item['quantity'] ?? 1));
-                    $shipping = (float) ($item['product_shipping_total'] ?? 0);
+                    $shipping = round((float) ($item['product_shipping_total'] ?? 0), 2);
                     $merchandise = round((float) ($item['line_subtotal'] ?? 0) + (float) ($item['customization_total'] ?? 0), 2);
+
                     return array_merge($item, [
                         'display_unit_price' => round($merchandise / $quantity, 2),
                         'line_total' => round($merchandise + $shipping, 2),
-                        'display_shipping' => round($shipping, 2),
+                        'display_shipping' => $shipping,
                     ]);
                 });
-                $headerCart = array_merge($headerCart, [
+                $headerCart = [
                     'items' => $accurateItems->take(4)->all(),
                     'total_items' => $accurateItems->count(),
                     'remaining_items' => max(0, $accurateItems->count() - 4),
-                    'quantity' => (int) ($checkoutSummary['quantity'] ?? 0),
-                    'total' => (float) ($checkoutSummary['total'] ?? 0),
-                ]);
+                    'quantity' => (int) ($pricedSummary['quantity'] ?? 0),
+                    'subtotal' => (float) ($pricedSummary['total'] ?? 0),
+                    'total' => (float) ($pricedSummary['total'] ?? 0),
+                    'is_empty' => $accurateItems->isEmpty(),
+                    'checkout_ready' => (bool) ($pricedSummary['checkout_ready'] ?? true),
+                ];
+            } else {
+                $headerCart = app(CartService::class)->headerSummary(4);
             }
             $customer = auth('web')->user();
             $headerWishlist = app(WishlistHeaderService::class)->summary($customer, 4);

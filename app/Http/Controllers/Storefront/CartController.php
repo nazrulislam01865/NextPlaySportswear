@@ -35,6 +35,9 @@ class CartController extends Controller
     {
         $isPreview = $request->boolean('preview') || ($request->has('id') && $this->cart->summary()['is_empty']);
         $cart = $this->cart->summary($isPreview);
+        // Reuse this already-computed cart total in the header preview.
+        // Prevent old snapshots from disagreeing with the cart page.
+        \Illuminate\Support\Facades\View::share('npCurrentCartSummary', $cart);
         $view = (bool) data_get($cart, 'referral_offer.linked', false)
             ? 'storefront.referral.cart'
             : 'storefront.cart.index';

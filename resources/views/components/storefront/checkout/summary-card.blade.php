@@ -9,7 +9,6 @@
     $total = (float) ($summary['total'] ?? 0);
     $saleSavings = round((float) ($summary['sale_savings'] ?? collect($items)->sum('offer_savings')), 2);
     $totalDiscount = round((float) ($summary['total_discount'] ?? ($saleSavings + (float) ($summary['discount'] ?? 0))), 2);
-    $preShipping = round((float) ($summary['subtotal'] ?? 0) + (float) ($summary['customization_total'] ?? 0) - (float) ($summary['discount'] ?? 0) + (float) ($summary['tax'] ?? 0), 2);
     $isFirst = $currentStep === 'information';
     $isFinal = $currentStep === 'review';
 @endphp
@@ -51,13 +50,13 @@
         <div><dt>Merchandise subtotal @if($saleSavings > 0)<small>(before offers)</small>@endif</dt><dd>${{ number_format((float) ($summary['subtotal'] ?? 0) + $saleSavings, 2) }}</dd></div>
         @if((float) ($summary['customization_total'] ?? 0) > 0)<div><dt>Customization</dt><dd>${{ number_format((float) $summary['customization_total'], 2) }}</dd></div>@endif
         @if($totalDiscount > 0)<div class="np-checkout__discount-total"><dt>Total discounts</dt><dd>−${{ number_format($totalDiscount, 2) }}</dd></div>@endif
+        @php
+            $productShippingTotal = round((float) ($summary['product_shipping_total'] ?? 0), 2);
+            $additionalShipping = round(max(0, $shipping - $productShippingTotal), 2);
+        @endphp
         @if($isFirst)
-            <div><dt>Shipping</dt><dd class="np-checkout__muted">Calculated next</dd></div>
+            <div><dt>Shipping</dt><dd>${{ number_format((float) ($summary['shipping'] ?? $shipping), 2) }}</dd></div>
         @else
-            @php
-                $productShippingTotal = round((float) ($summary['product_shipping_total'] ?? 0), 2);
-                $additionalShipping = round(max(0, $shipping - $productShippingTotal), 2);
-            @endphp
             @if($productShippingTotal > 0 || $additionalShipping <= 0)
                 <div><dt>Product shipping <small>(itemized above)</small></dt><dd>${{ number_format($productShippingTotal, 2) }}</dd></div>
             @endif
@@ -68,7 +67,7 @@
         @endif
         <div><dt>Estimated tax</dt><dd>${{ number_format((float) ($summary['tax'] ?? 0), 2) }}</dd></div>
     </dl>
-    <div class="np-checkout__summary-total"><strong>{{ $isFirst ? 'Total before shipping (USD)' : 'Total (USD)' }}</strong><strong>${{ number_format($isFirst ? $preShipping : $total, 2) }}</strong></div>
+    <div class="np-checkout__summary-total"><strong>Total (USD)</strong><strong>${{ number_format($total, 2) }}</strong></div>
     @if(($summary['remote_price_missing'] ?? false))
         <div class="np-checkout__form-alert" role="alert">The remote-area delivery charge is missing from the price table. <a href="{{ route('checkout.shipping-address') }}">Review your address</a> or contact support.</div>
     @endif
