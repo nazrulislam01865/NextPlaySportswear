@@ -52,7 +52,7 @@ $iter = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/res
 $count = 0;
 foreach ($iter as $file) {
     if (! $file->isFile() || ! str_ends_with($file->getFilename(), '.blade.php')) continue;
-    if (str_contains($file->getPathname(), '/partials/')) continue;
+    if (str_contains(str_replace('\\', '/', $file->getPathname()), '/partials/')) continue;
     if ($file->getBasename() === 'section.blade.php') continue; // Unavailable page has direct scoped root.
     $body = file_get_contents($file->getPathname());
     $assert(preg_match('/<x-storefront\.account\.(?:page|shell|frame|orders\.page|rewards\.page)\b/', $body) === 1,
