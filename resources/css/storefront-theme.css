@@ -40,12 +40,12 @@
 
 :root {
     /* Approved NextPlay brand foundation. */
-    --np-color-primary: #061F44;
-    --np-color-primary-rgb: 6 31 68;
-    --np-color-primary-hover: #061F44;
+    --np-color-primary: #051e44;
+    --np-color-primary-rgb: 5 30 68;
+    --np-color-primary-hover: #163b68;
     --np-color-secondary: #CF5D38;
     --np-color-secondary-rgb: 207 93 56;
-    --np-color-secondary-hover: #CF5D38;
+    --np-color-secondary-hover: #ad4023;
 
     /* Compatibility names: all active brand identity resolves to the two
        approved brand colors rather than maintaining a legacy palette. */
@@ -56,29 +56,79 @@
 
     /* Supporting semantic neutrals and states. */
     --np-color-heading: var(--np-color-primary);
-    --np-color-body: #334155;
-    --np-color-muted: #64748B;
+    --np-color-body: #26364b;
+    --np-color-muted: #52637a;
     --np-color-page: #FFFFFF;
-    --np-color-soft: #F7F5F2;
-    --np-color-border: #E2E8F0;
-    --np-color-on-dark-muted: #D8E1EC;
-    --np-color-placeholder: #94A3B8;
-    --np-color-success: #15803D;
-    --np-color-warning: #F59E0B;
-    --np-color-error: #DC2626;
+    --np-color-soft: #f5f7fa;
+    --np-color-border: #bac6d5;
+    --np-color-on-dark-muted: #d1dceb;
+    --np-color-placeholder: #66768c;
+    --np-color-success: #187044;
+    --np-color-warning: #8a4b08;
+    --np-color-error: #b42318;
 
     /* Semantic action colors. */
     --np-color-action-primary: var(--np-color-primary);
     --np-color-action-secondary: var(--np-color-secondary);
-    --np-color-link: var(--np-color-primary);
-    --np-color-link-hover: var(--np-color-secondary);
-    --np-color-focus: var(--np-color-secondary);
+    --np-color-link: #a43e20;
+    --np-color-link-hover: var(--np-color-primary);
+    --np-color-focus: #2164c5;
 
     /* One storefront family. Hierarchy comes from weight/size, not a second
        font family. */
-    --np-font-ui: "Expose", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --np-font-ui: "Expose", "Segoe UI", sans-serif;
     --np-font-body: var(--np-font-ui);
     --np-font-heading: var(--np-font-ui);
+
+    /* NextPlay typography template v1.1 - reusable type/color contract.
+       Do not change the existing product-card type scale below. */
+    --nps-font: var(--np-font-ui);
+    --nps-navy: var(--np-color-primary);
+    --nps-orange: var(--np-color-secondary);
+    --nps-orange-hover: var(--np-color-secondary-hover);
+    --nps-text: var(--np-color-body);
+    --nps-muted: var(--np-color-muted);
+    --nps-link: var(--np-color-link);
+    --nps-border: var(--np-color-border);
+    --nps-surface: var(--np-color-page);
+    --nps-soft: var(--np-color-soft);
+    --nps-error: var(--np-color-error);
+    --nps-success: var(--np-color-success);
+    --nps-warning: var(--np-color-warning);
+    --nps-focus: var(--np-color-focus);
+    --nps-inverse: #fff;
+    --nps-inverse-muted: var(--np-color-on-dark-muted);
+    --nps-radius: 8px;
+    --nps-control: 48px;
+
+    --nps-h1: 2.5rem;
+    --nps-h1-mobile: 2rem;
+    --nps-h2: 2rem;
+    --nps-h2-mobile: 1.625rem;
+    --nps-h3: 1.5rem;
+    --nps-h3-mobile: 1.375rem;
+    --nps-h4: 1.25rem;
+    --nps-h5: 1.125rem;
+    --nps-h6: 1rem;
+    --nps-body: 1rem;
+    --nps-body-line-height: 1.6;
+    --nps-lead: 1.125rem;
+    --nps-small: .875rem;
+    --nps-caption: .8125rem;
+    --nps-eyebrow: .75rem;
+    --nps-menu: .9375rem;
+    --nps-button-size: 1rem;
+    --nps-button-weight: 500;
+    /* Homepage category-card scale, shared by category hierarchy cards. 
+       This is deliberately distinct from H4 headings and product cards. */
+    --nps-category-card-title: .96rem;
+    --nps-category-card-title-weight: 800;
+    --nps-category-card-title-line-height: 1.25;
+    --nps-category-card-description: .86rem;
+    --nps-category-card-count: .72rem;
+    --nps-category-card-link: .72rem;
+
+    --nps-footer-link: .875rem;
 
     --np-font-weight-regular: 400;
     --np-font-weight-medium: 500;

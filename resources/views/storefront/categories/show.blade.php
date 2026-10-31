@@ -23,6 +23,7 @@
         }
     @endphp
 
+    <div class="np-category-typography np-category-detail-page">
     <section
         class="np-category-hero relative isolate overflow-hidden text-white {{ filled($categoryBannerImage) ? '' : 'bg-brand-dark' }}"
         @if(blank($categoryBannerImage) && filled($categoryBannerColor)) style="background-color: {{ $categoryBannerColor }};" @endif
@@ -62,15 +63,15 @@
             </nav>
 
             <div class="np-category-hero__content mt-8 max-w-3xl">
-                <h1 class="np-category-hero__title font-display text-4xl font-bold uppercase leading-tight sm:text-6xl lg:text-7xl">{{ $category['title'] }}</h1>
-                <p class="np-category-hero__description mt-5 text-lg leading-8 text-blue-50">{{ html_entity_decode((string) ($category['description'] ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8') }}</p>
+                <h1 class="np-category-hero__title nps-type-h1">{{ $category['title'] }}</h1>
+                <p class="np-category-hero__description np-category-lead mt-5">{{ html_entity_decode((string) ($category['description'] ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8') }}</p>
                 <div class="np-category-hero__actions mt-7 flex flex-wrap gap-3">
                     @if($showsProducts)
-                        <a href="#category-products" class="btn btn-primary">Shop products</a>
+                        <a href="#category-products" class="btn btn-primary np-category-action">Shop products</a>
                     @else
-                        <a href="{{ route('quote.request') }}" class="btn btn-primary">Request a category quote</a>
+                        <a href="{{ route('quote.request') }}" class="btn btn-primary np-category-action">Request a category quote</a>
                     @endif
-                    <a href="{{ route('quote.request') }}" class="btn btn-white">Request Bulk Quote</a>
+                    <a href="{{ route('quote.request') }}" class="btn btn-white np-category-action">Request Bulk Quote</a>
                 </div>
             </div>
         </div>
@@ -80,14 +81,14 @@
         <section class="site-container py-10">
             <div class="flex items-end justify-between">
                 <div>
-                    <p class="text-xs font-black uppercase tracking-[.2em] text-brand-red">Browse deeper</p>
-                    <h2 class="mt-2 font-display text-4xl font-bold uppercase text-brand-ink">Shop by category</h2>
+                    <p class="np-category-eyebrow">Browse deeper</p>
+                    <h2 class="mt-2 nps-type-h2 np-category-section-title">Shop by category</h2>
                 </div>
             </div>
 
             <div class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach($categoryModel->children as $child)
-                    <a href="{{ route('categories.show', $child->slug) }}" class="np-square-card group overflow-hidden border border-slate-200 bg-white shadow-card">
+                    <a href="{{ route('categories.show', $child->slug) }}" class="np-category-child-card np-square-card group overflow-hidden border border-slate-200 bg-white shadow-card">
                         <div class="np-category-square-media relative overflow-hidden" data-card-image-loader>
                             <img
                                 src="{{ $child->thumbnailUrl() }}"
@@ -99,8 +100,8 @@
                             >
                         </div>
                         <div class="p-4">
-                            <strong class="text-brand-ink">{{ $child->name }}</strong>
-                            <p class="mt-1 text-xs text-slate-500">{{ $child->products_count }} products</p>
+                            <strong class="np-category-child-title">{{ $child->name }}</strong>
+                            <p class="np-category-child-description mt-1">{{ $child->products_count }} products</p>
                         </div>
                     </a>
                 @endforeach
@@ -113,7 +114,7 @@
             <div class="site-container np-products-catalog-container" x-data="{ filtersOpen: false }">
                 <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div>
-                        <h2 class="font-display text-4xl font-bold uppercase text-brand-ink">Shop {{ $category['short_title'] }}</h2>
+                        <h2 class="nps-type-h2 np-category-section-title">Shop {{ $category['short_title'] }}</h2>
                     </div>
 
                     <button type="button" class="btn btn-outline w-full sm:w-auto lg:hidden" x-on:click="filtersOpen=true">
@@ -195,12 +196,12 @@
 
     @if($categoryModel->faqs->where('is_active', true)->isNotEmpty())
         <section class="site-container py-12">
-            <h2 class="font-display text-4xl font-bold uppercase text-brand-ink">Frequently Asked Questions</h2>
+            <h2 class="nps-type-h2 np-category-section-title">Frequently Asked Questions</h2>
             <div class="mt-6 grid gap-3">
                 @foreach($categoryModel->faqs->where('is_active', true) as $faq)
                     <details class="rounded-2xl border border-slate-200 bg-white p-5">
-                        <summary class="cursor-pointer font-black text-brand-ink">{{ $faq->question }}</summary>
-                        <div class="prose prose-sm mt-4 max-w-none text-slate-600">{!! $faq->answer_html !!}</div>
+                        <summary class="np-category-faq-question cursor-pointer">{{ $faq->question }}</summary>
+                        <div class="np-category-prose prose mt-4 max-w-none">{!! $faq->answer_html !!}</div>
                     </details>
                 @endforeach
             </div>
@@ -210,8 +211,8 @@
     <section class="bg-[#f3f5f7] py-[66px]" id="sports" aria-labelledby="sports-title">
         <div class="site-container">
             <div class="mb-8 text-center max-sm:text-left">
-                <h2 id="sports-title" class="mt-2 font-display text-[clamp(28px,4vw,42px)] font-bold uppercase leading-[1.05] text-brand-ink">Shop by Sport</h2>
-                <p class="mx-auto mt-2 max-w-[700px] text-slate-500 max-sm:mx-0">Looking for sport-specific uniforms or gear? Start with your sport and find matching products faster.</p>
+                <h2 id="sports-title" class="mt-2 nps-type-h2 np-category-section-title">Shop by Sport</h2>
+                <p class="np-category-section-description mx-auto mt-2 max-w-[700px] max-sm:mx-0">Looking for sport-specific uniforms or gear? Start with your sport and find matching products faster.</p>
             </div>
 
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -221,4 +222,5 @@
             </div>
         </div>
     </section>
+    </div>
 </x-layouts.storefront>

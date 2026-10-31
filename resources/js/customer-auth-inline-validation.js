@@ -1,6 +1,12 @@
 /**
- * Customer auth field validation is inline rather than the browser's native
- * constraint-validation popover. Laravel still validates every POST.
+ * Inline validation for customer sign-in, sign-up email verification and
+ * password recovery. Laravel remains authoritative on every POST.
+ *
+ * Focus changes are not validation attempts: the email input may be focused
+ * automatically when the page opens, and browsers may restore an old value.
+ * Only an attempted submit reveals client errors. Once submitted, editing a
+ * field updates that error immediately. Server errors remain visible until
+ * the user edits the corresponding field.
  */
 export const authFieldError = ({ type = 'text', value = '', required = true }) => {
     const text = String(value).trim();
@@ -19,8 +25,6 @@ export const setupCustomerAuthInlineValidation = () => {
     document.querySelectorAll('form[data-auth-inline-validation]').forEach((form) => {
         if (form.dataset.authInlineValidationReady === 'true') return;
         form.dataset.authInlineValidationReady = 'true';
-        // The Blade forms also declare novalidate so browser bubbles cannot
-        // reappear even before JavaScript initializes.
         form.noValidate = true;
 
         const fields = Array.from(form.querySelectorAll('[data-auth-field]'));
@@ -42,18 +46,19 @@ export const setupCustomerAuthInlineValidation = () => {
         };
 
         fields.forEach((field) => {
-            const error = errorFor(field);
-            field.addEventListener('blur', () => {
-                field.dataset.authTouched = 'true';
-                render(field, true);
-            });
+            // Do not validate on blur, focus, or clicks elsewhere in the form.
+            // In particular, the autofocus input must not display an error
+            // merely because the user moves to the password field.
             field.addEventListener('input', () => {
+                const error = errorFor(field);
                 if (error?.dataset.serverError) delete error.dataset.serverError;
-                render(field, field.dataset.authTouched === 'true' || form.dataset.authSubmitted === 'true');
+                render(field, form.dataset.authSubmitted === 'true');
             });
         });
+
         form.addEventListener('submit', (event) => {
             form.dataset.authSubmitted = 'true';
+            // Do not short-circuit: every invalid field gets its own message.
             const invalid = fields.filter((field) => !render(field, true));
             if (!invalid.length) return;
             event.preventDefault();

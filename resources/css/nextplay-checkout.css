@@ -157,3 +157,197 @@
 .storefront-clean-ui .np-checkout__final-payment { display:grid;gap:16px;margin-top:18px; }
 .storefront-clean-ui .np-checkout__final-payment .np-checkout__check { align-items:flex-start; }
 .storefront-clean-ui .np-checkout__final-payment .nps-error { color:#b42318;font:400 13px/1.5 var(--nps-font); }
+
+
+/* CHECKOUT-ONLY TYPOGRAPHY ALIGNMENT - template v1.1 / 2026-10-31
+ * Uses the existing centralized --nps-* theme contract. The standalone
+ * checkout, referral checkout and confirmation screens are the sole targets.
+ * Important: NO input, select, textarea, checkbox, radio, file, placeholder,
+ * focus, validation-event or control-layout selectors have been introduced.
+ * Existing form elements retain their current visual styles and behavior.
+ */
+.storefront-clean-ui :is(.np-checkout,.np-referral-checkout-page,.np-checkout-success) {
+    --nps-font:var(--np-font-ui);
+    --nps-navy:var(--np-color-primary);
+    --nps-orange:var(--np-color-secondary);
+    --nps-text:var(--np-color-body);
+    --nps-muted:var(--np-color-muted);
+    --nps-link:var(--np-color-link);
+    --nps-error:var(--np-color-error);
+    --nps-success:var(--np-color-success);
+    color:var(--nps-text);
+    font-family:var(--nps-font);
+    font-size:var(--nps-body);
+    line-height:var(--nps-body-line-height);
+}
+/* Heading hierarchy: 40/32 for page title. Form-group headings are 20px,
+   as specified by the supplied Form Design System, rather than using 32px H2
+   inside narrow checkout panels. */
+.storefront-clean-ui .np-checkout .np-checkout__heading h1,
+.storefront-clean-ui .np-referral-checkout-page .np-referral-checkout-top h1,
+.storefront-clean-ui .np-checkout-success h1 {
+    font-family:var(--nps-font);
+    font-size:var(--nps-h1);
+    font-weight:700;
+    line-height:1.15;
+    letter-spacing:-.025em;
+    text-transform:none;
+    color:var(--nps-navy);
+}
+.storefront-clean-ui .np-checkout :is(.np-checkout__card-header h2,.np-checkout__summary-head h2,.np-checkout__subheading),
+.storefront-clean-ui .np-referral-checkout-page :is(.np-referral-checkout-panel h2,.np-referral-checkout-summary > h2,.np-referral-billing-fields h3) {
+    font-family:var(--nps-font);
+    font-size:var(--nps-h4);
+    line-height:1.4;
+    font-weight:700;
+    letter-spacing:0;
+    text-transform:none;
+    color:var(--nps-navy);
+}
+/* The referral summary heading sits on a navy panel: retain inverse text. */
+.storefront-clean-ui .np-referral-checkout-page .np-referral-checkout-summary > h2 {color:var(--nps-inverse);}
+.storefront-clean-ui .np-checkout :is(.np-checkout__card-header p,.np-checkout__subdescription) {
+    font-size:var(--nps-body);
+    line-height:1.6;
+    font-weight:400;
+    color:var(--nps-muted);
+}
+.storefront-clean-ui .np-checkout :is(.np-checkout__breadcrumb,.np-checkout__secure,.np-checkout__step-label,.np-checkout__fine,.np-checkout__secure-footer,.np-checkout__invoice-info,.np-checkout__summary-head span) {
+    font-family:var(--nps-font);
+    font-size:var(--nps-caption);
+    line-height:1.5;
+    color:var(--nps-muted);
+}
+.storefront-clean-ui .np-checkout .np-checkout__breadcrumb a {color:var(--nps-muted);}
+.storefront-clean-ui .np-checkout .np-checkout__breadcrumb a:hover {color:var(--nps-link);}
+.storefront-clean-ui .np-checkout .np-checkout__step.is-active .np-checkout__step-label {color:var(--nps-link);font-weight:700;}
+.storefront-clean-ui .np-checkout .np-checkout__step.is-done .np-checkout__step-label {color:var(--nps-navy);font-weight:500;}
+/* Links: use accessible brand link color, not old bright blue. The completed
+   step circles and filled buttons deliberately keep their contrast colors. */
+.storefront-clean-ui .np-checkout :is(.np-checkout__back,.np-checkout__check a,.np-checkout__summary-head a,.np-checkout__review-head a,.np-checkout__review-item a,.np-checkout__review-item details,.np-checkout__stripe-billing a) {
+    color:var(--nps-link);
+    text-decoration:underline;
+    text-underline-offset:.2em;
+}
+.storefront-clean-ui .np-checkout :is(.np-checkout__back,.np-checkout__check a,.np-checkout__summary-head a,.np-checkout__review-head a,.np-checkout__review-item a,.np-checkout__review-item details,.np-checkout__stripe-billing a):hover {
+    color:var(--nps-navy);
+}
+.storefront-clean-ui .np-checkout .np-checkout__back {font-family:var(--nps-font);font-size:var(--nps-small);font-weight:500;line-height:1.5;}
+.storefront-clean-ui .np-checkout :is(.np-checkout__summary-item strong,.np-checkout__review-head strong,.np-checkout__stripe-head strong,.np-checkout__choice strong) {color:var(--nps-navy);font-weight:700;}
+.storefront-clean-ui .np-checkout .np-checkout__summary-item p {font-size:var(--nps-caption);line-height:1.5;color:var(--nps-muted);}
+.storefront-clean-ui .np-checkout .np-checkout__prices > div {font-size:var(--nps-small);line-height:1.5;}
+.storefront-clean-ui .np-checkout .np-checkout__prices dt {color:var(--nps-muted);}
+.storefront-clean-ui .np-checkout .np-checkout__prices dd {color:var(--nps-navy);font-weight:500;}
+.storefront-clean-ui .np-checkout .np-checkout__summary-total {font-size:var(--nps-h4);line-height:1.4;color:var(--nps-navy);}
+.storefront-clean-ui .np-checkout .np-checkout__summary-total strong {font-weight:700;}
+.storefront-clean-ui .np-checkout :is(.np-checkout__review-group p,.np-checkout__stripe > p,.np-checkout__stripe-billing p) {color:var(--nps-muted);font-size:var(--nps-small);line-height:1.5;}
+.storefront-clean-ui .np-checkout :is(.np-checkout__notice p,.np-checkout__secure-footer,.np-checkout__stripe-foot) {color:var(--nps-muted);font-size:var(--nps-caption);line-height:1.5;}
+.storefront-clean-ui .np-checkout :is(.np-checkout__info > span,.np-checkout__pin,.np-checkout__delivery svg) {color:var(--nps-link);}
+.storefront-clean-ui .np-checkout .np-checkout__status {color:var(--nps-success);}
+.storefront-clean-ui .np-checkout :is(.np-checkout__alert,.np-checkout__remote-error,.nps-error) {color:var(--nps-error);}
+.storefront-clean-ui .np-checkout .np-checkout__remote-success {color:var(--nps-success);}
+/* Stripe branding is a label; align its displayed typography to the supplied
+   palette without altering Stripe checkout or hosted elements. */
+.storefront-clean-ui .np-checkout :is(.np-checkout__stripe-brand,.np-checkout__stripe-foot strong) {color:var(--nps-navy);font-weight:700;}
+.storefront-clean-ui .np-checkout .np-checkout__stripe-brand {font-size:var(--nps-h3);line-height:1.3;}
+.storefront-clean-ui .np-checkout .np-checkout__stripe-foot strong {font-size:var(--nps-lead);}
+/* Primary checkout actions are text buttons, 16/500, min 48px per template.
+   The form controls themselves are intentionally NOT included. */
+.storefront-clean-ui .np-checkout .np-checkout__button,
+.storefront-clean-ui .np-checkout :is(a.btn,button.btn),
+.storefront-clean-ui .np-referral-checkout-page :is(a.btn,button.btn),
+.storefront-clean-ui .np-checkout-success :is(a.btn,button.btn) {
+    font-family:var(--nps-font);
+    font-size:var(--nps-button-size);
+    font-weight:var(--nps-button-weight);
+    line-height:1.4;
+    text-transform:none;
+    letter-spacing:0;
+    min-height:48px;
+}
+.storefront-clean-ui .np-checkout .np-checkout__button:not(.np-checkout__button--outline) {color:#fff;}
+.storefront-clean-ui .np-checkout .np-checkout__button--outline {color:var(--nps-navy);}
+/* Legacy optional shipping-method choice cards have Tailwind presentation
+   utilities; normalize only their textual content and action links. */
+.storefront-clean-ui .np-checkout .np-checkout__card h3 {font-family:var(--nps-font);font-size:var(--nps-h4);font-weight:700;line-height:1.4;color:var(--nps-navy);text-transform:none;letter-spacing:0;}
+.storefront-clean-ui .np-checkout .np-checkout__card .font-black {font-weight:700;}
+.storefront-clean-ui .np-checkout .np-checkout__card .font-semibold {font-weight:500;}
+.storefront-clean-ui .np-checkout .np-checkout__card :is(.text-slate-500,.text-slate-600,.text-blue-500) {color:var(--nps-muted);}
+.storefront-clean-ui .np-checkout .np-checkout__card :is(.text-slate-700,.text-brand-ink,.text-brand-navy) {color:var(--nps-navy);}
+.storefront-clean-ui .np-checkout .np-checkout__card :is(.text-red-800,.text-red-700) {color:var(--nps-error);}
+.storefront-clean-ui .np-checkout .np-checkout__card :is(.text-amber-700,.text-amber-900,.text-amber-950) {color:var(--nps-warning);}
+.storefront-clean-ui .np-checkout .np-checkout__card .text-blue-700 {color:var(--nps-link);}
+.storefront-clean-ui .np-checkout .np-checkout__card :is(.text-xs,.text-\[10px\],.text-\[11px\]) {font-size:var(--nps-caption);line-height:1.5;}
+.storefront-clean-ui .np-checkout .np-checkout__card .text-sm {font-size:var(--nps-small);line-height:1.5;}
+.storefront-clean-ui .np-checkout .np-checkout__card .text-lg {font-size:var(--nps-lead);line-height:1.4;}
+.storefront-clean-ui .np-checkout .np-checkout__card .text-2xl {font-size:var(--nps-h3);line-height:1.3;}
+/* Referral checkout is a separate Blade layout. Text-only selectors preserve
+   its original field input geometry, autofill, validation and event handlers. */
+.storefront-clean-ui .np-referral-checkout-page :is(.np-referral-breadcrumb,.np-referral-checkout-summary__title) {font-size:var(--nps-caption);line-height:1.5;color:var(--nps-muted);}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-breadcrumb a {color:var(--nps-muted);text-decoration:none;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-breadcrumb a:hover {color:var(--nps-link);text-decoration:underline;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-breadcrumb strong {color:var(--nps-navy);font-weight:500;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-order-step {color:var(--nps-muted);font-size:var(--nps-caption);line-height:1.5;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-order-step strong {font-weight:500;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-order-step.is-current strong {color:var(--nps-navy);font-weight:700;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-checkout-panel__heading p {font-size:var(--nps-body);line-height:1.6;color:var(--nps-muted);font-weight:400;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-checkout-panel__heading > span {font-size:var(--nps-caption);line-height:1.5;color:var(--nps-muted);font-weight:400;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-field {font-family:var(--nps-font);font-size:var(--nps-small);line-height:1.5;font-weight:500;color:var(--nps-navy);}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-field > span {color:var(--nps-error);}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-field > small {font-size:var(--nps-caption);line-height:1.5;color:var(--nps-muted);font-weight:400;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-card-visual label {font-family:var(--nps-font);font-size:var(--nps-small);font-weight:500;color:var(--nps-navy);}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-card-visual p {font-size:var(--nps-caption);line-height:1.5;color:var(--nps-muted);}
+.storefront-clean-ui .np-referral-checkout-page :is(.np-referral-choice,.np-referral-payment-choice) {color:var(--nps-text);font-size:var(--nps-small);line-height:1.5;}
+.storefront-clean-ui .np-referral-checkout-page :is(.np-referral-choice strong,.np-referral-payment-choice strong) {color:var(--nps-navy);font-size:var(--nps-small);font-weight:700;}
+.storefront-clean-ui .np-referral-checkout-page :is(.np-referral-choice small,.np-referral-payment-choice small) {color:var(--nps-muted);font-size:var(--nps-caption);font-weight:400;line-height:1.5;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-choice b {font-size:var(--nps-small);font-weight:700;}
+.storefront-clean-ui .np-referral-checkout-page :is(.np-referral-review-panel__actions > a,.np-referral-checkout-summary__title a,.np-referral-summary-row a) {font-size:var(--nps-small);line-height:1.5;font-weight:500;color:var(--nps-link);text-underline-offset:.2em;}
+.storefront-clean-ui .np-referral-checkout-page :is(.np-referral-review-panel__actions > a,.np-referral-checkout-summary__title a,.np-referral-summary-row a):hover {color:var(--nps-navy);}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-summary-row {color:var(--nps-text);font-size:var(--nps-small);line-height:1.5;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-summary-row strong {color:var(--nps-navy);font-size:var(--nps-body);font-weight:700;line-height:1.4;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-summary-row--reward strong {color:var(--nps-success);}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-summary-row small {color:var(--nps-muted);font-size:var(--nps-caption);line-height:1.5;font-weight:400;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-summary-total {color:var(--nps-navy);font-size:var(--nps-body);line-height:1.4;font-weight:700;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-summary-total strong {color:var(--nps-navy);font-size:var(--nps-h3);font-weight:700;line-height:1.3;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-summary-total span small {color:var(--nps-muted);font-size:var(--nps-caption);line-height:1.5;font-weight:400;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-summary-info {color:var(--nps-text);}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-summary-info svg {color:var(--nps-link);}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-summary-info p {font-size:var(--nps-small);line-height:1.5;color:var(--nps-muted);}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-checkout-mini-item strong {color:var(--nps-navy);font-size:var(--nps-small);font-weight:500;line-height:1.4;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-checkout-mini-item p {color:var(--nps-muted);font-size:var(--nps-caption);line-height:1.5;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-checkout-mini-item b {color:var(--nps-navy);font-size:var(--nps-body);font-weight:700;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-support-grid > div {color:var(--nps-text);font-size:var(--nps-caption);font-weight:500;line-height:1.5;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-payment-unavailable {color:var(--nps-error);font-size:var(--nps-small);line-height:1.5;font-weight:400;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-form-alert {color:var(--nps-error);font-size:var(--nps-small);line-height:1.5;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-form-alert--success {color:var(--nps-success);}
+/* The order-success page is a separate checkout route. */
+.storefront-clean-ui .np-checkout-success .np-checkout-success__eyebrow {font-size:var(--nps-eyebrow);font-weight:700;line-height:1.5;letter-spacing:.1em;text-transform:uppercase;color:var(--nps-link);}
+.storefront-clean-ui .np-checkout-success p:not(.np-checkout-success__eyebrow) {font-size:var(--nps-body);font-weight:400;line-height:1.6;color:var(--nps-muted);}
+.storefront-clean-ui .np-checkout-success .np-checkout-success__order-details span {font-size:var(--nps-small);font-weight:500;line-height:1.5;color:var(--nps-muted);}
+.storefront-clean-ui .np-checkout-success .np-checkout-success__order-details strong {font-size:var(--nps-small);font-weight:700;line-height:1.5;color:var(--nps-navy);}
+.storefront-clean-ui .np-checkout-success :is(.btn-primary,.btn-primary:hover) {background:var(--nps-navy);color:#fff;}
+.storefront-clean-ui .np-checkout-success .btn-outline {background:#fff;color:var(--nps-navy);border-color:var(--nps-border);}
+.storefront-clean-ui .np-checkout-success .btn-outline:hover {background:var(--nps-soft);color:var(--nps-navy);}
+@media(max-width:640px) {
+    .storefront-clean-ui .np-checkout .np-checkout__heading h1,
+    .storefront-clean-ui .np-referral-checkout-page .np-referral-checkout-top h1,
+    .storefront-clean-ui .np-checkout-success h1 {font-size:var(--nps-h1-mobile);}
+    .storefront-clean-ui .np-referral-checkout-page .np-referral-checkout-panel__heading--row {flex-wrap:wrap;gap:6px 16px;}
+}
+/* Specificity: shipping-card h3 text role outranks its legacy text-lg utility. */
+.storefront-clean-ui .np-checkout .np-checkout__card h3.text-lg {font-size:var(--nps-h4);line-height:1.4;}
+/* The referral review checkbox label is text, not a form-control override. */
+.storefront-clean-ui .np-referral-checkout-page .np-referral-review-panel .np-referral-check {font-family:var(--nps-font);font-size:var(--nps-small);font-weight:400;line-height:1.5;color:var(--nps-text);}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-review-panel .np-referral-check a {color:var(--nps-link);text-decoration:underline;text-underline-offset:.2em;}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-review-panel .np-referral-check a:hover {color:var(--nps-navy);}
+/* Final referral action is this form's primary CTA: the form template uses navy. */
+.storefront-clean-ui .np-referral-checkout-page .np-referral-review-panel__actions button.btn-secondary {
+    background:var(--nps-navy);
+    color:#fff;
+    border-color:var(--nps-navy);
+}
+.storefront-clean-ui .np-referral-checkout-page .np-referral-review-panel__actions button.btn-secondary:hover:not(:disabled) {
+    background:var(--np-color-primary-hover);
+    color:#fff;
+    border-color:var(--np-color-primary-hover);
+}

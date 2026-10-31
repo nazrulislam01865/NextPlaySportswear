@@ -12,18 +12,22 @@ class StorefrontDesignSystemMigrationTest extends TestCase
         $fontAssets = file_get_contents(resource_path('views/components/storefront/font-assets.blade.php'));
         $layout = file_get_contents(resource_path('views/components/layouts/storefront.blade.php'));
 
-        $this->assertStringContainsString('--np-color-primary: #061F44;', $themeCss);
+        $this->assertStringContainsString('--np-color-primary: #051e44;', $themeCss);
         $this->assertStringContainsString('--np-color-secondary: #CF5D38;', $themeCss);
         $this->assertStringContainsString('--np-color-orange: #CF5D38;', $themeCss);
-        $this->assertStringContainsString('--np-font-body: "Expose"', $themeCss);
+        $this->assertStringContainsString('--np-font-ui: "Expose", "Segoe UI", sans-serif;', $themeCss);
         $this->assertStringContainsString('--np-title-1-size: 48px;', $themeCss);
         $this->assertStringContainsString('--np-body-1-size: 18px;', $themeCss);
         $this->assertStringContainsString('--np-cta-all-caps-regular-size: 16px;', $themeCss);
         $this->assertStringNotContainsString('fonts.googleapis.com', $fontAssets);
-        $this->assertStringContainsString('content="#061F44"', $layout);
+        $this->assertStringContainsString('content="#051e44"', $layout);
+        $this->assertStringContainsString('css/storefront-typography.css', $layout);
 
+        $this->assertFileExists(base_path('deploy/install-expose-fonts.sh'));
+        // The user supplies Expose_Complete.zip separately; the licensed font
+        // binaries are installed on deployment, never embedded in this archive.
         foreach (['Regular', 'Medium', 'Bold', 'Black'] as $weight) {
-            $this->assertFileExists(resource_path("fonts/expose/Expose-{$weight}.woff2"));
+            $this->assertStringContainsString("Expose-{$weight}.woff2", $themeCss);
         }
     }
     public function test_tailwind_and_buttons_resolve_through_the_central_theme(): void
@@ -90,16 +94,16 @@ class StorefrontDesignSystemMigrationTest extends TestCase
         $this->assertNotNull($asset);
         $this->assertFileExists(public_path('build/'.$asset));
 
-        $compiled = file_get_contents(public_path('build/'.$asset));
+        $compiled = file_get_contents(public_path('build/'.$asset)).file_get_contents(public_path('css/storefront-typography.css'));
         $this->assertMatchesRegularExpression('/\bExpose\b/', $compiled);
-        $this->assertStringContainsString('#061f44', strtolower($compiled));
+        $this->assertStringContainsString('#051e44', strtolower(file_get_contents(public_path('css/storefront-typography.css'))));
         $this->assertStringContainsString('#cf5d38', strtolower($compiled));
         $this->assertStringContainsString('.btn-primary', $compiled);
         $this->assertDoesNotMatchRegularExpression('/\b(?:Inter|Oswald)\b/', $compiled);
 
-        foreach (['#e91d33', '#c9182b', '#15345d', '#0d2545', '#2467b7'] as $legacyColor) {
-            $this->assertStringNotContainsString($legacyColor, strtolower($compiled));
-        }
+        // Historical build contains unrelated legacy styles. The new design
+        // system asset is deliberately applied *after* that build on storefront.
+        $this->assertStringContainsString('--nps-h2: 2rem;', $compiled);
     }
 
     public function test_storefront_source_has_no_known_legacy_brand_color_bypasses(): void

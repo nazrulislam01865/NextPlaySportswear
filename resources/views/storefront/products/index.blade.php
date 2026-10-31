@@ -5,6 +5,7 @@
         $catalogBannerHasCustomBackground = filled($catalogBannerImage) || filled($catalogBannerColor);
     @endphp
 
+    <div class="np-category-typography np-products-typography np-products-index-page">
     <section
         class="relative isolate overflow-hidden py-14 text-white sm:py-16 {{ $catalogBannerHasCustomBackground ? 'bg-brand-dark' : 'bg-gradient-to-br from-brand-navy via-brand-dark to-brand-blue' }}"
         @if(filled($catalogBannerColor)) style="background-color: {{ $catalogBannerColor }};" @endif
@@ -21,9 +22,9 @@
         @endif
 
         <div class="site-container">
-            <p class="text-xs font-black uppercase tracking-[.2em] text-red-100">NextPlay catalog</p>
-            <h1 class="mt-3 font-display text-4xl font-bold uppercase leading-tight tracking-tight sm:text-5xl lg:text-6xl">Products</h1>
-            <p class="mt-4 max-w-2xl text-base leading-7 text-blue-50">Find sportswear and team gear by category, sport, color, material, customization, quantity, price, and rating.</p>
+            <p class="np-category-eyebrow np-category-eyebrow--inverse">NextPlay catalog</p>
+            <h1 class="np-category-page-title np-category-inverse-title mt-3">Products</h1>
+            <p class="np-category-inverse-description mt-4 max-w-2xl">Find sportswear and team gear by category, sport, color, material, customization, quantity, price, and rating.</p>
         </div>
     </section>
 
@@ -31,7 +32,7 @@
         <div class="site-container np-products-catalog-container" x-data="catalogFilterDrawer()" @resize.window="if (window.innerWidth >= 1024) filtersOpen = false">
             <div class="np-catalog-page__heading mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                    <h2 class="font-display text-4xl font-bold uppercase tracking-tight text-brand-ink">
+                    <h2 class="nps-type-h2 np-category-section-title">
                         {{ filled($filters['tag']) ? 'Tag: '.$filters['tag'] : (filled($filters['q']) ? 'Search: '.$filters['q'] : ($hasFilters ? 'Filtered Products' : 'All Products')) }}
                     </h2>
                 </div>
@@ -108,4 +109,5 @@
             </div>
         </div>
     </section>
+    </div>
 </x-layouts.storefront>
