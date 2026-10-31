@@ -13,6 +13,7 @@
         .np-legal-document {
             font-family: var(--nps-font, "Expose", system-ui, sans-serif);
             color: var(--nps-text, #26364b);
+            margin-inline: auto;
         }
         .np-legal-document .nps-breadcrumb {
             font-size: 0.8125rem;
@@ -136,7 +137,7 @@
 
     <div class="bg-white py-8 sm:py-12 lg:py-14">
         <div class="site-container">
-            <div class="np-legal-document max-w-3xl">
+            <div class="np-legal-document max-w-3xl mx-auto">
                 {{-- Breadcrumb --}}
                 <nav class="nps-breadcrumb" aria-label="Breadcrumb">
                     <ol>

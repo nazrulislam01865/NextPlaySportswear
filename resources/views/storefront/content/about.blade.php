@@ -72,8 +72,9 @@
         }
         .np-about-card__img {
             width: 100%;
-            height: 200px;
+            aspect-ratio: 16 / 10;
             object-fit: cover;
+            object-position: center;
             display: block;
         }
         .np-about-card__body {
@@ -95,6 +96,14 @@
             color: var(--nps-muted, #52637a);
             margin: 0;
         }
+        .np-about-what-we-do {
+            margin-top: 1.5rem;
+        }
+        .np-about-what-we-do h2 {
+            margin-top: 0;
+            margin-bottom: 2.25rem;
+            line-height: 1.2;
+        }
         .np-about-testimonial-band {
             background-color: #f0f4f9;
             width: 100vw;
@@ -104,6 +113,15 @@
             margin-left: -50vw;
             margin-right: -50vw;
             padding: 4rem 1rem;
+            margin-top: 3.5rem !important;
+            margin-bottom: 4rem !important;
+        }
+        .np-about-gallery-section h2 {
+            margin-top: 0;
+            margin-bottom: 1.75rem;
+        }
+        .np-about-bottom-cta {
+            margin-top: 4.5rem;
         }
         .np-about-gallery-grid {
             display: grid;
@@ -113,34 +131,43 @@
         .np-about-gallery-item {
             border-radius: 0.75rem;
             overflow: hidden;
-            aspect-ratio: 4 / 3;
+            aspect-ratio: 16 / 9;
             background: #f1f5f9;
         }
         .np-about-gallery-item img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            object-position: center;
             display: block;
             transition: transform 0.3s ease;
         }
         .np-about-gallery-item:hover img {
             transform: scale(1.03);
         }
-        .np-about-btn-terracotta {
-            background-color: var(--nps-link, #a43e20);
-            color: #ffffff;
+        .nps-site a.np-about-btn-terracotta,
+        .np-about-redesign .np-about-btn-terracotta,
+        .np-about-btn-terracotta,
+        .np-about-btn-terracotta span {
+            background-color: #d2532f !important;
+            color: #ffffff !important;
+            text-decoration: none !important;
             font-weight: 500;
             padding: 0.75rem 1.75rem;
-            border-radius: 0.75rem;
+            border-radius: 0.5rem;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 0.5rem;
-            text-decoration: none;
             transition: background-color 0.15s ease;
         }
-        .np-about-btn-terracotta:hover {
-            background-color: #8c3218;
-            color: #ffffff;
+        .nps-site a.np-about-btn-terracotta:hover,
+        .np-about-redesign .np-about-btn-terracotta:hover,
+        .np-about-btn-terracotta:hover,
+        .np-about-btn-terracotta:hover span {
+            background-color: #b84324 !important;
+            color: #ffffff !important;
+            text-decoration: none !important;
         }
         .np-about-btn-outline {
             border: 1px solid var(--nps-link, #a43e20);
@@ -159,7 +186,25 @@
             background-color: #fff2ec;
             color: var(--nps-link, #a43e20);
         }
+        .sr-only {
+            display: none !important;
+            visibility: hidden !important;
+        }
         @media (max-width: 820px) {
+            .np-about-what-we-do {
+                margin-top: 1.25rem;
+            }
+            .np-about-what-we-do h2 {
+                margin-bottom: 1.75rem;
+            }
+            .np-about-testimonial-band {
+                margin-top: 2.5rem !important;
+                margin-bottom: 2.5rem !important;
+                padding: 2.5rem 1rem;
+            }
+            .np-about-bottom-cta {
+                margin-top: 3rem;
+            }
             .np-about-gallery-grid {
                 grid-template-columns: repeat(2, 1fr);
                 gap: 0.75rem;
@@ -203,7 +248,7 @@
                         <img
                             src="{{ data_get($about, 'introduction.image_url') ?: asset('images/storefront/about/team-intro.webp') }}"
                             alt="{{ data_get($about, 'introduction.image_alt', 'Athletes wearing NextPlay sportswear') }}"
-                            class="w-full h-auto object-cover display-block"
+                            class="w-full h-auto object-cover block"
                             width="520"
                             height="258"
                             fetchpriority="high"
@@ -214,15 +259,15 @@
             </section>
 
             {{-- 3. WHAT WE DO (3-Card Grid) --}}
-            <section class="mt-14 sm:mt-20" aria-labelledby="about-what-we-do-title">
-                <h2 id="about-what-we-do-title" class="text-xl sm:text-2xl font-bold text-[#051e44] tracking-tight mb-6 sm:mb-8">
+            <section class="np-about-what-we-do" aria-labelledby="about-what-we-do-title">
+                <h2 id="about-what-we-do-title" class="text-xl sm:text-2xl font-bold text-[#051e44] tracking-tight">
                     {{ data_get($about, 'what_we_do.title', 'WHAT WE DO') }}
                 </h2>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
                     {{-- Card 1: Custom Teamwear --}}
                     <article class="np-about-card">
                         <img
-                            src="{{ asset('images/storefront/about/what-we-do-teamwear.png') }}"
+                            src="{{ asset('images/storefront/about/what-we-do-teamwear.webp') }}"
                             alt="Custom Teamwear - jerseys hanging on rack"
                             class="np-about-card__img"
                             loading="lazy"
@@ -237,7 +282,7 @@
                     {{-- Card 2: Sportswear & Gear --}}
                     <article class="np-about-card">
                         <img
-                            src="{{ asset('images/storefront/about/what-we-do-gear.png') }}"
+                            src="{{ asset('images/storefront/about/what-we-do-gear.webp') }}"
                             alt="Sportswear and gear accessories"
                             class="np-about-card__img"
                             loading="lazy"
@@ -252,7 +297,7 @@
                     {{-- Card 3: Bulk Orders --}}
                     <article class="np-about-card">
                         <img
-                            src="{{ asset('images/storefront/about/what-we-do-bulk.png') }}"
+                            src="{{ asset('images/storefront/about/what-we-do-bulk.webp') }}"
                             alt="Bulk orders packaged for shipment"
                             class="np-about-card__img"
                             loading="lazy"
@@ -268,7 +313,7 @@
         </div>
 
         {{-- 4. What our customers say (Testimonial Band) --}}
-        <section class="np-about-testimonial-band my-14 sm:my-20" aria-label="Customer Testimonials">
+        <section class="np-about-testimonial-band" aria-label="Customer Testimonials">
             <div class="site-container mx-auto px-4 max-w-4xl text-center">
                 <h2 class="text-2xl sm:text-3xl font-bold text-[#051e44] tracking-tight mb-4">
                     What our customers say
@@ -319,8 +364,8 @@
 
         <div class="site-container">
             {{-- 5. A closer look at NextPlay (8-Photo Gallery) --}}
-            <section aria-labelledby="about-gallery-title">
-                <h2 id="about-gallery-title" class="text-xl sm:text-2xl font-bold text-[#051e44] tracking-tight mb-6 sm:mb-8">
+            <section class="np-about-gallery-section" aria-labelledby="about-gallery-title">
+                <h2 id="about-gallery-title" class="text-xl sm:text-2xl font-bold text-[#051e44] tracking-tight">
                     A closer look at NextPlay
                 </h2>
 
@@ -341,16 +386,16 @@
 
                     {{-- Row 2 --}}
                     <figure class="np-about-gallery-item m-0">
-                        <img src="{{ asset('images/storefront/about/gallery-embroidery.png') }}" alt="Embroidery machine stitching custom team crest" loading="lazy" decoding="async">
+                        <img src="{{ asset('images/storefront/about/gallery-embroidery.webp') }}" alt="Embroidery machine stitching custom team crest" loading="lazy" decoding="async">
                     </figure>
                     <figure class="np-about-gallery-item m-0">
-                        <img src="{{ asset('images/storefront/about/gallery-merch.png') }}" alt="NextPlay custom caps and sports duffle bag" loading="lazy" decoding="async">
+                        <img src="{{ asset('images/storefront/about/gallery-merch.webp') }}" alt="NextPlay custom caps and sports duffle bag" loading="lazy" decoding="async">
                     </figure>
                     <figure class="np-about-gallery-item m-0">
-                        <img src="{{ asset('images/storefront/about/gallery-cutting.png') }}" alt="Precision fabric cutting for sportswear" loading="lazy" decoding="async">
+                        <img src="{{ asset('images/storefront/about/gallery-cutting.webp') }}" alt="Precision fabric cutting for sportswear" loading="lazy" decoding="async">
                     </figure>
                     <figure class="np-about-gallery-item m-0">
-                        <img src="{{ asset('images/storefront/about/gallery-packaged.png') }}" alt="Packaged custom jerseys ready for delivery" loading="lazy" decoding="async">
+                        <img src="{{ asset('images/storefront/about/gallery-packaged.webp') }}" alt="Packaged custom jerseys ready for delivery" loading="lazy" decoding="async">
                     </figure>
                 </div>
 
@@ -363,7 +408,7 @@
             </section>
 
             {{-- 6. Bottom Call to Action Banner --}}
-            <section class="mt-14 sm:mt-20 pt-10 sm:pt-14 pb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 border-t border-slate-200/80" aria-labelledby="about-contact-cta-title">
+            <section class="np-about-bottom-cta pt-10 sm:pt-14 pb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 border-t border-slate-200/80" aria-labelledby="about-contact-cta-title">
                 <div>
                     <h2 id="about-contact-cta-title" class="text-2xl sm:text-3xl font-bold text-[#051e44] tracking-tight">
                         Let&rsquo;s talk about your next order.
@@ -372,16 +417,20 @@
                         Need help with products, customisation or quantities? Our team is here to help.
                     </p>
                 </div>
-                <a href="{{ route('contact') }}" class="np-about-btn-terracotta flex-shrink-0">
-                    <span>Contact Us</span>
-                    <span aria-hidden="true">&rarr;</span>
+                <a
+                    href="{{ route('contact') }}"
+                    class="np-about-btn-terracotta flex-shrink-0"
+                    style="background-color: #d2532f !important; color: #ffffff !important; text-decoration: none !important;"
+                >
+                    <span style="color: #ffffff !important; font-weight: 500;">Contact Us</span>
+                    <span aria-hidden="true" style="color: #ffffff !important;">&rarr;</span>
                 </a>
             </section>
         </div>
     </div>
 
     {{-- Accessible semantic contract bindings for CMS management & tests --}}
-    <div class="sr-only" aria-hidden="true">
+    <div class="sr-only" aria-hidden="true" style="display: none !important;">
         <h2>{{ data_get($about, 'hero.title') }}</h2>
         <div class="np-about-services-grid">
             @foreach(data_get($about, 'what_we_do.cards', []) as $card)
