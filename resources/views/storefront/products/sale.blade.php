@@ -1,18 +1,18 @@
 <x-layouts.storefront :seo="$seo">
-    <section class="relative isolate overflow-hidden bg-gradient-to-br from-brand-navy via-brand-dark to-brand-blue py-14 text-white sm:py-16">
+    <section class="np-products-typography np-products-sale-page np-products-sale-hero relative isolate overflow-hidden bg-gradient-to-br from-brand-navy via-brand-dark to-brand-blue py-14 text-white sm:py-16">
         <div class="site-container">
-            <p class="text-xs font-black uppercase tracking-[.2em] text-red-100">NextPlay catalog</p>
-            <h1 class="mt-3 font-display text-4xl font-bold uppercase leading-tight tracking-tight sm:text-5xl lg:text-6xl">Sale</h1>
-            <p class="mt-4 max-w-2xl text-base leading-7 text-blue-50">Shop discounted teamwear and sports apparel. Customizable jerseys, shorts, training gear and more at special prices.</p>
+            <p class="np-products-sale-eyebrow text-xs font-black uppercase tracking-[.2em] text-red-100">NextPlay catalog</p>
+            <h1 class="np-products-sale-title mt-3 font-display text-4xl font-bold uppercase leading-tight tracking-tight sm:text-5xl lg:text-6xl">Sale</h1>
+            <p class="np-products-sale-lead mt-4 max-w-2xl text-base leading-7 text-blue-50">Shop discounted teamwear and sports apparel. Customizable jerseys, shorts, training gear and more at special prices.</p>
         </div>
     </section>
 
-    <section class="section-padding bg-slate-50 np-catalog-page np-sale-page">
+    <section class="np-products-typography section-padding bg-slate-50 np-catalog-page np-sale-page">
         <div class="site-container np-products-catalog-container" x-data="catalogFilterDrawer()" @resize.window="if (window.innerWidth >= 1024) filtersOpen = false">
             <div class="np-catalog-page__heading mb-5 flex items-end justify-between gap-4 lg:hidden">
                 <div>
-                    <h2 class="font-display text-4xl font-bold uppercase tracking-tight text-brand-ink">Sale Products</h2>
-                    <p class="mt-2 text-sm font-semibold text-slate-500">{{ number_format($saleResultCount) }} results</p>
+                    <h2 class="np-products-sale-heading font-display text-4xl font-bold uppercase tracking-tight text-brand-ink">Sale Products</h2>
+                    <p class="np-products-result-count mt-2 text-sm font-semibold text-slate-500">{{ number_format($saleResultCount) }} results</p>
                 </div>
                 <button type="button" class="btn btn-outline np-filter-mobile-open" x-on:click="filtersOpen=true" :aria-expanded="filtersOpen" aria-controls="sale-filter-drawer">
                     <span>Filters</span>
@@ -23,8 +23,8 @@
             <div class="np-product-layout has-filters grid gap-4">
                 <aside class="np-filter-shell np-filter-shell--clean hidden self-start lg:flex lg:flex-col">
                     <div class="mb-5">
-                        <h2 class="font-display text-3xl font-bold uppercase tracking-tight text-brand-ink">Sale Products</h2>
-                        <p class="mt-2 text-sm font-semibold text-slate-500">{{ number_format($saleResultCount) }} results</p>
+                        <h2 class="np-products-sale-heading font-display text-3xl font-bold uppercase tracking-tight text-brand-ink">Sale Products</h2>
+                        <p class="np-products-result-count mt-2 text-sm font-semibold text-slate-500">{{ number_format($saleResultCount) }} results</p>
                     </div>
 
                     <x-storefront.product.category-filter-panel

@@ -79,3 +79,15 @@ ADMIN_PASSWORD="use-a-long-unique-password"
 ## Performance deployment
 
 The project uses Redis for application cache and sessions, direct Nginx delivery for public media, and long-lived browser caching for Vite assets. See [PERFORMANCE_LOADING_UPDATE.md](PERFORMANCE_LOADING_UPDATE.md) and the Nginx files under `deploy/nginx/` before production deployment.
+
+## Storefront typography template (October 2026)
+
+The homepage, shared header and footer now use the centralized **NextPlay Typography v1.1** system (Expose primary, Segoe UI secondary) without changing canonical product-card typography. See [`docs/NEXTPLAY_TYPOGRAPHY_IMPLEMENTATION.md`](docs/NEXTPLAY_TYPOGRAPHY_IMPLEMENTATION.md) for type scale, color palette, and deployment.
+
+**Mandatory once per environment:** install the original font files from the separately supplied archive before using the storefront:
+
+```bash
+bash deploy/install-expose-fonts.sh '/path/to/Expose_Complete.zip'
+```
+
+All four WOFF2 files must be present in `public/fonts/expose/` on production. To regenerate the deployable CSS from the two central source files without Node/Vite, run `python3 deploy/build-storefront-typography.py`. This patch requires **no migration, database change, or backend adjustment**.

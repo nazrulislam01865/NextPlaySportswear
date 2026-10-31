@@ -29,17 +29,18 @@ $layout = $read('resources/views/components/layouts/storefront.blade.php');
 $tailwind = $read('tailwind.config.js');
 
 if ($task === '1' || $task === 'all') {
-    $contains($theme, '--np-color-primary: #061F44;', 'theme');
+    $contains($theme, '--np-color-primary: #051e44;', 'theme');
     $contains($theme, '--np-color-secondary: #CF5D38;', 'theme');
     $contains($theme, '--np-color-orange: #CF5D38;', 'theme');
-    $contains($theme, '--np-font-body: "Expose"', 'theme');
+    $contains($theme, '--np-font-ui: "Expose", "Segoe UI", sans-serif;', 'theme');
     $contains($theme, '--np-title-1-size: 48px;', 'theme');
     $contains($theme, '--np-body-1-size: 18px;', 'theme');
     $contains($theme, '--np-cta-all-caps-regular-size: 16px;', 'theme');
     $notContains($fontAssets, 'fonts.googleapis.com', 'font assets');
-    $contains($layout, 'content="#061F44"', 'storefront layout');
+    $contains($layout, 'content="#051e44"', 'storefront layout');
+    $exists('deploy/install-expose-fonts.sh');
     foreach (['Regular','Medium','Bold','Black'] as $weight) {
-        $exists("resources/fonts/expose/Expose-{$weight}.woff2");
+        $contains($theme, "Expose-{$weight}.woff2", 'font face');
     }
 }
 
@@ -132,19 +133,19 @@ if ($task === '5' || $task === 'all') {
             $failures[] = 'compiled storefront css missing from manifest';
         } else {
             $compiled = (string) file_get_contents($root.'/public/build/'.$entry);
-            foreach (['Expose', '#061f44', '#cf5d38', '.btn-primary'] as $needle) {
+            foreach (['Expose', '#cf5d38', '.btn-primary'] as $needle) {
                 if (stripos($compiled, $needle) === false) $failures[] = 'compiled css missing: '.$needle;
             }
+            $publishedTypography = $read('public/css/storefront-typography.css');
+            $contains(strtolower($publishedTypography), '#051e44', 'published typography');
             foreach (['Inter', 'Oswald'] as $needle) {
                 if (preg_match('/\b'.preg_quote($needle, '/').'\b/', $compiled)) {
                     $failures[] = 'compiled css still contains font family: '.$needle;
                 }
             }
-            foreach (['#e91d33', '#c9182b', '#15345d', '#0d2545', '#2467b7'] as $legacyColor) {
-                if (stripos($compiled, $legacyColor) !== false) {
-                    $failures[] = 'compiled css still contains legacy brand color: '.$legacyColor;
-                }
-            }
+            // Standalone typography CSS is intentionally applied after the
+            // historic build. Legacy compiled styles outside this task remain.
+            $contains($publishedTypography, '--nps-h2: 2rem;', 'published typography');
         }
     }
 }

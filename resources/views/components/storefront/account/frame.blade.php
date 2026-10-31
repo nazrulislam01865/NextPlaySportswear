@@ -9,7 +9,7 @@
 
 {{-- Shared presentation for every authenticated My Account screen. --}}
 @unless($contentOnly)
-<section class="np-account-prototype-hero" aria-labelledby="account-page-title">
+<section class="np-account-typography np-account-prototype-hero" aria-labelledby="account-page-title">
     <div class="np-account-prototype-container">
         <h1 id="account-page-title">{{ $title }}</h1>
         <p>{{ $subtitle }}</p>
@@ -17,7 +17,7 @@
 </section>
 @endunless
 
-<section class="np-account-prototype-page {{ $contentOnly ? 'np-account-prototype-page--artwork' : '' }}">
+<section class="np-account-typography np-account-prototype-page {{ $contentOnly ? 'np-account-prototype-page--artwork' : '' }}">
     <div class="np-account-prototype-container">
         @if (session('status'))
             <div class="np-account-prototype-alert" role="status">{{ session('status') }}</div>

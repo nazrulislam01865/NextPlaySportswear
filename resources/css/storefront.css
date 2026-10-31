@@ -24748,7 +24748,7 @@ html.np-product-preview-open body { overflow: hidden; }
 .storefront-clean-ui .np-artwork-message__meta small { font-size: 11px; }
 .storefront-clean-ui .np-artwork-message p { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; font-size: 13px; line-height: 1.5; }
 .storefront-clean-ui .np-artwork-messages__body form { border-top: 1px solid var(--artwork-border); padding-top: 14px; }
-.storefront-clean-ui .np-artwork-form-error { font-size: 12px; color: #be123c; }
+.storefront-clean-ui .np-artwork-form-error { font-size: 12px; color: var(--np-color-error); }
 
 /* NEXTPLAY_ACCOUNT_ALL_SCREENS_COMPACT_20261019
    A single shared sizing layer for every My Account route. No duplicate per-page

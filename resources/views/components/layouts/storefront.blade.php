@@ -94,7 +94,7 @@
     <meta name="twitter:image" content="{{ $ogImage }}">
     <meta name="twitter:image:alt" content="{{ $seo['og_image_alt'] ?? $ogTitle }}">
 
-    <meta name="theme-color" content="#061F44">
+    <meta name="theme-color" content="#051e44">
 
     <x-storefront.font-assets />
 
@@ -117,6 +117,9 @@
     @endforeach
 
     @vite(['resources/css/storefront.css', 'resources/js/storefront.js'])
+    {{-- Generated from the centralized theme + typography sources; loaded last
+         so the approved homepage rules work on existing cloud builds too. --}}
+    <link rel="stylesheet" href="{{ asset('css/storefront-typography.css') }}?v=20261031accountcompact4">
     @if(request()->routeIs('checkout.*'))
         <link rel="stylesheet" href="{{ asset('css/nextplay-checkout.css') }}?v=20261031c">
     @endif
