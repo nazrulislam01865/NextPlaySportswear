@@ -322,8 +322,12 @@
             });
             body.append(details);
             const actions = make('div','npq-card-actions');
-            const edit = make('button','npq-edit','✎  Edit'); edit.type = 'button'; edit.addEventListener('click', () => loadProduct(product, index));
-            const remove = make('button','npq-remove','▤  Remove'); remove.type = 'button'; remove.addEventListener('click', () => {
+            const edit = make('button','npq-edit'); edit.type = 'button';
+            edit.append(el('npq-icon-edit').content.cloneNode(true), document.createTextNode('Edit'));
+            edit.addEventListener('click', () => loadProduct(product, index));
+            const remove = make('button','npq-remove'); remove.type = 'button';
+            remove.append(el('npq-icon-remove').content.cloneNode(true), document.createTextNode('Remove'));
+            remove.addEventListener('click', () => {
                 products.splice(index, 1);
                 if (editing === index) clearEditor(); else if (editing > index) editing--;
                 renderCards();

@@ -131,7 +131,7 @@
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-redesign.css') }}?v=20261030i">
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-form-system.css') }}?v=20261031icons53clear">
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-enhancements.css') }}?v=20261031shippingmaster1">
-        <link rel="stylesheet" href="{{ asset('css/nextplay-quote-builder.css') }}?v=20261031discount-sticky1">
+        <link rel="stylesheet" href="{{ asset('css/nextplay-quote-builder.css') }}?v=20261101action-icons1">
     @endif
 </head>
 <body

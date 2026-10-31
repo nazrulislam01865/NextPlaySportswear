@@ -61,6 +61,10 @@
             <path d="M4 7h16M4 17h16" />
             <path d="m8 4-4 3 4 3m8 4 4 3-4 3" />
             @break
+        @case('edit')
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8.2 17.8l-4 1 1-4L16.5 3.5Z" />
+            @break
         @case('trash')
             <path d="M4 7h16M9 4h6M7 7l1 13h8l1-13M10 11v6m4-6v6" />
             @break

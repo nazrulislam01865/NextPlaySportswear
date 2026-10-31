@@ -1,11 +1,11 @@
 @push('admin-page-styles')
-    <link rel="stylesheet" href="{{ asset('css/admin-bulk-quote-icons.css') }}?v=20261031bqic2">
+    <link rel="stylesheet" href="{{ asset('css/admin-bulk-quote-icons.css') }}?v=20261101action-icons1">
     <link rel="stylesheet" href="{{ asset('css/admin-bulk-quote-contact.css') }}?v=20261031a">
 @endpush
 
 <x-layouts.admin
     title="Bulk Quote Icons"
-    subtitle="Manage the five shared heading icons on the Bulk Quote Request form. Each icon displays in a 52 × 52px area."
+    subtitle="Manage Bulk Quote heading icons (52 × 52px) and product action icons (18 × 18px)."
 >
     <div class="mx-auto max-w-7xl space-y-5 np-bqic-page">
         <section class="np-pdui-page-intro">
@@ -56,10 +56,25 @@
                 </div>
             </section>
 
+            <section class="np-pdui-section">
+                <header class="np-pdui-section__header">
+                    <div>
+                        <p class="np-pdui-eyebrow">Added products</p>
+                        <h2>Edit &amp; Remove icons</h2>
+                        <p>These 18 × 18px icons appear inside the Edit and Remove buttons on each product card. Uploaded images keep their proportions and have no icon background.</p>
+                    </div>
+                </header>
+                <div class="np-pdui-grid np-pdui-grid--2">
+                    @foreach(['edit', 'remove'] as $key)
+                        <x-admin.bulk-quote-icon-field :icon-key="$key" :label="$slots[$key]" :url="$urls[$key]" :can-manage="$canManage" />
+                    @endforeach
+                </div>
+            </section>
+
             <div class="np-pdui-savebar">
                 <div>
                     <strong>Apply globally</strong>
-                    <span>PNG, JPG, WebP or AVIF · max 2 MB per icon · 52 × 52px · no background · 1px padding</span>
+                    <span>PNG, JPG, WebP or AVIF · max 2 MB per icon · 52 × 52px headings / 18 × 18px actions · no background · 1px padding</span>
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
                     <a href="{{ route('quote.request') }}" class="btn btn-white" target="_blank" rel="noopener noreferrer">Preview form</a>

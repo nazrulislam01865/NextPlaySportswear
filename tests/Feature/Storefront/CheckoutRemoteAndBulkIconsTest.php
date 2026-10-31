@@ -32,7 +32,9 @@ class CheckoutRemoteAndBulkIconsTest extends TestCase
     {
         Storage::fake('local');
         Storage::fake('public');
-        $this->assertCount(5, BulkQuoteIcons::SLOTS);
+        $this->assertCount(7, BulkQuoteIcons::SLOTS);
+        $this->assertSame('Edit product', BulkQuoteIcons::SLOTS['edit']);
+        $this->assertSame('Remove product', BulkQuoteIcons::SLOTS['remove']);
         $this->assertNull(BulkQuoteIcons::url('product'));
         $this->assertTrue(Route::has('admin.bulk-quote-icons.edit'));
         $this->assertTrue(Route::has('admin.bulk-quote-icons.update'));

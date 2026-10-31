@@ -72,3 +72,14 @@
     .np-bqic-page .np-bqic-icon-field { grid-template-columns: 52px minmax(0, 1fr); }
     .np-bqic-page .np-pdui-icon-actions { flex-direction: row; flex-wrap: wrap; align-items: center; }
 }
+
+/* Action button uploads use their actual 18px display size in previews. */
+.np-bqic-page .np-bqic-card--action .np-bqic-icon-field { grid-template-columns: 18px minmax(0, 1fr); }
+.np-bqic-page .np-bqic-card--action .np-bqic-icon-preview {
+  width: 18px; height: 18px; min-width: 18px; min-height: 18px;
+  max-width: 18px; max-height: 18px; padding: 0;
+}
+.np-bqic-page .np-bqic-card--action .np-bqic-icon-preview svg,
+.np-bqic-page .np-bqic-card--action .np-bqic-icon-preview img {
+  width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain;
+}

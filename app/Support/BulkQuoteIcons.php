@@ -13,6 +13,8 @@ final class BulkQuoteIcons
         'delivery' => 'Delivery Requirements',
         'attachments' => 'Attachments & Notes',
         'help' => 'Need a hand?',
+        'edit' => 'Edit product',
+        'remove' => 'Remove product',
     ];
 
     private const CONFIG_PATH = 'nextplay/bulk-quote-icons.json';

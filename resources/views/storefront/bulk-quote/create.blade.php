@@ -102,6 +102,21 @@
                     </aside>
                 </div>
                 <div id="npq-upload-inputs" hidden></div>
+                <template id="npq-icon-edit">
+                    @if($iconUrl = \App\Support\BulkQuoteIcons::url('edit'))
+                        <img src="{{ $iconUrl }}" class="npq-action-icon" alt="" aria-hidden="true" width="18" height="18">
+                    @else
+                        <x-storefront.bulk-quote.icon name="edit" :size="18" class="npq-action-icon" />
+                    @endif
+                </template>
+                <template id="npq-icon-remove">
+                    @if($iconUrl = \App\Support\BulkQuoteIcons::url('remove'))
+                        <img src="{{ $iconUrl }}" class="npq-action-icon" alt="" aria-hidden="true" width="18" height="18">
+                    @else
+                        <x-storefront.bulk-quote.icon name="trash" :size="18" class="npq-action-icon" />
+                    @endif
+                </template>
+
             </form>
         </div>
         @php
@@ -112,7 +127,7 @@
             ];
         @endphp
         <script id="npq-state" type="application/json">@json($quoteState)</script>
-        <script src="{{ asset('js/nextplay-quote-builder.js') }}?v=20261031v7" defer></script>
+        <script src="{{ asset('js/nextplay-quote-builder.js') }}?v=20261101action-icons1" defer></script>
         <script src="{{ asset('js/bulk-quote-selects.js') }}?v=20261031v3" defer></script>
         <script src="{{ asset('js/bulk-quote-form-validation.js') }}?v=20261030c" defer></script>
     </main>

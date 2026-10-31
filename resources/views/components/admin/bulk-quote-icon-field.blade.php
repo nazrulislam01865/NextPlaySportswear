@@ -7,13 +7,16 @@
         'delivery' => 'truck',
         'attachments' => 'attachment',
         'help' => 'message-circle',
+        'edit' => 'edit',
+        'remove' => 'trash',
         default => 'file-text',
     };
+    $isActionIcon = in_array($iconKey, ['edit', 'remove'], true);
     $inputId = 'bulk-quote-icon-'.$iconKey;
     $hasCustom = filled($url);
 @endphp
 
-<article class="np-pdui-control-card np-bqic-card"
+<article class="np-pdui-control-card np-bqic-card {{ $isActionIcon ? 'np-bqic-card--action' : '' }}"
     x-data="{
         fileName: '', previewUrl: null, removeSelected: false,
         chooseFile(event) {
@@ -39,12 +42,12 @@
                 <img src="{{ $url }}" alt="" x-show="!previewUrl && !removeSelected" class="np-bqic-icon-image">
             @endif
             <div class="np-bqic-default-icon" x-show="removeSelected || (!previewUrl && {{ $hasCustom ? 'false' : 'true' }})" @if($hasCustom) x-cloak @endif>
-                <x-storefront.bulk-quote.icon :name="$fallbackIcon" :size="28" />
+                <x-storefront.bulk-quote.icon :name="$fallbackIcon" :size="$isActionIcon ? 18 : 28" />
             </div>
         </div>
 
         <div class="np-pdui-icon-content">
-            <span class="np-pdui-icon-label">Heading icon · 52 × 52px</span>
+            <span class="np-pdui-icon-label">{{ $isActionIcon ? 'Action icon · 18 × 18px' : 'Heading icon · 52 × 52px' }}</span>
             <input
                 x-ref="iconFile"
                 id="{{ $inputId }}"
