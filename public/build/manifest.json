@@ -41,6 +41,7 @@
   },
   "resources/js/storefront.js": {
     "file": "assets/storefront-cA8nb8Tu.js",
+    "file": "assets/storefront-cA8nb8Tu.js",
     "name": "storefront",
     "src": "resources/js/storefront.js",
     "isEntry": true,

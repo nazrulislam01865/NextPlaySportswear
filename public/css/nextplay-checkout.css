@@ -342,6 +342,7 @@
 }
 /* Specificity: shipping-card h3 text role outranks its legacy text-lg utility. */
 .storefront-clean-ui .np-checkout .np-checkout__card h3[class~="text-lg"] {font-size:var(--nps-h4);line-height:1.4;}
+.storefront-clean-ui .np-checkout .np-checkout__card h3[class~="text-lg"] {font-size:var(--nps-h4);line-height:1.4;}
 /* The referral review checkbox label is text, not a form-control override. */
 .storefront-clean-ui .np-referral-checkout-page .np-referral-review-panel .np-referral-check {font-family:var(--nps-font);font-size:var(--nps-small);font-weight:400;line-height:1.5;color:var(--nps-text);}
 .storefront-clean-ui .np-referral-checkout-page .np-referral-review-panel .np-referral-check a {color:var(--nps-link);text-decoration:underline;text-underline-offset:.2em;}

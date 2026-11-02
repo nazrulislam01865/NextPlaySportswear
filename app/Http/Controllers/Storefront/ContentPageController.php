@@ -149,12 +149,20 @@ class ContentPageController extends Controller
 
     public function privacy(): View
     {
-        return $this->policy('privacy');
+        return view('storefront.content.privacy', [
+            'title' => 'Privacy Policy',
+            'updated' => '22 June 2026',
+            'description' => 'This policy explains how NextPlay Sportswear handles your personal information when you use our website and services.',
+        ]);
     }
 
     public function terms(): View
     {
-        return $this->policy('terms');
+        return view('storefront.content.terms', [
+            'title' => 'Terms and Conditions',
+            'subtitle' => 'Draft for review',
+            'description' => 'These terms explain the ordering process and your responsibilities when shopping with NextPlay Sportswear.',
+        ]);
     }
 
     public function cookies(): View

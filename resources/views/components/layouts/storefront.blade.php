@@ -133,9 +133,10 @@
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-enhancements.css') }}?v=20261031shippingmaster1">
         <link rel="stylesheet" href="{{ asset('css/nextplay-quote-builder.css') }}?v=20261101action-icons1">
     @endif
+    <link rel="stylesheet" href="{{ asset('css/nextplay-typography.css') }}?v=1.1">
 </head>
 <body
-    class="storefront-clean-ui"
+    class="storefront-clean-ui nps-site"
     data-image-placeholder-url="{{ asset('images/product-placeholder.svg') }}"
     data-product-activity-url="{{ route('products.visitor-activity') }}"
 >
