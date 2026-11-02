@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Storefront;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Storefront\StoreContactMessageRequest;
 use App\Models\ContactMessage;
+use App\Services\Storefront\ContactPageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use App\Services\Email\TransactionalEmailManager;
@@ -16,9 +17,20 @@ class ContactController extends Controller
         private readonly TransactionalEmailManager $emails
     ) {
     }
-    public function index(): View
+    public function index(ContactPageService $service): View
     {
-        return view('storefront.content.contact');
+        $content = $service->settings();
+        $seo = [
+            'title' => (string) data_get($content, 'seo.meta_title', 'Contact Us | ' . config('storefront.name', 'NextPlay Sportswear')),
+            'description' => (string) data_get($content, 'seo.meta_description', 'Questions about a product or order? Send us a message.'),
+            'robots' => 'index, follow',
+            'canonical' => route('contact'),
+            'og_title' => (string) data_get($content, 'seo.meta_title', 'Contact Us | ' . config('storefront.name', 'NextPlay Sportswear')),
+            'og_description' => (string) data_get($content, 'seo.meta_description', 'Questions about a product or order? Send us a message.'),
+            'schema_type' => 'ContactPage',
+        ];
+
+        return view('storefront.content.contact', compact('content', 'seo'));
     }
 
     public function store(StoreContactMessageRequest $request): RedirectResponse

@@ -1,11 +1,12 @@
 @php
     $siteName = config('storefront.name', 'NextPlay Sportswear');
-    $title = $title ?? 'Privacy Policy';
-    $updated = $updated ?? '22 June 2026';
-    $description = $description ?? 'This policy explains how NextPlay Sportswear handles your personal information when you use our website and services.';
+    $title = data_get($content, 'hero.title', $title ?? 'Privacy Policy');
+    $updated = data_get($content, 'hero.subtitle', $updated ?? '22 June 2026');
+    $description = data_get($content, 'hero.description', $description ?? 'This policy explains how NextPlay Sportswear handles your personal information when you use our website and services.');
+    $sections = data_get($content, 'sections', []);
 @endphp
 
-<x-layouts.storefront :seo="[
+<x-layouts.storefront :seo="$seo ?? [
     'title' => $title . ' | ' . $siteName,
     'description' => $description,
 ]">
@@ -148,75 +149,44 @@
 
                 {{-- Page Header --}}
                 <header>
-                    <h1>Privacy Policy</h1>
+                    <h1>{{ $title }}</h1>
                     <p class="np-legal-subtitle">
-                        Last updated: {{ $updated }}
+                        {{ \Illuminate\Support\Str::startsWith($updated, 'Last updated:') ? $updated : 'Last updated: ' . $updated }}
                     </p>
                     <p class="np-legal-intro">
-                        This policy explains how NextPlay Sportswear handles your personal information when you use our website and services.
+                        {{ $description }}
                     </p>
                 </header>
 
                 {{-- Policy Sections --}}
                 <div class="np-legal-sections">
-                    {{-- 1. Information we collect --}}
-                    <section aria-labelledby="section-info-collect">
-                        <h2 id="section-info-collect">1. Information we collect</h2>
-                        <p>
-                            We may collect your contact details, account information, shipping and billing addresses, order details, customisation instructions, uploaded artwork, support messages, and website usage data.
-                        </p>
-                        <p>
-                            Payments are processed by our payment provider. Payment records may include transaction references, payment status, and masked card details.
-                        </p>
-                    </section>
-
-                    {{-- 2. How we use information --}}
-                    <section aria-labelledby="section-how-we-use">
-                        <h2 id="section-how-we-use">2. How we use information</h2>
-                        <p>
-                            We use information to process orders and quotes, prepare artwork, deliver products, provide support, send service updates, prevent fraud, and improve our website.
-                        </p>
-                    </section>
-
-                    {{-- 3. How information is shared --}}
-                    <section aria-labelledby="section-info-shared">
-                        <h2 id="section-info-shared">3. How information is shared</h2>
-                        <p>
-                            We may share relevant information with service providers supporting payments, shipping, hosting, email, analytics, fraud prevention, and production. We do not sell personal information.
-                        </p>
-                    </section>
-
-                    {{-- 4. Retention and security --}}
-                    <section aria-labelledby="section-retention-security">
-                        <h2 id="section-retention-security">4. Retention and security</h2>
-                        <p>
-                            We retain information for as long as reasonably needed for orders, support, accounting, legal compliance, and security.
-                        </p>
-                    </section>
-
-                    {{-- 5. Your choices and rights --}}
-                    <section aria-labelledby="section-choices-rights">
-                        <h2 id="section-choices-rights">5. Your choices and rights</h2>
-                        <p>
-                            Depending on your location, you may have rights to access, correct, delete, restrict, or receive a copy of your personal information. You can opt out of non-essential marketing messages.
-                        </p>
-                    </section>
-
-                    {{-- 6. Children's privacy --}}
-                    <section aria-labelledby="section-childrens-privacy">
-                        <h2 id="section-childrens-privacy">6. Children's privacy</h2>
-                        <p>
-                            The storefront is not directed to children under 13. Orders for youth teams should be managed by an adult or authorised organisation representative.
-                        </p>
-                    </section>
-
-                    {{-- 7. Contact us about privacy --}}
-                    <section aria-labelledby="section-contact-privacy">
-                        <h2 id="section-contact-privacy">7. Contact us about privacy</h2>
-                        <p>
-                            For questions or requests about your personal information, please visit our <a href="{{ route('contact') }}">Contact Us</a> page.
-                        </p>
-                    </section>
+                    @forelse($sections as $secKey => $sec)
+                        <section aria-labelledby="section-{{ $secKey }}">
+                            <h2 id="section-{{ $secKey }}">{{ data_get($sec, 'title') }}</h2>
+                            @foreach(explode("\n\n", data_get($sec, 'content', '')) as $para)
+                                @if(trim($para) !== '')
+                                    @php
+                                        $text = e(trim($para));
+                                        $text = str_replace(
+                                            ['Contact Us', 'Cookie Policy', 'Privacy Policy'],
+                                            [
+                                                '<a href="' . route('contact') . '">Contact Us</a>',
+                                                '<a href="' . route('cookies') . '">Cookie Policy</a>',
+                                                '<a href="' . route('privacy') . '">Privacy Policy</a>'
+                                            ],
+                                            $text
+                                        );
+                                    @endphp
+                                    <p>{!! nl2br($text) !!}</p>
+                                @endif
+                            @endforeach
+                        </section>
+                    @empty
+                        <section aria-labelledby="section-info-collect">
+                            <h2 id="section-info-collect">1. Information we collect</h2>
+                            <p>We may collect your contact details, account information, shipping and billing addresses...</p>
+                        </section>
+                    @endforelse
 
                     {{-- Back to top --}}
                     <div>

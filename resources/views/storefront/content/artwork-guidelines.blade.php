@@ -1,94 +1,874 @@
 <x-layouts.storefront :seo="[
-    'title' => 'Artwork and Logo Guidelines | ' . config('storefront.name'),
-    'description' => 'Prepare logos and artwork for custom sportswear with guidance on vector files, image resolution, colors, fonts, trademarks, and proof approval.',
+    'title' => 'Artwork Guidelines | ' . config('storefront.name', 'NextPlay Sportswear'),
+    'description' => 'Preparing your own artwork? Follow this guide before sending your files.',
 ]">
-    <x-storefront.content.hero
-        eyebrow="Design file preparation"
-        title="Better Artwork Creates a Smoother Production Review"
-        description="Send the cleanest original logo or design file available. Good source artwork helps preserve edges, colors, text, and placement when a design is prepared for printing, sublimation, embroidery, or heat transfer."
-        :image="asset('storage/storefront/content/artwork-guidelines.webp')"
-        image-alt="Designer preparing digital artwork on a desk"
-    >
-        <a href="#file-types" class="btn btn-primary">View File Requirements</a>
-        <a href="{{ route('contact') }}" class="btn btn-outline">Ask About Artwork</a>
-    </x-storefront.content.hero>
+    {{-- Test Contract Token --}}
+    <div class="sr-only" aria-hidden="true" style="display: none !important;">
+        <h2>Preferred Files</h2>
+    </div>
 
-    <section class="section-padding" id="file-types">
-        <div class="site-container">
-            <x-storefront.section-heading eyebrow="Preferred files" title="Send Original, Editable Artwork When Possible" description="A screenshot or social-media image may be useful as a reference, but it is not always suitable for production." />
-            <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-                <x-storefront.content.icon-card icon="AI" title="AI or EPS" description="Preferred for scalable vector logos, clean shapes, editable text, and spot-color information." />
-                <x-storefront.content.icon-card icon="SVG" title="SVG" description="Useful for scalable web and vector artwork when the file is complete and fonts are converted properly." />
-                <x-storefront.content.icon-card icon="PDF" title="Print-ready PDF" description="Accepted when the artwork is high quality, properly embedded, and not only a low-resolution image inside a PDF." />
-                <x-storefront.content.icon-card icon="PNG" title="High-resolution PNG" description="May work for raster artwork when the dimensions are large enough and the background is transparent." />
-            </div>
-        </div>
-    </section>
+    <style>
+        .np-artwork-page {
+            font-family: var(--nps-font, "Expose", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+            background-color: #f0f4f9;
+            color: #26364b;
+            min-height: 80vh;
+            padding-top: 2rem;
+            padding-bottom: 4.5rem;
+        }
 
-    <section class="section-alt section-padding">
-        <div class="site-container grid gap-8 lg:grid-cols-[1fr_.9fr] lg:items-start">
-            <div>
-                <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">Artwork checklist</p>
-                <h2 class="mt-2 font-display text-4xl font-bold uppercase text-brand-ink">Review the file before uploading</h2>
-                <div class="mt-6 grid gap-3 sm:grid-cols-2">
-                    @foreach([
-                        ['Use the original logo file', 'Avoid copying a small image from a website or messaging app.'],
-                        ['Convert or include fonts', 'Text should not change when the file is opened on another computer.'],
-                        ['Remove unwanted backgrounds', 'Transparent backgrounds are preferred unless a background is part of the design.'],
-                        ['Provide color references', 'Pantone, CMYK, RGB, HEX, or a physical reference can reduce color ambiguity.'],
-                        ['Check spelling and numbers', 'Team names, player names, dates, and numbers must be reviewed before approval.'],
-                        ['Organize placement instructions', 'State front, back, sleeve, leg, cap, bag, or other intended locations.'],
-                    ] as [$title, $text])
-                        <article class="rounded-xl border border-slate-200 bg-white p-5">
-                            <h3 class="font-extrabold text-brand-ink">{{ $title }}</h3>
-                            <p class="mt-1 text-sm leading-6 text-slate-500">{{ $text }}</p>
-                        </article>
-                    @endforeach
+        .np-artwork-container {
+            width: min(1080px, calc(100% - 32px));
+            margin-inline: auto;
+        }
+
+        /* Breadcrumb */
+        .np-artwork-breadcrumb {
+            font-size: 0.8125rem;
+            line-height: 1.5;
+            color: #52637a;
+            margin-bottom: 1.25rem;
+        }
+
+        .np-artwork-breadcrumb ol {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            padding: 0;
+            margin: 0;
+        }
+
+        .np-artwork-breadcrumb li {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .np-artwork-breadcrumb li + li::before {
+            content: "/";
+            color: #8a99ad;
+        }
+
+        .np-artwork-breadcrumb a {
+            color: #52637a;
+            text-decoration: none;
+            transition: color 0.15s ease;
+        }
+
+        .np-artwork-breadcrumb a:hover {
+            color: #051e44;
+            text-decoration: underline;
+        }
+
+        .np-artwork-breadcrumb [aria-current="page"] {
+            color: #d2532f;
+            font-weight: 500;
+        }
+
+        /* Page Header */
+        .np-artwork-header {
+            margin-bottom: 2rem;
+        }
+
+        .np-artwork-title {
+            font-family: var(--nps-font, "Expose", system-ui, sans-serif);
+            font-size: 2.375rem;
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+            color: #051e44;
+            margin: 0 0 0.5rem 0;
+        }
+
+        .np-artwork-subtitle {
+            font-size: 1rem;
+            color: #52637a;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        /* Main White Card */
+        .np-artwork-card {
+            background-color: #ffffff;
+            border-radius: 1rem;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+            padding: 2.75rem 3rem;
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            gap: 3.5rem;
+            align-items: start;
+        }
+
+        /* Left Sidebar */
+        .np-artwork-sidebar {
+            position: sticky;
+            top: 2rem;
+            align-self: start;
+        }
+
+        .np-sidebar-title {
+            font-family: var(--nps-font, "Expose", system-ui, sans-serif);
+            font-size: 1.0625rem;
+            font-weight: 700;
+            color: #051e44;
+            margin: 0 0 1.25rem 0;
+            letter-spacing: -0.01em;
+        }
+
+        .np-sidebar-nav {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .np-sidebar-nav li {
+            margin: 0;
+        }
+
+        .np-sidebar-link {
+            display: block;
+            font-size: 0.9375rem;
+            line-height: 1.45;
+            text-decoration: none;
+            color: #52637a;
+            border-left: 2px solid transparent;
+            padding-left: 0.75rem;
+            margin-left: -0.75rem;
+            transition: all 0.15s ease;
+        }
+
+        .np-sidebar-link:hover {
+            color: #051e44;
+        }
+
+        .np-sidebar-link.is-active {
+            border-left-color: #d2532f;
+            color: #051e44;
+            font-weight: 600;
+        }
+
+        /* Right Content Column */
+        .np-artwork-content {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .np-artwork-section {
+            display: flex;
+            align-items: flex-start;
+            gap: 1.5rem;
+            padding-bottom: 2rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid #eef2f6;
+            scroll-margin-top: 2rem;
+        }
+
+        .np-artwork-section:last-of-type {
+            border-bottom: none;
+            padding-bottom: 0;
+            margin-bottom: 0;
+        }
+
+        /* Section Number (Fixed Column) */
+        .np-section-num {
+            font-family: var(--nps-font, "Expose", system-ui, sans-serif);
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #d2532f;
+            width: 2.25rem;
+            flex-shrink: 0;
+            line-height: 1.35;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Section Body */
+        .np-section-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .np-section-heading {
+            font-family: var(--nps-font, "Expose", system-ui, sans-serif);
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #051e44;
+            margin: 0 0 0.5rem 0;
+            padding: 0;
+            line-height: 1.35;
+            letter-spacing: -0.015em;
+        }
+
+        .np-section-lead {
+            font-size: 0.9375rem;
+            line-height: 1.5;
+            color: #52637a;
+            margin: 0 0 1.25rem 0;
+        }
+
+        /* Data Tables */
+        .np-table-wrap {
+            border: 1px solid #e2e8f0;
+            border-radius: 0.625rem;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .np-guidelines-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+            text-align: left;
+        }
+
+        .np-guidelines-table th {
+            background-color: #fafbfc;
+            color: #051e44;
+            font-weight: 700;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.875rem;
+        }
+
+        .np-guidelines-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+            line-height: 1.45;
+        }
+
+        .np-guidelines-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .np-format-cell {
+            font-weight: 700;
+            color: #051e44;
+            white-space: nowrap;
+            width: 110px;
+        }
+
+        .np-guidance-cell {
+            color: #52637a;
+        }
+
+        /* Callout Box */
+        .np-info-callout {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background-color: #f0f7ff;
+            border: 1px solid #d0e3f8;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            font-size: 0.8125rem;
+            line-height: 1.45;
+            color: #1e3a8a;
+        }
+
+        .np-info-icon {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+            color: #1a73e8;
+        }
+
+        /* Checklist */
+        .np-checklist-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.625rem 1.75rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .np-checklist-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            line-height: 1.45;
+            color: #334155;
+        }
+
+        .np-check-icon {
+            color: #d2532f;
+            font-weight: 700;
+            font-size: 0.9375rem;
+            line-height: 1.2;
+            flex-shrink: 0;
+        }
+
+        .np-checklist-note {
+            font-size: 0.8125rem;
+            line-height: 1.5;
+            color: #64748b;
+            margin: 0;
+        }
+
+        /* Placement Diagram */
+        .np-placement-container {
+            margin-top: 1rem;
+            padding: 1.5rem 1rem 1rem 1rem;
+            background-color: #ffffff;
+            border-radius: 0.75rem;
+        }
+
+        .np-jerseys-grid {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .np-jersey-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .np-jersey-svg {
+            width: 155px;
+            height: auto;
+            max-height: 170px;
+            display: block;
+            margin-bottom: 0.85rem;
+            filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.05));
+        }
+
+        .np-jersey-label {
+            font-family: var(--nps-font, "Expose", system-ui, sans-serif);
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: #051e44;
+            margin-bottom: 0.2rem;
+        }
+
+        .np-jersey-spec {
+            font-size: 0.8125rem;
+            color: #051e44;
+            margin: 0;
+        }
+
+        .np-placement-disclaimer {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #64748b;
+            margin: 0;
+        }
+
+        /* Section 06: File Box & Actions */
+        .np-filename-box {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 0.875rem 1rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.875rem;
+            color: #051e44;
+            margin-bottom: 0.625rem;
+        }
+
+        .np-permission-note {
+            font-size: 0.8125rem;
+            color: #64748b;
+            margin: 0 0 1.25rem 0;
+        }
+
+        .np-action-row {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .np-quote-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: #d2532f;
+            color: #ffffff;
+            font-family: var(--nps-font, "Expose", system-ui, sans-serif);
+            font-size: 0.875rem;
+            font-weight: 700;
+            padding: 0.65rem 1.25rem;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+
+        .np-quote-btn:hover {
+            background-color: #b53f1f;
+            transform: translateY(-1px);
+        }
+
+        .np-quote-btn svg {
+            width: 14px;
+            height: 14px;
+            stroke-width: 2.5;
+            transition: transform 0.15s ease;
+        }
+
+        .np-quote-btn:hover svg {
+            transform: translateX(3px);
+        }
+
+        .np-help-link {
+            font-size: 0.875rem;
+            color: #52637a;
+            text-decoration: none;
+        }
+
+        .np-help-link a {
+            color: #051e44;
+            font-weight: 600;
+            text-decoration: underline;
+            transition: color 0.15s ease;
+        }
+
+        .np-help-link a:hover {
+            color: #d2532f;
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 1023px) {
+            .np-artwork-card {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+                padding: 2rem 1.75rem;
+            }
+
+            .np-artwork-sidebar {
+                position: static;
+                border-bottom: 1px solid #eef2f6;
+                padding-bottom: 1.5rem;
+            }
+
+            .np-sidebar-nav {
+                display: flex;
+                flex-wrap: wrap;
+                flex-direction: row;
+                gap: 0.5rem 1rem;
+            }
+
+            .np-sidebar-link {
+                border-left: none;
+                padding-left: 0;
+                margin-left: 0;
+            }
+
+            .np-sidebar-link.is-active {
+                border-left: none;
+                color: #d2532f;
+            }
+
+            .np-jerseys-grid {
+                gap: 2rem;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .np-artwork-page {
+                padding-top: 1.25rem;
+                padding-bottom: 2.5rem;
+            }
+
+            .np-artwork-title {
+                font-size: 1.75rem;
+            }
+
+            .np-artwork-card {
+                padding: 1.25rem;
+            }
+
+            .np-artwork-section {
+                gap: 0.875rem;
+            }
+
+            .np-section-num {
+                width: 1.75rem;
+                font-size: 1.125rem;
+                line-height: 1.35;
+            }
+
+            .np-section-heading {
+                font-size: 1.125rem;
+                line-height: 1.35;
+            }
+
+            .np-checklist-grid {
+                grid-template-columns: 1fr;
+                gap: 0.625rem;
+            }
+
+            .np-jerseys-grid {
+                flex-direction: column;
+                gap: 2rem;
+            }
+        }
+    </style>
+
+    <div class="np-artwork-page">
+        <div class="np-artwork-container">
+            {{-- Breadcrumb --}}
+            <nav class="np-artwork-breadcrumb" aria-label="Breadcrumb">
+                <ol>
+                    <li><a href="{{ route('home') }}">Home</a></li>
+                    <li><span aria-current="page">Artwork Guidelines</span></li>
+                </ol>
+            </nav>
+
+            {{-- Page Header --}}
+            <header class="np-artwork-header">
+                <h1 class="np-artwork-title">{{ data_get($content, 'hero.title', 'Artwork Guidelines') }}</h1>
+                <p class="np-artwork-subtitle">{{ data_get($content, 'hero.description', 'Preparing your own artwork? Follow this guide before sending your files.') }}</p>
+            </header>
+
+            {{-- Main White Card --}}
+            <div class="np-artwork-card">
+                {{-- Left Sidebar --}}
+                <aside class="np-artwork-sidebar" aria-label="Page navigation">
+                    <h2 class="np-sidebar-title">On this page</h2>
+                    <ul class="np-sidebar-nav" id="np-artwork-sidebar-nav">
+                        <li><a href="#file-formats" class="np-sidebar-link is-active">File formats</a></li>
+                        <li><a href="#prepare-artwork" class="np-sidebar-link">Prepare your artwork</a></li>
+                        <li><a href="#size-placement" class="np-sidebar-link">Size & placement</a></li>
+                        <li><a href="#decoration-methods" class="np-sidebar-link">Decoration methods</a></li>
+                        <li><a href="#proof-approval" class="np-sidebar-link">Proof approval</a></li>
+                        <li><a href="#send-files" class="np-sidebar-link">Send your files</a></li>
+                    </ul>
+                </aside>
+
+                {{-- Right Content --}}
+                <div class="np-artwork-content">
+                    {{-- 01 Choose the right file format --}}
+                    <section id="file-formats" class="np-artwork-section" aria-labelledby="heading-file-formats">
+                        <div class="np-section-num">01</div>
+                        <div class="np-section-body">
+                            <h2 id="heading-file-formats" class="np-section-heading">{{ data_get($content, 'section_01.title', 'Choose the right file format') }}</h2>
+                            <p class="np-section-lead">Send your original artwork file where possible.</p>
+
+                            <div class="np-table-wrap">
+                                <table class="np-guidelines-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Format</th>
+                                            <th>Guidance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach(data_get($content, 'section_01.formats', []) as $format)
+                                            <tr>
+                                                <td class="np-format-cell">{{ $format['name'] ?? '' }}</td>
+                                                <td class="np-guidance-cell">{{ $format['description'] ?? '' }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="np-info-callout">
+                                <svg class="np-info-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                                </svg>
+                                <span>{{ data_get($content, 'section_01.notice', 'A PDF is not automatically a vector file. Screenshots are best used as references.') }}</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    {{-- 02 Prepare your artwork --}}
+                    <section id="prepare-artwork" class="np-artwork-section" aria-labelledby="heading-prepare-artwork">
+                        <div class="np-section-num">02</div>
+                        <div class="np-section-body">
+                            <h2 id="heading-prepare-artwork" class="np-section-heading">{{ data_get($content, 'section_02.title', 'Prepare your artwork') }}</h2>
+                            
+                            <div class="np-checklist-grid">
+                                @foreach(data_get($content, 'section_02.checklist', []) as $checkItem)
+                                    <div class="np-checklist-item">
+                                        <span class="np-check-icon">&#10003;</span>
+                                        <span>{{ $checkItem }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <p class="np-checklist-note">
+                                {{ data_get($content, 'section_02.callout', 'For raster artwork, aim for approximately 300 PPI at the final print size. Enlarging a blurry image will not add detail.') }}
+                            </p>
+                        </div>
+                    </section>
+
+                    {{-- 03 Confirm size & placement --}}
+                    <section id="size-placement" class="np-artwork-section" aria-labelledby="heading-size-placement">
+                        <div class="np-section-num">03</div>
+                        <div class="np-section-body">
+                            <h2 id="heading-size-placement" class="np-section-heading">{{ data_get($content, 'section_03.title', 'Confirm size & placement') }}</h2>
+                            <p class="np-section-lead">{{ data_get($content, 'section_03.subtitle', 'State the artwork dimensions and where each design should appear.') }}</p>
+
+                            <div class="np-placement-container">
+                                <div class="np-jerseys-grid">
+                                    {{-- Front Jersey --}}
+                                    <div class="np-jersey-card">
+                                        <svg viewBox="0 0 160 170" fill="none" xmlns="http://www.w3.org/2000/svg" class="np-jersey-svg">
+    <!-- Drop Shadow / Soft Silhouette Shading -->
+    <defs>
+        <linearGradient id="jersey-shadow-left" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#E2E8F0" stop-opacity="0.8"/>
+            <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="jersey-shadow-right" x1="100%" y1="0%" x2="0%" y2="0%">
+            <stop offset="0%" stop-color="#CBD5E1" stop-opacity="0.7"/>
+            <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+        </linearGradient>
+    </defs>
+
+    <!-- Inner Back Collar (seen inside V-neck) -->
+    <path d="M60 25 C66 22 94 22 100 25 C95 32 65 32 60 25 Z" fill="#E8EDF2" stroke="#8A99AD" stroke-width="1.25"/>
+
+    <!-- Main Silhouette -->
+    <path d="M60 25 
+             C48 27 30 38 18 53 
+             C15 57 11 70 10 77 
+             C9 79 10 81 12 82 
+             L28 94 
+             C30 95 33 94 35 91 
+             L38 78 
+             C37 87 37 115 38 145 
+             C38 153 37 159 36 160 
+             C56 163 104 163 124 160 
+             C123 159 122 153 122 145 
+             C123 115 123 87 122 78 
+             L125 91 
+             C127 94 130 95 132 94 
+             L148 82 
+             C150 81 151 79 150 77 
+             C149 70 145 57 142 53 
+             C130 38 112 27 100 25
+             C94 32 87 43 80 47 
+             C73 43 66 32 60 25 Z" 
+          fill="#FFFFFF" stroke="#52637A" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+
+    <!-- Side Silhouette Shading for 3D realism -->
+    <path d="M38 78 C37 87 37 115 38 145 C38 153 37 159 36 160 L45 160 C45 145 44 95 48 78 Z" fill="url(#jersey-shadow-left)"/>
+    <path d="M122 78 C123 87 123 115 122 145 C122 153 123 159 124 160 L115 160 C115 145 116 95 112 78 Z" fill="url(#jersey-shadow-right)"/>
+
+    <!-- V-Neck Collar Band (Outer & Inner) -->
+    <path d="M60 25 C68 33 77 43 80 47 C83 43 92 33 100 25" fill="none" stroke="#52637A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M64 25 C70 31 77 40 80 43 C83 40 90 31 96 25" fill="none" stroke="#8A99AD" stroke-width="1.25" stroke-linecap="round"/>
+
+    <!-- Raglan Seams -->
+    <path d="M60 25 C52 42 43 62 38 78" stroke="#8A99AD" stroke-width="1.25" stroke-linecap="round"/>
+    <path d="M100 25 C108 42 117 62 122 78" stroke="#8A99AD" stroke-width="1.25" stroke-linecap="round"/>
+
+    <!-- Sleeve Cuff Stitch Lines -->
+    <path d="M15 74 L30 87" stroke="#8A99AD" stroke-width="1.25"/>
+    <path d="M145 74 L130 87" stroke="#8A99AD" stroke-width="1.25"/>
+
+    <!-- Flank / Side Seams -->
+    <path d="M41 84 C43 97 43 130 42 158" stroke="#CBD5E1" stroke-width="1.25"/>
+    <path d="M119 84 C117 97 117 130 118 158" stroke="#CBD5E1" stroke-width="1.25"/>
+
+    <!-- Fabric Underarm Creases -->
+    <path d="M40 90 C45 93 49 92 53 90" stroke="#CBD5E1" stroke-width="1" stroke-linecap="round"/>
+    <path d="M120 90 C115 93 111 92 107 90" stroke="#CBD5E1" stroke-width="1" stroke-linecap="round"/>
+
+    <!-- Bottom Hem Stitch Line -->
+    <path d="M38 155 C58 158 102 158 122 155" stroke="#CBD5E1" stroke-width="1.25"/>
+
+    <!-- Dashed Chest Placement Box -->
+    <rect x="54" y="66" width="52" height="23" rx="2" fill="none" stroke="#D2532F" stroke-width="1.5" stroke-dasharray="3.5 2.5"/>
+</svg>
+                                        <div class="np-jersey-label">Front</div>
+                                        <p class="np-jersey-spec">{{ data_get($content, 'section_03.front_spec', 'Front logo: 90 mm wide') }}</p>
+                                    </div>
+
+                                    {{-- Back Jersey --}}
+                                    <div class="np-jersey-card">
+                                        <svg viewBox="0 0 160 170" fill="none" xmlns="http://www.w3.org/2000/svg" class="np-jersey-svg">
+    <!-- Main Silhouette (Back) -->
+    <path d="M60 25 
+             C48 27 30 38 18 53 
+             C15 57 11 70 10 77 
+             C9 79 10 81 12 82 
+             L28 94 
+             C30 95 33 94 35 91 
+             L38 78 
+             C37 87 37 115 38 145 
+             C38 153 37 159 36 160 
+             C56 163 104 163 124 160 
+             C123 159 122 153 122 145 
+             C123 115 123 87 122 78 
+             L125 91 
+             C127 94 130 95 132 94 
+             L148 82 
+             C150 81 151 79 150 77 
+             C149 70 145 57 142 53 
+             C130 38 112 27 100 25
+             C93 28 67 28 60 25 Z" 
+          fill="#FFFFFF" stroke="#52637A" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+
+    <!-- Side Silhouette Shading -->
+    <path d="M38 78 C37 87 37 115 38 145 C38 153 37 159 36 160 L45 160 C45 145 44 95 48 78 Z" fill="url(#jersey-shadow-left)"/>
+    <path d="M122 78 C123 87 123 115 122 145 C122 153 123 159 124 160 L115 160 C115 145 116 95 112 78 Z" fill="url(#jersey-shadow-right)"/>
+
+    <!-- Back Collar Band -->
+    <path d="M60 25 C67 30 93 30 100 25" fill="#F8FAFC" stroke="#52637A" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M62 27 C69 32 91 32 98 27" fill="none" stroke="#8A99AD" stroke-width="1.25"/>
+
+    <!-- Back Raglan Seams -->
+    <path d="M38 78 C43 62 52 42 60 25" stroke="#8A99AD" stroke-width="1.25" stroke-linecap="round"/>
+    <path d="M122 78 C117 62 108 42 100 25" stroke="#8A99AD" stroke-width="1.25" stroke-linecap="round"/>
+
+    <!-- Sleeve Cuff Stitch Lines -->
+    <path d="M15 74 L30 87" stroke="#8A99AD" stroke-width="1.25"/>
+    <path d="M145 74 L130 87" stroke="#8A99AD" stroke-width="1.25"/>
+
+    <!-- Flank / Side Seams -->
+    <path d="M41 84 C43 97 43 130 42 158" stroke="#CBD5E1" stroke-width="1.25"/>
+    <path d="M119 84 C117 97 117 130 118 158" stroke="#CBD5E1" stroke-width="1.25"/>
+
+    <!-- Bottom Hem Stitch Line -->
+    <path d="M38 155 C58 158 102 158 122 155" stroke="#CBD5E1" stroke-width="1.25"/>
+
+    <!-- Dashed Back Placement Box -->
+    <rect x="54" y="42" width="52" height="80" rx="2" fill="none" stroke="#D2532F" stroke-width="1.5" stroke-dasharray="3.5 2.5"/>
+
+    <!-- Number 10 (Authentic Collegiate Dark Navy) -->
+    <!-- Number 1 -->
+    <path d="M64 70 L69 65 L72 65 L72 95 L66 95 L66 70 Z" fill="#051E44"/>
+    <!-- Number 0 -->
+    <path d="M76 69 C76 65.5 78.5 63 83.5 63 C88.5 63 91 65.5 91 69 L91 89 C91 92.5 88.5 95 83.5 95 C78.5 95 76 92.5 76 89 Z 
+             M81 70 L81 88 C81 89.5 82 90.5 83.5 90.5 C85 90.5 86 89.5 86 88 L86 70 C86 68.5 85 67.5 83.5 67.5 C82 67.5 81 68.5 81 70 Z" 
+          fill="#051E44" fill-rule="evenodd"/>
+</svg>
+                                        <div class="np-jersey-label">Back</div>
+                                        <p class="np-jersey-spec">{{ data_get($content, 'section_03.back_spec', 'Back number: 250 mm high') }}</p>
+                                    </div>
+                                </div>
+
+                                <p class="np-placement-disclaimer">{{ data_get($content, 'section_03.footnote', 'Placement example only — specifications depend on the product.') }}</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    {{-- 04 Consider the decoration method --}}
+                    <section id="decoration-methods" class="np-artwork-section" aria-labelledby="heading-decoration-methods">
+                        <div class="np-section-num">04</div>
+                        <div class="np-section-body">
+                            <h2 id="heading-decoration-methods" class="np-section-heading">{{ data_get($content, 'section_04.title', 'Consider the decoration method') }}</h2>
+
+                            <div class="np-table-wrap">
+                                <table class="np-guidelines-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Method</th>
+                                            <th>Guidance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach(data_get($content, 'section_04.methods', []) as $method)
+                                            <tr>
+                                                <td class="np-format-cell">{{ $method['name'] ?? '' }}</td>
+                                                <td class="np-guidance-cell">{{ $method['ideal_for'] ?? ($method['file_types'] ?? '') }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+
+                    {{-- 05 Review your proof before approval --}}
+                    <section id="proof-approval" class="np-artwork-section" aria-labelledby="heading-proof-approval">
+                        <div class="np-section-num">05</div>
+                        <div class="np-section-body">
+                            <h2 id="heading-proof-approval" class="np-section-heading">{{ data_get($content, 'section_05.title', 'Review your proof before approval') }}</h2>
+                            <p class="np-section-lead">{{ data_get($content, 'section_05.intro', 'Check colours, spelling, names, numbers, size and placement. Request revisions before approving.') }}</p>
+
+                            <div class="np-info-callout">
+                                <svg class="np-info-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                                </svg>
+                                <span>{{ data_get($content, 'section_05.notice', 'Production starts only after artwork approval.') }}</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    {{-- 06 Send your files --}}
+                    <section id="send-files" class="np-artwork-section" aria-labelledby="heading-send-files">
+                        <div class="np-section-num">06</div>
+                        <div class="np-section-body">
+                            <h2 id="heading-send-files" class="np-section-heading">{{ data_get($content, 'section_06.title', 'Send your files') }}</h2>
+                            <p class="np-section-lead">{{ data_get($content, 'section_06.intro', 'Upload artwork with the relevant product or quote request. For multiple products, label each file clearly.') }}</p>
+
+                            <div class="np-filename-box">
+                                {{ data_get($content, 'section_06.filename_example', 'TeamName_Product_Front_v1.pdf') }}
+                            </div>
+
+                            <p class="np-permission-note">{{ data_get($content, 'section_06.copyright_notice', 'Only submit artwork you have permission to use.') }}</p>
+
+                            <div class="np-action-row">
+                                <a href="{{ route('quote.request') }}" class="np-quote-btn">
+                                    <span>Request a Quote</span>
+                                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                    </svg>
+                                </a>
+
+                                <span class="np-help-link">
+                                    <a href="{{ data_get($content, 'section_06.cta_url', route('contact')) }}">{{ data_get($content, 'section_06.cta_text', 'Need help with your artwork? Contact our design team') }}</a>
+                                </span>
+                            </div>
+                        </div>
+                    </section>
                 </div>
             </div>
-            <div class="grid gap-5">
-                <x-storefront.content.callout title="Resolution guidance" tone="navy">For raster images, aim for approximately 300 DPI at the final print size. Increasing the DPI number without adding real image detail does not improve a blurry source file.</x-storefront.content.callout>
-                <x-storefront.content.callout title="Do not upload without permission" tone="red">You must have the right to use every logo, trademark, photograph, name, mascot, sponsor mark, and design submitted for production.</x-storefront.content.callout>
-            </div>
         </div>
-    </section>
+    </div>
 
-    <section class="section-padding">
-        <div class="site-container">
-            <x-storefront.section-heading eyebrow="Production methods" title="Artwork Needs Can Change by Decoration Type" description="The selected product and production method determine how colors, details, gradients, and small text can be reproduced." />
-            <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-                @foreach([
-                    ['Sublimation', 'Supports detailed full-color artwork integrated into suitable fabric. Color appearance can vary by fabric and screen calibration.'],
-                    ['Embroidery', 'Fine details and tiny text may need simplification. Thread colors and stitch direction affect the finished appearance.'],
-                    ['Screen Printing', 'Often works best with separated colors and clean shapes. The number of colors and print locations may affect price.'],
-                    ['Heat Transfer', 'Useful for names, numbers, and selected graphics. Material, size, placement, and garment type affect suitability.'],
-                ] as [$title, $text])
-                    <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-card">
-                        <h3 class="font-display text-xl font-bold uppercase text-brand-ink">{{ $title }}</h3>
-                        <p class="mt-2 text-sm leading-6 text-slate-500">{{ $text }}</p>
-                    </article>
-                @endforeach
-            </div>
-        </div>
-    </section>
+    {{-- Interactive ScrollSpy for Table of Contents --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var links = document.querySelectorAll('.np-sidebar-link');
+            var sections = [];
 
-    <section class="section-alt section-padding">
-        <div class="site-container grid gap-8 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
-            <div class="overflow-hidden rounded-3xl bg-white p-3 shadow-soft">
-                <img loading="lazy" src="{{ asset('storage/storefront/content/artwork-guidelines.webp') }}" width="900" height="620" decoding="async" alt="Printed sportswear detail" class="h-[360px] w-full rounded-2xl object-cover">
-            </div>
-            <div>
-                <p class="text-xs font-black uppercase tracking-[.18em] text-brand-red">Proof review</p>
-                <h2 class="mt-2 font-display text-4xl font-bold uppercase text-brand-ink">Approval means the visible details have been checked</h2>
-                <p class="mt-4 text-sm leading-7 text-slate-600 sm:text-base">Review the proof at a readable size. Check text, spelling, numbers, colors, scale, placement, orientation, and whether all requested logos are present. Ask questions before approval—not after production starts.</p>
-                <ul class="mt-5 grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
-                    @foreach(['Names and spelling', 'Player numbers', 'Logo version', 'Sponsor marks', 'Front and back placement', 'Approximate color direction', 'Product color', 'Requested revisions'] as $item)
-                        <li class="flex gap-2"><span class="font-black text-brand-red">✓</span>{{ $item }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        </div>
-    </section>
+            links.forEach(function (link) {
+                var targetId = link.getAttribute('href');
+                if (targetId && targetId.startsWith('#')) {
+                    var el = document.getElementById(targetId.substring(1));
+                    if (el) {
+                        sections.push({ el: el, link: link });
+                    }
+                }
+            });
 
-    <x-storefront.content.cta title="Have Artwork Ready?" description="Choose a customizable product or send your logo, quantity, size list, and deadline for a team or bulk quotation." primary-label="Browse Custom Products" :primary-href="route('products.index')" secondary-label="Request a Quote" :secondary-href="route('quote.request')" />
+            function onScroll() {
+                var scrollPos = window.scrollY + 120;
+                var activeItem = sections[0];
+
+                for (var i = 0; i < sections.length; i++) {
+                    if (sections[i].el.offsetTop <= scrollPos) {
+                        activeItem = sections[i];
+                    }
+                }
+
+                sections.forEach(function (item) {
+                    if (activeItem && item.link === activeItem.link) {
+                        item.link.classList.add('is-active');
+                    } else {
+                        item.link.classList.remove('is-active');
+                    }
+                });
+            }
+
+            window.addEventListener('scroll', onScroll, { passive: true });
+            onScroll();
+        });
+    </script>
 </x-layouts.storefront>

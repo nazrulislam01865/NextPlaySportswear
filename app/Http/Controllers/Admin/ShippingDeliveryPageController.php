@@ -37,7 +37,24 @@ class ShippingDeliveryPageController extends Controller
         try {
             $mutation = $this->media->prepare($request, $current, $request->validatedContent());
 
-            DB::transaction(function () use ($mutation, $adminId): void {
+            DB::transaction(function () use ($request, $mutation, $adminId): void {
+                if ($request->has('sections')) {
+                    $storefrontSetting = \App\Models\StorefrontPageSetting::firstOrNew(['page_key' => 'shipping-delivery']);
+                    $storefrontSetting->title = $request->input('display_header.title', 'Shipping & Delivery');
+                    $storefrontSetting->content = [
+                        'display_header' => $request->input('display_header', []),
+                        'sections' => $request->input('sections', []),
+                    ];
+                    $storefrontSetting->seo = $request->input('seo', []);
+                    if (! $storefrontSetting->exists && $adminId) {
+                        $storefrontSetting->created_by = $adminId;
+                    }
+                    if ($adminId) {
+                        $storefrontSetting->updated_by = $adminId;
+                    }
+                    $storefrontSetting->save();
+                }
+
                 $setting = ShippingDeliveryPageSetting::query()->first() ?? new ShippingDeliveryPageSetting();
                 $setting->fill($mutation['payload']);
                 if (! $setting->exists) {

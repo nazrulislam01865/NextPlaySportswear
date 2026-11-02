@@ -1,4 +1,4 @@
-<x-layouts.storefront :seo="[
+<x-layouts.storefront :seo="$seo ?? [
     'title' => 'Contact Us | ' . config('storefront.name', 'NextPlay Sportswear'),
     'description' => 'Questions about a product or order? Send us a message.',
 ]">
@@ -578,15 +578,15 @@
 
             {{-- Header --}}
             <header class="np-contact-header">
-                <h1 class="np-contact-title">Contact Us</h1>
-                <p class="np-contact-subtitle">Questions about a product or order? Send us a message.</p>
+                <h1 class="np-contact-title">{{ data_get($content, 'hero.title', 'Contact Us') }}</h1>
+                <p class="np-contact-subtitle">{{ data_get($content, 'hero.description', 'Questions about a product or order? Send us a message.') }}</p>
             </header>
 
             {{-- Grid --}}
             <div class="np-contact-grid">
                 {{-- Left Card: Get in touch --}}
                 <aside class="np-get-in-touch-card" aria-labelledby="heading-get-in-touch">
-                    <h2 id="heading-get-in-touch" class="np-card-heading">Get in touch</h2>
+                    <h2 id="heading-get-in-touch" class="np-card-heading">{{ data_get($content, 'info.heading', 'Get in touch') }}</h2>
 
                     <div class="np-contact-items">
                         {{-- Office address --}}
@@ -598,9 +598,10 @@
                                 </svg>
                             </span>
                             <div class="np-contact-item-info">
-                                <h3 class="np-contact-item-title">Office address</h3>
-                                @if(filled(config('storefront.address')))
-                                    <p class="np-contact-item-text">{!! nl2br(e(config('storefront.address'))) !!}</p>
+                                <h3 class="np-contact-item-title">{{ data_get($content, 'info.address_title', 'Office address') }}</h3>
+                                @php($address = data_get($content, 'info.address', config('storefront.address')))
+                                @if(filled($address))
+                                    <p class="np-contact-item-text">{!! nl2br(e($address)) !!}</p>
                                 @else
                                     <p class="np-contact-item-text">[Office address]<br>[City, postcode, United Kingdom]</p>
                                 @endif
@@ -615,9 +616,10 @@
                                 </svg>
                             </span>
                             <div class="np-contact-item-info">
-                                <h3 class="np-contact-item-title">Email</h3>
-                                @if(filled(config('storefront.email')) && config('storefront.email') !== 'support@example.com')
-                                    <p class="np-contact-item-text"><a href="mailto:{{ config('storefront.email') }}" style="color: inherit; text-decoration: none;">{{ config('storefront.email') }}</a></p>
+                                <h3 class="np-contact-item-title">{{ data_get($content, 'info.email_title', 'Email') }}</h3>
+                                @php($email = data_get($content, 'info.email', config('storefront.email')))
+                                @if(filled($email) && $email !== 'support@example.com')
+                                    <p class="np-contact-item-text"><a href="mailto:{{ $email }}" style="color: inherit; text-decoration: none;">{{ $email }}</a></p>
                                 @else
                                     <p class="np-contact-item-text">[Email address]</p>
                                 @endif
@@ -632,16 +634,17 @@
                                 </svg>
                             </span>
                             <div class="np-contact-item-info">
-                                <h3 class="np-contact-item-title">WhatsApp</h3>
+                                <h3 class="np-contact-item-title">{{ data_get($content, 'info.whatsapp_title', 'WhatsApp') }}</h3>
                                 @php
-                                    $rawWa = config('storefront.whatsapp', '+1 000 000 0000');
+                                    $rawWa = data_get($content, 'info.whatsapp_number', config('storefront.whatsapp', '+1 000 000 0000'));
                                     $waNumber = ($rawWa && $rawWa !== '+1 000 000 0000') ? $rawWa : '[WhatsApp number]';
-                                    $waClean = preg_replace('/\D+/', '', $rawWa);
-                                    $waUrl = config('storefront.whatsapp_url') ?: 'https://wa.me/' . ($waClean ?: '447000000000');
+                                    $waClean = preg_replace('/\D+/', '', (string) $rawWa);
+                                    $waUrl = data_get($content, 'info.whatsapp_url', config('storefront.whatsapp_url') ?: 'https://wa.me/' . ($waClean ?: '447000000000'));
+                                    $waLinkText = data_get($content, 'info.whatsapp_link_text', 'Chat on WhatsApp');
                                 @endphp
                                 <p class="np-contact-item-text">{{ $waNumber }}</p>
                                 <a href="{{ $waUrl }}" target="_blank" rel="noopener noreferrer" class="np-contact-whatsapp-link">
-                                    <span>Chat on WhatsApp</span>
+                                    <span>{{ $waLinkText }}</span>
                                     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                     </svg>
@@ -655,7 +658,7 @@
 
                     {{-- Follow us --}}
                     <div class="np-follow-section">
-                        <h3 class="np-follow-title">Follow us</h3>
+                        <h3 class="np-follow-title">{{ data_get($content, 'info.follow_heading', 'Follow us') }}</h3>
                         <div class="np-social-row">
                             {{-- WhatsApp --}}
                             <a href="{{ $waUrl }}" target="_blank" rel="noopener noreferrer" class="np-social-btn" title="WhatsApp" aria-label="WhatsApp">
@@ -664,37 +667,46 @@
                                 </svg>
                             </a>
                             {{-- Instagram --}}
-                            <a href="{{ config('storefront.social.instagram') }}" target="_blank" rel="noopener noreferrer" class="np-social-btn" title="Instagram" aria-label="Instagram">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-                                </svg>
-                            </a>
+                            @php($igUrl = data_get($content, 'info.instagram_url', config('storefront.social.instagram')))
+                            @if(filled($igUrl))
+                                <a href="{{ $igUrl }}" target="_blank" rel="noopener noreferrer" class="np-social-btn" title="Instagram" aria-label="Instagram">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                                        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                                        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                                    </svg>
+                                </a>
+                            @endif
                             {{-- Facebook --}}
-                            <a href="{{ config('storefront.social.facebook') }}" target="_blank" rel="noopener noreferrer" class="np-social-btn" title="Facebook" aria-label="Facebook">
-                                <svg viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/>
-                                </svg>
-                            </a>
+                            @php($fbUrl = data_get($content, 'info.facebook_url', config('storefront.social.facebook')))
+                            @if(filled($fbUrl))
+                                <a href="{{ $fbUrl }}" target="_blank" rel="noopener noreferrer" class="np-social-btn" title="Facebook" aria-label="Facebook">
+                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/>
+                                    </svg>
+                                </a>
+                            @endif
                             {{-- YouTube --}}
-                            <a href="{{ config('storefront.social.youtube') }}" target="_blank" rel="noopener noreferrer" class="np-social-btn" title="YouTube" aria-label="YouTube">
-                                <svg viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                                </svg>
-                            </a>
+                            @php($ytUrl = data_get($content, 'info.youtube_url', config('storefront.social.youtube')))
+                            @if(filled($ytUrl))
+                                <a href="{{ $ytUrl }}" target="_blank" rel="noopener noreferrer" class="np-social-btn" title="YouTube" aria-label="YouTube">
+                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                                    </svg>
+                                </a>
+                            @endif
                         </div>
                     </div>
 
                     {{-- Bottom Note --}}
-                    <p class="np-card-footer-note">For order enquiries, please include your order or quote number.</p>
+                    <p class="np-card-footer-note">{{ data_get($content, 'info.footer_note', 'For order enquiries, please include your order or quote number.') }}</p>
                 </aside>
 
                 {{-- Right Card: Send us a message --}}
                 <div class="np-send-message-card">
                     <div class="np-form-header">
-                        <h2 class="np-form-title">Send us a message</h2>
-                        <p class="np-form-subtitle">Fields marked * are required.</p>
+                        <h2 class="np-form-title">{{ data_get($content, 'form.heading', 'Send us a message') }}</h2>
+                        <p class="np-form-subtitle">{{ data_get($content, 'form.subheading', 'Fields marked * are required.') }}</p>
                     </div>
 
                     @if(session('status'))
@@ -872,11 +884,11 @@
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                                 </svg>
-                                <span>Your details are used to respond to your enquiry.</span>
+                                <span>{{ data_get($content, 'form.privacy_notice', 'Your details are used to respond to your enquiry.') }}</span>
                             </p>
 
                             <button type="submit" class="np-submit-btn">
-                                <span>Send Message</span>
+                                <span>{{ data_get($content, 'form.submit_btn_text', 'Send Message') }}</span>
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                                 </svg>

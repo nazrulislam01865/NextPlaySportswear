@@ -167,6 +167,24 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::get('/shipping-delivery-page', [\App\Http\Controllers\Admin\ShippingDeliveryPageController::class, 'edit'])->name('shipping-delivery-page.edit');
         Route::put('/shipping-delivery-page', [\App\Http\Controllers\Admin\ShippingDeliveryPageController::class, 'update'])->name('shipping-delivery-page.update');
 
+        Route::get('/artwork-guidelines-page', [\App\Http\Controllers\Admin\ArtworkGuidelinesPageController::class, 'edit'])->name('artwork-guidelines-page.edit');
+        Route::put('/artwork-guidelines-page', [\App\Http\Controllers\Admin\ArtworkGuidelinesPageController::class, 'update'])->name('artwork-guidelines-page.update');
+
+        Route::get('/how-to-order-page', [\App\Http\Controllers\Admin\HowToOrderPageController::class, 'edit'])->name('how-to-order-page.edit');
+        Route::put('/how-to-order-page', [\App\Http\Controllers\Admin\HowToOrderPageController::class, 'update'])->name('how-to-order-page.update');
+
+        Route::get('/returns-policy-page', [\App\Http\Controllers\Admin\ReturnsPolicyPageController::class, 'edit'])->name('returns-policy-page.edit');
+        Route::put('/returns-policy-page', [\App\Http\Controllers\Admin\ReturnsPolicyPageController::class, 'update'])->name('returns-policy-page.update');
+
+        Route::get('/contact-page', [\App\Http\Controllers\Admin\ContactPageController::class, 'edit'])->name('contact-page.edit');
+        Route::put('/contact-page', [\App\Http\Controllers\Admin\ContactPageController::class, 'update'])->name('contact-page.update');
+
+        Route::get('/terms-page', [\App\Http\Controllers\Admin\TermsPageController::class, 'edit'])->name('terms-page.edit');
+        Route::put('/terms-page', [\App\Http\Controllers\Admin\TermsPageController::class, 'update'])->name('terms-page.update');
+
+        Route::get('/privacy-page', [\App\Http\Controllers\Admin\PrivacyPageController::class, 'edit'])->name('privacy-page.edit');
+        Route::put('/privacy-page', [\App\Http\Controllers\Admin\PrivacyPageController::class, 'update'])->name('privacy-page.update');
+
         Route::get('/sustainability-page', [\App\Http\Controllers\Admin\SustainabilityPageController::class, 'edit'])->name('sustainability-page.edit');
         Route::put('/sustainability-page', [\App\Http\Controllers\Admin\SustainabilityPageController::class, 'update'])->name('sustainability-page.update');
 

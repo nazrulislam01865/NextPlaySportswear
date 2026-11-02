@@ -346,7 +346,7 @@
                     @endif
                 @endif
 
-                @if($canAdmin('storefront_branding.view') || $canAdmin('about_page.view') || $canAdmin('shipping_delivery_page.view') || $canAdmin('sustainability_page.view') || $canAdmin('homepage_sections.view') || $canAdmin('homepage_slides.view') || $canAdmin('newsletters.view') || $canAdmin('rural_surcharges.view') || $canAdmin('payment_methods.view'))
+                @if($canAdmin('storefront_branding.view') || $canAdmin('about_page.view') || $canAdmin('shipping_delivery_page.view') || $canAdmin('artwork_guidelines_page.view') || $canAdmin('how_to_order_page.view') || $canAdmin('returns_policy_page.view') || $canAdmin('contact_page.view') || $canAdmin('terms_page.view') || $canAdmin('privacy_page.view') || $canAdmin('sustainability_page.view') || $canAdmin('homepage_sections.view') || $canAdmin('homepage_slides.view') || $canAdmin('newsletters.view') || $canAdmin('rural_surcharges.view') || $canAdmin('payment_methods.view'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Store</p>
                     @if($canAdmin('storefront_branding.view'))
                         <x-admin.sidebar-link :href="route('admin.storefront-branding.edit')" :active="request()->routeIs('admin.storefront-branding.*')" icon="◆">Storefront Branding</x-admin.sidebar-link>
@@ -359,6 +359,24 @@
                     @endif
                     @if($canAdmin('shipping_delivery_page.view'))
                         <x-admin.sidebar-link :href="route('admin.shipping-delivery-page.edit')" :active="request()->routeIs('admin.shipping-delivery-page.*')" icon="▤">Shipping & Delivery Page</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('artwork_guidelines_page.view'))
+                        <x-admin.sidebar-link :href="route('admin.artwork-guidelines-page.edit')" :active="request()->routeIs('admin.artwork-guidelines-page.*')" icon="🎨">Artwork Guidelines</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('how_to_order_page.view'))
+                        <x-admin.sidebar-link :href="route('admin.how-to-order-page.edit')" :active="request()->routeIs('admin.how-to-order-page.*')" icon="📋">How to Order Page</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('returns_policy_page.view'))
+                        <x-admin.sidebar-link :href="route('admin.returns-policy-page.edit')" :active="request()->routeIs('admin.returns-policy-page.*')" icon="↩">Returns & Refunds Page</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('contact_page.view'))
+                        <x-admin.sidebar-link :href="route('admin.contact-page.edit')" :active="request()->routeIs('admin.contact-page.*')" icon="✉">Contact Us Page</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('terms_page.view'))
+                        <x-admin.sidebar-link :href="route('admin.terms-page.edit')" :active="request()->routeIs('admin.terms-page.*')" icon="⚖">Terms & Conditions</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('privacy_page.view'))
+                        <x-admin.sidebar-link :href="route('admin.privacy-page.edit')" :active="request()->routeIs('admin.privacy-page.*')" icon="🔒">Privacy Policy Page</x-admin.sidebar-link>
                     @endif
                     @if($canAdmin('sustainability_page.view'))
                         <x-admin.sidebar-link :href="route('admin.sustainability-page.edit')" :active="request()->routeIs('admin.sustainability-page.*')" icon="♻">Sustainability Page</x-admin.sidebar-link>
@@ -518,10 +536,10 @@
             @endif
 
             <main id="admin-main-content" tabindex="-1" class="min-w-0 p-4 sm:p-6 lg:p-8">
-                @if (session('status') && ! request()->routeIs('admin.email-customization.*', 'admin.holiday-calendars.*', 'admin.coupons.index', 'admin.promotions.sales.index', 'admin.storefront-branding.edit', 'admin.about-page.edit', 'admin.shipping-delivery-page.edit', 'admin.sustainability-page.edit'))
+                @if (session('status') && ! request()->routeIs('admin.email-customization.*', 'admin.holiday-calendars.*', 'admin.coupons.index', 'admin.promotions.sales.index', 'admin.storefront-branding.edit', 'admin.about-page.edit', 'admin.shipping-delivery-page.edit', 'admin.artwork-guidelines-page.edit', 'admin.how-to-order-page.edit', 'admin.returns-policy-page.edit', 'admin.contact-page.edit', 'admin.terms-page.edit', 'admin.privacy-page.edit', 'admin.sustainability-page.edit'))
                     <div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
                 @endif
-                @if ($errors->any() && ! request()->routeIs('admin.products.create', 'admin.products.edit', 'admin.homepage.sections.edit', 'admin.menus.create', 'admin.menus.edit', 'admin.email-customization.*', 'admin.holiday-calendars.*', 'admin.categories.create', 'admin.coupons.create', 'admin.coupons.edit', 'admin.storefront-branding.edit', 'admin.about-page.edit', 'admin.shipping-delivery-page.edit', 'admin.sustainability-page.edit', 'admin.users.index', 'admin.role-matrix.index', 'admin.bulk-quotes.show', 'admin.personalization-templates.*'))
+                @if ($errors->any() && ! request()->routeIs('admin.products.create', 'admin.products.edit', 'admin.homepage.sections.edit', 'admin.menus.create', 'admin.menus.edit', 'admin.email-customization.*', 'admin.holiday-calendars.*', 'admin.categories.create', 'admin.coupons.create', 'admin.coupons.edit', 'admin.storefront-branding.edit', 'admin.about-page.edit', 'admin.shipping-delivery-page.edit', 'admin.artwork-guidelines-page.edit', 'admin.how-to-order-page.edit', 'admin.returns-policy-page.edit', 'admin.contact-page.edit', 'admin.terms-page.edit', 'admin.privacy-page.edit', 'admin.sustainability-page.edit', 'admin.users.index', 'admin.role-matrix.index', 'admin.bulk-quotes.show', 'admin.personalization-templates.*'))
                     <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                         <p class="font-black">Please correct the highlighted information.</p>
                         <ul class="mt-2 list-disc space-y-1 pl-5">

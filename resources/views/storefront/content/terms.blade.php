@@ -1,11 +1,12 @@
 @php
     $siteName = config('storefront.name', 'NextPlay Sportswear');
-    $title = $title ?? 'Terms and Conditions';
-    $subtitle = $subtitle ?? 'Draft for review';
-    $description = $description ?? 'These terms explain the ordering process and your responsibilities when shopping with NextPlay Sportswear.';
+    $title = data_get($content, 'hero.title', $title ?? 'Terms and Conditions');
+    $subtitle = data_get($content, 'hero.subtitle', $subtitle ?? 'Draft for review');
+    $description = data_get($content, 'hero.description', $description ?? 'These terms explain the ordering process and your responsibilities when shopping with NextPlay Sportswear.');
+    $sections = data_get($content, 'sections', []);
 @endphp
 
-<x-layouts.storefront :seo="[
+<x-layouts.storefront :seo="$seo ?? [
     'title' => $title . ' | ' . $siteName,
     'description' => $description,
 ]">
@@ -148,104 +149,45 @@
 
                 {{-- Page Header --}}
                 <header>
-                    <h1>Terms and Conditions</h1>
+                    <h1>{{ $title }}</h1>
                     <p class="np-legal-subtitle">
                         {{ $subtitle }}
                     </p>
                     <p class="np-legal-intro">
-                        These terms explain the ordering process and your responsibilities when shopping with NextPlay Sportswear.
+                        {{ $description }}
                     </p>
                 </header>
 
                 {{-- Terms Sections --}}
                 <div class="np-legal-sections">
-                    {{-- 1. About these terms --}}
-                    <section aria-labelledby="section-about-terms">
-                        <h2 id="section-about-terms">1. About these terms</h2>
-                        <p>
-                            These terms apply when you browse our website, request a quotation, or place an order. Please read them before ordering.
-                        </p>
-                    </section>
-
-                    {{-- 2. Product information and pricing --}}
-                    <section aria-labelledby="section-product-pricing">
-                        <h2 id="section-product-pricing">2. Product information and pricing</h2>
-                        <p>
-                            Product details, prices, currencies, and available options are shown on the website or in your quotation. Check your selected specifications and order total before payment.
-                        </p>
-                    </section>
-
-                    {{-- 3. Orders and payment --}}
-                    <section aria-labelledby="section-orders-payment">
-                        <h2 id="section-orders-payment">3. Orders and payment</h2>
-                        <p>
-                            Review your contact details, addresses, quantities, and customisation instructions before placing an order. Payment details and the amount due are shown at checkout or in your quotation.
-                        </p>
-                    </section>
-
-                    {{-- 4. Artwork and customisation --}}
-                    <section aria-labelledby="section-artwork-customisation">
-                        <h2 id="section-artwork-customisation">4. Artwork and customisation</h2>
-                        <p>
-                            We will send artwork for your approval before production begins. Check all names, numbers, logos, colours, sizes, and placement carefully. Production starts after artwork approval.
-                        </p>
-                    </section>
-
-                    {{-- 5. Production and delivery --}}
-                    <section aria-labelledby="section-production-delivery">
-                        <h2 id="section-production-delivery">5. Production and delivery</h2>
-                        <p>
-                            Production and delivery estimates are provided with your order. Timing depends on artwork approval, product requirements, and the selected shipping method. Any remote-area charge will be shown before you confirm payment.
-                        </p>
-                    </section>
-
-                    {{-- 6. Changes and cancellations --}}
-                    <section aria-labelledby="section-changes-cancellations">
-                        <h2 id="section-changes-cancellations">6. Changes and cancellations</h2>
-                        <p>
-                            Contact us promptly if you need to change or cancel an order. Available options depend on the progress of artwork preparation and production. Your statutory rights are unaffected.
-                        </p>
-                    </section>
-
-                    {{-- 7. Returns and refunds --}}
-                    <section aria-labelledby="section-returns-refunds">
-                        <h2 id="section-returns-refunds">7. Returns and refunds</h2>
-                        <p>
-                            Please read our <a href="{{ route('returns') }}">Returns and Refunds Policy</a> for details about custom-made items, samples, and faulty or incorrect products. Nothing in these terms limits your statutory rights.
-                        </p>
-                    </section>
-
-                    {{-- 8. Uploaded content --}}
-                    <section aria-labelledby="section-uploaded-content">
-                        <h2 id="section-uploaded-content">8. Uploaded content</h2>
-                        <p>
-                            Only upload artwork, logos, and other content that you own or have permission to use. You authorise us to use that content to fulfil your order.
-                        </p>
-                    </section>
-
-                    {{-- 9. Your account --}}
-                    <section aria-labelledby="section-your-account">
-                        <h2 id="section-your-account">9. Your account</h2>
-                        <p>
-                            Keep your account details accurate and your password private. Contact us if you suspect unauthorised access.
-                        </p>
-                    </section>
-
-                    {{-- 10. Privacy --}}
-                    <section aria-labelledby="section-privacy">
-                        <h2 id="section-privacy">10. Privacy</h2>
-                        <p>
-                            Our <a href="{{ route('privacy') }}">Privacy Policy</a> explains how we handle personal information.
-                        </p>
-                    </section>
-
-                    {{-- 11. Contact us --}}
-                    <section aria-labelledby="section-contact-us">
-                        <h2 id="section-contact-us">11. Contact us</h2>
-                        <p>
-                            For questions about these terms or an order, please visit our <a href="{{ route('contact') }}">Contact Us</a> page.
-                        </p>
-                    </section>
+                    @forelse($sections as $secKey => $sec)
+                        <section aria-labelledby="section-{{ $secKey }}">
+                            <h2 id="section-{{ $secKey }}">{{ data_get($sec, 'title') }}</h2>
+                            @foreach(explode("\n\n", data_get($sec, 'content', '')) as $para)
+                                @if(trim($para) !== '')
+                                    @php
+                                        $text = e(trim($para));
+                                        $text = str_replace(
+                                            ['Returns and Refunds Policy', 'Privacy Policy', 'Contact Us'],
+                                            [
+                                                '<a href="' . route('returns') . '">Returns and Refunds Policy</a>',
+                                                '<a href="' . route('privacy') . '">Privacy Policy</a>',
+                                                '<a href="' . route('contact') . '">Contact Us</a>'
+                                            ],
+                                            $text
+                                        );
+                                    @endphp
+                                    <p>{!! nl2br($text) !!}</p>
+                                @endif
+                            @endforeach
+                        </section>
+                    @empty
+                        {{-- Fallback --}}
+                        <section aria-labelledby="section-about-terms">
+                            <h2 id="section-about-terms">1. About these terms</h2>
+                            <p>These terms apply when you browse our website, request a quotation, or place an order. Please read them before ordering.</p>
+                        </section>
+                    @endforelse
 
                     {{-- Back to top --}}
                     <div>
