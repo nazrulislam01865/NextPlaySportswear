@@ -46,6 +46,10 @@
                         @if($column['key'] === 'footer_support' && !collect($storefrontMenus[$column['key']] ?? [])->contains(fn ($item) => $item->resolvedUrl() === route('quote.guest.track')))
                             <li><a href="{{ route('quote.guest.track') }}" class="hover:text-white">Track Bulk Quote</a></li>
                         @endif
+                        {{-- Keep this helpful guide visible even when footer links are admin managed. --}}
+                        @if($column['key'] === 'footer_support' && !collect($storefrontMenus[$column['key']] ?? [])->contains(fn ($item) => parse_url($item->resolvedUrl(), PHP_URL_PATH) === parse_url(route('artwork-guidelines'), PHP_URL_PATH)))
+                            <li><a href="{{ route('artwork-guidelines') }}" class="hover:text-white">Artwork Guidelines</a></li>
+                        @endif
                     </ul>
                 </div>
             @endforeach

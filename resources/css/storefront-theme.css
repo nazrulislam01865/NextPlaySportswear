@@ -39,6 +39,48 @@
 }
 
 :root {
+    /* Customer-facing content / help pages: semantic aliases of the approved
+       typography and form template, NOT another palette or font scale.
+       Product-card / filter UI is deliberately excluded. */
+    --np-content-font: var(--nps-font);
+    --np-content-title-size: var(--nps-h1);
+    --np-content-title-mobile-size: var(--nps-h1-mobile);
+    --np-content-section-title-size: var(--nps-h4);
+    --np-content-sidebar-heading-size: var(--nps-h5);
+    --np-content-text-size: var(--nps-body);
+    --np-content-subtitle-size: var(--nps-body);
+    --np-content-nav-size: var(--nps-small);
+    --np-content-caption-size: var(--nps-caption);
+    --np-content-label-size: var(--nps-small);
+    --np-content-btn-size: var(--nps-button-size);
+    --np-content-btn-weight: var(--nps-button-weight);
+    --np-content-btn-height: var(--nps-control);
+    --np-content-btn-radius: var(--nps-radius);
+    --np-content-color-heading: var(--nps-navy);
+    --np-content-color-text: var(--nps-text);
+    --np-content-color-muted: var(--nps-muted);
+    --np-content-color-action: var(--nps-orange);
+    --np-content-color-action-hover: var(--nps-orange-hover);
+    --np-content-color-link: var(--nps-link);
+    --np-content-color-border: var(--nps-border);
+    --np-content-color-page: var(--nps-surface);
+    --np-content-color-panel-soft: var(--nps-soft);
+    --np-content-border-width: 1px;
+    --np-content-card-radius: 0px;
+    --np-content-nav-indicator-width: 3px;
+    --np-content-font-weight-regular: 400;
+    --np-content-font-weight-medium: 500;
+    --np-content-font-weight-semibold: 600;
+    --np-content-font-weight-bold: 700;
+    --np-content-space-xs: 8px;
+    --np-content-space-sm: 12px;
+    --np-content-space-md: 16px;
+    --np-content-space-lg: 24px;
+    --np-content-space-xl: 32px;
+    --np-content-line-height: var(--nps-body-line-height);
+    --np-content-nav-transition: .15s;
+    --np-content-sidebar-title-gap: 20px;
+
     /* Approved NextPlay brand foundation. */
     --np-color-primary: #051e44;
     --np-color-primary-rgb: 5 30 68;

@@ -119,7 +119,7 @@
     @vite(['resources/css/storefront.css', 'resources/js/storefront.js'])
     {{-- Generated from the centralized theme + typography sources; loaded last
          so the approved homepage rules work on existing cloud builds too. --}}
-    <link rel="stylesheet" href="{{ asset('css/storefront-typography.css') }}?v=20261102sharedcta1">
+    <link rel="stylesheet" href="{{ asset('css/storefront-typography.css') }}?v=20261102content-centralized1">
     @if(request()->routeIs('checkout.*', 'order.confirmation'))
         <link rel="stylesheet" href="{{ asset('css/nextplay-checkout.css') }}?v=20261031discount-sticky1">
         <script defer src="{{ asset('js/nextplay-checkout.js') }}?v=20261031phone-compact-v5"></script>
@@ -138,8 +138,37 @@
         <link rel="stylesheet" href="{{ asset('css/nextplay-guest-quote-track.css') }}?v=20261102trackdesign1">
     @endif
     {{-- Page-only layout styles. Never override the storefront header/footer or global typography. --}}
-    @if(request()->routeIs('about', 'returns', 'contact', 'terms'))
-        <link rel="stylesheet" href="{{ asset('css/nextplay-content-pages.css') }}?v=20261102content-square-sidebar-fix4">
+    @if(request()->routeIs('about', 'returns', 'contact', 'terms', 'privacy'))
+        <link rel="stylesheet" href="{{ asset('css/nextplay-content-pages.css') }}?v=20261102returns-nav-hover5">
+    @endif
+    @if(request()->routeIs('privacy'))
+        <link rel="stylesheet" href="{{ asset('css/nextplay-privacy-prototype.css') }}?v=20261102privacy-terms-width2">
+    @endif
+    @if(request()->routeIs('shipping'))
+        <link rel="stylesheet" href="{{ asset('css/nextplay-shipping-delivery-new.css') }}?v=20261102newshipping1">
+    @endif
+    @if(request()->routeIs('how-to-order', 'artwork-guidelines'))
+        <link rel="stylesheet" href="{{ asset('css/nextplay-managed-content-pages.css') }}?v=20261102managed-content-merge1">
+    @endif
+    @if(request()->routeIs('size-guide', 'artwork-guidelines'))
+        <link rel="stylesheet" href="{{ asset('css/nextplay-size-guide.css') }}?v=20261102size-art2">
+    @endif
+    {{-- One centralized layout and scroll navigation for the four admin-managed guides. --}}
+    @if(request()->routeIs('shipping', 'how-to-order', 'size-guide', 'artwork-guidelines'))
+        <link rel="stylesheet" href="{{ asset('css/nextplay-guide-unified.css') }}?v=20261102content-centralized1">
+        <script defer src="{{ asset('js/nextplay-guide-navigation.js') }}?v=20261102single-card-hover3"></script>
+    @endif
+    {{-- The same sidebar/hover rules for Returns and every admin-managed guide,
+         loaded after legacy page CSS to avoid competing overrides. --}}
+    @if(request()->routeIs('returns', 'shipping', 'how-to-order', 'size-guide', 'artwork-guidelines'))
+        <link rel="stylesheet" href="{{ asset('css/nextplay-content-sidebar-shared.css') }}?v=20261102sidebar-header-offset2">
+        <script defer src="{{ asset('js/nextplay-content-sidebar-offset.js') }}?v=20261102sidebar-header-offset2"></script>
+    @endif
+    {{-- Single template contract for fonts, sizes, buttons, colors and borders
+         across managed storefront content pages.  Values come from the central
+         storefront-theme.css; no legacy per-page palettes or CTA geometries. --}}
+    @if(request()->routeIs('about', 'returns', 'contact', 'terms', 'privacy', 'shipping', 'how-to-order', 'size-guide', 'artwork-guidelines', 'faq', 'payment', 'customization-guide', 'bulk-ordering', 'sustainability'))
+        <link rel="stylesheet" href="{{ asset('css/nextplay-content-design-system.css') }}?v=20261102privacy-subject-select1">
     @endif
 </head>
 <body

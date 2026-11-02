@@ -119,6 +119,20 @@ class AdminRbac
             self::permission('shipping_delivery_page.manage', 'Storefront', 'Manage', 'Manage Shipping & Delivery Page', 'Update Shipping & Delivery page text, links, SEO and icons.', 'admin.shipping-delivery-page.update', 157),
             self::permission('sustainability_page.view', 'Storefront', 'View', 'View Sustainability Page', 'Open the Sustainability page content editor.', 'admin.sustainability-page.edit', 158),
             self::permission('sustainability_page.manage', 'Storefront', 'Manage', 'Manage Sustainability Page', 'Update Sustainability page text, links, SEO, images and icons.', 'admin.sustainability-page.update', 159),
+            self::permission('size_guide_page.view', 'Storefront', 'View', 'View Size Guide Page', 'Open the Size Guide content editor.', 'admin.size-guide-page.edit', 237),
+            self::permission('size_guide_page.manage', 'Storefront', 'Manage', 'Manage Size Guide Page', 'Update measurement instructions, size charts and SEO.', 'admin.size-guide-page.update', 238),
+            self::permission('artwork_guidelines_page.view', 'Storefront', 'View', 'View Artwork Guidelines Page', 'Open the Artwork Guidelines page content editor.', 'admin.artwork-guidelines-page.edit', 225),
+            self::permission('artwork_guidelines_page.manage', 'Storefront', 'Manage', 'Manage Artwork Guidelines Page', 'Update Artwork Guidelines page text, links, specifications and SEO.', 'admin.artwork-guidelines-page.update', 226),
+            self::permission('how_to_order_page.view', 'Storefront', 'View', 'View How to Order Page', 'Open the How to Order page content editor.', 'admin.how-to-order-page.edit', 227),
+            self::permission('how_to_order_page.manage', 'Storefront', 'Manage', 'Manage How to Order Page', 'Update How to Order page text, links, ordering steps and SEO.', 'admin.how-to-order-page.update', 228),
+            self::permission('returns_policy_page.view', 'Storefront', 'View', 'View Returns Policy Page', 'Open the Returns & Refunds policy content editor.', 'admin.returns-policy-page.edit', 229),
+            self::permission('returns_policy_page.manage', 'Storefront', 'Manage', 'Manage Returns Policy Page', 'Update Returns & Refunds policy text, clauses and SEO.', 'admin.returns-policy-page.update', 230),
+            self::permission('contact_page.view', 'Storefront', 'View', 'View Contact Page', 'Open the Contact Us page content editor.', 'admin.contact-page.edit', 231),
+            self::permission('contact_page.manage', 'Storefront', 'Manage', 'Manage Contact Page', 'Update Contact Us page text, contact details, social links and SEO.', 'admin.contact-page.update', 232),
+            self::permission('terms_page.view', 'Storefront', 'View', 'View Terms & Conditions Page', 'Open the Terms & Conditions page content editor.', 'admin.terms-page.edit', 233),
+            self::permission('terms_page.manage', 'Storefront', 'Manage', 'Manage Terms & Conditions Page', 'Update Terms & Conditions text, clauses and SEO.', 'admin.terms-page.update', 234),
+            self::permission('privacy_page.view', 'Storefront', 'View', 'View Privacy Policy Page', 'Open the Privacy Policy page content editor.', 'admin.privacy-page.edit', 235),
+            self::permission('privacy_page.manage', 'Storefront', 'Manage', 'Manage Privacy Policy Page', 'Update Privacy Policy text, clauses and SEO.', 'admin.privacy-page.update', 236),
             self::permission('homepage_sections.view', 'Storefront', 'View', 'View Homepage Sections', 'Open homepage section controls.', 'admin.homepage.sections.index', 160),
             self::permission('homepage_sections.manage', 'Storefront', 'Manage', 'Manage Homepage Sections', 'Update homepage section text, buttons, images, items, visibility and display order.', 'admin.homepage.sections.update', 161),
             self::permission('homepage_slides.view', 'Storefront', 'View', 'View Homepage Slider', 'Open homepage slide records.', 'admin.homepage-slides.index', 170),
@@ -174,6 +188,13 @@ class AdminRbac
             'product_detail_controls.view', 'product_detail_controls.manage',
             'about_page.view', 'about_page.manage',
             'shipping_delivery_page.view', 'shipping_delivery_page.manage',
+            'size_guide_page.view', 'size_guide_page.manage',
+            'artwork_guidelines_page.view', 'artwork_guidelines_page.manage',
+            'how_to_order_page.view', 'how_to_order_page.manage',
+            'returns_policy_page.view', 'returns_policy_page.manage',
+            'contact_page.view', 'contact_page.manage',
+            'terms_page.view', 'terms_page.manage',
+            'privacy_page.view', 'privacy_page.manage',
             'sustainability_page.view', 'sustainability_page.manage',
             'homepage_sections.view', 'homepage_sections.manage',
             'homepage_slides.view', 'homepage_slides.manage',
@@ -372,6 +393,13 @@ class AdminRbac
             'product_detail_controls.view' => 'admin.product-detail-controls.edit',
             'about_page.view' => 'admin.about-page.edit',
             'shipping_delivery_page.view' => 'admin.shipping-delivery-page.edit',
+            'size_guide_page.view' => 'admin.size-guide-page.edit',
+            'artwork_guidelines_page.view' => 'admin.artwork-guidelines-page.edit',
+            'how_to_order_page.view' => 'admin.how-to-order-page.edit',
+            'returns_policy_page.view' => 'admin.returns-policy-page.edit',
+            'contact_page.view' => 'admin.contact-page.edit',
+            'terms_page.view' => 'admin.terms-page.edit',
+            'privacy_page.view' => 'admin.privacy-page.edit',
             'sustainability_page.view' => 'admin.sustainability-page.edit',
             'homepage_sections.view' => 'admin.homepage.sections.index',
             'homepage_slides.view' => 'admin.homepage-slides.index',
@@ -472,6 +500,46 @@ class AdminRbac
             return $name === 'shipping-delivery-page.update'
                 ? 'shipping_delivery_page.manage'
                 : 'shipping_delivery_page.view';
+        }
+
+        if (Str::startsWith($name, 'size-guide-page.')) {
+            return $name === 'size-guide-page.update' ? 'size_guide_page.manage' : 'size_guide_page.view';
+        }
+
+        if (Str::startsWith($name, 'artwork-guidelines-page.')) {
+            return $name === 'artwork-guidelines-page.update'
+                ? 'artwork_guidelines_page.manage'
+                : 'artwork_guidelines_page.view';
+        }
+
+        if (Str::startsWith($name, 'how-to-order-page.')) {
+            return $name === 'how-to-order-page.update'
+                ? 'how_to_order_page.manage'
+                : 'how_to_order_page.view';
+        }
+
+        if (Str::startsWith($name, 'returns-policy-page.')) {
+            return $name === 'returns-policy-page.update'
+                ? 'returns_policy_page.manage'
+                : 'returns_policy_page.view';
+        }
+
+        if (Str::startsWith($name, 'contact-page.')) {
+            return $name === 'contact-page.update'
+                ? 'contact_page.manage'
+                : 'contact_page.view';
+        }
+
+        if (Str::startsWith($name, 'terms-page.')) {
+            return $name === 'terms-page.update'
+                ? 'terms_page.manage'
+                : 'terms_page.view';
+        }
+
+        if (Str::startsWith($name, 'privacy-page.')) {
+            return $name === 'privacy-page.update'
+                ? 'privacy_page.manage'
+                : 'privacy_page.view';
         }
 
         if (Str::startsWith($name, 'sustainability-page.')) {

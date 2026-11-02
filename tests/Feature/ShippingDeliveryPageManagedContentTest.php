@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\ShippingDeliveryPageSetting;
+use App\Models\StorefrontPageSetting;
+use App\Models\User;
 use App\Services\Storefront\ShippingDeliveryPageService;
+use App\Support\AdminRbac;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -11,31 +14,56 @@ class ShippingDeliveryPageManagedContentTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_storefront_renders_managed_delivery_content_and_seo_with_fixed_structure(): void
+    public function test_new_shipping_design_displays_its_managed_sections(): void
     {
-        $payload = app(ShippingDeliveryPageService::class)->defaults();
-        $payload['hero']['title'] = 'MANAGED ORDER INFORMATION';
-        $payload['tabs'][3]['label'] = 'Managed Delivery';
-        $payload['info_cards']['cards'][0]['title'] = 'Managed Before Pay';
-        $payload['faqs']['items'][0]['question'] = 'Managed delivery question?';
-        $payload['address_checklist']['items'][0]['title'] = 'Managed Recipient';
-        $payload['cta']['primary_label'] = 'MANAGED TRACK';
-        $payload['seo'] = ['title' => 'Managed Shipping SEO', 'description' => 'Managed shipping description'];
-        ShippingDeliveryPageSetting::query()->create($payload);
+        $defaults = app(ShippingDeliveryPageService::class)->defaults();
+        StorefrontPageSetting::query()->create([
+            'page_key' => 'shipping-delivery',
+            'title' => 'Updated Delivery Heading',
+            'content' => [
+                'display_header' => ['title' => 'Updated Delivery Heading', 'subtitle' => 'New delivery description'],
+                'sections' => ['01' => ['title' => 'Managed Before Ordering'], '06' => ['btn_text' => 'Custom tracking text']],
+            ],
+            'seo' => ['title' => 'Managed Shipping SEO', 'description' => 'Managed shipping description'],
+        ]);
+        $this->get(route('shipping'))->assertOk()
+            ->assertSee('Updated Delivery Heading')
+            ->assertSee('Managed Before Ordering')
+            ->assertSee('Custom tracking text')
+            ->assertSee('Managed Shipping SEO')
+            ->assertSee($defaults['sections']['03']['title']);
+    }
 
-        $response = $this->get(route('shipping'))->assertOk();
-        $response->assertSee('MANAGED ORDER INFORMATION')
-            ->assertSee('Managed Delivery')
-            ->assertSee('Managed Before Pay')
-            ->assertSee('Managed delivery question?')
-            ->assertSee('Managed Recipient')
-            ->assertSee('MANAGED TRACK')
-            ->assertSee('Managed Shipping SEO');
+    public function test_new_admin_editor_saves_separately_without_erasing_legacy_shipping_settings(): void
+    {
+        AdminRbac::syncDefaults(true);
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+        $service = app(ShippingDeliveryPageService::class);
+        $defaults = $service->defaults();
+        ShippingDeliveryPageSetting::query()->create($defaults);
 
-        $html = $response->getContent();
-        $this->assertSame(2, substr_count($html, 'class="np-shipping-delivery-info-card"'));
-        $this->assertSame(3, substr_count($html, 'np-shipping-delivery-timeline-step__number'));
-        $this->assertSame(4, substr_count($html, 'class="np-shipping-delivery-faq"'));
-        $this->assertSame(4, substr_count($html, 'class="np-shipping-delivery-checklist-row"'));
+        $data = [
+            'display_header' => $defaults['display_header'],
+            'sections' => $defaults['sections'],
+            'seo' => $defaults['seo'],
+        ];
+        $data['display_header']['title'] = 'New Managed Shipping Heading';
+        $this->actingAs($admin, 'admin')->put(route('admin.shipping-delivery-page.update'), $data)
+            ->assertRedirect(route('admin.shipping-delivery-page.edit'));
+        $this->assertSame('New Managed Shipping Heading', StorefrontPageSetting::query()->where('page_key', 'shipping-delivery')->firstOrFail()->title);
+        $this->assertSame('ORDER INFORMATION', ShippingDeliveryPageSetting::query()->firstOrFail()->hero['title']);
+        $this->get(route('shipping'))->assertOk()->assertSee('New Managed Shipping Heading');
+    }
+
+    public function test_new_editor_rejects_unsafe_tracking_urls(): void
+    {
+        AdminRbac::syncDefaults(true);
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+        $defaults = app(ShippingDeliveryPageService::class)->defaults();
+        $data = ['display_header' => $defaults['display_header'], 'sections' => $defaults['sections'], 'seo' => $defaults['seo']];
+        $data['sections']['06']['btn_url'] = 'javascript:alert(1)';
+        $this->actingAs($admin, 'admin')->put(route('admin.shipping-delivery-page.update'), $data)
+            ->assertSessionHasErrors('sections.06.btn_url');
+        $this->assertSame(0, StorefrontPageSetting::query()->where('page_key', 'shipping-delivery')->count());
     }
 }

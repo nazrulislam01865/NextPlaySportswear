@@ -1227,3 +1227,18 @@
         overflow: visible;
     }
 }
+
+/* Returns & Refunds sidebar: match the guides' orange hover and active indicator.
+   The current section stays highlighted; hovered links receive the same treatment. */
+.np-returns-page .np-sidebar-link:hover,
+.np-returns-page .np-sidebar-link:focus-visible {
+    color:var(--nps-link,#a43e20);
+    border-left-color:var(--nps-orange,#c94f2c);
+    font-weight:600;
+    background:transparent;
+    text-decoration:none;
+}
+@media (max-width:1023px) {
+    .np-returns-page .np-sidebar-link:hover,
+    .np-returns-page .np-sidebar-link:focus-visible {border-left:0;}
+}

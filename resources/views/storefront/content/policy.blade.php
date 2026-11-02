@@ -1,7 +1,4 @@
-<x-layouts.storefront :seo="[
-    'title' => $title . ' | ' . config('storefront.name'),
-    'description' => $description,
-]">
+<x-layouts.storefront :seo="$seo ?? ['title' => $title . ' | ' . config('storefront.name'), 'description' => $description]">
     <x-storefront.content.policy-shell :eyebrow="$eyebrow" :title="$title" :description="$description" :updated="$updated" :sections="$sections" />
 
     <x-storefront.content.cta

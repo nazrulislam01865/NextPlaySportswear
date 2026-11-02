@@ -24,6 +24,57 @@ class ShippingDeliveryPageRequest extends FormRequest
     /** @return array<string, mixed> */
     public function rules(): array
     {
+        if ($this->has('sections')) {
+            return [
+                'display_header.title' => ['required', 'string', 'max:255'],
+                'display_header.subtitle' => ['required', 'string', 'max:1000'],
+
+                'sections.01.title' => ['required', 'string', 'max:255'],
+                'sections.01.p1' => ['required', 'string', 'max:1000'],
+                'sections.01.p2' => ['nullable', 'string', 'max:1000'],
+
+                'sections.02.title' => ['required', 'string', 'max:255'],
+                'sections.02.p1' => ['required', 'string', 'max:1000'],
+                'sections.02.formula' => ['required', 'string', 'max:1000'],
+                'sections.02.p2' => ['nullable', 'string', 'max:1000'],
+
+                'sections.03.title' => ['required', 'string', 'max:255'],
+                'sections.03.options' => ['required', 'array', 'min:1', 'max:8'],
+                'sections.03.options.*.name' => ['required', 'string', 'max:120'],
+                'sections.03.options.*.what_to_expect' => ['required', 'string', 'max:500'],
+                'sections.03.options.*.timing' => ['required', 'string', 'max:500'],
+                'sections.03.note_1' => ['required', 'string', 'max:1000'],
+                'sections.03.note_2' => ['required', 'string', 'max:1000'],
+
+                'sections.04.title' => ['required', 'string', 'max:255'],
+                'sections.04.p1' => ['required', 'string', 'max:1000'],
+
+                'sections.05.title' => ['required', 'string', 'max:255'],
+                'sections.05.p1' => ['required', 'string', 'max:1000'],
+                'sections.05.p2' => ['nullable', 'string', 'max:1000'],
+                'sections.05.callout' => ['required', 'string', 'max:1000'],
+
+                'sections.06.title' => ['required', 'string', 'max:255'],
+                'sections.06.p1' => ['required', 'string', 'max:1000'],
+                'sections.06.steps' => ['required', 'array', 'min:1', 'max:8'],
+                'sections.06.steps.*' => ['required', 'string', 'max:500'],
+                'sections.06.btn_text' => ['required', 'string', 'max:120'],
+                'sections.06.btn_url' => ['required', 'string', 'max:255', function ($attribute, $value, $fail) { if (! PublicUrl::isAllowed($value)) { $fail('Enter a valid public URL.'); } }],
+
+                'sections.07.title' => ['required', 'string', 'max:255'],
+                'sections.07.p1' => ['required', 'string', 'max:1000'],
+
+                'sections.08.title' => ['required', 'string', 'max:255'],
+                'sections.08.p1' => ['required', 'string', 'max:1000'],
+                'sections.08.help_label' => ['required', 'string', 'max:255'],
+                'sections.08.contact_text' => ['required', 'string', 'max:120'],
+                'sections.08.contact_url' => ['required', 'string', 'max:255', function ($attribute, $value, $fail) { if (! PublicUrl::isAllowed($value)) { $fail('Enter a valid public URL.'); } }],
+
+                'seo.title' => ['nullable', 'string', 'max:255'],
+                'seo.description' => ['nullable', 'string', 'max:500'],
+            ];
+        }
+
         $rules = [
             'hero' => ['required', 'array:eyebrow,title,subtitle'],
             'hero.eyebrow' => ['required', 'string', 'max:120'],
@@ -109,6 +160,10 @@ class ShippingDeliveryPageRequest extends FormRequest
 
     public function withValidator(Validator $validator): void
     {
+        if ($this->has('sections')) {
+            return;
+        }
+
         $validator->after(function (Validator $validator): void {
             $this->validateStableIds($validator, 'tabs', self::TAB_IDS);
             $this->validateStableIds($validator, 'info_cards.cards', self::INFO_CARD_IDS);

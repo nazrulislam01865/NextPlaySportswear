@@ -1,0 +1,200 @@
+/* GENERATED from resources/css/nextplay-content-design-system.css */
+/* NextPlay content page design contract.
+   Authoritative values: resources/css/storefront-theme.css.
+   Keep page layout/photography/tables in the page stylesheets. Avoid new literal
+   font sizes, brand colors, CTA dimensions, or font stacks here. */
+
+:is(.np-guide-page, .np-returns-page, .np-contact-page, .np-about-redesign,
+    .np-legal-document, .np-managed-policy) {
+  font-family: var(--np-content-font);
+  color: var(--np-content-color-text);
+}
+:is(.np-guide-page, .np-returns-page, .np-contact-page, .np-about-redesign,
+    .np-legal-document, .np-managed-policy) :is(button, input, select, textarea) {
+  font-family: var(--np-content-font);
+}
+
+/* Reusable content hero/CTA and policy-shell components are the same
+   semantic design system as the site-specific guide pages. Their structure,
+   surface colors and existing responsive grid remain unchanged. */
+.storefront-clean-ui .np-content-hero h1 {
+  font-family: var(--np-content-font);
+  font-size: var(--np-content-title-size);
+  font-weight: var(--np-content-font-weight-bold);
+  line-height: 1.15;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--np-content-color-heading);
+}
+.storefront-clean-ui .np-content-hero :is(input,select,textarea,button),
+.storefront-clean-ui .np-content-cta :is(input,select,textarea,button) {
+  font-family: var(--np-content-font);
+}
+.storefront-clean-ui .np-content-hero > .site-container > div:first-child > p:not(:first-child) {
+  font-family: var(--np-content-font);
+  font-size: var(--np-content-subtitle-size);
+  color: var(--np-content-color-muted);
+}
+.storefront-clean-ui .np-content-cta h2 {
+  font-family: var(--np-content-font);
+  font-size: var(--nps-h2);
+  font-weight: var(--np-content-font-weight-bold);
+  line-height: 1.25;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.storefront-clean-ui .np-content-cta p {
+  font-family: var(--np-content-font);
+  font-size: var(--np-content-text-size);
+  font-weight: var(--np-content-font-weight-regular);
+}
+.storefront-clean-ui .np-content-policy-nav :is(a,p),
+.storefront-clean-ui .np-content-policy-article p,
+.storefront-clean-ui .np-content-policy-article li {
+  font-family: var(--np-content-font);
+  font-size: var(--np-content-text-size);
+  line-height: var(--np-content-line-height);
+}
+.storefront-clean-ui .np-content-policy-nav nav a {
+  font-size: var(--np-content-nav-size);
+}
+.storefront-clean-ui .np-content-policy-article .np-content-policy-heading {
+  font-family: var(--np-content-font);
+  font-size: var(--np-content-section-title-size);
+  font-weight: var(--np-content-font-weight-bold);
+  color: var(--np-content-color-heading);
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.storefront-clean-ui :is(.np-content-hero,.np-content-cta)
+  .btn.nps-template-cta {
+  font-family: var(--np-content-font);
+  font-size: var(--np-content-btn-size);
+  font-weight: var(--np-content-btn-weight);
+  min-height: var(--np-content-btn-height);
+  border-radius: var(--np-content-btn-radius);
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Shared page headers, including About / Terms and the admin-managed guides. */
+.np-guide-page :is(.np-shipping-title, .np-order-title, .np-artwork-title, .np-size-title),
+.np-returns-page .np-returns-title,
+.np-contact-page .np-contact-title,
+.np-about-redesign > .site-container > header h1,
+.np-legal-document > header h1 {
+  font-family: var(--np-content-font);
+  font-size: var(--np-content-title-size);
+  font-weight: var(--np-content-font-weight-bold);
+  line-height: 1.15;
+  color: var(--np-content-color-heading);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.np-guide-page :is(.np-shipping-subtitle, .np-order-subtitle, .np-artwork-subtitle, .np-size-subtitle),
+.np-returns-page .np-returns-subtitle,
+.np-contact-page .np-contact-subtitle,
+.np-legal-document .np-legal-intro {
+  font-family: var(--np-content-font);
+  font-size: var(--np-content-subtitle-size);
+  font-weight: var(--np-content-font-weight-regular);
+  color: var(--np-content-color-muted);
+  line-height: 1.6;
+}
+
+/* Section titles, paragraphs, sidebar title/links all use one contract. */
+:is(.np-guide-page, .np-returns-page)
+  :is(.np-section-heading, .np-size-section-heading) {
+  font-family: var(--np-content-font);
+  font-size: var(--np-content-section-title-size);
+  font-weight: var(--np-content-font-weight-bold);
+  line-height: 1.4;
+  color: var(--np-content-color-heading);
+}
+:is(.np-guide-page, .np-returns-page)
+  :is(.np-section-num, .np-size-number) {
+  font-family: var(--np-content-font);
+  font-size: var(--np-content-section-title-size);
+  font-weight: var(--np-content-font-weight-bold);
+  color: var(--np-content-color-action);
+}
+:is(.np-guide-page, .np-returns-page)
+  :is(.np-section-p, .np-section-lead, .np-size-lead, .np-size-tips li,
+      .np-section-text, .np-section-list li) {
+  font-family: var(--np-content-font);
+  font-size: var(--np-content-text-size);
+  font-weight: var(--np-content-font-weight-regular);
+  line-height: var(--np-content-line-height);
+  color: var(--np-content-color-muted);
+}
+:is(.np-guide-page, .np-returns-page)
+  :is(.np-sidebar-title, .np-size-sidebar-title) {
+  font-family: var(--np-content-font);
+  font-size: var(--np-content-sidebar-heading-size);
+  font-weight: var(--np-content-font-weight-bold);
+  line-height: 1.4;
+  color: var(--np-content-color-heading);
+}
+:is(.np-guide-page, .np-returns-page)
+  :is(.np-sidebar-link, .np-size-nav-link) {
+  font-family: var(--np-content-font);
+  font-size: var(--np-content-nav-size);
+  line-height: 1.55;
+  color: var(--np-content-color-muted);
+}
+:is(.np-guide-page, .np-returns-page)
+  :is(.np-sidebar-link, .np-size-nav-link):is(:hover, :focus-visible, .is-active, [aria-current="location"]) {
+  color: var(--np-content-color-link);
+  font-weight: var(--np-content-font-weight-semibold);
+  border-left-color: var(--np-content-color-action);
+}
+
+/* The project already has .btn/.btn-secondary. Use them on content CTAs,
+   with the existing global .nps-template-cta for template dimensions.
+   No page-local button geometry or additional button variants are needed. */
+.storefront-clean-ui :is(.np-guide-page, .np-returns-page, .np-contact-page,
+  .np-about-redesign, .np-legal-document, .np-managed-policy)
+  .btn.nps-template-cta {
+  font-family: var(--np-content-font);
+  font-size: var(--np-content-btn-size);
+  font-weight: var(--np-content-btn-weight);
+  min-height: var(--np-content-btn-height);
+  border-radius: var(--np-content-btn-radius);
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Preserve one-card structure and the original page content / image layout. */
+.np-guide-page :is(.np-shipping-card,.np-order-card,.np-artwork-card,.np-size-card),
+.np-returns-page .np-returns-card,
+.np-contact-page :is(.np-get-in-touch-card,.np-send-message-card),
+.np-about-redesign .np-about-card {
+  border-radius: var(--np-content-card-radius);
+  border-width: var(--np-content-border-width);
+}
+
+@media (max-width: 640px) {
+  .np-guide-page :is(.np-shipping-title,.np-order-title,.np-artwork-title,.np-size-title),
+  .np-returns-page .np-returns-title,
+  .np-contact-page .np-contact-title,
+  .np-about-redesign > .site-container > header h1,
+  .np-legal-document > header h1,
+  .storefront-clean-ui .np-content-hero h1 {
+    font-size: var(--np-content-title-mobile-size);
+  }
+}
+
+/* Native Contact Us subject select: same 48px shared field as shipping method,
+   with a clearly visible chevron. Use native keyboard/option accessibility. */
+.storefront-clean-ui .np-contact-page .nps-form select.np-select {
+  appearance: none; -webkit-appearance: none;
+  background-color: var(--nps-surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2352637a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-size: 20px 20px;
+  background-position: right 14px center;
+  padding-right: 48px; cursor: pointer;
+}
+.storefront-clean-ui .np-contact-page .nps-form select.np-select:disabled { cursor: not-allowed; }

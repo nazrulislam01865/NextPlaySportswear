@@ -4,6 +4,11 @@ namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
 use App\Services\Storefront\AboutPageService;
+use App\Services\Storefront\TermsPageService;
+use App\Services\Storefront\ReturnsPolicyPageService;
+use App\Services\Storefront\PrivacyPageService;
+use App\Services\Storefront\HowToOrderPageService;
+use App\Services\Storefront\ArtworkGuidelinesPageService;
 use App\Services\Storefront\HomepageSectionService;
 use App\Services\Storefront\ShippingDeliveryPageService;
 use App\Services\Storefront\SustainabilityPageService;
@@ -80,19 +85,47 @@ class ContentPageController extends Controller
         ]);
     }
 
-    public function howToOrder(): View
+    public function howToOrder(HowToOrderPageService $service): View
     {
-        return view('storefront.content.how-to-order');
+        $content = $service->settings();
+        $seo = [
+            'title' => (string) data_get($content, 'seo.meta_title', 'How to Order | ' . config('storefront.name', 'NextPlay Sportswear')),
+            'description' => (string) data_get($content, 'seo.meta_description', 'From finding your product to receiving your custom order.'),
+            'robots' => 'index, follow',
+            'canonical' => route('how-to-order'),
+            'og_title' => (string) data_get($content, 'seo.meta_title', 'How to Order | ' . config('storefront.name', 'NextPlay Sportswear')),
+            'og_description' => (string) data_get($content, 'seo.meta_description', 'From finding your product to receiving your custom order.'),
+            'schema_type' => 'WebPage',
+        ];
+
+        return view('storefront.content.how-to-order', compact('content', 'seo'));
     }
 
-    public function sizeGuide(): View
+    public function sizeGuide(\App\Services\Storefront\SizeGuidePageService $service): View
     {
-        return view('storefront.content.size-guide');
+        $content = $service->settings();
+        $seo = [
+            'title' => (string) data_get($content, 'seo.meta_title', 'Size Guide | NextPlay Sportswear'),
+            'description' => (string) data_get($content, 'seo.meta_description', ''),
+            'canonical' => route('size-guide'),
+        ];
+        return view('storefront.content.size-guide', compact('content', 'seo'));
     }
 
-    public function artworkGuidelines(): View
+    public function artworkGuidelines(ArtworkGuidelinesPageService $service): View
     {
-        return view('storefront.content.artwork-guidelines');
+        $content = $service->settings();
+        $seo = [
+            'title' => (string) data_get($content, 'seo.meta_title', 'Artwork Guidelines | NextPlay Sportswear'),
+            'description' => (string) data_get($content, 'seo.meta_description', 'Learn how to prepare vector and raster files for custom sportswear sublimation, embroidery, screen printing and heat transfer.'),
+            'robots' => 'index, follow',
+            'canonical' => route('artwork-guidelines'),
+            'og_title' => (string) data_get($content, 'seo.meta_title', 'Artwork Guidelines | NextPlay Sportswear'),
+            'og_description' => (string) data_get($content, 'seo.meta_description', 'Learn how to prepare vector and raster files for custom sportswear sublimation, embroidery, screen printing and heat transfer.'),
+            'schema_type' => 'WebPage',
+        ];
+
+        return view('storefront.content.artwork-guidelines', compact('content', 'seo'));
     }
 
     public function customizationGuide(): View
@@ -137,9 +170,20 @@ class ContentPageController extends Controller
         return view('storefront.content.sustainability', compact('sustainability', 'seo'));
     }
 
-    public function returns(): View
+    public function returns(ReturnsPolicyPageService $service): View
     {
-        return view('storefront.content.returns');
+        $content = $service->settings();
+        $seo = [
+            'title' => (string) data_get($content, 'seo.meta_title', 'Returns & Refunds | ' . config('storefront.name', 'NextPlay Sportswear')),
+            'description' => (string) data_get($content, 'seo.meta_description', 'Information about returns, refunds and cancellations.'),
+            'robots' => 'index, follow',
+            'canonical' => route('returns'),
+            'og_title' => (string) data_get($content, 'seo.meta_title', 'Returns & Refunds | ' . config('storefront.name', 'NextPlay Sportswear')),
+            'og_description' => (string) data_get($content, 'seo.meta_description', 'Information about returns, refunds and cancellations.'),
+            'schema_type' => 'WebPage',
+        ];
+
+        return view('storefront.content.returns', compact('content', 'seo'));
     }
 
     public function payment(): View
@@ -147,18 +191,46 @@ class ContentPageController extends Controller
         return view('storefront.content.payment');
     }
 
-    public function privacy(): View
+    public function privacy(PrivacyPageService $service): View
     {
-        return $this->policy('privacy');
+        $content = $service->settings();
+        $privacySections = [];
+        foreach (data_get($content, 'sections', []) as $section) {
+            $text = trim((string) data_get($section, 'content', ''));
+            $position = count($privacySections) + 1;
+            $privacySections[] = [
+                'id' => 'privacy-section-'.$position,
+                'number' => $position,
+                'title' => (string) data_get($section, 'title', ''),
+                'paragraphs' => $text === '' ? [] : (preg_split('/\n\s*\n/', $text) ?: []),
+            ];
+        }
+
+        $seo = [
+            'title' => (string) data_get($content, 'seo.meta_title', 'Privacy Policy | '.config('storefront.name', 'NextPlay Sportswear')),
+            'description' => (string) data_get($content, 'seo.meta_description', ''),
+            'robots' => 'index, follow',
+            'canonical' => route('privacy'),
+            'schema_type' => 'WebPage',
+        ];
+
+        return view('storefront.content.privacy', compact('content', 'seo', 'privacySections'));
     }
 
-    public function terms(): View
+    public function terms(TermsPageService $service): View
     {
-        return view('storefront.content.terms', [
-            'title' => 'Terms and Conditions',
-            'subtitle' => 'Draft for review',
-            'description' => 'These terms explain the ordering process and your responsibilities when shopping with NextPlay Sportswear.',
-        ]);
+        $content = $service->settings();
+        $seo = [
+            'title' => (string) data_get($content, 'seo.meta_title', 'Terms and Conditions | ' . config('storefront.name', 'NextPlay Sportswear')),
+            'description' => (string) data_get($content, 'seo.meta_description', 'Terms and conditions for NextPlay Sportswear.'),
+            'robots' => 'index, follow',
+            'canonical' => route('terms'),
+            'og_title' => (string) data_get($content, 'seo.meta_title', 'Terms and Conditions | ' . config('storefront.name', 'NextPlay Sportswear')),
+            'og_description' => (string) data_get($content, 'seo.meta_description', 'Terms and conditions for NextPlay Sportswear.'),
+            'schema_type' => 'WebPage',
+        ];
+
+        return view('storefront.content.terms', compact('content', 'seo'));
     }
 
     public function cookies(): View

@@ -1,0 +1,127 @@
+/* NextPlay content-page table of contents: one reusable sidebar treatment.
+   Loaded last ONLY on Returns & Refunds and four information guides.
+   Uses the project's Expose font, typography sizes, and orange theme tokens. */
+@media (min-width:1024px) {
+  /* The sidebar must span the height of the content card. Sticky applies to its
+     inner navigation rather than the short sidebar box itself. */
+  .np-returns-page .np-returns-card > .np-returns-sidebar,
+  .np-guide-page :is(.np-shipping-card,.np-order-card,.np-artwork-card,.np-size-card) >
+    :is(.np-shipping-sidebar,.np-order-sidebar,.np-artwork-sidebar,.np-size-sidebar) {
+    position:relative;
+    top:auto;
+    align-self:stretch;
+    min-width:0;
+    min-height:0;
+    height:auto;
+    max-height:none;
+    overflow:visible;
+  }
+
+  /* Keep the heading in view while the content on the right scrolls. */
+  :is(.np-returns-page,.np-guide-page) .np-guide-sticky-nav {
+    box-sizing:border-box;
+    position:sticky;
+    /* The header has two responsive rows and remains sticky.  Its measured
+       height is set by the shared guide/returns script below. */
+    top:var(--np-content-sticky-top, 140px);
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+    max-height:calc(100vh - var(--np-content-sticky-top, 140px) - 16px);
+    max-height:calc(100dvh - var(--np-content-sticky-top, 140px) - 16px);
+    overflow:hidden;
+  }
+  :is(.np-returns-page,.np-guide-page) .np-guide-sticky-nav >
+    :is(.np-sidebar-nav,.np-size-nav) {
+    flex:1 1 auto;
+    min-height:0;
+    overflow-x:hidden;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    scrollbar-width:thin;
+    padding-right:4px;
+  }
+}
+
+/* Fixed label, including when the list of links needs its own scroll area. */
+:is(.np-returns-page,.np-guide-page) .np-guide-sticky-nav >
+  :is(.np-sidebar-title,.np-size-sidebar-title) {
+  flex:0 0 auto;
+  font-family:var(--np-content-font);
+  font-size:var(--np-content-sidebar-heading-size);
+  line-height:1.4;
+  font-weight:var(--np-content-font-weight-bold);
+  color:var(--np-content-color-heading);
+  margin:0 0 var(--np-content-sidebar-title-gap);
+}
+
+/* The one shared hover/selected state from the Returns prototype: visible
+   orange rule and orange text. No negative margin that clips the rule. */
+:is(.np-returns-page .np-returns-sidebar,.np-guide-page .np-guide-sticky-nav)
+  :is(.np-sidebar-link,.np-size-nav-link) {
+  box-sizing:border-box;
+  display:block;
+  width:100%;
+  margin:0;
+  padding:0 var(--np-content-space-xs) 0 var(--np-content-space-sm);
+  border:0;
+  border-left:var(--np-content-nav-indicator-width) solid transparent;
+  border-radius:0;
+  box-shadow:none;
+  background:transparent;
+  font-family:var(--np-content-font);
+  font-size:var(--np-content-nav-size);
+  line-height:1.55;
+  font-weight:var(--np-content-font-weight-regular);
+  color:var(--np-content-color-muted);
+  text-decoration:none;
+  transition:color var(--np-content-nav-transition) ease,border-color var(--np-content-nav-transition) ease;
+}
+:is(.np-returns-page .np-returns-sidebar,.np-guide-page .np-guide-sticky-nav)
+  :is(.np-sidebar-link,.np-size-nav-link):hover,
+:is(.np-returns-page .np-returns-sidebar,.np-guide-page .np-guide-sticky-nav)
+  :is(.np-sidebar-link,.np-size-nav-link):focus-visible,
+:is(.np-returns-page .np-returns-sidebar,.np-guide-page .np-guide-sticky-nav)
+  :is(.np-sidebar-link,.np-size-nav-link).is-active,
+:is(.np-returns-page .np-returns-sidebar,.np-guide-page .np-guide-sticky-nav)
+  :is(.np-sidebar-link,.np-size-nav-link)[aria-current="location"] {
+  margin:0;
+  padding-left:var(--np-content-space-sm);
+  border-left:var(--np-content-nav-indicator-width) solid var(--np-content-color-action);
+  color:var(--np-content-color-link);
+  font-weight:var(--np-content-font-weight-semibold);
+  background:transparent;
+  text-decoration:none;
+}
+:is(.np-returns-page .np-returns-sidebar,.np-guide-page .np-guide-sticky-nav)
+  :is(.np-sidebar-link,.np-size-nav-link):focus-visible {
+  outline:2px solid var(--nps-focus,#2164c5);
+  outline-offset:2px;
+}
+
+@media (max-width:1023px) {
+  /* Let the complete menu travel naturally with the page on smaller screens. */
+  :is(.np-returns-page,.np-guide-page) .np-guide-sticky-nav {
+    position:static;
+    top:auto;
+    max-height:none;
+    overflow:visible;
+  }
+  :is(.np-returns-page,.np-guide-page) .np-guide-sticky-nav >
+    :is(.np-sidebar-nav,.np-size-nav) {
+    max-height:none;
+    overflow:visible;
+  }
+  /* Keep the orange left rule even in the wrapped mobile navigation. */
+  :is(.np-returns-page .np-returns-sidebar,.np-guide-page .np-guide-sticky-nav)
+    :is(.np-sidebar-link,.np-size-nav-link) {
+    width:auto;
+    padding:2px 8px 2px 12px;
+    border-left:var(--np-content-nav-indicator-width) solid transparent;
+  }
+  :is(.np-returns-page .np-returns-sidebar,.np-guide-page .np-guide-sticky-nav)
+    :is(.np-sidebar-link,.np-size-nav-link):is(:hover,:focus-visible,.is-active,[aria-current="location"]) {
+    padding:2px 8px 2px 12px;
+    border-left:var(--np-content-nav-indicator-width) solid var(--np-content-color-action);
+  }
+}

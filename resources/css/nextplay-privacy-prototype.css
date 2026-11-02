@@ -1,0 +1,40 @@
+/* Privacy Policy uses the same full-width document structure and breadcrumb
+   styling as Terms & Conditions (nextplay-content-pages.css). Only Privacy's
+   prototype-specific date, divider, and paragraph spacing are defined here.
+   All font/color/spacing values come from shared NextPlay design tokens. */
+.np-privacy-document {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+}
+.np-privacy-document .np-privacy-document__header {
+    border-bottom: 1px solid var(--nps-border);
+    padding-bottom: var(--np-content-space-lg);
+}
+.np-privacy-document .np-privacy-document__updated {
+    font-size: var(--np-content-caption-size);
+    color: var(--np-content-color-muted);
+    line-height: 1.5;
+    margin: 0 0 var(--np-content-space-md);
+}
+.np-privacy-document .np-privacy-document__intro {
+    font-size: var(--np-content-text-size);
+    color: var(--np-content-color-text);
+    font-weight: var(--np-content-font-weight-regular);
+    line-height: var(--np-content-line-height);
+    margin: 0;
+}
+.np-privacy-document .np-privacy-document__sections {
+    padding-top: var(--np-content-space-lg);
+}
+.np-privacy-document .np-privacy-document__section {
+    scroll-margin-top: 120px;
+}
+.np-privacy-document .np-privacy-document__section p {
+    overflow-wrap: anywhere;
+}
+.np-privacy-document :is(a):focus-visible {
+    outline: 2px solid var(--nps-focus);
+    outline-offset: 2px;
+}

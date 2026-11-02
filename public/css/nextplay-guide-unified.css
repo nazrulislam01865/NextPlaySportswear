@@ -1,0 +1,146 @@
+/* NEXTPLAY - Shared information-guide design.
+   A single square-corner bordered card contains the navigation and the content.
+   Scoped to the guides; reuse central font, theme, border and button tokens. */
+.np-guide-page {
+  font-family:var(--nps-font,"Expose","Segoe UI",sans-serif);
+  color:var(--nps-text,#26364b);
+  background:var(--nps-soft,#f5f7fa);
+  min-height:70vh;
+  padding:32px 0 64px;
+}
+/* Keep the main guide structure as wide as other full-layout storefront pages.
+   The prior 1060/1180px caps made the three prototypes appear very narrow. */
+.np-guide-page :is(.np-shipping-container,.np-order-container,.np-artwork-container,.np-size-container) {
+  box-sizing:border-box;
+  width:90%; max-width:1440px; margin-inline:auto;
+}
+.np-guide-page :is(.np-shipping-breadcrumb,.np-order-breadcrumb,.np-artwork-breadcrumb,.np-size-breadcrumb) {
+  font-family:var(--nps-font,"Expose",sans-serif);
+  font-size:var(--nps-caption,13px);line-height:1.5;
+  color:var(--nps-muted,#52637a);margin:0 0 20px;
+}
+.np-guide-page :is(.np-shipping-breadcrumb,.np-order-breadcrumb,.np-artwork-breadcrumb,.np-size-breadcrumb) [aria-current] {
+  color:var(--nps-link,#a43e20);
+}
+.np-guide-page :is(.np-shipping-header,.np-order-header,.np-artwork-header,.np-size-header) {margin:0 0 28px;}
+.np-guide-page :is(.np-shipping-title,.np-order-title,.np-artwork-title,.np-size-title) {
+  font-family:var(--nps-font,"Expose",sans-serif);
+  font-size:var(--nps-h1,40px);font-weight:700;line-height:1.2;
+  letter-spacing:0;color:var(--nps-navy,#051e44);
+  margin:0 0 8px;
+}
+.np-guide-page :is(.np-shipping-subtitle,.np-order-subtitle,.np-artwork-subtitle,.np-size-subtitle) {
+  font-family:var(--nps-font,"Expose",sans-serif);
+  font-size:var(--nps-body,16px);font-weight:400;line-height:1.5;
+  color:var(--nps-muted,#52637a);margin:0;max-width:none;
+}
+/* One bordered card with two columns inside it; not two separate panels. */
+.np-guide-page :is(.np-shipping-card,.np-order-card,.np-artwork-card,.np-size-card),
+.np-shipping-page .np-shipping-card {
+  display:grid;grid-template-columns:240px minmax(0,1fr);align-items:start;
+  gap:2rem;padding:2rem;min-width:0;
+  border:1px solid var(--nps-border,#bac6d5);border-radius:0;
+  box-shadow:none;background:var(--nps-surface,#fff);
+}
+.np-guide-page :is(.np-shipping-sidebar,.np-order-sidebar,.np-artwork-sidebar,.np-size-sidebar) {
+  box-sizing:border-box;position:relative;top:auto;align-self:stretch;
+  min-width:0;min-height:0;max-height:none;overflow:visible;
+  padding:0;
+  border:0;border-radius:0;background:transparent;box-shadow:none;
+}
+.np-guide-page .np-guide-sticky-nav {
+  position:sticky;top:104px;
+  max-height:calc(100vh - 120px);max-height:calc(100dvh - 120px);
+  overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+}
+.np-guide-page :is(.np-shipping-content,.np-order-content,.np-artwork-content,.np-size-content) {
+  box-sizing:border-box;min-width:0;
+  padding:0;background:transparent;border:0;border-radius:0;box-shadow:none;
+}
+/* Same active/hover treatment as Returns & Refunds: orange text + one left bar. */
+.np-guide-page :is(.np-sidebar-title,.np-size-sidebar-title) {
+  font-family:var(--nps-font,"Expose",sans-serif);
+  font-size:var(--nps-h5,18px);font-weight:700;line-height:1.4;
+  color:var(--nps-navy,#051e44);margin:0 0 20px;
+}
+.np-guide-page :is(.np-sidebar-nav,.np-size-nav) {
+  display:flex;flex-direction:column;align-items:stretch;gap:12px;
+  margin:0;padding:0;list-style:none;min-width:0;
+}
+.np-guide-page .np-sidebar-nav li {margin:0;padding:0;list-style:none;}
+.np-guide-page :is(.np-sidebar-link,.np-size-nav-link) {
+  box-sizing:border-box;display:block;width:100%;min-height:0;
+  margin:0;padding:0 8px 0 12px;
+  border:0;border-left:2px solid transparent;border-radius:0;
+  background:transparent;box-shadow:none;
+  font-family:var(--nps-font,"Expose",sans-serif);
+  font-size:var(--nps-small,14px);font-weight:400;line-height:1.55;
+  color:var(--nps-muted,#52637a);text-decoration:none;
+  overflow-wrap:anywhere;
+  transition:color .15s ease,border-color .15s ease;
+}
+.np-guide-page :is(.np-sidebar-link,.np-size-nav-link):hover {
+  color:var(--nps-link,#a43e20);border-left-color:var(--nps-orange,#c94f2c);
+  background:transparent;text-decoration:none;font-weight:600;
+}
+.np-guide-page :is(.np-sidebar-link,.np-size-nav-link).is-active,
+.np-guide-page :is(.np-sidebar-link,.np-size-nav-link)[aria-current="location"] {
+  padding-left:12px;border:0;border-left:2px solid var(--nps-orange,#CF5D38);
+  color:var(--nps-link,#a43e20);background:transparent;
+  font-weight:600;
+}
+.np-guide-page :is(.np-shipping-section,.np-order-section,.np-artwork-section,.np-size-section) {
+  min-width:0;scroll-margin-top:120px;
+}
+.np-guide-page :is(.np-section-heading,.np-size-section-heading) {
+  font-family:var(--nps-font,"Expose",sans-serif);
+  font-size:var(--nps-h4,20px);font-weight:700;line-height:1.4;
+  color:var(--nps-navy,#051e44);
+}
+.np-guide-page :is(.np-section-num,.np-size-number) {
+  font-family:var(--nps-font,"Expose",sans-serif);
+  font-size:var(--nps-h4,20px);font-weight:700;
+  color:var(--nps-orange,#CF5D38);
+}
+.np-guide-page :is(.np-section-p,.np-section-lead,.np-size-lead,.np-size-tips li) {
+  font-family:var(--nps-font,"Expose",sans-serif);
+  font-size:var(--nps-body,16px);line-height:1.6;color:var(--nps-muted,#52637a);
+}
+/* Preserve the prototypes' content: tables, checklists, diagrams, numbered rows,
+   notes and links. Harmonize actions with NextPlay's existing button tokens. */
+/* Guide CTA geometry comes from the global .btn.nps-template-cta system. */
+.np-guide-page :is(.np-action-link,.np-contact-link) {font-family:var(--nps-font,"Expose",sans-serif);color:var(--nps-link,#a43e20);}
+.np-guide-page :is(.np-action-link,.np-contact-link):hover {color:var(--nps-navy,#051e44);}
+.np-guide-page :is(a.np-track-btn,a.np-quote-btn,a.np-size-action,.np-sidebar-link,.np-size-nav-link):focus-visible {
+  outline:2px solid var(--nps-focus,#2164c5);outline-offset:3px;
+}
+.np-guide-page :is(.np-table-wrap,.np-size-table-scroll) {max-width:100%;overflow-x:auto;}
+.np-guide-page :is(.np-section-body,.np-size-section-body) {min-width:0;}
+/* Match the single-card responsive structure of Returns & Refunds. */
+@media (max-width:1023px) {
+  .np-guide-page {padding:24px 0 48px;}
+  .np-guide-page :is(.np-shipping-card,.np-order-card,.np-artwork-card,.np-size-card),
+  .np-shipping-page .np-shipping-card {grid-template-columns:minmax(0,1fr);gap:1.5rem;padding:1.75rem;}
+  .np-guide-page :is(.np-shipping-sidebar,.np-order-sidebar,.np-artwork-sidebar,.np-size-sidebar) {
+    align-self:auto;min-height:0;padding:0 0 1.5rem;
+    border:0;border-bottom:1px solid #eef2f6;
+  }
+  .np-guide-page .np-guide-sticky-nav {position:static;max-height:none;overflow:visible;}
+  .np-guide-page :is(.np-sidebar-nav,.np-size-nav) {flex-direction:row;flex-wrap:wrap;gap:10px 16px;}
+  .np-guide-page :is(.np-sidebar-link,.np-size-nav-link) {
+    width:auto;margin:0;padding:0;border:0;line-height:1.55;
+  }
+  .np-guide-page :is(.np-sidebar-link,.np-size-nav-link):hover,
+  .np-guide-page :is(.np-sidebar-link,.np-size-nav-link).is-active,
+  .np-guide-page :is(.np-sidebar-link,.np-size-nav-link)[aria-current="location"] {
+    padding:0;border:0;color:var(--nps-link,#a43e20);
+  }
+  .np-guide-page :is(.np-shipping-content,.np-order-content,.np-artwork-content,.np-size-content) {padding:0;}
+  .np-guide-page :is(.np-shipping-section,.np-order-section,.np-artwork-section,.np-size-section) {scroll-margin-top:104px;}
+}
+@media (max-width:640px) {
+  .np-guide-page :is(.np-shipping-container,.np-order-container,.np-artwork-container,.np-size-container) {width:calc(100% - 32px);}
+  .np-guide-page :is(.np-shipping-card,.np-order-card,.np-artwork-card,.np-size-card),
+  .np-shipping-page .np-shipping-card {padding:1.25rem;}
+  .np-guide-page :is(.np-shipping-title,.np-order-title,.np-artwork-title,.np-size-title) {font-size:var(--nps-h1-mobile,32px);}
+}
