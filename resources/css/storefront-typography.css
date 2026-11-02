@@ -160,6 +160,35 @@
     text-transform:none !important;
 }
 .storefront-clean-ui .home-page :is(.np-ordering-card__description,.np-best-gear-card__description,.np-home-quick-help-card-description,.np-shop-sport-card__meta,.section-head p,.process-intro p,.np-testimonials-row-head p){color:var(--nps-muted) !important;}
+/* Shop by Sport cards use exactly the same centralized title and product-count
+   typography as the reusable Shop by Category cards. Keep the sport card image,
+   layout, link and arrow unchanged. */
+.storefront-clean-ui .home-page .np-shop-sport-card__title {
+    font-family: var(--nps-font) !important;
+    font-size: var(--nps-category-card-title) !important;
+    font-weight: var(--nps-category-card-title-weight) !important;
+    line-height: var(--nps-category-card-title-line-height) !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    color: var(--nps-navy) !important;
+}
+.storefront-clean-ui .home-page .np-shop-sport-card__count {
+    display: block;
+    width: fit-content;
+    margin-top: 4px;
+    padding: 0;
+    font-family: var(--nps-font) !important;
+    font-size: var(--nps-category-card-count) !important;
+    font-weight: 400 !important;
+    line-height: 1.35 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    color: var(--nps-muted) !important;
+}
+.storefront-clean-ui .home-page .np-shop-sport-card__meta {
+    justify-content: flex-end;
+}
+
 /* Preserve text contrast where the author intentionally uses inverse sections. */
 .storefront-clean-ui .home-page :is(.np-testimonials-v2,.process-section,.np-home-newsletter) :is(.np-home-section-heading--inverse .np-home-section-title){color:var(--nps-inverse) !important;}
 .storefront-clean-ui .home-page .np-home-section-heading--inverse .np-home-section-description{color:var(--nps-inverse-muted) !important;}
