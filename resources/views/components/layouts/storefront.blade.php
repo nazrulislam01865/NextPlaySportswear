@@ -119,7 +119,7 @@
     @vite(['resources/css/storefront.css', 'resources/js/storefront.js'])
     {{-- Generated from the centralized theme + typography sources; loaded last
          so the approved homepage rules work on existing cloud builds too. --}}
-    <link rel="stylesheet" href="{{ asset('css/storefront-typography.css') }}?v=20261102sportcategory1">
+    <link rel="stylesheet" href="{{ asset('css/storefront-typography.css') }}?v=20261102sportcategory2">
     @if(request()->routeIs('checkout.*', 'order.confirmation'))
         <link rel="stylesheet" href="{{ asset('css/nextplay-checkout.css') }}?v=20261031discount-sticky1">
         <script defer src="{{ asset('js/nextplay-checkout.js') }}?v=20261031phone-compact-v5"></script>

@@ -389,9 +389,10 @@
     letter-spacing:-.01em !important;
     text-transform:none !important;
 }
-/* Content cards (category/sport/ordering/FAQ/gear/quick-help/reviews), not products. */
+/* Generic content card headings (ordering/FAQ/gear/quick-help/reviews), not product or sport/category cards.
+   Sport/category titles use their own shared card-size tokens below. */
 .storefront-clean-ui .home-page :is(
-    .np-ordering-card__title,.np-shop-sport-card__title,.np-best-gear-card__title,
+    .np-ordering-card__title,.np-best-gear-card__title,
     .np-home-quick-help-card-title,.why-card h3,.path-card h3,
     .faq-q,.testimonial h3,.review-title,.gear-card h3,
     #categories .home-featured-category-grid h3,
@@ -1629,7 +1630,3 @@
     .storefront-clean-ui .home-page .np-home-faq-layout > .np-home-faq-aside {grid-row: 4;}
 }
 
-
-/* Global floating cart preview: outside the sticky header stacking context. */
-body > .storefront-cart-preview.np-cart-preview-floating {display:block!important;position:fixed!important;z-index:9999!important;overflow-y:auto!important;overscroll-behavior:contain;right:auto!important;transform:none!important;animation:none!important;background:#fff;box-shadow:0 20px 60px rgba(7,28,59,.21);}
-body > .storefront-cart-preview.np-cart-preview-floating > .storefront-cart-preview-arrow {display:none!important;}
