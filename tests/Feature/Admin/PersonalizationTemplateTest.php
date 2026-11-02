@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\ArtworkPreference;
 use App\Models\Category;
 use App\Models\PersonalizationTemplate;
 use App\Models\Product;
@@ -171,6 +172,87 @@ class PersonalizationTemplateTest extends TestCase
         $role->permissions()->detach(\App\Models\AdminPermission::query()->where('key', 'customization.manage')->value('id'));
         $this->actingAs($viewer, 'admin')->post(route('admin.personalization-templates.publish', $template))
             ->assertForbidden();
+    }
+
+    public function test_pantone_selector_searches_only_active_master_colors_by_name_code_and_hex_without_a_100_item_cap(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+        $leaf = $this->category('Custom Socks');
+        $template = PersonalizationTemplate::query()->create($this->basic($leaf) + [
+            'fields' => [], 'is_published' => false,
+        ]);
+        for ($i = 1; $i <= 125; $i++) {
+            ArtworkPreference::query()->create([
+                'type' => ArtworkPreference::PANTONE,
+                'name' => 'Pantone Shade '.str_pad((string) $i, 3, '0', STR_PAD_LEFT),
+                'code' => 'PANTONE-'.$i,
+                'hex_color' => '#'.strtoupper(str_pad(dechex($i), 6, '0', STR_PAD_LEFT)),
+                'is_active' => true,
+                'sort_order' => $i,
+            ]);
+        }
+        ArtworkPreference::query()->create([
+            'type' => ArtworkPreference::PANTONE, 'name' => 'Pantone Hidden',
+            'code' => 'HIDDEN-999', 'hex_color' => '#AABBCC', 'is_active' => false,
+        ]);
+        ArtworkPreference::query()->create([
+            'type' => ArtworkPreference::STYLE, 'name' => 'Pantone Not A Color',
+            'code' => 'STYLE-999', 'is_active' => true,
+        ]);
+        $url = route('admin.personalization-templates.pantones.search', $template);
+        $this->actingAs($admin, 'admin')->getJson($url)->assertOk()
+            ->assertJsonCount(30, 'colors')->assertJsonPath('has_more', true);
+        $this->actingAs($admin, 'admin')->getJson($url.'?page=4')->assertOk()
+            ->assertJsonCount(30, 'colors')->assertJsonPath('has_more', true);
+        $this->actingAs($admin, 'admin')->getJson($url.'?page=5')->assertOk()
+            ->assertJsonCount(5, 'colors')->assertJsonPath('has_more', false);
+        $this->actingAs($admin, 'admin')->getJson($url.'?q=PANTONE-124')->assertOk()
+            ->assertJsonCount(1, 'colors')->assertJsonPath('colors.0.name', 'Pantone Shade 124');
+        $this->actingAs($admin, 'admin')->getJson($url.'?q=Shade%20045')->assertOk()
+            ->assertJsonCount(1, 'colors')->assertJsonPath('colors.0.code', 'PANTONE-45');
+        $this->actingAs($admin, 'admin')->getJson($url.'?q=%2300007D')->assertOk()
+            ->assertJsonCount(1, 'colors')->assertJsonPath('colors.0.code', 'PANTONE-125');
+        $this->actingAs($admin, 'admin')->getJson($url.'?q=HIDDEN')->assertOk()->assertJsonCount(0, 'colors');
+        $this->actingAs($admin, 'admin')->get(route('admin.personalization-templates.fields', $template))
+            ->assertOk()->assertSee('Search Pantone name, code, shade or HEX')
+            ->assertDontSee('No colors are configured for this product family');
+    }
+
+    public function test_personalization_color_field_only_saves_selected_active_pantones_and_keeps_existing_preview_format(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+        $template = PersonalizationTemplate::query()->create($this->basic($this->category('Socks')) + [
+            'fields' => [], 'is_published' => false,
+        ]);
+        $pantone = ArtworkPreference::query()->create([
+            'type' => ArtworkPreference::PANTONE, 'name' => 'Warm Coral',
+            'code' => 'P-16-1546', 'hex_color' => '#E76A54', 'is_active' => true,
+        ]);
+        $inactive = ArtworkPreference::query()->create([
+            'type' => ArtworkPreference::PANTONE, 'name' => 'Inactive',
+            'code' => 'P-INVALID', 'hex_color' => '#000000', 'is_active' => false,
+        ]);
+        $url = route('admin.personalization-templates.fields.update', $template);
+        $field = [
+            'key' => 'sock_color', 'label' => 'Color', 'type' => 'color',
+            'color_options' => json_encode([$pantone->id]), 'required' => 0, 'enabled' => 1,
+        ];
+        $this->actingAs($admin, 'admin')->put($url, ['fields' => [$field]])
+            ->assertRedirect(route('admin.personalization-templates.preview', $template));
+        $saved = $template->fresh()->fields[0]['color_options'][0];
+        $this->assertSame($pantone->id, $saved['id']);
+        $this->assertSame('Warm Coral', $saved['name']);
+        $this->assertSame('P-16-1546', $saved['code']);
+        $this->assertSame('#E76A54', $saved['hex']);
+        $this->actingAs($admin, 'admin')->get(route('admin.personalization-templates.fields', $template))
+            ->assertOk()->assertSee('Warm Coral');
+        $this->actingAs($admin, 'admin')->put($url, ['fields' => [array_merge($field, [
+            'color_options' => json_encode([$inactive->id]),
+        ])]])->assertSessionHasErrors('fields.0.color_options');
+        $this->actingAs($admin, 'admin')->put($url, ['fields' => [array_merge($field, [
+            'color_options' => json_encode([999999]),
+        ])]])->assertSessionHasErrors('fields.0.color_options');
+        $this->assertSame($pantone->id, $template->fresh()->fields[0]['color_options'][0]['id']);
     }
 
     private function basic(Category $category): array

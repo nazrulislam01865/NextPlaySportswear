@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\PersonalizationTemplate;
-use App\Models\JerseyCustomizationOption;
 use App\Models\ArtworkPreference;
 use App\Services\Storefront\ProductCatalogCacheService;
 use Illuminate\Http\RedirectResponse;
@@ -95,7 +94,33 @@ class PersonalizationTemplateController extends Controller
     {
         return view('admin.personalization-templates.fields', [
             'template' => $personalizationTemplate->load('category.ancestors'),
-            'masterColors' => $this->masterColors($personalizationTemplate),
+            'existingPantones' => $this->existingPantones($personalizationTemplate),
+        ]);
+    }
+
+    /** Search only active Pantone master records; never send the full catalog to the browser. */
+    public function searchPantones(Request $request, PersonalizationTemplate $personalizationTemplate): \Illuminate\Http\JsonResponse
+    {
+        $filters = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'page' => ['nullable', 'integer', 'min:1', 'max:10000'],
+        ]);
+        $term = trim((string) ($filters['q'] ?? ''));
+        $query = ArtworkPreference::query()->where('type', ArtworkPreference::PANTONE)
+            ->active()->whereNotNull('hex_color');
+        if ($term !== '') {
+            $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term);
+            $query->where(function ($matching) use ($escaped) {
+                $matching->where('name', 'like', '%'.$escaped.'%')
+                    ->orWhere('code', 'like', '%'.$escaped.'%')
+                    ->orWhere('hex_color', 'like', '%'.$escaped.'%');
+            });
+        }
+        $page = $query->ordered()->simplePaginate(30, ['id', 'name', 'code', 'hex_color'], 'page', (int) ($filters['page'] ?? 1));
+
+        return response()->json([
+            'colors' => $page->getCollection()->map(fn (ArtworkPreference $color) => $this->pantoneData($color))->values(),
+            'has_more' => $page->hasMorePages(),
         ]);
     }
 
@@ -112,7 +137,14 @@ class PersonalizationTemplateController extends Controller
             'fields.*.required' => ['required', 'boolean'],
             'fields.*.enabled' => ['required', 'boolean'],
         ]);
-        $masterColors = collect($this->masterColors($personalizationTemplate))->keyBy('hex');
+        $requestedIds = collect($data['fields'])->filter(fn ($field) => $field['type'] === 'color')
+            ->flatMap(function ($field) {
+                $ids = json_decode((string) ($field['color_options'] ?? '[]'), true);
+                return is_array($ids) ? $ids : [];
+            })->filter(fn ($id) => is_scalar($id) && ctype_digit((string) $id))
+            ->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $masterColors = ArtworkPreference::query()->where('type', ArtworkPreference::PANTONE)
+            ->active()->whereIn('id', $requestedIds)->get()->keyBy('id');
         $used = [];
         $fields = [];
         foreach ($data['fields'] as $position => $field) {
@@ -130,12 +162,16 @@ class PersonalizationTemplateController extends Controller
                 if (! is_array($decoded) || count($decoded) > 100) {
                     throw ValidationException::withMessages(['fields.'.$position.'.color_options' => 'Choose valid colors from Master Data.']);
                 }
-                foreach ($decoded as $hex) {
-                    $hex = strtoupper((string) $hex);
-                    if (! preg_match('/^#[0-9A-F]{6}$/', $hex) || ! $masterColors->has($hex)) {
-                        throw ValidationException::withMessages(['fields.'.$position.'.color_options' => 'Choose colors from the available Master Data options.']);
+                foreach ($decoded as $id) {
+                    if (! is_scalar($id) || ! ctype_digit((string) $id)
+                        || (int) $id < 1 || ! $masterColors->has((int) $id)) {
+                        throw ValidationException::withMessages(['fields.'.$position.'.color_options' => 'Choose active Pantone colors from Master Data.']);
                     }
-                    $chosenColors[$hex] = ['hex' => $hex, 'name' => $masterColors->get($hex)['name']];
+                    $color = $masterColors->get((int) $id);
+                    if (! preg_match('/^#[0-9A-F]{6}$/', strtoupper((string) $color->hex_color))) {
+                        throw ValidationException::withMessages(['fields.'.$position.'.color_options' => 'Choose a Pantone color with a valid HEX value.']);
+                    }
+                    $chosenColors[$color->id] = $this->pantoneData($color);
                 }
                 if (! count($chosenColors) && (bool) $field['enabled']) {
                     throw ValidationException::withMessages(['fields.'.$position.'.color_options' => 'Select at least one available color.']);
@@ -196,42 +232,48 @@ class PersonalizationTemplateController extends Controller
         return redirect()->route('admin.personalization-templates.index')->with('status', 'Template deleted.');
     }
 
-    /** Colors already configured in Master Data for the template's product family. */
-    private function masterColors(PersonalizationTemplate $template): array
+    /** Resolve only previously chosen colors so editing retains existing choices. */
+    private function existingPantones(PersonalizationTemplate $template): array
     {
-        $template->loadMissing('category.ancestors');
-        $categoryNames = $template->category
-            ? $template->category->ancestors->pluck('name')->push($template->category->name)->implode(' ')
-            : '';
-        $family = strtolower($categoryNames);
-        // Master Data groups use singular product names, including jersey / shorts / headwear.
-        $aliases = [
-            'jersey' => ['jersey', 'jerseys'], 'shorts' => ['shorts'],
-            'pants' => ['pants', 'trousers'], 'headwear' => ['cap', 'caps', 'hat', 'beanie', 'headwear'],
-            'hoodie' => ['hoodie'], 'tshirt' => ['t-shirt', 'tshirt'], 'polo' => ['polo'],
-            'jacket' => ['jacket'], 'bag' => ['bag', 'backpack'], 'uniform' => ['uniform'],
-            'sweatshirt' => ['sweatshirt'], 'lanyard' => ['lanyard'],
-        ];
-        $groups = collect($aliases)->filter(fn ($names) => collect($names)->contains(fn ($name) => str_contains($family, $name)))->keys()->all();
-        $colorTypes = collect(\App\Enums\JerseyCustomizationType::cases())
-            ->filter(fn ($type) => str_contains($type->value, 'color') && in_array($type->group(), $groups, true))
-            ->map(fn ($type) => $type->value)->values()->all();
-        $master = $colorTypes
-            ? JerseyCustomizationOption::query()->active()->whereIn('type', $colorTypes)
-                ->whereNotNull('color_hex')->orderBy('name')->get(['name', 'color_hex'])
-            : collect();
-        $colors = $master->map(fn ($option) => [
-            'hex' => '#'.strtoupper(ltrim((string) $option->color_hex, '#')),
-            'name' => (string) $option->name,
-        ]);
-        // Pantone colors are the existing store-wide Master Data fallback.
-        if ($colors->isEmpty()) {
-            $colors = ArtworkPreference::query()->active()->where('type', ArtworkPreference::PANTONE)
-                ->whereNotNull('hex_color')->ordered()->get(['name', 'hex_color'])
-                ->map(fn ($option) => ['hex' => '#'.strtoupper(ltrim((string) $option->hex_color, '#')), 'name' => (string) $option->name]);
+        $existing = old('fields', $template->fields ?: []);
+        if (! is_array($existing)) return [];
+        $ids = [];
+        $hexes = [];
+        foreach ($existing as $field) {
+            if (! is_array($field)) continue;
+            $choices = $field['color_options'] ?? [];
+            if (is_string($choices)) $choices = json_decode($choices, true);
+            if (! is_array($choices)) continue;
+            foreach ($choices as $choice) {
+                if (is_array($choice)) {
+                    if (! empty($choice['id'])) $ids[] = (int) $choice['id'];
+                    if (! empty($choice['hex'])) $hexes[] = strtoupper((string) $choice['hex']);
+                } elseif (is_scalar($choice) && ctype_digit((string) $choice)) {
+                    $ids[] = (int) $choice;
+                } elseif (is_string($choice) && preg_match('/^#[0-9a-fA-F]{6}$/', $choice)) {
+                    $hexes[] = strtoupper($choice);
+                }
+            }
         }
-        return $colors->filter(fn ($color) => preg_match('/^#[0-9A-F]{6}$/', $color['hex']))
-            ->unique('hex')->take(100)->values()->all();
+        $ids = array_values(array_unique(array_filter($ids)));
+        $hexes = array_values(array_unique($hexes));
+        if (! $ids && ! $hexes) return [];
+
+        return ArtworkPreference::query()->where('type', ArtworkPreference::PANTONE)->active()
+            ->where(function ($query) use ($ids, $hexes) {
+                if ($ids) $query->whereIn('id', $ids);
+                if ($hexes) $query->{$ids ? 'orWhereIn' : 'whereIn'}('hex_color', $hexes);
+            })->get(['id', 'name', 'code', 'hex_color'])->map(fn (ArtworkPreference $color) => $this->pantoneData($color))->all();
+    }
+
+    private function pantoneData(ArtworkPreference $color): array
+    {
+        return [
+            'id' => $color->id,
+            'name' => $color->name,
+            'code' => $color->code,
+            'hex' => strtoupper((string) $color->hex_color),
+        ];
     }
 
     private function basicView(PersonalizationTemplate $template): View

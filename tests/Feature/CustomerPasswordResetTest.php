@@ -4,6 +4,10 @@ namespace Tests\Feature;
 
 use App\Http\Middleware\EnforceCustomerSessionVersion;
 use App\Jobs\SendTransactionalEmail;
+use App\Data\EmailMessage;
+use App\Mail\TransactionalEmail;
+use App\Models\StorefrontBrandingSetting;
+use App\Support\StorefrontBranding;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -186,6 +190,57 @@ class CustomerPasswordResetTest extends TestCase
             return $job->message->key === 'customer.password-changed'
                 && data_get($job->message->recipients, '0.email') === $customer->email;
         });
+    }
+
+
+    public function test_password_changed_email_matches_security_confirmation_and_uses_header_logo(): void
+    {
+        // The email must use the same logo uploaded for the storefront header.
+        config()->set('app.url', 'https://nextplay.example.test');
+        config()->set('filesystems.disks.public.url', '/media');
+        StorefrontBrandingSetting::query()->create([
+            'logo_path' => 'branding/active-header-logo.png',
+        ]);
+        StorefrontBranding::flushCache();
+
+        $message = new EmailMessage(
+            key: 'customer.password-changed',
+            recipients: [['email' => 'aminul@example.test', 'name' => 'Aminul Islam']],
+            subject: 'Your NextPlay Sportswear password was changed',
+            heading: 'Your password has been changed',
+            actionText: 'Contact support',
+            actionUrl: 'https://nextplay.example.test/contact',
+        );
+
+        $this->assertSame('emails.customer-password-changed', (new TransactionalEmail($message))->content()->view);
+
+        $html = view('emails.customer-password-changed', ['emailMessage' => $message])->render();
+
+        $this->assertStringContainsString('https://nextplay.example.test/media/branding/active-header-logo.png', $html);
+        $this->assertStringContainsString('https://nextplay.example.test/images/email/password-changed-lock.png', $html);
+        $this->assertStringContainsString('Your password has<br>been changed', $html);
+        $this->assertStringContainsString('Hi Aminul,', $html);
+        $this->assertStringContainsString('The password for your NextPlay Sportswear account has been changed successfully.', $html);
+        $this->assertStringContainsString('If you made this change, no further action is needed.', $html);
+        $this->assertStringContainsString('Didn’t make this change?', $html);
+        $this->assertStringContainsString('This is an automated account security notification.', $html);
+        $this->assertStringContainsString('href="https://nextplay.example.test/contact"', $html);
+        $this->assertStringContainsString('Contact support.', $html);
+        $this->assertStringNotContainsString('Your password was changed</div>', $html);
+
+        StorefrontBranding::flushCache();
+    }
+
+    public function test_password_changed_notification_is_separate_from_the_reset_link_template(): void
+    {
+        $message = new EmailMessage(
+            key: 'customer.password-reset',
+            recipients: [['email' => 'aminul@example.test', 'name' => 'Aminul Islam']],
+            subject: 'Reset your password',
+            heading: 'Reset your password',
+        );
+
+        $this->assertSame('emails.customer-password-reset', (new TransactionalEmail($message))->content()->view);
     }
 
     public function test_reset_token_cannot_be_reused(): void

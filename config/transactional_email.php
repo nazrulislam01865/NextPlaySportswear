@@ -140,6 +140,20 @@ return [
         ),
     ],
 
+    // Email clients cannot load the storefront's Vite CSS. Keep the approved
+    // NextPlay palette and font stack in one email-specific set of tokens.
+    // These values mirror resources/css/storefront-theme.css.
+    'design' => [
+        'navy' => '#051E44',
+        'orange' => '#CF5D38',
+        'text' => '#051E44',
+        'muted' => '#647895',
+        'background' => '#F4F7FB',
+        'soft' => '#F2F5F9',
+        'divider' => '#DCE5EF',
+        'font' => '"Expose", "Segoe UI", Arial, Helvetica, sans-serif',
+    ],
+
     'brand' => [
 
         'name' => env(

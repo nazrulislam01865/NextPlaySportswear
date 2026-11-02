@@ -135,6 +135,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
             Route::get('/{personalizationTemplate}/edit', [$controller, 'edit'])->name('edit');
             Route::put('/{personalizationTemplate}', [$controller, 'update'])->name('update');
             Route::get('/{personalizationTemplate}/fields', [$controller, 'fields'])->name('fields');
+            Route::get('/{personalizationTemplate}/pantone-search', [$controller, 'searchPantones'])->name('pantones.search');
             Route::put('/{personalizationTemplate}/fields', [$controller, 'saveFields'])->name('fields.update');
             Route::get('/{personalizationTemplate}/preview', [$controller, 'preview'])->name('preview');
             Route::post('/{personalizationTemplate}/publish', [$controller, 'publish'])->name('publish');

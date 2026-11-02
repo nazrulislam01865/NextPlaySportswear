@@ -211,12 +211,12 @@ final class TransactionalEmailManager
             key: 'customer.password-changed',
             recipients: $this->customerRecipient($user->email, $user->name),
             subject: 'Your NextPlay Sportswear password was changed',
-            heading: 'Your password was changed',
+            heading: 'Your password has been changed',
             introLines: [
-                'The password for your NextPlay Sportswear customer account was changed successfully.',
-                'If you made this change, no further action is required. If you did not, contact support immediately.',
+                'The password for your NextPlay Sportswear account has been changed successfully.',
+                'If you made this change, no further action is needed.',
             ],
-            actionText: 'Contact Support',
+            actionText: 'Contact support',
             actionUrl: route('contact'),
             metadata: ['user_id' => $user->id],
         ));
