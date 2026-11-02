@@ -37,7 +37,13 @@ class SecurityHeaders
             $policy = [
                 "default-src 'self'",
                 "base-uri 'self'",
-                "form-action 'self'",
+                // Stripe-hosted Checkout requires the browser to follow the final
+                // POST redirect from these customer payment forms.
+                "form-action 'self'".($request->isMethod('GET') && $request->routeIs(
+                    'checkout.review',
+                    'checkout.payment-method',
+                    'account.orders.pay'
+                ) ? ' https://checkout.stripe.com' : ''),
                 "frame-ancestors 'none'",
                 "object-src 'none'",
                 "script-src 'self' 'unsafe-inline' 'unsafe-eval'".($recaptchaPage ? ' https://www.google.com https://www.gstatic.com' : ''),
