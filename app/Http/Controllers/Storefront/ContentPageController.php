@@ -154,7 +154,11 @@ class ContentPageController extends Controller
 
     public function terms(): View
     {
-        return $this->policy('terms');
+        return view('storefront.content.terms', [
+            'title' => 'Terms and Conditions',
+            'subtitle' => 'Draft for review',
+            'description' => 'These terms explain the ordering process and your responsibilities when shopping with NextPlay Sportswear.',
+        ]);
     }
 
     public function cookies(): View

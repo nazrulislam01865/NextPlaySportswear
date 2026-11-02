@@ -1630,3 +1630,17 @@
     .storefront-clean-ui .home-page .np-home-faq-layout > .np-home-faq-aside {grid-row: 4;}
 }
 
+
+/* Reusable NextPlay content CTA: global theme variant supplies color and states.
+   Typography and dimensions follow the shared form/typography tokens. */
+.storefront-clean-ui .btn.nps-template-cta {
+    font-family: var(--nps-font);
+    font-size: var(--nps-button-size);
+    font-weight: var(--nps-button-weight);
+    line-height: 1.4;
+    letter-spacing: 0;
+    text-transform: none;
+    min-height: var(--nps-control);
+    padding: 12px 20px;
+    border-radius: var(--nps-radius);
+}

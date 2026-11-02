@@ -43,6 +43,9 @@
                                 <li><a href="{{ route('categories.index') }}">Browse Categories</a></li>
                             @endif
                         @endforelse
+                        @if($column['key'] === 'footer_support' && !collect($storefrontMenus[$column['key']] ?? [])->contains(fn ($item) => $item->resolvedUrl() === route('quote.guest.track')))
+                            <li><a href="{{ route('quote.guest.track') }}" class="hover:text-white">Track Bulk Quote</a></li>
+                        @endif
                     </ul>
                 </div>
             @endforeach

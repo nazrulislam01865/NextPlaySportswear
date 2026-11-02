@@ -1,0 +1,148 @@
+/* Track Bulk Quote: route-scoped presentation only.
+ * Inherits centralized Expose type, colors, form geometry and button variants.
+ * Loads after the legacy guest-quote stylesheet to correct its compact overrides.
+ */
+.storefront-clean-ui .np-gq-page--track {
+    padding: 0 0 40px;
+    font-family: var(--nps-font);
+}
+
+/* Use the same Home / Current page structure and spacing as Bulk Quote. */
+.storefront-clean-ui .np-gq-page--track .np-gq-track-breadcrumb {
+    display: block;
+    padding: 14px 0 16px;
+    margin: 0;
+    font: 400 var(--nps-caption, 13px)/1.5 var(--nps-font);
+    color: var(--nps-muted);
+}
+.storefront-clean-ui .np-gq-page--track .np-gq-track-breadcrumb ol {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+.storefront-clean-ui .np-gq-page--track .np-gq-track-breadcrumb li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.storefront-clean-ui .np-gq-page--track .np-gq-track-breadcrumb li + li::before {
+    content: "/";
+    color: var(--nps-muted);
+}
+.storefront-clean-ui .np-gq-page--track .np-gq-track-breadcrumb a {
+    color: var(--nps-muted);
+    text-decoration: none;
+}
+.storefront-clean-ui .np-gq-page--track .np-gq-track-breadcrumb a:hover {
+    color: var(--nps-navy);
+    text-decoration: underline;
+}
+.storefront-clean-ui .np-gq-page--track .np-gq-track-breadcrumb [aria-current="page"] {
+    color: var(--nps-link);
+    font-weight: 500;
+}
+
+.storefront-clean-ui .np-gq-page--track .np-gq-page-head {
+    margin: 0 0 28px;
+}
+.storefront-clean-ui .np-gq-page--track .np-gq-page-head h1 {
+    margin: 0;
+    color: var(--nps-navy);
+    font: 700 28px/1.25 var(--nps-font);
+    letter-spacing: normal;
+}
+.storefront-clean-ui .np-gq-page--track .np-gq-page-head p {
+    margin: 8px 0 0;
+    color: var(--nps-muted);
+    font: 400 16px/1.5 var(--nps-font);
+}
+
+/* Match the shared 48px form system; preserve the working lookup and errors. */
+.storefront-clean-ui .np-gq-page--track form.nps-form.np-gq-search {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(210px, .7fr);
+    align-items: start;
+    gap: 24px;
+    padding: 20px;
+    margin: 0 0 24px;
+}
+.storefront-clean-ui .np-gq-page--track form.nps-form.np-gq-search label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    margin: 0;
+}
+.storefront-clean-ui .np-gq-page--track form.nps-form.np-gq-search .np-gq-label-line {
+    color: var(--nps-navy);
+    font: 600 14px/1.5 var(--nps-font);
+}
+.storefront-clean-ui .np-gq-page--track form.nps-form.np-gq-search .np-gq-label-line .nps-required {
+    color: var(--nps-error);
+}
+.storefront-clean-ui .np-gq-page--track form.nps-form.np-gq-search input:is([name="reference"],[name="email"]) {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    height: var(--nps-control, 48px);
+    min-height: var(--nps-control, 48px);
+    padding: 12px 14px;
+    border: 1px solid var(--nps-border);
+    border-radius: var(--nps-radius, 8px);
+    background: var(--nps-surface);
+    color: var(--nps-text);
+    font: 400 16px/1.5 var(--nps-font);
+    box-shadow: none;
+}
+.storefront-clean-ui .np-gq-page--track form.nps-form.np-gq-search .np-gq-field-error {
+    margin: 0;
+    color: var(--nps-error);
+    font: 400 13px/1.5 var(--nps-font);
+}
+.storefront-clean-ui .np-gq-page--track form.nps-form.np-gq-search input[aria-invalid="true"] {
+    border-color: var(--nps-error);
+}
+/* Keep the site's centralized orange secondary action variant, not a separate
+ * custom fill or shadow. Only the geometry/type correct legacy quote overrides. */
+.storefront-clean-ui .np-gq-page--track form.nps-form.np-gq-search > .np-gq-track-submit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    align-self: start;
+    width: 100%;
+    min-height: var(--nps-control, 48px);
+    margin: 29px 0 0;
+    padding: 12px 20px;
+    border-radius: var(--nps-radius, 8px);
+    font: 600 16px/1.4 var(--nps-font);
+}
+.storefront-clean-ui .np-gq-page--track form.nps-form.np-gq-search > .np-gq-track-submit svg {
+    width: 20px;
+    height: 20px;
+}
+
+@media (max-width: 860px) {
+    .storefront-clean-ui .np-gq-page--track form.nps-form.np-gq-search {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .storefront-clean-ui .np-gq-page--track form.nps-form.np-gq-search > .np-gq-track-submit {
+        grid-column: 1 / -1;
+        margin-top: 0;
+    }
+}
+@media (max-width: 640px) {
+    .storefront-clean-ui .np-gq-page--track .np-gq-page-head h1 { font-size: 24px; }
+    .storefront-clean-ui .np-gq-page--track form.nps-form.np-gq-search {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 24px;
+        padding: 16px;
+    }
+    .storefront-clean-ui .np-gq-page--track form.nps-form.np-gq-search > .np-gq-track-submit {
+        grid-column: auto;
+    }
+}

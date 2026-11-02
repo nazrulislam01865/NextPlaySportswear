@@ -1,19 +1,28 @@
 <x-layouts.storefront :seo="['title' => 'Track Bulk Quote | NextPlay', 'robots' => 'noindex, nofollow']">
-    <div class="np-gq-page np-gq-page--track"><div class="np-gq-container">
-        <header class="np-gq-page-head"><h1>Track Bulk Quote</h1><p>Enter your quote number and email address to view the status and quotation files.</p></header>
+    <div class="np-gq-page np-gq-page--track"><div class="np-gq-container site-container">
+        <nav class="np-gq-track-breadcrumb" aria-label="Breadcrumb">
+            <ol>
+                <li><a href="{{ route('home') }}">Home</a></li>
+                <li><span aria-current="page">Track Bulk Quote</span></li>
+            </ol>
+        </nav>
+        <header class="np-gq-page-head">
+            <h1>Track Bulk Quote</h1>
+            <p>Enter your quote number and email address to view the status and quotation files.</p>
+        </header>
         <form class="nps-form np-gq-panel np-gq-search" method="POST" action="{{ route('quote.guest.lookup') }}" data-guest-quote-lookup novalidate>
             @csrf
             <label for="guest-quote-reference">
-                <span class="np-gq-label-line">Quote Number <span aria-hidden="true">*</span></span>
+                <span class="np-gq-label-line">Quote Number <span class="nps-required" aria-hidden="true">*</span></span>
                 <input id="guest-quote-reference" name="reference" value="{{ old('reference', $quote?->reference) }}" placeholder="BQ-2024-1018" required maxlength="32" autocomplete="off" aria-required="true" aria-invalid="{{ $errors->has('reference') ? 'true' : 'false' }}" aria-describedby="guest-quote-reference-error">
                 <span class="np-gq-field-error" id="guest-quote-reference-error" role="alert" aria-live="polite">@error('reference'){{ $message }}@enderror</span>
             </label>
             <label for="guest-quote-email">
-                <span class="np-gq-label-line">Email Address <span aria-hidden="true">*</span></span>
+                <span class="np-gq-label-line">Email Address <span class="nps-required" aria-hidden="true">*</span></span>
                 <input id="guest-quote-email" type="email" name="email" value="{{ old('email', $quote?->email) }}" placeholder="team@example.com" required maxlength="190" autocomplete="email" aria-required="true" aria-invalid="{{ $errors->has('email') ? 'true' : 'false' }}" aria-describedby="guest-quote-email-error">
                 <span class="np-gq-field-error" id="guest-quote-email-error" role="alert" aria-live="polite">@error('email'){{ $message }}@enderror</span>
             </label>
-            <button class="btn btn-red" type="submit"><x-storefront.bulk-quote.guest.icon name="search" size="23" />Track Quote</button>
+            <button class="btn btn-secondary btn-normal-regular np-gq-track-submit" type="submit"><x-storefront.bulk-quote.guest.icon name="search" size="20" />Track Quote</button>
         </form>
         <script>
             (() => {

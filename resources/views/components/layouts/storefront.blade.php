@@ -119,7 +119,7 @@
     @vite(['resources/css/storefront.css', 'resources/js/storefront.js'])
     {{-- Generated from the centralized theme + typography sources; loaded last
          so the approved homepage rules work on existing cloud builds too. --}}
-    <link rel="stylesheet" href="{{ asset('css/storefront-typography.css') }}?v=20261102sportcategory2">
+    <link rel="stylesheet" href="{{ asset('css/storefront-typography.css') }}?v=20261102sharedcta1">
     @if(request()->routeIs('checkout.*', 'order.confirmation'))
         <link rel="stylesheet" href="{{ asset('css/nextplay-checkout.css') }}?v=20261031discount-sticky1">
         <script defer src="{{ asset('js/nextplay-checkout.js') }}?v=20261031phone-compact-v5"></script>
@@ -131,7 +131,15 @@
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-redesign.css') }}?v=20261030i">
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-form-system.css') }}?v=20261031icons53clear">
         <link rel="stylesheet" href="{{ asset('css/bulk-quote-enhancements.css') }}?v=20261031shippingmaster1">
-        <link rel="stylesheet" href="{{ asset('css/nextplay-quote-builder.css') }}?v=20261101action-icons1">
+        <link rel="stylesheet" href="{{ asset('css/nextplay-quote-builder.css') }}?v=20261102breadcrumb1">
+    @endif
+    {{-- Track Bulk Quote uses the existing theme and form tokens; its fixes must not affect other quote steps. --}}
+    @if(request()->routeIs('quote.guest.track', 'quote.guest.show'))
+        <link rel="stylesheet" href="{{ asset('css/nextplay-guest-quote-track.css') }}?v=20261102trackdesign1">
+    @endif
+    {{-- Page-only layout styles. Never override the storefront header/footer or global typography. --}}
+    @if(request()->routeIs('about', 'returns', 'contact', 'terms'))
+        <link rel="stylesheet" href="{{ asset('css/nextplay-content-pages.css') }}?v=20261102content-square-sidebar-fix4">
     @endif
 </head>
 <body

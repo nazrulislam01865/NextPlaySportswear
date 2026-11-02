@@ -5,7 +5,10 @@
     <main class="bulk-quote-page npq-page">
         <div class="site-container">
             <nav class="npq-breadcrumb" aria-label="Breadcrumb">
-                <a href="{{ route('home') }}">Home</a><span aria-hidden="true">/</span><span aria-current="page">Bulk Quote</span>
+                <ol>
+                    <li><a href="{{ route('home') }}">Home</a></li>
+                    <li><span aria-current="page">Bulk Quote</span></li>
+                </ol>
             </nav>
             <header class="npq-intro">
                 <h1>Request a Bulk Quote</h1>
