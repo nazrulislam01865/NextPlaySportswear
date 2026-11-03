@@ -3125,23 +3125,28 @@ const setupProductCardImageLoaders = () => {
 };
 
 const setupCategoryCardImageLoaders = () => {
-    // Listen before scanning: first-visit and cached images must both reveal.
-    const selector = '[data-card-image-loader] > img[data-card-image]';
+    // Shared, delegated lifecycle for cards, category banners and hero slides.
+    // Listen before scanning so cached images and carousel clones also reveal.
+    const selector = '[data-card-image-loader] > img[data-card-image], [data-feature-image-loader] img[data-feature-image]';
+    const mediaFor = (image) => image.closest('[data-card-image-loader], [data-feature-image-loader]');
     const reveal = (image) => {
-        const media = image.parentElement;
-        if (!media?.hasAttribute('data-card-image-loader')) return;
+        const media = mediaFor(image);
+        if (!media) return;
         media.classList.remove('is-loading');
         media.classList.add('is-loaded');
     };
     const scan = () => {
         document.querySelectorAll(selector).forEach((image) => {
+            const media = mediaFor(image);
+            if (!media) return;
             if (image.complete && image.naturalWidth > 0) {
                 reveal(image);
             } else if (image.complete && image.naturalWidth === 0) {
-                // Do not hide a lazy image forever or replace it before an error.
-                image.parentElement.classList.remove('is-loading');
+                // Existing category cards retain their original error behavior.
+                if (media.hasAttribute('data-feature-image-loader')) reveal(image);
+                else media.classList.remove('is-loading');
             } else {
-                image.parentElement.classList.add('is-loading');
+                media.classList.add('is-loading');
             }
         });
     };
@@ -3159,7 +3164,7 @@ const setupCategoryCardImageLoaders = () => {
             if (image.classList.contains('np-image-placeholder-active')
                 && image.dataset.cardImageFallbackTried !== '1') {
                 image.dataset.cardImageFallbackTried = '1';
-                image.parentElement.classList.add('is-loading');
+                mediaFor(image)?.classList.add('is-loading');
             } else {
                 reveal(image);
             }

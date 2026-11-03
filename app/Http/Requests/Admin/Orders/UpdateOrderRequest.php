@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin\Orders;
 
 use Illuminate\Foundation\Http\FormRequest;
+use App\Support\Payments\AdminFinancialWriteGuard;
 use Illuminate\Validation\Rule;
 
 class UpdateOrderRequest extends FormRequest
@@ -16,9 +17,9 @@ class UpdateOrderRequest extends FormRequest
     {
         return [
             'status' => ['required', Rule::in(array_keys(config('commerce.order_statuses', [])))],
-            'payment_status' => ['required', Rule::in(array_keys(config('commerce.payment_statuses', [])))],
             'fulfillment_status' => ['required', Rule::in(array_keys(config('commerce.fulfillment_statuses', [])))],
             'admin_note' => ['nullable', 'string', 'max:3000'],
+            ...AdminFinancialWriteGuard::requestRules(),
         ];
     }
 }

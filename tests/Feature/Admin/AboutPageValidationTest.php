@@ -13,7 +13,9 @@ class AboutPageValidationTest extends TestCase
     {
         parent::setUp();
 
-        Route::put('/__tests/about-page-request', function (AboutPageRequest $request) {
+        // The test endpoint needs the web session middleware so validation
+        // errors are flashed to the session exactly as they are in the admin UI.
+        Route::middleware('web')->put('/__tests/about-page-request', function (AboutPageRequest $request) {
             return response()->json($request->validatedContent());
         });
     }

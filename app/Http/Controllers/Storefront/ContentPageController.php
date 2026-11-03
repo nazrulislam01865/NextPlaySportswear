@@ -7,6 +7,7 @@ use App\Services\Storefront\AboutPageService;
 use App\Services\Storefront\TermsPageService;
 use App\Services\Storefront\ReturnsPolicyPageService;
 use App\Services\Storefront\PrivacyPageService;
+use App\Services\Storefront\PaymentPageService;
 use App\Services\Storefront\HowToOrderPageService;
 use App\Services\Storefront\ArtworkGuidelinesPageService;
 use App\Services\Storefront\HomepageSectionService;
@@ -186,9 +187,20 @@ class ContentPageController extends Controller
         return view('storefront.content.returns', compact('content', 'seo'));
     }
 
-    public function payment(): View
+    public function payment(PaymentPageService $service): View
     {
-        return view('storefront.content.payment');
+        $content = $service->settings();
+        $seo = [
+            'title' => (string) data_get($content, 'seo.meta_title', 'Payment Information | ' . config('storefront.name')),
+            'description' => (string) data_get($content, 'seo.meta_description', ''),
+            'robots' => 'index, follow',
+            'canonical' => route('payment-information'),
+            'og_title' => (string) data_get($content, 'seo.meta_title', 'Payment Information | ' . config('storefront.name')),
+            'og_description' => (string) data_get($content, 'seo.meta_description', ''),
+            'schema_type' => 'WebPage',
+        ];
+
+        return view('storefront.content.payment', compact('content', 'seo'));
     }
 
     public function privacy(PrivacyPageService $service): View

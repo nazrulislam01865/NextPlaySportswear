@@ -29,17 +29,23 @@
         @if(blank($categoryBannerImage) && filled($categoryBannerColor)) style="background-color: {{ $categoryBannerColor }};" @endif
     >
         @if(filled($categoryBannerImage))
-            <picture>
-                @if(filled($categoryMobileBanner))
-                    <source media="(max-width:640px)" srcset="{{ $categoryMobileBanner }}">
-                @endif
-                <img
-                    src="{{ $categoryBannerImage }}"
-                    alt="{{ $category['banner_alt'] }}"
-                    class="absolute inset-0 -z-20 h-full w-full object-cover"
-                    fetchpriority="high"
-                >
-            </picture>
+            <div class="absolute inset-0 -z-20" data-feature-image-loader>
+                <picture class="block h-full w-full">
+                    @if(filled($categoryMobileBanner))
+                        <source media="(max-width:640px)" srcset="{{ $categoryMobileBanner }}">
+                    @endif
+                    <img
+                        src="{{ $categoryBannerImage }}"
+                        alt="{{ $category['banner_alt'] }}"
+                        class="absolute inset-0 h-full w-full object-cover"
+                        data-feature-image
+                        loading="eager"
+                        decoding="async"
+                        fetchpriority="high"
+                    >
+                </picture>
+                <span class="np-product-card-image-loader" aria-hidden="true"></span>
+            </div>
         @endif
 
         @if(filled($categoryBannerImage))

@@ -89,6 +89,9 @@ Artisan::command('product-detail:normalize-icons', function () {
 
 // Webhooks are primary; reconciliation is the safety net for delayed or missed provider events.
 Schedule::command('payments:reconcile')->everyFifteenMinutes()->withoutOverlapping();
+Schedule::command('payments:recover-webhooks')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('payments:sync-refund-exceptions')->everyThirtyMinutes()->withoutOverlapping();
+Schedule::command('payments:health')->everyFifteenMinutes()->withoutOverlapping();
 
 // Sync branding changes caused by deployments/configuration updates, not only admin uploads.
 // NPS is authoritative; these are rare background requests, never storefront queries.

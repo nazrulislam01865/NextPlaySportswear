@@ -79,8 +79,10 @@ class OrderController extends Controller
                 'artworkProofs.orderItem',
                 'artworkProofs.messages',
             ]),
-            'orderStatuses' => config('commerce.order_statuses', []),
-            'paymentStatuses' => config('commerce.payment_statuses', []),
+            'orderStatuses' => collect(config('commerce.order_statuses', []))
+                ->reject(fn (string $label, string $status): bool => $status !== $order->status
+                    && in_array($status, ['pending_payment', 'payment_review', 'payment_failed', 'quote_invoice_requested'], true))
+                ->all(),
             'fulfillmentStatuses' => config('commerce.fulfillment_statuses', []),
             'shipmentStatuses' => config('commerce.shipment_statuses', []),
             'hasFlowTrackSync' => Schema::hasColumn('orders', 'flowtrack_sync_status'),

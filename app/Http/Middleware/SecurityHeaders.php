@@ -30,7 +30,7 @@ class SecurityHeaders
         if (app()->environment('production')) {
             // Google's checkbox loads external scripts and frames only on this form.
             $recaptchaPage = $request->isMethod('GET')
-                && $request->is('bulk-quote')
+                && $request->is('bulk-quote', 'contact-us')
                 && filled(config('services.recaptcha.site_key'))
                 && filled(config('services.recaptcha.secret_key'));
 

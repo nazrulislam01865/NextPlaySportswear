@@ -11,6 +11,8 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use App\Payments\Exceptions\PaymentGatewayException;
 use Throwable;
 
 final class ProcessPaymentWebhook implements ShouldQueue, ShouldBeUnique
@@ -45,15 +47,17 @@ final class ProcessPaymentWebhook implements ShouldQueue, ShouldBeUnique
             $alreadyClaimed = $locked->status === 'processing'
                 && $locked->updated_at?->isAfter(now()->subMinutes($claimTimeout));
 
-            // A separately-dispatched duplicate job should not process an
-            // event already owned by another worker. A real queue retry has
-            // attempts() > 1 and is allowed to recover a job after a worker
-            // crash or timeout.
-            if ($alreadyClaimed && $this->attempts() <= 1) {
+            // Never steal a live worker's claim, even on a retry. Stale claims
+            // are recovered by the scheduler after the configured timeout.
+            if ($alreadyClaimed) {
                 return null;
             }
 
-            $locked->update(['status' => 'processing', 'last_error' => null]);
+            $locked->update([
+                'status' => 'processing', 'last_error' => null,
+                'last_attempted_at' => now(),
+                'attempt_count' => min(PHP_INT_MAX, (int) $locked->attempt_count + 1),
+            ]);
 
             return $locked->fresh();
         });
@@ -72,10 +76,14 @@ final class ProcessPaymentWebhook implements ShouldQueue, ShouldBeUnique
         } catch (Throwable $exception) {
             $event->forceFill([
                 'status' => 'failed',
-                'last_error' => mb_substr($exception->getMessage(), 0, 2000),
+                'last_error' => class_basename($exception),
             ])->save();
 
-            throw $exception;
+            Log::error('Payment webhook processing failed.', [
+                'event_id' => $this->webhookId, 'type' => class_basename($exception),
+            ]);
+            // Queue failure records must not retain gateway messages or card details.
+            throw new PaymentGatewayException('Verified payment event requires retry or reconciliation.');
         }
     }
 }

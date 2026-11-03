@@ -270,6 +270,9 @@ class PersonalizationTemplateTest extends TestCase
     {
         return Category::query()->create([
             'parent_id' => $parent?->id, 'name' => $name,
+            // Required by the existing categories schema; this is a fixture,
+            // not a change to production category constraints.
+            'description' => '', 'image_url' => '', 'image_alt' => '',
             'slug' => Str::slug($name).'-'.Str::lower(Str::random(8)),
             'display_type' => 'collection', 'category_type' => 'standard',
             'page_template' => 'product_grid', 'status' => 'active',

@@ -131,6 +131,8 @@ class AdminRbac
             self::permission('contact_page.manage', 'Storefront', 'Manage', 'Manage Contact Page', 'Update Contact Us page text, contact details, social links and SEO.', 'admin.contact-page.update', 232),
             self::permission('terms_page.view', 'Storefront', 'View', 'View Terms & Conditions Page', 'Open the Terms & Conditions page content editor.', 'admin.terms-page.edit', 233),
             self::permission('terms_page.manage', 'Storefront', 'Manage', 'Manage Terms & Conditions Page', 'Update Terms & Conditions text, clauses and SEO.', 'admin.terms-page.update', 234),
+            self::permission('payment_page.view', 'Storefront', 'View', 'View Payment Information Page', 'Open the editable Payment Information page.', 'admin.payment-page.edit', 239),
+            self::permission('payment_page.manage', 'Storefront', 'Manage', 'Manage Payment Information Page', 'Update payment help text, payment statuses, support banner and SEO.', 'admin.payment-page.update', 240),
             self::permission('privacy_page.view', 'Storefront', 'View', 'View Privacy Policy Page', 'Open the Privacy Policy page content editor.', 'admin.privacy-page.edit', 235),
             self::permission('privacy_page.manage', 'Storefront', 'Manage', 'Manage Privacy Policy Page', 'Update Privacy Policy text, clauses and SEO.', 'admin.privacy-page.update', 236),
             self::permission('homepage_sections.view', 'Storefront', 'View', 'View Homepage Sections', 'Open homepage section controls.', 'admin.homepage.sections.index', 160),
@@ -141,8 +143,7 @@ class AdminRbac
             self::permission('shipping.manage', 'Catalog', 'Manage', 'Manage Shipping Methods', 'Create and update shipping method master data records.', 'admin.shipping-methods.store', 191),
             self::permission('rural_surcharges.view', 'Storefront', 'View', 'View Remote Surcharges', 'Open remote and extended area surcharge records.', 'admin.rural-area-surcharges.index', 200),
             self::permission('rural_surcharges.manage', 'Storefront', 'Manage', 'Manage Remote Surcharges', 'Create, import, and update remote area surcharges.', 'admin.rural-area-surcharges.store', 201),
-            self::permission('payment_methods.view', 'Storefront', 'View', 'View Payment Methods', 'Open and manage the payment methods presented during checkout.', 'admin.payment-methods.index', 210),
-            self::permission('payment_methods.manage', 'Storefront', 'Manage', 'Manage Payment Methods', 'Create and update payment methods.', 'admin.payment-methods.store', 211),
+            self::permission('payment_methods.view', 'Storefront', 'View', 'View Payment Methods', 'View the configured payment methods presented during checkout.', 'admin.payment-methods.index', 210),
             self::permission('newsletters.view', 'Storefront', 'View', 'View Newsletter Subscribers', 'Open homepage newsletter subscriber emails and export filtered subscriber lists.', 'admin.newsletter-subscribers.index', 215),
             self::permission('newsletters.manage', 'Storefront', 'Manage', 'Manage Newsletter Subscribers', 'Manage newsletter subscriber records and exports.', 'admin.newsletter-subscribers.export', 216),
             self::permission('email_customization.view', 'Storefront', 'View', 'View Email Customization', 'Open email templates and global branding settings.', 'admin.email-customization.templates.index', 220),
@@ -195,12 +196,13 @@ class AdminRbac
             'contact_page.view', 'contact_page.manage',
             'terms_page.view', 'terms_page.manage',
             'privacy_page.view', 'privacy_page.manage',
+            'payment_page.view', 'payment_page.manage',
             'sustainability_page.view', 'sustainability_page.manage',
             'homepage_sections.view', 'homepage_sections.manage',
             'homepage_slides.view', 'homepage_slides.manage',
             'shipping.view', 'shipping.manage',
             'rural_surcharges.view', 'rural_surcharges.manage',
-            'payment_methods.view', 'payment_methods.manage',
+            'payment_methods.view',
             'newsletters.view', 'newsletters.manage',
             'email_customization.view', 'email_customization.manage',
         ];
@@ -399,6 +401,7 @@ class AdminRbac
             'returns_policy_page.view' => 'admin.returns-policy-page.edit',
             'contact_page.view' => 'admin.contact-page.edit',
             'terms_page.view' => 'admin.terms-page.edit',
+            'payment_page.view' => 'admin.payment-page.edit',
             'privacy_page.view' => 'admin.privacy-page.edit',
             'sustainability_page.view' => 'admin.sustainability-page.edit',
             'homepage_sections.view' => 'admin.homepage.sections.index',
@@ -534,6 +537,12 @@ class AdminRbac
             return $name === 'terms-page.update'
                 ? 'terms_page.manage'
                 : 'terms_page.view';
+        }
+
+        if (Str::startsWith($name, 'payment-page.')) {
+            return $name === 'payment-page.update'
+                ? 'payment_page.manage'
+                : 'payment_page.view';
         }
 
         if (Str::startsWith($name, 'privacy-page.')) {

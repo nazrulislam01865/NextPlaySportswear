@@ -59,7 +59,6 @@ class OrderReturnController extends Controller
             'returnStatuses' => collect(config('commerce.return_statuses', []))
                 ->only($allowedStatuses)
                 ->all(),
-            'refundStatuses' => config('commerce.refund_statuses', []),
         ]);
     }
 

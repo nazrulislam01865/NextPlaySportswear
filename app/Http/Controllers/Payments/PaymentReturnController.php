@@ -38,11 +38,17 @@ final class PaymentReturnController extends Controller
                 }
             }
 
-            $message = $payment->order->fresh()->payment_status === 'paid'
-                ? 'Payment confirmed successfully.'
-                : 'Your payment is being verified with the provider. The order will update once payment is confirmed.';
+            $payment->refresh();
+            $orderPaymentStatus = (string) $payment->order->fresh()->payment_status;
+            $message = match (true) {
+                $orderPaymentStatus === 'paid' => 'Payment confirmed successfully.',
+                in_array($payment->status, ['failed', 'expired'], true) => 'Payment was unsuccessful or the session expired. You may retry from your order when eligible.',
+                $payment->failure_code === 'attempt_declined' => 'The payment method was declined. You can retry securely from your order; the session may still be active.',
+                $orderPaymentStatus === 'partially_paid' => 'A partial payment has been recorded. Any remaining payment must follow agreed payment terms.',
+                default => 'Your payment is being verified with the provider. The order will update once payment is confirmed.',
+            };
 
-            if ($payment->order->fresh()->payment_status === 'paid') {
+            if ($orderPaymentStatus === 'paid') {
                 return redirect()->route('order.confirmation', ['order' => $payment->order->order_number])->with('status', $message);
             }
 

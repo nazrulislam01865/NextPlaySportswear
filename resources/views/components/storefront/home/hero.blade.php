@@ -101,12 +101,14 @@
                             @foreach($heroSlides as $index => $slide)
                                 <article
                                     class="hero-carousel__slide{{ $index === 0 ? ' is-active' : '' }}"
+                                    data-feature-image-loader
                                     data-hero-card-slide
                                     data-slide-index="{{ $index }}"
                                     aria-hidden="{{ $index === 0 ? 'false' : 'true' }}"
                                 >
                                     <img
                                         src="{{ data_get($slide, 'image') }}"
+                                        data-feature-image
                                         data-fallback-src="{{ asset('images/storefront/home/hero.webp') }}"
                                         alt="{{ data_get($slide, 'alt') }}"
                                         width="1200"
@@ -115,6 +117,7 @@
                                         fetchpriority="{{ $index === 0 ? 'high' : 'auto' }}"
                                         decoding="async"
                                     >
+                                    <span class="np-product-card-image-loader" aria-hidden="true"></span>
                                     {{-- Hero slide text overlays intentionally removed: the carousel now displays clean imagery only. --}}
                                 </article>
                             @endforeach

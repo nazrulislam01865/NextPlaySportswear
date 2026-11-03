@@ -35,7 +35,7 @@ class ContactController extends Controller
 
     public function store(StoreContactMessageRequest $request): RedirectResponse
     {
-        $data = $request->safe()->except('company');
+        $data = $request->safe()->except(['company', 'g-recaptcha-response']);
         $hashKey = (string) config('app.key');
         $ip = $request->ip();
         $userAgent = trim((string) $request->userAgent());

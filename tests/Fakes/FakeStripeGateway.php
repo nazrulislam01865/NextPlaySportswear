@@ -9,6 +9,7 @@ use App\Payments\DTO\GatewayPaymentStatus;
 use App\Payments\DTO\GatewayRedirect;
 use App\Payments\DTO\GatewayRefundResult;
 use App\Payments\DTO\GatewayWebhook;
+use App\Payments\Money;
 
 final class FakeStripeGateway implements PaymentGateway
 {
@@ -57,7 +58,14 @@ final class FakeStripeGateway implements PaymentGateway
     public function retrievePayment(OrderPayment $payment): GatewayPaymentStatus
     {
         self::$retrieveCalls++;
-        return new GatewayPaymentStatus(self::$paymentStatus, $payment->provider_reference, $payment->provider_session_id, $payment->provider_payment_id);
+        return new GatewayPaymentStatus(
+            self::$paymentStatus,
+            $payment->provider_reference,
+            $payment->provider_session_id,
+            $payment->provider_payment_id,
+            Money::toMinor((string) $payment->amount, (string) $payment->currency),
+            strtoupper((string) $payment->currency),
+        );
     }
 
     public function refund(

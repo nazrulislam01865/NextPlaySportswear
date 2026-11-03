@@ -10,7 +10,8 @@ class PaymentMethodRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        // Financial checkout method configuration cannot be administered.
+        return false;
     }
 
     protected function prepareForValidation(): void

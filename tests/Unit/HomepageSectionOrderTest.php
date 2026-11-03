@@ -3,7 +3,7 @@
 namespace Tests\Unit;
 
 use App\Support\HomepageSectionRegistry;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class HomepageSectionOrderTest extends TestCase
 {

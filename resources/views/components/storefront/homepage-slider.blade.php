@@ -32,7 +32,7 @@
 <section class="promo-slider" aria-label="Featured sportswear promotions">
     <div class="promo-track" id="promoSlider" data-storefront-slider>
         @foreach($renderSlides as $index => $slide)
-            <article class="promo-slide {{ $index === 0 ? 'active' : '' }}">
+            <article class="promo-slide {{ $index === 0 ? 'active' : '' }}" data-feature-image-loader>
                 @php
                     $desktopImage = $slide['image'] ?? asset('storage/storefront/home/hero.webp');
                     $mobileImage = $slide['mobile_image'] ?? $desktopImage;
@@ -70,6 +70,7 @@
                         loading="{{ $index === 0 ? 'eager' : 'lazy' }}"
                         @if($index === 0) fetchpriority="high" @endif
                         decoding="async"
+                        data-feature-image
                         src="{{ $desktopImage }}"
                         alt="{{ $imageAlt }}"
                         style="object-position: {{ $imagePosition }}"
@@ -77,6 +78,7 @@
                         height="960"
                     >
                 </picture>
+                <span class="np-product-card-image-loader" aria-hidden="true"></span>
                 @if($hasVisibleContent)
                     <div class="promo-content">
                         <div class="promo-copy position-{{ $contentPosition }} align-{{ $textAlignment }} theme-{{ $textTheme }}">

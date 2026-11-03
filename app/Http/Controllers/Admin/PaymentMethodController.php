@@ -3,22 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\PaymentMethodRequest;
 use App\Models\PaymentMethod;
 use App\Payments\PaymentGatewayManager;
-use App\Services\Storefront\FooterPaymentMethodService;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
-use Throwable;
 
 class PaymentMethodController extends Controller
 {
-    public function __construct(
-        private readonly PaymentGatewayManager $gateways,
-        private readonly FooterPaymentMethodService $footerPaymentMethods,
-    ) {
+    public function __construct(private readonly PaymentGatewayManager $gateways)
+    {
     }
 
     public function index(): View
@@ -29,146 +21,30 @@ class PaymentMethodController extends Controller
         ]);
     }
 
-    public function create(): View
+    // Retain the route names for compatibility, but deny all administrator
+    // configuration writes and editing screens including super-admin access.
+    public function create(): never
     {
-        return view('admin.payment-methods.create', [
-            'method' => new PaymentMethod([
-                'provider' => 'manual',
-                'payment_type' => 'manual',
-                'badge' => 'Manual',
-                'is_active' => true,
-                'show_in_footer' => false,
-                'sort_order' => 0,
-            ]),
-            'providers' => $this->providersFor(),
-        ]);
+        abort(403, 'Payment method configuration is read-only for NextPlay administrators.');
     }
 
-    public function store(PaymentMethodRequest $request): RedirectResponse
+    public function store(): never
     {
-        $data = $this->paymentMethodData($request);
-        $storedPath = null;
-
-        if ($request->hasFile('footer_icon')) {
-            $storedPath = $request->file('footer_icon')->store('payment-methods/footer-icons', 'public');
-            $data['footer_icon_path'] = $storedPath;
-        }
-
-        try {
-            $method = DB::transaction(fn (): PaymentMethod => PaymentMethod::create($data));
-        } catch (Throwable $exception) {
-            $this->deleteStoredIcon($storedPath);
-            throw $exception;
-        }
-
-        $this->syncDefault($method);
-        $this->footerPaymentMethods->flush();
-
-        return redirect()->route('admin.payment-methods.index')
-            ->with('status', 'Payment method created successfully. Provider credentials remain server-side only.');
+        abort(403, 'Payment method configuration is read-only for NextPlay administrators.');
     }
 
-    public function edit(PaymentMethod $paymentMethod): View
+    public function edit(PaymentMethod $paymentMethod): never
     {
-        return view('admin.payment-methods.edit', [
-            'method' => $paymentMethod,
-            'providers' => $this->providersFor($paymentMethod),
-        ]);
+        abort(403, 'Payment method configuration is read-only for NextPlay administrators.');
     }
 
-    public function update(PaymentMethodRequest $request, PaymentMethod $paymentMethod): RedirectResponse
+    public function update(PaymentMethod $paymentMethod): never
     {
-        $data = $this->paymentMethodData($request);
-        $oldPath = filled($paymentMethod->footer_icon_path) ? (string) $paymentMethod->footer_icon_path : null;
-        $newPath = null;
-        $removeIcon = $request->boolean('remove_footer_icon');
-
-        if ($request->hasFile('footer_icon')) {
-            $newPath = $request->file('footer_icon')->store('payment-methods/footer-icons', 'public');
-            $data['footer_icon_path'] = $newPath;
-        } elseif ($removeIcon) {
-            $data['footer_icon_path'] = null;
-        }
-
-        try {
-            DB::transaction(fn () => $paymentMethod->update($data));
-        } catch (Throwable $exception) {
-            $this->deleteStoredIcon($newPath);
-            throw $exception;
-        }
-
-        if (($newPath !== null || $removeIcon) && $oldPath !== null && $oldPath !== $newPath) {
-            $this->deleteStoredIcon($oldPath);
-        }
-
-        $paymentMethod->refresh();
-        $this->syncDefault($paymentMethod);
-        $this->footerPaymentMethods->flush();
-
-        return redirect()->route('admin.payment-methods.index')
-            ->with('status', 'Payment method updated successfully.');
+        abort(403, 'Payment method configuration is read-only for NextPlay administrators.');
     }
 
-    public function destroy(PaymentMethod $paymentMethod): RedirectResponse
+    public function destroy(PaymentMethod $paymentMethod): never
     {
-        $iconPath = filled($paymentMethod->footer_icon_path) ? (string) $paymentMethod->footer_icon_path : null;
-
-        $paymentMethod->delete();
-        $this->deleteStoredIcon($iconPath);
-
-        if (! PaymentMethod::query()->where('is_default', true)->exists()) {
-            PaymentMethod::query()->where('is_active', true)->orderBy('sort_order')->first()?->update(['is_default' => true]);
-        }
-
-        $this->footerPaymentMethods->flush();
-
-        return redirect()->route('admin.payment-methods.index')
-            ->with('status', 'Payment method removed.');
-    }
-
-    /** @return array<string, mixed> */
-    private function paymentMethodData(PaymentMethodRequest $request): array
-    {
-        $data = $request->validated();
-        unset($data['footer_icon'], $data['remove_footer_icon']);
-
-        // Security-sensitive gateway behavior is defined by code/config, not
-        // editable database switches. Admins control presentation, limits,
-        // ordering and enabled state; the adapter controls payment behavior.
-        $capabilities = $this->gateways->capabilities((string) $data['provider']);
-        foreach (['is_online', 'requires_provider_redirect', 'requires_manual_review', 'allows_saved_methods'] as $key) {
-            $data[$key] = (bool) $capabilities[$key];
-        }
-
-        return $data;
-    }
-
-    /** @return array<int, string> */
-    private function providersFor(?PaymentMethod $method = null): array
-    {
-        $providers = $this->gateways->registeredProviders();
-        $currentProvider = trim((string) ($method?->provider ?? ''));
-
-        if ($currentProvider !== '' && ! in_array($currentProvider, $providers, true)) {
-            $providers[] = $currentProvider;
-        }
-
-        return array_values(array_unique($providers));
-    }
-
-    private function syncDefault(PaymentMethod $method): void
-    {
-        if (! $method->is_default) {
-            return;
-        }
-
-        PaymentMethod::query()->whereKeyNot($method->id)->update(['is_default' => false]);
-    }
-
-    private function deleteStoredIcon(?string $path): void
-    {
-        if (filled($path) && Storage::disk('public')->exists((string) $path)) {
-            Storage::disk('public')->delete((string) $path);
-        }
+        abort(403, 'Payment method configuration is read-only for NextPlay administrators.');
     }
 }

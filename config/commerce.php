@@ -24,6 +24,7 @@ return [
     'payment_statuses' => [
         'pending' => 'Pending',
         'processing' => 'Processing',
+        'partially_paid' => 'Partially Paid',
         'paid' => 'Paid',
         'failed' => 'Failed',
         'partially_refunded' => 'Partially Refunded',

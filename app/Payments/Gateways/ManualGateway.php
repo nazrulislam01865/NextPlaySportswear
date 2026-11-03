@@ -46,6 +46,6 @@ final class ManualGateway implements PaymentGateway
         array $metadata = [],
     ): GatewayRefundResult
     {
-        throw new PaymentGatewayException('Manual refunds must be confirmed by an administrator after the external refund is completed.');
+        throw new PaymentGatewayException('Manual refunds cannot be initiated or confirmed through NextPlay administration.');
     }
 }

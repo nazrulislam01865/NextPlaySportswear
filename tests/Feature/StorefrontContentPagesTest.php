@@ -32,7 +32,7 @@ class StorefrontContentPagesTest extends TestCase
             ['bulk-ordering', 'When to Use the Bulk Ordering Path'],
             ['shipping', 'Delivery Has More Than One Stage'],
             ['returns', 'Common Eligibility Scenarios'],
-            ['payment-information', 'Payment Can Differ by Purchase Path'],
+            ['payment-information', 'Understanding your payment status'],
             ['privacy', 'Privacy Policy'],
             ['terms', 'Terms and Conditions'],
             ['cookies', 'Cookie Policy'],

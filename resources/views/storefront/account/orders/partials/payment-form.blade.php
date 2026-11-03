@@ -10,6 +10,12 @@
 
         <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-800">
             <b>No card numbers are collected by NextPlay.</b> Online payments redirect to the registered provider. The order becomes paid only after a signed provider event passes server-side amount and currency verification.
+            @if(isset($installment) && $installment)
+                <div class="mt-2"><b>{{ ucfirst($installment->kind) }} due:</b>
+                    {{ $order->currency }} {{ number_format(\App\Payments\Money::fromMinor((int) $installment->amount_minor, (string) $order->currency), 2) }}.
+                    The remaining balance stays payable under the accepted quotation. A deposit does not release production.
+                </div>
+            @endif
         </div>
 
         @if($retryMode && $order->payments->first()?->failure_message)

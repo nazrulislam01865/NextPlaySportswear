@@ -1,0 +1,159 @@
+/* Payment Information additions to the shared Returns & Refunds content layout.
+   The page deliberately reuses .np-returns-* and .np-guide-sticky-nav rather
+   than introducing a competing breadcrumb, header, card, or sidebar system.
+   Brand font, colors, text sizes and button dimensions use theme tokens. */
+.storefront-clean-ui .np-payment-page {
+    font-family: var(--np-content-font);
+    color: var(--np-content-color-text);
+}
+
+/* Use the shared Returns & Refunds sidebar links with no numeric prefix. */
+/* Page content uses the Returns two-column section layout and shared tokens. */
+.storefront-clean-ui .np-payment-page .np-payment-section {
+    scroll-margin-top: var(--np-content-sticky-top, 140px);
+}
+.storefront-clean-ui .np-payment-page .np-payment-section__copy {
+    white-space: pre-line;
+    overflow-wrap: break-word;
+}
+.storefront-clean-ui .np-payment-page .np-payment-section__copy + .np-payment-section__copy {
+    margin-top: var(--np-content-space-sm);
+}
+.storefront-clean-ui .np-payment-page .np-payment-table-scroll {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    margin-top: var(--np-content-space-md);
+}
+.storefront-clean-ui .np-payment-page .np-payment-status-table {
+    width: 100%;
+    min-width: max(100%, calc(var(--np-payment-columns, 2) * 150px));
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid var(--np-content-color-border);
+    border-radius: var(--np-content-card-radius);
+    background: var(--nps-surface);
+    color: var(--np-content-color-text);
+    font: var(--np-content-font-weight-regular) var(--np-content-nav-size)/var(--np-content-line-height) var(--np-content-font);
+}
+.storefront-clean-ui .np-payment-page .np-payment-status-table th,
+.storefront-clean-ui .np-payment-page .np-payment-status-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--np-content-color-border);
+    color: var(--np-content-color-text);
+    text-align: left;
+    vertical-align: top;
+}
+.storefront-clean-ui .np-payment-page .np-payment-status-table tr > :first-child {
+    width: 26%;
+    border-right: 1px solid var(--np-content-color-border);
+}
+.storefront-clean-ui .np-payment-page .np-payment-status-table thead th {
+    background: var(--np-content-color-panel-soft);
+    color: var(--np-content-color-heading);
+    font-weight: var(--np-content-font-weight-bold);
+}
+.storefront-clean-ui .np-payment-page .np-payment-status-table tbody th {
+    color: var(--np-content-color-heading);
+    font-weight: var(--np-content-font-weight-semibold);
+}
+.storefront-clean-ui .np-payment-page .np-payment-status-table tbody tr:last-child > * {
+    border-bottom: 0;
+}
+.storefront-clean-ui .np-payment-page .np-payment-refund-link {
+    display: inline-flex;
+    align-items: center;
+    margin-top: var(--np-content-space-md);
+    color: var(--np-content-color-link);
+    font: var(--np-content-font-weight-semibold) var(--np-content-text-size)/1.5 var(--np-content-font);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.storefront-clean-ui .np-payment-page .np-payment-refund-link:hover {
+    color: var(--np-content-color-heading);
+}
+
+/* Retain the specified support CTA while using the same centered policy width,
+   neutral surfaces, square corners and canonical button component. */
+.storefront-clean-ui .np-payment-page .np-payment-help {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--np-content-space-lg);
+    margin-top: var(--np-content-space-xl);
+    padding: var(--np-content-space-lg) var(--np-content-space-xl);
+    background: var(--np-content-color-panel-soft);
+    border-radius: var(--np-content-card-radius);
+}
+.storefront-clean-ui .np-payment-page .np-payment-help__copy { min-width: 0; }
+.storefront-clean-ui .np-payment-page .np-payment-help h2 {
+    margin: 0;
+    color: var(--np-content-color-heading);
+    font: var(--np-content-font-weight-bold) var(--np-content-sidebar-heading-size)/1.4 var(--np-content-font);
+}
+.storefront-clean-ui .np-payment-page .np-payment-help p {
+    margin: 4px 0 0;
+    color: var(--np-content-color-muted);
+    font: var(--np-content-font-weight-regular) var(--np-content-nav-size)/1.6 var(--np-content-font);
+}
+.storefront-clean-ui .np-payment-page .np-payment-help__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--np-content-space-lg);
+    flex-shrink: 0;
+}
+.storefront-clean-ui .np-payment-page .np-payment-help .btn.nps-template-cta {
+    background: var(--np-content-color-action);
+    border-color: var(--np-content-color-action);
+    color: #fff;
+    font: var(--np-content-btn-weight) var(--np-content-btn-size)/1.4 var(--np-content-font);
+    min-height: var(--np-content-btn-height);
+    border-radius: var(--np-content-btn-radius);
+    letter-spacing: 0;
+    text-transform: none;
+}
+.storefront-clean-ui .np-payment-page .np-payment-help .btn.nps-template-cta:hover {
+    background: var(--np-content-color-action-hover);
+    border-color: var(--np-content-color-action-hover);
+}
+.storefront-clean-ui .np-payment-page .np-payment-help__secondary {
+    padding-left: var(--np-content-space-lg);
+    border-left: 1px solid var(--np-content-color-border);
+    color: var(--np-content-color-heading);
+    font: var(--np-content-font-weight-semibold) var(--np-content-nav-size)/1.5 var(--np-content-font);
+    text-decoration: none;
+    white-space: nowrap;
+}
+.storefront-clean-ui .np-payment-page .np-payment-help__secondary:hover {
+    color: var(--np-content-color-link);
+    text-decoration: underline;
+}
+.storefront-clean-ui .np-payment-page a:focus-visible {
+    outline: 2px solid var(--nps-focus);
+    outline-offset: 3px;
+}
+@media (max-width: 1023px) {
+    .storefront-clean-ui .np-payment-page .np-payment-help { flex-wrap: wrap; }
+}
+@media (max-width: 640px) {
+    .storefront-clean-ui .np-payment-page .np-payment-help {
+        padding: var(--np-content-space-md);
+    }
+    .storefront-clean-ui .np-payment-page .np-payment-help__actions {
+        width: 100%; flex-wrap: wrap; gap: var(--np-content-space-md);
+    }
+    .storefront-clean-ui .np-payment-page .np-payment-help__secondary {
+        padding-left: var(--np-content-space-md);
+    }
+}
+@media (max-width: 420px) {
+    .storefront-clean-ui .np-payment-page .np-payment-status-table th,
+    .storefront-clean-ui .np-payment-page .np-payment-status-table td { padding: 8px; }
+    .storefront-clean-ui .np-payment-page .np-payment-help__actions {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+    .storefront-clean-ui .np-payment-page .np-payment-help__secondary {
+        border: 0; padding-left: 0;
+    }
+}

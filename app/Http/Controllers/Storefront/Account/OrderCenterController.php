@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\View\View;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class OrderCenterController extends Controller
@@ -120,10 +120,24 @@ class OrderCenterController extends Controller
     {
         $this->authorize('view', $order);
         if (! $order->canPay()) return redirect()->route('account.orders.show', $order)->with('status', 'This order does not currently require payment.');
-
+        try {
+            $installment = null;
+            if (config('payments.installments.enabled', false)) {
+                app(\App\Services\Payments\ApprovedInstallmentService::class)->ensureForOrder($order);
+                $installment = app(\App\Services\Payments\ApprovedInstallmentService::class)->nextDue($order);
+            }
+            $dueAmount = $installment
+                ? \App\Payments\Money::fromMinor((int) $installment->amount_minor, (string) $order->currency)
+                : $order->outstandingAmount();
+        } catch (PaymentGatewayException $exception) {
+            return redirect()->route('account.orders.show', $order)->withErrors(['payment_method' => $exception->getMessage()]);
+        }
         return $this->view('storefront.account.orders.pay', $request, [
             'order' => $order->load('items'),
-            'paymentOptions' => $this->paymentMethods->availableMethods(['total' => $order->outstandingAmount()], $request->user()),
+            'installment' => $installment,
+            'paymentOptions' => $installment
+                ? collect($this->paymentMethods->availableMethods(['total' => $dueAmount], $request->user()))->where('provider', 'stripe')->values()->all()
+                : $this->paymentMethods->availableMethods(['total' => $dueAmount], $request->user()),
             'retryMode' => false,
         ], 'Pay for Order');
     }
@@ -132,10 +146,24 @@ class OrderCenterController extends Controller
     {
         $this->authorize('view', $order);
         if (! $order->canPay()) return redirect()->route('account.orders.show', $order)->with('status', 'This order is not eligible for another payment attempt.');
-
+        try {
+            $installment = null;
+            if (config('payments.installments.enabled', false)) {
+                app(\App\Services\Payments\ApprovedInstallmentService::class)->ensureForOrder($order);
+                $installment = app(\App\Services\Payments\ApprovedInstallmentService::class)->nextDue($order);
+            }
+            $dueAmount = $installment
+                ? \App\Payments\Money::fromMinor((int) $installment->amount_minor, (string) $order->currency)
+                : $order->outstandingAmount();
+        } catch (PaymentGatewayException $exception) {
+            return redirect()->route('account.orders.show', $order)->withErrors(['payment_method' => $exception->getMessage()]);
+        }
         return $this->view('storefront.account.orders.retry-payment', $request, [
             'order' => $order->load(['items','payments' => fn ($q) => $q->latest()]),
-            'paymentOptions' => $this->paymentMethods->availableMethods(['total' => $order->outstandingAmount()], $request->user()),
+            'installment' => $installment,
+            'paymentOptions' => $installment
+                ? collect($this->paymentMethods->availableMethods(['total' => $dueAmount], $request->user()))->where('provider', 'stripe')->values()->all()
+                : $this->paymentMethods->availableMethods(['total' => $dueAmount], $request->user()),
             'retryMode' => true,
         ], 'Retry Failed Payment');
     }
@@ -248,7 +276,7 @@ class OrderCenterController extends Controller
         return $this->view('storefront.account.orders.downloads', $request, compact('downloads'), 'Order Downloads');
     }
 
-    public function download(Request $request, OrderDownload $download): BinaryFileResponse
+    public function download(Request $request, OrderDownload $download): StreamedResponse
     {
         $this->authorize('download', $download);
 

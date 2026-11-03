@@ -6,7 +6,9 @@ use App\Models\Order;
 use App\Models\OrderPayment;
 use App\Models\OrderReturnRequest;
 use App\Models\PaymentMethod;
+use App\Payments\Exceptions\PaymentGatewayException;
 use App\Models\User;
+use App\Http\Middleware\EnforceCustomerSessionVersion;
 use App\Services\Payments\PaymentMethodService;
 use App\Services\Payments\PaymentOrchestrator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -54,7 +56,7 @@ class StripePaymentArchitectureTest extends TestCase
         $this->assertFalse($stripe['allows_saved_methods']);
     }
 
-    public function test_provider_refund_is_idempotent_and_updates_internal_totals(): void
+    public function test_refund_initiation_from_nextplay_is_blocked_in_phase_one(): void
     {
         $customer = User::factory()->create(['role' => 'customer', 'is_active' => true]);
         $order = $this->paidOrder($customer);
@@ -92,16 +94,17 @@ class StripePaymentArchitectureTest extends TestCase
         ]);
 
         $orchestrator = app(PaymentOrchestrator::class);
-        $first = $orchestrator->issueReturnRefund($return, 40);
-        $second = $orchestrator->issueReturnRefund($return->fresh(), 40);
+        try {
+            $orchestrator->issueReturnRefund($return, 40);
+            $this->fail('NextPlay refund initiation must be blocked in Phase 1.');
+        } catch (PaymentGatewayException $exception) {
+            $this->assertStringContainsString('Stripe finance owner', $exception->getMessage());
+        }
 
-        $this->assertSame('issued', $first->status);
-        $this->assertSame($first->id, $second->id);
-        $this->assertCount(1, FakeStripeGateway::$refundCalls);
-        $this->assertStringStartsWith('refund:RFN-', FakeStripeGateway::$refundCalls[0]['idempotencyKey']);
-        $this->assertSame('40.00', $payment->fresh()->refunded_amount);
-        $this->assertSame('partially_refunded', $order->fresh()->payment_status);
-        $this->assertNotNull($first->fresh()->creditNote);
+        $this->assertCount(0, FakeStripeGateway::$refundCalls);
+        $this->assertDatabaseCount('order_refunds', 0);
+        $this->assertSame('0.00', $payment->fresh()->refunded_amount);
+        $this->assertSame('paid', $order->fresh()->payment_status);
     }
 
     public function test_untrusted_payment_return_never_renders_demo_order_data(): void
@@ -118,8 +121,8 @@ class StripePaymentArchitectureTest extends TestCase
         $order = $this->pendingStripeOrder($customer);
         $payment = $this->processingStripePayment($order);
 
-        $this->actingAs($customer, 'web')->get(route('payments.return', ['provider' => 'stripe']).'?session_id='.$payment->provider_session_id)
-            ->assertRedirect(route('account.orders.show', $order));
+        $this->actingAsCurrentCustomer($customer)->get(route('payments.return', ['provider' => 'stripe']).'?session_id='.$payment->provider_session_id)
+            ->assertRedirect(route('order.confirmation', ['order' => $order->order_number]));
 
         $this->assertSame(1, FakeStripeGateway::$retrieveCalls);
         $this->assertSame('paid', $payment->fresh()->status);
@@ -134,7 +137,7 @@ class StripePaymentArchitectureTest extends TestCase
         $order = $this->pendingStripeOrder($owner);
         $payment = $this->processingStripePayment($order);
 
-        $this->actingAs($other, 'web')->get(route('payments.return', ['provider' => 'stripe']).'?session_id='.$payment->provider_session_id)
+        $this->actingAsCurrentCustomer($other)->get(route('payments.return', ['provider' => 'stripe']).'?session_id='.$payment->provider_session_id)
             ->assertOk()->assertSee('Payment verification in progress');
 
         $this->assertSame(0, FakeStripeGateway::$retrieveCalls);
@@ -148,10 +151,27 @@ class StripePaymentArchitectureTest extends TestCase
         $order = $this->pendingStripeOrder($customer);
         $payment = $this->processingStripePayment($order);
 
-        $this->actingAs($customer, 'web')->get(route('payments.return', ['provider' => 'stripe']).'?session_id='.$payment->provider_session_id)
+        $this->actingAsCurrentCustomer($customer)->get(route('payments.return', ['provider' => 'stripe']).'?session_id='.$payment->provider_session_id)
             ->assertRedirect(route('account.orders.show', $order));
 
         $this->assertSame(1, FakeStripeGateway::$retrieveCalls);
+        $this->assertSame('processing', $payment->fresh()->status);
+        $this->assertSame('processing', $order->fresh()->payment_status);
+    }
+
+    public function test_payment_return_rejects_stale_customer_session_without_provider_reconciliation(): void
+    {
+        $customer = User::factory()->create(['role' => 'customer', 'is_active' => true]);
+        $order = $this->pendingStripeOrder($customer);
+        $payment = $this->processingStripePayment($order);
+
+        $this->withSession([
+            EnforceCustomerSessionVersion::SESSION_KEY => ((int) $customer->auth_session_version) + 1,
+        ])->actingAs($customer, 'web')
+            ->get(route('payments.return', ['provider' => 'stripe']).'?session_id='.$payment->provider_session_id)
+            ->assertRedirect(route('login'));
+
+        $this->assertSame(0, FakeStripeGateway::$retrieveCalls);
         $this->assertSame('processing', $payment->fresh()->status);
         $this->assertSame('processing', $order->fresh()->payment_status);
     }
@@ -219,6 +239,15 @@ class StripePaymentArchitectureTest extends TestCase
         $this->assertTrue((bool) data_get($duplicate->metadata, 'duplicate_payment_review_required'));
         $this->assertSame('payment_review', $order->fresh()->status);
         $this->assertTrue($order->histories()->where('title', 'Additional payment detected')->exists());
+    }
+
+    private function actingAsCurrentCustomer(User $customer): static
+    {
+        $this->withSession([
+            EnforceCustomerSessionVersion::SESSION_KEY => (int) $customer->auth_session_version,
+        ]);
+
+        return $this->actingAs($customer, 'web');
     }
 
     private function pendingStripeOrder(User $customer): Order

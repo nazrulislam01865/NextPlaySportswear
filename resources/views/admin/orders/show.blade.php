@@ -215,7 +215,7 @@
                 @csrf @method('PATCH')
                 <h3 class="text-lg font-black">Update Order</h3>
                 <label class="mt-4 block"><span class="admin-label">Order status</span><select class="admin-input" name="status">@foreach($orderStatuses as $key => $label)<option value="{{ $key }}" @selected($order->status === $key)>{{ $label }}</option>@endforeach</select></label>
-                <label class="mt-4 block"><span class="admin-label">Payment status</span><select class="admin-input" name="payment_status">@foreach($paymentStatuses as $key => $label)<option value="{{ $key }}" @selected($order->payment_status === $key)>{{ $label }}</option>@endforeach</select></label>
+                <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3"><span class="admin-label">Payment status (read only)</span><div class="mt-2"><x-storefront.account.orders.status-pill :status="$order->payment_status" /></div><p class="mt-2 text-xs leading-5 text-slate-500">Updated only by verified payment processing. Administrators cannot change payments or refunds.</p></div>
                 <label class="mt-4 block"><span class="admin-label">Fulfillment status</span><select class="admin-input" name="fulfillment_status">@foreach($fulfillmentStatuses as $key => $label)<option value="{{ $key }}" @selected($order->fulfillment_status === $key)>{{ $label }}</option>@endforeach</select></label>
                 <label class="mt-4 block"><span class="admin-label">Internal note</span><textarea class="admin-textarea" name="admin_note">{{ old('admin_note', $order->admin_note) }}</textarea></label>
                 <button class="btn btn-red mt-5 w-full" type="submit">Update Order</button>

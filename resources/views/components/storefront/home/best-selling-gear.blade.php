@@ -105,8 +105,13 @@
                         class="np-best-gear-card {{ $isFeatured ? 'np-best-gear-card--featured' : 'np-best-gear-card--supporting' }} {{ $usesSquareMedia ? 'np-best-gear-card--square-media' : '' }}"
                         aria-label="{{ $label }}: {{ $title }}"
                     >
-                        <span class="np-best-gear-card__number" aria-hidden="true">{{ $number }}</span>
+                        @if($isFeatured)
+                            <span class="np-best-gear-card__number" aria-hidden="true">{{ $number }}</span>
+                        @endif
                         <span class="np-best-gear-card__media" data-card-image-loader>
+                            @unless($isFeatured)
+                                <span class="np-best-gear-card__number" aria-hidden="true">{{ $number }}</span>
+                            @endunless
                             <img
                                 loading="lazy"
                                 decoding="async"

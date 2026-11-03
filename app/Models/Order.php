@@ -52,6 +52,11 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function installmentSchedule(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(OrderInstallmentSchedule::class);
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(OrderPayment::class);
@@ -116,7 +121,10 @@ class Order extends Model
     public function canPay(): bool
     {
         return in_array($this->status, config('commerce.payable_statuses', []), true)
-            && in_array($this->payment_status, ['pending', 'failed', 'processing'], true)
+            && (in_array($this->payment_status, ['pending', 'failed', 'processing'], true)
+                || ($this->payment_status === 'partially_paid'
+                    && config('payments.installments.enabled', false)
+                    && $this->installmentSchedule()->exists()))
             && $this->grand_total > 0;
     }
 
@@ -198,11 +206,17 @@ class Order extends Model
         return round(max(0, $shipping + (float) ($this->product_shipping_total ?? 0)), 2);
     }
 
+    /** Independent collection/refund states from recorded financial entries. */
+    public function financialState(): array
+    {
+        return app(\App\Services\Payments\FinancialStateService::class)->forOrder($this);
+    }
+
     public function outstandingAmount(): float
     {
-        $paid = (float) $this->payments()->where('status', 'paid')->sum('amount');
+        $state = app(\App\Services\Payments\FinancialStateService::class)->forOrder($this);
 
-        return max(0, round((float) $this->grand_total - $paid, 2));
+        return \App\Payments\Money::fromMinor($state['outstanding_minor'], (string) $this->currency);
     }
 
     public function formattedEstimatedDelivery(): ?string

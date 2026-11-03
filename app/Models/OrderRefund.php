@@ -23,6 +23,23 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 ])]
 class OrderRefund extends Model
 {
+    /** Provider-linked refunds are immutable once established or confirmed. */
+    protected static function booted(): void
+    {
+        static::updating(function (self $refund): void {
+            if (filled($refund->getOriginal('provider_reference')) && $refund->isDirty([
+                'order_id', 'order_payment_id', 'provider_reference', 'amount', 'currency',
+            ])) {
+                throw new \LogicException('Provider-linked refund identity and amount cannot be modified.');
+            }
+            if ($refund->getOriginal('status') === 'issued' && $refund->isDirty([
+                'status', 'processed_at',
+            ])) {
+                throw new \LogicException('Confirmed Stripe refunds cannot be reversed locally.');
+            }
+        });
+    }
+
     public function getRouteKeyName(): string
     {
         return 'refund_number';

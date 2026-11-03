@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'status',
     'received_at',
     'processed_at',
-    'last_error',
+    'last_error', 'attempt_count', 'last_dispatched_at', 'last_attempted_at',
 ])]
 class PaymentWebhookEvent extends Model
 {
@@ -31,6 +31,9 @@ class PaymentWebhookEvent extends Model
             'payload' => 'encrypted:array',
             'received_at' => 'datetime',
             'processed_at' => 'datetime',
+            'last_dispatched_at' => 'datetime',
+            'last_attempted_at' => 'datetime',
+            'attempt_count' => 'integer',
         ];
     }
 }

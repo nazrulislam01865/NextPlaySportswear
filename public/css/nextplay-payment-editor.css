@@ -1,0 +1,16 @@
+/* Payment Information table editor: scoped to this admin screen only. */
+.np-payment-admin-table-scroll { max-width: 100%; overflow-x: auto; border: 1px solid #d6dfeb; background: #fff; }
+.np-payment-admin-table { width: 100%; min-width: 680px; border-collapse: collapse; table-layout: auto; }
+.np-payment-admin-table th, .np-payment-admin-table td { padding: 12px; text-align: left; vertical-align: middle; border-right: 1px solid #dce3ed; border-bottom: 1px solid #dce3ed; }
+.np-payment-admin-table th:last-child, .np-payment-admin-table td:last-child { border-right: 0; }
+.np-payment-admin-table tbody tr:last-child td { border-bottom: 0; }
+.np-payment-admin-table thead th { background: #eef2f6; min-width: 180px; }
+.np-payment-admin-table thead th:nth-child(2), .np-payment-admin-table tbody td:nth-child(2) { min-width: 300px; }
+.np-payment-admin-table .admin-input { width: 100%; min-width: 140px; background: #fff; }
+.np-payment-admin-column-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; font-size: 12px; color: #52637a; font-weight: 600; }
+.np-payment-admin-remove { color: #b42318; font-size: 12px; font-weight: 600; background: transparent; border: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.np-payment-admin-remove:hover { color: #8b1a10; }
+.np-payment-admin-remove:disabled { color: #9ca3af; cursor: not-allowed; text-decoration: none; }
+.np-payment-admin-remove:focus-visible { outline: 2px solid #2164c5; outline-offset: 3px; }
+.np-payment-admin-table .np-payment-admin-actions-heading, .np-payment-admin-table .np-payment-admin-row-action { min-width: 90px; width: 90px; text-align: center; }
+.np-payment-admin-table .np-payment-admin-actions-heading { font-size: 12px; color: #52637a; }

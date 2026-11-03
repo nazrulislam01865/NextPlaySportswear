@@ -277,13 +277,19 @@
                                 @enderror
                         </div>
 
-                        {{-- Real verification only. Local forms use the existing honeypot.
-                             Do not present a mock checkbox as successful security verification. --}}
-                        @if(filled(config('services.recaptcha.site_key')) && !app()->environment('local'))
+                        {{-- Match Bulk Quote's local/non-local CAPTCHA behavior without local Blade variables. --}}
+                        @if(! app()->environment('local'))
                             <div class="np-captcha-container">
-                                <label class="np-field-label">Security verification</label>
-                                <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
-                                <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+                                <label class="np-field-label">Security verification <span class="np-req">*</span></label>
+                                @if(filled(config('services.recaptcha.site_key')) && filled(config('services.recaptcha.secret_key')))
+                                    <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
+                                    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+                                @else
+                                    <p class="nps-form-error" role="alert">CAPTCHA is not configured. Messages are temporarily unavailable.</p>
+                                @endif
+                                @error('g-recaptcha-response')
+                                    <p class="nps-form-error" role="alert" id="contact-recaptcha-error">{{ $message }}</p>
+                                @enderror
                             </div>
                         @endif
 
@@ -296,7 +302,7 @@
                                 <span>{{ data_get($content, 'form.privacy_notice', 'Your details are used to respond to your enquiry.') }}</span>
                             </p>
 
-                            <button type="submit" class="btn btn-secondary nps-template-cta">
+                            <button type="submit" class="btn btn-secondary nps-template-cta" @disabled(! app()->environment('local') && (! filled(config('services.recaptcha.site_key')) || ! filled(config('services.recaptcha.secret_key'))))>
                                 <span>{{ data_get($content, 'form.submit_btn_text', 'Send Message') }}</span>
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />

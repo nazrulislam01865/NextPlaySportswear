@@ -90,6 +90,7 @@ class PersonalizationCategoryIndexTest extends TestCase
     {
         return Category::query()->create([
             'name' => $name,
+            'description' => '', 'image_url' => '', 'image_alt' => '',
             'slug' => Str::slug($name).'-'.Str::lower(Str::random(6)),
             'display_type' => 'collection', 'category_type' => 'standard',
             'page_template' => 'product_grid', 'status' => 'active',

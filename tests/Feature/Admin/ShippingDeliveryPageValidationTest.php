@@ -13,7 +13,8 @@ class ShippingDeliveryPageValidationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Route::put('/__tests/shipping-delivery-page-request', fn (ShippingDeliveryPageRequest $request) => response()->json($request->validatedContent()));
+        // Flash validation errors through the same session middleware used by the admin editor.
+        Route::middleware('web')->put('/__tests/shipping-delivery-page-request', fn (ShippingDeliveryPageRequest $request) => response()->json($request->validatedContent()));
     }
 
     public function test_valid_fixed_payload_and_safe_destinations_are_accepted(): void

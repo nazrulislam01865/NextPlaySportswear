@@ -187,6 +187,9 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::get('/terms-page', [\App\Http\Controllers\Admin\TermsPageController::class, 'edit'])->name('terms-page.edit');
         Route::put('/terms-page', [\App\Http\Controllers\Admin\TermsPageController::class, 'update'])->name('terms-page.update');
 
+        Route::get('/payment-page', [\App\Http\Controllers\Admin\PaymentPageController::class, 'edit'])->name('payment-page.edit');
+        Route::put('/payment-page', [\App\Http\Controllers\Admin\PaymentPageController::class, 'update'])->name('payment-page.update');
+
         Route::get('/privacy-page', [\App\Http\Controllers\Admin\PrivacyPageController::class, 'edit'])->name('privacy-page.edit');
         Route::put('/privacy-page', [\App\Http\Controllers\Admin\PrivacyPageController::class, 'update'])->name('privacy-page.update');
 

@@ -83,7 +83,8 @@ class MenuManagementTest extends TestCase
         $navigation->flushCache();
         $labels = $navigation->items('header-primary')->pluck('label')->all();
 
-        $this->assertSame(['Home', 'All Products', 'Sale', 'How It Works', 'Bulk Quote'], $labels);
+        // The live header intentionally retires the legacy how-to-order link.
+        $this->assertSame(['Home', 'All Products', 'Sale', 'Bulk Quote'], $labels);
     }
 
     public function test_header_menu_update_discards_stale_shop_descendants_before_validation(): void

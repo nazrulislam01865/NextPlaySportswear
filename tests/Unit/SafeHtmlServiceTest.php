@@ -18,5 +18,14 @@ class SafeHtmlServiceTest extends TestCase
         $this->assertStringNotContainsString('javascript:', $clean);
         $this->assertStringContainsString('href="/safe"', $clean);
         $this->assertStringContainsString('rel="noopener noreferrer"', $clean);
+        $this->assertStringContainsString('target="_blank"', $clean);
+
+        $singleQuoted = $service->sanitize("<a href='/safe' target='_blank' onclick='evil()'>Safe</a>");
+        $this->assertStringContainsString('target="_blank" rel="noopener noreferrer"', $singleQuoted);
+        $this->assertStringNotContainsString('onclick', $singleQuoted);
+
+        $unsafe = $service->sanitize('<a href="javascript:alert(1)" target="_blank">Unsafe</a>');
+        $this->assertStringNotContainsString('javascript:', $unsafe);
+        $this->assertStringNotContainsString('target="_blank"', $unsafe);
     }
 }

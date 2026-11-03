@@ -4,6 +4,7 @@ namespace App\Http\Requests\Storefront;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Rules\VerifiedRecaptcha;
 
 class StoreContactMessageRequest extends FormRequest
 {
@@ -47,6 +48,9 @@ class StoreContactMessageRequest extends FormRequest
             ],
             'order_number' => ['nullable', 'string', 'max:80', 'regex:/^[A-Z0-9\-]+$/'],
             'message' => ['bail', 'required', 'string', 'min:10', 'max:5000'],
+            'g-recaptcha-response' => app()->environment('local')
+                ? ['exclude']
+                : ['bail', 'required', 'string', 'max:4096', new VerifiedRecaptcha()],
 
             // Invisible honeypot field. Real visitors leave it empty.
             'company' => ['nullable', 'max:0'],
@@ -57,6 +61,7 @@ class StoreContactMessageRequest extends FormRequest
     {
         return [
             'company.max' => 'Your message could not be submitted. Please try again.',
+            'g-recaptcha-response.required' => 'Please confirm that you are not a robot.',
             'phone.regex' => 'Please enter a valid phone number.',
             'order_number.regex' => 'The order number may only contain letters, numbers, and hyphens.',
         ];

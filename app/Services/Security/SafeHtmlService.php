@@ -28,7 +28,7 @@ class SafeHtmlService
 
             if (preg_match('/\s+href\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s>]+))/i', $attributes, $href)) {
                 $url = html_entity_decode(
-                    trim((string) ($href[1] ?? $href[2] ?? $href[3] ?? '')),
+                    trim((string) (($href[1] ?? '') !== '' ? $href[1] : ((($href[2] ?? '') !== '') ? $href[2] : ($href[3] ?? '')))),
                     ENT_QUOTES | ENT_HTML5,
                     'UTF-8'
                 );
@@ -39,16 +39,20 @@ class SafeHtmlService
 
             $attributes = preg_replace('/\s+href\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $attributes) ?? '';
             $attributes = preg_replace('/\s+(?!title\b|target\b|rel\b|class\b)[a-z0-9:-]+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $attributes) ?? '';
-            $attributes = preg_replace('/\s+target\s*=\s*(?:"(?!_blank")[^"]*"|\'(?!_blank\')[^\']*\'|(?!_blank\b)[^\s>]+)/i', '', $attributes) ?? '';
+            // Canonicalize the link target instead of retaining untrusted attribute
+            // variants. A new tab is allowed only for a verified safe href.
+            $opensNewTab = preg_match('/\s+target\s*=\s*(?:"_blank"|\'_blank\'|_blank)(?=\s|$)/i', $attributes) === 1;
+            $attributes = preg_replace('/\s+target\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $attributes) ?? '';
+            $attributes = preg_replace('/\s+rel\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $attributes) ?? '';
+
+            if ($opensNewTab && $safeHref !== null) {
+                $attributes .= ' target="_blank" rel="noopener noreferrer"';
+            }
 
             if ($safeHref !== null) {
                 $attributes .= ' href="'.e($safeHref).'"';
             }
 
-            if (preg_match('/\s+target\s*=\s*("|\')_blank\1/i', $attributes)) {
-                $attributes = preg_replace('/\s+rel\s*=\s*("|\')[^"\']*\1/i', '', $attributes) ?? '';
-                $attributes .= ' rel="noopener noreferrer"';
-            }
 
             return '<a'.$attributes.'>';
         }, $html) ?? '';

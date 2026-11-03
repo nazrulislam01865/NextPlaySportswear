@@ -138,7 +138,7 @@
         <link rel="stylesheet" href="{{ asset('css/nextplay-guest-quote-track.css') }}?v=20261102trackdesign1">
     @endif
     {{-- Page-only layout styles. Never override the storefront header/footer or global typography. --}}
-    @if(request()->routeIs('about', 'returns', 'contact', 'terms', 'privacy'))
+    @if(request()->routeIs('about', 'returns', 'contact', 'terms', 'privacy', 'payment-information'))
         <link rel="stylesheet" href="{{ asset('css/nextplay-content-pages.css') }}?v=20261102returns-nav-hover5">
     @endif
     @if(request()->routeIs('privacy'))
@@ -160,14 +160,17 @@
     @endif
     {{-- The same sidebar/hover rules for Returns and every admin-managed guide,
          loaded after legacy page CSS to avoid competing overrides. --}}
-    @if(request()->routeIs('returns', 'shipping', 'how-to-order', 'size-guide', 'artwork-guidelines'))
+    @if(request()->routeIs('returns', 'payment-information', 'shipping', 'how-to-order', 'size-guide', 'artwork-guidelines'))
         <link rel="stylesheet" href="{{ asset('css/nextplay-content-sidebar-shared.css') }}?v=20261102sidebar-header-offset2">
         <script defer src="{{ asset('js/nextplay-content-sidebar-offset.js') }}?v=20261102sidebar-header-offset2"></script>
     @endif
-    {{-- Single template contract for fonts, sizes, buttons, colors and borders
+    @if(request()->routeIs('payment-information'))
+        <link rel="stylesheet" href="{{ asset('css/nextplay-payment-page.css') }}?v=20261103c">
+    @endif
+        {{-- Single template contract for fonts, sizes, buttons, colors and borders
          across managed storefront content pages.  Values come from the central
          storefront-theme.css; no legacy per-page palettes or CTA geometries. --}}
-    @if(request()->routeIs('about', 'returns', 'contact', 'terms', 'privacy', 'shipping', 'how-to-order', 'size-guide', 'artwork-guidelines', 'faq', 'payment', 'customization-guide', 'bulk-ordering', 'sustainability'))
+    @if(request()->routeIs('about', 'returns', 'contact', 'terms', 'privacy', 'shipping', 'how-to-order', 'size-guide', 'artwork-guidelines', 'faq', 'payment-information', 'customization-guide', 'bulk-ordering', 'sustainability'))
         <link rel="stylesheet" href="{{ asset('css/nextplay-content-design-system.css') }}?v=20261102privacy-subject-select1">
     @endif
 </head>

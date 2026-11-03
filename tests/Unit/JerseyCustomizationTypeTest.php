@@ -613,7 +613,7 @@ class JerseyCustomizationTypeTest extends TestCase
         ] as $type) {
             $this->assertContains($type, $trainingVestProductTypes);
         }
-        $this->assertSame('Size Options', JerseyCustomizationType::TrainingVestSizeOption->label());
+        $this->assertSame('Size', JerseyCustomizationType::TrainingVestSizeOption->label());
 
         $this->assertTrue(JerseyCustomizationType::BaseballBeltColorOption->usesColorValue());
         $this->assertTrue(JerseyCustomizationType::TowelAvailableBackingColorOption->usesColorValue());

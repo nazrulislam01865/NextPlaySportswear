@@ -45,7 +45,7 @@ final class StripeGateway implements PaymentGateway
             }
 
             $currency = strtolower($paymentCurrency);
-            $amountMinor = Money::toMinor((float) $payment->amount, $paymentCurrency);
+            $amountMinor = Money::toMinor((string) $payment->amount, $paymentCurrency);
 
             if ($amountMinor <= 0) {
                 throw new PaymentGatewayException('Stripe checkout requires a positive server-side payment amount.');
@@ -55,6 +55,9 @@ final class StripeGateway implements PaymentGateway
                 'order_number' => (string) $order->order_number,
                 'payment_id' => (string) $payment->id,
             ];
+            if ($payment->order_payment_installment_id) {
+                $metadata['installment_id'] = (string) $payment->order_payment_installment_id;
+            }
 
             $session = $stripe->checkout->sessions->create([
                 'mode' => 'payment',
@@ -70,7 +73,9 @@ final class StripeGateway implements PaymentGateway
                         'unit_amount' => $amountMinor,
                         'product_data' => [
                             'name' => 'NextPlay Order '.$order->order_number,
-                            'description' => 'Server-confirmed final order total',
+                            'description' => $payment->order_payment_installment_id
+                                ? 'Customer-accepted approved installment'
+                                : 'Server-confirmed final order total',
                         ],
                     ],
                 ]],
@@ -112,6 +117,18 @@ final class StripeGateway implements PaymentGateway
                 (string) config('payments.gateways.stripe.webhook_secret'),
             );
 
+            $key = (string) config('payments.gateways.stripe.secret_key');
+            $isLiveKey = str_starts_with($key, 'sk_live_') || str_starts_with($key, 'rk_live_');
+            $isTestKey = str_starts_with($key, 'sk_test_') || str_starts_with($key, 'rk_test_');
+            if ((! $isLiveKey && ! $isTestKey) || (bool) $event->livemode !== $isLiveKey) {
+                // Invalid/ambiguous API key provenance must never bypass mode matching.
+                throw new PaymentGatewayException('Stripe webhook mode does not match the configured API key.');
+            }
+            if (filled($event->account ?? null)) {
+                // Connected-account events cannot be linked to this single-account store.
+                throw new PaymentGatewayException('Connected-account events are not supported.');
+            }
+
             return new GatewayWebhook(
                 providerEventId: (string) $event->id,
                 type: (string) $event->type,
@@ -132,6 +149,22 @@ final class StripeGateway implements PaymentGateway
 
         try {
             $session = $this->client()->checkout->sessions->retrieve((string) $payment->provider_session_id, []);
+            // Checkout is the authority for a hosted session. A mismatched
+            // returned object must not be allowed to confirm another order.
+            $metadata = $session->metadata?->toArray() ?? [];
+            if ((string) ($metadata['payment_id'] ?? '') !== (string) $payment->id
+                || (string) ($metadata['order_id'] ?? '') !== (string) $payment->order_id
+                || (string) ($session->client_reference_id ?? '') !== (string) $payment->order->order_number) {
+                throw new PaymentGatewayException('Stripe Session does not belong to the expected order and payment.');
+            }
+            if ($payment->order_payment_installment_id &&
+                (string) ($metadata['installment_id'] ?? '') !== (string) $payment->order_payment_installment_id) {
+                throw new PaymentGatewayException('Stripe Session installment reference mismatch.');
+            }
+            if ($payment->provider_payment_id && is_string($session->payment_intent)
+                && $payment->provider_payment_id !== $session->payment_intent) {
+                throw new PaymentGatewayException('Stripe Session PaymentIntent reference mismatch.');
+            }
             $status = match (true) {
                 (string) $session->payment_status === 'paid' => 'paid',
                 (string) $session->status === 'expired' => 'expired',
@@ -145,7 +178,7 @@ final class StripeGateway implements PaymentGateway
                 providerPaymentId: is_string($session->payment_intent) ? $session->payment_intent : null,
                 amountMinor: isset($session->amount_total) ? (int) $session->amount_total : null,
                 currency: isset($session->currency) ? strtoupper((string) $session->currency) : null,
-                metadata: $session->metadata?->toArray() ?? [],
+                metadata: $metadata,
             );
         } catch (Throwable $exception) {
             report($exception);
@@ -153,6 +186,7 @@ final class StripeGateway implements PaymentGateway
         }
     }
 
+    /** Stripe Dashboard is the sole permitted refund initiation channel. */
     public function refund(
         OrderPayment $payment,
         float $amount,
@@ -161,41 +195,9 @@ final class StripeGateway implements PaymentGateway
         array $metadata = [],
     ): GatewayRefundResult
     {
-        $this->assertConfigured();
-
-        if (! filled($payment->provider_payment_id)) {
-            throw new PaymentGatewayException('Stripe PaymentIntent reference is missing for this payment.');
-        }
-
-        try {
-            $refund = $this->client()->refunds->create([
-                'payment_intent' => (string) $payment->provider_payment_id,
-                'amount' => Money::toMinor($amount, (string) $payment->currency),
-                'metadata' => array_merge(
-                    collect($metadata)->map(fn ($value) => (string) $value)->all(),
-                    [
-                        'order_id' => (string) $payment->order_id,
-                        'order_payment_id' => (string) $payment->id,
-                        'internal_reason' => mb_substr($reason, 0, 400),
-                    ],
-                ),
-            ], [
-                'idempotency_key' => $idempotencyKey ?: 'refund:'.$payment->id.':'.hash('sha256', number_format($amount, 2, '.', '').'|'.$reason),
-            ]);
-
-            return new GatewayRefundResult(
-                status: (string) $refund->status,
-                providerReference: (string) $refund->id,
-                metadata: [
-                    'payment_intent' => (string) $payment->provider_payment_id,
-                    'failure_reason' => $refund->failure_reason ?? null,
-                    'pending_reason' => $refund->pending_reason ?? null,
-                ],
-            );
-        } catch (Throwable $exception) {
-            report($exception);
-            throw new PaymentGatewayException('Stripe could not create the refund.', previous: $exception);
-        }
+        throw new PaymentGatewayException(
+            'Application-initiated Stripe refunds are disabled. An authorized finance owner must refund in Stripe Dashboard.',
+        );
     }
 
     private function assertConfigured(): void
