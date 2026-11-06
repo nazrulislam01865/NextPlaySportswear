@@ -229,3 +229,59 @@ body.admin-ui-compact #admin-main-content .np-bq .np-bq-tab-content .np-quote-ui
 .np-quote-ui .np-quote-doc-grid>label {align-self:start;}
 .np-quote-ui .np-quote-doc-grid>label>span {min-height:21px;}
 @media (max-width:760px) { .np-quote-ui .np-quote-file-chip>span {max-width:calc(100vw - 130px);} }
+
+/* Product-defined quotation options: the selected choices appear before remaining
+   choices in each control. These rows replace the legacy imprint-only summary. */
+.np-quote-ui .np-quote-option-breakdown tbody td {vertical-align:top;}
+.np-quote-ui .np-quote-option-breakdown [data-option-group-row] td,
+.np-quote-ui .np-quote-option-breakdown [data-option-adjustment] td {padding:12px;}
+.np-quote-ui .np-quote-option-breakdown .np-quote-option-field {
+  margin:0;padding:0;border:0;display:flex;flex-direction:column;gap:8px;min-width:0;
+}
+.np-quote-ui .np-quote-option-breakdown .np-quote-option-field>label,
+.np-quote-ui .np-quote-option-breakdown .np-quote-option-group-label {
+  color:var(--nps-navy);font-size:14px;font-weight:600;line-height:1.5;
+}
+.np-quote-ui .np-quote-option-breakdown .np-quote-option-select {min-width:0;width:100%;}
+.np-quote-ui .np-quote-option-breakdown [data-option-unit-amount],
+.np-quote-ui .np-quote-option-breakdown [data-option-fixed-amount],
+.np-quote-ui .np-quote-option-breakdown [data-option-row-total] {
+  padding-top:20px;font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.np-quote-ui .np-quote-option-breakdown .np-quote-adjustment-label {
+  display:block;padding-top:12px;font-size:14px;font-weight:600;color:var(--nps-text);
+}
+.np-quote-ui .np-quote-option-breakdown [data-option-adjustment] {background:#fafbfd;}
+.np-quote-ui .np-quote-multi-dropdown {position:relative;min-width:0;width:100%;}
+.np-quote-ui .np-quote-multi-dropdown>summary {
+  min-height:48px;list-style:none;display:flex;align-items:center;justify-content:space-between;
+  gap:12px;padding:12px 14px;color:var(--nps-text);background:#fff;
+  border:1px solid var(--nps-border);border-radius:var(--nps-radius);
+  font:400 16px/1.5 var(--nps-font);cursor:pointer;overflow-wrap:anywhere;
+}
+.np-quote-ui .np-quote-multi-dropdown>summary::-webkit-details-marker {display:none;}
+.np-quote-ui .np-quote-multi-dropdown>summary::after {
+  content:'⌄';font-size:21px;line-height:1;flex:none;color:var(--nps-navy);
+}
+.np-quote-ui .np-quote-multi-dropdown>summary:hover {border-color:#8193aa;}
+.np-quote-ui .np-quote-multi-dropdown>summary:focus-visible {
+  outline:3px solid var(--nps-focus);outline-offset:3px;
+}
+.np-quote-ui .np-quote-multi-dropdown[open]>summary {
+  border-bottom-left-radius:0;border-bottom-right-radius:0;
+}
+.np-quote-ui .np-quote-multi-choices {
+  display:grid;gap:4px;max-height:260px;overflow-y:auto;border:1px solid var(--nps-border);
+  border-top:0;border-bottom-left-radius:var(--nps-radius);border-bottom-right-radius:var(--nps-radius);
+  background:#fff;padding:8px;
+}
+.np-quote-ui .np-quote-multi-choices .np-quote-check {
+  display:flex;align-items:flex-start;gap:10px;padding:8px;border-radius:6px;
+  cursor:pointer;line-height:1.5;font-size:14px;color:var(--nps-text);
+}
+.np-quote-ui .np-quote-multi-choices .np-quote-check:hover {background:#f5f7fa;}
+.np-quote-ui .np-quote-multi-choices input[type=checkbox] {
+  width:20px;height:20px;flex:none;accent-color:var(--nps-orange);margin:0;
+}
+.np-quote-ui .np-quote-multi-choices small {display:inline;color:var(--nps-orange);font-size:13px;}
+.np-quote-ui .np-quote-option-field[data-unselected="1"] :is(select,summary) {border-color:var(--nps-orange);}

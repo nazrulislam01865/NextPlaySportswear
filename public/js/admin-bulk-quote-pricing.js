@@ -66,7 +66,7 @@
 
   function options(line, i, kind = 'options') {
     let unit = 0, fixed = 0;
-    const selectedLabels = [], missing = [];
+    const selectedLabels = [], missing = [], groups = {};
     for (const group of line.groups || []) {
       const controls = Array.from(form.querySelectorAll(`[data-option-kind="${kind}"][data-option-group="${group.id}"][data-option-line="${i}"]`));
       const chosen = controls.length
@@ -75,14 +75,75 @@
       const selected = group.values.filter(value => chosen.includes(value.id));
       if (group.required && selected.length === 0) missing.push(group.label);
       const wrapper = form.querySelector(`[data-option-kind="${kind}"][data-line-index="${i}"] [data-option-group="${group.id}"]`)?.closest('.np-quote-option-field');
-      if (wrapper) { if (group.required && !selected.length) wrapper.dataset.unselected = '1'; else delete wrapper.dataset.unselected; }
+      const active = kind !== 'sample_options' || (byId('np-quote-sample-on')?.checked &&
+        read(i, 'sample_type') === 'printed' && num(read(i, 'sample_quantity')) > 0);
+      if (wrapper) { if (active && group.required && !selected.length) wrapper.dataset.unselected = '1'; else delete wrapper.dataset.unselected; }
+      let groupUnit = 0, groupFixed = 0;
       for (const choice of selected) {
-        if (choice.charge_type === 'fixed_order') fixed += num(choice.price);
-        else if (choice.charge_type !== 'included') unit += num(choice.price);
+        if (choice.charge_type === 'fixed_order') groupFixed += num(choice.price);
+        else if (choice.charge_type !== 'included') groupUnit += num(choice.price);
         selectedLabels.push(`${group.label}: ${choice.label}${num(choice.price) ? ' (+' + fmt(choice.price) + (choice.charge_type === 'fixed_order' ? '/order' : '/pc') + ')' : ''}`);
       }
+      unit += groupUnit;
+      fixed += groupFixed;
+      groups[String(group.id)] = { unit: groupUnit, fixed: groupFixed, selected: selected.length > 0 };
     }
-    return { unit, fixed, missing, labels: selectedLabels };
+    return { unit, fixed, missing, labels: selectedLabels, groups };
+  }
+
+  // Each configured product group has its own row and prices; neither table
+  // assumes the product has an "imprint" option.
+  function renderOptionRows(kind, i, choice, quantity, billable = true) {
+    const rows = Array.from(form.querySelectorAll(`[data-option-group-row="${kind}"][data-option-line="${i}"]`));
+    // Keep selected groups above unselected groups, even when an admin changes
+    // a selection. Keep the product name anchored to the first group row.
+    const anchor = form.querySelector(`[data-option-adjustment="${kind}"][data-option-line="${i}"]`);
+    if (anchor && rows.length > 1) {
+      const nameNode = rows.map(row => row.querySelector('[data-bulk-order-label],[data-sample-order-label]')).find(Boolean);
+      rows.sort((a, b) => Number(!!choice.groups[b.dataset.groupId]?.selected) - Number(!!choice.groups[a.dataset.groupId]?.selected));
+      rows.forEach(row => anchor.before(row));
+      if (nameNode && rows[0].firstElementChild) rows[0].firstElementChild.prepend(nameNode);
+    }
+    for (const row of rows) {
+      const groupId = row.dataset.groupId;
+      const price = choice.groups[groupId] || { unit: 0, fixed: 0, selected: false };
+      const each = billable ? price.unit : 0;
+      const setup = billable ? price.fixed : 0;
+      const amount = quantity * each + setup;
+      const unitField = row.querySelector('[data-option-unit-amount]');
+      const fixedField = row.querySelector('[data-option-fixed-amount]');
+      const totalField = row.querySelector('[data-option-row-total]');
+      if (unitField) unitField.textContent = fmt(each);
+      if (fixedField) fixedField.textContent = fmt(setup);
+      if (totalField) totalField.textContent = fmt(amount);
+      // The chosen value is always the first real choice in its own dropdown;
+      // unselected catalogue choices remain available below it.
+      const select = row.querySelector('select[data-option-group]');
+      if (select) {
+        const current = select.value;
+        if (current && select.options.length && select.options[0].value !== current) {
+          const selectedOption = Array.from(select.options).find(opt => opt.value === current);
+          if (selectedOption) select.insertBefore(selectedOption, select.options[0]);
+          select.value = current;
+        }
+      }
+      const multi = row.querySelector('.np-quote-multi-dropdown');
+      if (multi) {
+        const checks = Array.from(multi.querySelectorAll('input[type="checkbox"]'));
+        const checked = checks.filter(input => input.checked);
+        const countLabel = multi.querySelector('[data-multi-summary]');
+        if (countLabel) {
+          const pickedNames = checked.map(input => input.closest('label')?.querySelector('span')?.firstChild?.textContent?.trim()).filter(Boolean);
+          countLabel.textContent = pickedNames.length ? pickedNames.join(', ') : 'Choose product options';
+        }
+        const list = multi.querySelector('.np-quote-multi-choices');
+        if (list && checks.length > 1) {
+          const labels = checks.map(input => input.closest('label')).filter(Boolean);
+          labels.sort((a, b) => Number(b.querySelector('input')?.checked) - Number(a.querySelector('input')?.checked));
+          labels.forEach(label => list.append(label));
+        }
+      }
+    }
   }
 
   function calculate() {
@@ -111,11 +172,8 @@
       text(`[data-line-total="${i}"]`, fmt(lineTotal + (idx === 0 ? remote + privateAddress : 0)));
       text(`[data-bulk-breakdown-total="${i}"]`, fmt(lineTotal));
       text(`[data-bulk-order-label="${i}"]`, `${qty} × ${line.name}`);
-      text(`[data-option-total="${i}"]`, fmt(extra));
-      text(`[data-option-summary="${i}"]`, choices.labels.join(' · ') || 'Included / none selected');
-      // Keep the compact product label synchronized with any option edits.
-      const basicOptions = choices.labels.map(value => value.replace(/ \(\+\$.*$/, ''));
-      text(`[data-product-title="${i}"]`, [line.sku, line.name].filter(Boolean).join(' ') + (basicOptions.length ? ' · ' + basicOptions.join(' · ') : ''));
+      text(`[data-option-total="${i}"]`, fmt(imprint));
+      renderOptionRows('options', i, choices, qty);
       missing.push(...choices.missing.map(v => `${line.name}: ${v}`));
 
       let sampleLine = 0;
@@ -129,9 +187,10 @@
         sampleLine = sampleProduct + sampleExtra + sampleShipping;
         samples += sampleLine;
         text(`[data-sample-total="${i}"]`, fmt(sampleLine + (idx === 0 && sampleQty ? sampleRemote + samplePrivate : 0)));
-        text(`[data-sample-type-label="${i}"]`, sampleType === 'blank' ? 'None (blank)' : (sampleChoices.labels.join(' · ') || 'Printed'));
+        renderOptionRows('sample_options', i, sampleChoices, sampleQty, sampleType === 'printed' && sampleQty > 0);
         if (sampleType === 'printed' && sampleQty > 0) missing.push(...sampleChoices.missing.map(v => `${line.name} sample: ${v}`));
       }
+      if (!sampleEnabled) renderOptionRows('sample_options', i, sampleChoices, 0, false);
       rows.push({ name: line.name, quantity: qty, base, options: extra, shipping, lineTotal, sample: sampleLine });
     });
     bulk += remote + privateAddress;

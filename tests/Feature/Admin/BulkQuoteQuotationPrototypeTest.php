@@ -192,6 +192,96 @@ class BulkQuoteQuotationPrototypeTest extends TestCase
         $this->assertSame($term->label, $quote->fresh()->quotation_draft['payment_terms']);
     }
 
+    public function test_selected_catalog_groups_and_values_render_first_with_editable_dropdowns(): void
+    {
+        [$quote, $imprint, $imprintChoice] = $this->quoteWithProduct();
+        $product = Product::query()->findOrFail($imprint->product_id);
+        $fabric = $product->optionGroups()->create([
+            'name' => 'Fabric', 'code' => 'fabric', 'type' => 'select',
+            'is_active' => true, 'is_required' => true,
+        ]);
+        $unselected = $fabric->values()->create([
+            'label' => 'Standard mesh', 'code' => 'standard-mesh', 'price_adjustment' => 0,
+            'charge_type' => 'included', 'is_active' => true,
+        ]);
+        $chosen = $fabric->values()->create([
+            'label' => '180G Jacquard', 'code' => 'jacquard', 'price_adjustment' => 0.20,
+            'charge_type' => 'per_unit', 'is_active' => true,
+        ]);
+        $details = (array) $quote->product_information;
+        $details['selected_products'][0]['options'] = [['label' => 'Fabric', 'value' => '180G Jacquard']];
+        $quote->forceFill(['product_information' => $details])->save();
+
+        $prepared = app(BulkQuoteQuotationEditor::class)->prepare($quote);
+        $this->assertSame('Fabric', $prepared['lines'][0]['groups'][0]['label']);
+        $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $response = $this->actingAs($admin, 'admin')
+            ->get(route('admin.bulk-quotes.show', ['bulkQuote' => $quote, 'tab' => 'messages']))
+            ->assertOk();
+        $html = $response->getContent();
+        $this->assertStringContainsString('name="lines[0][options]['.$fabric->id.']"', $html);
+        $this->assertStringContainsString('name="lines[0][options]['.$imprint->id.']"', $html);
+        $this->assertStringContainsString('Product option', $html);
+        $fabricSelector = 'id="np-quote-options-0-'.$fabric->id.'"';
+        $imprintSelector = 'id="np-quote-options-0-'.$imprint->id.'"';
+        $this->assertLessThan(strpos($html, $imprintSelector), strpos($html, $fabricSelector));
+        $selectSection = substr($html, strpos($html, $fabricSelector));
+        $selectSection = substr($selectSection, 0, strpos($selectSection, '</select>'));
+        $this->assertLessThan(
+            strpos($selectSection, 'value="'.$unselected->id.'"'),
+            strpos($selectSection, 'value="'.$chosen->id.'"'),
+        );
+
+        $base = $this->pricing($imprint->id, $imprintChoice->id);
+        $base['lines'][0]['options'][$fabric->id] = (string) $chosen->id;
+        $withFabric = app(BulkQuoteQuotationEditor::class)->calculate($quote, $base);
+        $base['lines'][0]['options'][$fabric->id] = (string) $unselected->id;
+        $withoutFabric = app(BulkQuoteQuotationEditor::class)->calculate($quote, $base);
+        $this->assertEqualsWithDelta(0.80,
+            $withFabric['pricing_breakdown']['grand_total'] - $withoutFabric['pricing_breakdown']['grand_total'], 0.001);
+    }
+
+    public function test_multiple_checkbox_options_have_selected_first_dropdown_and_configured_charges(): void
+    {
+        [$quote, $imprint, $imprintChoice] = $this->quoteWithProduct();
+        $product = Product::query()->findOrFail($imprint->product_id);
+        $group = $product->optionGroups()->create([
+            'name' => 'Print', 'code' => 'print', 'type' => 'checkbox',
+            'is_active' => true, 'is_required' => false,
+        ]);
+        $unused = $group->values()->create([
+            'label' => 'Screen printing', 'code' => 'screen-print', 'price_adjustment' => 0.25,
+            'charge_type' => 'per_unit', 'is_active' => true,
+        ]);
+        $selected = $group->values()->create([
+            'label' => 'Heat press', 'code' => 'heat-press', 'price_adjustment' => 0.18,
+            'charge_type' => 'per_unit', 'is_active' => true,
+        ]);
+        $details = (array) $quote->product_information;
+        $details['selected_products'][0]['options'][] = ['label' => 'Print', 'values' => ['Heat press']];
+        $quote->forceFill(['product_information' => $details])->save();
+        $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $response = $this->actingAs($admin, 'admin')
+            ->get(route('admin.bulk-quotes.show', ['bulkQuote' => $quote, 'tab' => 'messages']))
+            ->assertOk();
+        $html = $response->getContent();
+        $this->assertStringContainsString('np-quote-multi-dropdown', $html);
+        $this->assertStringContainsString('name="lines[0][options]['.$group->id.'][]"', $html);
+        $inputSection = substr($html, strpos($html, 'id="np-quote-options-0-'.$group->id.'"'));
+        $inputSection = substr($inputSection, 0, strpos($inputSection, '</details>'));
+        $this->assertLessThan(
+            strpos($inputSection, 'value="'.$unused->id.'"'),
+            strpos($inputSection, 'value="'.$selected->id.'"'),
+        );
+        $base = $this->pricing($imprint->id, $imprintChoice->id);
+        $base['lines'][0]['options'][$group->id] = [(string) $selected->id];
+        $first = app(BulkQuoteQuotationEditor::class)->calculate($quote, $base);
+        $base['lines'][0]['options'][$group->id] = [(string) $selected->id, (string) $unused->id];
+        $both = app(BulkQuoteQuotationEditor::class)->calculate($quote, $base);
+        $this->assertEqualsWithDelta(1.00,
+            $both['pricing_breakdown']['grand_total'] - $first['pricing_breakdown']['grand_total'], 0.001);
+    }
+
     private function quoteWithProduct(): array
     {
         $product = Product::query()->create([

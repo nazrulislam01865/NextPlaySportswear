@@ -5,12 +5,13 @@ namespace App\Services\Email;
 use App\Contracts\EmailService;
 use App\Data\EmailMessage;
 use App\Models\BulkQuoteRequest;
+use App\Models\ContactMessage;
 use App\Models\Order;
 use App\Services\Order\OrderPdfService;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
-/** Forward existing orders and bulk quotes, manually or on creation. */
+/** Forward new or existing orders, bulk quotes and contact messages. */
 final class ConfirmationForwarder
 {
     private const MAX_BYTES = 14 * 1024 * 1024;
@@ -136,6 +137,49 @@ final class ConfirmationForwarder
         $this->deliver($recipients, $note, 'Bulk quote '.$quote->reference, $details, route('admin.bulk-quotes.show', $quote), $files, $automatic);
     }
 
+    /** Forward the complete submitted Contact Us message, not a truncated preview. */
+    public function contact(ContactMessage $contact, string $recipients, string $note, bool $automatic = false): void
+    {
+        $details = array_filter([
+            'Contact message ID' => (string) $contact->getKey(),
+            'Received' => (string) ($contact->created_at?->format('d M Y, g:i A') ?: ''),
+            'Customer name' => (string) $contact->name,
+            'Customer email' => (string) $contact->email,
+            'Customer phone' => (string) $contact->phone,
+            'Subject' => (string) $contact->topic,
+            'Order / quote number' => (string) $contact->order_number,
+            'Message' => (string) $contact->message,
+            'Original attachment' => (string) $contact->attachment_name,
+            'Download attachment (admin login required)' => filled($contact->attachment_path)
+                ? route('admin.contact-page.attachment', $contact) : '',
+        ], static fn (mixed $value): bool => filled($value));
+
+        $files = [$this->dataFile('Contact_'.$contact->getKey().'_Details.txt', $this->summary($details), 'text/plain')];
+
+        if (filled($contact->attachment_path)) {
+            $path = (string) $contact->attachment_path;
+            // Contact uploads belong to this message and must remain private.
+            if (! str_starts_with($path, 'contact-messages/'.$contact->getKey().'/')) {
+                throw new RuntimeException('Contact attachment path is invalid.');
+            }
+
+            $mailer = (array) config('mail.mailers.'.config('transactional_email.mailer', config('mail.default', 'log')), []);
+            $isE2a = ($mailer['transport'] ?? '') === 'e2a';
+            // E2A has a composed-message limit, including base64 expansion.
+            // Large valid contact uploads remain available through the protected admin link.
+            $attachmentSize = (int) $contact->attachment_size;
+            if (! $isE2a || $attachmentSize <= 6 * 1024 * 1024) {
+                $this->addStored($files, 'local', $path,
+                    (string) ($contact->attachment_name ?: 'contact-attachment'),
+                    (string) ($contact->attachment_mime ?: 'application/octet-stream'), 'contact');
+            }
+        }
+
+        $this->deliver($recipients, $note, 'Contact Us message #'.$contact->getKey(),
+            $details, route('admin.contact-page.edit'), $files, $automatic,
+            replyTo: (string) $contact->email, replyToName: (string) $contact->name);
+    }
+
     /** @param array<int,array<string,mixed>> $files */
     private function addStored(array &$files, string $disk, string $path, string $name, string $mime, string $prefix): void
     {
@@ -162,7 +206,7 @@ final class ConfirmationForwarder
     }
 
     /** @param array<int,array<string,mixed>> $files @param array<string,string> $details */
-    private function deliver(string $recipients, string $note, string $subject, array $details, string $link, array $files, bool $automatic): void
+    private function deliver(string $recipients, string $note, string $subject, array $details, string $link, array $files, bool $automatic, ?string $replyTo = null, ?string $replyToName = null): void
     {
         $bytes = 0;
         foreach ($files as $file) {
@@ -174,9 +218,15 @@ final class ConfirmationForwarder
         $maxBytes = $isE2a ? self::E2A_MAX_BYTES : self::MAX_BYTES;
         $maxFiles = $isE2a ? self::E2A_MAX_FILES : self::MAX_FILES;
         if ($bytes > $maxBytes || count($files) > $maxFiles) {
-            throw new RuntimeException($isE2a
-                ? 'E2A allows up to 10 attachments and about 9 MB of files per confirmation email. Nothing was sent.'
-                : 'All attachments cannot fit in a single email (limit: 14 MB / 30 files). Nothing was sent.');
+            if (! $automatic) {
+                throw new RuntimeException($isE2a
+                    ? 'E2A allows up to 10 attachments and about 9 MB of files per confirmation email. Nothing was sent.'
+                    : 'All attachments cannot fit in a single email (limit: 14 MB / 30 files). Nothing was sent.');
+            }
+            // Never discard the automatic alert just because the files are too large.
+            // The authenticated admin link provides access to the source documents.
+            $details['Attachments'] = 'Attachment limits exceeded; open the request in NextPlay Admin to download files.';
+            $files = [];
         }
         if (in_array((string) ($mailer['transport'] ?? ''), ['log', 'array'], true)) {
             throw new RuntimeException('Forwarding requires a delivering email provider. Configure SMTP or E2A first.');
@@ -196,9 +246,11 @@ final class ConfirmationForwarder
             outroLines: [$automatic
                 ? 'Automatically forwarded when the request was created. Reply to the sender with your confirmation.'
                 : 'This forward was manually requested by a NextPlay administrator. Reply to the sender with your confirmation.'],
+            replyTo: $replyTo,
+            replyToName: $replyToName,
             attachments: array_map(static function (array $file): array { unset($file['_size']); return $file; }, $files),
         );
-        // Synchronous send: delivery failures appear on this form, no background job or DB write.
+        // Sending is immediate when invoked; automatic triggers run after the customer response.
         $this->emails->sendNow($message);
     }
 

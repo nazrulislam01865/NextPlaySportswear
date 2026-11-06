@@ -61,9 +61,6 @@
                             <tr class="np-quote-product-row" data-line="{{ $i }}">
                                 <td class="np-quote-product-cell">
                                     <strong data-product-title="{{ $i }}">{{ $line['sku'] ? $line['sku'].' ' : '' }}{{ $line['name'] }}@if($line['selected_options']) · {{ collect($line['selected_options'])->map(fn ($selected) => $selected['value'] ?? implode(', ', (array) ($selected['values'] ?? [])))->filter()->implode(' · ') }}@endif</strong>
-                                    @if(count($line['groups']))
-                                        @include('admin.bulk-quotes.partials.quotation-options', ['optionKind' => 'options', 'line' => $line, 'i' => $i, 'stored' => $stored])
-                                    @endif
                                     @unless($line['product_id']) <small class="np-quote-manual-note">Not a catalogue product — enter the negotiated unit price.</small> @endunless
                                 </td>
                                 <td><input class="admin-input np-quote-number" aria-label="{{ $line['name'] }} quantity" type="number" name="lines[{{ $i }}][quantity]" min="1" max="10000000" step="1" value="{{ $qty }}" data-field="quantity" data-i="{{ $i }}" required></td>
@@ -90,16 +87,26 @@
             </div>
             <div class="np-quote-breakdown-title">&nbsp;</div>
             <div class="np-quote-table-scroller">
-                <table class="np-quote-pricing-table np-quote-imprint-table">
-                    <thead><tr><th>Order line</th><th>Imprint option</th><th>Imprint / unit</th><th>Setup / order</th><th>Imprint total</th><th>Line total</th></tr></thead>
+                <table class="np-quote-pricing-table np-quote-imprint-table np-quote-option-breakdown" aria-label="Bulk order product options and charges">
+                    <thead><tr><th>Order line</th><th>Product option</th><th>Extra / unit</th><th>Setup / order</th><th>Option total</th><th>Line total</th></tr></thead>
                     <tbody>
                         @foreach($lines as $line)
                             @php $i = $line['index']; $stored = (array) $line['draft']; @endphp
-                            <tr data-line-imprint="{{ $i }}">
-                                <td><span data-bulk-order-label="{{ $i }}">{{ $line['quantity'] }} × {{ $line['name'] }}</span></td>
-                                <td data-option-summary="{{ $i }}">Included / none selected</td>
-                                <td><span class="np-quote-money-field"><input class="admin-input np-quote-number" type="number" name="lines[{{ $i }}][imprint_unit]" min="0" step="0.01" aria-label="{{ $line['name'] }} imprint per unit" value="{{ old("lines.$i.imprint_unit", $stored['imprint_unit'] ?? 0) }}" data-field="imprint_unit" data-i="{{ $i }}"></span></td>
-                                <td><span class="np-quote-money-field"><input class="admin-input np-quote-number" type="number" name="lines[{{ $i }}][imprint_setup]" min="0" step="0.01" aria-label="{{ $line['name'] }} imprint setup per order" value="{{ old("lines.$i.imprint_setup", $stored['imprint_setup'] ?? 0) }}" data-field="imprint_setup" data-i="{{ $i }}"></span></td>
+                            @foreach($line['groups'] as $group)
+                                <tr data-option-group-row="options" data-option-line="{{ $i }}" data-group-id="{{ $group['id'] }}">
+                                    <td>@if($loop->first)<span data-bulk-order-label="{{ $i }}">{{ $line['quantity'] }} × {{ $line['name'] }}</span>@endif</td>
+                                    <td>@include('admin.bulk-quotes.partials.quotation-options', ['optionKind' => 'options', 'group' => $group, 'i' => $i, 'stored' => $stored])</td>
+                                    <td data-option-unit-amount>$0.00</td>
+                                    <td data-option-fixed-amount>$0.00</td>
+                                    <td data-option-row-total class="np-quote-bold-money">$0.00</td>
+                                    <td></td>
+                                </tr>
+                            @endforeach
+                            <tr data-option-adjustment="options" data-option-line="{{ $i }}">
+                                <td>@if(!count($line['groups']))<span data-bulk-order-label="{{ $i }}">{{ $line['quantity'] }} × {{ $line['name'] }}</span>@endif</td>
+                                <td><span class="np-quote-adjustment-label">Additional customization</span></td>
+                                <td><span class="np-quote-money-field"><input class="admin-input np-quote-number" type="number" name="lines[{{ $i }}][imprint_unit]" min="0" step="0.01" aria-label="{{ $line['name'] }} additional customization per unit" value="{{ old("lines.$i.imprint_unit", $stored['imprint_unit'] ?? 0) }}" data-field="imprint_unit" data-i="{{ $i }}"></span></td>
+                                <td><span class="np-quote-money-field"><input class="admin-input np-quote-number" type="number" name="lines[{{ $i }}][imprint_setup]" min="0" step="0.01" aria-label="{{ $line['name'] }} additional customization setup per order" value="{{ old("lines.$i.imprint_setup", $stored['imprint_setup'] ?? 0) }}" data-field="imprint_setup" data-i="{{ $i }}"></span></td>
                                 <td class="np-quote-bold-money" data-option-total="{{ $i }}">$0.00</td>
                                 <td class="np-quote-bold-money" data-bulk-breakdown-total="{{ $i }}">$0.00</td>
                             </tr>
@@ -123,9 +130,6 @@
                                 @php $i = $line['index']; $stored = (array) $line['draft']; @endphp
                                 <tr data-sample-line="{{ $i }}">
                                     <td class="np-quote-product-cell"><strong>{{ $line['name'] }}</strong>
-                                        @if(count($line['groups']))
-                                            @include('admin.bulk-quotes.partials.quotation-options', ['optionKind' => 'sample_options', 'line' => $line, 'i' => $i, 'stored' => $stored])
-                                        @endif
                                     </td>
                                     <td><input class="admin-input np-quote-number" type="number" name="lines[{{ $i }}][sample_quantity]" min="0" max="1000" step="1" value="{{ old("lines.$i.sample_quantity", $stored['sample_quantity'] ?? 1) }}" data-field="sample_quantity" data-i="{{ $i }}" aria-label="{{ $line['name'] }} sample quantity"></td>
                                     <td><select class="admin-input" name="lines[{{ $i }}][sample_type]" data-field="sample_type" data-i="{{ $i }}" aria-label="{{ $line['name'] }} sample type"><option value="printed" @selected(old("lines.$i.sample_type", $stored['sample_type'] ?? 'printed') === 'printed')>Printed</option><option value="blank" @selected(old("lines.$i.sample_type", $stored['sample_type'] ?? 'printed') === 'blank')>Blank</option></select></td>
@@ -149,23 +153,35 @@
                 </div>
                 <p class="np-quote-sample-explanation">Samples share one shipment; shipping and address charge applied once.</p>
                 <div class="np-quote-table-scroller">
-                    <table class="np-quote-pricing-table np-quote-imprint-table"><thead><tr><th>Sample</th><th>Imprint option</th><th>Imprint / unit</th><th>Setup / order</th><th>Sample line total</th></tr></thead>
+                    @foreach($lines as $line)<input type="hidden" name="lines[{{ $line['index'] }}][sample_options][_submitted]" value="1">@endforeach
+                    <table class="np-quote-pricing-table np-quote-imprint-table np-quote-option-breakdown" aria-label="Sample product options and charges">
+                        <thead><tr><th>Sample</th><th>Sample option</th><th>Extra / unit</th><th>Setup / order</th><th>Sample line total</th></tr></thead>
                         <tbody>
                             @foreach($lines as $line)
                                 @php $i = $line['index']; $stored = (array) $line['draft']; @endphp
-                                <tr><td>{{ $line['name'] }}</td><td data-sample-type-label="{{ $i }}">Printed</td>
-                                    <td><span class="np-quote-money-field"><input class="admin-input np-quote-number" type="number" name="lines[{{ $i }}][sample_imprint_unit]" min="0" step="0.01" value="{{ old("lines.$i.sample_imprint_unit", $stored['sample_imprint_unit'] ?? 0) }}" data-field="sample_imprint_unit" data-i="{{ $i }}" aria-label="{{ $line['name'] }} sample imprint per unit"></span></td>
+                                @foreach($line['groups'] as $group)
+                                    <tr data-option-group-row="sample_options" data-option-line="{{ $i }}" data-group-id="{{ $group['id'] }}">
+                                        <td>@if($loop->first)<span data-sample-order-label="{{ $i }}">{{ $line['name'] }}</span>@endif</td>
+                                        <td>@include('admin.bulk-quotes.partials.quotation-options', ['optionKind' => 'sample_options', 'group' => $group, 'i' => $i, 'stored' => $stored])</td>
+                                        <td data-option-unit-amount>$0.00</td>
+                                        <td data-option-fixed-amount>$0.00</td>
+                                        <td class="np-quote-bold-money" data-option-row-total>$0.00</td>
+                                    </tr>
+                                @endforeach
+                                <tr data-option-adjustment="sample_options" data-option-line="{{ $i }}">
+                                    <td>@if(!count($line['groups']))<span data-sample-order-label="{{ $i }}">{{ $line['name'] }}</span>@endif</td>
+                                    <td><span class="np-quote-adjustment-label">Additional customization</span></td>
+                                    <td><span class="np-quote-money-field"><input class="admin-input np-quote-number" type="number" name="lines[{{ $i }}][sample_imprint_unit]" min="0" step="0.01" value="{{ old("lines.$i.sample_imprint_unit", $stored['sample_imprint_unit'] ?? 0) }}" data-field="sample_imprint_unit" data-i="{{ $i }}" aria-label="{{ $line['name'] }} sample customization per unit"></span></td>
                                     <td><span class="np-quote-money-field"><input class="admin-input np-quote-number" type="number" name="lines[{{ $i }}][sample_setup]" min="0" step="0.01" value="{{ old("lines.$i.sample_setup", $stored['sample_setup'] ?? 0) }}" data-field="sample_setup" data-i="{{ $i }}" aria-label="{{ $line['name'] }} sample setup per order"></span></td>
                                     <td data-sample-total="{{ $i }}" class="np-quote-bold-money">$0.00</td>
                                 </tr>
                             @endforeach
-
                         </tbody>
                     </table>
                 </div>
             </div>
             <p id="np-quote-sample-empty" class="np-quote-empty" @if($sampleEnabled) hidden @endif>Sample not requested. Turn on the switch to configure sample pricing.</p>
-            <footer class="np-quote-panel-footer"><span>Blank samples have no imprint or setup charges. Turn samples off to exclude this section.</span><strong>Sample total <span id="np-quote-sample-total">$0.00</span></strong></footer>
+            <footer class="np-quote-panel-footer"><span>Blank samples have no option or customization charges. Turn samples off to exclude this section.</span><strong>Sample total <span id="np-quote-sample-total">$0.00</span></strong></footer>
         </section>
 
         <section class="np-quote-panel np-quote-documents" aria-labelledby="np-quote-document-title">

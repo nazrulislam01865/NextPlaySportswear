@@ -5,12 +5,15 @@ namespace Tests\Feature;
 use App\Jobs\SendTransactionalEmail;
 use App\Mail\TransactionalEmail;
 use App\Models\BulkQuoteRequest;
+use App\Models\ContactMessage;
 use App\Models\Order;
 use App\Services\Email\AutomaticConfirmationForwarder;
 use App\Services\Email\ForwardingSettings;
 use App\Services\Email\TransactionalEmailManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -98,6 +101,122 @@ class AutomaticConfirmationForwardingTest extends TestCase
         app(AutomaticConfirmationForwarder::class)->quoteCreated($this->quote());
 
         Mail::assertNothingSent();
+    }
+
+    public function test_contact_submission_is_automatically_forwarded_to_saved_recipient_with_message_and_attachment(): void
+    {
+        app(ForwardingSettings::class)->save('operations@example.com', 'Please review this enquiry.');
+        config()->set('services.recaptcha.site_key', 'test-site-key');
+        config()->set('services.recaptcha.secret_key', 'test-secret-key');
+        Http::fake([
+            'https://www.google.com/recaptcha/api/siteverify' => Http::response([
+                'success' => true,
+                'hostname' => parse_url(route('contact.store'), PHP_URL_HOST),
+            ], 200),
+        ]);
+
+        $body = 'Please contact me about a custom jersey with a detailed artwork attachment.';
+        $this->post(route('contact.store'), [
+            'name' => 'Customer Contact',
+            'email' => 'customer@example.com',
+            'topic' => 'product-question',
+            'message' => $body,
+            'g-recaptcha-response' => 'test-recaptcha-token',
+            'attachment' => UploadedFile::fake()->image('logo.png'),
+        ])->assertRedirect()->assertSessionHasNoErrors()->assertSessionHas('status');
+
+        $contact = ContactMessage::firstOrFail();
+        Storage::disk('local')->assertExists($contact->attachment_path);
+        Mail::assertSent(TransactionalEmail::class, function (TransactionalEmail $mail) use ($contact, $body): bool {
+            $message = $mail->emailMessage;
+            return $message->key === 'admin.confirmation-auto-forward'
+                && $message->recipients === [['email' => 'operations@example.com']]
+                && str_contains($message->subject, 'Contact Us message #'.$contact->id)
+                && ($message->details['Message'] ?? null) === $body
+                && ($message->details['Customer email'] ?? null) === 'customer@example.com'
+                && ($message->details['Download attachment (admin login required)'] ?? null)
+                    === route('admin.contact-page.attachment', $contact)
+                && in_array('Please review this enquiry.', $message->introLines, true)
+                && collect($message->attachments)->contains(fn (array $file) => ($file['name'] ?? '') === 'contact-logo.png')
+                && collect($message->attachments)->contains(fn (array $file) => str_ends_with((string) ($file['name'] ?? ''), '_Details.txt'));
+        });
+    }
+
+    public function test_contact_without_file_is_forwarded_without_upload_attachment(): void
+    {
+        app(ForwardingSettings::class)->save('operations@example.com', 'New enquiry.');
+        $contact = $this->contact();
+
+        app(AutomaticConfirmationForwarder::class)->contactCreated($contact);
+
+        Mail::assertSent(TransactionalEmail::class, fn (TransactionalEmail $mail) =>
+            $mail->emailMessage->key === 'admin.confirmation-auto-forward'
+            && $mail->emailMessage->recipients === [['email' => 'operations@example.com']]
+            && ($mail->emailMessage->details['Message'] ?? null) === $contact->message
+            && count($mail->emailMessage->attachments) === 1);
+    }
+
+    public function test_large_e2a_contact_attachment_is_linked_privately_instead_of_blocking_forward(): void
+    {
+        app(ForwardingSettings::class)->save('operations@example.com', 'New enquiry.');
+        // Exercise E2A's composed-message attachment limit using a complete,
+        // test-only provider configuration. Mail::fake() prevents API calls.
+        config()->set('transactional_email.mailer', 'e2a');
+        config()->set('mail.mailers.e2a.api_key', 'test-only-e2a-api-key');
+        config()->set('mail.mailers.e2a.sender', config('mail.from.address'));
+        config()->set('mail.mailers.e2a.api_url', 'https://api.e2a.dev/v1');
+        $contact = $this->contact();
+        $path = 'contact-messages/'.$contact->id.'/oversized.png';
+        Storage::disk('local')->put($path, 'sample stored file content');
+        $contact->update([
+            'attachment_path' => $path,
+            'attachment_name' => 'oversized.png',
+            'attachment_mime' => 'image/png',
+            'attachment_size' => 9 * 1024 * 1024,
+        ]);
+
+        app(AutomaticConfirmationForwarder::class)->contactCreated($contact);
+
+        Mail::assertSent(TransactionalEmail::class, fn (TransactionalEmail $mail) =>
+            $mail->emailMessage->key === 'admin.confirmation-auto-forward'
+            && ($mail->emailMessage->details['Download attachment (admin login required)'] ?? null)
+                === route('admin.contact-page.attachment', $contact)
+            && count($mail->emailMessage->attachments) === 1);
+    }
+
+    public function test_invalid_contact_submission_never_triggers_automatic_forwarding(): void
+    {
+        app(ForwardingSettings::class)->save('operations@example.com', 'New enquiry.');
+
+        $this->post(route('contact.store'), [
+            'name' => 'Customer',
+            'email' => 'customer@example.com',
+            'topic' => 'product-question',
+            'message' => 'short',
+        ])->assertSessionHasErrors();
+
+        $this->assertDatabaseCount('contact_messages', 0);
+        Mail::assertNothingSent();
+    }
+
+    public function test_blank_recipients_do_not_forward_contact_messages(): void
+    {
+        app(ForwardingSettings::class)->save('', 'Forwarding disabled.');
+
+        app(AutomaticConfirmationForwarder::class)->contactCreated($this->contact());
+
+        Mail::assertNothingSent();
+    }
+
+    private function contact(): ContactMessage
+    {
+        return ContactMessage::create([
+            'name' => 'Contact Sender',
+            'email' => 'sender@example.com',
+            'topic' => 'product-question',
+            'message' => 'Please send a quote for our team uniforms.',
+            'status' => ContactMessage::STATUS_NEW,
+        ]);
     }
 
     private function quote(array $attributes = []): BulkQuoteRequest

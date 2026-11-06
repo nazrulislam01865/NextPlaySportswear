@@ -67,6 +67,13 @@ final class BulkQuoteQuotationEditor
             $unitTable = $this->tableUnit($fabricTable['headers'] ?? $product?->price_table_headers ?? [],
                 $fabricTable['rows'] ?? $product?->price_table_rows ?? [], $activeTiers, $qty);
             $savedRow = (array) ($saved[$index] ?? []);
+            // Show already-selected catalogue groups before groups the customer left unselected.
+            // A saved admin draft takes precedence over the customer's original selection.
+            $savedSelections = (array) ($savedRow['options'] ?? []);
+            $groups = collect($groups)->sortBy(static function (array $group) use ($savedSelections): int {
+                $selected = $savedSelections[$group['id']] ?? $group['selected'];
+                return count(array_filter((array) $selected, static fn ($id) => (string) $id !== '')) ? 0 : 1;
+            })->values()->all();
             $lines[] = [
                 'index' => $index,
                 'product_id' => $product?->id,
@@ -279,7 +286,11 @@ final class BulkQuoteQuotationEditor
             if ($values === []) continue;
             $saved = $picked->get(mb_strtolower(trim((string) $group->name)));
             $chosenLabels = is_array($saved) ? ($saved['values'] ?? [$saved['value'] ?? '']) : [];
-            $selected = collect($values)->filter(fn ($v) => in_array($v['label'], (array) $chosenLabels, true))->pluck('id')->all();
+            // Snapshots store human-readable labels. Match them without case/spacing
+            // sensitivity, including older quotes created before a label was normalized.
+            $normalise = static fn ($text) => mb_strtolower(trim(preg_replace('/\s+/u', ' ', (string) $text)));
+            $selectedLabels = array_map($normalise, (array) $chosenLabels);
+            $selected = collect($values)->filter(fn ($v) => in_array($normalise($v['label']), $selectedLabels, true))->pluck('id')->all();
             // A fixed value cannot be changed by an admin (same as the product configuration).
             if ($group->display_mode === 'fixed') {
                 $fixed = $group->values->firstWhere('code', $group->fixed_value_code)

@@ -47,7 +47,7 @@ final class ConfirmationForwardController extends Controller
             return back()->withInput()->withErrors(['recipients' => $exception->getMessage()]);
         }
         return back()->with('status', filled($data['recipients'] ?? null)
-            ? 'Saved. New orders and bulk quote requests will automatically be forwarded to these recipients. Existing requests can still be forwarded manually.'
+            ? 'Saved. New orders, bulk quote requests, and Contact Us messages will automatically be forwarded to these recipients. Existing requests can still be forwarded manually.'
             : 'Saved. Automatic forwarding is disabled because no recipient addresses are set.');
     }
 

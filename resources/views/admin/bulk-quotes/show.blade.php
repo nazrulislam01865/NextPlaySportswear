@@ -1,6 +1,6 @@
 @push('admin-page-styles')
     <link rel="stylesheet" href="{{ asset('css/admin-bulk-quote-detail.css') }}?v=20261029legible2">
-    <link rel="stylesheet" href="{{ asset('css/admin-bulk-quote-pricing.css') }}?v=20261106-currency-field-alignment-v2">
+    <link rel="stylesheet" href="{{ asset('css/admin-bulk-quote-pricing.css') }}?v=20261106-product-options-dynamic-v1">
 @endpush
 <x-layouts.admin title="Bulk Quotation Request" :bulk-quote-detail="true">
     @php
@@ -379,5 +379,5 @@
             </x-admin.bulk-quote-card>
         </div>
     </div>
-<script defer src="{{ asset('js/admin-bulk-quote-pricing.js') }}?v=20261106-currency-field-alignment-v2"></script>
+<script defer src="{{ asset('js/admin-bulk-quote-pricing.js') }}?v=20261106-product-options-dynamic-v1"></script>
 </x-layouts.admin>

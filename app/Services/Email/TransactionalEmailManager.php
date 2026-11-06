@@ -307,6 +307,10 @@ final class TransactionalEmailManager
                 ]] : [],
             ),
         );
+
+        // Use the same private forwarding defaults as new orders and bulk quotes.
+        // The contact has been saved before this method is called.
+        app(AutomaticConfirmationForwarder::class)->contactCreated($contact);
     }
 
     public function bulkQuoteGuestFeedback(BulkQuoteRequest $quote, string $heading, string $body): void

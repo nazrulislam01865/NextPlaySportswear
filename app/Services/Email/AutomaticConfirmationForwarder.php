@@ -3,6 +3,7 @@
 namespace App\Services\Email;
 
 use App\Models\BulkQuoteRequest;
+use App\Models\ContactMessage;
 use App\Models\Order;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -22,9 +23,18 @@ final class AutomaticConfirmationForwarder
         $this->schedule($quote);
     }
 
-    private function schedule(Order|BulkQuoteRequest $record): void
+    public function contactCreated(ContactMessage $contact): void
     {
-        $type = $record instanceof Order ? 'order' : 'quote';
+        $this->schedule($contact);
+    }
+
+    private function schedule(Order|BulkQuoteRequest|ContactMessage $record): void
+    {
+        $type = match (true) {
+            $record instanceof Order => 'order',
+            $record instanceof BulkQuoteRequest => 'quote',
+            default => 'contact',
+        };
         $id = $record->getKey();
         try {
             $defaults = $this->settings->get();
@@ -39,8 +49,10 @@ final class AutomaticConfirmationForwarder
                     $forwarder = app(ConfirmationForwarder::class);
                     if ($type === 'order') {
                         $forwarder->order($record, $recipients, $note, automatic: true);
-                    } else {
+                    } elseif ($type === 'quote') {
                         $forwarder->quote($record, $recipients, $note, automatic: true);
+                    } else {
+                        $forwarder->contact($record, $recipients, $note, automatic: true);
                     }
                 } catch (Throwable $exception) {
                     Log::error('Automatic confirmation forwarding failed.', [
@@ -61,7 +73,7 @@ final class AutomaticConfirmationForwarder
                 app()->terminating($send);
             }
         } catch (Throwable $exception) {
-            // The order/quote has already been saved; email must not undo it.
+            // The submission has already been saved; email must not undo it.
             Log::error('Automatic confirmation forwarding could not be scheduled.', [
                 'type' => $type,
                 'record_id' => $id,
