@@ -111,6 +111,8 @@ class AdminRbac
 
             self::permission('storefront_branding.view', 'Storefront', 'View', 'View Storefront Branding', 'Open storefront logo and branding controls.', 'admin.storefront-branding.edit', 150),
             self::permission('storefront_branding.manage', 'Storefront', 'Manage', 'Manage Storefront Branding', 'Upload, replace or remove the storefront logo.', 'admin.storefront-branding.update', 151),
+            self::permission('header_topbar.view', 'Storefront', 'View', 'View Header & Top Bar Settings', 'Open top bar, announcement, WhatsApp and social settings.', 'admin.header-topbar-settings.edit', 148),
+            self::permission('header_topbar.manage', 'Storefront', 'Manage', 'Manage Header & Top Bar Settings', 'Update top bar labels, links, visibility and styling.', 'admin.header-topbar-settings.update', 149),
             self::permission('product_detail_controls.view', 'Storefront', 'View', 'View Product Detail Controls', 'Open centralized product detail page labels, buttons, helper text and icon controls.', 'admin.product-detail-controls.edit', 152),
             self::permission('product_detail_controls.manage', 'Storefront', 'Manage', 'Manage Product Detail Controls', 'Update centralized product detail page labels, buttons, helper text and icons.', 'admin.product-detail-controls.update', 153),
             self::permission('about_page.view', 'Storefront', 'View', 'View About Page', 'Open the About NextPlay content editor.', 'admin.about-page.edit', 154),
@@ -186,6 +188,7 @@ class AdminRbac
             'menus.view', 'menus.manage',
             'media.view', 'media.manage',
             'storefront_branding.view', 'storefront_branding.manage',
+            'header_topbar.view', 'header_topbar.manage',
             'product_detail_controls.view', 'product_detail_controls.manage',
             'about_page.view', 'about_page.manage',
             'shipping_delivery_page.view', 'shipping_delivery_page.manage',
@@ -392,6 +395,7 @@ class AdminRbac
             'menus.view' => 'admin.menus.index',
             'media.view' => 'admin.media-library.index',
             'storefront_branding.view' => 'admin.storefront-branding.edit',
+            'header_topbar.view' => 'admin.header-topbar-settings.edit',
             'product_detail_controls.view' => 'admin.product-detail-controls.edit',
             'about_page.view' => 'admin.about-page.edit',
             'shipping_delivery_page.view' => 'admin.shipping-delivery-page.edit',
@@ -479,6 +483,12 @@ class AdminRbac
 
         if (Str::startsWith($name, 'reward-program.')) {
             return $name === 'reward-program.update' ? 'customers.manage' : 'customers.view';
+        }
+
+        if (Str::startsWith($name, 'header-topbar-settings.')) {
+            return $name === 'header-topbar-settings.update'
+                ? 'header_topbar.manage'
+                : 'header_topbar.view';
         }
 
         if (Str::startsWith($name, 'storefront-branding.')) {

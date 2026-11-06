@@ -160,6 +160,9 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::get('/storefront-branding', [\App\Http\Controllers\Admin\StorefrontBrandingController::class, 'edit'])->name('storefront-branding.edit');
         Route::put('/storefront-branding', [\App\Http\Controllers\Admin\StorefrontBrandingController::class, 'update'])->name('storefront-branding.update');
 
+        Route::get('/header-topbar-settings', [\App\Http\Controllers\Admin\HeaderTopbarController::class, 'edit'])->name('header-topbar-settings.edit');
+        Route::put('/header-topbar-settings', [\App\Http\Controllers\Admin\HeaderTopbarController::class, 'update'])->name('header-topbar-settings.update');
+
         Route::get('/product-detail-controls', [\App\Http\Controllers\Admin\ProductDetailUiSettingsController::class, 'edit'])->name('product-detail-controls.edit');
         Route::put('/product-detail-controls', [\App\Http\Controllers\Admin\ProductDetailUiSettingsController::class, 'update'])->name('product-detail-controls.update');
 

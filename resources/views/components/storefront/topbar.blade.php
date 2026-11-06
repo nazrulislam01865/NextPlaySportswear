@@ -1,12 +1,22 @@
 @php
-    $whatsappDigits = preg_replace('/\D+/', '', (string) config('storefront.whatsapp'));
-    $whatsappUrl = config('storefront.whatsapp_url') ?: ($whatsappDigits ? 'https://wa.me/'.$whatsappDigits : '#');
-    $socialLinks = collect(config('storefront.social', []))->filter(fn ($url) => filled($url) && $url !== '#');
+    $topbarService = app(\App\Services\Storefront\HeaderTopbarService::class);
+    $topbar = $topbarService->settings();
+    $whatsappUrl = $topbarService->whatsappUrl($topbar);
+    $socialLinks = collect($topbarService->activeSocialLinks($topbar));
+    $showUtilityLinks = $topbar['track_order_enabled'] || $topbar['whatsapp_enabled'] || $socialLinks->isNotEmpty();
+    $announcementParts = explode('•', (string) $topbar['announcement_text']);
+    // Whitelist appearance values even when reading data persisted before validation.
+    $barBg = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $topbar['background_color']) ? $topbar['background_color'] : null;
+    $barText = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $topbar['text_color']) ? $topbar['text_color'] : null;
+    $linksGap = is_numeric($topbar['links_gap_px']) && (int) $topbar['links_gap_px'] >= 4 && (int) $topbar['links_gap_px'] <= 40
+        ? (int) $topbar['links_gap_px'] : null;
 @endphp
 
-<div class="np-utility-bar" aria-label="Store utility links">
+@if($topbar['bar_enabled'])
+<div class="np-utility-bar" aria-label="Store utility links" @if($barBg) style="background: {{ $barBg }};" @endif>
     <div class="np-header-shell np-utility-inner">
-        <p class="np-utility-message" aria-label="Custom team gear. Built for every game.">
+        @if($topbar['announcement_enabled'])
+        <p class="np-utility-message" aria-label="{{ $topbar['announcement_text'] }}" @if($barText) style="color: {{ $barText }};" @endif>
             <span class="np-utility-star" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
                     <path d="M12 2.5l2.45 5.54 6.05.53-4.58 3.95 1.38 5.86L12 15.25 6.7 18.38l1.38-5.86L3.5 8.57l6.05-.53L12 2.5z"/>
@@ -14,13 +24,17 @@
             </span>
             <span class="np-utility-marquee" aria-hidden="true">
                 <span class="np-utility-marquee-track">
-                    <span class="np-utility-marquee-item">CUSTOM TEAM GEAR <b>•</b> BUILT FOR EVERY GAME</span>
-                    <span class="np-utility-marquee-item">CUSTOM TEAM GEAR <b>•</b> BUILT FOR EVERY GAME</span>
+                    @for($repeat = 0; $repeat < 2; $repeat++)
+                        <span class="np-utility-marquee-item">@foreach($announcementParts as $index => $part){{ trim($part) }}@if($index < count($announcementParts) - 1) <b @if($barText) style="color: {{ $barText }};" @endif>•</b> @endif @endforeach</span>
+                    @endfor
                 </span>
             </span>
         </p>
+        @endif
 
-        <nav class="np-utility-links" aria-label="Header utility navigation">
+        @if($showUtilityLinks)
+        <nav class="np-utility-links" aria-label="Header utility navigation" @if($barText || $linksGap !== null) style="@if($barText) color: {{ $barText }}; @endif @if($linksGap !== null) gap: {{ $linksGap }}px !important; @endif" @endif>
+            @if($topbar['track_order_enabled'])
             <a href="{{ route('orders.track') }}" class="np-utility-link" data-header-analytics="header_cta_click" data-header-analytics-label="track_order">
                 <span class="np-utility-link-icon" aria-hidden="true">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -30,26 +44,29 @@
                         <path d="M8 15h5"/>
                     </svg>
                 </span>
-                <span>Track Order</span>
+                <span>{{ $topbar['track_order_label'] }}</span>
             </a>
+            @endif
 
+            @if($topbar['whatsapp_enabled'])
             <a href="{{ $whatsappUrl }}" class="np-utility-link np-whatsapp-link" target="_blank" rel="noopener noreferrer" data-header-analytics="header_cta_click" data-header-analytics-label="whatsapp">
                 <span class="np-utility-link-icon np-whatsapp-icon" aria-hidden="true">
                     <svg width="18" height="18" viewBox="0 0 32 32" fill="currentColor" focusable="false">
                         <path d="M16.04 3C9.48 3 4.15 8.33 4.15 14.89c0 2.1.55 4.15 1.6 5.96L4 29l8.34-1.69a11.86 11.86 0 0 0 5.7 1.45h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.49-8.41A11.81 11.81 0 0 0 16.04 3Zm0 2.01c2.64 0 5.12 1.03 6.99 2.9a9.82 9.82 0 0 1 2.9 6.98c0 5.45-4.43 9.88-9.88 9.88h-.01a9.83 9.83 0 0 1-5.02-1.38l-.36-.21-4.95 1 1.03-4.83-.24-.38a9.82 9.82 0 0 1-1.51-5.08c0-5.45 4.43-9.88 9.88-9.88Zm-3.09 5.43c-.22-.49-.45-.5-.66-.51h-.56c-.2 0-.51.07-.78.36-.27.29-1.03 1-1.03 2.45s1.06 2.85 1.2 3.04c.15.2 2.04 3.26 5.05 4.44 2.5.98 3.01.78 3.55.73.54-.05 1.75-.72 2-1.41.25-.69.25-1.28.18-1.41-.07-.12-.27-.2-.56-.34-.29-.15-1.75-.86-2.02-.96-.27-.1-.47-.15-.66.15-.2.29-.76.96-.93 1.16-.17.2-.34.22-.64.07-.29-.15-1.23-.45-2.34-1.44-.87-.77-1.45-1.73-1.62-2.02-.17-.29-.02-.45.13-.59.13-.13.29-.34.44-.51.15-.17.2-.29.29-.49.1-.2.05-.37-.02-.51-.07-.15-.65-1.61-.92-2.19Z"/>
                     </svg>
                 </span>
-                <span>WhatsApp Us</span>
+                <span>{{ $topbar['whatsapp_label'] }}</span>
             </a>
+            @endif
 
             @if($socialLinks->isNotEmpty())
                 <span class="np-utility-divider" aria-hidden="true"></span>
-                <span class="np-follow-label">Follow us</span>
+                <span class="np-follow-label" @if($barText) style="color: {{ $barText }};" @endif>{{ $topbar['follow_label'] }}</span>
 
                 <div class="np-social-links">
                     @foreach($socialLinks as $network => $url)
                         @php($networkLabel = str($network)->headline()->toString())
-                        <a href="{{ $url }}" class="np-social-link" target="_blank" rel="noopener noreferrer" aria-label="Follow NextPlay Sportswear on {{ $networkLabel }}" data-header-analytics="header_social_click" data-header-analytics-label="{{ $network }}">
+                        <a href="{{ $url }}" class="np-social-link" @if($barText) style="color: {{ $barText }};" @endif target="_blank" rel="noopener noreferrer" aria-label="Follow NextPlay Sportswear on {{ $networkLabel }}" data-header-analytics="header_social_click" data-header-analytics-label="{{ $network }}">
                             <span class="sr-only">{{ $networkLabel }}</span>
                             <span class="np-social-icon" aria-hidden="true">
                                 @switch($network)
@@ -84,5 +101,7 @@
                 </div>
             @endif
         </nav>
+        @endif
     </div>
 </div>
+@endif
