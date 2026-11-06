@@ -4,6 +4,7 @@ namespace Tests\Feature\Storefront;
 
 use App\Models\BulkQuoteRequest;
 use App\Models\User;
+use App\Http\Middleware\EnforceCustomerSessionVersion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -19,6 +20,8 @@ class GuestBulkQuoteJourneyTest extends TestCase
         Storage::fake('local');
         config()->set('transactional_email.enabled', false);
         config()->set('transactional_email.recipients.sales', '');
+        // Guest quote contract tests should not invoke a live external order-sync API.
+        config()->set('flowtrack.enabled', false);
     }
 
     public function test_lookup_shows_required_and_format_errors_beneath_the_respective_fields(): void
@@ -33,15 +36,19 @@ class GuestBulkQuoteJourneyTest extends TestCase
             'reference' => '', 'email' => '',
         ])->assertRedirect($track)->assertSessionHasErrors(['reference', 'email']);
 
-        $this->get($track)->assertOk()
+        $this->from($track)->post(route('quote.guest.lookup'), [
+            'reference' => 'BQ-EXAMPLE', 'email' => 'not-an-email',
+        ])->assertRedirect($track)->assertSessionHasErrors('email');
+
+        // Exercise the redirect + flashed-error rendering in a single browser
+        // navigation; a separate manual GET can age flash data unexpectedly.
+        $this->followingRedirects()->from($track)->post(route('quote.guest.lookup'), [
+            'reference' => '', 'email' => '',
+        ])->assertOk()
             ->assertSee('The reference field is required.')
             ->assertSee('The email field is required.')
             ->assertSee('aria-describedby="guest-quote-reference-error"', false)
             ->assertSee('aria-describedby="guest-quote-email-error"', false);
-
-        $this->from($track)->post(route('quote.guest.lookup'), [
-            'reference' => 'BQ-EXAMPLE', 'email' => 'not-an-email',
-        ])->assertRedirect($track)->assertSessionHasErrors('email');
     }
 
     public function test_private_quote_requires_valid_token_or_reference_and_email(): void
@@ -54,7 +61,7 @@ class GuestBulkQuoteJourneyTest extends TestCase
         $this->post(route('quote.guest.lookup'), ['reference' => $quote->reference, 'email' => $quote->email])
             ->assertRedirect(route('quote.guest.show', $quote->reference));
         $this->get(route('quote.guest.show', $quote->reference))->assertOk()->assertSee('Track Bulk Quote')
-            ->assertHeader('cache-control', 'private, no-store, max-age=0');
+            ->assertHeader('cache-control', 'max-age=0, no-store, private');
     }
 
     public function test_capability_link_opens_quote_and_no_other_quotes(): void
@@ -118,7 +125,7 @@ class GuestBulkQuoteJourneyTest extends TestCase
         $this->get(route('quote.guest.review', $quote->reference))->assertOk()->assertSee('Quotation confirmed');
         $this->assertNull($quote->fresh()->converted_order_id);
         $customer = User::factory()->create(['email' => $quote->email, 'role' => 'customer', 'is_active' => true, 'email_verified_at' => now()]);
-        $this->actingAs($customer, 'web');
+        $this->authenticateCustomer($customer);
         $this->post(route('quote.guest.decision', $quote->reference), ['decision' => 'create_order'])
             ->assertRedirect(route('quote.guest.review', $quote->reference))
             ->assertSessionHas('status');
@@ -146,7 +153,7 @@ class GuestBulkQuoteJourneyTest extends TestCase
             ->assertRedirect(route('quote.guest.review', $quote->reference));
         $this->assertDatabaseCount('orders', 0);
         $customer = User::factory()->create(['email' => $quote->email, 'role' => 'customer', 'is_active' => true, 'email_verified_at' => now()]);
-        $this->actingAs($customer, 'web');
+        $this->authenticateCustomer($customer);
         $this->post(route('quote.guest.decision', $quote->reference), ['decision' => 'create_order'])
             ->assertRedirect(route('quote.guest.review', $quote->reference));
         $this->post(route('quote.guest.decision', $quote->reference), ['decision' => 'create_order'])
@@ -161,7 +168,7 @@ class GuestBulkQuoteJourneyTest extends TestCase
         $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.170']);
         $this->post(route('quote.guest.lookup'), ['reference' => $quote->reference, 'email' => $quote->email]);
         $customer = User::factory()->create(['email' => $quote->email, 'role' => 'customer', 'is_active' => true, 'email_verified_at' => now()]);
-        $this->actingAs($customer, 'web');
+        $this->authenticateCustomer($customer);
 
         // The old shared 5/minute IP limiter rejected this normal test workflow.
         // Replaying the accepted request must not create a second order or message.
@@ -251,12 +258,13 @@ class GuestBulkQuoteJourneyTest extends TestCase
         }
         $this->assertSame(24, $quote->messages()->where('kind', 'message')->count());
 
-        // Reaching the limit must not create a message or return the unhelpful 429 screen.
-        $this->from($show)->post($send, ['body' => 'An extra message'])
-            ->assertRedirect($show)
-            ->assertSessionHasErrors('body');
+        // Follow the redirect in the same simulated browser navigation so the
+        // one-request flashed validation message is actually rendered.
+        // A separate GET after asserting the POST may age out Laravel flash data.
+        $this->followingRedirects()->from($show)->post($send, ['body' => 'An extra message'])
+            ->assertOk()
+            ->assertSee('Please wait a moment before sending another message.');
         $this->assertSame(24, $quote->messages()->where('kind', 'message')->count());
-        $this->get($show)->assertOk()->assertSee('Please wait a moment before sending another message.');
     }
 
     public function test_guest_cannot_accept_quote_before_admin_publishes(): void
@@ -287,7 +295,7 @@ class GuestBulkQuoteJourneyTest extends TestCase
         $quote = $this->publishedQuote();
         $this->post(route('quote.guest.lookup'), ['reference' => $quote->reference, 'email' => $quote->email]);
         $customer = User::factory()->create(['email' => strtoupper($quote->email), 'role' => 'customer', 'is_active' => true, 'email_verified_at' => now()]);
-        $this->actingAs($customer, 'web')->post(route('quote.guest.decision', $quote->reference), ['decision' => 'create_order'])
+        $this->authenticateCustomer($customer)->post(route('quote.guest.decision', $quote->reference), ['decision' => 'create_order'])
             ->assertRedirect(route('quote.guest.review', $quote->reference));
         $quote->refresh();
         $this->assertSame($customer->id, $quote->user_id);
@@ -306,7 +314,7 @@ class GuestBulkQuoteJourneyTest extends TestCase
         $quote = $this->publishedQuote();
         $this->post(route('quote.guest.lookup'), ['reference' => $quote->reference, 'email' => $quote->email]);
         $customer = User::factory()->create(['email' => 'different@example.test', 'role' => 'customer', 'is_active' => true, 'email_verified_at' => now()]);
-        $this->actingAs($customer, 'web')->post(route('quote.guest.decision', $quote->reference), ['decision' => 'create_order'])
+        $this->authenticateCustomer($customer)->post(route('quote.guest.decision', $quote->reference), ['decision' => 'create_order'])
             ->assertSessionHasErrors('quote');
         $this->assertNull($quote->fresh()->user_id);
         $this->assertDatabaseCount('orders', 0);
@@ -318,7 +326,7 @@ class GuestBulkQuoteJourneyTest extends TestCase
         $quote = $this->publishedQuote();
         $this->post(route('quote.guest.lookup'), ['reference' => $quote->reference, 'email' => $quote->email]);
         $customer = User::factory()->create(['email' => $quote->email, 'role' => 'customer', 'is_active' => true, 'email_verified_at' => null]);
-        $this->actingAs($customer, 'web')->post(route('quote.guest.decision', $quote->reference), ['decision' => 'create_order'])
+        $this->authenticateCustomer($customer)->post(route('quote.guest.decision', $quote->reference), ['decision' => 'create_order'])
             ->assertRedirect(route('verification.notice'));
         $this->assertDatabaseCount('orders', 0);
         $this->assertNull($quote->fresh()->user_id);
@@ -344,11 +352,23 @@ class GuestBulkQuoteJourneyTest extends TestCase
         ]);
         $quote->forceFill(['status' => BulkQuoteRequest::STATUS_ACCEPTED, 'guest_decision' => 'create_order', 'converted_order_id' => $oldOrder->id])->save();
         $customer = User::factory()->create(['email' => $quote->email, 'role' => 'customer', 'is_active' => true, 'email_verified_at' => now()]);
-        $this->actingAs($customer, 'web')->post(route('quote.guest.decision', $quote->reference), ['decision' => 'create_order'])
+        $this->authenticateCustomer($customer)->post(route('quote.guest.decision', $quote->reference), ['decision' => 'create_order'])
             ->assertRedirect(route('quote.guest.review', $quote->reference));
         $this->assertSame($customer->id, $quote->fresh()->user_id);
         $this->assertSame($customer->id, $oldOrder->fresh()->user_id);
         $this->assertDatabaseCount('orders', 1);
+    }
+
+    /**
+     * Mirror a real customer login: the login response binds the session to
+     * auth_session_version. actingAs() alone omits that security contract.
+     */
+    private function authenticateCustomer(User $customer): static
+    {
+        $this->actingAs($customer, 'web');
+        return $this->withSession([
+            EnforceCustomerSessionVersion::SESSION_KEY => (int) $customer->auth_session_version,
+        ]);
     }
 
     private function publishedQuote(): BulkQuoteRequest

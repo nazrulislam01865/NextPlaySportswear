@@ -1,0 +1,30 @@
+/* NextPlay shared admin notifications and personalization table actions. */
+/* Shared, auto-dismissing admin flash messages (not form validation errors). */
+[data-admin-flash] { position:relative; padding-right:max(3rem, 48px); transition:opacity .22s ease, transform .22s ease, margin .22s ease; }
+[data-admin-flash].admin-flash-dismissing { opacity:0; transform:translateY(-6px); pointer-events:none; }
+.admin-flash-close { position:absolute; top:50%; right:12px; width:30px; height:30px; transform:translateY(-50%); display:grid; place-items:center; border:1px solid currentColor; border-radius:5px; background:transparent; opacity:.7; font-size:18px; line-height:1; cursor:pointer; }
+.admin-flash-close:hover, .admin-flash-close:focus-visible { opacity:1; }
+@media (prefers-reduced-motion:reduce) { [data-admin-flash] { transition:none; } }
+
+/* Floating actions are portalled to <body>: horizontal table scrolling must never
+   clip the dropdown. Keep the original compact typography and button sizing. */
+.pt-page .pt-menu-trigger { min-width:32px; min-height:32px; padding:0 5px; display:inline-grid; place-items:center; border-radius:5px; font:inherit; font-size:20px; line-height:1; cursor:pointer; background:transparent; color:#3c638d; }
+.pt-page .pt-menu-trigger:hover, .pt-page .pt-menu-trigger[aria-expanded="true"] { background:#f0f4f9; color:var(--np-color-secondary); }
+.pt-page .pt-menu-trigger:focus-visible { outline:2px solid var(--np-color-secondary); outline-offset:2px; }
+.pt-page .pt-menu-panel[hidden] { display:none; }
+body > .pt-floating-menu { position:fixed; z-index:1000; width:max-content; min-width:180px; max-width:min(260px, calc(100vw - 20px)); max-height:calc(100vh - 20px); overflow-y:auto; padding:6px; border:1px solid #d9e3ee; border-radius:6px; background:#fff; box-shadow:0 12px 32px rgba(7,27,56,.19); }
+body > .pt-floating-menu a, body > .pt-floating-menu button { display:flex; align-items:center; width:100%; min-height:36px; padding:9px 10px; border:0; border-radius:4px; background:transparent; text-align:left; white-space:nowrap; color:#3c638d; font-family:inherit; font-size:12px; font-weight:700; cursor:pointer; text-decoration:none; }
+body > .pt-floating-menu a:hover, body > .pt-floating-menu button:hover, body > .pt-floating-menu a:focus-visible, body > .pt-floating-menu button:focus-visible { background:#f0f4f9; color:var(--np-color-secondary); }
+body > .pt-floating-menu form { margin:0; width:100%; }
+/* Keep row actions reachable on narrow screens while other columns scroll. */
+.pt-page .pt-list-card .pt-table th:last-child,
+.pt-page .pt-list-card .pt-table td:last-child:not([colspan]) {
+    position:sticky;
+    right:0;
+    min-width:135px;
+    z-index:2;
+    background:#fff;
+    box-shadow:-8px 0 12px -12px rgba(8,32,67,.45);
+}
+.pt-page .pt-list-card .pt-table th:last-child { z-index:3; background:#f2f5f9; }
+.pt-page .pt-list-card .pt-row-actions { justify-content:flex-end; white-space:nowrap; }

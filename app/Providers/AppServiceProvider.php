@@ -341,10 +341,12 @@ class AppServiceProvider extends ServiceProvider
             $reference = (string) ($request->route('reference') ?: 'unknown');
             $ip = (string) ($request->ip() ?: 'unknown');
             $customerId = $request->user('web')?->getAuthIdentifier();
-            $sessionId = $request->hasSession() ? (string) $request->session()->getId() : '';
+            // A guest quote is private and reference-scoped; use the quote and
+            // IP as a stable bucket. Session IDs can rotate during quote lookup,
+            // causing a session-derived bucket to reset unexpectedly.
             $sender = $customerId !== null
                 ? 'customer:'.$customerId
-                : 'session:'.($sessionId !== '' ? $sessionId : $ip);
+                : 'guest-ip:'.$ip;
             $conversationKey = hash('sha256', $reference.'|'.$sender);
 
             $friendlyResponse = static function (Request $request): \Illuminate\Http\RedirectResponse {

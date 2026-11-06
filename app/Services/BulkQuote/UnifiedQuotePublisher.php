@@ -107,8 +107,12 @@ final class UnifiedQuotePublisher
                     'quotation_notes' => $data['quotation_notes'] ?? '',
                     '_publication_origin' => 'nextplay_admin',
                     'pricing_pending' => false,
+                    'pricing_lines' => $data['pricing_lines'] ?? [],
+                    'sample' => $data['sample'] ?? [],
+                    'pricing_breakdown' => $data['pricing_breakdown'] ?? [],
                 ];
                 $this->finish($quote, $version, $details, $total, $data['valid_until'], $actorId, count($created));
+                $quote->forceFill(['quotation_draft' => null])->saveQuietly();
             });
         } catch (\Throwable $exception) {
             $this->files->deleteFiles($created);

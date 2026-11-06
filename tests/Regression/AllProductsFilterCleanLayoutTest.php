@@ -30,9 +30,9 @@ $expect(
 );
 
 $expect(
-    str_contains($component, 'placeholder="Search"')
+    str_contains($component, 'placeholder="Search products"')
         && ! str_contains($component, 'placeholder="Search categories"'),
-    'The category search field uses the concise "Search" placeholder.'
+    'The existing filter search keeps its product-specific label.'
 );
 
 $expect(
@@ -41,8 +41,8 @@ $expect(
 );
 
 $expect(
-    preg_match('/@media \(min-width: 1024px\).*?\.storefront-clean-ui \.np-filter-shell--clean\s*\{[^}]*height:\s*auto[^}]*overflow:\s*visible[^}]*position:\s*static[^}]*border:\s*0\s*!important[^}]*background:\s*transparent[^}]*box-shadow:\s*none\s*!important/s', $css) === 1,
-    'The desktop clean filter shell has no fixed height, clipping, sticky positioning, border, background card, or shadow.'
+    preg_match('/@media \(min-width: 1024px\).*?\.storefront-clean-ui \.np-filter-shell--clean\s*\{[^}]*height:\s*auto[^}]*overflow:\s*visible[^}]*position:\s*sticky[^}]*border:\s*0\s*!important[^}]*background:\s*transparent[^}]*box-shadow:\s*none\s*!important/s', $css) === 1,
+    'The desktop clean filter shell stays sticky, expands naturally, and has no card decoration or nested clipping.'
 );
 
 $expect(

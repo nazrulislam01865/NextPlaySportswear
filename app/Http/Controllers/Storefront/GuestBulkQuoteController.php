@@ -98,7 +98,11 @@ class GuestBulkQuoteController extends Controller
     public function changes(Request $request, string $reference): View
     {
         $quote = $this->authorized($request, $reference);
-        abort_unless($quote->quotation_version > 0 && $quote->quotation_sent_at && $quote->guest_decision !== 'changes_requested', 404);
+        // Revision requests retract the previous published price/file, but
+        // the customer must still be able to read the conversation while the
+        // new version is prepared. The view hides stale quotation values.
+        $revisionPending = $quote->guest_decision === 'changes_requested';
+        abort_unless($quote->quotation_version > 0 && ($quote->quotation_sent_at || $revisionPending), 404);
         return $this->render('changes', $quote);
     }
 

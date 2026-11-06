@@ -8,7 +8,7 @@
         $imageAccept = '.jpg,.jpeg,.png,.webp,.avif,image/jpeg,image/png,image/webp,image/avif';
     @endphp
 
-    @if(session('status'))<div class="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-bold text-emerald-800">{{ session('status') }}</div>@endif
+    @if(session('status'))<div data-admin-flash class="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-bold text-emerald-800">{{ session('status') }}</div>@endif
     @if($errors->any())<div class="mb-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-bold text-red-800"><ul class="list-disc space-y-1 pl-5">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 
     <form method="POST" action="{{ route('admin.sustainability-page.update') }}" enctype="multipart/form-data" class="np-storefront-editor space-y-4">

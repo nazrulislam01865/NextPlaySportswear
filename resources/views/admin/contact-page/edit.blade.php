@@ -20,7 +20,7 @@
         />
 
         @if(session('status'))
-            <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
+            <div data-admin-flash class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
         @endif
 
         @if($errors->has('contact_page'))
@@ -90,6 +90,18 @@
                         </div>
                     </div>
 
+                    {{-- Only controls the left-side WhatsApp contact entry on the public Contact Us page. --}}
+                    <div class="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                        <input type="hidden" name="info[show_whatsapp_contact]" value="0" @disabled(! $canManage)>
+                        <input id="info-show-wa-contact" type="checkbox" name="info[show_whatsapp_contact]" value="1"
+                               class="mt-1 h-4 w-4 accent-brand-red" @checked((bool) old('info.show_whatsapp_contact', data_get($content, 'info.show_whatsapp_contact', false)))
+                               @disabled(! $canManage)>
+                        <div>
+                            <label class="admin-label mb-1 cursor-pointer" for="info-show-wa-contact">Show WhatsApp in contact information</label>
+                            <p class="text-sm text-slate-500">Uncheck to hide the WhatsApp contact block and WhatsApp social shortcut on the public Contact Us page. Other social links and site-wide WhatsApp settings are unchanged.</p>
+                            @error('info.show_whatsapp_contact')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                        </div>
+                    </div>
                     <div class="grid gap-4 sm:grid-cols-4">
                         <div>
                             <label class="admin-label" for="info-wa-title">WhatsApp Label</label>

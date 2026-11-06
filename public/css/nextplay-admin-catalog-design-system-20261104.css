@@ -1,0 +1,301 @@
+/* NextPlay Catalog Admin design contract -- 2026-11-04.
+ * One stylesheet for Dashboard, Products, Product Detail Controls, Media,
+ * Categories, Catalog Attributes, Navigation Menus and Personalization
+ * Categories / linked Personalization Template pages. The layout opts in by
+ * route; no changes to the rest of the admin or the customer storefront.
+ *
+ * Brand/font values are REFERENCES to the existing global design tokens;
+ * this stylesheet does not register another font or duplicate brand settings.
+ * Typography template v1.1: Expose -> Segoe UI, 14px field labels,
+ * 16px controls, 13px hints; Form template v1.0: 48px height, single
+ * 1px border, 8px radius, accessible focus/disabled/invalid states.
+ */
+body.admin-clean-ui.np-catalog-system {
+    --np-catalog-font: var(--np-font-ui, "Expose", "Segoe UI", sans-serif);
+    --np-catalog-ink: var(--np-color-heading, #051e44);
+    --np-catalog-text: #26364b;
+    --np-catalog-muted: #52637a;
+    --np-catalog-border: #bac6d5;
+    --np-catalog-bg: #fff;
+    --np-catalog-soft: #f5f7fa;
+    --np-catalog-focus: #2164c5;
+    --np-catalog-error: #b42318;
+    --np-catalog-cta: var(--np-color-secondary, #cf5d38);
+    --np-catalog-cta-hover: var(--np-color-secondary-hover, #ad4023);
+    --np-catalog-control-height: 48px;
+    --np-catalog-control-radius: 8px;
+    --np-catalog-control-font: 16px;
+    --np-catalog-label-font: 14px;
+    --np-catalog-help-font: 13px;
+    --np-catalog-button-font: 16px;
+    --np-catalog-button-height: 48px;
+    --np-catalog-button-weight: 600;
+    /* Override legacy compact component tokens once, rather than per page. */
+    --admin-font-sans: var(--np-catalog-font);
+    --admin-control-height: var(--np-catalog-control-height);
+    --admin-category-control-height: var(--np-catalog-control-height);
+    --admin-control-radius: var(--np-catalog-control-radius);
+    --admin-radius: var(--np-catalog-control-radius);
+    --admin-label-font-size: var(--np-catalog-label-font);
+    --admin-control-font-size: var(--np-catalog-control-font);
+    --admin-button-font-size: var(--np-catalog-button-font);
+    --admin-button-font-weight: var(--np-catalog-button-weight);
+}
+
+/* Scope to main content: the shared sidebar, header and notifications retain
+   their working layout, sizing and event handlers. */
+body.np-catalog-system #admin-main-content {
+    font-family: var(--np-catalog-font) !important;
+    color: var(--np-catalog-text);
+}
+body.np-catalog-system #admin-main-content :is(h1,h2,h3,h4,h5,h6),
+body.np-catalog-system #admin-main-content :is(p,label,button,a,input,select,textarea,legend,th,td) {
+    font-family: var(--np-catalog-font) !important;
+}
+body.np-catalog-system #admin-main-content :is(h1,h2,h3,h4,h5,h6) {
+    color: var(--np-catalog-ink);
+    text-transform: none;
+}
+body.np-catalog-system #admin-main-content :is(.admin-label,.pt-label,.pt-filter-caption,.np-emphasis-label),
+body.np-catalog-system #admin-main-content :is(.product-filter-field,.np-mu-field) > span:first-child {
+    font-size: var(--np-catalog-label-font) !important;
+    line-height: 1.5 !important;
+    font-weight: 600 !important;
+    color: var(--np-catalog-ink) !important;
+    letter-spacing: 0 !important;
+}
+body.np-catalog-system #admin-main-content :is(.pt-field-error,.np-field-error,.admin-field-error,[data-field-error]) {
+    font-size: var(--np-catalog-help-font);
+    line-height: 1.5;
+    color: var(--np-catalog-error);
+}
+body.np-catalog-system #admin-main-content :is(.admin-label,.pt-label,.np-mu-field) :is(small,.text-xs) {
+    font-size: var(--np-catalog-help-font);
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--np-catalog-muted);
+}
+
+/* Standard native form controls. Exclude choices, uploads, text-like chips,
+   hidden inputs, rich-text/contenteditable surfaces and row-only inline
+   widgets: their specialized interactive geometry must remain functional. */
+body.np-catalog-system #admin-main-content :is(
+    input[type="text"],input[type="email"],input[type="search"],
+    input[type="tel"],input[type="url"],input[type="password"],
+    input[type="date"],input[type="time"],input[type="datetime-local"],
+    input[type="number"],input:not([type]),select
+):not(.sr-only):not(.np-table-input):not(.np-price-tier-input):not(.np-quantity-input):not(.np-inline-input):not([data-np-compact-control]),
+body.np-catalog-system #admin-main-content :is(.admin-input,.pt-input,.product-control,.category-control,.np-mg-select,.np-mg-meta-input):not(textarea):not([type="file"]):not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="color"]):not([type="range"]):not(.np-table-input):not(.np-price-tier-input):not(.np-quantity-input):not([data-np-compact-control]) {
+    min-width: 0;
+    height: var(--np-catalog-control-height) !important;
+    min-height: var(--np-catalog-control-height) !important;
+    border: 1px solid var(--np-catalog-border) !important;
+    border-radius: var(--np-catalog-control-radius) !important;
+    background-color: var(--np-catalog-bg);
+    color: var(--np-catalog-text) !important;
+    font-size: var(--np-catalog-control-font) !important;
+    font-weight: 400 !important;
+    line-height: 1.5 !important;
+    box-shadow: none !important;
+    letter-spacing: normal !important;
+}
+body.np-catalog-system #admin-main-content :is(
+    input[type="text"],input[type="email"],input[type="search"],
+    input[type="tel"],input[type="url"],input[type="password"],
+    input[type="date"],input[type="time"],input[type="datetime-local"],
+    input[type="number"],input:not([type]),select
+):not(.sr-only):not(.np-table-input):not(.np-price-tier-input):not(.np-quantity-input):not(.np-inline-input):not([data-np-compact-control]) {
+    padding-block: 10px;
+    padding-inline: 14px;
+}
+/* Icon-padded search/select controls must keep space for their icons. */
+body.np-catalog-system #admin-main-content .product-search-control { padding-left: 2.35rem !important; }
+body.np-catalog-system #admin-main-content .product-select-control { padding-right: 2.15rem !important; }
+body.np-catalog-system #admin-main-content .category-search-control { padding-left: 2.5rem !important; }
+body.np-catalog-system #admin-main-content input:where([class*="pl-12"],[class*="pl-14"]) { padding-left: 3.5rem !important; }
+body.np-catalog-system #admin-main-content :is(input,textarea)::placeholder {
+    color: #66768c !important;
+    opacity: 1;
+    font-weight: 400;
+}
+body.np-catalog-system #admin-main-content textarea:not(.np-table-input):not([data-np-compact-control]) {
+    min-width: 0;
+    min-height: 120px;
+    height: auto;
+    resize: vertical;
+    border: 1px solid var(--np-catalog-border) !important;
+    border-radius: var(--np-catalog-control-radius) !important;
+    background-color: var(--np-catalog-bg);
+    color: var(--np-catalog-text);
+    font-size: var(--np-catalog-control-font) !important;
+    font-weight: 400 !important;
+    line-height: 1.5 !important;
+    padding: 12px 14px;
+    box-shadow: none !important;
+}
+body.np-catalog-system #admin-main-content :is(input,select,textarea):hover:not(:disabled):not([readonly]) {
+    border-color: #8193aa !important;
+}
+body.np-catalog-system #admin-main-content :is(input,select,textarea):focus-visible,
+body.np-catalog-system #admin-main-content :is(button,a,summary,[role="button"]):focus-visible {
+    outline: 3px solid var(--np-catalog-focus) !important;
+    outline-offset: 3px !important;
+}
+body.np-catalog-system #admin-main-content :is(input,select,textarea)[aria-invalid="true"],
+body.np-catalog-system #admin-main-content :is(input,select,textarea).np-field-invalid {
+    border-color: var(--np-catalog-error) !important;
+}
+body.np-catalog-system #admin-main-content :is(input,select,textarea):disabled {
+    background-color: #edf0f4 !important;
+    color: #667287 !important;
+    cursor: not-allowed;
+}
+body.np-catalog-system #admin-main-content :is(input,select,textarea)[readonly] {
+    background-color: var(--np-catalog-soft) !important;
+}
+body.np-catalog-system #admin-main-content :is(input[type="checkbox"],input[type="radio"]) {
+    accent-color: var(--np-catalog-ink);
+}
+
+/* Text actions: share the same sizes, typography, radius, focus behavior.
+   Do not apply button sizing to icon-only, pagination, image actions,
+   product-row menus, delete/drag handles or native checkbox labels. */
+body.np-catalog-system #admin-main-content :is(
+    .btn,.pt-button,.admin-modern-button,.np-primary-button,
+    .np-secondary-button,.np-link-button,.product-filter-button,
+    .product-filter-clear,.product-add-button,.product-bulk-button,
+    .product-production-modal__confirm,.product-production-modal__cancel,
+    .category-picker-apply
+) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: var(--np-catalog-button-height) !important;
+    height: auto;
+    border-width: 1px !important;
+    border-style: solid !important;
+    border-radius: var(--np-catalog-control-radius) !important;
+    padding: 10px 20px !important;
+    font-family: var(--np-catalog-font) !important;
+    font-size: var(--np-catalog-button-font) !important;
+    line-height: 1.4 !important;
+    font-weight: var(--np-catalog-button-weight) !important;
+    letter-spacing: 0 !important;
+    text-transform: none;
+    text-decoration: none;
+    white-space: normal;
+    cursor: pointer;
+    box-shadow: none !important;
+    transform: none !important;
+    transition: background-color .16s ease, border-color .16s ease, color .16s ease;
+}
+body.np-catalog-system #admin-main-content :is(
+    .btn-red,.btn-primary,.btn-navy,.btn-orange,.pt-primary,.np-primary-button,
+    .product-add-button,.product-filter-button,.product-bulk-button,
+    .admin-modern-button-primary,.product-production-modal__confirm,
+    .category-picker-apply
+) {
+    background-color: var(--np-catalog-cta) !important;
+    border-color: var(--np-catalog-cta) !important;
+    color: #fff !important;
+}
+body.np-catalog-system #admin-main-content :is(
+    .btn-red,.btn-primary,.btn-navy,.btn-orange,.pt-primary,.np-primary-button,
+    .product-add-button,.product-filter-button,.product-bulk-button,
+    .admin-modern-button-primary,.product-production-modal__confirm,
+    .category-picker-apply
+):hover:not(:disabled) {
+    background-color: var(--np-catalog-cta-hover) !important;
+    border-color: var(--np-catalog-cta-hover) !important;
+    color: #fff !important;
+}
+body.np-catalog-system #admin-main-content :is(
+    .btn-white,.btn-light,.pt-outline,.np-secondary-button,
+    .admin-modern-button-secondary,.product-filter-clear,
+    .product-production-modal__cancel
+) {
+    background-color: #fff !important;
+    border-color: var(--np-catalog-border) !important;
+    color: var(--np-catalog-ink) !important;
+}
+body.np-catalog-system #admin-main-content :is(
+    .btn-white,.btn-light,.pt-outline,.np-secondary-button,
+    .admin-modern-button-secondary,.product-filter-clear,
+    .product-production-modal__cancel
+):hover:not(:disabled) {
+    background-color: var(--np-catalog-soft) !important;
+}
+body.np-catalog-system #admin-main-content :is(
+    .btn,.pt-button,.admin-modern-button,.np-primary-button,
+    .np-secondary-button,.np-link-button,.product-filter-button,
+    .product-filter-clear,.product-add-button,.product-bulk-button
+):disabled,
+body.np-catalog-system #admin-main-content :is(.btn,.pt-button)[aria-disabled="true"] {
+    background-color: #e4e8ee !important;
+    border-color: #d4dce6 !important;
+    color: #647087 !important;
+    cursor: not-allowed;
+    opacity: 1 !important;
+    pointer-events: none;
+}
+/* Row actions and media/image icons retain compact hit areas and semantics. */
+body.np-catalog-system #admin-main-content :is(.admin-row-action,.pt-configured-actions .pt-button,.product-row-menu__item) {
+    font-family: var(--np-catalog-font) !important;
+    font-weight: 600;
+    letter-spacing: 0;
+}
+/* Native form submit buttons without a utility class are still part of
+   this contract. Do not normalize row menus, delete controls, or icons. */
+body.np-catalog-system #admin-main-content form button[type="submit"]:not(.admin-row-action):not(.product-row-menu__item):not(.category-row-menu-danger):not([class*="danger"]):not([aria-label]) {
+    min-height: var(--np-catalog-button-height);
+    border-radius: var(--np-catalog-control-radius);
+    font-size: var(--np-catalog-button-font);
+    font-weight: var(--np-catalog-button-weight);
+    line-height: 1.4;
+}
+body.np-catalog-system #admin-main-content :is(.admin-label,.pt-label,.pt-filter-field,.np-mu-field) > :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),select,textarea) {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Media search fields already have a surrounding label border. Keep ONE
+   visible border, rather than drawing a second border on the inner input. */
+body.np-catalog-system :is(.np-mg-global-search,.np-mg-search) {
+    min-height: var(--np-catalog-control-height);
+    height: var(--np-catalog-control-height);
+    border: 1px solid var(--np-catalog-border);
+    border-radius: var(--np-catalog-control-radius);
+    background-color: #fff;
+}
+body.np-catalog-system :is(.np-mg-global-search,.np-mg-search) input[type="search"] {
+    height: 100% !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background-color: transparent !important;
+    font-family: var(--np-catalog-font) !important;
+    font-size: var(--np-catalog-control-font) !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+body.np-catalog-system :is(.np-mg-global-search,.np-mg-search):focus-within {
+    outline: 3px solid var(--np-catalog-focus);
+    outline-offset: 3px;
+}
+body.np-catalog-system .np-mg-global-search input[type="search"]:focus-visible,
+body.np-catalog-system #admin-main-content .np-mg-search input[type="search"]:focus-visible {
+    outline: none !important;
+}
+
+/* Search/filter forms are allowed to wrap on mobile without clipped buttons. */
+@media (max-width: 640px) {
+    body.np-catalog-system #admin-main-content :is(.pt-filter-actions,.product-filter-actions,.np-mg-actions) {
+        height: auto;
+        flex-wrap: wrap;
+    }
+    body.np-catalog-system #admin-main-content :is(.btn,.pt-button) {
+        max-width: 100%;
+    }
+}

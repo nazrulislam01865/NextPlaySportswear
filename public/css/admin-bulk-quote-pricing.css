@@ -1,0 +1,231 @@
+/* NextPlay quotation editor. The existing Bulk Quote request header, workflow and
+   tabs are deliberately untouched. Form dimensions follow the supplied shared
+   Typography + Form Design System; tables follow the approved quotation layout. */
+.np-quote-ui {
+  --nps-navy:var(--np-color-heading,#0b2345);
+  --nps-orange:var(--np-color-secondary,#c94f2c);
+  --nps-text:#26364b;
+  --nps-muted:#52637a;
+  --nps-border:#bac6d5;
+  --nps-focus:#2164c5;
+  --nps-error:#b42318;
+  --nps-radius:8px;
+  --nps-control:48px;
+  --nps-font:var(--np-font-body,"Expose","Segoe UI",Arial,sans-serif);
+  width:100%; min-width:0; color:var(--nps-text);
+  font:400 16px/1.5 var(--nps-font);
+}
+.np-quote-ui *, .np-quote-ui *::before, .np-quote-ui *::after {box-sizing:border-box;}
+.np-quote-ui [hidden] {display:none!important;}
+.np-quote-ui .np-quote-head {display:grid;grid-template-columns:minmax(0,1.1fr) minmax(355px,.9fr);gap:24px;align-items:start;margin:0 0 20px;}
+.np-quote-ui .np-quote-head>div {min-width:0;}
+.np-quote-ui .np-quote-overline {font-size:13px;line-height:1.5;color:var(--nps-muted);margin:0 0 6px;}
+.np-quote-ui .np-quote-overline span {padding:0 9px;color:#7d8ba0;}
+.np-quote-ui .np-quote-overline a {color:var(--nps-navy);text-decoration:none;}
+.np-quote-ui .np-quote-overline a:hover {text-decoration:underline;}
+.np-quote-ui .np-quote-head h2 {margin:0;color:var(--nps-navy);font-size:28px;line-height:1.25;font-weight:700;}
+.np-quote-ui .np-quote-head p:not(.np-quote-overline) {font-size:16px;color:var(--nps-muted);margin:8px 0 0;}
+.np-quote-ui .np-quote-info {margin-top:12px;padding:12px 14px;border:1px solid #c4d8f4;border-radius:var(--nps-radius);background:#eef5ff;color:#284b78;font-size:14px;line-height:1.5;}
+.np-quote-ui .np-quote-info span {font-size:18px;font-weight:700;margin-right:7px;vertical-align:middle;}
+.np-quote-ui .np-quote-delivery {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;border:1px solid var(--nps-border);background:white;border-radius:var(--nps-radius);padding:16px;min-width:0;}
+.np-quote-ui .np-quote-delivery-label {display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0;}
+.np-quote-ui .np-quote-delivery-label svg {flex:none;color:#64748b;}
+.np-quote-ui .np-quote-delivery-label strong {font-size:14px;line-height:1.4;color:var(--nps-navy);overflow-wrap:anywhere;}
+.np-quote-ui .np-quote-pill {color:var(--nps-muted);font-size:13px;}
+.np-quote-ui .np-quote-edit-link {color:var(--nps-navy);font-size:14px;font-weight:700;}
+.np-quote-ui .np-quote-shipping {grid-column:1/-1;display:grid;grid-template-columns:auto minmax(128px,165px) minmax(0,1fr);gap:12px;align-items:center;}
+.np-quote-ui .np-quote-shipping>label {font-size:14px;color:var(--nps-navy);font-weight:600;}
+.np-quote-ui .np-quote-shipping p {margin:0;border-left:1px solid #dae1ea;padding-left:12px;color:var(--nps-muted);font-size:13px;}
+.np-quote-ui .np-quote-draft-notice {font-size:13px;color:#187044;margin:0 0 14px;}
+.np-quote-ui form#np-quote-form {display:grid;gap:16px;min-width:0;}
+.np-quote-ui .np-quote-panel {padding:20px 22px 16px;background:#fff;border:1px solid var(--nps-border);border-radius:var(--nps-radius);min-width:0;}
+.np-quote-ui .np-quote-panel-head {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin:0 0 16px;}
+.np-quote-ui .np-quote-panel-head>div:first-child {display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.np-quote-ui .np-quote-panel-head h3 {margin:0;font-size:20px;line-height:1.4;font-weight:700;color:var(--nps-navy);}
+.np-quote-ui .np-quote-panel-head small {font-size:13px;color:var(--nps-muted);}
+.np-quote-ui .np-quote-step {width:28px;height:28px;flex:none;display:grid;place-items:center;border-radius:50%;background:var(--nps-orange);color:#fff;font-weight:700;font-size:16px;}
+.np-quote-ui .np-quote-table-scroller {width:100%;min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;}
+.np-quote-ui .np-quote-pricing-table {width:100%;min-width:1150px;table-layout:fixed;border-collapse:collapse;border-spacing:0;font-size:14px;line-height:1.5;color:var(--nps-text);}
+.np-quote-ui .np-quote-pricing-table th {border:1px solid #dce3ed;background:#eaf0f7;color:var(--nps-navy);padding:11px 12px;vertical-align:middle;font-size:14px;font-weight:700;text-align:left;line-height:1.35;}
+.np-quote-ui .np-quote-pricing-table td {border:1px solid #dce3ed;vertical-align:top;padding:12px;font-size:14px;line-height:1.5;}
+.np-quote-ui #np-quote-bulk-table th:first-child {width:29%;}
+.np-quote-ui #np-quote-bulk-table th:nth-child(2) {width:7%;}
+.np-quote-ui #np-quote-bulk-table th:nth-child(3) {width:10%;}
+.np-quote-ui #np-quote-bulk-table th:nth-child(4),.np-quote-ui #np-quote-bulk-table th:nth-child(5) {width:12%;}
+.np-quote-ui #np-quote-bulk-table th:nth-child(6),.np-quote-ui #np-quote-bulk-table th:nth-child(7) {width:10%;}
+.np-quote-ui #np-quote-bulk-table th:last-child {width:10%;}
+.np-quote-ui .np-quote-product-cell>strong {display:block;font-size:14px;line-height:1.5;font-weight:700;color:var(--nps-navy);overflow-wrap:anywhere;}
+.np-quote-ui .np-quote-product-cell>small {display:block;margin-top:7px;color:var(--nps-muted);font-size:13px;}
+.np-quote-ui .np-quote-number {width:100%;min-width:0;tab-size:4;font-variant-numeric:tabular-nums;}
+.np-quote-ui .np-quote-bold-money {font-size:15px;text-align:right;font-weight:700;white-space:nowrap;color:var(--nps-navy);}
+.np-quote-ui .np-quote-not-applicable {font-size:13px;color:var(--nps-muted);}
+.np-quote-ui .np-quote-breakdown-title {height:12px;}
+.np-quote-ui .np-quote-imprint-table {min-width:960px;}
+.np-quote-ui .np-quote-imprint-table th:first-child {width:24%;}
+.np-quote-ui .np-quote-imprint-table th:nth-child(2) {width:28%;}
+.np-quote-ui .np-quote-imprint-table th:nth-child(3),.np-quote-ui .np-quote-imprint-table th:nth-child(4) {width:16%;}
+.np-quote-ui .np-quote-imprint-table th:nth-child(5) {width:10%;}
+.np-quote-ui .np-quote-imprint-table th:last-child {width:auto;}
+.np-quote-ui .np-quote-inline-options {margin-top:12px;display:grid;gap:12px;padding-top:10px;border-top:1px solid #e2e7ef;}
+.np-quote-ui .np-quote-options-caption {font-size:13px;font-weight:700;color:var(--nps-muted);}
+.np-quote-ui .np-quote-option-field {min-width:0;display:flex;flex-direction:column;gap:8px;}
+.np-quote-ui .np-quote-option-field>label {font-size:14px;font-weight:600;color:var(--nps-navy);}
+.np-quote-ui .np-quote-option-field[data-unselected="1"]>label {color:#a43b25;}
+.np-quote-ui .np-quote-star {color:var(--nps-error);}
+.np-quote-ui .np-quote-option-checks {display:grid;gap:7px;}
+.np-quote-ui .np-quote-option-checks .np-quote-check {display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;}
+.np-quote-ui .np-quote-option-checks input[type=checkbox] {width:20px;height:20px;flex:none;accent-color:var(--nps-orange);}
+.np-quote-ui .np-quote-panel-footer {display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid #e2e7ef;padding-top:12px;margin-top:14px;}
+.np-quote-ui .np-quote-panel-footer>span {font-size:13px;color:var(--nps-muted);}
+.np-quote-ui .np-quote-example-note {padding:6px 10px;background:#f5f7fa;border-radius:6px;}
+.np-quote-ui .np-quote-panel-footer strong {font-size:17px;font-weight:700;color:var(--nps-navy);white-space:nowrap;}
+.np-quote-ui .np-quote-panel-footer strong span {color:var(--nps-orange);font-size:20px;margin-left:8px;}
+.np-quote-ui .np-quote-switch-label {display:inline-flex;align-items:center;gap:10px;position:relative;cursor:pointer;font-size:14px;font-weight:600;color:var(--nps-navy);}
+.np-quote-ui .np-quote-switch-label input[type=checkbox] {position:absolute;opacity:0;width:42px;height:24px;left:calc(100% - 70px);}
+.np-quote-ui .np-quote-switch {width:42px;height:24px;flex:none;border-radius:100px;background:#b9c2d0;position:relative;transition:background .15s;}
+.np-quote-ui .np-quote-switch:after {content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:100%;background:#fff;transition:transform .15s;}
+.np-quote-ui .np-quote-switch-label input:checked + .np-quote-switch {background:var(--nps-orange);}
+.np-quote-ui .np-quote-switch-label input:checked + .np-quote-switch:after {transform:translateX(18px);}
+.np-quote-ui .np-quote-switch-label input:focus-visible + .np-quote-switch {outline:3px solid var(--nps-focus);outline-offset:3px;}
+.np-quote-ui .np-quote-sample-shipping {display:flex;align-items:center;flex-wrap:wrap;gap:12px;}
+.np-quote-ui .np-quote-sample-shipping>label {font-size:14px;font-weight:600;color:var(--nps-navy);}
+.np-quote-ui .np-quote-sample-shipping select {min-width:150px;}
+.np-quote-ui .np-quote-sample-shipping small {font-size:13px;max-width:240px;color:var(--nps-muted);border-left:1px solid #dce3ed;padding-left:12px;}
+.np-quote-ui .np-quote-sample-explanation {font-size:13px;color:var(--nps-muted);margin:10px 0;}
+.np-quote-ui .np-quote-empty {padding:24px;border:1px dashed var(--nps-border);border-radius:var(--nps-radius);text-align:center;font-size:14px;color:var(--nps-muted);}
+/* One accessible click/keyboard/drop target, with all guidance and selected files grouped. */
+.np-quote-ui .np-quote-upload-area {display:grid;gap:12px;min-width:0;}
+.np-quote-ui .np-quote-dropzone {
+  width:100%;min-width:0;display:grid;grid-template-columns:44px minmax(0,1fr) auto;
+  gap:16px;align-items:center;min-height:106px;padding:18px 20px;
+  border:1px dashed #8193aa;border-radius:var(--nps-radius);background:#fafbfd;
+  color:var(--nps-navy);cursor:pointer;transition:border-color .15s,background-color .15s;
+}
+.np-quote-ui .np-quote-dropzone:hover,.np-quote-ui .np-quote-dropzone.is-dragging {background:#eef5ff;border-color:var(--nps-focus);}
+.np-quote-ui .np-quote-dropzone:focus-visible {outline:3px solid var(--nps-focus);outline-offset:3px;}
+.np-quote-ui .np-quote-dropzone-icon {height:44px;width:44px;display:grid;place-items:center;border-radius:8px;background:#eef3fa;color:var(--nps-navy);}
+.np-quote-ui .np-quote-dropzone-copy {min-width:0;display:flex;flex-direction:column;gap:3px;font-size:14px;line-height:1.5;color:var(--nps-muted);}
+.np-quote-ui .np-quote-dropzone-copy strong {font-size:16px;font-weight:700;color:var(--nps-navy);}
+.np-quote-ui .np-quote-dropzone-copy small {font-size:13px;line-height:1.5;color:var(--nps-muted);}
+.np-quote-ui .np-quote-browse-files {border:1px solid var(--nps-border);border-radius:var(--nps-radius);padding:11px 16px;min-height:44px;display:flex;align-items:center;justify-content:center;background:#fff;color:var(--nps-navy);font-size:14px;font-weight:700;white-space:nowrap;}
+.np-quote-ui .np-quote-dropzone:hover .np-quote-browse-files {border-color:var(--nps-focus);}
+.np-quote-ui .np-quote-visually-hidden-file {position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:0!important;overflow:hidden!important;clip-path:inset(50%)!important;opacity:0!important;border:0!important;}
+.np-quote-ui .np-quote-upload-error {margin:0;color:var(--nps-error);font-size:13px;line-height:1.5;}
+.np-quote-ui .np-quote-selected-files {display:grid;grid-template-columns:155px minmax(0,1fr);align-items:start;gap:12px;min-width:0;}
+.np-quote-ui .np-quote-upload-caption {font-size:14px;line-height:24px;font-weight:600;color:var(--nps-navy);}
+.np-quote-ui .np-quote-file-chips {display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;}
+.np-quote-ui .np-quote-file-chips>small {font-size:13px;line-height:24px;color:var(--nps-muted);}
+.np-quote-ui .np-quote-file-chip {display:inline-flex;align-items:center;gap:10px;min-width:0;max-width:100%;border:1px solid #dce3ed;border-radius:var(--nps-radius);padding:9px 12px;background:#f5f7fa;color:var(--nps-navy);font-size:13px;line-height:1.5;text-decoration:none;overflow-wrap:anywhere;}
+.np-quote-ui .np-quote-file-chip>span {min-width:0;max-width:460px;overflow-wrap:anywhere;}
+.np-quote-ui .np-quote-file-chip>svg {flex:none;color:var(--nps-muted);}
+.np-quote-ui .np-quote-file-chip>button {border:0;background:none;cursor:pointer;color:var(--nps-navy);font-size:20px;line-height:1;min-width:32px;min-height:32px;padding:2px 6px;border-radius:6px;flex:none;}
+.np-quote-ui .np-quote-file-chip>button:hover {background:#e2e7ef;}
+.np-quote-ui .np-quote-file-chip>button:focus-visible {outline:3px solid var(--nps-focus);outline-offset:2px;}
+.np-quote-ui .np-quote-included-files {display:grid;gap:10px;margin-top:4px;padding:14px 16px;border:1px solid #e2e7ef;border-radius:var(--nps-radius);background:#f8fafc;min-width:0;}
+.np-quote-ui .np-quote-included-files .np-quote-forward-choice {margin:0;align-items:center;min-height:24px;}
+.np-quote-ui .np-quote-existing-file-chips {padding-left:30px;}
+.np-quote-ui .np-quote-file-chip--existing:hover {background:#eaf0f7;text-decoration:underline;}
+.np-quote-ui .np-quote-doc-grid {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr);column-gap:24px;row-gap:24px;align-items:start;margin-top:24px;}
+.np-quote-ui .np-quote-doc-grid>label {display:flex;flex-direction:column;min-width:0;gap:8px;font-size:14px;font-weight:600;color:var(--nps-navy);}
+.np-quote-ui .np-quote-doc-grid>label>span {font-size:14px;line-height:1.5;font-weight:600;color:var(--nps-navy);}
+.np-quote-ui .np-quote-doc-grid>label b {color:var(--nps-error);}
+.np-quote-ui .np-quote-notes-field {grid-column:1/-1;}
+.np-quote-ui .np-quote-forward-choice {display:flex;align-items:flex-start;gap:10px;font-size:14px;color:var(--nps-navy);cursor:pointer;margin:20px 0 0;}
+.np-quote-ui .np-quote-forward-choice input {flex:none;width:20px;height:20px;accent-color:var(--nps-orange);}
+.np-quote-ui .np-quote-help {font-size:13px;color:var(--nps-muted);margin:10px 0;}
+/* Centralized form control contract: 48 px, white background, 1 px border, 8 px radius,
+   16 px text. The table is allowed to scroll horizontally rather than shrinking fields. */
+body.admin-ui-compact #admin-main-content .np-bq .np-bq-tab-content .np-quote-ui :is(input.admin-input,select.admin-input,textarea.admin-textarea) {
+  box-sizing:border-box!important;display:block!important;width:100%!important;min-width:0!important;
+  min-height:48px!important;height:48px!important;padding:12px 14px!important;
+  background:#fff!important;border:1px solid var(--nps-border)!important;border-radius:var(--nps-radius)!important;
+  font:400 16px/1.5 var(--nps-font)!important;color:var(--nps-text)!important;box-shadow:none!important;
+}
+body.admin-ui-compact #admin-main-content .np-bq .np-bq-tab-content .np-quote-ui textarea.admin-textarea {
+  height:auto!important;min-height:120px!important;max-height:none!important;resize:vertical!important;
+}
+body.admin-ui-compact #admin-main-content .np-bq .np-bq-tab-content .np-quote-ui input.admin-input[readonly] {background:#f5f7fa!important;}
+body.admin-ui-compact #admin-main-content .np-bq .np-bq-tab-content .np-quote-ui :is(input.admin-input,select.admin-input,textarea.admin-textarea):focus-visible {
+  outline:3px solid var(--nps-focus)!important;outline-offset:3px!important;
+}
+.np-quote-ui .np-quote-bottom-bar {position:sticky;bottom:0;z-index:12;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:12px 16px;background:#fff;border:1px solid #dce3ed;border-radius:var(--nps-radius);box-shadow:0 -5px 18px #0b23450b;}
+.np-quote-ui .np-quote-bottom-bar>div:first-child {display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:14px;color:var(--nps-navy);font-weight:600;}
+.np-quote-ui .np-quote-bottom-bar strong {font-size:20px;font-weight:700;color:var(--nps-orange);margin-left:6px;}
+.np-quote-ui .np-quote-divider {width:1px;height:24px;background:#dce3ed;}
+.np-quote-ui .np-quote-grand-visually-hidden {position:absolute!important;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+.np-quote-ui .np-quote-bottom-actions {display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:12px;}
+body.admin-ui-compact #admin-main-content .np-bq .np-bq-tab-content .np-quote-ui .np-quote-bottom-actions .btn {
+  min-height:48px!important;padding:12px 20px!important;font:600 16px/1.4 var(--nps-font)!important;
+  border-radius:var(--nps-radius)!important;white-space:normal;
+}
+.np-quote-ui .np-quote-bottom-actions .btn-red {background:var(--nps-orange);border-color:var(--nps-orange);color:white;}
+.np-quote-ui .np-quote-bottom-actions .btn-red:hover {filter:brightness(.90);}
+.np-quote-ui .np-quote-preview {position:fixed;margin:auto;width:min(700px,calc(100vw - 32px));max-height:85vh;padding:0;background:white;color:var(--nps-navy);border:1px solid var(--nps-border);border-radius:var(--nps-radius);box-shadow:0 20px 65px #0b234533;}
+.np-quote-ui .np-quote-preview::backdrop {background:#0b23458f;}
+.np-quote-ui .np-quote-preview-inner {padding:24px;}
+.np-quote-ui .np-quote-preview-inner header {display:flex;justify-content:space-between;align-items:center;gap:16px;}
+.np-quote-ui .np-quote-preview-inner h3 {font-size:20px;line-height:1.4;margin:0;}
+.np-quote-ui .np-quote-preview-row {display:flex;justify-content:space-between;gap:16px;padding:12px 4px;border-bottom:1px solid #e2e7ef;font-size:14px;}
+.np-quote-ui .np-quote-preview-recipient,.np-quote-ui .np-quote-preview-disclaimer {font-size:13px;color:var(--nps-muted);margin:16px 0;}
+.np-quote-ui .np-quote-preview-warning {font-size:14px;color:var(--nps-error);padding:12px;border:1px solid #e4a8a3;background:#fff3f2;border-radius:var(--nps-radius);}
+.np-bq--quote-mode .np-quote-history {margin:20px 0 0;border:1px solid var(--nps-border,#bac6d5);background:#fff;border-radius:8px;overflow:hidden;}
+.np-bq--quote-mode .np-quote-history>summary {cursor:pointer;color:#0b2345;padding:16px;font-size:14px;font-weight:600;}
+.np-bq--quote-mode .np-quote-history>summary span {color:#52637a;font-weight:400;margin-left:8px;}
+@media(max-width:1150px) {
+  .np-quote-ui .np-quote-head {grid-template-columns:1fr;}
+  .np-quote-ui .np-quote-doc-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:760px) {
+  .np-quote-ui .np-quote-panel {padding:16px;}
+  .np-quote-ui .np-quote-shipping {grid-template-columns:1fr;}
+  .np-quote-ui .np-quote-shipping p {border-left:0;padding:0;}
+  .np-quote-ui .np-quote-doc-grid,.np-quote-ui .np-quote-selected-files {grid-template-columns:1fr;}
+  .np-quote-ui .np-quote-bottom-bar {position:static;}
+  .np-quote-ui .np-quote-dropzone {grid-template-columns:44px minmax(0,1fr);}
+  .np-quote-ui .np-quote-browse-files {grid-column:2;justify-self:start;}
+  .np-quote-ui .np-quote-existing-file-chips {padding-left:0;}
+  .np-quote-ui .np-quote-bottom-actions {width:100%;}
+}
+@media(max-width:480px) {
+  .np-quote-ui .np-quote-head h2 {font-size:24px;}
+  .np-quote-ui .np-quote-bottom-actions .btn {width:100%;}
+  .np-quote-ui .np-quote-bottom-actions {flex-direction:column;align-items:stretch;}
+}
+
+.np-quote-ui .np-quote-tier-hint {display:block;margin-top:7px;font-size:13px;color:var(--nps-muted);}
+/* A price prefix belongs to its input, never to the enclosing table cell.
+   Tall rows (product names, option groups, tier hints) must not displace $. */
+.np-quote-ui .np-quote-money-field {
+  position:relative;display:block;width:100%;min-width:0;height:var(--nps-control);
+}
+.np-quote-ui .np-quote-money-field::before {
+  content:'$';position:absolute;top:50%;left:14px;transform:translateY(-50%);
+  z-index:1;pointer-events:none;color:var(--nps-muted);
+  font:400 16px/1 var(--nps-font);
+}
+.np-quote-ui .np-quote-money-field > input.admin-input {
+  width:100%;height:100%;min-width:0;padding-left:34px!important;margin:0!important;
+  font-variant-numeric:tabular-nums;
+}
+/* The shared admin form rule is important; repeat its specificity for currency padding. */
+body.admin-ui-compact #admin-main-content .np-bq .np-bq-tab-content .np-quote-ui .np-quote-money-field > input.admin-input {
+  padding-left:34px!important;
+}
+/* Every price and quantity control begins at the same top edge of its table row.
+   This also prevents a long product description from shifting the sample fields. */
+.np-quote-ui .np-quote-pricing-table tbody td {vertical-align:top!important;}
+.np-quote-ui .np-quote-pricing-table tbody td > input.admin-input,
+.np-quote-ui .np-quote-pricing-table tbody td > select.admin-input {
+  display:block;margin:0!important;
+}
+
+/* Pricing fields and document rows keep one consistent start edge across variable-length products. */
+.np-quote-ui .np-quote-pricing-table td > :is(input.admin-input,select.admin-input) {margin:0;}
+.np-quote-ui .np-quote-pricing-table th,.np-quote-ui .np-quote-pricing-table td {overflow-wrap:break-word;}
+.np-quote-ui .np-quote-pricing-table td.np-quote-bold-money {text-align:right;white-space:nowrap;}
+.np-quote-ui .np-quote-documents .np-quote-panel-head {margin-bottom:16px;}
+.np-quote-ui .np-quote-documents > .np-quote-forward-choice {margin-top:16px;}
+.np-quote-ui .np-quote-doc-grid {margin-top:20px;}
+.np-quote-ui .np-quote-doc-grid>label {align-self:start;}
+.np-quote-ui .np-quote-doc-grid>label>span {min-height:21px;}
+@media (max-width:760px) { .np-quote-ui .np-quote-file-chip>span {max-width:calc(100vw - 130px);} }

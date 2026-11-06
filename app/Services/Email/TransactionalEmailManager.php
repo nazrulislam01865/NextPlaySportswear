@@ -269,6 +269,13 @@ final class TransactionalEmailManager
             metadata: ['contact_message_id' => $contact->id],
         ));
 
+        // E2A has a 9 MB attachment budget. Larger (but valid 10 MB) uploads
+        // remain available through an authenticated admin download link.
+        $mailerName = (string) config('transactional_email.mailer', config('mail.default', ''));
+        $usesE2a = config('mail.mailers.'.$mailerName.'.transport') === 'e2a';
+        $attachToSupport = filled($contact->attachment_path)
+            && (! $usesE2a || (int) $contact->attachment_size <= 9 * 1024 * 1024);
+
         $this->queueInternal(
             recipientKey: 'support',
             message: new EmailMessage(
@@ -284,10 +291,20 @@ final class TransactionalEmailManager
                     'Topic' => $this->label($contact->topic),
                     'Order Number' => $contact->order_number,
                     'Message' => Str::limit((string) $contact->message, 1200),
+                    'Attachment' => $contact->attachment_name,
+                    'Download attachment (admin login required)' => $contact->attachment_path
+                        ? route('admin.contact-page.attachment', $contact) : null,
                 ], static fn (mixed $value): bool => filled($value)),
                 replyTo: $contact->email,
                 replyToName: $contact->name,
                 metadata: ['contact_message_id' => $contact->id],
+                attachments: $attachToSupport ? [[
+                    'type' => 'storage',
+                    'disk' => 'local',
+                    'path' => $contact->attachment_path,
+                    'name' => $contact->attachment_name,
+                    'mime' => $contact->attachment_mime ?: 'application/octet-stream',
+                ]] : [],
             ),
         );
     }

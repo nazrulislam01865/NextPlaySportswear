@@ -13,6 +13,9 @@
         'resources/css/admin.css',
         'resources/js/admin.js'
     ])
+    {{-- Shared admin UX fixes ship as versioned public assets (no Vite rebuild required). --}}
+    <link rel="stylesheet" href="{{ asset('css/nextplay-admin-ui-fixes-20261104.css') }}?v=1">
+    <script defer src="{{ asset('js/nextplay-admin-ui-fixes-20261104.js') }}?v=1"></script>
 </head>
 
 <body class="admin-auth-ui min-h-screen bg-slate-950 font-sans text-white">
@@ -41,7 +44,7 @@
 
             {{-- Success / status message --}}
             @if(session('status'))
-                <div
+                <div data-admin-flash
                     class="mt-5 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800"
                 >
                     {{ session('status') }}

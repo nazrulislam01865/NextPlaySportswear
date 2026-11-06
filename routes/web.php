@@ -183,6 +183,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
 
         Route::get('/contact-page', [\App\Http\Controllers\Admin\ContactPageController::class, 'edit'])->name('contact-page.edit');
         Route::put('/contact-page', [\App\Http\Controllers\Admin\ContactPageController::class, 'update'])->name('contact-page.update');
+        Route::get('/contact-page/messages/{contactMessage}/attachment', [\App\Http\Controllers\Admin\ContactPageController::class, 'downloadAttachment'])->name('contact-page.attachment');
 
         Route::get('/terms-page', [\App\Http\Controllers\Admin\TermsPageController::class, 'edit'])->name('terms-page.edit');
         Route::put('/terms-page', [\App\Http\Controllers\Admin\TermsPageController::class, 'update'])->name('terms-page.update');
@@ -365,6 +366,9 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::resource('country-calling-codes', \App\Http\Controllers\Admin\CountryCallingCodeController::class)
             ->parameters(['country-calling-codes' => 'countryCallingCode'])
             ->except('show');
+        Route::resource('bulk-quote-payment-terms', \App\Http\Controllers\Admin\BulkQuotePaymentTermController::class)
+            ->parameters(['bulk-quote-payment-terms' => 'bulkQuotePaymentTerm'])
+            ->only(['index', 'store', 'update', 'destroy']);
         Route::resource('bulk-quote-budget-ranges', \App\Http\Controllers\Admin\BulkQuoteBudgetRangeController::class)
             ->parameters(['bulk-quote-budget-ranges' => 'bulkQuoteBudgetRange'])
             ->except('show');
@@ -420,6 +424,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
                 ->middleware('throttle:6,1')
                 ->name('bulk-quotes.retry-sync');
 
+            Route::post('/bulk-quotes/{bulkQuote}/draft', [\App\Http\Controllers\Admin\BulkQuoteGuestAdminController::class, 'draft'])->middleware('throttle:20,1')->name('bulk-quotes.draft');
             Route::post('/bulk-quotes/{bulkQuote}/publish', [\App\Http\Controllers\Admin\BulkQuoteGuestAdminController::class, 'publish'])->middleware('throttle:10,1')->name('bulk-quotes.publish');
             Route::post('/bulk-quotes/{bulkQuote}/message', [\App\Http\Controllers\Admin\BulkQuoteGuestAdminController::class, 'message'])->middleware('throttle:15,1')->name('bulk-quotes.message');
             Route::get('/bulk-quotes/{bulkQuote}/file/{file}', [\App\Http\Controllers\Admin\BulkQuoteGuestAdminController::class, 'file'])->name('bulk-quotes.file');

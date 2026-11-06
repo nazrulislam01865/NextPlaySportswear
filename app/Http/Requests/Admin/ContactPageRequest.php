@@ -27,6 +27,7 @@ class ContactPageRequest extends FormRequest
             'info.address' => ['required', 'string', 'max:1000'],
             'info.email_title' => ['required', 'string', 'max:255'],
             'info.email' => ['required', 'string', 'max:255'],
+            'info.show_whatsapp_contact' => ['required', 'boolean'],
             'info.whatsapp_title' => ['required', 'string', 'max:255'],
             'info.whatsapp_number' => ['required', 'string', 'max:100'],
             'info.whatsapp_link_text' => ['required', 'string', 'max:100'],

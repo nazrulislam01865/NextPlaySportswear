@@ -60,7 +60,8 @@
                             </div>
                         </div>
 
-                        {{-- WhatsApp --}}
+                        {{-- WhatsApp: shown only when enabled in Contact Us admin settings. --}}
+                        @if(data_get($content, 'info.show_whatsapp_contact', false))
                         <div class="np-contact-item">
                             <span class="np-contact-icon-badge" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" fill="currentColor">
@@ -80,6 +81,7 @@
                                 </a>
                             </div>
                         </div>
+                        @endif
                     </div>
 
                     {{-- Divider --}}
@@ -89,12 +91,14 @@
                     <div class="np-follow-section">
                         <h3 class="np-follow-title">{{ data_get($content, 'info.follow_heading', 'Follow us') }}</h3>
                         <div class="np-social-row">
-                            {{-- WhatsApp --}}
+                            {{-- The contact page's visibility setting also hides the WhatsApp social shortcut. --}}
+                            @if(data_get($content, 'info.show_whatsapp_contact', false))
                             <a href="{{ data_get($content, 'info.whatsapp_url') }}" target="_blank" rel="noopener noreferrer" class="np-social-btn" title="WhatsApp" aria-label="WhatsApp">
                                 <svg viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M12.031 2C6.495 2 2 6.495 2 12.031c0 1.808.48 3.567 1.393 5.115L2 22l4.98-1.353a10.02 10.02 0 005.051 1.385h.004c5.534 0 10.029-4.495 10.029-10.031A10.034 10.034 0 0012.031 2zm5.795 14.195c-.244.686-1.419 1.309-1.956 1.393-.518.082-1.189.117-3.834-.975-3.376-1.394-5.541-4.838-5.709-5.062-.164-.224-1.365-1.815-1.365-3.461 0-1.646.862-2.457 1.168-2.793.307-.336.671-.42.895-.42.224 0 .448.002.644.011.209.01.488-.079.763.582.28.672.95 2.316 1.034 2.484.084.168.14.364.028.588-.112.224-.168.364-.336.56-.168.196-.354.438-.505.588-.168.168-.344.35-.148.686.196.336.872 1.439 1.869 2.327 1.284 1.144 2.366 1.498 2.702 1.666.336.168.532.14.728-.084.196-.224.84-0.98 1.064-1.316.224-.336.448-.28.756-.168.308.112 1.956.923 2.292 1.091.336.168.56.252.644.392.084.14.084.812-.16 1.498z"/>
                                 </svg>
                             </a>
+                            @endif
                             {{-- Instagram --}}
                             <a href="{{ data_get($content, 'info.instagram_url', config('storefront.social.instagram')) }}" target="_blank" rel="noopener noreferrer" class="np-social-btn" title="Instagram" aria-label="Instagram">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -135,7 +139,7 @@
                         </div>
                     @endif
 
-                    <form data-nps-inline method="POST" action="{{ route('contact.store') }}" class="nps-form" novalidate>
+                    <form data-nps-inline method="POST" action="{{ route('contact.store') }}" class="nps-form" enctype="multipart/form-data" novalidate>
                         @csrf
 
                         {{-- Invisible Honeypot --}}
@@ -277,6 +281,28 @@
                                 @enderror
                         </div>
 
+                        {{-- Exactly the Bulk Quote product artwork upload treatment, with the same permitted types and 10 MB limit. --}}
+                        <div class="np-form-group npq-artwork-field np-contact-artwork-field">
+                            <label for="contact-attachment" class="np-field-label">Attachment <span class="np-optional-tag">(optional)</span></label>
+                            <label class="npq-dropzone" id="contact-artwork-dropzone" for="contact-attachment">
+                                <input id="contact-attachment" name="attachment" type="file" accept=".jpg,.jpeg,.png,.pdf"
+                                       aria-invalid="{{ $errors->has('attachment') ? 'true' : 'false' }}"
+                                       @if($errors->has('attachment')) aria-describedby="contact-attachment-error" @endif>
+                                <span class="npq-upload-icon"><x-storefront.bulk-quote.icon name="upload" :size="20" /></span>
+                                <span><strong>Upload artwork</strong><small>PDF, JPG or PNG (max 10MB)</small></span>
+                            </label>
+                            <div class="npq-file-preview" id="contact-artwork-preview" hidden>
+                                <img id="contact-artwork-image" alt="Selected attachment preview" hidden>
+                                <span id="contact-artwork-name"></span>
+                                <small id="contact-artwork-size"></small>
+                                <button type="button" id="contact-artwork-remove" aria-label="Remove selected attachment">×</button>
+                            </div>
+                            <p id="contact-artwork-client-error" class="nps-form-error" role="alert" hidden></p>
+                            @error('attachment')
+                                <p class="nps-form-error" role="alert" id="contact-attachment-error">{{ $message }}</p>
+                            @enderror
+                        </div>
+
                         {{-- Match Bulk Quote's local/non-local CAPTCHA behavior without local Blade variables. --}}
                         @if(! app()->environment('local'))
                             <div class="np-captcha-container">
@@ -314,4 +340,5 @@
             </div>
         </div>
     </div>
+    <script defer src="{{ asset('js/nextplay-contact-artwork.js') }}?v=20261106a"></script>
 </x-layouts.storefront>

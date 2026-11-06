@@ -8,6 +8,11 @@ use App\Models\ContactMessage;
 use App\Services\Storefront\ContactPageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use RuntimeException;
+use Throwable;
 use App\Services\Email\TransactionalEmailManager;
 
 class ContactController extends Controller
@@ -35,32 +40,49 @@ class ContactController extends Controller
 
     public function store(StoreContactMessageRequest $request): RedirectResponse
     {
-        $data = $request->safe()->except(['company', 'g-recaptcha-response']);
+        $data = $request->safe()->except(['company', 'g-recaptcha-response', 'attachment']);
         $hashKey = (string) config('app.key');
         $ip = $request->ip();
         $userAgent = trim((string) $request->userAgent());
 
-        $contact = ContactMessage::create([
-            ...$data,
+        // A contact attachment is private, never published under /storage or /media.
+        // Keep the database and uploaded file together; delete any orphan on failure.
+        $storedPath = null;
+        try {
+            $contact = DB::transaction(function () use ($request, $data, $ip, $hashKey, $userAgent, &$storedPath): ContactMessage {
+                $contact = ContactMessage::create([
+                    ...$data,
+                    'status' => ContactMessage::STATUS_NEW,
+                    'ip_hash' => $ip ? hash_hmac('sha256', $ip, $hashKey) : null,
+                    'user_agent_hash' => $userAgent !== '' ? hash_hmac('sha256', $userAgent, $hashKey) : null,
+                ]);
 
-            'status' => ContactMessage::STATUS_NEW,
+                if ($request->hasFile('attachment')) {
+                    $file = $request->file('attachment');
+                    $storedPath = $file->store('contact-messages/'.$contact->id, 'local');
+                    if (! is_string($storedPath) || $storedPath === '') {
+                        throw new RuntimeException('The contact attachment could not be saved.');
+                    }
 
-            'ip_hash' => $ip
-                ? hash_hmac(
-                    'sha256',
-                    $ip,
-                    $hashKey
-                )
-                : null,
+                    $contact->update([
+                        'attachment_path' => $storedPath,
+                        'attachment_name' => Str::limit(basename(str_replace('\\', '/', $file->getClientOriginalName())), 255, ''),
+                        'attachment_mime' => (string) ($file->getMimeType() ?: 'application/octet-stream'),
+                        'attachment_size' => $file->getSize(),
+                    ]);
+                }
 
-            'user_agent_hash' => $userAgent !== ''
-                ? hash_hmac(
-                    'sha256',
-                    $userAgent,
-                    $hashKey
-                )
-                : null,
-        ]);
+                return $contact;
+            });
+        } catch (Throwable $exception) {
+            if (is_string($storedPath) && $storedPath !== '') {
+                Storage::disk('local')->delete($storedPath);
+            }
+            report($exception);
+
+            return back()->withInput($request->except('attachment', 'g-recaptcha-response'))
+                ->withErrors(['attachment' => 'Your message could not be saved. Please try again.']);
+        }
 
         $this->emails->contactReceived($contact);
 

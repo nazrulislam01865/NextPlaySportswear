@@ -30,6 +30,7 @@ class ContactPageService
                 'address' => (string) (config('storefront.address') ?: '[Office address]'),
                 'email_title' => 'Email',
                 'email' => (string) (config('storefront.email') ?: '[Email address]'),
+                'show_whatsapp_contact' => false,
                 'whatsapp_title' => 'WhatsApp',
                 'whatsapp_number' => $rawWa ?: '+44 7000 000000',
                 'whatsapp_link_text' => 'Chat on WhatsApp',

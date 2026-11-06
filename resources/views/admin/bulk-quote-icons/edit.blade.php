@@ -18,7 +18,7 @@
         </section>
 
         @if(session('status'))
-            <div class="np-bqic-feedback np-bqic-feedback--success" role="status">{{ session('status') }}</div>
+            <div data-admin-flash class="np-bqic-feedback np-bqic-feedback--success" role="status">{{ session('status') }}</div>
         @endif
         @if($errors->has('icons'))
             <div class="np-bqic-feedback np-bqic-feedback--error" role="alert">{{ $errors->first('icons') }}</div>

@@ -4313,6 +4313,150 @@ const setupLiveProductSections = () => {
     }
 };
 
+// The catalog filter is a floating desktop rail, not a nested scroll pane.
+// Product-grid scrolling must never move the filter's starting options out
+// of view. Only scrolling *over the filter itself* pans an unusually long
+// filter, using the PAGE scrollbar and never a second scrollbar.
+const setupCatalogStickyFilterRails = () => {
+    const rails = [...document.querySelectorAll('.np-product-layout.has-filters > .np-filter-shell--clean')];
+    if (!rails.length) return;
+
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const margin = 16;
+    const states = rails.map((rail) => ({
+        rail,
+        grid: rail.parentElement,
+        minimum: 0,
+        maximum: 0,
+        offset: null,
+        touchY: null,
+    }));
+    let frame = 0;
+
+    const clamp = (number, low, high) => Math.max(low, Math.min(high, number));
+    const headerBottom = () => {
+        const header = document.querySelector('.storefront-site-header');
+        const bottom = header ? Math.max(0, header.getBoundingClientRect().bottom) : 0;
+        return Math.min(window.innerHeight - 48, Math.max(margin, bottom + margin));
+    };
+    const setOffset = (state, offset) => {
+        const next = clamp(offset, state.minimum, state.maximum);
+        if (state.offset === next) return;
+        state.offset = next;
+        state.rail.style.setProperty('--np-catalog-filter-sticky-top', `${next}px`);
+    };
+
+    const measure = () => {
+        frame = 0;
+        const top = headerBottom();
+        const bottom = window.innerHeight - margin;
+        states.forEach((state) => {
+            const { rail, grid } = state;
+            if (!rail.isConnected) return;
+            if (!desktop.matches) {
+                rail.style.removeProperty('--np-catalog-filter-sticky-top');
+                rail.classList.remove('np-filter-rail--long', 'np-filter-rail--compact');
+                grid?.style.removeProperty('min-height');
+                state.offset = null;
+                return;
+            }
+            const height = rail.getBoundingClientRect().height;
+            state.maximum = top;
+            state.minimum = Math.min(top, bottom - height);
+            rail.classList.toggle('np-filter-rail--long', state.minimum < top);
+            rail.classList.toggle('np-filter-rail--compact', state.minimum === top);
+            setOffset(state, state.offset === null ? top : state.offset);
+
+            // A short result list must still have enough page length to
+            // expose every expanded filter option without an inner scrollbar.
+            if (grid) {
+                const results = [...grid.children].find((child) => child !== rail);
+                const resultHeight = results?.getBoundingClientRect().height ?? 0;
+                const required = height + (state.minimum < top ? bottom - top : 0);
+                if (resultHeight + 1 < required && state.minimum < top) {
+                    grid.style.minHeight = `${Math.ceil(required)}px`;
+                } else {
+                    grid.style.removeProperty('min-height');
+                }
+            }
+        });
+    };
+    const scheduleMeasure = () => {
+        if (frame) return;
+        frame = window.requestAnimationFrame(measure);
+    };
+    const pan = (state, delta) => {
+        if (!desktop.matches || state.offset === null || state.minimum >= state.maximum) return;
+        // Wait for the rail to enter its sticky region, rather than shifting
+        // it upwards while the page has not reached the listing yet.
+        if (delta > 0 && state.rail.getBoundingClientRect().top > state.maximum + 2) return;
+        setOffset(state, state.offset - delta);
+    };
+    const reset = () => {
+        if (!desktop.matches) return;
+        states.forEach((state) => {
+            if (state.offset !== null) setOffset(state, state.maximum);
+        });
+    };
+
+    states.forEach((state) => {
+        const { rail } = state;
+        rail.addEventListener('wheel', (event) => {
+            if (event.ctrlKey) return; // trackpad pinch-to-zoom
+            const multiplier = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1;
+            pan(state, event.deltaY * multiplier);
+            // Do not cancel the event: only the document/page scrolls.
+        }, { passive: true });
+        rail.addEventListener('touchstart', (event) => {
+            state.touchY = event.touches[0]?.clientY ?? null;
+        }, { passive: true });
+        rail.addEventListener('touchmove', (event) => {
+            const y = event.touches[0]?.clientY;
+            if (state.touchY === null || y === undefined) return;
+            pan(state, state.touchY - y);
+            state.touchY = y;
+        }, { passive: true });
+        rail.addEventListener('touchend', () => { state.touchY = null; }, { passive: true });
+        rail.addEventListener('keydown', (event) => {
+            if (['PageDown', 'PageUp', 'ArrowDown', 'ArrowUp'].includes(event.key)) {
+                const amount = event.key.startsWith('Page') ? window.innerHeight * 0.75 : 50;
+                pan(state, amount * (event.key.endsWith('Down') ? 1 : -1));
+            }
+        });
+        rail.addEventListener('focusin', (event) => {
+            if (!desktop.matches) return;
+            window.requestAnimationFrame(() => {
+                if (!rail.contains(event.target)) return;
+                const rect = event.target.getBoundingClientRect();
+                const top = state.maximum + margin;
+                const bottom = window.innerHeight - margin;
+                if (rect.bottom > bottom) pan(state, rect.bottom - bottom);
+                else if (rect.top < top) pan(state, rect.top - top);
+            });
+        });
+        rail.addEventListener('toggle', scheduleMeasure, true);
+        // Expanding/collapsing a group does not change its scroll position.
+        // In particular, never rebase the sticky top on window.scrollY.
+    });
+
+    // A product-list wheel should keep the filter's *first* options visible;
+    // only deliberate interaction within the filter can reveal its lower
+    // options. This also avoids hiding category rows during page browsing.
+    window.addEventListener('wheel', (event) => {
+        if (!states.some((state) => state.rail.contains(event.target))) reset();
+    }, { capture: true, passive: true });
+    window.addEventListener('keydown', (event) => {
+        if (!states.some((state) => state.rail.contains(event.target))) reset();
+    }, { capture: true });
+    window.addEventListener('resize', scheduleMeasure, { passive: true });
+    window.addEventListener('pageshow', scheduleMeasure, { passive: true });
+    if ('ResizeObserver' in window) {
+        const observer = new ResizeObserver(scheduleMeasure);
+        states.forEach(({ rail }) => observer.observe(rail));
+    }
+    measure();
+};
+
 const bootStorefront = () => {
     setupGlobalImageFallbacks();
     setupStorefrontMenus();
@@ -4324,6 +4468,7 @@ const bootStorefront = () => {
     setupHomepageFaqs();
     setupStorefrontSearchSuggestions();
     setupProductCatalogPartialUpdates();
+    setupCatalogStickyFilterRails();
     setupHeaderAnalytics();
     setupCustomerRegistration();
     setupCustomerAuthInlineValidation();

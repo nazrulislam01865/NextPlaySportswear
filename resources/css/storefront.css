@@ -11557,48 +11557,8 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     padding: 0 0 .7rem;
 }
 
-/* Keep large desktop filter collections compact. Blade adds this class only
-   when a group contains more than 12 options. Mobile keeps one natural drawer
-   scroll area so touch users do not get nested scrolling. */
-@media (min-width: 1024px) {
-    .storefront-clean-ui .np-catalog-option-list--scroll {
-        max-height: 26.5rem;
-        overflow-y: auto;
-        overflow-x: hidden;
-        overscroll-behavior: contain;
-        scrollbar-gutter: stable;
-        padding-right: .35rem;
-        scrollbar-width: thin;
-        scrollbar-color: var(--np-color-border) transparent;
-    }
-
-    .storefront-clean-ui .np-catalog-option-list--scroll::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    .storefront-clean-ui .np-catalog-option-list--scroll::-webkit-scrollbar-track {
-        background: transparent;
-    }
-
-    .storefront-clean-ui .np-catalog-option-list--scroll::-webkit-scrollbar-thumb {
-        border-radius: 999px;
-        background: var(--np-color-border);
-    }
-
-    .storefront-clean-ui .np-catalog-category-tree.np-catalog-option-list--scroll {
-        max-height: 30rem;
-    }
-
-    .storefront-clean-ui .np-catalog-category-children.np-catalog-option-list--children {
-        max-height: 26.5rem;
-        margin-right: .2rem;
-    }
-
-    .storefront-clean-ui .np-catalog-color-grid.np-catalog-option-list--color {
-        max-height: 18rem;
-        align-content: start;
-    }
-}
+/* Catalog filter options always expand to their natural height on desktop.
+   The mobile drawer retains a single viewport-safe scroll region. */
 
 .storefront-clean-ui .np-catalog-filter-option {
     display: flex;
@@ -11923,9 +11883,9 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
         max-width: var(--np-catalog-filter-width);
     }
 
-    /* Keep the clean desktop filter rail visible while product results scroll.
-       Its options scroll internally when they exceed the viewport; the mobile
-       filter drawer retains its existing behavior. */
+    /* Let the desktop filter rail grow with expanded groups. Keep its width
+       stable, but use normal document scrolling instead of clipped, nested
+       scrollbars. Mobile continues to scroll only inside its modal drawer. */
     .storefront-clean-ui .np-filter-shell--clean {
         box-sizing: border-box;
         width: var(--np-catalog-filter-width);
@@ -11936,13 +11896,14 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
         max-inline-size: var(--np-catalog-filter-width);
         contain: inline-size;
         justify-self: start;
-        /* Account for the fixed desktop header (main bar + navigation) so
-           the filter title cannot slide behind it. Reserve room below, too. */
-        height: min(780px, calc(100vh - 10rem));
-        height: min(780px, calc(100dvh - 10rem));
-        overflow: hidden;
+        height: auto;
+        max-height: none;
+        overflow: visible;
+        /* Always sticky on desktop. A moving top offset makes very long
+           filters scroll with the page until their bottom is visible, then
+           remain anchored without a nested scrollbar or clipped options. */
         position: sticky;
-        top: 9rem;
+        top: var(--np-catalog-filter-sticky-top, 8rem);
         border: 0 !important;
         border-radius: 0 !important;
         background: transparent;
@@ -11950,12 +11911,28 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
         box-shadow: none !important;
     }
 
+    /* Both compact and long rails float. A long rail changes the sticky
+       top gradually as the PAGE scrolls, preserving access to every option. */
+    .storefront-clean-ui .np-filter-shell--clean.np-filter-rail--compact,
+    .storefront-clean-ui .np-filter-shell--clean.np-filter-rail--long {
+        position: sticky;
+        top: var(--np-catalog-filter-sticky-top, 8rem);
+        align-self: start;
+    }
+
+    .storefront-clean-ui .np-filter-shell--clean .np-catalog-filter-header {
+        position: static;
+        top: auto;
+        z-index: auto;
+    }
+
     .storefront-clean-ui .np-filter-shell--clean .np-catalog-filter-form {
         width: 100%;
         max-width: 100%;
         min-width: 0;
-        height: 100%;
-        overflow: hidden;
+        height: auto;
+        max-height: none;
+        overflow: visible;
         border-radius: 0;
         background: transparent;
     }
@@ -12005,11 +11982,11 @@ body :where(.text-4xl, .text-5xl, .text-6xl, .text-7xl) {
     }
 
     .storefront-clean-ui .np-filter-shell--clean .np-catalog-filter-scroll {
-        flex: 1 1 auto;
-        min-height: 0;
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        scrollbar-width: thin;
+        flex: 0 0 auto;
+        min-height: auto;
+        max-height: none;
+        overflow: visible;
+        overscroll-behavior: auto;
         padding: .8rem 0 1rem;
     }
 

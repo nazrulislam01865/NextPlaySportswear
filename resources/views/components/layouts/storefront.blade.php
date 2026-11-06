@@ -120,6 +120,9 @@
     {{-- Generated from the centralized theme + typography sources; loaded last
          so the approved homepage rules work on existing cloud builds too. --}}
     <link rel="stylesheet" href="{{ asset('css/storefront-typography.css') }}?v=20261102content-centralized1">
+    @if(request()->routeIs('contact'))
+        <link rel="stylesheet" href="{{ asset('css/nextplay-contact-artwork.css') }}?v=20261106a">
+    @endif
     @if(request()->routeIs('checkout.*', 'order.confirmation'))
         <link rel="stylesheet" href="{{ asset('css/nextplay-checkout.css') }}?v=20261031discount-sticky1">
         <script defer src="{{ asset('js/nextplay-checkout.js') }}?v=20261031phone-compact-v5"></script>

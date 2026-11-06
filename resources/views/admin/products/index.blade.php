@@ -135,9 +135,9 @@
                 <label class="product-filter-field product-production-filter-field">
                     <span class="sr-only">Production methods status</span>
                     <select class="admin-input product-control product-select-control" name="production_methods">
-                        <option value="">All production method products</option>
-                        <option value="enabled" @selected(($filters['production_methods'] ?? '') === 'enabled')>Enabled production method products</option>
-                        <option value="disabled" @selected(($filters['production_methods'] ?? '') === 'disabled')>Disabled production method products</option>
+                        <option value="">All production methods</option>
+                        <option value="enabled" @selected(($filters['production_methods'] ?? '') === 'enabled')>Production methods enabled</option>
+                        <option value="disabled" @selected(($filters['production_methods'] ?? '') === 'disabled')>Production methods disabled</option>
                     </select>
                     <span class="product-filter-select-icon" aria-hidden="true">
                         <svg viewBox="0 0 20 20" fill="none"><path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>

@@ -9,7 +9,7 @@
             save-label="Save Size Guide"
             :can-manage="$canManage"
         />
-        @if(session('status'))<div class="border border-green-200 bg-green-50 p-4 text-sm text-green-800" role="status">{{ session('status') }}</div>@endif
+        @if(session('status'))<div data-admin-flash class="border border-green-200 bg-green-50 p-4 text-sm text-green-800" role="status">{{ session('status') }}</div>@endif
         @if($errors->any())<div class="border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">Please correct the errors below. No changes were saved.</div>@endif
         <section class="border border-slate-200 bg-white p-5 sm:p-6 space-y-4">
             <h2 class="text-xl font-bold text-brand-ink">Page header</h2>

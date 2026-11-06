@@ -7,7 +7,7 @@
     </div>
 
     @if (session('status'))
-        <div class="mb-5 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-bold text-green-800">{{ session('status') }}</div>
+        <div data-admin-flash class="mb-5 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-bold text-green-800">{{ session('status') }}</div>
     @endif
 
     <form class="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card sm:grid-cols-[1fr_180px_auto]" method="GET">

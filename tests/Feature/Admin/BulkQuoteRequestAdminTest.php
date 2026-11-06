@@ -24,7 +24,7 @@ class BulkQuoteRequestAdminTest extends TestCase
         ]));
 
         $response->assertOk()
-            ->assertSee('Requested Bulk Quotes')
+            ->assertSee('Bulk Quote Requests')
             ->assertSee($matching->reference)
             ->assertDontSee('BQ-TEST-OTHER');
     }
@@ -271,14 +271,26 @@ class BulkQuoteRequestAdminTest extends TestCase
         $response = $this->actingAs($admin, 'admin')->get(route('admin.bulk-quotes.download-document', $quote));
         $response->assertOk()->assertDownload('NextPlay_Quote_Request_'.$quote->reference.'.docx');
         $docx = $response->baseResponse->getFile()->getPathname();
-        $archive = new \PharData($docx, 0, null, \Phar::ZIP);
-        $this->assertTrue(isset($archive['word/document.xml']));
-        $this->assertTrue(isset($archive['word/media/image2.png']));
-        $contents = $archive['word/document.xml']->getContent();
-        $this->assertStringContainsString('team-artwork.png', $contents);
-        $this->assertStringContainsString('Embedded Artwork', $contents);
-        unset($archive);
-        @unlink($docx);
+        try {
+            // LibreOffice-generated OOXML may use ZIP data descriptors that
+            // PharData cannot read reliably (notably on macOS PHP builds).
+            // Read the actual DOCX entries using a standard ZIP reader.
+            $contents = $this->docxEntry($docx, 'word/document.xml');
+            $this->assertStringContainsString('team-artwork.png', $contents);
+            $this->assertStringContainsString('Embedded Artwork', $contents);
+            // LibreOffice can deduplicate the logo/artwork (this fixture
+            // uses the same image bytes) and renumber OOXML media entries.
+            // Verify actual document relationships instead of image2.png.
+            $relationships = $this->docxEntry($docx, 'word/_rels/document.xml.rels');
+            preg_match_all('~Target="media/([^"<>]+)"~', $relationships, $matches);
+            $this->assertNotEmpty($matches[1], 'Word export must have an embedded image relationship.');
+            foreach (array_unique($matches[1]) as $mediaFile) {
+                $this->assertNotEmpty($this->docxEntry($docx, 'word/media/'.$mediaFile));
+            }
+            $this->assertStringContainsString('<w:drawing', $contents);
+        } finally {
+            @unlink($docx);
+        }
     }
 
     public function test_word_export_uses_the_uploaded_storefront_header_logo(): void
@@ -302,11 +314,11 @@ class BulkQuoteRequestAdminTest extends TestCase
             $response->assertOk()->assertDownload();
 
             $path = $response->baseResponse->getFile()->getPathname();
-            $archive = new \PharData($path, 0, null, \Phar::ZIP);
-            $this->assertTrue(isset($archive['word/media/image1.png']));
-            $this->assertSame($logo, $archive['word/media/image1.png']->getContent());
-            unset($archive);
-            @unlink($path);
+            try {
+                $this->assertSame($logo, $this->docxEntry($path, 'word/media/image1.png'));
+            } finally {
+                @unlink($path);
+            }
         } finally {
             \App\Support\StorefrontBranding::flushCache();
         }
@@ -325,6 +337,29 @@ class BulkQuoteRequestAdminTest extends TestCase
             ->get(route('admin.bulk-quotes.attachment', $quote).'?preview=1')
             ->assertOk()
             ->assertHeader('content-disposition', 'inline; filename="artwork.pdf"');
+    }
+
+    /** Read a real OOXML ZIP entry without relying on PharData's ZIP parser. */
+    private function docxEntry(string $path, string $entry): string
+    {
+        if (class_exists(\ZipArchive::class)) {
+            $zip = new \ZipArchive();
+            $this->assertSame(true, $zip->open($path), 'DOCX must open as a valid ZIP archive.');
+            try {
+                $contents = $zip->getFromName($entry);
+                $this->assertNotFalse($contents, 'DOCX is missing '.$entry);
+                return $contents;
+            } finally {
+                $zip->close();
+            }
+        }
+
+        // The project also runs with PHP builds lacking ext-zip. macOS and
+        // Linux ship the unzip utility, which checks the same archive entries.
+        $process = new \Symfony\Component\Process\Process(['unzip', '-p', $path, $entry]);
+        $process->run();
+        $this->assertTrue($process->isSuccessful(), 'DOCX is missing or cannot read '.$entry.': '.$process->getErrorOutput());
+        return $process->getOutput();
     }
 
     /** @param array<string,mixed> $overrides */

@@ -49,9 +49,9 @@
                                 @csrf
                                 <button type="submit" title="Duplicate" aria-label="Duplicate {{ $template->name }}">▣</button>
                             </form>
-                            <details class="pt-menu">
-                                <summary aria-label="More actions for {{ $template->name }}">⋯</summary>
-                                <div>
+                            <div class="pt-menu" data-pt-action-menu>
+                                <button type="button" class="pt-menu-trigger" data-pt-action-trigger aria-label="More actions for {{ $template->name }}" aria-haspopup="true" aria-expanded="false" aria-controls="pt-actions-{{ $template->id }}">⋯</button>
+                                <div class="pt-menu-panel" id="pt-actions-{{ $template->id }}" hidden>
                                     <a href="{{ route('admin.personalization-templates.fields', $template) }}">Configure fields</a>
                                     @if($template->fields)
                                         <a href="{{ route('admin.personalization-templates.preview', $template) }}">Preview</a>
@@ -64,7 +64,7 @@
                                         </form>
                                     @endif
                                 </div>
-                            </details>
+                            </div>
                         </div>
                     </td>
                 </tr>

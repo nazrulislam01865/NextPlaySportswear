@@ -1,7 +1,5 @@
 @props(['category', 'filters', 'options', 'idPrefix' => 'category-filter'])
 
-@php($filterScrollThreshold = 12)
-
 <form method="GET" action="{{ $category['url'] }}" class="np-catalog-filter-form" data-product-filter-form aria-label="Filter products in this category">
     <div class="np-catalog-filter-header">
         <div>
@@ -26,7 +24,7 @@
         @if(($options['subcategories'] ?? []) !== [])
             <details class="np-catalog-filter-section" @if(($filters['subcategory'] ?? []) !== []) open @endif>
                 <summary class="np-catalog-filter-title"><span>Shop within {{ $category['short_title'] }}</span><span aria-hidden="true">+</span></summary>
-                <div class="np-catalog-filter-options @if(count($options['subcategories']) > $filterScrollThreshold) np-catalog-option-list--scroll @endif">
+                <div class="np-catalog-filter-options">
                     @foreach($options['subcategories'] as $option)
                         @php($fieldId = $idPrefix.'-subcategory-'.$option['id'])
                         <label class="np-catalog-filter-option" for="{{ $fieldId }}">

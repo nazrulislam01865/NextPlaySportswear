@@ -6,7 +6,7 @@
         @if($providerWarning)
             <p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900" role="alert">{{ $providerWarning }}</p>
         @endif
-        @if(session('status'))<p class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-800">{{ session('status') }}</p>@endif
+        @if(session('status'))<p data-admin-flash class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-800">{{ session('status') }}</p>@endif
         @if($errors->any())<div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">{{ $errors->first() }}</div>@endif
         <form method="POST" action="{{ route('admin.email-customization.forwarding.update') }}" class="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
             @csrf @method('PUT')

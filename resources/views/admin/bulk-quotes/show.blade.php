@@ -1,5 +1,6 @@
 @push('admin-page-styles')
     <link rel="stylesheet" href="{{ asset('css/admin-bulk-quote-detail.css') }}?v=20261029legible2">
+    <link rel="stylesheet" href="{{ asset('css/admin-bulk-quote-pricing.css') }}?v=20261106-currency-field-alignment-v2">
 @endpush
 <x-layouts.admin title="Bulk Quotation Request" :bulk-quote-detail="true">
     @php
@@ -21,7 +22,7 @@
         $currentStep = $bulkQuote->converted_order_id ? 4 : ($bulkQuote->quotation_version > 0 ? 3 : ($bulkQuote->status === 'new' ? 1 : 2));
         $hasQuotation = $bulkQuote->quotation_version > 0;
     @endphp
-    <div class="np-bq" x-data="{ tab: (new URLSearchParams(window.location.search)).get('tab') === 'messages' ? 'messages' : ((new URLSearchParams(window.location.search)).get('tab') === 'activity' ? 'activity' : 'details'), syncOpen: false }">
+    <div class="np-bq" x-data="{ tab: (new URLSearchParams(window.location.search)).get('tab') === 'messages' ? 'messages' : ((new URLSearchParams(window.location.search)).get('tab') === 'activity' ? 'activity' : 'details'), syncOpen: false }" :class="{ 'np-bq--quote-mode': tab === 'messages' && {{ $canManage ? 'true' : 'false' }} }">
         <div class="np-bq-topline">
             <div class="np-bq-heading-group">
                 <nav class="np-bq-breadcrumb" aria-label="Breadcrumb"><button type="button" class="np-bq-mobile-menu lg:hidden" @click="sidebarOpen = true" aria-label="Open navigation">☰</button><a href="{{ route('admin.bulk-quotes.index') }}">Bulk Quote Requests</a><span>/</span><span>Request Details</span></nav>
@@ -36,7 +37,7 @@
         </div>
 
         @if($canManage)
-            <x-admin.confirmation-forward-form :action="route('admin.bulk-quotes.forward', $bulkQuote)" :reference="$bulkQuote->reference" />
+            <div class="np-bq-forward-header"><x-admin.confirmation-forward-form :action="route('admin.bulk-quotes.forward', $bulkQuote)" :reference="$bulkQuote->reference" /></div>
         @endif
 
         @if($errors->any())
@@ -292,6 +293,11 @@
 
         <div x-show="tab === 'messages'" x-cloak class="np-bq-tab-content" role="tabpanel">
 
+            @if($canManage)
+                @include('admin.bulk-quotes.partials.quotation-editor')
+            @endif
+            <details class="np-quote-history">
+                <summary>Quotation documents &amp; customer messages <span>View history and reply</span></summary>
             @if($bulkQuote->guest_decision)
                 <x-admin.section-card title="Customer Decision" description="The customer's latest response to your published quotation.">
                     <p class="text-sm font-semibold text-brand-dark">{{ str($bulkQuote->guest_decision)->headline() }}</p>
@@ -299,52 +305,6 @@
                         <a class="btn btn-white mt-3" href="{{ route('admin.orders.show', $bulkQuote->convertedOrder) }}">View Created Order {{ $bulkQuote->convertedOrder?->order_number }}</a>
                         <p class="mt-2 text-xs text-slate-500">This is a manual quotation invoice order. Payment has not been collected yet.</p>
                     @endif
-                </x-admin.section-card>
-            @endif
-            @if($canManage)
-                <x-admin.section-card title="Prepare & Send Quotation" description="Upload your finalized quotation and publish it to the customer quote pages. Each publication creates a new version; previous files remain in the admin history.">
-                    <form action="{{ route('admin.bulk-quotes.publish', $bulkQuote) }}" method="POST" enctype="multipart/form-data">
-                        @csrf
-                        @php
-                            $quoteDetails = (array) $bulkQuote->quotation_details;
-                        @endphp
-                        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                            <label><span class="admin-label">Final quantity *</span><input class="admin-input" type="number" min="1" name="quantity" required value="{{ old('quantity', $quoteDetails['quantity'] ?? '') }}"></label>
-                            <label><span class="admin-label">Subtotal (USD) *</span><input class="admin-input" type="number" step="0.01" min="0" name="subtotal" required value="{{ old('subtotal', $quoteDetails['subtotal'] ?? '') }}"></label>
-                            <label><span class="admin-label">Customization (USD) *</span><input class="admin-input" type="number" step="0.01" min="0" name="customization" required value="{{ old('customization', $quoteDetails['customization'] ?? '0') }}"></label>
-                            <label><span class="admin-label">Shipping (USD) *</span><input class="admin-input" type="number" step="0.01" min="0" name="shipping" required value="{{ old('shipping', $quoteDetails['shipping'] ?? '0') }}"></label>
-                            <label><span class="admin-label">Valid Until *</span><input class="admin-input" type="date" name="valid_until" required min="{{ now()->toDateString() }}" value="{{ old('valid_until', $bulkQuote->quotation_valid_until?->toDateString() ?? now()->addDays(30)->toDateString()) }}"></label>
-                            <label><span class="admin-label">Shipping Method</span><input class="admin-input" name="shipping_method" maxlength="160" value="{{ old('shipping_method', $quoteDetails['shipping_method'] ?? '') }}"></label>
-                            <label class="md:col-span-2"><span class="admin-label">Payment Terms *</span><input class="admin-input" name="payment_terms" required maxlength="1000" value="{{ old('payment_terms', $quoteDetails['payment_terms'] ?? '') }}" placeholder="Example: 50% deposit; balance before dispatch"></label>
-                            <label class="md:col-span-2"><span class="admin-label">Quotation Notes</span><textarea class="admin-textarea min-h-[74px]" name="quotation_notes" maxlength="2500">{{ old('quotation_notes', $quoteDetails['quotation_notes'] ?? '') }}</textarea></label>
-                            <div class="md:col-span-2 space-y-2">
-                                @if($canManage && filled($bulkQuote->flowtrack_offer_manifest_hash) && ! $offerReady)
-                                    <p class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">FlowTracker quotation files are being transferred. You can publish after all files arrive, or upload a quotation manually.</p>
-                                @endif
-                                @if($transferredOffers->isNotEmpty())
-                                    <label class="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-brand-dark">
-                                        <input type="checkbox" name="use_flowtrack_offer" value="1" @checked(old('use_flowtrack_offer', '1') === '1')>
-                                        <span><strong>Use offer files received from FlowTracker ({{ $transferredOffers->count() }})</strong>
-                                            <span class="mt-1 block text-xs text-slate-600">These private files came from the completed “Send Offer to Client” task. They will be copied into the quotation when you publish, without another upload.</span>
-                                        </span>
-                                    </label>
-                                    <div class="space-y-1 pl-3 text-xs text-slate-600">
-                                        @foreach($transferredOffers as $offer)
-                                            <a class="block underline" href="{{ route('admin.bulk-quotes.file', [$bulkQuote, $offer]) }}">{{ $offer->original_name }}</a>
-                                        @endforeach
-                                    </div>
-                                @endif
-                                <label><span class="admin-label">{{ $transferredOffers->isNotEmpty() ? 'Optional additional quotation files' : 'Quotation Files *' }} (1–8 PDF, images or Excel files, 10 MB each)</span>
-                                    <input class="admin-input" type="file" name="files[]" accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx" multiple
-                                        @if($transferredOffers->isEmpty())
-                                            required
-                                        @endif
-                                    >
-                                </label>
-                            </div>
-                        </div>
-                        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4"><p class="text-xs text-slate-500">Current version: {{ $bulkQuote->quotation_version }} · New version: {{ $bulkQuote->quotation_version + 1 }} · Publish notifies the customer's original email.</p><button class="btn btn-red" type="submit">Publish Quotation & Notify Customer</button></div>
-                    </form>
                 </x-admin.section-card>
             @endif
             <x-admin.section-card title="Quotation Documents & Customer Messages" description="Private quotation files and customer feedback are linked to this request, visible to authorized administrators only.">
@@ -397,6 +357,7 @@
                     </div>
                 </div>
             </x-admin.section-card>
+            </details>
         </div>
         <div x-show="tab === 'activity'" x-cloak class="np-bq-tab-content" role="tabpanel">
             <x-admin.bulk-quote-card title="Workflow Activity" icon="clock">
@@ -418,4 +379,5 @@
             </x-admin.bulk-quote-card>
         </div>
     </div>
+<script defer src="{{ asset('js/admin-bulk-quote-pricing.js') }}?v=20261106-currency-field-alignment-v2"></script>
 </x-layouts.admin>

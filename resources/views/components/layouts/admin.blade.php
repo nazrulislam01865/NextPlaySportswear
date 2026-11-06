@@ -1,4 +1,20 @@
 @props(['title' => 'Admin', 'eyebrow' => null, 'subtitle' => null, 'compactHeader' => false, 'storefrontUrl' => null, 'mediaGalleryHeader' => false, 'bulkQuoteDetail' => false])
+@php
+    // Single route gate for this incremental Catalog design-system rollout.
+    // The Admin layout, shared sidebar, permissions, and non-Catalog screens
+    // remain unchanged. All listed subroutes inherit the same controls.
+    $catalogDesignSystemActive = request()->routeIs(
+        'admin.dashboard',
+        'admin.products.*',
+        'admin.product-detail-controls.*',
+        'admin.media-library.*',
+        'admin.categories.*',
+        'admin.attributes.*',
+        'admin.menus.*',
+        'admin.personalization-categories.*',
+        'admin.personalization-templates.*'
+    );
+@endphp
 <!doctype html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
@@ -11,6 +27,15 @@
     <link rel="icon" href="{{ \App\Support\StorefrontBranding::faviconUrl() }}">
     <x-admin.sidebar-prepaint-state />
     @vite(['resources/css/admin.css', 'resources/js/admin.js'])
+    {{-- Catalog design controls: one opt-in stylesheet, shared across the selected
+         Catalog pages and their subpages. Existing routes and behavior unchanged. --}}
+    @if($catalogDesignSystemActive)
+        <link rel="stylesheet" href="{{ asset('css/nextplay-admin-catalog-design-system-20261104.css') }}?v=1">
+    @endif
+    {{-- Shared admin UX fixes ship as versioned public assets (no Vite rebuild required). --}}
+    <link rel="stylesheet" href="{{ asset('css/nextplay-admin-ui-fixes-20261104.css') }}?v=1">
+    <link rel="stylesheet" href="{{ asset('css/nextplay-admin-alignment-fixes-20261104b.css') }}?v=2">
+    <script defer src="{{ asset('js/nextplay-admin-ui-fixes-20261104.js') }}?v=1"></script>
     @stack('admin-page-styles')
     @php
         $adminPusherEnabled = filled(config('services.pusher.key'))
@@ -23,7 +48,11 @@
     @endphp
 </head>
 <body
-    class="admin-clean-ui admin-ui-compact"
+    @class([
+        'admin-clean-ui',
+        'admin-ui-compact',
+        'np-catalog-system' => $catalogDesignSystemActive,
+    ])
     x-data="{ sidebarOpen: false }"
     x-effect="document.documentElement.classList.toggle('overflow-hidden', sidebarOpen)"
     @keydown.escape.window="sidebarOpen = false"
@@ -168,7 +197,7 @@
                     <x-admin.sidebar-group
                         label="Master Data"
                         icon="◈"
-                        :active="$isCustomizationActive || request()->routeIs('admin.personalization-templates.*') || $isSizeOptionActive || $isTrainingVestCustomizationActive || $isWorldCupCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*') || request()->routeIs('admin.faqs.*') || request()->routeIs('admin.genders.*') || request()->routeIs('admin.time-zones.*') || request()->routeIs('admin.country-calling-codes.*') || request()->routeIs('admin.country-regions.*') || request()->routeIs('admin.country-geography.*') || request()->routeIs('admin.bulk-quote-budget-ranges.*') || request()->routeIs('admin.artwork-preferences.*')"
+                        :active="$isCustomizationActive || request()->routeIs('admin.personalization-templates.*') || $isSizeOptionActive || $isTrainingVestCustomizationActive || $isWorldCupCustomizationActive || request()->routeIs('admin.production-methods.*') || request()->routeIs('admin.shipping-methods.*') || request()->routeIs('admin.faqs.*') || request()->routeIs('admin.genders.*') || request()->routeIs('admin.time-zones.*') || request()->routeIs('admin.country-calling-codes.*') || request()->routeIs('admin.country-regions.*') || request()->routeIs('admin.country-geography.*') || request()->routeIs('admin.bulk-quote-budget-ranges.*') || request()->routeIs('admin.bulk-quote-payment-terms.*') || request()->routeIs('admin.artwork-preferences.*')"
                     >
                         @if($canAdmin('customization.view'))
                         @foreach($primaryCustomizationMenuGroups as $groupKey => $customizationGroup)
@@ -309,6 +338,12 @@
                                 :active="request()->routeIs('admin.personalization-templates.*')"
                             >{{ $trailingMasterDataNumbers['personalization_templates'] }} Personalization Templates</x-admin.sidebar-sub-link>
                         @endif
+                        @if($canAdmin('orders.view'))
+                            <x-admin.sidebar-sub-link
+                                :href="route('admin.bulk-quote-payment-terms.index')"
+                                :active="request()->routeIs('admin.bulk-quote-payment-terms.*')"
+                            >{{ $trailingMasterDataNumbers['bulk_quote_payment_terms'] }} Quotation Payment Terms</x-admin.sidebar-sub-link>
+                        @endif
                     </x-admin.sidebar-group>
                 @endif
 
@@ -354,38 +389,45 @@
                     @if($canAdmin('storefront_branding.view'))
                         <x-admin.sidebar-link :href="route('admin.bulk-quote-icons.edit')" :active="request()->routeIs('admin.bulk-quote-icons.*')" icon="▧">Bulk Quote Icons</x-admin.sidebar-link>
                     @endif
+                    {{-- Customer-facing pages and content settings share one permission-aware navigation group. --}}
+                    @if($canAdmin('about_page.view') || $canAdmin('shipping_delivery_page.view') || $canAdmin('size_guide_page.view') || $canAdmin('artwork_guidelines_page.view') || $canAdmin('how_to_order_page.view') || $canAdmin('returns_policy_page.view') || $canAdmin('contact_page.view') || $canAdmin('terms_page.view') || $canAdmin('privacy_page.view') || $canAdmin('payment_page.view') || $canAdmin('sustainability_page.view') || $canAdmin('homepage_sections.view') || $canAdmin('homepage_slides.view') || $canAdmin('newsletters.view'))
+                        <x-admin.sidebar-group
+                            label="Storefront Settings"
+                            icon="▤"
+                            :active="request()->routeIs('admin.about-page.*', 'admin.shipping-delivery-page.*', 'admin.size-guide-page.*', 'admin.artwork-guidelines-page.*', 'admin.how-to-order-page.*', 'admin.returns-policy-page.*', 'admin.contact-page.*', 'admin.terms-page.*', 'admin.payment-page.*', 'admin.privacy-page.*', 'admin.sustainability-page.*', 'admin.homepage.*', 'admin.homepage-slides.*', 'admin.newsletter-subscribers.*')"
+                        >
                     @if($canAdmin('about_page.view'))
-                        <x-admin.sidebar-link :href="route('admin.about-page.edit')" :active="request()->routeIs('admin.about-page.*')" icon="◫">About Page</x-admin.sidebar-link>
+                        <x-admin.sidebar-sub-link :href="route('admin.about-page.edit')" :active="request()->routeIs('admin.about-page.*')">About Page</x-admin.sidebar-sub-link>
                     @endif
                     @if($canAdmin('shipping_delivery_page.view'))
-                        <x-admin.sidebar-link :href="route('admin.shipping-delivery-page.edit')" :active="request()->routeIs('admin.shipping-delivery-page.*')" icon="▤">Shipping & Delivery Page</x-admin.sidebar-link>
+                        <x-admin.sidebar-sub-link :href="route('admin.shipping-delivery-page.edit')" :active="request()->routeIs('admin.shipping-delivery-page.*')">Shipping & Delivery Page</x-admin.sidebar-sub-link>
                     @endif
                     @if($canAdmin('size_guide_page.view'))
-                        <x-admin.sidebar-link :href="route('admin.size-guide-page.edit')" :active="request()->routeIs('admin.size-guide-page.*')" icon="▥">Size Guide Page</x-admin.sidebar-link>
+                        <x-admin.sidebar-sub-link :href="route('admin.size-guide-page.edit')" :active="request()->routeIs('admin.size-guide-page.*')">Size Guide Page</x-admin.sidebar-sub-link>
                     @endif
                     @if($canAdmin('artwork_guidelines_page.view'))
-                        <x-admin.sidebar-link :href="route('admin.artwork-guidelines-page.edit')" :active="request()->routeIs('admin.artwork-guidelines-page.*')" icon="🎨">Artwork Guidelines</x-admin.sidebar-link>
+                        <x-admin.sidebar-sub-link :href="route('admin.artwork-guidelines-page.edit')" :active="request()->routeIs('admin.artwork-guidelines-page.*')">Artwork Guidelines</x-admin.sidebar-sub-link>
                     @endif
                     @if($canAdmin('how_to_order_page.view'))
-                        <x-admin.sidebar-link :href="route('admin.how-to-order-page.edit')" :active="request()->routeIs('admin.how-to-order-page.*')" icon="📋">How to Order Page</x-admin.sidebar-link>
+                        <x-admin.sidebar-sub-link :href="route('admin.how-to-order-page.edit')" :active="request()->routeIs('admin.how-to-order-page.*')">How to Order Page</x-admin.sidebar-sub-link>
                     @endif
                     @if($canAdmin('returns_policy_page.view'))
-                        <x-admin.sidebar-link :href="route('admin.returns-policy-page.edit')" :active="request()->routeIs('admin.returns-policy-page.*')" icon="↩">Returns & Refunds Page</x-admin.sidebar-link>
+                        <x-admin.sidebar-sub-link :href="route('admin.returns-policy-page.edit')" :active="request()->routeIs('admin.returns-policy-page.*')">Returns & Refunds Page</x-admin.sidebar-sub-link>
                     @endif
                     @if($canAdmin('contact_page.view'))
-                        <x-admin.sidebar-link :href="route('admin.contact-page.edit')" :active="request()->routeIs('admin.contact-page.*')" icon="✉">Contact Us Page</x-admin.sidebar-link>
+                        <x-admin.sidebar-sub-link :href="route('admin.contact-page.edit')" :active="request()->routeIs('admin.contact-page.*')">Contact Us Page</x-admin.sidebar-sub-link>
                     @endif
                     @if($canAdmin('terms_page.view'))
-                        <x-admin.sidebar-link :href="route('admin.terms-page.edit')" :active="request()->routeIs('admin.terms-page.*')" icon="⚖">Terms & Conditions</x-admin.sidebar-link>
+                        <x-admin.sidebar-sub-link :href="route('admin.terms-page.edit')" :active="request()->routeIs('admin.terms-page.*')">Terms & Conditions</x-admin.sidebar-sub-link>
                     @endif
                     @if($canAdmin('payment_page.view'))
-                        <x-admin.sidebar-link :href="route('admin.payment-page.edit')" :active="request()->routeIs('admin.payment-page.*')" icon="▣">Payment Information Page</x-admin.sidebar-link>
+                        <x-admin.sidebar-sub-link :href="route('admin.payment-page.edit')" :active="request()->routeIs('admin.payment-page.*')">Payment Information Page</x-admin.sidebar-sub-link>
                     @endif
                     @if($canAdmin('privacy_page.view'))
-                        <x-admin.sidebar-link :href="route('admin.privacy-page.edit')" :active="request()->routeIs('admin.privacy-page.*')" icon="🔒">Privacy Policy Page</x-admin.sidebar-link>
+                        <x-admin.sidebar-sub-link :href="route('admin.privacy-page.edit')" :active="request()->routeIs('admin.privacy-page.*')">Privacy Policy Page</x-admin.sidebar-sub-link>
                     @endif
                     @if($canAdmin('sustainability_page.view'))
-                        <x-admin.sidebar-link :href="route('admin.sustainability-page.edit')" :active="request()->routeIs('admin.sustainability-page.*')" icon="♻">Sustainability Page</x-admin.sidebar-link>
+                        <x-admin.sidebar-sub-link :href="route('admin.sustainability-page.edit')" :active="request()->routeIs('admin.sustainability-page.*')">Sustainability Page</x-admin.sidebar-sub-link>
                     @endif
                     @if($canAdmin('homepage_sections.view'))
                         @php($homepageDefinitions = \App\Support\HomepageSectionRegistry::orderedDefinitions())
@@ -410,10 +452,12 @@
                             @endforeach
                         </x-admin.sidebar-group>
                     @elseif($canAdmin('homepage_slides.view'))
-                        <x-admin.sidebar-link :href="route('admin.homepage-slides.index')" :active="request()->routeIs('admin.homepage-slides.*')" icon="▧">Homepage Slider</x-admin.sidebar-link>
+                        <x-admin.sidebar-sub-link :href="route('admin.homepage-slides.index')" :active="request()->routeIs('admin.homepage-slides.*')">Homepage Slider</x-admin.sidebar-sub-link>
                     @endif
                     @if($canAdmin('newsletters.view'))
-                        <x-admin.sidebar-link :href="route('admin.newsletter-subscribers.index')" :active="request()->routeIs('admin.newsletter-subscribers.*')" icon="@">Newsletter Emails</x-admin.sidebar-link>
+                        <x-admin.sidebar-sub-link :href="route('admin.newsletter-subscribers.index')" :active="request()->routeIs('admin.newsletter-subscribers.*')">Newsletter Emails</x-admin.sidebar-sub-link>
+                    @endif
+                        </x-admin.sidebar-group>
                     @endif
                     @if($canAdmin('email_customization.view') || $canAdmin('email_customization.manage') || $canAdmin('storefront_branding.view'))
                         <x-admin.sidebar-group
@@ -543,7 +587,7 @@
 
             <main id="admin-main-content" tabindex="-1" class="min-w-0 p-4 sm:p-6 lg:p-8">
                 @if (session('status') && ! request()->routeIs('admin.email-customization.*', 'admin.holiday-calendars.*', 'admin.coupons.index', 'admin.promotions.sales.index', 'admin.storefront-branding.edit', 'admin.about-page.edit', 'admin.shipping-delivery-page.edit', 'admin.size-guide-page.edit', 'admin.artwork-guidelines-page.edit', 'admin.how-to-order-page.edit', 'admin.returns-policy-page.edit', 'admin.contact-page.edit', 'admin.terms-page.edit', 'admin.privacy-page.edit', 'admin.payment-page.edit', 'admin.sustainability-page.edit'))
-                    <div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
+                    <div data-admin-flash role="status" class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
                 @endif
                 @if ($errors->any() && ! request()->routeIs('admin.products.create', 'admin.products.edit', 'admin.homepage.sections.edit', 'admin.menus.create', 'admin.menus.edit', 'admin.email-customization.*', 'admin.holiday-calendars.*', 'admin.categories.create', 'admin.coupons.create', 'admin.coupons.edit', 'admin.storefront-branding.edit', 'admin.about-page.edit', 'admin.shipping-delivery-page.edit', 'admin.size-guide-page.edit', 'admin.artwork-guidelines-page.edit', 'admin.how-to-order-page.edit', 'admin.returns-policy-page.edit', 'admin.contact-page.edit', 'admin.terms-page.edit', 'admin.privacy-page.edit', 'admin.payment-page.edit', 'admin.sustainability-page.edit', 'admin.users.index', 'admin.role-matrix.index', 'admin.bulk-quotes.show', 'admin.personalization-templates.*'))
                     <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">

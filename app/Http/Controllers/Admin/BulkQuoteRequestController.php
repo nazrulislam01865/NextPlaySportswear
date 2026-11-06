@@ -123,6 +123,10 @@ class BulkQuoteRequestController extends Controller
 
         return view('admin.bulk-quotes.show', [
             'bulkQuote' => $bulkQuote,
+            'paymentTermOptions' => auth('admin')->user()?->canAdmin('orders.manage')
+                ? \App\Models\BulkQuotePaymentTerm::query()->active()->ordered()->get(['id', 'label']) : collect(),
+            'quoteEditor' => auth('admin')->user()?->canAdmin('orders.manage')
+                ? app(\App\Services\BulkQuote\BulkQuoteQuotationEditor::class)->prepare($bulkQuote) : [],
             'guestFiles' => $guestFiles,
             'guestMessages' => $guestMessages,
             'activities' => $activities,

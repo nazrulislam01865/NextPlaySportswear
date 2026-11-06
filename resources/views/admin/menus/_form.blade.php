@@ -136,10 +136,13 @@
         description="Add, reorder, hide, or nest links. Reordering is limited to items at the same level so the hierarchy cannot be damaged accidentally."
     >
         <div class="space-y-4">
-            <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                <div class="flex flex-1 flex-col gap-2 sm:flex-row">
-                    <label class="relative block flex-1">
+            <div class="np-menu-toolbar flex flex-col xl:flex-row xl:items-center xl:justify-between">
+                <div class="np-menu-toolbar__left flex flex-1 flex-col sm:flex-row">
+                    <label class="np-admin-search-shell np-menu-toolbar__search">
                         <span class="sr-only">Search menu items</span>
+                        <span class="np-admin-search-shell__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none"><path d="m21 21-4.3-4.3M10.8 18.2a7.4 7.4 0 1 1 0-14.8 7.4 7.4 0 0 1 0 14.8Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        </span>
                         <input
                             type="search"
                             class="admin-input"
@@ -147,12 +150,12 @@
                             placeholder="Search menu items..."
                         >
                     </label>
-                    <div class="flex gap-2">
+                    <div class="np-menu-toolbar__buttons">
                         <button type="button" class="btn btn-white" x-on:click="setAllExpanded(true)">Expand all</button>
                         <button type="button" class="btn btn-white" x-on:click="setAllExpanded(false)">Collapse all</button>
                     </div>
                 </div>
-                <button type="button" class="btn btn-red shrink-0" x-on:click="addItem('')">+ Add top-level item</button>
+                <button type="button" class="btn btn-red np-menu-toolbar__primary shrink-0" x-on:click="addItem('')">+ Add top-level item</button>
             </div>
 
             <div class="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
