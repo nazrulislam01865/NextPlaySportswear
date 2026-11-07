@@ -12,6 +12,7 @@ final class EmailMessage
      * @param array<string, string> $details
      * @param array<int, string> $outroLines
      * @param array<int,array<string,mixed>> $attachments
+     * @param array<int,array{title:string,rows:array<int,array{label:string,value:string,depth:int,group:bool}>}> $sections
      * @param array<string, scalar|null> $metadata
      */
     public function __construct(
@@ -28,6 +29,7 @@ final class EmailMessage
         public ?string $replyToName = null,
         public array $metadata = [],
         public array $attachments = [],
+        public array $sections = [],
     ) {
         // Generated before queue dispatch so retries carry the same ID.
         $this->deliveryId = (string) \Illuminate\Support\Str::uuid();

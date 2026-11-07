@@ -3,6 +3,10 @@
 return [
     'name' => env('STOREFRONT_NAME', 'NextPlay Sportswear'),
 
+    // Checkout is temporarily closed to every customer, irrespective of .env values.
+    // Keep cart, catalog, quotes, and existing order/payment lifecycle available.
+    'checkout_enabled' => false,
+
     'tagline' => 'Custom sportswear, team uniforms, jerseys, hoodies, caps, bags, and promotional products.',
 
     'email' => env('STOREFRONT_EMAIL', 'support@example.com'),

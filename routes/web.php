@@ -667,7 +667,7 @@ Route::post('/track-order', [OrderController::class, 'lookup'])->middleware('thr
 Route::get('/invoice-download', [OrderController::class, 'invoice'])->name('orders.invoice.legacy');
 Route::get('/invoice/{orderNumber}', [OrderController::class, 'invoice'])->where('orderNumber', '[A-Za-z0-9\-]+')->name('orders.invoice');
 
-Route::prefix('checkout')->name('checkout.')->middleware(['not.admin', 'auth:web', 'customer', 'verified'])->group(function () {
+Route::prefix('checkout')->name('checkout.')->middleware([\App\Http\Middleware\EnsureCheckoutIsOpen::class, 'not.admin', 'auth:web', 'customer', 'verified'])->group(function () {
     Route::get('/referral', [CheckoutController::class, 'referral'])->name('referral');
     Route::post('/referral', [CheckoutController::class, 'storeReferral'])->middleware('throttle:checkout-step')->name('referral.store');
 
@@ -694,5 +694,6 @@ Route::prefix('checkout')->name('checkout.')->middleware(['not.admin', 'auth:web
 
     Route::get('/place-order', [CheckoutController::class, 'placeOrder'])->name('place-order');
     Route::post('/place-order', [CheckoutController::class, 'submitOrder'])->middleware('throttle:checkout-place-order')->name('place-order.submit');
-    Route::get('/success', [CheckoutController::class, 'success'])->name('success');
+    // Existing payment confirmations must remain accessible during the checkout pause.
+    Route::get('/success', [CheckoutController::class, 'success'])->withoutMiddleware(\App\Http\Middleware\EnsureCheckoutIsOpen::class)->name('success');
 });

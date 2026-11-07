@@ -25,6 +25,7 @@ final class ConfirmationForwarder
         private readonly EmailService $emails,
         private readonly ForwardingSettings $settings,
         private readonly OrderPdfService $pdf,
+        private readonly ForwardingEmailFormatter $formatter,
     ) {}
 
     public function order(Order $order, string $recipients, string $note, bool $automatic = false): void
@@ -46,10 +47,19 @@ final class ConfirmationForwarder
             'Payment method' => $this->asText((array) $order->payment_method),
             'Order information' => $this->asText((array) $order->information),
         ];
+        $products = [];
         foreach ($order->items as $index => $item) {
             $details['Product '.($index + 1)] = $item->product_name.' | SKU: '.$item->sku.' | Qty: '.$item->quantity
                 .' | Unit: '.$item->unit_price.' | Total: '.$item->line_total;
             $details['Product '.($index + 1).' customization'] = $this->asText((array) $item->customization);
+            $products['Product '.($index + 1)] = [
+                'Product name' => (string) $item->product_name,
+                'SKU' => (string) $item->sku,
+                'Quantity' => (string) $item->quantity,
+                'Unit price' => (string) $item->unit_price.' '.$order->currency,
+                'Item total' => (string) $item->line_total.' '.$order->currency,
+                'Customization' => (array) $item->customization,
+            ];
         }
         $details['Subtotal'] = (string) $order->subtotal.' '.$order->currency;
         $details['Customization total'] = (string) $order->customization_total.' '.$order->currency;
@@ -59,8 +69,39 @@ final class ConfirmationForwarder
         $details['Grand total'] = (string) $order->grand_total.' '.$order->currency;
         $details['Customer note'] = (string) $order->customer_note;
 
+        $sections = [
+            $this->formatter->section('Order overview', [
+                'Order number' => $details['Order number'],
+                'Placed' => $details['Placed'],
+                'Status' => $details['Status'],
+                'Payment status' => $details['Payment status'],
+            ]),
+            $this->formatter->section('Customer & addresses', [
+                'Customer name' => $details['Customer name'],
+                'Customer email' => $details['Customer email'],
+                'Customer phone' => $details['Customer phone'],
+                'Shipping address' => $shipping,
+                'Billing address' => $billing,
+            ]),
+            $this->formatter->section('Products & customization', $products),
+            $this->formatter->section('Shipping & payment', [
+                'Shipping method' => (array) $order->shipping_method,
+                'Payment method' => (array) $order->payment_method,
+                'Order information' => (array) $order->information,
+            ]),
+            $this->formatter->section('Order totals', [
+                'Subtotal' => $details['Subtotal'],
+                'Customization total' => $details['Customization total'],
+                'Discount' => $details['Discount'],
+                'Shipping' => $details['Shipping'],
+                'Tax' => $details['Tax'],
+                'Grand total' => $details['Grand total'],
+            ]),
+            $this->formatter->section('Customer notes', ['Note' => $details['Customer note']]),
+        ];
+
         $files = [
-            $this->dataFile('Order_'.$order->order_number.'_Details.txt', $this->summary($details), 'text/plain'),
+            $this->dataFile('Order_'.$order->order_number.'_Details.txt', $this->summary($sections), 'text/plain'),
             $this->dataFile('Order_'.$order->order_number.'_Invoice.pdf', $this->pdf->invoice($order), 'application/pdf'),
         ];
         foreach ($order->items as $index => $item) {
@@ -86,7 +127,7 @@ final class ConfirmationForwarder
                 $this->addStored($files, 'local', (string) $download->file_path, (string) ($download->original_name ?: 'order-document'), (string) $download->mime_type, 'download');
             }
         }
-        $this->deliver($recipients, $note, 'Order '.$order->order_number, $details, route('admin.orders.show', $order), $files, $automatic);
+        $this->deliver($recipients, $note, 'Order '.$order->order_number, $details, route('admin.orders.show', $order), $files, $automatic, sections: $sections);
     }
 
     public function quote(BulkQuoteRequest $quote, string $recipients, string $note, bool $automatic = false): void
@@ -116,7 +157,42 @@ final class ConfirmationForwarder
             'Customer notes' => (string) $quote->additional_notes,
             'Quotation details' => $this->asText((array) $quote->quotation_details),
         ];
-        $files = [$this->dataFile('Quote_'.$quote->reference.'_Details.txt', $this->summary($details), 'text/plain')];
+        $sections = [
+            $this->formatter->section('Quote overview', [
+                'Request reference' => $details['Request reference'],
+                'Submitted' => $details['Submitted'],
+                'Status' => $details['Status'],
+            ]),
+            $this->formatter->section('Customer details', [
+                'Customer name' => $details['Customer name'],
+                'Organization' => $details['Organization'],
+                'Customer email' => $details['Customer email'],
+                'Customer phone' => $details['Customer phone'],
+            ]),
+            $this->formatter->section('Products & requirements', [
+                'Product' => $details['Product'],
+                'Quantity' => $details['Quantity'],
+                'Sizes needed' => $details['Sizes needed'],
+                'Budget (submitted)' => $details['Budget (submitted)'],
+                'Customization' => $details['Customization'],
+                'Product information' => (array) $quote->product_information,
+                'Artwork instructions' => $details['Artwork instructions'],
+            ]),
+            $this->formatter->section('Delivery requirements', [
+                'Shipping address' => $details['Shipping address'],
+                'Country' => $details['Country'],
+                'State / Province' => $details['State / Province'],
+                'Postal code' => $details['Postal code'],
+                'Shipping method' => $details['Shipping method'],
+                'Needed by' => $details['Needed by'],
+                'Event date' => $details['Event date'],
+            ]),
+            $this->formatter->section('Quotation & notes', [
+                'Quotation details' => (array) $quote->quotation_details,
+                'Customer notes' => $details['Customer notes'],
+            ]),
+        ];
+        $files = [$this->dataFile('Quote_'.$quote->reference.'_Details.txt', $this->summary($sections), 'text/plain')];
         $original = (array) $quote->attachment;
         if (filled($original['path'] ?? null)) {
             $disk = ($original['disk'] ?? '') === 'local' ? 'local' : 'public';
@@ -134,7 +210,7 @@ final class ConfirmationForwarder
         foreach ($quote->quoteFiles()->get(['path', 'original_name', 'mime_type']) as $file) {
             $this->addStored($files, 'local', (string) $file->path, (string) $file->original_name, (string) $file->mime_type, 'quote');
         }
-        $this->deliver($recipients, $note, 'Bulk quote '.$quote->reference, $details, route('admin.bulk-quotes.show', $quote), $files, $automatic);
+        $this->deliver($recipients, $note, 'Bulk quote '.$quote->reference, $details, route('admin.bulk-quotes.show', $quote), $files, $automatic, sections: $sections);
     }
 
     /** Forward the complete submitted Contact Us message, not a truncated preview. */
@@ -154,7 +230,25 @@ final class ConfirmationForwarder
                 ? route('admin.contact-page.attachment', $contact) : '',
         ], static fn (mixed $value): bool => filled($value));
 
-        $files = [$this->dataFile('Contact_'.$contact->getKey().'_Details.txt', $this->summary($details), 'text/plain')];
+        $sections = [
+            $this->formatter->section('Enquiry overview', [
+                'Contact message ID' => $details['Contact message ID'] ?? '',
+                'Received' => $details['Received'] ?? '',
+                'Subject' => $details['Subject'] ?? '',
+                'Order / quote number' => $details['Order / quote number'] ?? '',
+            ]),
+            $this->formatter->section('Customer details', [
+                'Customer name' => $details['Customer name'] ?? '',
+                'Customer email' => $details['Customer email'] ?? '',
+                'Customer phone' => $details['Customer phone'] ?? '',
+            ]),
+            $this->formatter->section('Customer message', ['Message' => $details['Message'] ?? '']),
+            $this->formatter->section('Attached files', [
+                'Original attachment' => $details['Original attachment'] ?? '',
+                'Download attachment (admin login required)' => $details['Download attachment (admin login required)'] ?? '',
+            ]),
+        ];
+        $files = [$this->dataFile('Contact_'.$contact->getKey().'_Details.txt', $this->summary($sections), 'text/plain')];
 
         if (filled($contact->attachment_path)) {
             $path = (string) $contact->attachment_path;
@@ -177,7 +271,7 @@ final class ConfirmationForwarder
 
         $this->deliver($recipients, $note, 'Contact Us message #'.$contact->getKey(),
             $details, route('admin.contact-page.edit'), $files, $automatic,
-            replyTo: (string) $contact->email, replyToName: (string) $contact->name);
+            replyTo: (string) $contact->email, replyToName: (string) $contact->name, sections: $sections);
     }
 
     /** @param array<int,array<string,mixed>> $files */
@@ -206,7 +300,7 @@ final class ConfirmationForwarder
     }
 
     /** @param array<int,array<string,mixed>> $files @param array<string,string> $details */
-    private function deliver(string $recipients, string $note, string $subject, array $details, string $link, array $files, bool $automatic, ?string $replyTo = null, ?string $replyToName = null): void
+    private function deliver(string $recipients, string $note, string $subject, array $details, string $link, array $files, bool $automatic, ?string $replyTo = null, ?string $replyToName = null, array $sections = []): void
     {
         $bytes = 0;
         foreach ($files as $file) {
@@ -226,6 +320,7 @@ final class ConfirmationForwarder
             // Never discard the automatic alert just because the files are too large.
             // The authenticated admin link provides access to the source documents.
             $details['Attachments'] = 'Attachment limits exceeded; open the request in NextPlay Admin to download files.';
+            $sections[] = $this->formatter->section('Attachment notice', ['Files' => $details['Attachments']]);
             $files = [];
         }
         if (in_array((string) ($mailer['transport'] ?? ''), ['log', 'array'], true)) {
@@ -249,6 +344,7 @@ final class ConfirmationForwarder
             replyTo: $replyTo,
             replyToName: $replyToName,
             attachments: array_map(static function (array $file): array { unset($file['_size']); return $file; }, $files),
+            sections: $sections,
         );
         // Sending is immediate when invoked; automatic triggers run after the customer response.
         $this->emails->sendNow($message);
@@ -260,20 +356,17 @@ final class ConfirmationForwarder
         return ['type' => 'data', 'name' => $name, 'data' => $body, 'mime' => $mime];
     }
 
-    /** @param array<string,string> $details */
-    private function summary(array $details): string
+    /**
+     * @param array<int,array{title:string,rows:array<int,array{label:string,value:string,depth:int,group:bool}>}> $sections
+     */
+    private function summary(array $sections): string
     {
-        $lines = ['NEXTPLAY SPORTSWEAR', 'FORWARDED FOR CONFIRMATION', ''];
-        foreach ($details as $label => $value) {
-            $lines[] = $label.': '.$value;
-        }
-        return implode("\r\n", $lines)."\r\n";
+        return "NEXTPLAY SPORTSWEAR\r\nFORWARDED FOR CONFIRMATION\r\n\r\n"
+            .$this->formatter->sectionsText($sections)."\r\n";
     }
 
     private function asText(array $value): string
     {
-        // Keep complete source details, including custom product options and sizes.
-        $text = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
-        return $text !== false ? $text : '';
+        return $this->formatter->asText($value);
     }
 }

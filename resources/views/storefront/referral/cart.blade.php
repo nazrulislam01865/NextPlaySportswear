@@ -83,7 +83,12 @@
                             <div class="np-referral-summary-divider"></div>
                             <div class="np-referral-summary-total"><span>Estimated total<small>before delivery</small></span><strong>${{ number_format((float) ($cart['estimated_subtotal'] ?? $cart['total']), 2) }}</strong></div>
                             <div class="np-referral-summary-info"><x-storefront.referral.icon name="info" :size="24" /><p>The reward applies while your eligible items total at least £{{ number_format((float) ($offer['minimum_order'] ?? 0), 0) }}. If your total falls below that amount, the reward will be removed.</p></div>
-                            <a href="{{ $checkoutUrl }}" class="btn btn-secondary np-referral-checkout-button">PROCEED TO CHECKOUT <x-storefront.referral.icon name="arrow-right" :size="20" /></a>
+                            @if(config('storefront.checkout_enabled', false))
+                                <a href="{{ $checkoutUrl }}" class="btn btn-secondary np-referral-checkout-button">PROCEED TO CHECKOUT <x-storefront.referral.icon name="arrow-right" :size="20" /></a>
+                            @else
+                                <p class="mb-3 text-sm" role="status">Online checkout is temporarily unavailable. Your basket is still available.</p>
+                                <button type="button" class="btn btn-secondary np-referral-checkout-button opacity-50 cursor-not-allowed" disabled>CHECKOUT TEMPORARILY UNAVAILABLE</button>
+                            @endif
                         </div>
                     </aside>
                 </div>

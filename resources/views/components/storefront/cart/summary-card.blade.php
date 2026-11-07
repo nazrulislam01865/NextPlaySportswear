@@ -63,12 +63,21 @@
             Checkout is unavailable until the product configuration issue above is resolved.
         </p>
     @endif
+    @unless(config('storefront.checkout_enabled', false))
+        <p role="status" class="mb-3 border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            Online checkout is temporarily unavailable while we prepare our store. You can still add products to your cart.
+        </p>
+    @endunless
     <div class="np-cart-summary-actions">
-        <a
-            href="{{ route('checkout.index') }}"
-            class="btn btn-primary w-full {{ $cart['checkout_ready'] ? '' : 'pointer-events-none opacity-50' }}"
-            data-checkout-link
-        >Proceed to Checkout</a>
+        @if(config('storefront.checkout_enabled', false))
+            <a
+                href="{{ route('checkout.index') }}"
+                class="btn btn-primary w-full {{ $cart['checkout_ready'] ? '' : 'pointer-events-none opacity-50' }}"
+                data-checkout-link
+            >Proceed to Checkout</a>
+        @else
+            <button type="button" class="btn btn-primary w-full opacity-50 cursor-not-allowed" disabled>Checkout Temporarily Unavailable</button>
+        @endif
         <a href="{{ route('products.index') }}" class="btn btn-outline w-full">Continue Shopping</a>
     </div>
 

@@ -50,6 +50,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\EnforceCustomerSessionVersion::class,
         ]);
+
+        // Laravel prioritizes authentication route middleware by default.
+        // Check the checkout pause before auth so visitors are directed to the
+        // cart instead of the login page; this affects only checkout routes.
+        $middleware->prependToPriorityList(
+            \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+            \App\Http\Middleware\EnsureCheckoutIsOpen::class,
+        );
         $middleware->redirectGuestsTo(fn (Request $request): string => ($request->is('admin') || $request->is('admin/*'))
             ? route('admin.login')
             : route('login'));

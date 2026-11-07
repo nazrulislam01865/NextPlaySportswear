@@ -45,10 +45,13 @@ class TransactionalEmail extends Mailable
     {
         return new Content(
             view: match ($this->emailMessage->key) {
+                'admin.confirmation-auto-forward', 'admin.confirmation-forward' => 'emails.forwarded-request',
                 'customer.password-reset' => 'emails.customer-password-reset',
                 'customer.password-changed' => 'emails.customer-password-changed',
                 default => 'emails.transactional',
             },
+            text: in_array($this->emailMessage->key, ['admin.confirmation-auto-forward', 'admin.confirmation-forward'], true)
+                ? 'emails.forwarded-request-text' : null,
             with: [
                 'emailMessage' => $this->emailMessage,
             ],

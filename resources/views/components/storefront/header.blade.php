@@ -322,7 +322,11 @@
                                 </div>
                                 <div class="grid grid-cols-2 gap-2">
                                     <a href="{{ route('cart.index') }}" class="btn btn-outline btn-sm w-full">View Cart</a>
-                                    <a href="{{ route('checkout.index') }}" class="btn btn-primary btn-sm w-full {{ ($headerCart['checkout_ready'] ?? false) ? '' : 'pointer-events-none opacity-50' }}">Checkout</a>
+                                    @if(config('storefront.checkout_enabled', false))
+                                        <a href="{{ route('checkout.index') }}" class="btn btn-primary btn-sm w-full {{ ($headerCart['checkout_ready'] ?? false) ? '' : 'pointer-events-none opacity-50' }}">Checkout</a>
+                                    @else
+                                        <button type="button" class="btn btn-primary btn-sm w-full opacity-50 cursor-not-allowed" disabled title="Checkout temporarily unavailable">Checkout</button>
+                                    @endif
                                 </div>
                             </div>
                         @else
