@@ -1,96 +1,87 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $emailMessage->subject }}</title>
-</head>
-<body style="margin:0;padding:0;background:#f4f7fb;color:#14213d;font-family:Arial,Helvetica,sans-serif;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background:#f4f7fb;">
-        <tr>
-            <td align="center" style="padding:26px 12px;">
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:680px;border:1px solid #e2e8f0;border-radius:14px;background:#ffffff;">
-                    <tr>
-                        <td style="background:#0f2b4d;padding:25px 27px;color:#ffffff;">
-                            <div style="font-size:12px;line-height:1.5;letter-spacing:1.4px;font-weight:700;text-transform:uppercase;color:#d5e3f2;">
-                                {{ config('transactional_email.brand.name', 'NextPlay Sportswear') }}
-                            </div>
-                            <div style="margin:10px 0 0;font-size:23px;line-height:1.35;font-weight:800;color:#ffffff;">
-                                {{ $emailMessage->heading }}
-                            </div>
-                            <div style="margin-top:10px;font-size:12px;color:#d5e3f2;">
-                                {{ $emailMessage->key === 'admin.confirmation-auto-forward' ? 'Automatically forwarded request' : 'Administrator-forwarded request' }}
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding:25px 25px 10px;">
-                            @foreach ($emailMessage->introLines as $line)
-                                @if (filled($line))
-                                    <p style="margin:0 0 13px;font-size:14px;line-height:1.7;color:#475569;">
-                                        {!! nl2br(e($line)) !!}
-                                    </p>
-                                @endif
-                            @endforeach
+@php
+    // The forwarded message already contains the source data. Select the
+    // reference design using those existing fields; no extra DB query.
+    $original = $emailMessage->details;
+    $isOrder = array_key_exists('Order number', $original);
+    $isQuote = ! $isOrder && array_key_exists('Request reference', $original);
+    $attachments = $emailMessage->attachments ?? [];
+    $hasOriginalFile = collect($attachments)->contains(static fn ($file): bool =>
+        is_array($file) && !str_ends_with((string) ($file['name'] ?? ''), '_Details.txt'));
 
-                            @foreach ($emailMessage->sections as $section)
-                                @if (!empty($section['rows']))
-                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:8px 0 22px;border-collapse:collapse;border:1px solid #e2e8f0;">
-                                        <tr>
-                                            <td colspan="2" style="padding:13px 15px;border-bottom:2px solid #d6e2ef;background:#eff4fa;color:#0f2b4d;font-size:14px;font-weight:800;line-height:1.5;">
-                                                {{ $section['title'] }}
-                                            </td>
-                                        </tr>
-                                        @foreach ($section['rows'] as $row)
-                                            @if ($row['group'])
-                                                <tr>
-                                                    <td colspan="2" style="padding:10px 14px 8px {{ 14 + min(8, (int) $row['depth']) * 10 }}px;border-bottom:1px solid #e2e8f0;background:#f8fafc;color:#26496a;font-size:12px;font-weight:800;line-height:1.5;word-break:break-word;">
-                                                        {{ $row['label'] }}
-                                                    </td>
-                                                </tr>
-                                            @else
-                                                <tr>
-                                                    <td valign="top" width="37%" style="width:37%;padding:10px 10px 10px {{ 14 + min(8, (int) $row['depth']) * 10 }}px;border-bottom:1px solid #edf2f7;color:#64748b;font-size:12px;font-weight:700;line-height:1.55;word-break:break-word;">
-                                                        {{ $row['label'] }}
-                                                    </td>
-                                                    <td valign="top" style="padding:10px 14px 10px 8px;border-bottom:1px solid #edf2f7;color:#0f2b4d;font-size:13px;line-height:1.6;word-break:break-word;">
-                                                        {!! nl2br(e($row['value'])) !!}
-                                                    </td>
-                                                </tr>
-                                            @endif
-                                        @endforeach
-                                    </table>
-                                @endif
-                            @endforeach
+    if ($isOrder) {
+        $icon = 'notification-order-received';
+        $heading = 'Forwarded order confirmation';
+        $intro = 'A new order confirmation has been forwarded with the original order details.';
+        $rows = [
+            'Order Number' => $original['Order number'] ?? null,
+            'Customer' => $original['Customer name'] ?? null,
+            'Items' => $original['Items'] ?? null,
+            'Total' => $original['Grand total'] ?? null,
+            'Attachment' => $hasOriginalFile ? 'Original invoice PDF' : null,
+        ];
+        $action = 'Review Order';
+    } elseif ($isQuote) {
+        $icon = 'notification-bulk-quote';
+        $heading = 'Forwarded quote request';
+        $intro = $hasOriginalFile
+            ? 'A new quotation request has been forwarded with the original attachment.'
+            : 'A new quotation request has been forwarded for review.';
+        $rows = [
+            'Quotation Reference' => $original['Request reference'] ?? null,
+            'Customer' => $original['Customer name'] ?? null,
+            'Product' => $original['Product'] ?? null,
+            'Quantity' => $original['Quantity'] ?? null,
+            'Attachment' => $hasOriginalFile ? 'Customer reference file' : null,
+        ];
+        $action = 'Review Quotation';
+    } else {
+        $icon = 'notification-envelope';
+        $heading = 'Forwarded contact message';
+        $intro = 'A customer contact submission has been forwarded for your review.';
+        $rows = [
+            'Name' => $original['Customer name'] ?? null,
+            'Email' => $original['Customer email'] ?? null,
+            'Topic' => $original['Subject'] ?? null,
+            'Order Number' => $original['Order / quote number'] ?? null,
+            'Attachment' => $hasOriginalFile || filled($original['Original attachment'] ?? null) ? 'Customer uploaded file' : null,
+        ];
+        $action = 'Review Message';
+    }
+    $rows = array_filter($rows, static fn ($value): bool => filled($value));
+@endphp
+<x-emails.notification-layout :email-message="$emailMessage" :icon="$icon" :heading="$heading" :internal="true">
+    <p class="np-mail-paragraph" style="margin:0;color:{{ config('transactional_email.design.text') }};font-family:{{ config('transactional_email.design.font') }};font-size:20px;line-height:1.55;">{{ $intro }}</p>
 
-                            @if (filled($emailMessage->actionText) && filled($emailMessage->actionUrl))
-                                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 20px;">
-                                    <tr>
-                                        <td bgcolor="#cf5d38" style="border-radius:7px;">
-                                            <a href="{{ $emailMessage->actionUrl }}" style="display:inline-block;padding:13px 20px;background:#cf5d38;border-radius:7px;color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;">
-                                                {{ $emailMessage->actionText }}
-                                            </a>
-                                        </td>
-                                    </tr>
-                                </table>
-                            @endif
+    @if ($rows !== [])
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:27px 0 0;border-collapse:collapse;"><tr><td>
+            <x-emails.details-table :details="$rows" label-width="43%" />
+        </td></tr></table>
+    @endif
 
-                            @foreach ($emailMessage->outroLines as $line)
-                                <p style="margin:0 0 14px;color:#64748b;font-size:13px;line-height:1.65;">
-                                    {{ $line }}
-                                </p>
-                            @endforeach
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding:17px 25px;background:#f8fafc;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px;line-height:1.6;">
-                            Internal forwarding notification from {{ config('transactional_email.brand.name', 'NextPlay Sportswear') }}.
-                            Full attachments, when available, are included with this email. The admin link requires a NextPlay administrator login.
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-</body>
-</html>
+    <x-emails.attachment-files :attachments="$attachments" />
+
+    {{-- Keep the complete nested product, customization, customer and shipping
+         information that original forwarded messages already contained. --}}
+    <x-emails.forwarded-detail-sections :sections="$emailMessage->sections" />
+
+    @foreach ($emailMessage->introLines as $line)
+        @if (filled($line))
+            <p style="margin:19px 0 0;color:{{ config('transactional_email.design.muted') }};font-family:{{ config('transactional_email.design.font') }};font-size:14px;line-height:1.55;">{!! nl2br(e($line)) !!}</p>
+        @endif
+    @endforeach
+
+    @foreach ($emailMessage->outroLines as $line)
+        @if (filled($line))
+            <p style="margin:10px 0 0;color:{{ config('transactional_email.design.muted') }};font-family:{{ config('transactional_email.design.font') }};font-size:13px;line-height:1.5;">{{ $line }}</p>
+        @endif
+    @endforeach
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:27px 0 0;"><tr><td>
+        <x-emails.help-card />
+    </td></tr></table>
+    @if (filled($emailMessage->actionUrl))
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0 0;"><tr><td>
+            <x-emails.action-button :url="$emailMessage->actionUrl" :label="$action" />
+        </td></tr></table>
+    @endif
+</x-emails.notification-layout>

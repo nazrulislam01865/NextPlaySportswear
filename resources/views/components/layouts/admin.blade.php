@@ -1,10 +1,9 @@
 @props(['title' => 'Admin', 'eyebrow' => null, 'subtitle' => null, 'compactHeader' => false, 'storefrontUrl' => null, 'mediaGalleryHeader' => false, 'bulkQuoteDetail' => false])
 @php
     // Single route gate for this incremental Catalog design-system rollout.
-    // The Admin layout, shared sidebar, permissions, and non-Catalog screens
-    // remain unchanged. All listed subroutes inherit the same controls.
+    // Catalog-only design controls do not apply to the dashboard prototype.
+    // Other admin routes and their shared controls remain unchanged.
     $catalogDesignSystemActive = request()->routeIs(
-        'admin.dashboard',
         'admin.products.*',
         'admin.product-detail-controls.*',
         'admin.media-library.*',
@@ -36,6 +35,10 @@
     <link rel="stylesheet" href="{{ asset('css/nextplay-admin-ui-fixes-20261104.css') }}?v=1">
     <link rel="stylesheet" href="{{ asset('css/nextplay-admin-alignment-fixes-20261104b.css') }}?v=2">
     <script defer src="{{ asset('js/nextplay-admin-ui-fixes-20261104.js') }}?v=1"></script>
+    @if(request()->routeIs('admin.dashboard'))
+        <link rel="stylesheet" href="{{ asset('css/nextplay-dashboard-prototype.css') }}?v=20261113d">
+        <script defer src="{{ asset('js/nextplay-dashboard-prototype.js') }}?v=20261113d"></script>
+    @endif
     @stack('admin-page-styles')
     @php
         $adminPusherEnabled = filled(config('services.pusher.key'))
@@ -52,6 +55,7 @@
         'admin-clean-ui',
         'admin-ui-compact',
         'np-catalog-system' => $catalogDesignSystemActive,
+        'np-dashboard-shell' => request()->routeIs('admin.dashboard'),
     ])
     x-data="{ sidebarOpen: false }"
     x-effect="document.documentElement.classList.toggle('overflow-hidden', sidebarOpen)"
@@ -515,7 +519,6 @@
                     <button class="min-h-11 w-full rounded-xl border border-white/15 px-4 py-2.5 text-left text-sm font-bold hover:bg-white/10">Sign out</button>
                 </form>
             </div>
-
             <div
                 class="admin-sidebar-resizer hidden lg:block"
                 data-admin-sidebar-resizer
@@ -588,7 +591,7 @@
             </header>
             @endif
 
-            <main id="admin-main-content" tabindex="-1" class="min-w-0 p-4 sm:p-6 lg:p-8">
+            <main id="admin-main-content" tabindex="-1" @class(['min-w-0', 'np-dash-main' => request()->routeIs('admin.dashboard'), 'p-4 sm:p-6 lg:p-8' => !request()->routeIs('admin.dashboard')])>
                 @if (session('status') && ! request()->routeIs('admin.email-customization.*', 'admin.holiday-calendars.*', 'admin.coupons.index', 'admin.promotions.sales.index', 'admin.storefront-branding.edit', 'admin.header-topbar-settings.edit', 'admin.about-page.edit', 'admin.shipping-delivery-page.edit', 'admin.size-guide-page.edit', 'admin.artwork-guidelines-page.edit', 'admin.how-to-order-page.edit', 'admin.returns-policy-page.edit', 'admin.contact-page.edit', 'admin.terms-page.edit', 'admin.privacy-page.edit', 'admin.payment-page.edit', 'admin.sustainability-page.edit'))
                     <div data-admin-flash role="status" class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{{ session('status') }}</div>
                 @endif

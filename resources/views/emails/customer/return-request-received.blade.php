@@ -1,0 +1,21 @@
+<x-emails.notification-layout :email-message="$emailMessage" icon="notification-return" :heading="'Your Return request was received'">
+    <p class="np-mail-paragraph" style="margin:0;color:{{ config('transactional_email.design.text') }};font-family:{{ config('transactional_email.design.font') }};font-size:20px;line-height:1.55;">Our team will review your request and update its status in your account.</p>
+    @php
+        $details = [
+            'Request Number' => $emailMessage->details['Request Number'] ?? null,
+            'Order Number' => $emailMessage->details['Order Number'] ?? null,
+            'Status' => ($emailMessage->details['Status'] ?? null) === 'Requested' ? 'Pending' : ($emailMessage->details['Status'] ?? null),
+        ];
+    @endphp
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:{{ empty($emailMessage->attachments) ? '27px 0 27px' : '27px 0 0' }};border-collapse:collapse;"><tr><td>
+        <x-emails.details-table :details="array_filter($details, static fn ($v) => filled($v))" label-width="43%" />
+    </td></tr></table>
+    <x-emails.attachment-files :attachments="$emailMessage->attachments" :fallback-url="$emailMessage->actionUrl" />
+    <x-emails.help-card />
+    @if (filled($emailMessage->actionUrl))
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0 0;"><tr><td>
+            <x-emails.action-button :url="$emailMessage->actionUrl" label="View Request" />
+        </td></tr></table>
+    @endif
+</x-emails.notification-layout>
+

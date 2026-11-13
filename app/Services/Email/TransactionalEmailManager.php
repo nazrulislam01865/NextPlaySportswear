@@ -295,16 +295,28 @@ final class TransactionalEmailManager
                     'Download attachment (admin login required)' => $contact->attachment_path
                         ? route('admin.contact-page.attachment', $contact) : null,
                 ], static fn (mixed $value): bool => filled($value)),
+                actionText: 'Open Admin Contact',
+                actionUrl: route('admin.contact-page.edit'),
                 replyTo: $contact->email,
                 replyToName: $contact->name,
                 metadata: ['contact_message_id' => $contact->id],
                 attachments: $attachToSupport ? [[
+                    'description' => 'Customer upload',
+                    'size' => $contact->attachment_size,
+                    'download_url' => route('admin.contact-page.attachment', $contact),
                     'type' => 'storage',
                     'disk' => 'local',
                     'path' => $contact->attachment_path,
                     'name' => $contact->attachment_name,
                     'mime' => $contact->attachment_mime ?: 'application/octet-stream',
-                ]] : [],
+                ]] : (filled($contact->attachment_path) ? [[
+                    'type' => 'link',
+                    'name' => $contact->attachment_name ?: 'Customer upload',
+                    'mime' => $contact->attachment_mime ?: 'application/octet-stream',
+                    'size' => $contact->attachment_size,
+                    'description' => 'Customer upload',
+                    'download_url' => route('admin.contact-page.attachment', $contact),
+                ]] : []),
             ),
         );
 
@@ -336,21 +348,53 @@ final class TransactionalEmailManager
 
     public function bulkQuoteUpdate(BulkQuoteRequest $quote, string $heading, string $message): void
     {
+        // Only the published quotation notification needs the approved files.
+        $files = $heading === 'Your quotation is ready' && (int) $quote->quotation_version > 0
+            ? $quote->quoteFiles()->where('category', 'quotation')
+                ->where('version', $quote->quotation_version)
+                ->orderBy('id')
+                ->get(['id', 'path', 'original_name', 'mime_type', 'size'])
+            : collect();
+        $attachments = $files->map(static fn ($file): array => [
+            'type' => 'storage',
+            'disk' => 'local',
+            'path' => $file->path,
+            'name' => $file->original_name,
+            'mime' => $file->mime_type ?: 'application/octet-stream',
+            'size' => $file->size,
+            'description' => 'Quote prepared for review',
+            'download_url' => $quote->user_id
+                ? route('account.bulk-quotes.file', ['reference' => $quote->reference, 'file' => $file->id])
+                : null,
+        ])->all();
+
         $this->emails->safelyQueue(new EmailMessage(
             key: 'quote.customer-update',
             recipients: $this->customerRecipient($quote->email, $quote->full_name),
             subject: $heading.' - '.$quote->reference,
             heading: $heading,
             introLines: [$message, $quote->user_id ? 'Sign in to My Account → Bulk Quotes to review this update.' : 'Open your original secure tracking link from the confirmation email to review this update.'],
-            details: ['Quote request' => $quote->reference, 'Status' => BulkQuoteRequest::statuses()[$quote->status] ?? $quote->status],
+            details: ['Quote request' => $quote->reference, 'Status' => BulkQuoteRequest::statuses()[$quote->status] ?? $quote->status, 'Product' => $quote->product_type],
             actionText: $quote->user_id ? 'View Quotation in My Account' : 'Track Quote',
             actionUrl: $quote->user_id ? route('account.bulk-quotes.show', $quote->reference) : route('quote.guest.track'),
-            metadata: ['bulk_quote_request_id' => $quote->id],
+            metadata: ['bulk_quote_request_id' => $quote->id, 'quote_audience' => $quote->user_id ? 'account' : 'guest', 'quote_notification' => $heading === 'Your quotation is ready' ? 'ready' : 'message'],
+            attachments: $attachments,
         ));
     }
 
     public function bulkQuoteReceived(BulkQuoteRequest $quote, ?string $guestToken = null): void
     {
+        $submitted = is_array($quote->attachment) ? $quote->attachment : [];
+        $attachments = ($submitted['disk'] ?? null) === 'local' && filled($submitted['path'] ?? null)
+            ? [[
+                'type' => 'storage', 'disk' => 'local',
+                'path' => $submitted['path'],
+                'name' => $submitted['original_name'] ?? 'Submitted artwork',
+                'mime' => $submitted['mime_type'] ?? 'application/octet-stream',
+                'size' => $submitted['size'] ?? null,
+                'description' => 'Your submitted artwork',
+            ]] : [];
+
         $this->emails->safelyQueue(new EmailMessage(
             key: 'quote.customer-confirmation',
             recipients: $this->customerRecipient($quote->email, $quote->full_name),
@@ -363,12 +407,24 @@ final class TransactionalEmailManager
                 'Reference' => $quote->reference,
                 'Product Type' => $quote->product_type,
                 'Estimated Quantity' => $quote->estimated_quantity,
+                'Status' => BulkQuoteRequest::statuses()[$quote->status] ?? $quote->status,
                 'Needed By' => $quote->needed_by?->format('M j, Y'),
             ], static fn (mixed $value): bool => filled($value)),
             actionText: $guestToken !== null ? 'Track Your Quote' : ($quote->user_id ? 'View My Bulk Quotes' : 'Visit NextPlay Sportswear'),
             actionUrl: $guestToken !== null ? route('quote.guest.show', ['reference' => $quote->reference, 'token' => $guestToken]) : ($quote->user_id ? route('account.bulk-quotes.show', $quote->reference) : route('home')),
             metadata: ['bulk_quote_request_id' => $quote->id],
+            attachments: $attachments,
         ));
+
+        $originalArtwork = is_array($quote->attachment) ? $quote->attachment : [];
+        $adminQuoteFiles = filled($originalArtwork['path'] ?? null) ? [[
+            'type' => 'link',
+            'name' => $originalArtwork['original_name'] ?? 'Submitted artwork',
+            'mime' => $originalArtwork['mime_type'] ?? 'application/octet-stream',
+            'size' => $originalArtwork['size'] ?? null,
+            'description' => 'Customer artwork',
+            'download_url' => route('admin.bulk-quotes.attachment', $quote),
+        ]] : [];
 
         $this->queueInternal(
             recipientKey: 'sales',
@@ -392,6 +448,9 @@ final class TransactionalEmailManager
                 replyTo: $quote->email,
                 replyToName: $quote->full_name,
                 metadata: ['bulk_quote_request_id' => $quote->id],
+                attachments: $adminQuoteFiles,
+                actionText: 'Open Quote in Admin',
+                actionUrl: route('admin.bulk-quotes.show', $quote),
             ),
         );
 
@@ -407,19 +466,22 @@ final class TransactionalEmailManager
             ->where('category', 'quotation')
             ->where('version', $quote->quotation_version)
             ->orderBy('id')
-            ->get(['path', 'original_name', 'mime_type']);
+            ->get(['path', 'original_name', 'mime_type', 'size']);
 
         $attachments = [[
             'type' => 'data',
             'name' => 'Order-Details-'.$order->order_number.'.pdf',
             'mime' => 'application/pdf',
             'data' => app(\App\Services\Order\OrderPdfService::class)->orderDetails($order, $quote),
+            'description' => 'Order document',
         ]];
         foreach ($quotationFiles as $file) {
             $attachments[] = [
                 'type' => 'storage', 'disk' => 'local', 'path' => $file->path,
                 'name' => basename(str_replace('\\', '/', $file->original_name)),
                 'mime' => $file->mime_type ?: 'application/octet-stream',
+                'description' => 'Published quotation',
+                'size' => $file->size,
             ];
         }
 
@@ -516,6 +578,37 @@ final class TransactionalEmailManager
             ));
         }
 
+        $adminOrderFiles = [];
+        foreach ($order->items as $item) {
+            foreach ($item->artworkFiles() as $index => $file) {
+                $adminOrderFiles[] = [
+                    'type' => 'link',
+                    'name' => $file['original_name'] ?? 'Customer artwork',
+                    'mime' => $file['mime_type'] ?? 'application/octet-stream',
+                    'size' => $file['size'] ?? null,
+                    'description' => 'Customer product artwork',
+                    'download_url' => route('admin.orders.artwork.show', [
+                        'order' => $order, 'orderItem' => $item, 'artworkIndex' => $index,
+                    ]),
+                ];
+            }
+            foreach ((array) data_get($item->customization, 'personalization_files', []) as $index => $file) {
+                if (! is_array($file) || blank($file['path'] ?? null)) {
+                    continue;
+                }
+                $adminOrderFiles[] = [
+                    'type' => 'link',
+                    'name' => $file['original_name'] ?? 'Customer personalization',
+                    'mime' => $file['mime_type'] ?? 'application/octet-stream',
+                    'size' => $file['size'] ?? null,
+                    'description' => 'Customer personalization file',
+                    'download_url' => route('admin.orders.personalization.show', [
+                        'order' => $order, 'orderItem' => $item, 'fileIndex' => $index,
+                    ]),
+                ];
+            }
+        }
+
         $this->queueInternal(
             recipientKey: 'orders',
             message: new EmailMessage(
@@ -525,10 +618,13 @@ final class TransactionalEmailManager
                 heading: 'New storefront order',
                 introLines: ['A new customer order has been persisted and is ready for the next operational step.'],
                 details: [
-                    ...$details,
+                    'Order Number' => $order->order_number,
                     'Customer' => $order->customer_name,
                     'Customer Email' => $order->customer_email,
+                    'Items' => (string) $order->total_quantity,
+                    'Order Total' => $this->money($order->grand_total, $order->currency),
                 ],
+                attachments: $adminOrderFiles,
                 actionText: 'Open Admin Order',
                 actionUrl: route('admin.orders.show', $order),
                 replyTo: $order->customer_email,
@@ -581,6 +677,15 @@ final class TransactionalEmailManager
             return;
         }
 
+        $proofFiles = filled($proof->file_path) ? [[
+            'type' => 'link',
+            'name' => $proof->original_name ?: 'Artwork proof',
+            'mime' => $proof->mime_type ?: 'application/octet-stream',
+            'size' => $proof->file_size,
+            'description' => 'Artwork proof sent for review',
+            'download_url' => route('account.artwork.file', ['proof' => $proof, 'download' => 1]),
+        ]] : [];
+
         $this->emails->safelyQueue(new EmailMessage(
             key: 'artwork.customer-proof-ready',
             recipients: $this->customerRecipient($order->customer_email, $order->customer_name),
@@ -595,6 +700,7 @@ final class TransactionalEmailManager
             actionText: 'Review Artwork Proof',
             actionUrl: route('account.artwork.show', $proof),
             metadata: ['order_id' => $order->id, 'artwork_proof_id' => $proof->id],
+            attachments: $proofFiles,
         ));
     }
 
@@ -606,6 +712,22 @@ final class TransactionalEmailManager
         if (! $order instanceof Order) {
             return;
         }
+
+        $reviewFiles = filled($proof->file_path) ? [[
+            // Email-provider attachment budget: link larger proof files rather
+            // than failing the internal notification during transport.
+            'type' => (int) $proof->file_size > 0 && (int) $proof->file_size <= 4 * 1024 * 1024
+                ? 'storage' : 'link',
+            'disk' => 'local',
+            'path' => $proof->file_path,
+            'name' => $proof->original_name ?: 'Artwork proof',
+            'mime' => $proof->mime_type ?: 'application/octet-stream',
+            'size' => $proof->file_size,
+            'description' => 'Artwork proof',
+            'download_url' => route('admin.orders.artwork-proofs.file', [
+                'order' => $order, 'proof' => $proof, 'download' => 1,
+            ]),
+        ]] : [];
 
         $this->queueInternal('orders', new EmailMessage(
             key: 'artwork.internal-proof-reviewed',
@@ -621,7 +743,12 @@ final class TransactionalEmailManager
             ],
             actionText: 'View Admin Order',
             actionUrl: route('admin.orders.show', $order).'#order-artwork-proofs',
-            metadata: ['order_id' => $order->id, 'artwork_proof_id' => $proof->id],
+            metadata: [
+                'order_id' => $order->id,
+                'artwork_proof_id' => $proof->id,
+                'artwork_design_name' => $proof->design_name,
+            ],
+            attachments: $reviewFiles,
         ));
     }
 
@@ -631,6 +758,44 @@ final class TransactionalEmailManager
         $order = $proof->order;
         if (! $order instanceof Order) {
             return;
+        }
+
+        $discussionFiles = [];
+        if ($fromCustomer && filled($proof->file_path)) {
+            $discussionFiles[] = [
+                'type' => 'link',
+                'disk' => 'local',
+                'path' => $proof->file_path,
+                'name' => $proof->original_name ?: 'Artwork proof',
+                'mime' => $proof->mime_type ?: 'application/octet-stream',
+                'size' => $proof->file_size,
+                'description' => 'Artwork proof',
+                'download_url' => route('admin.orders.artwork-proofs.file', [
+                    'order' => $order, 'proof' => $proof, 'download' => 1,
+                ]),
+            ];
+        }
+        if ($fromCustomer && filled($proof->reference_path)) {
+            $discussionFiles[] = [
+                'type' => 'link',
+                'name' => $proof->reference_name ?: 'Customer revision reference',
+                'mime' => $proof->reference_mime_type ?: 'application/octet-stream',
+                'description' => 'Customer reference',
+                'download_url' => route('admin.orders.artwork-proofs.file', [
+                    'order' => $order, 'proof' => $proof, 'type' => 'reference', 'download' => 1,
+                ]),
+            ];
+        }
+
+        if (! $fromCustomer && filled($proof->file_path)) {
+            $discussionFiles[] = [
+                'type' => 'link',
+                'name' => $proof->original_name ?: 'Artwork proof',
+                'mime' => $proof->mime_type ?: 'application/octet-stream',
+                'size' => $proof->file_size,
+                'description' => 'Artwork proof discussed',
+                'download_url' => route('account.artwork.file', ['proof' => $proof, 'download' => 1]),
+            ];
         }
 
         $message = new EmailMessage(
@@ -644,7 +809,12 @@ final class TransactionalEmailManager
             actionUrl: $fromCustomer
                 ? route('admin.orders.show', $order).'#order-artwork-proofs'
                 : route('account.artwork.show', $proof).'?message=1#designer-messages',
-            metadata: ['order_id' => $order->id, 'artwork_proof_id' => $proof->id],
+            metadata: [
+                'order_id' => $order->id,
+                'artwork_proof_id' => $proof->id,
+                'artwork_design_name' => $proof->design_name,
+            ],
+            attachments: $discussionFiles,
         );
         if ($fromCustomer) {
             $this->queueInternal('orders', $message);
@@ -734,6 +904,7 @@ final class TransactionalEmailManager
                     'order_id' => $order->id,
                     'shipment_id' => $shipment->id,
                     ...($customMessage->metadata ?? []),
+                    'shipment_notification' => $created ? 'preparing' : 'status_changed',
                 ],
             ));
 
@@ -752,6 +923,7 @@ final class TransactionalEmailManager
             metadata: [
                 'order_id' => $order->id,
                 'shipment_id' => $shipment->id,
+                'shipment_notification' => $created ? 'preparing' : 'status_changed',
             ],
         ));
     }
@@ -853,7 +1025,7 @@ final class TransactionalEmailManager
 
     public function returnSubmitted(OrderReturnRequest $returnRequest): void
     {
-        $returnRequest->loadMissing(['order', 'user']);
+        $returnRequest->loadMissing(['order', 'user', 'attachments']);
         $order = $returnRequest->order;
         $user = $returnRequest->user;
 
@@ -862,6 +1034,16 @@ final class TransactionalEmailManager
         }
 
         $typeLabel = Str::headline($returnRequest->type);
+        // Secure download cards avoid adding large evidence uploads to email size.
+        $attachments = $returnRequest->attachments->map(static fn ($file): array => [
+            'type' => 'link',
+            'name' => $file->original_name,
+            'mime' => $file->mime_type ?: 'application/octet-stream',
+            'size' => $file->file_size,
+            'description' => 'Evidence you submitted',
+            'download_url' => \Illuminate\Support\Facades\URL::signedRoute(
+                'account.return-attachments.download', ['attachment' => $file->id]),
+        ])->all();
 
         $this->emails->safelyQueue(new EmailMessage(
             key: 'return.customer-submitted',
@@ -876,7 +1058,8 @@ final class TransactionalEmailManager
             ],
             actionText: 'View Request',
             actionUrl: route('account.returns.show', $returnRequest),
-            metadata: ['return_request_id' => $returnRequest->id],
+            metadata: ['return_request_id' => $returnRequest->id, 'request_type' => $returnRequest->type],
+            attachments: $attachments,
         ));
 
         $this->queueInternal(
@@ -900,6 +1083,16 @@ final class TransactionalEmailManager
                 replyTo: $user->email,
                 replyToName: $user->name,
                 metadata: ['return_request_id' => $returnRequest->id],
+                attachments: $returnRequest->attachments->map(static fn ($file): array => [
+                    'type' => 'link',
+                    'name' => $file->original_name,
+                    'mime' => $file->mime_type ?: 'application/octet-stream',
+                    'size' => $file->file_size,
+                    'description' => 'Customer-supplied evidence',
+                    'download_url' => route('admin.returns.attachments.download', [
+                        'returnRequest' => $returnRequest, 'attachment' => $file,
+                    ]),
+                ])->all(),
             ),
         );
     }
@@ -939,6 +1132,21 @@ final class TransactionalEmailManager
             $details['Refund Amount'] = $this->money($currentRefund->amount, $currentRefund->currency);
         }
 
+        $returnRequest->loadMissing('attachments');
+
+        // Only include evidence belonging to this request. The existing signed
+        // download route also requires the original customer authorization.
+        $attachments = $returnRequest->attachments->map(static fn ($file): array => [
+            'type' => 'link',
+            'name' => $file->original_name,
+            'mime' => $file->mime_type ?: 'application/octet-stream',
+            'size' => $file->file_size,
+            'description' => str_starts_with((string) $file->mime_type, 'image/')
+                ? 'Submitted photo reference' : 'Evidence you submitted',
+            'download_url' => URL::signedRoute(
+                'account.return-attachments.download', ['attachment' => $file->id]),
+        ])->all();
+
         $this->emails->safelyQueue(new EmailMessage(
             key: 'return.customer-status-updated',
             recipients: $this->customerRecipient($user->email, $user->name),
@@ -949,6 +1157,7 @@ final class TransactionalEmailManager
             actionText: 'View Request',
             actionUrl: route('account.returns.show', $returnRequest),
             metadata: ['return_request_id' => $returnRequest->id],
+            attachments: $attachments,
         ));
     }
 

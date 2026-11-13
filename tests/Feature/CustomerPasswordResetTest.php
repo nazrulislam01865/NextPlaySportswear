@@ -304,7 +304,7 @@ class CustomerPasswordResetTest extends TestCase
 
         $html = view('emails.customer-password-reset', ['emailMessage' => $message])->render();
         $this->assertStringContainsString('Hi Alex,', $html);
-        $this->assertStringContainsString('Didn’t request this?', $html);
+        $this->assertStringContainsString('Didn’t request a password reset?', $html);
         $this->assertStringContainsString('reset-password/test-token', $html);
         $this->assertStringContainsString('15 minutes', $html);
     }

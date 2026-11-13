@@ -36,6 +36,7 @@ final class ConfirmationForwarder
         $details = [
             'Order number' => (string) $order->order_number,
             'Customer name' => (string) $order->customer_name,
+            'Items' => (string) $order->items->count(),
             'Customer email' => (string) $order->customer_email,
             'Customer phone' => (string) $order->customer_phone,
             'Placed' => (string) ($order->placed_at?->format('d M Y, g:i A') ?: ''),
@@ -296,6 +297,7 @@ final class ConfirmationForwarder
             'name' => $prefix.'-'.basename(str_replace('\\', '/', $name)),
             'mime' => $mime !== '' ? $mime : 'application/octet-stream',
             '_size' => $size,
+            'size' => $size,
         ];
     }
 

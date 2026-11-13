@@ -28,6 +28,9 @@
              sidebar brand link with a border intended for the old icon. --}}
         <img
             src="{{ $logoUrl }}"
+            data-logo-fallback="{{ \App\Support\StorefrontBranding::logoUrl() }}"
+            data-logo-default="{{ asset('images/logo.png') }}"
+            onerror="if (!this.dataset.triedSiteLogo &amp;&amp; this.dataset.logoFallback &amp;&amp; this.src !== this.dataset.logoFallback) { this.dataset.triedSiteLogo = '1'; this.src = this.dataset.logoFallback; } else { this.onerror = null; this.src = this.dataset.logoDefault; }"
             alt="{{ config('storefront.name', 'NextPlay Sportswear') }}"
             class="block max-w-full object-contain"
             style="display:block;width:88%;height:auto;max-width:100%;max-height:100%;margin-inline:auto;object-fit:contain;object-position:center;background:transparent;border:0!important;box-shadow:none!important;border-radius:0!important"
