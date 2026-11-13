@@ -106,55 +106,39 @@
                     </div>
                 </label>
 
-                <label class="product-filter-field product-status-field">
-                    <span class="sr-only">Product status</span>
-                    <select class="admin-input product-control product-select-control" name="status">
+                <div class="product-filter-field product-status-field">
+                    <x-admin.searchable-select id="product-filter-status" name="status" label="Product status">
                         <option value="">All statuses</option>
                         @foreach(['draft','active','archived'] as $status)
                             <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ ucfirst($status) }}</option>
                         @endforeach
-                    </select>
-                    <span class="product-filter-select-icon" aria-hidden="true">
-                        <svg viewBox="0 0 20 20" fill="none"><path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                    </span>
-                </label>
+                    </x-admin.searchable-select>
+                </div>
 
-                <label class="product-filter-field product-category-field">
-                    <span class="sr-only">Product category</span>
-                    <select class="admin-input product-control product-select-control" name="category_id">
+                <div class="product-filter-field product-category-field">
+                    <x-admin.searchable-select id="product-filter-category" name="category_id" label="Product category" :searchable="true" search-placeholder="Search categories...">
                         <option value="">All categories</option>
                         @foreach($categoryOptions as $category)
-                            <option value="{{ $category->id }}" @selected((string) ($filters['category_id'] ?? '') === (string) $category->id)>{{ $category->indented_name }}</option>
+                            <option value="{{ $category->id }}" data-depth="{{ (int) $category->depth }}" data-label="{{ $category->name }}" @selected((string) ($filters['category_id'] ?? '') === (string) $category->id)>{{ $category->indented_name }}</option>
                         @endforeach
-                    </select>
-                    <span class="product-filter-select-icon" aria-hidden="true">
-                        <svg viewBox="0 0 20 20" fill="none"><path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                    </span>
-                </label>
+                    </x-admin.searchable-select>
+                </div>
 
-                <label class="product-filter-field product-production-filter-field">
-                    <span class="sr-only">Production methods status</span>
-                    <select class="admin-input product-control product-select-control" name="production_methods">
+                <div class="product-filter-field product-production-filter-field">
+                    <x-admin.searchable-select id="product-filter-production" name="production_methods" label="Production methods">
                         <option value="">All production methods</option>
                         <option value="enabled" @selected(($filters['production_methods'] ?? '') === 'enabled')>Production methods enabled</option>
                         <option value="disabled" @selected(($filters['production_methods'] ?? '') === 'disabled')>Production methods disabled</option>
-                    </select>
-                    <span class="product-filter-select-icon" aria-hidden="true">
-                        <svg viewBox="0 0 20 20" fill="none"><path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                    </span>
-                </label>
+                    </x-admin.searchable-select>
+                </div>
 
-                <label class="product-filter-field product-sort-field">
-                    <span class="sr-only">Sort products</span>
-                    <select class="admin-input product-control product-select-control" name="sort">
+                <div class="product-filter-field product-sort-field">
+                    <x-admin.searchable-select id="product-filter-sort" name="sort" label="Sort products">
                         <option value="latest" @selected(($filters['sort'] ?? 'latest') === 'latest')>Recently updated</option>
                         <option value="production_enabled" @selected(($filters['sort'] ?? '') === 'production_enabled')>Production enabled first</option>
                         <option value="production_disabled" @selected(($filters['sort'] ?? '') === 'production_disabled')>Production disabled first</option>
-                    </select>
-                    <span class="product-filter-select-icon" aria-hidden="true">
-                        <svg viewBox="0 0 20 20" fill="none"><path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                    </span>
-                </label>
+                    </x-admin.searchable-select>
+                </div>
 
                 <label class="product-featured-filter">
                     <input type="checkbox" name="featured" value="1" @checked($filters['featured'] ?? false)>

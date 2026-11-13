@@ -123,6 +123,14 @@ Route::prefix('admin')->name('admin.')->middleware('admin.hidden')->group(functi
         Route::post('/notifications/{notification}/read', [\App\Http\Controllers\Admin\NotificationController::class, 'markRead'])->name('notifications.read');
         Route::post('/notifications/pusher/auth', [\App\Http\Controllers\Admin\NotificationController::class, 'pusherAuth'])->name('notifications.pusher-auth');
 
+        // Contact Us inbox. Read, update, and private-file routes use separate Commerce permissions.
+        Route::get('/contact-requests', [\App\Http\Controllers\Admin\ContactRequestController::class, 'index'])->name('contact-requests.index');
+        Route::get('/contact-requests/{contactMessage}', [\App\Http\Controllers\Admin\ContactRequestController::class, 'show'])->name('contact-requests.show');
+        Route::patch('/contact-requests/{contactMessage}', [\App\Http\Controllers\Admin\ContactRequestController::class, 'update'])
+            ->middleware('throttle:30,1')->name('contact-requests.update');
+        Route::get('/contact-requests/{contactMessage}/attachment', [\App\Http\Controllers\Admin\ContactRequestController::class, 'attachment'])
+            ->name('contact-requests.attachment');
+
         Route::get('/newsletter-subscribers', [\App\Http\Controllers\Admin\NewsletterSubscriberController::class, 'index'])->name('newsletter-subscribers.index');
         Route::get('/newsletter-subscribers/export', [\App\Http\Controllers\Admin\NewsletterSubscriberController::class, 'export'])->name('newsletter-subscribers.export');
 

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ContactMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -30,7 +31,7 @@ class StorefrontContentPagesTest extends TestCase
             ['artwork-guidelines', 'Preferred Files'],
             ['customization-guide', 'Common Customization Options'],
             ['bulk-ordering', 'When to Use the Bulk Ordering Path'],
-            ['shipping', 'Delivery Has More Than One Stage'],
+            ['shipping', 'How working days are counted'],
             ['returns', 'Common Eligibility Scenarios'],
             ['payment-information', 'Understanding your payment status'],
             ['privacy', 'Privacy Policy'],
@@ -61,6 +62,19 @@ class StorefrontContentPagesTest extends TestCase
 
     public function test_contact_message_can_be_submitted(): void
     {
+        // Exercise the production CAPTCHA rule with a deterministic provider response.
+        // Keep the test environment unchanged; forcing APP_ENV=local would alter CSRF behavior.
+        config([
+            'services.recaptcha.site_key' => 'test-site-key',
+            'services.recaptcha.secret_key' => 'test-secret-key',
+        ]);
+        Http::fake([
+            'https://www.google.com/recaptcha/api/siteverify' => Http::response([
+                'success' => true,
+                'hostname' => parse_url(route('contact.store'), PHP_URL_HOST),
+            ], 200),
+        ]);
+
         $response = $this->post(route('contact.store'), [
             'name' => '  Jordan Smith  ',
             'email' => ' JORDAN@EXAMPLE.COM ',
@@ -69,6 +83,7 @@ class StorefrontContentPagesTest extends TestCase
             'order_number' => ' np-2026-1001 ',
             'message' => 'I need help choosing sizes for a team jersey order.',
             'company' => '',
+            'g-recaptcha-response' => 'test-recaptcha-token',
         ]);
 
         $response->assertRedirect();
@@ -106,7 +121,8 @@ class StorefrontContentPagesTest extends TestCase
         $this->get('/missing-nextplay-page')
             ->assertNotFound()
             ->assertHeader('X-Frame-Options', 'DENY')
-            ->assertSee('We Couldn’t Find That Page');
+            ->assertSee('Page Not Found')
+            ->assertSee('We couldn’t find the page you’re looking for.');
     }
 
     public function test_contact_message_rejects_invalid_input_and_honeypot(): void

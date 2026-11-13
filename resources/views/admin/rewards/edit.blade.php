@@ -1,6 +1,6 @@
 <x-layouts.admin title="Rewards Programme" eyebrow="Commerce" subtitle="Control the customer rewards and refer-a-friend values shown across the storefront.">
-    <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <form method="POST" action="{{ route('admin.reward-program.update') }}" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-card">
+    <div class="np-commerce-rewards grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <form method="POST" action="{{ route('admin.reward-program.update') }}" class="np-commerce-rewards__form rounded-3xl border border-slate-200 bg-white p-6 shadow-card">
             @csrf
             @method('PUT')
 
@@ -54,7 +54,7 @@
             @endif
         </form>
 
-        <aside class="rounded-3xl border border-slate-200 bg-white p-6 shadow-card">
+        <aside class="np-commerce-rewards__summary rounded-3xl border border-slate-200 bg-white p-6 shadow-card">
             <p class="text-[10px] font-black uppercase tracking-[.18em] text-slate-400">Current customer-facing offer</p>
             <h2 class="mt-3 font-display text-4xl font-bold uppercase text-brand-ink">GIVE £{{ number_format((float)$settings->referral_friend_reward_amount, 0) }}. GET £{{ number_format((float)$settings->referral_referrer_reward_amount, 0) }}.</h2>
             <p class="mt-4 text-sm leading-6 text-slate-600">Friends receive the GIVE amount on their first eligible order of £{{ number_format((float)$settings->referral_minimum_order, 0) }} or more. The referrer receives the GET amount when that order is completed.</p>

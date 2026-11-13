@@ -18,46 +18,51 @@
         </section>
     </div>
 
-    <form method="GET" class="mb-6 grid gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-card lg:grid-cols-6">
-        <input class="admin-input mt-0 lg:col-span-2" name="q" value="{{ request('q') }}" placeholder="Name, email, phone, or company">
-
-        <select class="admin-input mt-0" name="account_status">
-            <option value="">All accounts</option>
-            <option value="active" @selected(request('account_status') === 'active')>Active</option>
-            <option value="suspended" @selected(in_array(request('account_status'), ['suspended', 'inactive'], true))>Suspended</option>
-        </select>
-
-        <select class="admin-input mt-0" name="verification">
-            <option value="">All verification</option>
-            <option value="verified" @selected(request('verification') === 'verified')>Verified</option>
-            <option value="unverified" @selected(request('verification') === 'unverified')>Unverified</option>
-        </select>
-
-        <select class="admin-input mt-0" name="orders">
-            <option value="">Any order activity</option>
-            <option value="with_orders" @selected(request('orders') === 'with_orders')>Has orders</option>
-            <option value="without_orders" @selected(request('orders') === 'without_orders')>No orders</option>
-        </select>
-
-        <select class="admin-input mt-0" name="marketing">
-            <option value="">Any marketing status</option>
-            <option value="yes" @selected(request('marketing') === 'yes')>Opted in</option>
-            <option value="no" @selected(request('marketing') === 'no')>Not opted in</option>
-        </select>
-
-        <div class="flex flex-wrap gap-2 lg:col-span-6 lg:justify-between">
-            <select class="admin-input mt-0 min-w-[190px]" name="sort">
+    <form method="GET" class="np-customer-filters mb-6 rounded-3xl border border-slate-200 bg-white p-4 shadow-card" aria-label="Customer filters">
+        <div class="np-customer-filters__search">
+            <x-admin.filter-search name="q" :value="request('q')" label="Search customers" placeholder="Name, email, phone, or company" />
+        </div>
+        <div class="np-customer-filters__field">
+            <x-admin.searchable-select id="customers-filter-account-status" name="account_status" label="Account status">
+                <option value="">All accounts</option>
+                <option value="active" @selected(request('account_status') === 'active')>Active</option>
+                <option value="suspended" @selected(in_array(request('account_status'), ['suspended', 'inactive'], true))>Suspended</option>
+            </x-admin.searchable-select>
+        </div>
+        <div class="np-customer-filters__field">
+            <x-admin.searchable-select id="customers-filter-verification" name="verification" label="Email verification">
+                <option value="">All verification</option>
+                <option value="verified" @selected(request('verification') === 'verified')>Verified</option>
+                <option value="unverified" @selected(request('verification') === 'unverified')>Unverified</option>
+            </x-admin.searchable-select>
+        </div>
+        <div class="np-customer-filters__field">
+            <x-admin.searchable-select id="customers-filter-orders" name="orders" label="Order activity">
+                <option value="">Any order activity</option>
+                <option value="with_orders" @selected(request('orders') === 'with_orders')>Has orders</option>
+                <option value="without_orders" @selected(request('orders') === 'without_orders')>No orders</option>
+            </x-admin.searchable-select>
+        </div>
+        <div class="np-customer-filters__field">
+            <x-admin.searchable-select id="customers-filter-marketing" name="marketing" label="Marketing status">
+                <option value="">Any marketing status</option>
+                <option value="yes" @selected(request('marketing') === 'yes')>Opted in</option>
+                <option value="no" @selected(request('marketing') === 'no')>Not opted in</option>
+            </x-admin.searchable-select>
+        </div>
+        <div class="np-customer-filters__sort">
+            <x-admin.searchable-select id="customers-filter-sort" name="sort" label="Sort customers">
                 <option value="newest" @selected(request('sort', 'newest') === 'newest')>Newest customers</option>
                 <option value="name" @selected(request('sort') === 'name')>Name A-Z</option>
                 <option value="orders" @selected(request('sort') === 'orders')>Most orders</option>
                 <option value="last_order" @selected(request('sort') === 'last_order')>Most recent order</option>
-            </select>
-            <div class="flex gap-2">
-                @if(request()->hasAny(['q', 'account_status', 'verification', 'orders', 'marketing', 'sort']))
-                    <a class="btn btn-white" href="{{ route('admin.customers.index') }}">Clear</a>
-                @endif
-                <button class="btn btn-red" type="submit">Filter customers</button>
-            </div>
+            </x-admin.searchable-select>
+        </div>
+        <div class="np-customer-filters__actions">
+            @if(request()->hasAny(['q', 'account_status', 'verification', 'orders', 'marketing', 'sort']))
+                <a class="btn btn-white" href="{{ route('admin.customers.index') }}">Clear</a>
+            @endif
+            <button class="btn btn-red" type="submit">Filter customers</button>
         </div>
     </form>
 

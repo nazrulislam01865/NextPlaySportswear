@@ -1,0 +1,347 @@
+/* Product Highlights and Category index: page-scoped corrections using the
+   existing NextPlay Catalog form, button, colour and typography tokens.
+   This stylesheet intentionally loads AFTER legacy admin overrides. */
+
+/* Product highlights: a fluid editor avoids the previous fixed-column
+   overflow. The upload helper always flows BELOW the upload control. */
+body.np-catalog-system #admin-main-content .np-product-highlights-card {
+    min-width: 0;
+    container-type: inline-size;
+}
+body.np-catalog-system #admin-main-content .np-product-highlights-header {
+    flex-wrap: wrap;
+    align-items: center;
+}
+body.np-catalog-system #admin-main-content .np-product-highlights-header > div {
+    flex: 1 1 280px;
+}
+body.np-catalog-system #admin-main-content .np-product-highlight-head,
+body.np-catalog-system #admin-main-content .np-product-highlight-row {
+    grid-template-columns: minmax(0, 1.4fr) minmax(210px, 1fr) 125px 85px;
+    gap: 14px;
+    min-width: 0;
+}
+body.np-catalog-system #admin-main-content .np-product-highlight-row {
+    align-items: start !important;
+    padding: 16px !important;
+    min-height: 0;
+}
+body.np-catalog-system #admin-main-content .np-product-highlight-text-cell .admin-input {
+    box-sizing: border-box;
+    width: 100%;
+    height: var(--np-catalog-control-height, 48px) !important;
+    min-height: var(--np-catalog-control-height, 48px) !important;
+    margin: 0 !important;
+    text-overflow: ellipsis;
+}
+body.np-catalog-system #admin-main-content .np-product-highlight-icon-cell {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) !important;
+    align-items: start !important;
+    column-gap: 12px !important;
+    min-width: 0;
+}
+body.np-catalog-system #admin-main-content .np-product-highlight-icon-preview {
+    box-sizing: border-box;
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+    border-radius: var(--np-catalog-control-radius, 8px);
+}
+body.np-catalog-system #admin-main-content .np-product-highlight-icon-actions {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+}
+body.np-catalog-system #admin-main-content .np-product-highlight-icon-actions > .flex {
+    width: 100%;
+    height: auto !important;
+    min-height: 48px !important;
+    align-items: center !important;
+    gap: 8px;
+}
+body.np-catalog-system #admin-main-content .np-product-highlight-icon-actions .np-secondary-button {
+    box-sizing: border-box;
+    width: auto;
+    max-width: 100%;
+    height: 48px !important;
+    min-height: 48px !important;
+    margin: 0 !important;
+    padding: 0 12px !important;
+    font-size: var(--np-catalog-button-font, 16px) !important;
+    font-weight: var(--np-catalog-button-weight, 600) !important;
+    line-height: 1.25 !important;
+    white-space: normal;
+    text-align: center;
+}
+body.np-catalog-system #admin-main-content .np-product-highlight-icon-help {
+    width: 100%;
+    margin: 0 !important;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    white-space: normal !important;
+    color: var(--np-catalog-muted, #52637a);
+    font-size: var(--np-catalog-help-font, 13px) !important;
+    font-weight: 400 !important;
+    line-height: 1.4 !important;
+}
+body.np-catalog-system #admin-main-content .np-product-highlight-storefront-cell,
+body.np-catalog-system #admin-main-content .np-product-highlight-action-cell {
+    display: flex;
+    height: 48px !important;
+    min-height: 48px !important;
+    align-items: center !important;
+}
+body.np-catalog-system #admin-main-content .np-product-highlight-action-cell {
+    justify-content: flex-start;
+}
+body.np-catalog-system #admin-main-content .np-product-highlight-mobile-label {
+    display: none;
+}
+
+/* The product builder has its own sidebar; respond to the AVAILABLE card
+   width, not the full browser width. */
+@container (max-width: 940px) {
+    body.np-catalog-system #admin-main-content .np-product-highlight-head { display: none; }
+    body.np-catalog-system #admin-main-content .np-product-highlight-row {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 14px 18px;
+    }
+    body.np-catalog-system #admin-main-content .np-product-highlight-text-cell,
+    body.np-catalog-system #admin-main-content .np-product-highlight-icon-cell {
+        grid-column: 1 / -1;
+    }
+    body.np-catalog-system #admin-main-content .np-product-highlight-mobile-label {
+        display: block;
+        margin: 0 0 6px;
+        color: var(--np-catalog-ink, #051e44);
+        font-size: var(--np-catalog-label-font, 14px);
+        font-weight: 600;
+        line-height: 1.35;
+    }
+    body.np-catalog-system #admin-main-content .np-product-highlight-icon-cell > .np-product-highlight-mobile-label {
+        grid-column: 1 / -1;
+        margin-bottom: -6px;
+    }
+    body.np-catalog-system #admin-main-content .np-product-highlight-storefront-cell,
+    body.np-catalog-system #admin-main-content .np-product-highlight-action-cell {
+        height: auto !important;
+        min-height: 0 !important;
+        flex-direction: column;
+        align-items: flex-start !important;
+        justify-content: flex-start;
+    }
+}
+@container (max-width: 420px) {
+    body.np-catalog-system #admin-main-content .np-product-highlight-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    body.np-catalog-system #admin-main-content .np-product-highlight-storefront-cell,
+    body.np-catalog-system #admin-main-content .np-product-highlight-action-cell {
+        grid-column: 1;
+    }
+    body.np-catalog-system #admin-main-content .np-product-highlights-header .np-secondary-button {
+        width: 100%;
+    }
+}
+
+/* Category index only: use the same centralized 48px forms and buttons as
+   the rest of the Catalog pages. Do not affect the admin header/sidebar. */
+body.np-catalog-system #admin-main-content .category-admin-page .category-control {
+    box-sizing: border-box;
+    width: 100%;
+    height: var(--np-catalog-control-height, 48px) !important;
+    min-height: var(--np-catalog-control-height, 48px) !important;
+    margin: 0 !important;
+    padding-block: 10px !important;
+    border: 1px solid var(--np-catalog-border, #bac6d5) !important;
+    border-radius: var(--np-catalog-control-radius, 8px) !important;
+    background-color: #fff;
+    color: var(--np-catalog-text, #26364b) !important;
+    font-family: var(--np-catalog-font) !important;
+    font-size: var(--np-catalog-control-font, 16px) !important;
+    font-weight: 400 !important;
+    line-height: 1.5 !important;
+    box-shadow: none !important;
+}
+body.np-catalog-system #admin-main-content .category-admin-page input[name="q"].category-control {
+    padding-left: 44px !important;
+}
+body.np-catalog-system #admin-main-content .category-admin-page select.category-control {
+    padding-left: 14px !important;
+    padding-right: 42px !important;
+    appearance: none !important;
+}
+body.np-catalog-system #admin-main-content .category-admin-page .category-filter-select-icon {
+    right: 6px;
+    pointer-events: none;
+}
+body.np-catalog-system #admin-main-content .category-admin-page :is(
+    .category-header-action, .category-filter-button, .category-filter-clear,
+    .category-bulk-button, .category-import-button
+) {
+    box-sizing: border-box;
+    display: inline-flex;
+    height: 48px !important;
+    min-height: 48px !important;
+    max-height: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 0 !important;
+    padding: 0 18px !important;
+    border-width: 1px !important;
+    border-style: solid !important;
+    border-radius: var(--np-catalog-control-radius, 8px) !important;
+    font-family: var(--np-catalog-font) !important;
+    font-size: var(--np-catalog-button-font, 16px) !important;
+    font-weight: var(--np-catalog-button-weight, 600) !important;
+    line-height: 1.3 !important;
+    white-space: nowrap;
+    box-shadow: none !important;
+    transform: none !important;
+}
+body.np-catalog-system #admin-main-content .category-admin-page :is(
+    .category-header-action-primary, .category-filter-button, .category-bulk-button, .category-import-button
+):not(:disabled) {
+    border-color: var(--np-catalog-cta, #cf5d38) !important;
+    background-color: var(--np-catalog-cta, #cf5d38) !important;
+    color: #fff !important;
+}
+body.np-catalog-system #admin-main-content .category-admin-page :is(
+    .category-header-action-primary, .category-filter-button, .category-bulk-button, .category-import-button
+):hover:not(:disabled) {
+    border-color: var(--np-catalog-cta-hover, #ad4023) !important;
+    background-color: var(--np-catalog-cta-hover, #ad4023) !important;
+}
+body.np-catalog-system #admin-main-content .category-admin-page :is(
+    .category-header-action-light, .category-filter-clear
+) {
+    border-color: var(--np-catalog-border, #bac6d5) !important;
+    background: #fff !important;
+    color: var(--np-catalog-ink, #051e44) !important;
+}
+body.np-catalog-system #admin-main-content .category-admin-page :is(
+    .category-header-action-light, .category-filter-clear
+):hover {
+    background: var(--np-catalog-soft, #f5f7fa) !important;
+}
+body.np-catalog-system #admin-main-content .category-admin-page .category-tools-menu > summary {
+    box-sizing: border-box;
+    width: 48px !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 0 !important;
+    border: 1px solid var(--np-catalog-border, #bac6d5) !important;
+    border-radius: var(--np-catalog-control-radius, 8px) !important;
+    box-shadow: none !important;
+}
+body.np-catalog-system #admin-main-content .category-admin-page .category-header-action svg {
+    width: 18px !important;
+    height: 18px !important;
+}
+body.np-catalog-system #admin-main-content .category-admin-page .category-empty-filter {
+    height: 48px !important;
+    min-height: 48px !important;
+    gap: 8px;
+    font-family: var(--np-catalog-font) !important;
+    font-size: var(--np-catalog-label-font, 14px) !important;
+    font-weight: 600 !important;
+}
+body.np-catalog-system #admin-main-content .category-admin-page .category-empty-filter input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+}
+body.np-catalog-system #admin-main-content .category-admin-page .category-filter-actions {
+    height: auto !important;
+    min-height: 48px !important;
+    gap: 8px;
+}
+body.np-catalog-system #admin-main-content .category-admin-page .category-bulk-card {
+    grid-template-columns: max-content minmax(180px, 1fr) auto minmax(180px, 1.1fr) !important;
+    gap: 12px !important;
+}
+body.np-catalog-system #admin-main-content .category-admin-page :is(.category-bulk-button, .category-import-button):disabled {
+    border-color: #d4dce6 !important;
+    background: #e4e8ee !important;
+    color: #647087 !important;
+    opacity: 1 !important;
+    cursor: not-allowed;
+}
+@media (max-width: 1199px) {
+    body.np-catalog-system #admin-main-content .category-admin-page .category-bulk-card {
+        grid-template-columns: max-content minmax(0, 1fr) auto !important;
+    }
+    body.np-catalog-system #admin-main-content .category-admin-page .category-bulk-note {
+        grid-column: 1 / -1;
+    }
+}
+@media (max-width: 900px) {
+    body.np-catalog-system #admin-main-content .category-admin-page .category-bulk-card {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+    body.np-catalog-system #admin-main-content .category-admin-page .category-bulk-card > * {
+        grid-column: 1 / -1;
+    }
+    body.np-catalog-system #admin-main-content .category-admin-page :is(.category-bulk-button, .category-filter-button) {
+        width: 100% !important;
+    }
+}
+@media (max-width: 640px) {
+    body.np-catalog-system #admin-main-content .category-admin-page .category-top-actions {
+        width: 100%;
+    }
+    body.np-catalog-system #admin-main-content .category-admin-page .category-tools-menu > summary {
+        width: 100% !important;
+    }
+}
+/* Keep the checkbox and Filter action on a shared row when the search
+   has wrapped above the two dropdowns. */
+@media (min-width: 641px) and (max-width: 1399px) {
+    body.np-catalog-system #admin-main-content .category-admin-page .category-filter-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    body.np-catalog-system #admin-main-content .category-admin-page .category-filter-form > .category-field:first-child {
+        grid-column: 1 / -1;
+    }
+    body.np-catalog-system #admin-main-content .category-admin-page .category-empty-filter {
+        grid-column: 1;
+        justify-content: flex-start;
+    }
+    body.np-catalog-system #admin-main-content .category-admin-page .category-filter-actions {
+        grid-column: 2;
+        justify-content: flex-end;
+    }
+    body.np-catalog-system #admin-main-content .category-admin-page .category-filter-actions .category-filter-button {
+        width: auto !important;
+    }
+}
+@media (max-width: 639px) {
+    body.np-catalog-system #admin-main-content .np-product-highlights-header > div {
+        flex: 1 1 auto;
+    }
+}
+/* The import component has an additional legacy two-class specificity rule.
+   Override it here so its submit button matches the shared button contract. */
+body.admin-ui-compact.admin-clean-ui.np-catalog-system #admin-main-content .category-admin-page .category-import-footer .category-import-button--compact {
+    box-sizing: border-box;
+    width: auto !important;
+    min-width: 155px !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 0 18px !important;
+    border-radius: var(--np-catalog-control-radius, 8px) !important;
+    font-family: var(--np-catalog-font) !important;
+    font-size: var(--np-catalog-button-font, 16px) !important;
+    font-weight: var(--np-catalog-button-weight, 600) !important;
+    line-height: 1.3 !important;
+    box-shadow: none !important;
+}
+@media (max-width: 560px) {
+    body.admin-ui-compact.admin-clean-ui.np-catalog-system #admin-main-content .category-admin-page .category-import-footer .category-import-button--compact {
+        width: 100% !important;
+    }
+}

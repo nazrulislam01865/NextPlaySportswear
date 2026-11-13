@@ -96,9 +96,11 @@ class HolidayStorefrontDisplayTest extends TestCase
             'placed_order' => app(OrderExperienceService::class)->orderSnapshot($order),
         ]);
 
-        $response = $this->get(route('order.confirmation'));
+        $response = $this->actingAsCustomer($this->customer)->get(route('order.confirmation'));
         $response->assertOk();
+        $response->assertSee($order->order_number);
         $response->assertSee('Holiday Adjusted');
+        $response->assertSee('Delivery Window Notice');
         $response->assertSee('Extended due to UK Bank Holiday (Christmas Day, 25 Dec)');
     }
 

@@ -51,45 +51,30 @@ final class RecalculateHolidayOrders extends Command
 
             if ($dryRun) {
                 // Dry run inspection
-                $countryVariants = $service->countryVariants($normalizedCountry);
-                $orders = Order::query()
-                    ->whereNotIn('status', ['completed', 'delivered', 'cancelled'])
-                    ->where(function ($query) use ($countryVariants): void {
-                        foreach ($countryVariants as $variant) {
-                            $query->orWhere('shipping_address->country', $variant)
-                                ->orWhere('shipping_address->address->country', $variant)
-                                ->orWhere('shipping_address->country_code', $variant)
-                                ->orWhere('shipping_address->address->country_code', $variant);
-                        }
-                    })
-                    ->get();
-
-                $totalOpen += $orders->count();
-
-                foreach ($orders as $order) {
-                    [$minDays, $maxDays] = $service->resolveOrderDays($order);
-                    $placedDate = $order->placed_at ?? $order->created_at ?? now();
-                    $window = $service->calculateDeliveryWindow($placedDate, $minDays, $maxDays, $normalizedCountry);
-
-                    $currentStart = $order->estimated_delivery_start_at?->format('Y-m-d');
-                    $currentEnd = $order->estimated_delivery_end_at?->format('Y-m-d');
-                    $newStart = $window['start_date']->format('Y-m-d');
-                    $newEnd = $window['end_date']->format('Y-m-d');
-
-                    $isChanged = ($currentStart !== $newStart || $currentEnd !== $newEnd);
-
-                    if ($isChanged) {
+                $service->openOrdersQuery($normalizedCountry)->chunkById(150, function ($orders) use (
+                    $service, $normalizedCountry, &$totalOpen, &$totalUpdated, &$totalNotified, &$previewRows
+                ): void {
+                    foreach ($orders as $order) {
+                        $totalOpen++;
+                        $anchor = $service->resolveEtaAnchor($order);
+                        if ($anchor === null) continue; // Awaiting artwork approval.
+                        [$minDays, $maxDays] = $service->resolveOrderDays($order);
+                        $window = $service->calculateDeliveryWindow($anchor, $minDays, $maxDays, $normalizedCountry);
+                        $currentStart = $order->estimated_delivery_start_at?->format('Y-m-d');
+                        $currentEnd = $order->estimated_delivery_end_at?->format('Y-m-d');
+                        if ($currentStart === $window['start_date']->format('Y-m-d')
+                            && $currentEnd === $window['end_date']->format('Y-m-d')) continue;
                         $totalUpdated++;
                         $totalNotified += max(1, $order->shipments()->count());
-                        $previewRows[] = [
-                            $order->order_number,
-                            $normalizedCountry,
-                            $order->formattedEstimatedDelivery() ?: 'None',
-                            $window['formatted_range'],
-                            $window['adjustment_reason'] ?: 'None',
-                        ];
+                        if (count($previewRows) < 100) {
+                            $previewRows[] = [
+                                $order->order_number, $normalizedCountry,
+                                $order->formattedEstimatedDelivery() ?: 'None',
+                                $window['formatted_range'], $window['adjustment_reason'] ?: 'None',
+                            ];
+                        }
                     }
-                }
+                });
             } else {
                 $stats = $service->recalculateOpenOrdersForCountry($normalizedCountry);
                 $totalOpen += $stats['total_open'];
@@ -103,6 +88,9 @@ final class RecalculateHolidayOrders extends Command
                 ['Order #', 'Country', 'Current Estimate', 'New Estimate', 'Holiday Adjustment'],
                 $previewRows
             );
+            if ($totalUpdated > count($previewRows)) {
+                $this->line('Showing first 100 changed orders only; all matching orders were counted.');
+            }
         }
 
         $this->newLine();

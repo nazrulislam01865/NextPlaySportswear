@@ -1,0 +1,291 @@
+/* NextPlay admin form guideline: scoped to the six approved commerce pages.
+   Reuses the existing Expose/brand tokens and the shared searchable-select.
+   No new font registration, routes, query calls or form submission behavior. */
+body.admin-ui-compact.np-commerce-form-system #admin-main-content {
+    --np-commerce-font: var(--np-font-ui, var(--admin-font-sans, "Expose", "Segoe UI", sans-serif));
+    --np-commerce-height: 48px;
+    --np-commerce-radius: 8px;
+    --np-commerce-border: #bac6d5;
+    --np-commerce-text: var(--admin-theme-text, #102849);
+    --np-commerce-muted: var(--admin-theme-muted, #52637a);
+    --np-commerce-focus: var(--admin-theme-accent, #2164c5);
+    --np-commerce-primary: var(--admin-theme-cta, var(--np-color-secondary, #cf5d38));
+    --np-commerce-primary-hover: var(--admin-theme-cta-hover, #ad4023);
+    min-width: 0;
+}
+
+/* One consistent search layout (shared Blade component): single border,
+   proper icon clearance, 48px field and no nested overlapping outlines. */
+body.np-commerce-form-system #admin-main-content .np-admin-filter-search {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+}
+body.np-commerce-form-system #admin-main-content .np-admin-filter-search__icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    color: var(--np-commerce-muted);
+    pointer-events: none;
+    z-index: 1;
+}
+body.admin-ui-compact.np-commerce-form-system #admin-main-content .np-admin-filter-search__input {
+    display: block;
+    width: 100%;
+    height: var(--np-commerce-height) !important;
+    min-height: var(--np-commerce-height) !important;
+    margin: 0 !important;
+    padding: 0 14px 0 44px !important;
+    border: 1px solid var(--np-commerce-border) !important;
+    border-radius: var(--np-commerce-radius) !important;
+    background: #fff;
+    color: var(--np-commerce-text) !important;
+    font: 400 16px/1.5 var(--np-commerce-font) !important;
+    box-shadow: none !important;
+    box-sizing: border-box;
+}
+body.np-commerce-form-system #admin-main-content .np-admin-filter-search__input::placeholder {
+    color: var(--np-commerce-muted) !important;
+    opacity: 1;
+}
+
+/* Keep filter cards in their normal document flow. No horizontal scroll or
+   stretched action buttons at laptop widths; controls wrap between rows. */
+body.np-commerce-form-system #admin-main-content .admin-filter-bar {
+    min-width: 0;
+    overflow: visible;
+}
+body.np-commerce-form-system #admin-main-content .admin-filter-bar__scroll {
+    overflow: visible;
+    max-width: 100%;
+}
+body.np-commerce-form-system #admin-main-content .admin-filter-bar__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    gap: 12px;
+}
+body.np-commerce-form-system #admin-main-content .admin-filter-bar__search {
+    flex: 2 1 290px;
+    min-width: min(100%, 250px);
+}
+body.np-commerce-form-system #admin-main-content .admin-filter-bar__field,
+body.np-commerce-form-system #admin-main-content .admin-filter-bar__field--sm,
+body.np-commerce-form-system #admin-main-content .admin-filter-bar__field--md {
+    flex: 1 1 170px;
+    min-width: min(100%, 155px);
+    max-width: 270px;
+}
+body.np-commerce-form-system #admin-main-content .admin-filter-bar__actions {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    white-space: normal;
+    margin-left: auto;
+}
+
+/* Shared searchable select gets its font/geometry from the same design
+   guidelines as other inputs (the older compact admin button rule is stronger). */
+body.admin-ui-compact.np-commerce-form-system #admin-main-content .np-admin-select {
+    min-width: 0;
+    width: 100%;
+    height: auto;
+}
+body.admin-ui-compact.np-commerce-form-system #admin-main-content .np-admin-select .np-as-trigger {
+    width: 100%;
+    height: var(--np-commerce-height) !important;
+    min-height: var(--np-commerce-height) !important;
+    margin: 0 !important;
+    padding: 0 14px !important;
+    border: 1px solid var(--np-commerce-border) !important;
+    border-radius: var(--np-commerce-radius) !important;
+    background-color: #fff !important;
+    color: var(--np-commerce-text) !important;
+    font: 400 16px/1.4 var(--np-commerce-font) !important;
+    letter-spacing: 0 !important;
+    text-align: left;
+    box-shadow: none !important;
+    box-sizing: border-box;
+}
+body.admin-ui-compact.np-commerce-form-system #admin-main-content .np-admin-select .np-as-caption {
+    font-size: 16px !important;
+    font-weight: 400 !important;
+}
+body.np-commerce-form-system > .np-as-menu .np-as-search,
+body.np-commerce-form-system > .np-as-menu .np-as-option {
+    font: 400 16px/1.4 var(--admin-font-sans, "Expose", "Segoe UI", sans-serif);
+}
+body.np-commerce-form-system > .np-as-menu .np-as-option[aria-selected="true"] {
+    font-weight: 600;
+}
+
+/* Form controls and actions use the same 48/16/8 sizing contract as Catalog.
+   Scope only to these list filters/rewards inputs, not table pagination/icons. */
+body.admin-ui-compact.np-commerce-form-system #admin-main-content :is(.admin-filter-bar, .np-customer-filters, .np-commerce-rewards__form) .admin-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]) {
+    min-width: 0;
+    width: 100%;
+    height: var(--np-commerce-height) !important;
+    min-height: var(--np-commerce-height) !important;
+    margin-top: 0 !important;
+    border: 1px solid var(--np-commerce-border) !important;
+    border-radius: var(--np-commerce-radius) !important;
+    background-color: #fff;
+    color: var(--np-commerce-text) !important;
+    font: 400 16px/1.5 var(--np-commerce-font) !important;
+    box-shadow: none !important;
+}
+body.admin-ui-compact.np-commerce-form-system #admin-main-content .np-commerce-rewards__form .admin-input {
+    display: block;
+    margin-top: 8px !important;
+    padding-inline: 14px !important;
+}
+body.admin-ui-compact.np-commerce-form-system #admin-main-content :is(.admin-filter-bar, .np-customer-filters, .np-commerce-rewards__form) .np-admin-filter-search__input {
+    padding-left: 44px !important;
+}
+body.admin-ui-compact.np-commerce-form-system #admin-main-content :is(.admin-filter-bar__actions, .np-customer-filters__actions, .np-commerce-rewards__form) .btn {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: auto !important;
+    max-width: 100%;
+    height: var(--np-commerce-height) !important;
+    min-height: var(--np-commerce-height) !important;
+    margin: 0 !important;
+    padding: 0 20px !important;
+    border-radius: var(--np-commerce-radius) !important;
+    font: 600 16px/1.35 var(--np-commerce-font) !important;
+    letter-spacing: 0 !important;
+    text-decoration: none;
+    box-shadow: none !important;
+    white-space: nowrap;
+}
+body.admin-ui-compact.np-commerce-form-system #admin-main-content :is(.admin-filter-bar__actions, .np-customer-filters__actions, .np-commerce-rewards__form) .btn-red {
+    background: var(--np-commerce-primary) !important;
+    border-color: var(--np-commerce-primary) !important;
+    color: #fff !important;
+}
+body.admin-ui-compact.np-commerce-form-system #admin-main-content :is(.admin-filter-bar__actions, .np-customer-filters__actions, .np-commerce-rewards__form) .btn-red:hover:not(:disabled) {
+    background: var(--np-commerce-primary-hover) !important;
+    border-color: var(--np-commerce-primary-hover) !important;
+}
+body.admin-ui-compact.np-commerce-form-system #admin-main-content :is(.admin-filter-bar__actions, .np-customer-filters__actions) .btn-white {
+    border: 1px solid var(--np-commerce-border) !important;
+    background: #fff !important;
+    color: var(--np-commerce-text) !important;
+}
+body.np-commerce-form-system #admin-main-content :is(.admin-input, .np-as-trigger, .btn):focus-visible {
+    outline: 3px solid var(--np-commerce-focus) !important;
+    outline-offset: 2px !important;
+}
+
+
+/* Section-header navigation actions (Orders, Quotes and Returns) match
+   primary filter controls; compact row/table actions retain their own size. */
+body.admin-ui-compact.np-commerce-form-system #admin-main-content section > .flex:first-child > .btn,
+body.admin-ui-compact.np-commerce-form-system #admin-main-content section > .flex:first-child > div > .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    height: var(--np-commerce-height) !important;
+    min-height: var(--np-commerce-height) !important;
+    max-width: 100%;
+    margin: 0 !important;
+    padding: 0 16px !important;
+    border-radius: var(--np-commerce-radius) !important;
+    font: 600 16px/1.35 var(--np-commerce-font) !important;
+}
+
+/* Customer Directory: independent rows, with an explicit sort column and
+   actions contained by the card. Avoid the old 100%-width sort/overflow. */
+body.np-commerce-form-system #admin-main-content .np-customer-filters {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: 12px;
+    row-gap: 14px;
+    min-width: 0;
+}
+body.np-commerce-form-system #admin-main-content .np-customer-filters__search { grid-column: span 4; min-width: 0; }
+body.np-commerce-form-system #admin-main-content .np-customer-filters__field { grid-column: span 2; min-width: 0; }
+body.np-commerce-form-system #admin-main-content .np-customer-filters__sort { grid-column: span 3; min-width: 0; }
+body.np-commerce-form-system #admin-main-content .np-customer-filters__actions {
+    grid-column: span 9;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+}
+
+/* Rewards uses the same label/field/button controls, without moving the
+   checkbox or changing the saved numerical values. */
+body.np-commerce-form-system #admin-main-content .np-commerce-rewards { min-width: 0; }
+body.np-commerce-form-system #admin-main-content .np-commerce-rewards > * { min-width: 0; }
+body.np-commerce-form-system #admin-main-content .np-commerce-rewards__form label {
+    font: 600 14px/1.45 var(--np-commerce-font) !important;
+    color: var(--np-commerce-text) !important;
+}
+body.np-commerce-form-system #admin-main-content .np-commerce-rewards__form label:has(input[type="checkbox"]) {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+}
+body.np-commerce-form-system #admin-main-content .np-commerce-rewards__form input[type="checkbox"] {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+}
+body.np-commerce-form-system #admin-main-content .np-commerce-rewards__summary {
+    min-width: 0;
+    overflow-wrap: break-word;
+}
+body.np-commerce-form-system #admin-main-content .np-commerce-rewards__summary h2 {
+    font-size: clamp(20px, 2vw, 28px);
+    line-height: 1.22;
+}
+
+@media (max-width: 1370px) {
+    body.np-commerce-form-system #admin-main-content .np-customer-filters__search { grid-column: span 6; }
+    body.np-commerce-form-system #admin-main-content .np-customer-filters__field { grid-column: span 3; }
+    body.np-commerce-form-system #admin-main-content .np-customer-filters__sort { grid-column: span 6; }
+    body.np-commerce-form-system #admin-main-content .np-customer-filters__actions { grid-column: span 6; }
+}
+@media (max-width: 780px) {
+    body.np-commerce-form-system #admin-main-content .np-customer-filters { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    body.np-commerce-form-system #admin-main-content .np-customer-filters__search,
+    body.np-commerce-form-system #admin-main-content .np-customer-filters__sort { grid-column: 1 / -1; }
+    body.np-commerce-form-system #admin-main-content .np-customer-filters__field { grid-column: span 1; }
+    body.np-commerce-form-system #admin-main-content .np-customer-filters__actions { grid-column: 1 / -1; }
+}
+@media (max-width: 500px) {
+    body.np-commerce-form-system #admin-main-content .admin-filter-bar__search,
+    body.np-commerce-form-system #admin-main-content .admin-filter-bar__field,
+    body.np-commerce-form-system #admin-main-content .admin-filter-bar__field--md,
+    body.np-commerce-form-system #admin-main-content .admin-filter-bar__field--sm,
+    body.np-commerce-form-system #admin-main-content .admin-filter-bar__actions { flex: 1 1 100%; }
+    body.np-commerce-form-system #admin-main-content .admin-filter-bar__field,
+    body.np-commerce-form-system #admin-main-content .admin-filter-bar__field--md,
+    body.np-commerce-form-system #admin-main-content .admin-filter-bar__field--sm { max-width: none; }
+    body.np-commerce-form-system #admin-main-content .admin-filter-bar__actions { margin-left: 0; }
+    body.np-commerce-form-system #admin-main-content .admin-filter-bar__actions .btn { flex: 1 1 auto; }
+    body.np-commerce-form-system #admin-main-content .np-customer-filters { grid-template-columns: minmax(0,1fr); }
+    body.np-commerce-form-system #admin-main-content .np-customer-filters__field,
+    body.np-commerce-form-system #admin-main-content .np-customer-filters__search,
+    body.np-commerce-form-system #admin-main-content .np-customer-filters__sort,
+    body.np-commerce-form-system #admin-main-content .np-customer-filters__actions { grid-column: 1 / -1; }
+    body.np-commerce-form-system #admin-main-content .np-customer-filters__actions { justify-content: stretch; }
+    body.np-commerce-form-system #admin-main-content .np-customer-filters__actions .btn { flex: 1 1 auto; }
+    body.np-commerce-form-system #admin-main-content .np-commerce-rewards__form { padding: 16px; }
+}

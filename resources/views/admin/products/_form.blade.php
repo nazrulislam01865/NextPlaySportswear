@@ -1,3 +1,7 @@
+@push('admin-page-styles')
+    <link rel="stylesheet" href="{{ asset('css/nextplay-catalog-focused-fixes-20261113.css') }}?v={{ filemtime(public_path('css/nextplay-catalog-focused-fixes-20261113.css')) }}">
+@endpush
+
 @php
     $isEdit = $product->exists;
     $pivotPrimaryCategoryId = $product->relationLoaded('categories')
@@ -1392,11 +1396,12 @@ window.productFaqSelector = function (initial = {}) {
                             <template x-for="(feature, index) in features" :key="index">
                                 <div class="np-product-highlight-row">
                                     <div class="np-product-highlight-text-cell">
-                                        <label class="sr-only" :for="`product-highlight-${index}`">Product highlight</label>
+                                        <label class="np-product-highlight-mobile-label" :for="`product-highlight-${index}`">Highlight</label>
                                         <input class="admin-input !mt-0" :id="`product-highlight-${index}`" :name="`features[${index}]`" x-model="features[index]" maxlength="500" placeholder="e.g., Breathable mesh construction for airflow">
                                     </div>
 
                                     <div class="np-product-highlight-icon-cell">
+                                        <span class="np-product-highlight-mobile-label">Icon</span>
                                         <input type="hidden" :name="`feature_icons[${index}]`" :value="featureIcons[index] || ''">
                                         <div class="np-product-highlight-icon-preview">
                                             <img x-show="featureIconPreview(index)" :src="featureIconPreview(index)" alt="" class="h-full w-full object-contain p-1">
@@ -1413,6 +1418,7 @@ window.productFaqSelector = function (initial = {}) {
                                     </div>
 
                                     <div class="np-product-highlight-storefront-cell">
+                                        <span class="np-product-highlight-mobile-label">Storefront</span>
                                         <input type="hidden" :name="`feature_storefront[${index}]`" :value="featureStorefront[index] ? 1 : 0">
                                         <label class="np-highlight-toggle" :class="{ 'is-active': featureStorefront[index], 'is-disabled': !featureStorefront[index] && storefrontHighlightCount() >= 4 }">
                                             <input
@@ -1428,6 +1434,7 @@ window.productFaqSelector = function (initial = {}) {
                                     </div>
 
                                     <div class="np-product-highlight-action-cell">
+                                        <span class="np-product-highlight-mobile-label">Action</span>
                                         <button type="button" class="np-danger-link px-2 py-2" @click="removeFeature(index)">Remove</button>
                                     </div>
                                 </div>
@@ -1694,7 +1701,7 @@ Lead Time:"></div>
                 </header>
 
                 <input type="hidden" name="price_table_headers[0]" value="Quantity">
-                <input type="hidden" name="pricing_mode" x-model="pricingMode">
+                <input type="hidden" name="pricing_mode" value="standard">
 
                 <div
                     x-show="hasCompleteFabricPricing()"
@@ -1708,14 +1715,6 @@ Lead Time:"></div>
                 </div>
 
                 <div x-show="!hasCompleteFabricPricing()" x-cloak>
-                <div class="np-price-mode mt-4" role="group" aria-label="Price mode">
-                    <button type="button" :class="pricingMode === 'standard' ? 'is-selected' : ''" @click="pricingMode = 'standard'">
-                        <span x-text="pricingMode === 'standard' ? '▣' : '▢'"></span> Standard pricing
-                    </button>
-                    <button type="button" :class="pricingMode === 'bulk' ? 'is-selected' : ''" @click="pricingMode = 'bulk'">
-                        <span x-text="pricingMode === 'bulk' ? '▣' : '▢'"></span> Bulk pricing
-                    </button>
-                </div>
                 <p x-show="priceImportStatus" x-cloak class="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700" x-text="priceImportStatus"></p>
                 <p x-show="priceImportError" x-cloak class="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700" x-text="priceImportError"></p>
 

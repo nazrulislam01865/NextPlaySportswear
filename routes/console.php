@@ -98,3 +98,6 @@ Schedule::command('payments:health')->everyFifteenMinutes()->withoutOverlapping(
 if (config('flowtrack.enabled')) {
     Schedule::command('flowtrack:push-branding')->hourly()->withoutOverlapping();
 }
+
+// Resumes durable holiday ETA notifications if dispatch was interrupted after commit.
+Schedule::command('holidays:dispatch-notifications')->everyMinute()->withoutOverlapping();

@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Events\DeliveryEstimateUpdated;
+use App\Jobs\Shipping\RecalculateHolidayOrdersBatch;
+use App\Jobs\Shipping\ScheduleHolidayRecalculation;
+use App\Jobs\Shipping\SendHolidayEtaNotification;
 use App\Http\Middleware\EnforceCustomerSessionVersion;
 use App\Models\HolidayCalendar;
 use App\Models\Order;
@@ -12,11 +15,14 @@ use App\Models\ShippingMethod;
 use App\Models\User;
 use App\Services\Order\OrderExperienceService;
 use App\Services\Shipping\HolidayCalendarService;
+use App\Services\Shipping\HolidayCalendarRevisionStore;
 use App\Services\Shipping\ShippingMethodService;
 use App\Support\AdminRbac;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -55,7 +61,16 @@ class HolidayCalendarEndToEndFlowTest extends TestCase
      */
     public function test_complete_holiday_calendar_flow_from_admin_to_customer_storefront(): void
     {
+        // Keep the calendar and checkout fixtures deterministic in any test year.
+        $this->travelTo(Carbon::parse('2026-11-13 10:00:00'));
         Event::fake([DeliveryEstimateUpdated::class]);
+        // Calendar edits now enqueue jobs; run the worker explicitly to test its
+        // persisted ETA and outbox contract, without running a sync queue inline.
+        Queue::fake([
+            ScheduleHolidayRecalculation::class,
+            RecalculateHolidayOrdersBatch::class,
+            SendHolidayEtaNotification::class,
+        ]);
 
         $holidayService = app(HolidayCalendarService::class);
         $holidayService->clearHolidayCache();
@@ -124,7 +139,7 @@ class HolidayCalendarEndToEndFlowTest extends TestCase
             'name' => 'UK National Holidays 2026',
             'country_code' => 'GB',
             'country_name' => 'United Kingdom',
-            'year' => (int) date('Y'),
+            'year' => 2026,
             'is_active' => 1,
             'description' => 'Official national bank holidays for the United Kingdom',
             'dates' => [
@@ -142,7 +157,7 @@ class HolidayCalendarEndToEndFlowTest extends TestCase
         $this->assertDatabaseHas('holiday_calendars', [
             'name' => 'UK National Holidays 2026',
             'country_code' => 'GB',
-            'year' => (int) date('Y'),
+            'year' => 2026,
             'is_active' => true,
         ]);
         $this->assertDatabaseHas('holiday_calendar_dates', [
@@ -150,11 +165,15 @@ class HolidayCalendarEndToEndFlowTest extends TestCase
         ]);
 
         // -----------------------------------------------------------------
-        // STEP 3, 4, 5 & 6: Recalculate Open Orders (Artisan Command & Event)
+        // STEP 3, 4, 5 & 6: Simulate the queued recalculation worker.
+        // The separate OrderRecalculationAndNotificationTest covers the legacy
+        // synchronous Artisan command. The optimized flow uses the outbox.
         // -----------------------------------------------------------------
-        $this->artisan('holidays:recalculate-orders', [
-            '--country' => 'United Kingdom',
-        ])->assertExitCode(0);
+        $revisions = app(HolidayCalendarRevisionStore::class);
+        $revision = $revisions->current('GB', 2026);
+        $this->assertGreaterThan(0, $revision);
+        $batch = new RecalculateHolidayOrdersBatch('GB', 2026, $revision, [$order->id]);
+        $batch->handle($holidayService, $revisions);
 
         // Verify Step 5: Order ETA is updated and holiday reason is recorded
         $order->refresh();
@@ -168,11 +187,21 @@ class HolidayCalendarEndToEndFlowTest extends TestCase
         $this->assertSame('2026-12-29', $shipment->estimated_delivery_at->format('Y-m-d'));
         $this->assertNotNull($shipment->holiday_reason);
 
-        // Verify Step 6: Customer notification event is dispatched
-        Event::assertDispatched(DeliveryEstimateUpdated::class, function ($event) use ($shipment) {
-            return $event->shipment->id === $shipment->id
-                && str_contains($event->holidayReason, 'Christmas Day');
-        });
+        // Step 6: the async path records a durable notification outbox entry.
+        // It intentionally does not dispatch the legacy immediate event.
+        $outbox = DB::table('holiday_eta_notifications')
+            ->where('order_id', $order->id)->first();
+        $this->assertNotNull($outbox);
+        $payload = json_decode($outbox->payload, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame($shipment->id, (int) $payload['shipment_id']);
+        $this->assertSame('2026-12-29', $payload['new_end_date']);
+        $this->assertStringContainsString('Christmas Day', $payload['reason']);
+        Event::assertNotDispatched(DeliveryEstimateUpdated::class);
+
+        // A retried job must not duplicate customer notification requests.
+        $batch->handle($holidayService, $revisions);
+        $this->assertSame(1, DB::table('holiday_eta_notifications')
+            ->where('order_id', $order->id)->count());
 
         // -----------------------------------------------------------------
         // STEP 7 & SCREEN 3: Checkout Shipping Method with Holiday Notice
@@ -204,8 +233,14 @@ class HolidayCalendarEndToEndFlowTest extends TestCase
             'placed_order' => app(OrderExperienceService::class)->orderSnapshot($order),
         ]);
 
-        $confirmationResponse = $this->get(route('order.confirmation'));
+        // The confirmation endpoint only exposes a live order to its owner.
+        // The earlier admin request changed the default auth guard, so
+        // explicitly authenticate the customer instead of rendering a demo.
+        $confirmationResponse = $this->withSession([
+            EnforceCustomerSessionVersion::SESSION_KEY => (int) $this->customer->auth_session_version,
+        ])->actingAs($this->customer, 'web')->get(route('order.confirmation'));
         $confirmationResponse->assertOk();
+        $confirmationResponse->assertSee($order->order_number);
         $confirmationResponse->assertSee('Holiday Adjusted');
         $confirmationResponse->assertSee('Delivery Window Notice');
 

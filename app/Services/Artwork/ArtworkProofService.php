@@ -8,6 +8,7 @@ use App\Models\OrderItem;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use App\Jobs\Shipping\RefreshHolidayOrderEta;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -44,7 +45,7 @@ class ArtworkProofService
                 OrderItem::query()->whereKey($item->id)->lockForUpdate()->firstOrFail();
                 $version = (int) ArtworkProof::query()->where('order_item_id', $item->id)->max('version') + 1;
 
-                return ArtworkProof::create([
+                $proof = ArtworkProof::create([
                     'order_id' => $order->id,
                     'order_item_id' => $item->id,
                     'version' => $version,
@@ -56,6 +57,8 @@ class ArtworkProofService
                     'file_size' => (int) $file->getSize(),
                     'designer_notes' => $notes,
                 ]);
+                $this->queueHolidayEtaRefreshAfterCommit((int) $order->id);
+                return $proof;
             });
         } catch (\Throwable $exception) {
             Storage::disk('local')->delete($path);
@@ -107,6 +110,7 @@ class ArtworkProofService
                     'file_size' => (int) $file->getSize(),
                     'designer_notes' => 'Artwork from FlowTracker. Please review and approve or request changes.',
                 ]);
+                $this->queueHolidayEtaRefreshAfterCommit((int) $order->id);
                 return ['proof' => $proof, 'created' => true];
             }, 3);
         } catch (\Throwable $exception) {
@@ -172,6 +176,11 @@ class ArtworkProofService
                     default => throw new \InvalidArgumentException('Unsupported artwork decision.'),
                 };
                 $locked->update($attributes);
+                if ($decision === ArtworkProof::APPROVED) {
+                    // Only the current set of approved proofs may anchor the ETA;
+                    // pending siblings keep it provisional. Dispatch after commit.
+                    $this->queueHolidayEtaRefreshAfterCommit((int) $locked->order_id);
+                }
                 if ($locked->flowtrack_job_id && in_array($decision, [ArtworkProof::REVISION, ArtworkProof::REJECTED], true)) {
                     // The next FlowTracker artwork cycle replaces the review
                     // round. Suppress decisions on siblings from the older round
@@ -193,6 +202,14 @@ class ArtworkProofService
             }
             throw $exception;
         }
+    }
+
+    private function queueHolidayEtaRefreshAfterCommit(int $orderId): void
+    {
+        DB::afterCommit(function () use ($orderId): void {
+            RefreshHolidayOrderEta::dispatch($orderId)
+                ->onQueue(config('nextplay_shipping.holiday_queue', 'default'));
+        });
     }
 
     public function stream(ArtworkProof $proof, string $type, bool $download): StreamedResponse

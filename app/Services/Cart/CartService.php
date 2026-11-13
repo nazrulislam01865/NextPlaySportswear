@@ -1233,6 +1233,7 @@ class CartService
                     (int) ($selectedShipping['maximum_days'] ?? $selectedShipping['minimum_days'] ?? 0)
                 ),
                 'quote_based' => (bool) ($selectedShipping['is_quote_based'] ?? false),
+                'starts_after_artwork_approval' => (bool) ($selectedShipping['starts_after_artwork_approval'] ?? true),
             ] : null,
         ];
 

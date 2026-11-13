@@ -1,35 +1,35 @@
 <x-layouts.admin title="Orders">
     <x-admin.filter-bar label="Order filters">
         <div class="admin-filter-bar__search">
-            <input class="admin-input" name="q" value="{{ request('q') }}" placeholder="Order number, customer, or email" aria-label="Search orders">
+            <x-admin.filter-search name="q" :value="request('q')" label="Search orders" placeholder="Order number, customer, or email" />
         </div>
 
         <div class="admin-filter-bar__field">
-            <select class="admin-input" name="status" aria-label="Order status">
+            <x-admin.searchable-select id="orders-filter-status" name="status" label="Order status">
                 <option value="">All statuses</option>
                 @foreach($orderStatuses as $key => $label)
                     <option value="{{ $key }}" @selected(request('status') === $key)>{{ $label }}</option>
                 @endforeach
-            </select>
+            </x-admin.searchable-select>
         </div>
 
         <div class="admin-filter-bar__field">
-            <select class="admin-input" name="payment_status" aria-label="Payment status">
+            <x-admin.searchable-select id="orders-filter-payment-status" name="payment_status" label="Payment status">
                 <option value="">All payments</option>
                 @foreach($paymentStatuses as $key => $label)
                     <option value="{{ $key }}" @selected(request('payment_status') === $key)>{{ $label }}</option>
                 @endforeach
-            </select>
+            </x-admin.searchable-select>
         </div>
 
         @if($hasFlowTrackSync)
             <div class="admin-filter-bar__field">
-                <select class="admin-input" name="flowtrack_sync_status" aria-label="FlowTrack sync status">
+                <x-admin.searchable-select id="orders-filter-flowtrack-sync-status" name="flowtrack_sync_status" label="FlowTrack sync status">
                     <option value="">All FlowTrack</option>
                     @foreach($flowTrackSyncStatuses as $key => $label)
                         <option value="{{ $key }}" @selected(request('flowtrack_sync_status') === $key)>{{ $label }}</option>
                     @endforeach
-                </select>
+                </x-admin.searchable-select>
             </div>
         @else
             <input type="hidden" name="flowtrack_sync_status" value="">

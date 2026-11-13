@@ -6,58 +6,52 @@
 >
     <x-admin.filter-bar label="Bulk quote filters">
         <div class="admin-filter-bar__search">
-            <input
-                class="admin-input"
-                name="q"
-                value="{{ request('q') }}"
-                placeholder="Reference, customer, email, product..."
-                aria-label="Search bulk quote requests"
-            >
+            <x-admin.filter-search name="q" :value="request('q')" label="Search bulk quote requests" placeholder="Reference, customer, email, product..." />
         </div>
 
         <div class="admin-filter-bar__field">
-            <select class="admin-input" name="status" aria-label="Request status">
+            <x-admin.searchable-select id="bulk-quotes-filter-status" name="status" label="Request status">
                 <option value="">All statuses</option>
                 @foreach($statusOptions as $value => $label)
                     <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
                 @endforeach
-            </select>
+            </x-admin.searchable-select>
         </div>
 
         <div class="admin-filter-bar__field admin-filter-bar__field--sm">
-            <select class="admin-input" name="priority" aria-label="Priority">
+            <x-admin.searchable-select id="bulk-quotes-filter-priority" name="priority" label="Request priority">
                 <option value="">All priorities</option>
                 @foreach($priorityOptions as $value => $label)
                     <option value="{{ $value }}" @selected(request('priority') === $value)>{{ $label }}</option>
                 @endforeach
-            </select>
+            </x-admin.searchable-select>
         </div>
 
         <div class="admin-filter-bar__field admin-filter-bar__field--md">
-            <select class="admin-input" name="assigned_to" aria-label="Assigned admin">
+            <x-admin.searchable-select id="bulk-quotes-filter-assigned-to" name="assigned_to" label="Assigned admin" :searchable="true" search-placeholder="Search assignees...">
                 <option value="">All assignees</option>
                 @foreach($assignees as $assignee)
                     <option value="{{ $assignee->id }}" @selected((string) request('assigned_to') === (string) $assignee->id)>{{ $assignee->name }}</option>
                 @endforeach
-            </select>
+            </x-admin.searchable-select>
         </div>
 
         <div class="admin-filter-bar__field">
-            <select class="admin-input" name="sync_status" aria-label="FlowTrack sync status">
+            <x-admin.searchable-select id="bulk-quotes-filter-sync-status" name="sync_status" label="FlowTrack sync status">
                 <option value="">All FlowTrack</option>
                 @foreach($syncStatusOptions as $syncStatus)
                     <option value="{{ $syncStatus }}" @selected(request('sync_status') === $syncStatus)>{{ str($syncStatus)->headline() }}</option>
                 @endforeach
-            </select>
+            </x-admin.searchable-select>
         </div>
 
         <div class="admin-filter-bar__field">
-            <select class="admin-input" name="country" aria-label="Country">
+            <x-admin.searchable-select id="bulk-quotes-filter-country" name="country" label="Quote country" :searchable="true" search-placeholder="Search countries...">
                 <option value="">All countries</option>
                 @foreach($countries as $country)
                     <option value="{{ $country }}" @selected(request('country') === $country)>{{ $country }}</option>
                 @endforeach
-            </select>
+            </x-admin.searchable-select>
         </div>
 
         <div class="admin-filter-bar__actions">

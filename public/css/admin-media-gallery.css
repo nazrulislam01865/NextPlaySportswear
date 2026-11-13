@@ -33,6 +33,16 @@
 .np-mg-search input::placeholder, .np-mg-global-search input::placeholder { color: #879ab5; }
 .np-mg-select { min-width: 120px; height: 44px; border: 1px solid #d9e1ed; border-radius: 7px; background-color: #fff; padding: 0 14px; color: var(--np-color-primary); font-size: 13px; font-weight: 700; }
 .np-mg-select--category { min-width: 157px; }
+/* Shared searchable dropdowns in the gallery filter row. The menu is
+   portaled to body, so media grid/scroll containers cannot clip it. */
+.np-mg-select-field { flex: 0 1 172px; min-width: 135px; }
+.np-mg-select-field--category { flex-basis: 184px; }
+body.admin-ui-compact .np-mg-filters .np-as-trigger { height: 48px; min-height: 48px; }
+.np-mg-filters .np-mg-search { height: 48px; }
+@media (max-width: 760px) {
+    .np-mg-filters .np-mg-select-field { flex: 1 1 145px; }
+}
+
 .np-mg-view-switch { display: flex; align-items: center; gap: 5px; margin-left: auto; }
 .np-mg-view-switch button { display: grid; place-items: center; height: 39px; width: 40px; border: 1px solid #dce5ee; border-radius: 6px; background: #fff; color: var(--np-color-primary); }
 .np-mg-view-switch button.is-active { background: var(--np-color-secondary); color: #fff; border-color: var(--np-color-secondary); }

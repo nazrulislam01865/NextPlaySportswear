@@ -13,6 +13,15 @@
         'admin.personalization-categories.*',
         'admin.personalization-templates.*'
     );
+    // Reuse the central forms guideline on the requested commerce list/settings screens only.
+    $commerceFormSystemActive = request()->routeIs(
+        'admin.orders.index',
+        'admin.bulk-quotes.index',
+        'admin.contact-requests.index',
+        'admin.returns.index',
+        'admin.customers.index',
+        'admin.reward-program.edit'
+    );
 @endphp
 <!doctype html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -34,6 +43,9 @@
     {{-- Shared admin UX fixes ship as versioned public assets (no Vite rebuild required). --}}
     <link rel="stylesheet" href="{{ asset('css/nextplay-admin-ui-fixes-20261104.css') }}?v=1">
     <link rel="stylesheet" href="{{ asset('css/nextplay-admin-alignment-fixes-20261104b.css') }}?v=2">
+    @if($commerceFormSystemActive)
+        <link rel="stylesheet" href="{{ asset('css/nextplay-admin-commerce-forms.css') }}?v=20261114a">
+    @endif
     <script defer src="{{ asset('js/nextplay-admin-ui-fixes-20261104.js') }}?v=1"></script>
     @if(request()->routeIs('admin.dashboard'))
         <link rel="stylesheet" href="{{ asset('css/nextplay-dashboard-prototype.css') }}?v=20261113d">
@@ -55,6 +67,7 @@
         'admin-clean-ui',
         'admin-ui-compact',
         'np-catalog-system' => $catalogDesignSystemActive,
+        'np-commerce-form-system' => $commerceFormSystemActive,
         'np-dashboard-shell' => request()->routeIs('admin.dashboard'),
     ])
     x-data="{ sidebarOpen: false }"
@@ -351,11 +364,14 @@
                     </x-admin.sidebar-group>
                 @endif
 
-                @if($canAdmin('orders.view') || $canAdmin('returns.view') || $canAdmin('customers.view') || $canAdmin('coupons.view') || $canAdmin('coupons.manage'))
+                @if($canAdmin('orders.view') || $canAdmin('contact_requests.view') || $canAdmin('returns.view') || $canAdmin('customers.view') || $canAdmin('coupons.view') || $canAdmin('coupons.manage'))
                     <p class="mt-6 px-3 pb-2 text-[10px] font-black uppercase tracking-[.2em] text-slate-500">Commerce</p>
                     @if($canAdmin('orders.view'))
                         <x-admin.sidebar-link :href="route('admin.orders.index')" :active="request()->routeIs('admin.orders.*')" icon="▣">Orders</x-admin.sidebar-link>
                         <x-admin.sidebar-link :href="route('admin.bulk-quotes.index')" :active="request()->routeIs('admin.bulk-quotes.*')" icon="▤">Bulk Quote Requests</x-admin.sidebar-link>
+                    @endif
+                    @if($canAdmin('contact_requests.view'))
+                        <x-admin.sidebar-link :href="route('admin.contact-requests.index')" :active="request()->routeIs('admin.contact-requests.*')" icon="✉">Contact Requests</x-admin.sidebar-link>
                     @endif
                     @if($canAdmin('returns.view'))
                         <x-admin.sidebar-link :href="route('admin.returns.index')" :active="request()->routeIs('admin.returns.*')" icon="↶">Returns & Exchanges</x-admin.sidebar-link>

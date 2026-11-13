@@ -59,6 +59,18 @@
                     <div class="np-order-confirmation__payment-status {{ $paymentPaid ? 'is-paid' : '' }}"><span aria-hidden="true">{{ $paymentPaid ? '✓' : '◷' }}</span><div><strong>{{ $paymentPaid ? 'Paid' : 'Payment verification pending' }}</strong><p>{{ $paymentPaid ? 'Single payment of USD '.number_format((float) ($totals['total'] ?? 0), 2).' received.' : 'Order received. Paid status appears only after secure provider verification.' }}</p></div></div>
                     <a class="np-order-confirmation__primary np-order-confirmation__full" href="{{ ($orderId ? \Illuminate\Support\Facades\URL::signedRoute('account.orders.invoice.download', ['order' => $orderId]) : route('orders.invoice.legacy')) }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 2h9l4 4v16H6zM15 2v5h4M9 13h7m-7 4h7"/></svg>Download Invoice</a>
                     <a class="np-order-confirmation__secondary np-order-confirmation__full" href="{{ $orderId ? route('account.orders.shipments', ['order' => $orderId]) : route('orders.track') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 7h12v10H2zM14 10h4l4 4v3h-8z"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg>Track All Items</a>
+                    @if(! $isDemo && !empty($order['holiday_adjustment_applied']))
+                        <div class="np-order-confirmation__notice" role="note">
+                            <span aria-hidden="true">ⓘ</span>
+                            <div>
+                                <strong>Holiday Adjusted</strong>
+                                <p><b>Delivery Window Notice:</b> {{ $order['holiday_adjustment_reason'] ?: 'The delivery window includes a holiday-related adjustment.' }}</p>
+                                @if(!empty($order['estimated_delivery']))
+                                    <p>Updated estimated delivery: {{ $order['estimated_delivery'] }}</p>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
                     <div class="np-order-confirmation__notice"><span aria-hidden="true">ⓘ</span><div><strong>Each product progresses independently.</strong><p>Tracking appears when its shipment is dispatched. Production and delivery estimates depend on artwork approval.</p></div></div>
                 </aside>
             </div>

@@ -507,17 +507,28 @@ class CheckoutService
                 $holidayService = app(\App\Services\Shipping\HolidayCalendarService::class);
                 $country = $holidayService->resolveOrderCountry($order);
                 [$minDays, $maxDays] = $holidayService->resolveOrderDays($order);
-                $deliveryWindow = $holidayService->calculateDeliveryWindow(now(), $minDays, $maxDays, $country);
-
-                $order->estimated_delivery_start_at = $deliveryWindow['start_date'];
-                $order->estimated_delivery_end_at = $deliveryWindow['end_date'];
-                $order->holiday_adjustment_applied = $deliveryWindow['is_holiday_adjusted'];
-                $order->holiday_adjustment_reason = $deliveryWindow['adjustment_reason'];
-                $order->holiday_adjustment_meta = [
-                    'holidays' => $deliveryWindow['affected_holidays'],
-                    'range' => $deliveryWindow['formatted_range'],
-                    'country' => $country,
-                ];
+                $anchor = $holidayService->resolveEtaAnchor($order);
+                if ($anchor !== null) {
+                    $deliveryWindow = $holidayService->calculateDeliveryWindow($anchor, $minDays, $maxDays, $country);
+                    $order->estimated_delivery_start_at = $deliveryWindow['start_date'];
+                    $order->estimated_delivery_end_at = $deliveryWindow['end_date'];
+                    $order->holiday_adjustment_applied = $deliveryWindow['is_holiday_adjusted'];
+                    $order->holiday_adjustment_reason = $deliveryWindow['adjustment_reason'];
+                    $order->holiday_adjustment_meta = [
+                        'holidays' => $deliveryWindow['affected_holidays'],
+                        'range' => $deliveryWindow['formatted_range'], 'country' => $country,
+                        'eta_state' => 'confirmed', 'anchor_at' => $anchor->toIso8601String(),
+                    ];
+                } else {
+                    // Artwork-dependent production is not anchored to the placement date.
+                    $order->estimated_delivery_start_at = null;
+                    $order->estimated_delivery_end_at = null;
+                    $order->holiday_adjustment_applied = false;
+                    $order->holiday_adjustment_reason = null;
+                    $order->holiday_adjustment_meta = [
+                        'country' => $country, 'eta_state' => 'awaiting_artwork_approval',
+                    ];
+                }
                 $order->save();
 
                 if ($user instanceof User && $rewardDiscount > 0) {
@@ -1133,6 +1144,18 @@ class CheckoutService
             ->values();
         $minimumDays = (int) collect($fulfillmentLines)->max('estimated_minimum_days');
         $maximumDays = (int) collect($fulfillmentLines)->max('estimated_maximum_days');
+        // No configured durations: keep the previous 8-12-day fallback.
+        $snapshotMin = ($minimumDays > 0 || $maximumDays > 0) ? max(1, $minimumDays) : 8;
+        $snapshotMax = ($minimumDays > 0 || $maximumDays > 0)
+            ? max($snapshotMin, $maximumDays) : 12;
+        // A mixed order is conservatively anchored to artwork approval when any
+        // selected line requires it. The original line-level choices remain saved.
+        $requiresArtwork = collect($fulfillmentLines)->contains(fn (array $line) =>
+            (bool) data_get($line, 'shipping.starts_after_artwork_approval', false));
+        $productionMin = (int) collect($fulfillmentLines)->max('production.minimum_days');
+        $productionMax = (int) collect($fulfillmentLines)->max('production.maximum_days');
+        $transitMin = (int) collect($fulfillmentLines)->max('shipping.minimum_days');
+        $transitMax = (int) collect($fulfillmentLines)->max('shipping.maximum_days');
         $ruralAmount = max(0, (float) ($ruralSurcharge['amount'] ?? 0));
         $additionalCharge = round(max(0, $automaticShippingBase) + $ruralAmount, 2);
         $selectedShippingTotal = round(max(0, $productShippingTotal) + $additionalCharge, 2);
@@ -1162,6 +1185,19 @@ class CheckoutService
             'rural_surcharge' => $ruralSurcharge,
             'source' => 'product_configuration',
             'totals_separated' => true,
+            // Immutable business-day duration contract for future recalculation.
+            'minimum_days' => $snapshotMin,
+            'maximum_days' => $snapshotMax,
+            'delivery_estimate' => [
+                'start_event' => $requiresArtwork ? 'artwork_confirmation' : 'order_placement',
+                'production_minimum_days' => $productionMin,
+                'production_maximum_days' => $productionMax,
+                'transit_minimum_days' => $transitMin,
+                'transit_maximum_days' => $transitMax,
+                'total_minimum_business_days' => $snapshotMin,
+                'total_maximum_business_days' => $snapshotMax,
+                'product_lines' => $fulfillmentLines,
+            ],
             'lines' => $fulfillmentLines,
         ];
     }

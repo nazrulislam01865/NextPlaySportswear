@@ -1,0 +1,64 @@
+/* Reusable NextPlay admin searchable select. Reference: Bulk Quote country menu.
+   All sizing, colors and type inherit the centralized admin design tokens. */
+.np-admin-select { position: relative; width: 100%; min-width: 0; height: 100%; }
+.np-admin-select.is-enhanced > .np-admin-select-native {
+    /* Retain native validation and form submission without a second form value. */
+    position: absolute !important; width: 1px !important; height: 1px !important;
+    min-height: 1px !important; padding: 0 !important; margin: 0 !important;
+    opacity: 0 !important; clip-path: inset(50%); pointer-events: none !important;
+}
+body.admin-ui-compact .np-admin-select .np-as-trigger {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    width: 100%; min-width: 0; height: 48px; min-height: 48px;
+    margin: 0; padding: 0 13px; border: 1px solid var(--admin-theme-border, #c3d0e0);
+    border-radius: var(--admin-radius, 8px); background: var(--admin-theme-surface, #fff);
+    color: var(--admin-theme-text, #102849); font: 500 16px/1.35 var(--admin-font-sans, inherit);
+    text-align: left; cursor: pointer; box-shadow: none; transition: border-color .15s, box-shadow .15s;
+}
+body.admin-ui-compact .np-admin-select .np-as-trigger:hover { border-color: #879bb4; }
+body.admin-ui-compact .np-admin-select .np-as-trigger:focus-visible,
+body.admin-ui-compact .np-admin-select.is-open .np-as-trigger {
+    outline: none; border-color: var(--admin-theme-accent, #2766c2);
+    box-shadow: 0 0 0 2px rgb(var(--np-color-secondary-rgb, 35 99 190) / .13);
+}
+.np-as-caption { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.np-as-arrow { flex: none; color: var(--admin-theme-muted, #6b7c93); transition: transform .16s ease; }
+.np-admin-select.is-open .np-as-arrow { transform: rotate(180deg); }
+body > .np-as-menu {
+    position: fixed; z-index: 1100; display: flex; flex-direction: column;
+    padding: 8px; border: 1px solid var(--admin-theme-border, #bfccde);
+    border-radius: 12px; background: var(--admin-theme-surface, #fff);
+    box-shadow: 0 16px 35px rgb(11 35 69 / .19); color: var(--admin-theme-text, #102849);
+    font-family: var(--admin-font-sans, inherit); box-sizing: border-box;
+}
+body > .np-as-menu[hidden] { display: none !important; }
+.np-as-search-shell { position: relative; flex: none; margin-bottom: 7px; }
+body > .np-as-menu .np-as-search {
+    width: 100%; height: 44px; min-height: 44px; margin: 0; padding: 0 13px;
+    border: 1px solid var(--admin-theme-border, #c3d0e0); border-radius: 8px;
+    background: #fff; color: var(--admin-theme-text, #102849);
+    font: 500 15px/1.35 var(--admin-font-sans, inherit); box-shadow: none;
+}
+body > .np-as-menu .np-as-search:focus { outline: 2px solid var(--admin-theme-accent, #2563eb); outline-offset: -2px; }
+body > .np-as-menu .np-as-search::placeholder { color: var(--admin-theme-muted, #748197); opacity: 1; }
+.np-as-list { min-height: 0; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; padding: 1px; }
+body > .np-as-menu .np-as-option {
+    display: flex; flex-direction: column; gap: 3px; position: relative;
+    width: 100%; min-height: 42px; margin: 0 0 2px; padding: 9px 34px 9px var(--np-as-indent, 12px);
+    border: 0; border-radius: 8px; background: transparent; color: var(--admin-theme-text, #102849);
+    font: 500 15px/1.35 var(--admin-font-sans, inherit); cursor: pointer; text-align: left;
+    overflow-wrap: anywhere; box-sizing: border-box;
+}
+body > .np-as-menu .np-as-option:hover,
+body > .np-as-menu .np-as-option:focus-visible { background: #f1f5fb; outline: none; }
+body > .np-as-menu .np-as-option[aria-selected="true"] { background: #fcefeb; color: #a74229; font-weight: 650; }
+body > .np-as-menu .np-as-option[aria-selected="true"]::after {
+    content: '\2713'; position: absolute; right: 12px; top: 9px; font-size: 16px;
+}
+.np-as-option-label { min-width: 0; }
+.np-as-option-trail { color: var(--admin-theme-muted, #6e8096); font-size: 11px; font-weight: 400; line-height: 1.35; }
+body > .np-as-menu .np-as-option:disabled { opacity: .48; cursor: not-allowed; }
+.np-as-message { margin: 0; padding: 12px; color: var(--admin-theme-muted, #6e8096); font: 400 13px/1.5 var(--admin-font-sans, inherit); }
+@media (prefers-reduced-motion: reduce) {
+    .np-as-arrow, body.admin-ui-compact .np-admin-select .np-as-trigger { transition: none; }
+}

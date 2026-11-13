@@ -104,6 +104,8 @@ class AdminRbac
             self::permission('orders.manage', 'Commerce', 'Manage', 'Manage Orders', 'Update order status, payment status, fulfillment status, shipments, change requests and order downloads.', 'admin.orders.update', 101),
             self::permission('returns.view', 'Commerce', 'View', 'View Returns & Exchanges', 'Open return and exchange requests and their attachments.', 'admin.returns.index', 110),
             self::permission('returns.manage', 'Commerce', 'Manage', 'Manage Returns & Exchanges', 'Update return and exchange status, refunds and review notes.', 'admin.returns.update', 111),
+            self::permission('contact_requests.view', 'Commerce', 'View', 'View Contact Requests', 'Review Contact Us submissions, message details and private attachments.', 'admin.contact-requests.index', 115),
+            self::permission('contact_requests.manage', 'Commerce', 'Manage', 'Manage Contact Requests', 'Update customer enquiry status and internal review notes.', 'admin.contact-requests.update', 116),
             self::permission('customers.view', 'Commerce', 'View', 'View Customers', 'Open storefront customer accounts, profile details, addresses, order history, return activity and safe payment metadata.', 'admin.customers.index', 120),
             self::permission('customers.manage', 'Commerce', 'Manage', 'Manage Customers', 'Suspend and reactivate storefront customer accounts, and manage individual customer reward progress and reward grants.', 'admin.customers.suspend', 121),
             self::permission('coupons.view', 'Commerce', 'View', 'View Coupons', 'Open discounts and coupon lists.', 'admin.coupons.index', 130),
@@ -180,6 +182,7 @@ class AdminRbac
             'dashboard.view',
             'orders.view', 'orders.manage',
             'returns.view', 'returns.manage',
+            'contact_requests.view', 'contact_requests.manage',
             'customers.view',
         ];
 
@@ -221,7 +224,7 @@ class AdminRbac
             'admin' => $adminAllExceptProtected,
             'catalog_manager' => $catalogAll,
             'order_manager' => $commerceAll,
-            'support_agent' => ['dashboard.view', 'orders.view', 'returns.view', 'customers.view'],
+            'support_agent' => ['dashboard.view', 'orders.view', 'returns.view', 'contact_requests.view', 'contact_requests.manage', 'customers.view'],
             'content_manager' => $contentAll,
         ];
     }
@@ -389,6 +392,7 @@ class AdminRbac
             'dashboard.view' => 'admin.dashboard',
             'products.view' => 'admin.products.index',
             'orders.view' => 'admin.orders.index',
+            'contact_requests.view' => 'admin.contact-requests.index',
             'categories.view' => 'admin.categories.index',
             'attributes.view' => 'admin.attributes.index',
             'customization.view' => 'admin.jersey-customization-options.index',
@@ -537,7 +541,18 @@ class AdminRbac
                 : 'returns_policy_page.view';
         }
 
+        if (Str::startsWith($name, 'contact-requests.')) {
+            return $name === 'contact-requests.update'
+                ? 'contact_requests.manage'
+                : 'contact_requests.view';
+        }
+
         if (Str::startsWith($name, 'contact-page.')) {
+            if ($name === 'contact-page.attachment') {
+                // The legacy attachment link in forwarded emails is private customer data,
+                // not storefront content editing. Keep the URL but enforce inbox permissions.
+                return 'contact_requests.view';
+            }
             return $name === 'contact-page.update'
                 ? 'contact_page.manage'
                 : 'contact_page.view';

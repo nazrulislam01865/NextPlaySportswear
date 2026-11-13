@@ -3,6 +3,9 @@
 namespace App\Services\Shipping;
 
 use App\Events\DeliveryEstimateUpdated;
+use App\Jobs\Shipping\SendHolidayEtaNotification;
+use App\Models\ArtworkProof;
+use Illuminate\Support\Facades\DB;
 use App\Models\HolidayCalendar;
 use App\Models\HolidayCalendarDate;
 use App\Models\Order;
@@ -12,9 +15,44 @@ use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 
 class HolidayCalendarService
 {
+    private array $yearIndexCache = [];
+    private array $revisionCache = [];
+
+    public function __construct(
+        private readonly HolidayCalendarIndexBuilder $indexBuilder,
+        private readonly HolidayCalendarRevisionStore $revisionStore,
+        private readonly IndexedBusinessDayCalculator $indexedCalculator,
+    ) {}
+
+    private function yearIndex(string $country, int $year): array
+    {
+        // Fetch the committed generation once per service lifetime; immutable cache keys
+        // prevent a late builder from overwriting a newer revision.
+        $code = $this->revisionStore->countryCode($country);
+        $identity = "{$code}:{$year}";
+        $revision = $this->revisionCache[$identity]
+            ??= $this->revisionStore->current($code, $year);
+        $key = "holiday:index:{$code}:{$year}:policy1:rev{$revision}";
+        if (isset($this->yearIndexCache[$key])) return $this->yearIndexCache[$key];
+
+        $index = Cache::get($key);
+        if (! is_array($index) || ! isset($index['prefix'], $index['holidays'])) {
+            try {
+                $index = Cache::lock("holiday:build:{$code}:{$year}:rev{$revision}", 15)->block(3,
+                    fn () => Cache::remember($key, self::CACHE_TTL_SECONDS,
+                        fn () => $this->indexBuilder->build($code, $year, $revision)));
+            } catch (LockTimeoutException) {
+                // A slow builder must not serve stale data or fail checkout.
+                $index = $this->indexBuilder->build($code, $year, $revision);
+            }
+        }
+        return $this->yearIndexCache[$key] = $index;
+    }
+
     private const CACHE_TTL_SECONDS = 86400; // 24 hours
 
     /**
@@ -24,6 +62,7 @@ class HolidayCalendarService
      */
     public function getActiveHolidayDates(string $country, int $year): Collection
     {
+        $country = $this->normalizeCountry($country);
         $cacheKey = $this->cacheKey($country, $year);
 
         $cached = Cache::get($cacheKey);
@@ -39,7 +78,7 @@ class HolidayCalendarService
                     ->forCountry($country)
                     ->forYear($year);
             })
-            ->orderBy('date')
+            ->orderBy('date')->orderBy('holiday_calendar_id')->orderBy('id')
             ->get()
             ->keyBy(fn (HolidayCalendarDate $date) => $date->date->format('Y-m-d'));
 
@@ -76,6 +115,24 @@ class HolidayCalendarService
      * @return array{target_date: Carbon, holidays_encountered: array<string, string>}
      */
     public function addBusinessDays(CarbonInterface $startDate, int $businessDays, string $country): array
+    {
+        if (config('nextplay_shipping.holiday_index_enabled', true)) {
+            $result = $this->indexedCalculator->add(
+                $startDate, $businessDays, fn (int $year) => $this->yearIndex($country, $year)
+            );
+            if (config('nextplay_shipping.holiday_shadow_compare', false)) {
+                $legacy = $this->addBusinessDaysLegacy($startDate, $businessDays, $country);
+                if ($legacy['target_date']->toDateString() !== $result['target_date']->toDateString()
+                    || $legacy['holidays_encountered'] !== $result['holidays_encountered']) {
+                    report(new \RuntimeException('Holiday calendar indexed/legacy calculation mismatch'));
+                }
+            }
+            return $result;
+        }
+        return $this->addBusinessDaysLegacy($startDate, $businessDays, $country);
+    }
+
+    private function addBusinessDaysLegacy(CarbonInterface $startDate, int $businessDays, string $country): array
     {
         $current = Carbon::parse($startDate);
         $holidaysEncountered = [];
@@ -205,81 +262,149 @@ class HolidayCalendarService
      * Recalculate ETA for a specific order based on active holiday calendars.
      * Dispatches DeliveryEstimateUpdated event if the ETA changes.
      */
-    public function recalculateOrderEta(Order $order, ?string $customHolidayReason = null): bool
+    public function recalculateOrderEta(Order $order, ?string $customHolidayReason = null, bool $queueNotifications = false, bool $notify = true): bool
     {
+        if (in_array($order->status, ['completed', 'delivered', 'cancelled', 'shipped'], true)) return false;
+        $anchor = $this->resolveEtaAnchor($order);
+        if ($anchor === null) {
+            // Do not invent an approval timestamp or silently replace a pending ETA.
+            $meta = (array) ($order->holiday_adjustment_meta ?? []);
+            if (($meta['eta_state'] ?? null) !== 'awaiting_artwork_approval'
+                || $order->estimated_delivery_start_at !== null || $order->estimated_delivery_end_at !== null) {
+                $meta['eta_state'] = 'awaiting_artwork_approval';
+                unset($meta['anchor_at'], $meta['range']);
+                $order->estimated_delivery_start_at = null;
+                $order->estimated_delivery_end_at = null;
+                $order->holiday_adjustment_applied = false;
+                $order->holiday_adjustment_reason = null;
+                $order->holiday_adjustment_meta = $meta;
+                $order->save();
+            }
+            return false;
+        }
+
         $country = $this->resolveOrderCountry($order);
         [$minDays, $maxDays] = $this->resolveOrderDays($order);
-
-        $placedDate = $order->placed_at ?? $order->created_at ?? now();
-        $window = $this->calculateDeliveryWindow($placedDate, $minDays, $maxDays, $country);
-
+        $window = $this->calculateDeliveryWindow($anchor, $minDays, $maxDays, $country);
         $currentStart = $order->estimated_delivery_start_at?->format('Y-m-d');
         $currentEnd = $order->estimated_delivery_end_at?->format('Y-m-d');
         $newStart = $window['start_date']->format('Y-m-d');
         $newEnd = $window['end_date']->format('Y-m-d');
+        $datesChanged = ($currentStart !== $newStart || $currentEnd !== $newEnd);
+        $reason = $customHolidayReason ?: $window['adjustment_reason'];
+        $original = (array) ($order->holiday_adjustment_meta ?? []);
+        // Ignore timestamps when deciding whether a write is necessary.
+        $meta = array_merge($original, [
+            'holidays' => $window['affected_holidays'],
+            'range' => $window['formatted_range'], 'country' => $country,
+            'eta_state' => 'confirmed',
+            'anchor_at' => $anchor->toIso8601String(),
+        ]);
+        unset($meta['recalculated_at']);
+        $semanticChanged = $datesChanged
+            || (bool) $order->holiday_adjustment_applied !== (bool) $window['is_holiday_adjusted']
+            || (string) $order->holiday_adjustment_reason !== (string) $reason
+            || array_diff_assoc(array_filter($meta, 'is_scalar'), array_filter($original, 'is_scalar')) !== []
+            || ($original['holidays'] ?? null) !== $meta['holidays'];
+        if (! $semanticChanged) return false;
 
-        $isChanged = ($currentStart !== $newStart || $currentEnd !== $newEnd);
-
-        // Always update order with fresh calculated data
         $oldEstimate = $order->formattedEstimatedDelivery() ?: 'Previous Estimate';
-
         $order->estimated_delivery_start_at = $window['start_date'];
         $order->estimated_delivery_end_at = $window['end_date'];
         $order->holiday_adjustment_applied = $window['is_holiday_adjusted'];
-        $order->holiday_adjustment_reason = $customHolidayReason ?: $window['adjustment_reason'];
-        $order->holiday_adjustment_meta = [
-            'holidays' => $window['affected_holidays'],
-            'range' => $window['formatted_range'],
-            'country' => $country,
-            'recalculated_at' => now()->toIso8601String(),
-        ];
+        $order->holiday_adjustment_reason = $reason;
+        $order->holiday_adjustment_meta = $meta;
         $order->save();
+        if (! $datesChanged) return false;
 
-        if (! $isChanged) {
-            return false;
-        }
-
-        // Update active shipments and notify customer
-        $order->loadMissing('shipments');
-        $reason = $customHolidayReason ?: ($window['adjustment_reason'] ?: 'Holiday calendar delivery date adjustment.');
-
-        if ($order->shipments->isNotEmpty()) {
-            foreach ($order->shipments as $shipment) {
-                $shipment->old_estimated_delivery_at = $shipment->estimated_delivery_at;
-                $shipment->estimated_delivery_at = $window['end_date']->copy()->setTime(17, 0, 0);
-                $shipment->holiday_reason = $reason;
-                $shipment->save();
-
-                event(new DeliveryEstimateUpdated(
-                    shipment: $shipment,
-                    oldEstimate: $oldEstimate,
-                    holidayReason: $reason,
-                    order: $order,
-                ));
-            }
-        } else {
-            event(new DeliveryEstimateUpdated(
-                shipment: null,
-                oldEstimate: $oldEstimate,
-                holidayReason: $reason,
-                order: $order,
-            ));
-        }
-
-        // Record history entry
-        $order->histories()->create([
+        $descriptionReason = $reason ?: ($notify
+            ? 'Holiday calendar delivery date adjustment.'
+            : 'Artwork approval delivery schedule confirmed.');
+        $history = $order->histories()->create([
             'status' => $order->status,
             'title' => 'Delivery Estimate Updated',
-            'description' => "Delivery estimate updated to {$window['formatted_range']}. {$reason}",
-            'metadata' => [
-                'previous_estimate' => $oldEstimate,
-                'updated_estimate' => $window['formatted_range'],
-                'holidays' => $window['affected_holidays'],
-            ],
+            'description' => "Delivery estimate updated to {$window['formatted_range']}. {$descriptionReason}",
+            'metadata' => ['previous_estimate' => $oldEstimate,
+                'updated_estimate' => $window['formatted_range'], 'holidays' => $window['affected_holidays']],
             'occurred_at' => now(),
         ]);
+        $order->loadMissing('shipments');
+        // Completed shipments are immutable, even if the parent remains open.
+        $eligible = $order->shipments->filter(fn ($shipment) =>
+            ! in_array($shipment->status, ['delivered', 'shipped', 'in_transit', 'out_for_delivery', 'cancelled'], true));
+        foreach ($eligible as $shipment) {
+            $shipment->old_estimated_delivery_at = $shipment->estimated_delivery_at;
+            $shipment->estimated_delivery_at = $window['end_date']->copy()->setTime(17, 0, 0);
+            $shipment->holiday_reason = $descriptionReason;
+            $shipment->save();
+            if ($notify) $this->emitEtaNotification($order, $shipment, $oldEstimate, $descriptionReason, $queueNotifications, (int) $history->id);
+        }
+        if ($eligible->isEmpty() && $order->shipments->isEmpty() && $notify) {
+            $this->emitEtaNotification($order, null, $oldEstimate, $descriptionReason, $queueNotifications, (int) $history->id);
+        }
 
         return true;
+    }
+
+    private function emitEtaNotification(Order $order, ?OrderShipment $shipment, string $old, string $reason, bool $queued, int $historyId): void
+    {
+        if (! $queued) {
+            event(new DeliveryEstimateUpdated(shipment: $shipment, oldEstimate: $old,
+                holidayReason: $reason, order: $order));
+            return;
+        }
+        $key = hash('sha256', implode('|', [$order->id, $shipment?->id ?? 'order', $historyId]));
+        $inserted = DB::table('holiday_eta_notifications')->insertOrIgnore([
+            'order_id' => $order->id, 'event_key' => $key,
+            'payload' => json_encode(['shipment_id' => $shipment?->id,
+                'old_estimate' => $old, 'reason' => $reason,
+                'new_start_date' => $order->estimated_delivery_start_at?->toDateString(),
+                'new_end_date' => $order->estimated_delivery_end_at?->toDateString()]),
+            'created_at' => now(), 'updated_at' => now(), 'last_dispatched_at' => now(),
+        ]);
+        if ($inserted) {
+            SendHolidayEtaNotification::dispatch($key)
+                ->onQueue(config('nextplay_shipping.holiday_queue', 'default'))->afterCommit();
+        }
+    }
+
+    /** An artwork-dependent order waits for ALL current proofs; latest approval defines the anchor. */
+    public function resolveEtaAnchor(Order $order): ?Carbon
+    {
+        $shipping = (array) ($order->shipping_method ?? []);
+        if (data_get($shipping, 'delivery_estimate.start_event') !== 'artwork_confirmation') {
+            return Carbon::parse($order->placed_at ?? $order->created_at ?? now());
+        }
+        $proofs = ArtworkProof::query()->current()
+            ->where('artwork_proofs.order_id', $order->id)->get();
+        if ($proofs->isEmpty() || $proofs->contains(fn ($p) => $p->status !== ArtworkProof::APPROVED || ! $p->approved_at)) {
+            return null;
+        }
+        return Carbon::parse($proofs->max('approved_at'));
+    }
+
+    public function orderWindowTouchesYear(Order $order, int $year): bool
+    {
+        $anchor = $this->resolveEtaAnchor($order);
+        if ($anchor === null) return false;
+        $end = $order->estimated_delivery_end_at;
+        if ($end && $anchor->year <= $year && $end->year >= $year) return true;
+        [$min, $max] = $this->resolveOrderDays($order);
+        return $anchor->year <= $year && $anchor->copy()->addDays($max * 3 + 20)->year >= $year;
+    }
+
+    public function openOrdersQuery(string $country): \Illuminate\Database\Eloquent\Builder
+    {
+        $variants = $this->countryVariants($this->normalizeCountry($country));
+        return Order::query()->whereNotIn('status', ['completed', 'delivered', 'cancelled', 'shipped'])
+            ->where(function ($query) use ($variants): void {
+                foreach ($variants as $v) {
+                    $query->orWhere('shipping_address->country', $v)
+                        ->orWhere('shipping_address->address->country', $v)
+                        ->orWhere('shipping_address->country_code', $v)
+                        ->orWhere('shipping_address->address->country_code', $v);
+                }
+            });
     }
 
     /**
@@ -289,38 +414,19 @@ class HolidayCalendarService
      */
     public function recalculateOpenOrdersForCountry(string $country, ?string $holidayReason = null): array
     {
-        $normalizedCountry = $this->normalizeCountry($country);
-        $countryVariants = $this->countryVariants($normalizedCountry);
-
-        $openOrders = Order::query()
-            ->whereNotIn('status', ['completed', 'delivered', 'cancelled'])
-            ->where(function ($query) use ($countryVariants): void {
-                foreach ($countryVariants as $variant) {
-                    $query->orWhere('shipping_address->country', $variant)
-                        ->orWhere('shipping_address->address->country', $variant)
-                        ->orWhere('shipping_address->country_code', $variant)
-                        ->orWhere('shipping_address->address->country_code', $variant);
+        $updated = 0;
+        $notified = 0;
+        $total = 0;
+        $this->openOrdersQuery($country)->with('shipments')->chunkById(150, function ($orders) use (&$updated, &$notified, &$total, $holidayReason): void {
+            foreach ($orders as $order) {
+                $total++;
+                if ($this->recalculateOrderEta($order, $holidayReason)) {
+                    $updated++;
+                    $notified += max(1, $order->shipments->count());
                 }
-            })
-            ->with(['shipments'])
-            ->get();
-
-        $updatedCount = 0;
-        $notifiedShipments = 0;
-
-        foreach ($openOrders as $order) {
-            $wasUpdated = $this->recalculateOrderEta($order, $holidayReason);
-            if ($wasUpdated) {
-                $updatedCount++;
-                $notifiedShipments += max(1, $order->shipments->count());
             }
-        }
-
-        return [
-            'total_open' => $openOrders->count(),
-            'updated' => $updatedCount,
-            'notified' => $notifiedShipments,
-        ];
+        });
+        return ['total_open' => $total, 'updated' => $updated, 'notified' => $notified];
     }
 
     /**
@@ -328,20 +434,22 @@ class HolidayCalendarService
      */
     public function clearHolidayCache(?string $country = null, ?int $year = null): void
     {
+        $this->yearIndexCache = [];
+        $this->revisionCache = [];
         if ($country !== null && $year !== null) {
-            Cache::forget($this->cacheKey($country, $year));
-
+            Cache::forget($this->cacheKey($this->normalizeCountry($country), $year));
+            // Public clearing API invalidates both legacy and indexed representations.
+            $this->revisionStore->advance($country, $year);
             return;
         }
-
-        // Clear general cache keys for major countries and recent years
-        $countries = ['GB', 'United Kingdom', 'US', 'United States', 'CA', 'Canada', 'AU', 'Australia'];
-        $years = [2025, 2026, 2027];
-
-        foreach ($countries as $c) {
-            foreach ($years as $y) {
-                Cache::forget($this->cacheKey($c, $y));
-            }
+        // Dynamic, targeted global invalidation: includes historical/deleted pairs.
+        // Do not flush unrelated application cache entries.
+        $pairs = DB::table('holiday_calendar_revisions')->select('country_code', 'year')->get()
+            ->concat(HolidayCalendar::query()->select('country_code', 'year')->distinct()->get())
+            ->unique(fn ($pair) => $this->revisionStore->countryCode($pair->country_code).':'.$pair->year);
+        foreach ($pairs as $pair) {
+            $code = $this->revisionStore->countryCode($pair->country_code);
+            $this->clearHolidayCache($code, (int) $pair->year);
         }
     }
 
@@ -360,17 +468,17 @@ class HolidayCalendarService
         }
 
         $upper = strtoupper($trimmed);
-        if ($upper === 'GB' || $upper === 'UK' || strcasecmp($trimmed, 'United Kingdom') === 0) {
+        if ($upper === 'GB' || $upper === 'UK' || $upper === 'GREAT BRITAIN' || strcasecmp($trimmed, 'United Kingdom') === 0) {
             return 'United Kingdom';
         }
-        if ($upper === 'US' || $upper === 'USA' || strcasecmp($trimmed, 'United States') === 0) {
+        if ($upper === 'US' || $upper === 'USA' || $upper === 'UNITED STATES OF AMERICA' || strcasecmp($trimmed, 'United States') === 0) {
             return 'United States';
         }
         if ($upper === 'CA' || strcasecmp($trimmed, 'Canada') === 0) {
             return 'Canada';
         }
 
-        return $trimmed;
+        return \App\Support\CountryCatalog::find($upper)['name'] ?? $trimmed;
     }
 
     public function countryVariants(string $country): array
@@ -379,7 +487,7 @@ class HolidayCalendarService
             'United Kingdom' => ['United Kingdom', 'GB', 'UK', 'Great Britain'],
             'United States' => ['United States', 'US', 'USA'],
             'Canada' => ['Canada', 'CA'],
-            default => [$country],
+            default => array_values(array_unique([$country, $this->revisionStore->countryCode($country)])),
         };
     }
 

@@ -1,6 +1,7 @@
 <x-layouts.admin title="Categories" :compact-header="true">
     @push('admin-page-styles')
         <link rel="stylesheet" href="{{ asset('css/admin-category-import.css') }}?v={{ filemtime(public_path('css/admin-category-import.css')) }}">
+        <link rel="stylesheet" href="{{ asset('css/nextplay-catalog-focused-fixes-20261113.css') }}?v={{ filemtime(public_path('css/nextplay-catalog-focused-fixes-20261113.css')) }}">
     @endpush
     @php
         $categoryStatuses = ['draft', 'active', 'inactive', 'archived'];
@@ -23,7 +24,7 @@
     <div class="category-admin-page">
         <section class="category-page-toolbar" aria-label="Category actions">
             <div class="category-top-actions">
-                <a href="{{ route('admin.categories.ordering') }}" class="category-header-action category-header-action-light">
+                <a href="{{ route('admin.categories.ordering') }}" class="category-header-action category-header-action-light np-secondary-button">
                     <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                         <path d="M5 6h14M5 12h14M5 18h9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
                         <path d="M7.5 9v2.8M7.5 15v2.8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
@@ -31,7 +32,7 @@
                     Reorder Tree
                 </a>
 
-                <a href="{{ route('admin.categories.create') }}" class="category-header-action category-header-action-primary">
+                <a href="{{ route('admin.categories.create') }}" class="category-header-action category-header-action-primary np-primary-button">
                     <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                         <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
                     </svg>
@@ -107,39 +108,27 @@
                         >
                     </label>
 
-                    <label class="category-field relative block">
-                        <span class="sr-only">Category status</span>
-                        <select class="admin-input category-control appearance-none pr-12" name="status">
+                    <div class="category-field relative block">
+                        <x-admin.searchable-select id="category-filter-status" name="status" label="Category status">
                             <option value="">All statuses</option>
                             @foreach($categoryStatuses as $status)
                                 <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>
                                     {{ ucfirst($status) }}
                                 </option>
                             @endforeach
-                        </select>
-                        <span class="category-filter-select-icon" aria-hidden="true">
-                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none">
-                                <path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                            </svg>
-                        </span>
-                    </label>
+                        </x-admin.searchable-select>
+                    </div>
 
-                    <label class="category-field relative block">
-                        <span class="sr-only">Category type</span>
-                        <select class="admin-input category-control appearance-none pr-12" name="type">
+                    <div class="category-field relative block">
+                        <x-admin.searchable-select id="category-filter-type" name="type" label="Category type">
                             <option value="">All types</option>
                             @foreach($categoryTypes as $type)
                                 <option value="{{ $type }}" @selected(($filters['type'] ?? '') === $type)>
                                     {{ ucwords(str_replace('-', ' ', $type)) }}
                                 </option>
                             @endforeach
-                        </select>
-                        <span class="category-filter-select-icon" aria-hidden="true">
-                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none">
-                                <path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                            </svg>
-                        </span>
-                    </label>
+                        </x-admin.searchable-select>
+                    </div>
 
                     <label class="category-empty-filter">
                         <input type="checkbox" name="empty" value="1" @checked($filters['empty'] ?? false)>
@@ -147,11 +136,11 @@
                     </label>
 
                     <div class="category-filter-actions">
-                        <button class="category-filter-button" type="submit">
+                        <button class="category-filter-button np-primary-button" type="submit">
                             Filter
                         </button>
                         @if($hasActiveFilters)
-                            <a href="{{ route('admin.categories.index') }}" class="category-filter-clear">Clear</a>
+                            <a href="{{ route('admin.categories.index') }}" class="category-filter-clear np-secondary-button">Clear</a>
                         @endif
                     </div>
                 </form>
@@ -228,7 +217,7 @@
                         </div>
                         <div class="category-import-footer">
                             <p id="category-import-help" class="category-upload-hint">Up to 1,000 categories · Uses the first Excel worksheet</p>
-                            <button class="category-import-button category-import-button--compact" type="submit" data-category-import-submit disabled>
+                            <button class="category-import-button category-import-button--compact np-primary-button" type="submit" data-category-import-submit disabled>
                                 <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V4m0 0-5 5m5-5 5 5M5 17v2a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                 Import categories
                             </button>
@@ -258,7 +247,7 @@
             </select>
 
             <button
-                class="category-bulk-button category-bulk-button--compact"
+                class="category-bulk-button category-bulk-button--compact np-primary-button"
                 type="submit"
                 data-category-bulk-submit
                 disabled

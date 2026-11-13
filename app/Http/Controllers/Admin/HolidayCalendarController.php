@@ -8,6 +8,8 @@ use App\Models\CountryCallingCode;
 use App\Models\HolidayCalendar;
 use App\Models\HolidayCalendarDate;
 use App\Services\Shipping\HolidayCalendarService;
+use App\Services\Shipping\HolidayCalendarRevisionStore;
+use App\Jobs\Shipping\ScheduleHolidayRecalculation;
 use App\Support\CountryCatalog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,7 +19,8 @@ use Illuminate\View\View;
 class HolidayCalendarController extends Controller
 {
     public function __construct(
-        private readonly HolidayCalendarService $holidayService
+        private readonly HolidayCalendarService $holidayService,
+        private readonly HolidayCalendarRevisionStore $revisions
     ) {
     }
 
@@ -137,18 +140,12 @@ class HolidayCalendarController extends Controller
                 }
             }
 
+            $this->holidayService->clearHolidayCache($calendar->country_name, (int) $calendar->year);
+            if ($calendar->is_active) $this->enqueueRecalculation($calendar->country_name, (int) $calendar->year);
             return $calendar;
         });
 
-        $this->holidayService->clearHolidayCache($calendar->country_name, $calendar->year);
-
-        $notificationNote = '';
-        if ($calendar->is_active) {
-            $recalc = $this->holidayService->recalculateOpenOrdersForCountry($calendar->country_name);
-            if ($recalc['updated'] > 0) {
-                $notificationNote = " Recalculated {$recalc['updated']} open orders and notified {$recalc['notified']} affected customer shipments.";
-            }
-        }
+        $notificationNote = $calendar->is_active ? $this->recalculationMessage() : '';
 
         return redirect()
             ->route('admin.holiday-calendars.index')
@@ -202,7 +199,10 @@ class HolidayCalendarController extends Controller
 
         $data['updated_by'] = auth('admin')->id();
 
-        DB::transaction(function () use ($holidayCalendar, $data, $datesData) {
+        $previousCountry = $holidayCalendar->country_name;
+        $previousYear = (int) $holidayCalendar->year;
+        $previousActive = (bool) $holidayCalendar->is_active;
+        DB::transaction(function () use ($holidayCalendar, $data, $datesData, $previousCountry, $previousYear, $previousActive) {
             $holidayCalendar->update($data);
 
             $holidayCalendar->dates()->delete();
@@ -222,17 +222,22 @@ class HolidayCalendarController extends Controller
                     ]);
                 }
             }
+            $newCountry = $holidayCalendar->country_name;
+            $newYear = (int) $holidayCalendar->year;
+            $moved = $this->revisions->countryCode($previousCountry) !== $this->revisions->countryCode($newCountry)
+                || $previousYear !== $newYear;
+            if ($moved) {
+                $this->holidayService->clearHolidayCache($previousCountry, $previousYear);
+                if ($previousActive) $this->enqueueRecalculation($previousCountry, $previousYear);
+            }
+            $this->holidayService->clearHolidayCache($newCountry, $newYear);
+            if ($holidayCalendar->is_active || ($previousActive && ! $moved)) {
+                $this->enqueueRecalculation($newCountry, $newYear);
+            }
         });
 
-        $this->holidayService->clearHolidayCache($holidayCalendar->country_name, $holidayCalendar->year);
-
-        $notificationNote = '';
-        if ($holidayCalendar->is_active) {
-            $recalc = $this->holidayService->recalculateOpenOrdersForCountry($holidayCalendar->country_name);
-            if ($recalc['updated'] > 0) {
-                $notificationNote = " Recalculated {$recalc['updated']} open orders and notified {$recalc['notified']} affected customer shipments.";
-            }
-        }
+        $notificationNote = ($previousActive || $holidayCalendar->is_active)
+            ? $this->recalculationMessage() : '';
 
         return redirect()
             ->route('admin.holiday-calendars.index')
@@ -249,12 +254,11 @@ class HolidayCalendarController extends Controller
         $wasActive = $holidayCalendar->is_active;
         $name = $holidayCalendar->name;
 
-        $holidayCalendar->delete();
-        $this->holidayService->clearHolidayCache($country, $year);
-
-        if ($wasActive) {
-            $this->holidayService->recalculateOpenOrdersForCountry($country);
-        }
+        DB::transaction(function () use ($holidayCalendar, $country, $year, $wasActive): void {
+            $holidayCalendar->delete();
+            $this->holidayService->clearHolidayCache($country, (int) $year);
+            if ($wasActive) $this->enqueueRecalculation($country, (int) $year);
+        });
 
         return redirect()
             ->route('admin.holiday-calendars.index')
@@ -266,20 +270,38 @@ class HolidayCalendarController extends Controller
      */
     public function toggleStatus(HolidayCalendar $holidayCalendar): RedirectResponse
     {
-        $holidayCalendar->is_active = ! $holidayCalendar->is_active;
-        $holidayCalendar->updated_by = auth('admin')->id();
-        $holidayCalendar->save();
-
-        $this->holidayService->clearHolidayCache($holidayCalendar->country_name, $holidayCalendar->year);
-
-        $recalc = $this->holidayService->recalculateOpenOrdersForCountry($holidayCalendar->country_name);
+        DB::transaction(function () use ($holidayCalendar): void {
+            $holidayCalendar->is_active = ! $holidayCalendar->is_active;
+            $holidayCalendar->updated_by = auth('admin')->id();
+            $holidayCalendar->save();
+            $this->holidayService->clearHolidayCache($holidayCalendar->country_name, (int) $holidayCalendar->year);
+            $this->enqueueRecalculation($holidayCalendar->country_name, (int) $holidayCalendar->year);
+        });
         $statusLabel = $holidayCalendar->is_active ? 'activated' : 'deactivated';
-
-        $note = $recalc['updated'] > 0
-            ? " Recalculated {$recalc['updated']} open orders."
-            : '';
+        $note = $this->recalculationMessage();
 
         return back()->with('status', "Holiday calendar '{$holidayCalendar->name}' {$statusLabel}.{$note}");
+    }
+
+    /** Called inside a calendar-write transaction; queue dispatch waits until commit. */
+    private function enqueueRecalculation(string $country, int $year): void
+    {
+        if (! config('nextplay_shipping.holiday_async_recalculation', true)) {
+            // Rollback path: preserve the previous synchronous behavior after commit.
+            DB::afterCommit(fn () => $this->holidayService->recalculateOpenOrdersForCountry($country));
+            return;
+        }
+        $revision = $this->revisions->current($country, $year);
+        ScheduleHolidayRecalculation::dispatch($country, $year, $revision)
+            ->onQueue(config('nextplay_shipping.holiday_queue', 'default'))
+            ->afterCommit();
+    }
+
+    private function recalculationMessage(): string
+    {
+        return config('nextplay_shipping.holiday_async_recalculation', true)
+            ? ' Delivery estimate recalculation queued for affected open orders.'
+            : ' Delivery estimates recalculated for affected open orders.';
     }
 
     /**

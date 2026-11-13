@@ -3024,6 +3024,7 @@ class ProductCatalogService
                     'maximum_quantity' => $speed->maximum_quantity === null ? null : (int) $speed->maximum_quantity,
                     'minimum_days' => $minimumDays,
                     'maximum_days' => $maximumDays,
+                    'starts_after_artwork_approval' => (bool) ($masterMethod?->starts_after_artwork_approval ?? $method->starts_after_artwork_approval),
                     'production_time' => ($minimumDays === 0 && $maximumDays === 0)
                         ? 'To be confirmed'
                         : null,
